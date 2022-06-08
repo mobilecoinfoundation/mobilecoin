@@ -29,127 +29,134 @@ use std::collections::HashMap;
 #[test_with_logger]
 fn test_ingest_enclave(logger: Logger) {
     mc_util_test_helper::run_with_several_seeds(|mut rng| {
-        let token_id = Mob::ID;
-        // make alice and bob
-        let alice_account = AccountKey::random_with_fog(&mut rng);
-        let bob_account = AccountKey::random_with_fog(&mut rng);
+        for block_version in BlockVersion::iterator() {
+            let token_id = Mob::ID;
+            // make alice and bob
+            let alice_account = AccountKey::random_with_fog(&mut rng);
+            let bob_account = AccountKey::random_with_fog(&mut rng);
 
-        // make ingest enclave business logic object
-        let enclave = SgxIngestEnclave::<HeapORAMStorageCreator>::new(logger.clone());
+            // make ingest enclave business logic object
+            let enclave = SgxIngestEnclave::<HeapORAMStorageCreator>::new(logger.clone());
 
-        let params = IngestEnclaveInitParams {
-            responder_id: ResponderId::default(),
-            sealed_key: None,
-            desired_capacity: 128,
-        };
+            let params = IngestEnclaveInitParams {
+                responder_id: ResponderId::default(),
+                sealed_key: None,
+                desired_capacity: 128,
+            };
 
-        enclave.enclave_init(params).unwrap();
+            enclave.enclave_init(params).unwrap();
 
-        // get fog public key
-        let fog_pubkey = enclave.get_ingress_pubkey().unwrap();
+            // get fog public key
+            let fog_pubkey = enclave.get_ingress_pubkey().unwrap();
 
-        // get kex rng pubkey
-        let kex_rng_pubkey = enclave.get_kex_rng_pubkey().unwrap();
+            // get kex rng pubkey
+            let kex_rng_pubkey = enclave.get_kex_rng_pubkey().unwrap();
 
-        let bob_public_address = bob_account.default_subaddress();
+            let bob_public_address = bob_account.default_subaddress();
 
-        // make some tx outs
-        let tx_outs_for_bob: Vec<_> = (0..10)
-            .map(|_| {
-                let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-                let e_fog_hint = FogHint::from(&bob_public_address).encrypt(&fog_pubkey, &mut rng);
-                TxOut::new(
-                    BlockVersion::MAX,
-                    Amount {
-                        value: 10,
-                        token_id,
-                    },
-                    &bob_account.default_subaddress(),
-                    &tx_private_key,
-                    e_fog_hint,
+            // make some tx outs
+            let tx_outs_for_bob: Vec<_> = (0..10)
+                .map(|_| {
+                    let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+                    let e_fog_hint =
+                        FogHint::from(&bob_public_address).encrypt(&fog_pubkey, &mut rng);
+                    TxOut::new(
+                        BlockVersion::MAX,
+                        Amount {
+                            value: 10,
+                            token_id,
+                        },
+                        &bob_account.default_subaddress(),
+                        &tx_private_key,
+                        e_fog_hint,
+                    )
+                    .unwrap()
+                })
+                .collect();
+
+            // make txs_for_ingest object
+            let timestamp = 10;
+            let txs_for_ingest = TxsForIngest {
+                block_index: 1,
+                global_txo_index: 100,
+                redacted_txs: tx_outs_for_bob.clone(),
+                timestamp,
+            };
+
+            // submit txs to enclave
+            let (tx_rows, maybe_kex_rng_pubkey) =
+                enclave.ingest_txs(txs_for_ingest.clone()).unwrap();
+            assert!(maybe_kex_rng_pubkey.is_none()); // rng store should not have rotated
+
+            // Check that the right number of txs came back
+            assert_eq!(tx_rows.len(), 10);
+
+            // Check that the tx row ciphertexts have the right size (but only at block
+            // version max)
+            if block_version == BlockVersion::MAX {
+                const EXPECTED_PAYLOAD_SIZE: usize = 237; // The observed tx_row.payload size
+                for tx_row in tx_rows.iter() {
+                    assert_eq!(
+                        tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,
+                        "tx_row payload didnt have expected length, should be constant size for security purposes, so that they are all indistinguishable",
+                    );
+                }
+            }
+
+            // check that Bob's crypto math works out
+            let bob_fog_credential = UserPrivate::from(&bob_account);
+
+            // Check that the search keys on the tx rows match Bob's rng
+            {
+                let mut bob_rng = VersionedKexRng::try_from_kex_pubkey(
+                    &kex_rng_pubkey,
+                    bob_fog_credential.get_view_key(),
                 )
-                .unwrap()
-            })
-            .collect();
-
-        // make txs_for_ingest object
-        let timestamp = 10;
-        let txs_for_ingest = TxsForIngest {
-            block_index: 1,
-            global_txo_index: 100,
-            redacted_txs: tx_outs_for_bob.clone(),
-            timestamp,
-        };
-
-        // submit txs to enclave
-        let (tx_rows, maybe_kex_rng_pubkey) = enclave.ingest_txs(txs_for_ingest.clone()).unwrap();
-        assert!(maybe_kex_rng_pubkey.is_none()); // rng store should not have rotated
-
-        // Check that the right number of txs came back
-        assert_eq!(tx_rows.len(), 10);
-
-        // Check that the tx row ciphertexts have the right size
-        const EXPECTED_PAYLOAD_SIZE: usize = 237; // The observed tx_row.payload size
-        for tx_row in tx_rows.iter() {
-            assert_eq!(
-                tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,
-                "tx_row payload didnt have expected length, should be constant size for security purposes, so that they are all indistinguishable",
-            );
-        }
-
-        // check that Bob's crypto math works out
-        let bob_fog_credential = UserPrivate::from(&bob_account);
-
-        // Check that the search keys on the tx rows match Bob's rng
-        {
-            let mut bob_rng = VersionedKexRng::try_from_kex_pubkey(
-                &kex_rng_pubkey,
-                bob_fog_credential.get_view_key(),
-            )
-            .unwrap();
-            let mut search_keys: HashSet<_> =
-                tx_rows.iter().map(|row| row.search_key.clone()).collect();
-            assert!(
-                search_keys.len() == tx_rows.len(),
-                "Fog search key collisions, that is bad: {}/{} unique search keys",
-                search_keys.len(),
-                tx_rows.len()
-            );
-            while !search_keys.is_empty() {
-                let output = bob_rng.next().unwrap();
-                let was_present = search_keys.remove(&output);
+                .unwrap();
+                let mut search_keys: HashSet<_> =
+                    tx_rows.iter().map(|row| row.search_key.clone()).collect();
                 assert!(
-                    was_present,
-                    "Did not find output for bob_rng index {}",
-                    bob_rng.index() - 1
+                    search_keys.len() == tx_rows.len(),
+                    "Fog search key collisions, that is bad: {}/{} unique search keys",
+                    search_keys.len(),
+                    tx_rows.len()
+                );
+                while !search_keys.is_empty() {
+                    let output = bob_rng.next().unwrap();
+                    let was_present = search_keys.remove(&output);
+                    assert!(
+                        was_present,
+                        "Did not find output for bob_rng index {}",
+                        bob_rng.index() - 1
+                    );
+                }
+            }
+
+            // Check that Bob can decrypt the payloads for each tx row
+            for idx in 0..10 {
+                let tx_out_record = bob_fog_credential
+                    .decrypt_tx_out_result(tx_rows[idx].payload.clone())
+                    .unwrap();
+                assert_eq!(tx_out_record.block_index, txs_for_ingest.block_index);
+                assert_eq!(
+                    tx_out_record.tx_out_global_index,
+                    txs_for_ingest.global_txo_index + idx as u64
+                );
+                assert_eq!(
+                    tx_out_record.get_fog_tx_out().unwrap(),
+                    FogTxOut::from(&tx_outs_for_bob[idx])
                 );
             }
-        }
 
-        // Check that Bob can decrypt the payloads for each tx row
-        for idx in 0..10 {
-            let tx_out_record = bob_fog_credential
-                .decrypt_tx_out_result(tx_rows[idx].payload.clone())
-                .unwrap();
-            assert_eq!(tx_out_record.block_index, txs_for_ingest.block_index);
-            assert_eq!(
-                tx_out_record.tx_out_global_index,
-                txs_for_ingest.global_txo_index + idx as u64
-            );
-            assert_eq!(
-                tx_out_record.get_fog_tx_out().unwrap(),
-                FogTxOut::from(&tx_outs_for_bob[idx])
-            );
-        }
-
-        // Check that Alice cannot decrypt the payloads for each tx row
-        let alice_fog_credential = UserPrivate::from(&alice_account);
-        for tx_row in tx_rows.iter().take(10) {
-            if alice_fog_credential
-                .decrypt_tx_out_result(tx_row.payload.clone())
-                .is_ok()
-            {
-                panic!("Alice should not have been able to decrypt the tx row!");
+            // Check that Alice cannot decrypt the payloads for each tx row
+            let alice_fog_credential = UserPrivate::from(&alice_account);
+            for tx_row in tx_rows.iter().take(10) {
+                if alice_fog_credential
+                    .decrypt_tx_out_result(tx_row.payload.clone())
+                    .is_ok()
+                {
+                    panic!("Alice should not have been able to decrypt the tx row!");
+                }
             }
         }
     })
