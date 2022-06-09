@@ -132,8 +132,6 @@ impl State {
             logger,
         );
 
-        let logger = logger.new(o!("thread" => "req-handler"));
-
         State {
             mobilecoind_api_client,
             account_key,
