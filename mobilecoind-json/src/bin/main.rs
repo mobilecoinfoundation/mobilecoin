@@ -79,6 +79,16 @@ fn unlock_db(
     Ok(Json(JsonUnlockDbResponse { success: true }))
 }
 
+/// Gets current mobilecoindversion
+#[get("/version")]
+fn version(state: &rocket::State<State>) -> Result<Json<JsonMobilecoindVersionResponse>, String> {
+    let resp = state
+        .mobilecoind_api_client
+        .get_release_version(&mc_mobilecoind_api::Empty::new())
+        .map_err(|err| format!("Failed getting version: {}", err))?;
+    Ok(Json(JsonMobilecoindVersionResponse::from(&resp)))
+}
+
 /// Requests a new root entropy from mobilecoind
 #[post("/entropy")]
 fn entropy(state: &rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>, String> {
@@ -801,6 +811,7 @@ async fn main() -> Result<(), rocket::Error> {
             routes![
                 set_password,
                 unlock_db,
+                version,
                 entropy,
                 account_key_from_root_entropy,
                 mnemonic,
