@@ -66,5 +66,7 @@ mod tests {
     fn invalid_eth_addr() {
         assert!(EthAddr::from_str("A000000000000000000000000000000000001234").is_err());
         assert!(EthAddr::from_str("0xz000000000000000000000000000000000001234").is_err());
+        assert!(EthAddr::from_str("0xA0000000000000000000000000000000000001234").is_err());
+        assert!(EthAddr::from_str("0xA00000000000000000000000000000000001234").is_err());
     }
 }
