@@ -6,6 +6,8 @@ mod config;
 mod error;
 mod eth_data_types;
 
-pub use config::{AuditedSafeConfig, GnosisSafeConfig};
-pub use error::Error;
-pub use eth_data_types::EthAddr;
+pub use self::{
+    config::{AuditedSafeConfig, GnosisSafeConfig},
+    error::Error,
+    eth_data_types::EthAddr,
+};
