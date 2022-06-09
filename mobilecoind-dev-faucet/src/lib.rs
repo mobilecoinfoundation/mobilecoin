@@ -234,7 +234,7 @@ impl State {
             ));
         };
 
-        let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
+        let token_id = TokenId::from(req.token_id.as_ref());
 
         let utxo_record = self.worker.get_utxo(token_id)?;
         log::trace!(

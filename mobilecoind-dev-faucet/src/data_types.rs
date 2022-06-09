@@ -14,7 +14,8 @@ pub struct JsonFaucetRequest {
     /// The address to fund
     pub b58_address: String,
     /// The token id to fund. Assumed 0 if omitted.
-    pub token_id: Option<JsonU64>,
+    #[serde(default)]
+    pub token_id: JsonU64,
 }
 
 /// A response describing the status of the faucet server
@@ -23,8 +24,8 @@ pub struct JsonFaucetStatus {
     /// Whether the status request was successful
     pub success: bool,
     /// The error message in case of failure
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub err_str: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub err_str: String,
     /// The b58 address of the faucet. This address can be paid to replenish the
     /// faucet.
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -64,7 +65,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
                 queue_depths,
             }) => JsonFaucetStatus {
                 success: true,
-                err_str: None,
+                err_str: String::default(),
                 b58_address,
                 faucet_payout_amounts: faucet_payout_amounts
                     .into_iter()
@@ -75,7 +76,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
             },
             Err(err_str) => JsonFaucetStatus {
                 success: false,
-                err_str: Some(err_str),
+                err_str,
                 ..Default::default()
             },
         }
@@ -158,8 +159,8 @@ pub struct JsonSubmitTxResponse {
     /// Whether the payment was submitted successfully
     pub success: bool,
     /// An error message if the payment could not be submitted successfully
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub err_str: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub err_str: String,
     /// A receipt for each TxOut that was sent (just one, if submitted
     /// successfully)
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -171,7 +172,7 @@ impl From<Result<mc_mobilecoind_api::SubmitTxResponse, String>> for JsonSubmitTx
         match src {
             Ok(mut resp) => Self {
                 success: true,
-                err_str: None,
+                err_str: String::default(),
                 receiver_tx_receipt_list: resp
                     .take_receiver_tx_receipt_list()
                     .iter()
@@ -180,7 +181,7 @@ impl From<Result<mc_mobilecoind_api::SubmitTxResponse, String>> for JsonSubmitTx
             },
             Err(err_str) => Self {
                 success: false,
-                err_str: Some(err_str),
+                err_str,
                 ..Default::default()
             },
         }
