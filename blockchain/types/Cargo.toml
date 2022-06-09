@@ -9,6 +9,7 @@ edition = "2021"
 mc-account-keys = { path = "../../account-keys" }
 mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-common = { path = "../../common", default-features = false }
+mc-consensus-scp-types = { path = "../../consensus/scp/types" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }

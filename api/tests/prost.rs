@@ -198,7 +198,7 @@ fn signed_contingent_input_round_trip() {
 fn make_quorum_set<RNG: RngCore + CryptoRng>(rng: &mut RNG) -> QuorumSet {
     let n = rng.next_u32() % 20 + 3; // n in [3, 22]
     let threshold = rng.next_u32() % n + 1; // [1, n]
-    let node_ids = (0..n).map(|x| (&test_node_id(x)).into()).collect();
+    let node_ids = (0..n).map(test_node_id).collect();
     QuorumSet::new_with_node_ids(threshold, node_ids)
 }
 
