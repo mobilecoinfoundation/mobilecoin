@@ -224,6 +224,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .collect()
     }
 
+    fn get_release_version_impl(
+        & self,
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::MobilecoindVersionResponse, RpcStatus> {
+        let mut response = mc_mobilecoind_api::MobilecoindVersionResponse::new();
+        response.set_version(env!("CARGO_PKG_VERSION").to_string());
+        Ok(response)
+    }
+
     fn add_monitor_impl(
         &mut self,
         request: mc_mobilecoind_api::AddMonitorRequest,
@@ -2103,7 +2112,9 @@ build_api! {
 
     // Database encryption
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
-    unlock_db UnlockDbRequest Empty unlock_db_impl
+    unlock_db UnlockDbRequest Empty unlock_db_impl,
+
+    get_release_version Empty MobilecoindVersionResponse get_release_version_impl
 }
 
 #[cfg(test)]
