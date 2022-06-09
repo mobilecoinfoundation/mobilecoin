@@ -139,7 +139,7 @@ impl State {
             monitor_b58_address,
             faucet_payout_amounts,
             worker,
-            logger,
+            logger: logger.clone(),
         }
     }
 
