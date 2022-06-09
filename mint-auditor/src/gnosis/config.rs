@@ -14,7 +14,7 @@ pub struct AuditedToken {
     /// The MobileCoin token id.
     pub token_id: TokenId,
 
-    /// The Ethererum token contract address.
+    /// The Ethereum token contract address.
     #[serde(with = "serde_with::rust::display_fromstr")]
     pub eth_token_contract_addr: EthAddr,
 
