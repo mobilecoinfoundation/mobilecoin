@@ -7,38 +7,10 @@ use mc_api::external::{
     PublicAddress, RingMLSAG, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement,
     TxOutMembershipHash, TxOutMembershipProof, TxPrefix,
 };
+use mc_util_serial::JsonU64;
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
-
-// Represents u64 using string, when serializing to Json
-// Javascript integers are not 64 bit, and so it is not really proper json.
-// Using string avoids issues with some json parsers not handling large numbers
-// well.
-//
-// This does not rely on the serde-json arbitrary precision feature, which
-// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
-
-impl From<&u64> for JsonU64 {
-    fn from(src: &u64) -> Self {
-        Self(*src)
-    }
-}
-
-impl From<&JsonU64> for u64 {
-    fn from(src: &JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl From<JsonU64> for u64 {
-    fn from(src: JsonU64) -> u64 {
-        src.0
-    }
-}
 
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonPasswordRequest {

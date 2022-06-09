@@ -104,6 +104,7 @@ members = [
     "mint-auditor",
     "mint-auditor/api",
     "mobilecoind",
+    "mobilecoind-dev-faucet",
     "mobilecoind-json",
     "mobilecoind/api",
     "peers",
@@ -188,6 +189,14 @@ codegen-units = 1
 # Skip the need for LD_LIBRARY_PATH in `cargo test`
 [profile.test]
 rpath = true
+
+[profile.ci]
+# Build config.
+inherits = "test"
+# Enable some compiler optimizations.
+opt-level = 2
+# LLVM's Link-Time Optimization: Some, relatively quick to generate.
+lto = "thin"
 
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.

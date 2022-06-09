@@ -27,8 +27,8 @@ LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
 IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
-if MOB_RELEASE == '1':
+MOB_RELEASE = os.getenv('MOB_RELEASE', '1') == '1'
+if MOB_RELEASE:
     CARGO_FLAGS = '--release'
     BUILD_TYPE = 'release'
 else:
