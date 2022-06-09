@@ -104,6 +104,7 @@ members = [
     "mint-auditor",
     "mint-auditor/api",
     "mobilecoind",
+    "mobilecoind-dev-faucet",
     "mobilecoind-json",
     "mobilecoind/api",
     "peers",
