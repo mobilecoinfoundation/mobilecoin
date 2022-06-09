@@ -3,7 +3,6 @@
 
 //! Fog Ingest target
 
-use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::logger::{log, o};
 use mc_fog_ingest_enclave::ENCLAVE_FILE;
@@ -52,12 +51,19 @@ fn main() {
     log::info!(logger, "Enclave path is: {:?}", enclave_path);
 
     // Open databases.
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing");
     let recovery_db = SqlRecoveryDb::new_from_url(
-        &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        &database_url,
         config.postgres_config.clone(),
         logger.clone(),
     )
-    .expect("Failed connecting to database");
+    .unwrap_or_else(|err| {
+        panic!(
+            "fog-ingest cannot connect to database '{}': {:?}",
+            database_url, err
+        )
+    });
 
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
 
@@ -93,11 +99,8 @@ fn main() {
     server.start().expect("Failed starting Ingest Service");
 
     // Start admin server.
-    let config2 = config.clone();
-    let get_config_json = Arc::new(move || {
-        serde_json::to_string(&config2)
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err)))
-    });
+    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
+    let get_config_json = Arc::new(move || Ok(config_json.clone()));
     let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         AdminServer::start(
             None,
@@ -107,7 +110,7 @@ fn main() {
             Some(get_config_json),
             logger,
         )
-        .expect("Failed starting admin server")
+        .expect("Failed starting fog-ingest admin server")
     });
 
     loop {

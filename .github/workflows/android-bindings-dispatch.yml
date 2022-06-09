@@ -5,7 +5,9 @@ on:
 
 jobs:
   build_publish:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, small]
+    container: gcr.io/mobilenode-211420/android-bindings-builder:1_4
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2

@@ -5,7 +5,7 @@
 use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
 use diesel::{prelude::*, PgConnection};
 use diesel_migrations::embed_migrations;
-use mc_common::logger::Logger;
+use mc_common::logger::{log, Logger};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 embed_migrations!("migrations/");
@@ -29,13 +29,19 @@ impl SqlRecoveryDbTestContext {
                 .collect::<String>()
                 .to_lowercase()
         );
-        let base_url = std::env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL must be set");
+        let base_url =
+            std::env::var("TEST_DATABASE_URL").expect("env.TEST_DATABASE_URL must be set");
 
         // First, connect to postgres db to be able to create our test
         // database.
         let postgres_url = format!("{}/postgres", base_url);
-        let conn =
-            PgConnection::establish(&postgres_url).expect("Cannot connect to postgres database.");
+        log::info!(&logger, "Connecting to root PG DB {}", postgres_url);
+        let conn = PgConnection::establish(&postgres_url).unwrap_or_else(|err| {
+            panic!(
+                "Cannot connect to PG database '{}': {:?}",
+                postgres_url, err
+            )
+        });
 
         // Create a new database for the test
         let query = diesel::sql_query(format!("CREATE DATABASE {};", db_name).as_str());
@@ -44,8 +50,10 @@ impl SqlRecoveryDbTestContext {
             .unwrap_or_else(|err| panic!("Could not create database {}: {:?}", db_name, err));
 
         // Now we can connect to the database and run the migrations
-        let conn = PgConnection::establish(&format!("{}/{}", base_url, db_name))
-            .unwrap_or_else(|err| panic!("Cannot connect to {} database: {:?}", db_name, err));
+        let db_url = format!("{}/{}", base_url, db_name);
+        log::info!(&logger, "Connecting to newly created PG DB '{}'", db_url);
+        let conn = PgConnection::establish(&db_url)
+            .unwrap_or_else(|err| panic!("Cannot connect to PG database '{}': {:?}", db_url, err));
 
         embedded_migrations::run(&conn).expect("failed running migrations");
 
@@ -79,7 +87,9 @@ impl SqlRecoveryDbTestContext {
 
     /// Establish a connection.
     pub fn new_conn(&self) -> PgConnection {
-        PgConnection::establish(&self.db_url()).expect("cannot connect to database")
+        let db_url = self.db_url();
+        PgConnection::establish(&db_url)
+            .unwrap_or_else(|err| panic!("Cannot connect to database {}: {}", db_url, err))
     }
 }
 

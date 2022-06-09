@@ -166,7 +166,7 @@ class RemoteWallet:
             stub = remote_wallet_pb2_grpc.RemoteWalletApiStub(channel)
             response = self._retrying_grpc_request(stub.FollowupBalanceCheck, remote_wallet_pb2.FollowupBalanceCheckRequest(client_id=self.client_id))
 
-        print(f'Key {self.key_num} followup check: {response}')
+        print(f'Key {self.key_num} followup check response: {response}')
         return {
             "balance": response.balance,
             "block_count": response.block_count,
@@ -442,7 +442,7 @@ class FogConformanceTest:
         cmd = ' && '.join([
             f'dropdb --if-exists {FOG_SQL_DATABASE_NAME}',
             f'createdb {FOG_SQL_DATABASE_NAME}',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {self.target_dir}/fog-sql-recovery-db-migrations',
+            f'{DATABASE_URL_ENV} {self.target_dir}/fog-sql-recovery-db-migrations',
         ])
         print(f'Creating postgres database: {cmd}')
         subprocess.check_output(cmd, shell=True)
