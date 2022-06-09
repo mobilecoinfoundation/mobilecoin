@@ -19,5 +19,5 @@ pub mod test_utils;
 #[doc(inline)]
 pub use crate::{
     core_types::{GenericNodeId, Identifier, SlotIndex, Value},
-    quorum_set::{QuorumSet, QuorumSetMember},
+    quorum_set::{QuorumSet, QuorumSetMember, QuorumSetMemberWrapper},
 };

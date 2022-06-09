@@ -6,32 +6,86 @@
 //! and depends on.
 use crate::GenericNodeId;
 use alloc::{vec, vec::Vec};
-use core::hash::{Hash, Hasher};
+use core::{
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
 use mc_common::{HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
+use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
 #[derive(
-    Clone, Debug, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
+    #[prost(message, tag = 1)]
     Node(ID),
 
     /// A quorum set can also be a member of a quorum set.
+    #[prost(message, tag = 2)]
     InnerSet(QuorumSet<ID>),
 }
 
+/// This wrapper struct is required because of a peculiarity of `prost`: you
+/// cannot have repeated oneof fields (like a `Vec<QuorumSetMember>`), so we
+/// wrap [QuorumSetMember] in a struct which implements [prost::Message].
+/// Unfortunately protobuf also doesn't allow for required oneof fields, so the
+/// inner value has to be optional. In practice we expect it to always be
+/// `Some`.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
+#[repr(transparent)]
+#[serde(transparent)]
+pub struct QuorumSetMemberWrapper<ID: GenericNodeId> {
+    /// The member `oneof`
+    #[prost(oneof = "QuorumSetMember", tags = "1, 2")]
+    pub member: Option<QuorumSetMember<ID>>,
+}
+
+impl<ID: GenericNodeId> From<QuorumSetMember<ID>> for QuorumSetMemberWrapper<ID> {
+    fn from(src: QuorumSetMember<ID>) -> Self {
+        Self { member: Some(src) }
+    }
+}
+
+impl<ID: GenericNodeId> Deref for QuorumSetMemberWrapper<ID> {
+    type Target = Option<QuorumSetMember<ID>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.member
+    }
+}
+
+impl<ID: GenericNodeId> DerefMut for QuorumSetMemberWrapper<ID> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.member
+    }
+}
+
+impl<ID: GenericNodeId> PartialEq<QuorumSetMember<ID>> for QuorumSetMemberWrapper<ID> {
+    fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
+        (**self)
+            .as_ref()
+            .map(|member| member == other)
+            .unwrap_or_default()
+    }
+}
+
 /// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Deserialize, Digestible, Ord, PartialOrd, Serialize)]
+#[derive(Clone, Deserialize, Digestible, Message, Ord, PartialOrd, Serialize)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     /// Threshold (how many members do we need to reach quorum).
+    #[prost(uint32, required, tag = 1)]
     pub threshold: u32,
 
     /// Members.
-    pub members: Vec<QuorumSetMember<ID>>,
+    #[prost(message, repeated, tag = 2)]
+    pub members: Vec<QuorumSetMemberWrapper<ID>>,
 }
 
 impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
@@ -62,7 +116,13 @@ impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
 impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
-        Self { threshold, members }
+        Self {
+            threshold,
+            members: members
+                .into_iter()
+                .map(QuorumSetMemberWrapper::from)
+                .collect(),
+        }
     }
 
     /// Create a new quorum set from the given node IDs.
@@ -98,7 +158,10 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
 
         // All of our inner sets must be valid.
         for member in self.members.iter() {
-            if let QuorumSetMember::InnerSet(qs) = member {
+            if member.is_none() {
+                return false;
+            }
+            if let Some(QuorumSetMember::InnerSet(qs)) = &**member {
                 if !qs.is_valid() {
                     return false;
                 }
@@ -112,7 +175,7 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Recursively sort the QS and all inner sets
     pub fn sort(&mut self) {
         for member in self.members.iter_mut() {
-            if let QuorumSetMember::InnerSet(qs) = member {
+            if let Some(QuorumSetMember::InnerSet(qs)) = &mut **member {
                 qs.sort()
             };
         }
@@ -125,13 +188,14 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     pub fn nodes(&self) -> HashSet<ID> {
         let mut result = HashSet::<ID>::default();
         for member in self.members.iter() {
-            match member {
-                QuorumSetMember::Node(node_id) => {
+            match &**member {
+                Some(QuorumSetMember::Node(node_id)) => {
                     result.insert(node_id.clone());
                 }
-                QuorumSetMember::InnerSet(qs) => {
+                Some(QuorumSetMember::InnerSet(qs)) => {
                     result.extend(qs.nodes());
                 }
+                None => {}
             }
         }
         result
@@ -143,11 +207,15 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
         let members = src
             .members
             .iter()
-            .map(|member| match member {
-                QuorumSetMember::Node(node_id) => QuorumSetMember::Node(node_id.as_ref().clone()),
-                QuorumSetMember::InnerSet(quorum_set) => {
-                    QuorumSetMember::InnerSet(quorum_set.into())
-                }
+            .filter_map(|member| {
+                (*member).as_ref().map(|member| match member {
+                    QuorumSetMember::Node(node_id) => {
+                        QuorumSetMember::Node(node_id.as_ref().clone())
+                    }
+                    QuorumSetMember::InnerSet(quorum_set) => {
+                        QuorumSetMember::InnerSet(quorum_set.into())
+                    }
+                })
             })
             .collect();
         QuorumSet::new(src.threshold, members)

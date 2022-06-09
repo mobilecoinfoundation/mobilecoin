@@ -834,6 +834,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-util-serial",
+ "prost",
  "rand_core",
  "serde",
  "sha3",

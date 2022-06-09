@@ -2,7 +2,10 @@
 
 //! [QuorumSet] helpers.
 
-use crate::{msg::Msg, predicates::Predicate, GenericNodeId, QuorumSet, QuorumSetMember, Value};
+use crate::{
+    msg::Msg, predicates::Predicate, GenericNodeId, QuorumSet, QuorumSetMember,
+    QuorumSetMemberWrapper, Value,
+};
 use mc_common::{HashMap, HashSet};
 
 /// Helper extension for [QuorumSet].
@@ -56,18 +59,19 @@ pub trait QuorumSetExt<ID: GenericNodeId> {
 impl<ID: GenericNodeId> QuorumSetExt<ID> for QuorumSet<ID> {
     fn weight(&self, node_id: &ID) -> (u32, u32) {
         for m in self.members.iter() {
-            match m {
-                QuorumSetMember::Node(id) => {
+            match &**m {
+                Some(QuorumSetMember::Node(id)) => {
                     if id == node_id {
                         return (self.threshold, self.members.len() as u32);
                     }
                 }
-                QuorumSetMember::InnerSet(Q) => {
+                Some(QuorumSetMember::InnerSet(Q)) => {
                     let (num2, denom2) = Q.weight(node_id);
                     if num2 > 0 {
                         return (self.threshold * num2, self.members.len() as u32 * denom2);
                     }
                 }
+                None => {}
             }
         }
 
@@ -117,7 +121,7 @@ impl<ID: GenericNodeId> QuorumSetExt<ID> for QuorumSet<ID> {
 ///   quorum.
 fn findQuorumHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
     threshold: u32,
-    members: &[QuorumSetMember<ID>],
+    members: &[QuorumSetMemberWrapper<ID>],
     msgs: &HashMap<ID, Msg<V, ID>>,
     pred: P,
     nodes_so_far: HashSet<ID>,
@@ -134,8 +138,8 @@ fn findQuorumHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
 
     // See if the first member of our potential nodes/sets allows us to reach
     // quorum.
-    match &members[0] {
-        QuorumSetMember::Node(N) => {
+    match &*members[0] {
+        Some(QuorumSetMember::Node(N)) => {
             // If we already seen this node and it got added to the list of potential
             // quorum-forming nodes, we need one less node to reach quorum.
             if nodes_so_far.contains(N) {
@@ -172,7 +176,7 @@ fn findQuorumHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
                 }
             }
         }
-        QuorumSetMember::InnerSet(Q) => {
+        Some(QuorumSetMember::InnerSet(Q)) => {
             // See if we can find quorum for the inner set.
             let (nodes_so_far2, pred2) = findQuorumHelper(
                 Q.threshold,
@@ -186,6 +190,7 @@ fn findQuorumHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
                 return findQuorumHelper(threshold - 1, &members[1..], msgs, pred2, nodes_so_far2);
             }
         }
+        None => {}
     }
 
     // First member didn't get us to a quorum, move to the next member and try
@@ -207,7 +212,7 @@ fn findQuorumHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
 ///   blocking set.
 fn findBlockingSetHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
     needed: u32,
-    members: &[QuorumSetMember<ID>],
+    members: &[QuorumSetMemberWrapper<ID>],
     msgs: &HashMap<ID, Msg<V, ID>>,
     pred: P,
     nodes_so_far: HashSet<ID>,
@@ -224,8 +229,8 @@ fn findBlockingSetHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
 
     // See if the first member of our potential nodes/sets allows us to reach a
     // blocking threshold.
-    match &members[0] {
-        QuorumSetMember::Node(N) => {
+    match &*members[0] {
+        Some(QuorumSetMember::Node(N)) => {
             // If we have received a message from this member
             if let Some(msg) = msgs.get(N) {
                 // and the predicate accepts it
@@ -245,7 +250,7 @@ fn findBlockingSetHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
             }
         }
 
-        QuorumSetMember::InnerSet(Q) => {
+        Some(QuorumSetMember::InnerSet(Q)) => {
             let (nodes_so_far2, pred2) = findBlockingSetHelper(
                 // "A message reaches blocking threshold at "v" when the number of
                 //  "validators" making the statement plus (recursively) the number
@@ -267,6 +272,8 @@ fn findBlockingSetHelper<ID: GenericNodeId, V: Value, P: Predicate<V, ID>>(
                 );
             }
         }
+
+        None => {}
     }
 
     // First member didn't get us to a blocking set, move to the next member and try

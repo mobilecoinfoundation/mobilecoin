@@ -24,6 +24,6 @@ pub use crate::{
     core_types::{GenericNodeId, Identifier, SlotIndex, Value},
     msg::{Msg, Topic},
     node::{MockScpNode, Node, ScpNode},
-    quorum_set::{QuorumSet, QuorumSetMember},
+    quorum_set::{QuorumSet, QuorumSetMember, QuorumSetMemberWrapper},
     quorum_set_ext::QuorumSetExt,
 };
