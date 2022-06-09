@@ -14,7 +14,7 @@ use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_account_keys::AccountKey;
 use mc_api::printable::PrintableWrapper;
-use mc_common::logger::{log, o, Logger};
+use mc_common::logger::{log, Logger};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
