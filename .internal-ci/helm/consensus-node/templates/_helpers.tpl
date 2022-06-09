@@ -71,7 +71,7 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 */}}
 {{- define "consensusNode.peerHostname" -}}
   {{- if eq .Values.consensusNodeConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.peerHostname | default "" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.PEER_HOSTNAME | default "" }}
   {{- else }}
     {{- tpl .Values.consensusNodeConfig.node.peer.hostname . }}
   {{- end }}
@@ -79,7 +79,7 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 
 {{- define "consensusNode.clientHostname" -}}
   {{- if eq .Values.consensusNodeConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.clientHostname | default "" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.CLIENT_HOSTNAME | default "" }}
   {{- else }}
     {{- tpl .Values.consensusNodeConfig.node.client.hostname . }}
   {{- end }}
@@ -87,9 +87,17 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 
 {{- define "consensusNode.blockVersion" -}}
   {{- if eq .Values.consensusNodeConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.blockVersion | default "false" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.BLOCK_VERSION | default "false" }}
   {{- else }}
     {{- tpl .Values.global.node.nodeConfig.blockVersion . }}
+  {{- end }}
+{{- end }}
+
+{{- define "consensusNode.txSourceUrl" -}}
+  {{- if eq .Values.consensusNodeConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.nodeConfig.configMap.name" .)).data.TX_SOURCE_URL | default "false" }}
+  {{- else }}
+    {{- tpl .Values.global.node.nodeConfig.txSourceUrl . }}
   {{- end }}
 {{- end }}
 

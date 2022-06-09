@@ -74,6 +74,7 @@ consensusNodeConfig1:
       hostname: '{{ printf "node1.%s.development.mobilecoin.com" .Release.Namespace }}'
     peer:
       hostname: '{{ printf "peer1.%s.development.mobilecoin.com" .Release.Namespace }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
 
 consensusNodeConfig2:
   enabled: true
@@ -83,6 +84,7 @@ consensusNodeConfig2:
       hostname: '{{ printf "node2.%s.development.mobilecoin.com" .Release.Namespace }}'
     peer:
       hostname: '{{ printf "peer2.%s.development.mobilecoin.com" .Release.Namespace }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
 
 consensusNodeConfig3:
   enabled: true
@@ -92,6 +94,7 @@ consensusNodeConfig3:
       hostname: '{{ printf "node3.%s.development.mobilecoin.com" .Release.Namespace }}'
     peer:
       hostname: '{{ printf "peer3.%s.development.mobilecoin.com" .Release.Namespace }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
 
 consensusNodeConfig4:
   enabled: true
@@ -101,6 +104,7 @@ consensusNodeConfig4:
       hostname: '{{ printf "node4.%s.development.mobilecoin.com" .Release.Namespace }}'
     peer:
       hostname: '{{ printf "peer4.%s.development.mobilecoin.com" .Release.Namespace }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node4.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
 
 consensusNodeConfig5:
   enabled: true
@@ -110,6 +114,7 @@ consensusNodeConfig5:
       hostname: '{{ printf "node5.%s.development.mobilecoin.com" .Release.Namespace }}'
     peer:
       hostname: '{{ printf "peer5.%s.development.mobilecoin.com" .Release.Namespace }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node5.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
 
 fogIngestConfig:
   enabled: true

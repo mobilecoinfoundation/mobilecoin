@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "consensusNodeConfig.labels" . | nindent 4 }}
 data:
-  clientHostname: {{ include "consensusNodeConfig.clientHostname" . | squote }}
-  peerHostname: {{ include "consensusNodeConfig.peerHostname" . | squote }}
-  blockVersion: {{ .Values.global.node.nodeConfig.blockVersion | squote }}
+  CLIENT_HOSTNAME: {{ include "consensusNodeConfig.clientHostname" . | squote }}
+  PEER_HOSTNAME: {{ include "consensusNodeConfig.peerHostname" . | squote }}
+  BLOCK_VERSION: {{ .Values.global.node.nodeConfig.blockVersion | squote }}
+  TX_SOURCE_URL: {{ include "consensusNodeConfig.txSourceUrl" . | squote }}

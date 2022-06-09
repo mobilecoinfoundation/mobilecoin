@@ -64,6 +64,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- tpl .Values.node.peer.hostname . }}
 {{- end }}
 
+{{/* TX_SOURCE_URL */}}
+{{- define "consensusNodeConfig.txSourceUrl" -}}
+{{- tpl .Values.node.txSourceUrl . }}
+{{- end }}
+
 {{/* ledgerDistributionAWSPath */}}
 {{- define "consensusNodeConfig.ledgerDistributionAWSPath" -}}
 {{ printf "s3://%s/%s?region=%s" .Values.global.node.ledgerDistribution.s3Bucket (include "consensusNodeConfig.clientHostname" .) .Values.global.node.ledgerDistribution.awsRegion }}

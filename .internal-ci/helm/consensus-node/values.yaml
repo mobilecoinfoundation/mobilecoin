@@ -39,6 +39,9 @@ consensusNodeConfig:
       hostname: ''
     peer:
       hostname: ''
+    txSourceUrl: ''
+    msgSignerKey:
+     privateKey: ''
 
 ### Enable to launch child chart to create core common configMaps and secrets.
 #   See helm/mc-core-common-config/values.yaml for config details.
@@ -86,9 +89,12 @@ node:
     effect: NoSchedule
 
   initContainers:
-  - name: copy-ledger-from-container
+  - name: populate-ledger
     image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
     imagePullPolicy: Always
+    envFrom:
+    - secretRef:
+      name: '{{ include "consensusNode.ledgerDistribution.secret.name" . }}'
     env:
     - name: INITIAL_KEYS_SEED
       valueFrom:
@@ -102,35 +108,34 @@ node:
     - -c
     - |
       set -e
-      if [ ! -f /ledger/data.mdb ]; then
-        if [[ -n "${INITIAL_KEYS_SEED}" ]]; then
+      if [ ! -f /ledger/data.mdb ]
+      then
+        if [[ -n "${INITIAL_KEYS_SEED}" ]]
+        then
           echo "INITIAL_KEYS_SEED found - populating origin data"
           export INITIALIZE_LEDGER="true"
           /usr/local/bin/generate_origin_data.sh
           cp /tmp/sample_data/ledger/data.mdb /ledger
-        elif [ -f /var/lib/mobilecoin/origin_data/data.mdb ]; then
+          exit 0
+        fi
+
+        echo "Get ledger from S3 - ledger-from-archive"
+        # Check to see if archive exists
+        curl -I -f "${TX_SOURCE_URL}/00/00/00/00/00/00/00/0000000000000000.pb"
+        /usr/bin/ledger-from-archive --ledger-db /ledger --tx-source-url "${TX_SOURCE_URL}"
+        exit 0
+
+        if [ -f /var/lib/mobilecoin/origin_data/data.mdb ]
+        then
           echo "Copying ledger /var/lib/mobilecoin/origin_data/data.mdb to /ledger"
           cp /var/lib/mobilecoin/origin_data/data.mdb /ledger
-        else
-          echo "INITIAL_KEYS_SEED not set and cannot find origin ledger file"
-          exit 1
+          exit 0
         fi
+
+        echo "INITIAL_KEYS_SEED not set, no remote ledger and cannot find origin ledger file"
+        exit 1
       else
-        echo "Ledger /ledger/data.mdb already exists"
-      fi
-    volumeMounts:
-    - name: ledger-db-dir
-      mountPath: /ledger
-  - name: migrate-ledger
-    image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
-    imagePullPolicy: Always
-    command: [ '/bin/bash' ]
-    args:
-    - -c
-    - |
-      set -e
-      if [[ -f "/ledger/data.mdb" ]]
-      then
+        echo "Ledger /ledger/data.mdb already exists migrate to latest version"
         cp /ledger/data.mdb /ledger/data.mdb.bak
         /usr/bin/mc-ledger-migration --ledger-db /ledger
       fi
