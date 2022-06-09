@@ -12,6 +12,7 @@ use mc_mint_auditor::{
         transaction, BlockAuditData, BlockAuditDataModel, BlockBalance, BlockBalanceModel,
         Counters, CountersModel, MintAuditorDb,
     },
+    gnosis::GnosisSafeConfig,
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -50,6 +51,11 @@ pub enum Command {
         /// Optional admin service listening URI.
         #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
         admin_listen_uri: Option<AdminUri>,
+
+        /// Gnosis safe configuration file (json/toml).
+        /// When provided, the configured gnosis safe(s) will be audited.
+        #[clap(long, env = "MC_GNOSIS_SAFE_CONFIG", parse(try_from_str = parse_gnosis_safe_config))]
+        gnosis_safe_config: Option<GnosisSafeConfig>,
     },
 
     /// Get the audit data for a specific block, optionally in JSON format
@@ -93,6 +99,7 @@ fn main() {
             poll_interval,
             listen_uri,
             admin_listen_uri,
+            gnosis_safe_config: _gnosis_safe_config,
         } => {
             cmd_scan_ledger(
                 ledger_db,
@@ -270,10 +277,15 @@ fn sync_loop(
     Ok(())
 }
 
-// Update prometheus counters.
+/// Update prometheus counters.
 fn update_counters(counters: &Counters) {
     counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
     counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
     counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
         .set(counters.num_mint_txs_without_matching_mint_config as i64);
+}
+
+/// Load a gnosis safe config file.
+fn parse_gnosis_safe_config(path: &str) -> Result<GnosisSafeConfig, Error> {
+    Ok(GnosisSafeConfig::load_from_path(path)?)
 }

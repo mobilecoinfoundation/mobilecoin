@@ -2,7 +2,7 @@
 
 //! Mint auditor error data type.
 
-use crate::db::TransactionRetriableError;
+use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
 use diesel::result::Error as DieselError;
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
@@ -37,6 +37,9 @@ pub enum Error {
 
     /// R2d2 pool: {0}
     R2d2Pool(diesel::r2d2::PoolError),
+
+    /// Gnosis: {0}
+    Gnosis(GnosisError),
 
     /// Other: {0}
     Other(String),
@@ -81,6 +84,12 @@ impl From<diesel::r2d2::PoolError> for Error {
     }
 }
 
+impl From<GnosisError> for Error {
+    fn from(err: GnosisError) -> Self {
+        Self::Gnosis(err)
+    }
+}
+
 impl TransactionRetriableError for Error {
     fn should_retry(&self) -> bool {
         matches!(
@@ -89,3 +98,6 @@ impl TransactionRetriableError for Error {
         )
     }
 }
+
+// Make clap happy.
+impl std::error::Error for Error {}
