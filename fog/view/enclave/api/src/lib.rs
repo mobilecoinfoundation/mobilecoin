@@ -83,6 +83,9 @@ pub enum ViewEnclaveRequest {
     Query(EnclaveMessage<ClientSession>, UntrustedQueryResponse),
     /// Request from untrusted to add encrypted tx out records to ORAM
     AddRecords(Vec<ETxOutRecord>),
+    /// Takes an encrypted fog_types::view::QueryRequest and returns a list of
+    /// fog_types::view::QueryRequest.
+    CreateMultiViewStoreQuery(EnclaveMessage<ClientSession>),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -134,6 +137,15 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// Add encrypted tx out records from the fog recovery db to the view
     /// enclave's ORAM
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()>;
+
+    /// Transforms a client query request into a list of query request data.
+    ///
+    /// The returned list is meant to be used to construct the
+    /// MultiViewStoreQuery, which is sent to each shard.
+    fn create_multi_view_store_query_data(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side
@@ -187,6 +199,8 @@ pub enum Error {
     Poison,
     /// Enclave not initialized
     EnclaveNotInitialized,
+    /// Cipher encryption failed
+    Cipher,
 }
 
 impl From<SgxError> for Error {
@@ -240,5 +254,11 @@ impl From<AttestEnclaveError> for Error {
 impl From<AddRecordsError> for Error {
     fn from(src: AddRecordsError) -> Self {
         Error::AddRecords(src)
+    }
+}
+
+impl From<mc_crypto_noise::CipherError> for Error {
+    fn from(_: mc_crypto_noise::CipherError) -> Self {
+        Error::Cipher
     }
 }

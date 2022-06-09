@@ -4251,6 +4251,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
  "mc-fog-types",
  "mc-sgx-compat",
@@ -4272,7 +4273,9 @@ dependencies = [
 name = "mc-fog-view-enclave-impl"
 version = "1.3.0-pre0"
 dependencies = [
+ "aes-gcm",
  "aligned-cmov",
+ "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
