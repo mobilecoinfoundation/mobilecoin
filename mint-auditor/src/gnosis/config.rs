@@ -15,13 +15,11 @@ pub struct AuditedToken {
     pub token_id: TokenId,
 
     /// The Ethereum token contract address.
-    #[serde(with = "serde_with::rust::display_fromstr")]
     pub eth_token_contract_addr: EthAddr,
 
     /// The auxiliary burn contract address (this is the contract that is used
     /// in a Gnosis safe multi-sig withdrawal to record the matching TxOut
     /// public key for the burn transaction on the MobileCoin blockchain).
-    #[serde(with = "serde_with::rust::display_fromstr")]
     pub aux_burn_contract_addr: EthAddr,
 
     /// The 4 bytes function signature that is used in the multi-sig
@@ -33,7 +31,6 @@ pub struct AuditedToken {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuditedSafeConfig {
     /// The safe address.
-    #[serde(with = "serde_with::rust::display_fromstr")]
     pub safe_addr: EthAddr,
 
     /// The Gnosis safe transaction service API endpoint to sync from.
@@ -74,53 +71,54 @@ impl GnosisSafeConfig {
 mod tests {
     use super::*;
     use std::str::FromStr;
+    use tempfile::tempdir;
+
+    static INPUT_TOML: &str = r#"
+        [[safes]]
+        safe_addr = "0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7"
+        api_url = "https://safe-api.example.com"
+
+        [[safes.tokens]]
+        token_id = 1
+        eth_token_contract_addr = "0xd92e713d051c37ebb2561803a3b5fbabc4962431"
+        aux_burn_contract_addr = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40"
+        aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35]
+
+
+        [[safes.tokens]]
+        token_id = 2
+        eth_token_contract_addr = "0x1111111111111111111111111111111111111111"
+        aux_burn_contract_addr = "0x2222222222222222222222222222222222222222"
+        aux_burn_function_sig = [0xaa, 0xbb, 0xcc, 0xdd]
+    "#;
+
+    static INPUT_JSON: &str = r#"{
+        "safes": [
+            {
+                "safe_addr": "0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7",
+                "api_url": "https://safe-api.example.com",
+                "tokens": [
+                    {
+                        "token_id": 1,
+                        "eth_token_contract_addr": "0xd92e713d051c37ebb2561803a3b5fbabc4962431",
+                        "aux_burn_contract_addr": "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
+                        "aux_burn_function_sig": [199, 111, 6, 53]
+                    },
+                    {
+                        "token_id": 2,
+                        "eth_token_contract_addr": "0x1111111111111111111111111111111111111111",
+                        "aux_burn_contract_addr": "0x2222222222222222222222222222222222222222",
+                        "aux_burn_function_sig": [170, 187, 204, 221]
+                    }
+                ]
+            }
+        ]
+    }"#;
 
     #[test]
     fn valid_config() {
-        let input_toml = r#"
-            [[safes]]
-            safe_addr = "0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7"
-            api_url = "https://safe-api.example.com"
-
-            [[safes.tokens]]
-            token_id = 1
-            eth_token_contract_addr = "0xd92e713d051c37ebb2561803a3b5fbabc4962431"
-            aux_burn_contract_addr = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40"
-            aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35]
-
-
-            [[safes.tokens]]
-            token_id = 2
-            eth_token_contract_addr = "0x1111111111111111111111111111111111111111"
-            aux_burn_contract_addr = "0x2222222222222222222222222222222222222222"
-            aux_burn_function_sig = [0xaa, 0xbb, 0xcc, 0xdd]
-       "#;
-
-        let input_json = r#"{
-            "safes": [
-                {
-                    "safe_addr": "0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7",
-                    "api_url": "https://safe-api.example.com",
-                    "tokens": [
-                        {
-                            "token_id": 1,
-                            "eth_token_contract_addr": "0xd92e713d051c37ebb2561803a3b5fbabc4962431",
-                            "aux_burn_contract_addr": "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
-                            "aux_burn_function_sig": [199, 111, 6, 53]
-                        },
-                        {
-                            "token_id": 2,
-                            "eth_token_contract_addr": "0x1111111111111111111111111111111111111111",
-                            "aux_burn_contract_addr": "0x2222222222222222222222222222222222222222",
-                            "aux_burn_function_sig": [170, 187, 204, 221]
-                        }
-                    ]
-                }
-            ]
-        }"#;
-
-        let cfg1: GnosisSafeConfig = toml::from_str(input_toml).expect("failed parsing toml");
-        let cfg2: GnosisSafeConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        let cfg1: GnosisSafeConfig = toml::from_str(INPUT_TOML).expect("failed parsing toml");
+        let cfg2: GnosisSafeConfig = serde_json::from_str(INPUT_JSON).expect("failed parsing json");
 
         assert_eq!(cfg1, cfg2);
 
@@ -160,5 +158,35 @@ mod tests {
                 }],
             }
         );
+    }
+
+    #[test]
+    fn configs_from_path() {
+        let dir = tempdir().unwrap();
+        let toml_file = dir.path().join("testing.toml");
+        fs::write(&toml_file, INPUT_TOML).unwrap();
+        let json_file = dir.path().join("testing.json");
+        fs::write(&json_file, INPUT_JSON).unwrap();
+        let cfg1 = GnosisSafeConfig::load_from_path(toml_file).unwrap();
+        let cfg2 = GnosisSafeConfig::load_from_path(json_file).unwrap();
+        assert_eq!(cfg1, cfg2);
+    }
+
+    #[test]
+    fn unsupported_extension() {
+        let dir = tempdir().unwrap();
+        let poml_file = dir.path().join("testing.poml");
+        fs::write(&poml_file, INPUT_TOML).unwrap();
+        let result = GnosisSafeConfig::load_from_path(poml_file);
+        assert!(matches!(result, Err(Error::UnrecognizedExtension(_))));
+    }
+
+    #[test]
+    fn no_extension() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("testing");
+        fs::write(&file, INPUT_TOML).unwrap();
+        let result = GnosisSafeConfig::load_from_path(file);
+        assert!(matches!(result, Err(Error::PathExtension)));
     }
 }

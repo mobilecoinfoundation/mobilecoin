@@ -3,14 +3,14 @@
 //! Type wrappers for Ethereum addresses.
 
 use super::Error;
-use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{fmt, str::FromStr};
 
 /// Ethereum 20 byte address.
 /// We currently do not store the decoded bytes since we want to maintain the
 /// original capitalization (which is how Ethereum addresses represent a
 /// checksum). We don't have a need for the raw bytes.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, DeserializeFromStr, SerializeDisplay)]
 pub struct EthAddr(pub String);
 
 impl FromStr for EthAddr {
