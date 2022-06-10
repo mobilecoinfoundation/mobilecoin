@@ -4,7 +4,7 @@ use crate::server::DbPollSharedState;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::view_grpc::FogViewApi;
+use mc_fog_api::{view::MultiViewStoreQueryRequest, view_grpc::FogViewApi};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
@@ -187,5 +187,17 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
 
             send_result(ctx, sink, self.query_impl(request), logger)
         })
+    }
+
+    /// Fulfills the query if the MultiViewStoreQueryRequest contains an
+    /// encrypted Query for the store. If it doesn't, then it responds with
+    /// an grpc error that contains the store's hostname.
+    fn multi_view_store_query(
+        &mut self,
+        _ctx: RpcContext,
+        _request: MultiViewStoreQueryRequest,
+        _sink: UnarySink<attest::Message>,
+    ) {
+        todo!()
     }
 }
