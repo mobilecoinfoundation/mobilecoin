@@ -30,7 +30,7 @@ the image and doesn't run it or give you a prompt. `--dry-run` just
 shows you the shell commands without executing them. `--no-pull` means you don't
 pull a docker image at all.
 
-`mob` tool attemps to mount the `/dev/isgx` device correctly if it is available
+`mob` tool attempts to mount the `/dev/isgx` device correctly if it is available
 and you selected `--hw` mode, so that you can run tests in hardware mode.
 
 usage notes (ssh)
@@ -74,7 +74,7 @@ it is an error if it can't find one.
 
 [image]
 dockerfile = path to dockerfile. build context is the dir of dockerfile
-target = layer in dockerfile that is targetted
+target = layer in dockerfile that is targeted
 repository = storage for remote images from farm e.g. gcr.io/mobilenode-211420 (optional)
 """
 
@@ -103,6 +103,7 @@ parser.add_argument("--ssh-dir", action='store_true', help='Mount $HOME/.ssh dir
 parser.add_argument("--ssh-agent", action='store_true', help='Use ssh-agent on host machine for ssh authentication. Also controlled by SSH_AUTH_SOCK env variable')
 parser.add_argument("--expose", nargs='+', default=None, help="Any additional ports to expose")
 parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
+parser.add_argument("--cmd", nargs=argparse.REMAINDER, default=None, help="Run this command inside the bash shell instead of an interactive prompt")
 
 args = parser.parse_args()
 
@@ -440,11 +441,18 @@ docker_run.extend([tag])
 
 docker_run.extend(["/bin/bash"])
 
+if args.cmd is not None:
+    docker_run.extend(["-c"])
+    docker_run.extend([" ".join(args.cmd)])
+
 try:
     maybe_run(docker_run)
 except subprocess.CalledProcessError as exception:
+    if args.action == 'prompt' and args.cmd is not None:
+        # Make sure custom commands have their expected return codes
+        sys.exit(exception.returncode)
     if args.action == 'prompt' and exception.returncode == 130:
-        # This is normal exit of prompt
+        # This is a normal exit of prompt
         sys.exit(0)
     raise  # rethrow
 finally:
