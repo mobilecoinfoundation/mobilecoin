@@ -77,43 +77,45 @@ impl BlockVersion {
         BlockVersionIterator(0)
     }
 
-    /// The encrypted memos [MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3)
-    /// feature is introduced in block version 1.
+    /// The encrypted memos feature is introduced in v1.
+    /// [MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3)
     pub fn e_memo_feature_is_supported(&self) -> bool {
         self.0 >= 1
     }
 
-    /// The confidential token ids [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25)
-    /// feature is introduced in block version 2.
+    /// The confidential token ids feature is introduced in v2.
+    /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25)
     pub fn masked_token_id_feature_is_supported(&self) -> bool {
         self.0 >= 2
     }
 
-    /// The transaction's outputs shall be sorted (per [MCIP #34](https://github.com/mobilecoinfoundation/mcips/pull/34))
-    /// feature is introduced in block version 3 and higher
+    /// Transactions must be sorted from v3 onward.
+    /// [MCIP #34](https://github.com/mobilecoinfoundation/mcips/pull/34)
     pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
-        self.0 > 2
+        self.0 >= 3
     }
 
-    /// mint transactions are introduced in block version 2
+    /// Mint transactions are introduced in v2.
+    /// [MCIP #37](https://github.com/mobilecoinfoundation/mcips/pull/37)
     pub fn mint_transactions_are_supported(&self) -> bool {
         self.0 >= 2
     }
 
     /// The extended message digest is used when signing MLSAGs
-    /// in block version 2 and higher. This is described in MCIP #25.
+    /// in v2 and higher. This is described in
+    /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25).
     pub fn mlsags_sign_extended_message_digest(&self) -> bool {
         self.0 >= 2
     }
 
-    /// Mixed transactions [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
-    /// are introduced in block version 3
+    /// Mixed transactions are introduced in v3
+    /// [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
     pub fn mixed_transactions_are_supported(&self) -> bool {
         self.0 >= 3
     }
 
-    /// Signed input rules [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
-    /// are introduced in block version 3
+    /// Signed input rules are introduced in v3.
+    /// [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
     pub fn signed_input_rules_are_supported(&self) -> bool {
         self.0 >= 3
     }
