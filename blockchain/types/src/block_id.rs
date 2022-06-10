@@ -2,12 +2,9 @@
 
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
-use core::{
-    convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::Hash,
-};
+use core::{convert::TryFrom, hash::Hash};
 use mc_crypto_digestible::Digestible;
+use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
@@ -16,7 +13,7 @@ use prost::{
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Clone, Default, Debug, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Default, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[digestible(transparent)]
 /// Identifies a block with its hash.
 pub struct BlockID(pub [u8; 32]);
@@ -37,11 +34,7 @@ impl AsRef<[u8]> for BlockID {
     }
 }
 
-impl Display for BlockID {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", hex_fmt::HexFmt(&self.0),)
-    }
-}
+derive_debug_and_display_hex_from_as_ref!(BlockID);
 
 impl Message for BlockID {
     fn encode_raw<B>(&self, buf: &mut B)

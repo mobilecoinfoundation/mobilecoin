@@ -24,9 +24,10 @@ use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
-    derive_serde_from_repr_bytes, derive_try_from_slice_from_repr_bytes, ReprBytes,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
+    derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
@@ -328,7 +329,6 @@ impl Hash for RistrettoPublic {
 }
 
 impl Eq for RistrettoPublic {}
-
 impl PartialEq for RistrettoPublic {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
@@ -357,12 +357,6 @@ impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
     }
 }
 
-impl Debug for RistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "RistrettoPublic({})", HexFmt(self.to_bytes()))
-    }
-}
-
 impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPublic {
     fn verify_digestible(
         &self,
@@ -373,6 +367,12 @@ impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPubli
         let message = message.digest32::<MerlinTranscript>(context);
         self.verify_schnorrkel(context, &message, signature)
             .map_err(|_e| SignatureError::new())
+    }
+}
+
+impl Debug for RistrettoPublic {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "RistrettoPublic({})", HexFmt(self.to_bytes()))
     }
 }
 
@@ -437,7 +437,7 @@ impl KexSecret for RistrettoSecret {}
 ///
 /// As a result, this does not implement the `PublicKey` interface, nor is it
 /// usable in a key-exchange.
-#[derive(Clone, Copy, Default, Eq, Digestible, Zeroize)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedRistrettoPublic(pub(crate) CompressedRistretto);
 
@@ -449,7 +449,7 @@ impl CompressedRistrettoPublic {
 
 impl AsRef<[u8]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
+        self.as_bytes()
     }
 }
 
@@ -463,11 +463,6 @@ impl TryFrom<&[u8]> for CompressedRistrettoPublic {
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
-derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
-derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
-derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
-
 impl From<&[u8; 32]> for CompressedRistrettoPublic {
     fn from(src: &[u8; 32]) -> Self {
         Self(CompressedRistretto::from_slice(&src[..]))
@@ -476,23 +471,7 @@ impl From<&[u8; 32]> for CompressedRistrettoPublic {
 
 impl AsRef<[u8; 32]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
-
-derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
-
-impl Debug for CompressedRistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let bytes: &[u8] = self.as_ref();
-        write!(f, "CompressedRistrettoPublic({})", HexFmt(bytes))
-    }
-}
-
-impl Display for CompressedRistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let bytes: &[u8] = self.as_ref();
-        write!(f, "{}", HexFmt(bytes))
+        self.as_bytes()
     }
 }
 
@@ -534,6 +513,13 @@ impl FromRandom for CompressedRistrettoPublic {
 
 impl PublicKey for CompressedRistrettoPublic {}
 
+derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
+derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
+derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
+derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
+derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
+derive_debug_and_display_hex_from_as_ref!(CompressedRistrettoPublic);
+
 /// A zero-width type used to identify the Ristretto key exchange system.
 pub struct Ristretto;
 
@@ -560,25 +546,11 @@ impl AsRef<[u8; SIGNATURE_LENGTH]> for RistrettoSignature {
     }
 }
 
-impl Debug for RistrettoSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{:?}", &self.0[..])
-    }
-}
-
 impl Default for RistrettoSignature {
     fn default() -> RistrettoSignature {
         Self([0u8; 64])
     }
 }
-
-impl Display for RistrettoSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", HexFmt(&self))
-    }
-}
-
-impl Eq for RistrettoSignature {}
 
 impl From<SchnorrkelSignature> for RistrettoSignature {
     fn from(src: SchnorrkelSignature) -> RistrettoSignature {
@@ -624,7 +596,8 @@ impl TryFrom<RistrettoSignature> for SchnorrkelSignature {
     }
 }
 
-derive_core_cmp_from_as_ref!(RistrettoSignature, [u8]);
+derive_core_cmp_from_as_ref!(RistrettoSignature);
+derive_debug_and_display_hex_from_as_ref!(RistrettoSignature);
 derive_into_vec_from_repr_bytes!(RistrettoSignature);
 derive_repr_bytes_from_as_ref_and_try_from!(RistrettoSignature, U64);
 derive_serde_from_repr_bytes!(RistrettoSignature);

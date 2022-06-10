@@ -278,7 +278,6 @@ impl AsRef<[u8; X25519_LEN]> for X25519Public {
 }
 
 derive_core_cmp_from_as_ref!(X25519Public, [u8; X25519_LEN]);
-impl Eq for X25519Public {}
 
 impl Serialize for X25519Public {
     /// Public keys are serialized as simple DER-encoded byte streams

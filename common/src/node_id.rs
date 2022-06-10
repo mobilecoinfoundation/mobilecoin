@@ -9,7 +9,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use displaydoc::Display;
-use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
 use serde::{Deserialize, Serialize};
@@ -48,20 +47,13 @@ pub struct NodeID {
 
 impl Display for NodeID {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let pubkey_bytes: &[u8] = self.public_key.as_ref();
-        write!(f, "{}:{:?}", self.responder_id, HexFmt(pubkey_bytes))
+        write!(f, "{}:{:?}", self.responder_id, self.public_key)
     }
 }
 
 impl Debug for NodeID {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let pubkey_bytes: &[u8] = self.public_key.as_ref();
-        write!(
-            f,
-            "NodeID({}:{:?})",
-            self.responder_id,
-            HexFmt(pubkey_bytes)
-        )
+        write!(f, "NodeID({}:{:?})", self.responder_id, self.public_key)
     }
 }
 
