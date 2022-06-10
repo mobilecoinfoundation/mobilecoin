@@ -84,7 +84,7 @@ fn unlock_db(
 fn version(state: &rocket::State<State>) -> Result<Json<JsonMobilecoindVersionResponse>, String> {
     let resp = state
         .mobilecoind_api_client
-        .get_release_version(&mc_mobilecoind_api::Empty::new())
+        .get_version(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting version: {}", err))?;
     Ok(Json(JsonMobilecoindVersionResponse::from(&resp)))
 }

@@ -70,7 +70,7 @@ service MobilecoindAPI {
     rpc UnlockDb (UnlockDbRequest) returns (google.protobuf.Empty) {}
 
     // Versioning
-    rpc GetReleaseVersion(google.protobuf.Empty) returns (MobilecoindVersionResponse) {}
+    rpc GetVersion(google.protobuf.Empty) returns (MobilecoindVersionResponse) {}
 }
 
 //*********************************

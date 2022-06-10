@@ -224,7 +224,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .collect()
     }
 
-    fn get_release_version_impl(
+    fn get_version_impl(
         &self,
         _request: mc_mobilecoind_api::Empty,
     ) -> Result<mc_mobilecoind_api::MobilecoindVersionResponse, RpcStatus> {
@@ -2114,7 +2114,7 @@ build_api! {
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
     unlock_db UnlockDbRequest Empty unlock_db_impl,
 
-    get_release_version Empty MobilecoindVersionResponse get_release_version_impl
+    get_version Empty MobilecoindVersionResponse get_version_impl
 }
 
 #[cfg(test)]
@@ -5990,7 +5990,7 @@ mod test {
     }
 
     #[test_with_logger]
-    fn test_get_release_version(logger: Logger) {
+    fn test_get_version(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
         let sender = AccountKey::random(&mut rng);
 
@@ -6009,7 +6009,7 @@ mod test {
 
         // Send request.
         let response = client
-            .get_release_version(&mc_mobilecoind_api::Empty::new())
+            .get_version(&mc_mobilecoind_api::Empty::new())
             .expect("Incorrect version returned");
         assert_eq!(expected_version, response.get_version());
     }

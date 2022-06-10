@@ -1374,7 +1374,7 @@ pub struct JsonMobilecoindVersionResponse {
 impl From<&mc_mobilecoind_api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
     fn from(src: &mc_mobilecoind_api::MobilecoindVersionResponse) -> Self {
         Self {
-            version: src.version,
+            version: src.get_version().to_string(),
         }
     }
 }
