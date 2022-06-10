@@ -25,11 +25,12 @@ use alloc::{
 use core::{
     convert::{TryFrom, TryInto},
     f64::EPSILON,
-    fmt::Debug,
+    fmt::{Debug, Display},
     intrinsics::fabsf64,
     result::Result,
     str,
 };
+use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use prost::{
@@ -449,7 +450,7 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
 
 /// A type containing the bytes of the VerificationReport signature
 #[derive(
-    Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[repr(transparent)]
 pub struct VerificationSignature(#[digestible(never_omit)] Vec<u8>);
@@ -484,6 +485,14 @@ impl FromHex for VerificationSignature {
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
         // 2 hex chars per byte
         Ok(hex::decode(s)?.into())
+    }
+}
+
+impl Debug for VerificationSignature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("VerificationSignature")
+            .field(&HexFmt(&self.0))
+            .finish()
     }
 }
 
@@ -551,6 +560,16 @@ pub struct VerificationReport {
     pub http_body: String,
 }
 
+impl Display for VerificationReport {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("VerificationReport")
+            .field("sig", &HexFmt(&self.sig))
+            .field("chain", &HexList(&self.chain))
+            .field("http_body", &self.http_body)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod test {
     extern crate std;
@@ -592,5 +611,27 @@ mod test {
 
         // This is expected to fail.
         let _timestamp = data.parse_timestamp().expect("failed parsing timestamp");
+    }
+
+    #[test]
+    fn test_signature_debug() {
+        let sig = VerificationSignature(vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE]);
+        assert_eq!(
+            alloc::format!("{:?}", &sig),
+            "VerificationSignature(deadbeefcafe)"
+        );
+    }
+
+    #[test]
+    fn test_report_display() {
+        let report = VerificationReport {
+            sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
+            chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
+            http_body: "some_body".into(),
+        };
+        assert_eq!(
+            alloc::format!("{}", &report),
+            "VerificationReport { sig: deadbeefcafe, chain: [abcd, cdef, 1234], http_body: \"some_body\" }"
+        );
     }
 }
