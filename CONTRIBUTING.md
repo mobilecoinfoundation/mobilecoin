@@ -17,7 +17,7 @@ If you want to start developing with MobileCoin, it's pretty easy to get started
 ```bash
 $ gh repo fork mobilecoinfoundation/mobilecoin
 ```
-* Install Docker on your machine
+* [Install Docker](https://www.docker.com/get-started/) on your machine
 * Use our provided scripts to start the mobilecoin builder image
 ```bash
 $ ./mob prompt
