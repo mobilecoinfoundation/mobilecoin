@@ -1,12 +1,13 @@
 //! Convert to/from blockchain::Block
 
 use crate::{blockchain, convert::ConversionError};
+use mc_blockchain_types::{Block, BlockContentsHash, BlockID};
 use mc_transaction_core::tx::TxOutMembershipElement;
 use std::convert::TryFrom;
 
-/// Convert mc_transaction_core::Block --> blockchain::Block.
-impl From<&mc_transaction_core::Block> for blockchain::Block {
-    fn from(other: &mc_transaction_core::Block) -> Self {
+/// Convert Block --> blockchain::Block.
+impl From<&Block> for blockchain::Block {
+    fn from(other: &Block) -> Self {
         let mut block = blockchain::Block::new();
         block.set_id(blockchain::BlockID::from(&other.id));
         block.set_version(other.version);
@@ -19,18 +20,17 @@ impl From<&mc_transaction_core::Block> for blockchain::Block {
     }
 }
 
-/// Convert blockchain::Block --> mc_transaction_core::Block.
-impl TryFrom<&blockchain::Block> for mc_transaction_core::Block {
+/// Convert blockchain::Block --> Block.
+impl TryFrom<&blockchain::Block> for Block {
     type Error = ConversionError;
 
     fn try_from(value: &blockchain::Block) -> Result<Self, Self::Error> {
-        let block_id = mc_transaction_core::BlockID::try_from(value.get_id())?;
-        let parent_id = mc_transaction_core::BlockID::try_from(value.get_parent_id())?;
+        let block_id = BlockID::try_from(value.get_id())?;
+        let parent_id = BlockID::try_from(value.get_parent_id())?;
         let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
-        let contents_hash =
-            mc_transaction_core::BlockContentsHash::try_from(value.get_contents_hash())?;
+        let contents_hash = BlockContentsHash::try_from(value.get_contents_hash())?;
 
-        let block = mc_transaction_core::Block {
+        let block = Block {
             id: block_id,
             version: value.version,
             parent_id,
@@ -47,27 +47,23 @@ impl TryFrom<&blockchain::Block> for mc_transaction_core::Block {
 mod tests {
     use super::*;
     use crate::external;
-    use mc_transaction_core::{
-        membership_proofs::Range,
-        tx::{TxOutMembershipElement, TxOutMembershipHash},
-    };
+    use mc_transaction_core::{membership_proofs::Range, tx::TxOutMembershipHash};
     use protobuf::Message;
 
     #[test]
-    // mc_transaction_core::Block --> blockchain::Block
+    // Block --> blockchain::Block
     fn test_block_from() {
-        let source_block = mc_transaction_core::Block {
-            id: mc_transaction_core::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+        let source_block = Block {
+            id: BlockID::try_from(&[2u8; 32][..]).unwrap(),
             version: 1,
-            parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            parent_id: BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
             cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
-            contents_hash: mc_transaction_core::BlockContentsHash::try_from(&[66u8; 32][..])
-                .unwrap(),
+            contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
         };
 
         let block = blockchain::Block::from(&source_block);
@@ -83,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    // blockchain::Block -> mc_transaction_core::Block
+    // blockchain::Block -> Block
     fn test_block_try_from() {
         let mut root_element = external::TxOutMembershipElement::new();
         root_element.mut_range().set_from(10);
@@ -107,7 +103,7 @@ mod tests {
         source_block.set_root_element(root_element);
         source_block.set_contents_hash(contents_hash);
 
-        let block = mc_transaction_core::Block::try_from(&source_block).unwrap();
+        let block = Block::try_from(&source_block).unwrap();
         assert_eq!(block.id.as_ref(), [10u8; 32]);
         assert_eq!(block.version, 1);
         assert_eq!(block.parent_id.as_ref(), [9u8; 32]);
@@ -123,18 +119,17 @@ mod tests {
     // This ensures the definition in the .proto files matches the prost attributes
     // inside the Block struct.
     fn test_blockchain_block_matches_prost() {
-        let source_block = mc_transaction_core::Block {
-            id: mc_transaction_core::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+        let source_block = Block {
+            id: BlockID::try_from(&[2u8; 32][..]).unwrap(),
             version: 1,
-            parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            parent_id: BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
             cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
-            contents_hash: mc_transaction_core::BlockContentsHash::try_from(&[66u8; 32][..])
-                .unwrap(),
+            contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
         };
 
         // Encode using `protobuf`, decode using `prost`.
@@ -142,7 +137,7 @@ mod tests {
             let blockchain_block = blockchain::Block::from(&source_block);
             let blockchain_block_bytes = blockchain_block.write_to_bytes().unwrap();
 
-            let block_from_prost: mc_transaction_core::Block =
+            let block_from_prost: Block =
                 mc_util_serial::decode(&blockchain_block_bytes).expect("failed decoding");
             assert_eq!(source_block, block_from_prost);
         }

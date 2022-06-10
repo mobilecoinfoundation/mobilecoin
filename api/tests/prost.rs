@@ -6,9 +6,10 @@
 use maplit::btreemap;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::external;
+use mc_blockchain_types::BlockVersion;
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
-use mc_transaction_core::{Amount, BlockVersion, SignedContingentInput};
+use mc_transaction_core::{Amount, SignedContingentInput};
 use mc_transaction_std::{
     test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
     SignedContingentInputBuilder,

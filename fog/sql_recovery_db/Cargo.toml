@@ -19,6 +19,7 @@ path = "src/bin/fog_sql_recovery_db_write_bench.rs"
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-transaction-core = { path = "../../transaction/core" }

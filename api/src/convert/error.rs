@@ -1,5 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use core::{array::TryFromSliceError, convert::Infallible};
+use mc_blockchain_types::ConvertError;
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_transaction_core::ring_signature::Error as RingSigError;
 use std::{
     error::Error,
@@ -11,7 +14,7 @@ pub enum ConversionError {
     NarrowingCastError,
     ArrayCastError,
     KeyCastError,
-    Key(mc_crypto_keys::KeyError),
+    Key(KeyError),
     FeeMismatch,
     IndexOutOfBounds,
     ObjectMissing,
@@ -22,14 +25,14 @@ pub enum ConversionError {
 
 // This is needed for some code to compile, due to TryFrom being derived from
 // From
-impl From<core::convert::Infallible> for ConversionError {
-    fn from(_src: core::convert::Infallible) -> Self {
+impl From<Infallible> for ConversionError {
+    fn from(_src: Infallible) -> Self {
         unreachable!();
     }
 }
 
-impl From<core::array::TryFromSliceError> for ConversionError {
-    fn from(_: core::array::TryFromSliceError) -> Self {
+impl From<TryFromSliceError> for ConversionError {
+    fn from(_: TryFromSliceError) -> Self {
         Self::ArrayCastError
     }
 }
@@ -43,15 +46,21 @@ impl From<RingSigError> for ConversionError {
     }
 }
 
-impl From<mc_transaction_core::ConvertError> for ConversionError {
-    fn from(_src: mc_transaction_core::ConvertError) -> Self {
+impl From<ConvertError> for ConversionError {
+    fn from(_src: ConvertError) -> Self {
         Self::ArrayCastError
     }
 }
 
-impl From<mc_crypto_keys::KeyError> for ConversionError {
-    fn from(src: mc_crypto_keys::KeyError) -> Self {
+impl From<KeyError> for ConversionError {
+    fn from(src: KeyError) -> Self {
         Self::Key(src)
+    }
+}
+
+impl From<SignatureError> for ConversionError {
+    fn from(_: SignatureError) -> Self {
+        Self::InvalidSignature
     }
 }
 

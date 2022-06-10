@@ -5,6 +5,7 @@
 #![deny(missing_docs)]
 
 use mc_account_keys::PublicAddress;
+use mc_blockchain_types::{Block, BlockContents, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPrivate;
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -13,7 +14,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     ring_signature::KeyImage,
     tx::TxOut,
-    Amount, Block, BlockContents, BlockVersion,
+    Amount,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};

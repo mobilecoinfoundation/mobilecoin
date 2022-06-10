@@ -4,6 +4,7 @@
 
 pub use mc_consensus_scp::test_utils::{test_node_id, test_node_id_and_signer};
 
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
@@ -21,7 +22,7 @@ use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
 use mc_peers::{
     ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
 };
-use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::TxHash;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use sha2::{Digest, Sha512_256};
 use std::{

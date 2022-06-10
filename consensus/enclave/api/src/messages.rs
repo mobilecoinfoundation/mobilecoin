@@ -12,9 +12,10 @@ use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
 };
+use mc_blockchain_types::Block;
 use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},
-    Block, TokenId,
+    TokenId,
 };
 use serde::{Deserialize, Serialize};
 

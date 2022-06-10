@@ -5,13 +5,13 @@
 use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
 use mc_attest_core::VerificationReport;
+use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
-use mc_transaction_core::{BlockData, BlockIndex, BlockSignature};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
@@ -1101,9 +1101,9 @@ pub mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
     use mc_attest_core::VerificationSignature;
+    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{Block, BlockContents, BlockVersion};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_one_seed;

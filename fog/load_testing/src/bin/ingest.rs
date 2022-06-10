@@ -15,6 +15,7 @@
 use clap::Parser;
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_rand::McRng;
@@ -24,7 +25,6 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;

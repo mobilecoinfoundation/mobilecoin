@@ -1,13 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::{schema, transaction, Conn};
-use crate::error::Error;
-use diesel::prelude::*;
-use mc_common::HashMap;
-use mc_transaction_core::{BlockIndex, TokenId};
-use std::ops::Deref;
-
 pub use super::models::BlockBalance;
+
+use super::{schema, transaction, Conn};
+use crate::Error;
+use diesel::prelude::*;
+use mc_blockchain_types::BlockIndex;
+use mc_common::HashMap;
+use mc_transaction_core::TokenId;
+use std::ops::Deref;
 
 /// Trait for providing convenience functions for interacting with the
 /// [BlockBalance] model/table.

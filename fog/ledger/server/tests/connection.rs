@@ -7,6 +7,7 @@ use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
     time::SystemTimeProvider,
@@ -23,10 +24,7 @@ use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{
-    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Block, BlockContents, BlockSignature,
-    BlockVersion, Token,
-};
+use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Token};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};

@@ -10,6 +10,7 @@ use crate::{
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
@@ -28,7 +29,7 @@ use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
+    Amount, SignedContingentInput, TokenId,
 };
 use mc_transaction_std::{
     EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,

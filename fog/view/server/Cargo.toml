@@ -59,6 +59,7 @@ rand_core = "0.6"
 tempdir = "0.3"
 
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }

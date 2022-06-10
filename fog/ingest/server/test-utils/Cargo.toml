@@ -8,6 +8,7 @@ license = "GPL-3.0"
 [dependencies]
 # MC/root
 mc-attest-net = { path = "../../../../attest/net" }
+mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-ledger-db = { path = "../../../../ledger/db" }

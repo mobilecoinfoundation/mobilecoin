@@ -3,6 +3,7 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+pub use mc_blockchain_types::{Block, BlockContents, BlockID, BlockIndex, BlockVersion};
 pub use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
@@ -11,7 +12,7 @@ pub use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
+    Amount, Token,
 };
 pub use mint::{
     create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
@@ -21,7 +22,7 @@ pub use mint::{
 use core::convert::TryFrom;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
+use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range};
 use mc_transaction_std::{
     DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
     TxOutputsOrdering,

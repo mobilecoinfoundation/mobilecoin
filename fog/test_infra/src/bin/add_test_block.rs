@@ -28,6 +28,7 @@
 use clap::Parser;
 use core::convert::TryFrom;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
+use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
@@ -39,7 +40,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BlockVersion, Token,
+    Amount, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;

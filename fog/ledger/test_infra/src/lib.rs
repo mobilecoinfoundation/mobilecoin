@@ -4,6 +4,7 @@
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
 use mc_common::{HashMap, ResponderId};
 use mc_crypto_keys::{CompressedRistrettoPublic, X25519Public};
 use mc_fog_ledger_enclave::{
@@ -16,7 +17,7 @@ use mc_transaction_core::{
     mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
+    TokenId,
 };
 
 #[derive(Default, Clone)]

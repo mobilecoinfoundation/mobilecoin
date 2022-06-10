@@ -5,12 +5,12 @@
 
 use crate::error::WatcherDBError;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_transaction_core::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
 use mc_util_serial::{decode, encode};
 use prost::Message;
 use std::{str::FromStr, sync::Arc};

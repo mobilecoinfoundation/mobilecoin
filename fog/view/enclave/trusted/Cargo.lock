@@ -786,6 +786,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-blockchain-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "prost",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
@@ -1044,6 +1063,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
@@ -1372,6 +1392,7 @@ dependencies = [
 name = "mc-transaction-types"
 version = "1.3.0-pre0"
 dependencies = [
+ "displaydoc",
  "mc-crypto-digestible",
  "serde",
  "subtle",

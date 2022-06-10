@@ -319,7 +319,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
-
+    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
@@ -327,7 +327,7 @@ mod tests {
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::{test_peer_uri_with_key, MockPeerConnection};
-    use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
+    use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
         initialize_ledger, mint_config_tx_to_validated, AccountKey,

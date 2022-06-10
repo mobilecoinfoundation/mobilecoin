@@ -9,13 +9,12 @@ pub mod db_tests;
 pub mod mock_client;
 pub mod mock_users;
 
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{
-    ring_signature::KeyImage, Block, BlockContents, BlockSignature, BlockVersion,
-};
+use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;

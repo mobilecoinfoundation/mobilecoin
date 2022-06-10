@@ -1,5 +1,5 @@
 use mc_account_keys::AccountKey;
-use mc_transaction_core::{Block, BlockContents, BlockVersion};
+use mc_blockchain_types::{Block, BlockContents, BlockVersion};
 
 #[test]
 fn test_cumulative_txo_counts() {

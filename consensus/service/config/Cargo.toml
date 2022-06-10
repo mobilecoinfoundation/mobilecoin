@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../../enclave/api" }
 mc-consensus-scp = { path = "../../scp" }

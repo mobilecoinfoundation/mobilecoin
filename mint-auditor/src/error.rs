@@ -6,8 +6,8 @@ use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
 use diesel::result::Error as DieselError;
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
+use mc_blockchain_types::BlockIndex;
 use mc_ledger_db::Error as LedgerDbError;
-use mc_transaction_core::BlockIndex;
 use mc_util_serial::DecodeError;
 use std::io::Error as IoError;
 

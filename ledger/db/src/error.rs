@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use mc_transaction_core::{membership_proofs::RangeError, BlockID, BlockIndex};
+use mc_blockchain_types::{BlockID, BlockIndex};
+use mc_transaction_core::membership_proofs::RangeError;
 use mc_util_lmdb::MetadataStoreError;
 
 /// A Ledger error kind.

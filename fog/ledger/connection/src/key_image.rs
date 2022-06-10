@@ -4,6 +4,7 @@ use super::Error;
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{o, Logger};
 use mc_fog_api::{ledger::KeyImageResultCode, ledger_grpc::FogKeyImageApiClient};
 use mc_fog_enclave_connection::EnclaveConnection;
@@ -11,7 +12,7 @@ use mc_fog_types::ledger::{
     CheckKeyImagesRequest, CheckKeyImagesResponse, KeyImageQuery, KeyImageResult,
 };
 use mc_fog_uri::FogLedgerUri;
-use mc_transaction_core::{ring_signature::KeyImage, BlockIndex};
+use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use std::sync::Arc;
 

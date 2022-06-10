@@ -155,10 +155,11 @@ mod tests {
     use crate::db::test_utils::TestDbContext;
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_account_keys::AccountKey;
+    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::Ledger;
     use mc_mint_auditor_api::mint_auditor_grpc::MintAuditorApiClient;
-    use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
+    use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
         initialize_ledger, mint_config_tx_to_validated as to_validated,

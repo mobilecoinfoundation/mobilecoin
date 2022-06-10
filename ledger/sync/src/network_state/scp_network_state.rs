@@ -3,12 +3,12 @@
 //! NetworkState implementation for the `scp` module.
 
 use crate::NetworkState;
+use mc_blockchain_types::BlockIndex;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
     QuorumSet, SlotIndex, Topic, Value,
 };
-use mc_transaction_core::BlockIndex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},

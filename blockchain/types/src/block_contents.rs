@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    mint::{MintTx, ValidatedMintConfigTx},
-    tx::TxOut,
-    ConvertError,
-};
+use crate::ConvertError;
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_ring_signature::KeyImage;
+use mc_transaction_core::{
+    mint::{MintTx, ValidatedMintConfigTx},
+    tx::TxOut,
+};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

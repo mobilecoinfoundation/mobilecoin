@@ -2,15 +2,24 @@
 
 //! Mint auditor database.
 
+#[cfg(test)]
+pub mod test_utils;
+
 mod block_audit_data;
 mod block_balance;
 mod conn;
 mod counters;
 mod models;
 mod schema;
-#[cfg(test)]
-pub mod test_utils;
 mod transaction;
+
+pub use self::{
+    block_audit_data::{BlockAuditData, BlockAuditDataModel},
+    block_balance::{BlockBalance, BlockBalanceModel},
+    conn::{Conn, ConnectionOptions},
+    counters::{Counters, CountersModel},
+    transaction::{transaction, TransactionRetriableError},
+};
 
 use crate::Error;
 use diesel::{
@@ -19,19 +28,14 @@ use diesel::{
 };
 use diesel_migrations::embed_migrations;
 use mc_account_keys::burn_address_view_private;
+use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockContents, BlockIndex, TokenId};
+use mc_transaction_core::TokenId;
 use std::time::Duration;
-
-pub use block_audit_data::{BlockAuditData, BlockAuditDataModel};
-pub use block_balance::{BlockBalance, BlockBalanceModel};
-pub use conn::{Conn, ConnectionOptions};
-pub use counters::{Counters, CountersModel};
-pub use transaction::{transaction, TransactionRetriableError};
 
 embed_migrations!("migrations/");
 

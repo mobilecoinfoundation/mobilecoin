@@ -2,13 +2,14 @@
 
 //! Connection mock and test utilities
 
+use mc_blockchain_types::{Block, BlockID, BlockIndex, BlockVersion};
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
     Result as ConnectionResult, UserTxConnection,
 };
 use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex, BlockVersion};
+use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},

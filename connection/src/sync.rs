@@ -9,8 +9,9 @@ use crate::{
         RetryableUserTxConnection, UserTxConnection,
     },
 };
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::logger::Logger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::Tx;
 use std::{
     cmp::Ordering,
     fmt::{Display, Formatter, Result as FmtResult},

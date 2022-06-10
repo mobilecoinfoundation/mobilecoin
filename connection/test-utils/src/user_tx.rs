@@ -2,8 +2,9 @@
 
 //! User Transaction Connection Mock
 
+use mc_blockchain_types::BlockIndex;
 use mc_connection::{Connection, Result as ConnectionResult, UserTxConnection};
-use mc_transaction_core::{tx::Tx, BlockIndex};
+use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::Ordering,

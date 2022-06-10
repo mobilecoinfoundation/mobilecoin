@@ -2,6 +2,9 @@
 
 use crate::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_account_keys::AccountKey;
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion,
+};
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
@@ -10,8 +13,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Amount, Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion,
-    Token, TokenId,
+    Amount, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -394,7 +396,7 @@ pub fn get_custom_test_ledger_blocks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_transaction_core::compute_block_id;
+    use mc_blockchain_types::compute_block_id;
 
     #[test]
     // `get_custom_test_ledger_blocks` should return blocks that match the
