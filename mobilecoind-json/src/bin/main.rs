@@ -79,7 +79,7 @@ fn unlock_db(
     Ok(Json(JsonUnlockDbResponse { success: true }))
 }
 
-/// Gets current mobilecoindversion
+/// Gets current mobilecoind version
 #[get("/version")]
 fn version(state: &rocket::State<State>) -> Result<Json<JsonMobilecoindVersionResponse>, String> {
     let resp = state

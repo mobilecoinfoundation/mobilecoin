@@ -6005,11 +6005,11 @@ mod test {
                 &mut rng,
             );
 
-        let expected_version = String("1.3.0-pre0");
+        let expected_version = "1.3.0-pre0".to_string();
 
         // Send request.
         let response = client
-            .get_release_version()
+            .get_release_version(&mc_mobilecoind_api::Empty::new())
             .expect("Incorrect version returned");
         assert_eq!(expected_version, response.get_version());
     }
