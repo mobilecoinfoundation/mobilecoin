@@ -16,7 +16,7 @@ pushd "$(dirname "$0")"
 
 echo "Pulling down TestNet consensus validator signature material"
 
-SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep consensus | grep sigstruct | awk '{print $2}' | tr -d \")
+SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | awk '/sigstruct.*consensus/ {print $2}' | tr -d \")
 curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 
 TARGETDIR=${CARGO_TARGET_DIR:-./target}/release
