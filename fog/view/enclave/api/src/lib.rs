@@ -18,6 +18,7 @@ use mc_attest_enclave_api::{
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
+use mc_crypto_noise::CipherError;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::ETxOutRecord;
 use mc_sgx_compat::sync::PoisonError;
@@ -199,8 +200,8 @@ pub enum Error {
     Poison,
     /// Enclave not initialized
     EnclaveNotInitialized,
-    /// Cipher encryption failed
-    Cipher,
+    /// Cipher encryption failed: {0}
+    Cipher(CipherError),
 }
 
 impl From<SgxError> for Error {
@@ -257,8 +258,8 @@ impl From<AddRecordsError> for Error {
     }
 }
 
-impl From<mc_crypto_noise::CipherError> for Error {
-    fn from(_: mc_crypto_noise::CipherError) -> Self {
-        Error::Cipher
+impl From<CipherError> for Error {
+    fn from(src: CipherError) -> Self {
+        Error::Cipher(src)
     }
 }

@@ -206,12 +206,14 @@ where
         let client_query_bytes = self.ake.client_decrypt(client_query.clone())?;
 
         let mut encryptors = self.store_encryptors.lock()?;
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(encryptors.len());
         for store_encryptor in encryptors.deref_mut() {
-            let data = store_encryptor.encrypt(&client_query.aad, &client_query_bytes)?;
+            let aad = client_query.aad.clone();
+            let data = store_encryptor.encrypt(&aad, &client_query_bytes)?;
+            let channel_id = client_query.channel_id.clone();
             results.push(EnclaveMessage {
-                aad: client_query.clone().aad,
-                channel_id: client_query.clone().channel_id,
+                aad,
+                channel_id,
                 data,
             });
         }
