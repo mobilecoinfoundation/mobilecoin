@@ -6,8 +6,12 @@
 use maplit::btreemap;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::{blockchain, external, quorum_set};
-use mc_blockchain_test_utils::{make_block_metadata, make_quorum_set, make_verification_report};
-use mc_blockchain_types::{BlockID, BlockMetadata, BlockVersion, QuorumSet, VerificationReport};
+use mc_blockchain_test_utils::{
+    get_blocks, make_block_metadata, make_quorum_set, make_verification_report,
+};
+use mc_blockchain_types::{
+    BlockData, BlockID, BlockMetadata, BlockVersion, QuorumSet, VerificationReport,
+};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
 use mc_transaction_core::{Amount, SignedContingentInput};
@@ -191,5 +195,17 @@ fn verification_report_round_trip() {
     run_with_several_seeds(|mut rng| {
         let report = make_verification_report(&mut rng);
         round_trip_message::<VerificationReport, external::VerificationReport>(&report)
+    })
+}
+
+#[test]
+fn block_data_round_trip() {
+    run_with_several_seeds(|mut rng| {
+        let block_data = get_blocks(BlockVersion::MAX, 1, 2, 3, 4, 5, None, &mut rng)
+            .pop()
+            .unwrap();
+        // This does not need to remain an invariant, as of this writing.
+        // It's a nice property, though.
+        round_trip_message::<BlockData, blockchain::ArchiveBlockV1>(&block_data);
     })
 }
