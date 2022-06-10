@@ -1366,6 +1366,19 @@ impl From<&mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse>
     }
 }
 
+#[derive(Serialize, Default, Debug)]
+pub struct JsonMobilecoindVersionResponse {
+    pub version: String,
+}
+
+impl From<&mc_mobilecoind_api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
+    fn from(src: &mc_mobilecoind_api::MobilecoindVersionResponse) -> Self {
+        Self {
+            version: src.version,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1545,18 +1558,5 @@ mod test {
             proto2.outlay_confirmation_numbers
         );
         assert_eq!(proto_proposal, proto2);
-    }
-}
-
-#[derive(Serialize, Default, Debug)]
-pub struct JsonMobilecoindVersionResponse {
-    pub version: String,
-}
-
-impl From<&mc_mobilecoind_api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
-    fn from(src: &mc_mobilecoind_api::MobilecoindVersionResponse) -> Self {
-        Self {
-            version: src.get_version().to_string(),
-        }
     }
 }
