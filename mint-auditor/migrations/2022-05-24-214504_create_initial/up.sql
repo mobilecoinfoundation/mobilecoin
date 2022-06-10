@@ -18,9 +18,70 @@ CREATE TABLE block_balance (
     block_index UNSIGNED BIGINT NOT NULL,
     token_id UNSIGNED BIGINT NOT NULL,
     balance UNSIGNED BIGINT NOT NULL,
-    FOREIGN KEY (block_index) REFERENCES block_audit_data(block_index)
+    -- Constaints
+    FOREIGN KEY (block_index) REFERENCES block_audit_data(block_index),
+    UNIQUE(block_index, token_id)
 );
-CREATE UNIQUE INDEX idx__block_balance__block_index__token_id ON block_balance(block_index, token_id);
+
+-- Mint configs txs
+CREATE TABLE mint_config_txs (
+    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
+    id INT PRIMARY KEY,
+    -- The block index at which this mint config tx appreared.
+    block_index UNSIGNED BIGINT NOT NULL,
+    -- The token id this mint config tx is for.
+    token_id UNSIGNED BIGINT NOT NULL,
+    -- The nonce, as hex-encoded bytes.
+    nonce VARCHAR NOT NULL UNIQUE,
+    -- The maximal amount that can be minted by configurations specified in
+    -- this tx. This amount is shared amongst all configs.
+    mint_limit UNSIGNED BIGINT NOT NULL,
+    -- Tombstone block.
+    tombstone_block UNSIGNED BIGINT NOT NULL,
+    -- The protobuf-serialized MintConfigTx.
+    protobuf BLOB NOT NULL,
+    -- Constraints
+    UNIQUE (block_index, token_id)
+);
+
+-- Mint configs
+CREATE TABLE mint_configs (
+    -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys.
+    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
+    id INT PRIMARY KEY,
+    -- The mint config tx id this config is for.
+    mint_config_tx_id INT NOT NULL,
+    -- The maximal amount this configuration can mint from the moment it has
+    -- been applied.
+    mint_limit UNSIGNED BIGINT NOT NULL,
+    -- The protobuf-serialized MintConfig.
+    protobuf BLOB NOT NULL,
+    -- Constraints
+    FOREIGN KEY (mint_config_tx_id) REFERENCES mint_config_txs(id)
+);
+
+-- Mint txs
+CREATE TABLE mint_txs (
+    -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys.
+    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
+    id INT PRIMARY KEY,
+    -- The token id this mint tx is for.
+    token_id UNSIGNED BIGINT NOT NULL,
+    -- The amount that was minted.
+    amount UNSIGNED BIGINT NOT NULL,
+    -- The nonce, as hex-encoded bytes.
+    nonce VARCHAR NOT NULL UNIQUE,
+    -- The recipient of the mint.
+    recipient_b58_address VARCHAR NOT NULL,
+    -- Tombstone block.
+    tombstone_block UNSIGNED BIGINT NOT NULL,
+    -- The protobuf-serialized MintTx.
+    protobuf BLOB NOT NULL,
+    -- The mint config, when we are able to match it with one.
+    mint_config_id INT,
+    -- Constraints
+    FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
+);
 
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
