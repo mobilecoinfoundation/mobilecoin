@@ -2114,7 +2114,7 @@ build_api! {
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
     unlock_db UnlockDbRequest Empty unlock_db_impl,
 
-    get_version Empty MobilecoindVersionResponse get_version_impl
+    get_version Empty MobilecoindVersionResponse get_version_impl,
 }
 
 #[cfg(test)]
