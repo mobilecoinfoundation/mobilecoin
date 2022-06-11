@@ -2,6 +2,7 @@
 
 //! Serializeable data types that wrap the mobilecoind API.
 
+use crate::{SlamParams, SlamReport, SlamStatus};
 use mc_api::external::PublicAddress;
 use mc_mobilecoind_api as api;
 use mc_transaction_core::TokenId;
@@ -42,6 +43,8 @@ pub struct JsonFaucetStatus {
     /// queues run out then the faucet needs some more time to rebuild them.
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub queue_depths: HashMap<JsonU64, JsonU64>,
+    /// The status of the in-progress slam, if any
+    pub slam_status: Option<String>,
 }
 
 /// The data obtained when the faucet gets its status successfully
@@ -54,6 +57,8 @@ pub struct FaucetStatus {
     pub balances: HashMap<TokenId, u64>,
     /// The queue depth for each token id
     pub queue_depths: HashMap<TokenId, u64>,
+    /// The status of in-progress slam, if any
+    pub slam_status: Option<SlamStatus>,
 }
 
 impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
@@ -64,6 +69,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
                 faucet_payout_amounts,
                 balances,
                 queue_depths,
+                slam_status,
             }) => JsonFaucetStatus {
                 success: true,
                 err_str: String::default(),
@@ -74,6 +80,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
                     .collect(),
                 balances: balances.into_iter().map(convert_balance_pair).collect(),
                 queue_depths: queue_depths.into_iter().map(convert_balance_pair).collect(),
+                slam_status: slam_status.map(|x| x.to_string()),
             },
             Err(err_str) => JsonFaucetStatus {
                 success: false,
@@ -179,6 +186,123 @@ impl From<Result<api::SubmitTxResponse, String>> for JsonSubmitTxResponse {
                     .iter()
                     .map(JsonReceiverTxReceipt::from)
                     .collect(),
+            },
+            Err(err_str) => Self {
+                success: false,
+                err_str,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+/// A json request from a user to initiate a slam
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct JsonSlamRequest {
+    /// Target num txs to submit in the slam
+    pub target_num_tx: Option<u32>,
+    /// Number of threads to create during slamming
+    pub num_threads: Option<u32>,
+    /// Number of retries to use when submitting Txs
+    pub retries: Option<u32>,
+    /// How much ahead of the network to set the tombstone block
+    pub tombstone_offset: Option<u32>,
+    /// Which consensus endpoints to submit transactions to
+    pub consensus_uris: Option<Vec<String>>,
+}
+
+/// A slam resposne includes the parameters used to start the slam, and the
+/// report at the end
+#[derive(Debug, Default)]
+pub struct SlamResponse {
+    /// The slam params actually used
+    pub params: SlamParams,
+    /// The report for the slam operation
+    pub report: SlamReport,
+}
+
+/// Json form of slam params
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct JsonSlamParams {
+    /// The target number of txs to submit
+    pub target_num_tx: JsonU64,
+    /// The number of threads to use to submit txs in parallel
+    pub num_threads: JsonU64,
+    /// The number of retries when submitting a transaction
+    pub retries: JsonU64,
+    /// How long to wait before retrying (seconds)
+    pub retry_period: f32,
+    /// How many blocks before the tombstone
+    pub tombstone_offset: JsonU64,
+    /// Consensus URIs
+    pub consensus_client_uris: Vec<String>,
+}
+
+impl From<SlamParams> for JsonSlamParams {
+    fn from(src: SlamParams) -> JsonSlamParams {
+        Self {
+            target_num_tx: JsonU64(src.target_num_tx as u64),
+            num_threads: JsonU64(src.num_threads as u64),
+            retries: JsonU64(src.retries as u64),
+            retry_period: src.retry_period.as_secs_f32(),
+            tombstone_offset: JsonU64(src.tombstone_offset as u64),
+            consensus_client_uris: src
+                .consensus_client_uris
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        }
+    }
+}
+
+/// Json form of a slam report
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct JsonSlamReport {
+    /// Num utxos prepared
+    pub num_prepared_utxos: JsonU64,
+    /// Num txs submitted
+    pub num_submitted_txs: JsonU64,
+    /// Prepare duration in seconds
+    pub prepare_time: f32,
+    /// Submit duration in seconds
+    pub submit_time: f32,
+}
+
+impl From<SlamReport> for JsonSlamReport {
+    fn from(src: SlamReport) -> JsonSlamReport {
+        Self {
+            num_prepared_utxos: JsonU64(src.num_prepared_utxos as u64),
+            num_submitted_txs: JsonU64(src.num_submitted_txs as u64),
+            prepare_time: src.prepare_time.as_secs_f32(),
+            submit_time: src.submit_time.as_secs_f32(),
+        }
+    }
+}
+
+/// Json form of a slam response
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct JsonSlamResponse {
+    /// Whether the slam was completed successfully
+    pub success: bool,
+    /// An error message if the slam could not be completed successfully
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub err_str: String,
+    /// The slam params actually used
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<JsonSlamParams>,
+    /// The report for the slam operation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub report: Option<JsonSlamReport>,
+}
+
+impl From<Result<SlamResponse, String>> for JsonSlamResponse {
+    fn from(src: Result<SlamResponse, String>) -> Self {
+        match src {
+            Ok(resp) => Self {
+                success: true,
+                err_str: String::default(),
+                params: Some(resp.params.into()),
+                report: Some(resp.report.into()),
             },
             Err(err_str) => Self {
                 success: false,

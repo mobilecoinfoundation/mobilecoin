@@ -22,21 +22,20 @@ use api::{
     external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
     TxStatus, UnspentTxOut,
 };
+use displaydoc::Display;
 use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api as api;
 use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
 use std::{
+    cmp::max,
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc,
     },
     time::Duration,
 };
-use tokio::sync::{
-    mpsc::{self, UnboundedReceiver, UnboundedSender},
-    oneshot::{self, error::TryRecvError},
-};
+use tokio::sync::oneshot::{self, error::TryRecvError};
 
 /// A record the worker hands to faucet threads about a UTXO they can use.
 /// It expects to be notified if the UTXO is successfully submitted.
@@ -96,17 +95,16 @@ impl UtxoTracker {
 /// TokenStateReceiver holds the queue of Utxo records for a particular token
 /// id, as well as other shared flags that indicate if we are out of funds etc.
 pub struct TokenStateReceiver {
-    receiver: Mutex<UnboundedReceiver<UtxoRecord>>,
+    receiver: async_channel::Receiver<UtxoRecord>,
     funds_depleted_flag: Arc<AtomicBool>,
     queue_depth: Arc<AtomicUsize>,
 }
 
 impl TokenStateReceiver {
-    /// Get a utxo from the queue, or a string explaining why we can't
-    pub fn get_utxo(&self) -> Result<UtxoRecord, String> {
-        let mut receiver = self.receiver.lock().expect("mutex poisoned");
+    /// Get a utxo from the queue, or an error message explaining why we can't
+    pub fn get_utxo(&self) -> Result<UtxoRecord, GetUtxoError> {
         loop {
-            match receiver.try_recv() {
+            match self.receiver.try_recv() {
                 Ok(utxo_record) => {
                     self.queue_depth.fetch_sub(1, Ordering::SeqCst);
                     // Check if the one-shot sender has already been closed.
@@ -122,16 +120,16 @@ impl TokenStateReceiver {
                     }
                     // Intentional fall-through to loop
                 }
-                Err(mpsc::error::TryRecvError::Empty) => {
+                Err(async_channel::TryRecvError::Empty) => {
                     return if self.funds_depleted_flag.load(Ordering::SeqCst) {
-                        Err("faucet is depleted".to_string())
+                        Err(GetUtxoError::FundsDepleted)
                     } else {
-                        Err("faucet is busy".to_string())
+                        Err(GetUtxoError::Busy)
                     };
                 }
-                Err(mpsc::error::TryRecvError::Disconnected) => {
+                Err(async_channel::TryRecvError::Closed) => {
                     // This most likely means the worker thread has died
-                    return Err("internal error".to_string());
+                    return Err(GetUtxoError::ChannelClosed);
                 }
             }
         }
@@ -141,6 +139,23 @@ impl TokenStateReceiver {
     pub fn get_queue_depth(&self) -> usize {
         self.queue_depth.load(Ordering::SeqCst)
     }
+}
+
+/// An error which occurs when trying to get a faucet utxo from the queue
+///
+/// Note: The sort order here is used by the get_any_utxo function to select the
+/// error which is most likely to be resolved, so that the slam worker can
+/// decide whether to retry, or give up on the idea that it can get more utxos.
+#[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd)]
+pub enum GetUtxoError {
+    /// Unknown Token Id
+    UnknownTokenId,
+    /// Channel closed (internal error)
+    ChannelClosed,
+    /// Funds are depleted
+    FundsDepleted,
+    /// Faucet is busy
+    Busy,
 }
 
 /// The worker is responsible for pre-splitting the faucet's balance so that it
@@ -169,6 +184,9 @@ pub struct Worker {
     /// A flag which can be used to request the worker thread to join
     /// This is done by dropping the worker handle
     stop_requested: Arc<AtomicBool>,
+
+    /// The worker poll period
+    worker_poll_period: Duration,
 }
 
 impl Worker {
@@ -233,6 +251,7 @@ impl Worker {
             receivers,
             join_handle,
             stop_requested,
+            worker_poll_period,
         }
     }
 
@@ -313,12 +332,36 @@ impl Worker {
     /// to either successfully send the TxOut and use its oneshot::Sender to
     /// report the result from consensus, or, to drop the oneshot::Sender,
     /// reporting an error using the TxOut.
-    pub fn get_utxo(&self, token_id: TokenId) -> Result<UtxoRecord, String> {
+    pub fn get_utxo(&self, token_id: TokenId) -> Result<UtxoRecord, GetUtxoError> {
         if let Some(receiver) = self.receivers.get(&token_id) {
             receiver.get_utxo()
         } else {
-            Err(format!("Unknown token id: {}", token_id))
+            Err(GetUtxoError::UnknownTokenId)
         }
+    }
+
+    /// Get any available utxo. This is only used by slam, which just wants
+    /// utxos and doesn't particularly care about token ids.
+    ///
+    /// The error returned is the "least serious" error, i.e. most likely to be
+    /// resolved, that prevents us from getting tokens of one of the token ids.
+    /// This helps slam worker decide whether to try again later or give up.
+    pub fn get_any_utxo(&self) -> Result<UtxoRecord, GetUtxoError> {
+        let mut least_serious_error = None;
+        for (_, receiver) in self.receivers.iter() {
+            match receiver.get_utxo() {
+                Ok(utxo) => return Ok(utxo),
+                Err(err) => {
+                    // Note: this depends on the way rust derives partial ord for enums.
+                    // None is always the least, and then within GetUtxoError, the top-to-bottom
+                    // listing order in code determines the order, with the top being the least
+                    least_serious_error = max(least_serious_error, Some(err));
+                }
+            }
+        }
+        // If there are no receivers, then least_serious_error will still be None,
+        // so let's return UnknownTokenId
+        Err(least_serious_error.unwrap_or(GetUtxoError::UnknownTokenId))
     }
 
     /// Get the depths of all of the queues
@@ -327,6 +370,11 @@ impl Worker {
             .iter()
             .map(|(token_id, receiver)| (*token_id, receiver.get_queue_depth()))
             .collect()
+    }
+
+    /// Get the configured worker poll period
+    pub fn get_worker_poll_period(&self) -> Duration {
+        self.worker_poll_period
     }
 }
 
@@ -355,7 +403,7 @@ struct WorkerTokenState {
     // the same UTXO concurrently.
     known_utxos: HashMap<KeyImage, UtxoTracker>,
     // The queue of UTXOs with the target value
-    sender: UnboundedSender<UtxoRecord>,
+    sender: async_channel::Sender<UtxoRecord>,
     // If we submit a split transaction, the response we can use to track it
     in_flight_split_tx_state: Option<SubmitTxResponse>,
     // A shared flag we use to signal if have insufficient funds for this token id
@@ -381,7 +429,7 @@ impl WorkerTokenState {
         minimum_fee_value: u64,
         target_value: u64,
     ) -> (WorkerTokenState, TokenStateReceiver) {
-        let (sender, receiver) = mpsc::unbounded_channel::<UtxoRecord>();
+        let (sender, receiver) = async_channel::unbounded::<UtxoRecord>();
 
         let funds_depleted_flag = Arc::new(AtomicBool::default());
         let funds_depleted = funds_depleted_flag.clone();
@@ -401,7 +449,7 @@ impl WorkerTokenState {
                 queue_depth,
             },
             TokenStateReceiver {
-                receiver: Mutex::new(receiver),
+                receiver,
                 funds_depleted_flag,
                 queue_depth: queue_depth_counter,
             },
@@ -500,7 +548,7 @@ impl WorkerTokenState {
                 let (tracker, record) = UtxoTracker::new(utxo.clone());
                 // Add to queue depth before push, because we subtract after pop
                 self.queue_depth.fetch_add(1, Ordering::SeqCst);
-                if self.sender.send(record).is_err() {
+                if self.sender.try_send(record).is_err() {
                     panic!("Queue was closed before worker thread was joined, this is an unexpected program state");
                 }
                 e.insert(tracker);
@@ -543,14 +591,19 @@ impl WorkerTokenState {
             // First make sure we have enough funds for what we want to do, so we don't spam
             // errors when we are depleted, and so that faucet users can know
             // that retries won't help.
+            //
+            // FIXME: We should also detect the situation that defragmentation is required
+            // and then submit defragmentation txs.
             if non_target_value_utxos
                 .iter()
                 .map(|utxo| utxo.value)
                 .sum::<u64>()
                 < self.target_value * (MAX_OUTPUTS - 1) + self.minimum_fee_value
             {
-                self.funds_depleted.store(true, Ordering::SeqCst);
-                log::trace!(logger, "Funds depleted on {}", self.token_id);
+                let prev_value = self.funds_depleted.swap(true, Ordering::SeqCst);
+                if !prev_value {
+                    log::info!(logger, "Funds depleted on {}", self.token_id);
+                }
                 return Ok(());
             } else {
                 let prev_value = self.funds_depleted.swap(false, Ordering::SeqCst);
