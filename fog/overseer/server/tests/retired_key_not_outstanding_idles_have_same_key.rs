@@ -47,7 +47,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     helper.wait_till_recovery_db_in_sync();
     helper.add_test_blocks(2);
     // Give the new keys more time to propagate.
-    sleep(Duration::from_secs(5));
+    sleep(Duration::from_secs(10));
 
     // Fog Overseer should have activated any node.
     assert!(nodes.iter().any(|n| n.is_active()));
