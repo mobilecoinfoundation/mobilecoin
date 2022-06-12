@@ -224,6 +224,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .collect()
     }
 
+    fn get_version_impl(
+        &self,
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::MobilecoindVersionResponse, RpcStatus> {
+        let mut response = mc_mobilecoind_api::MobilecoindVersionResponse::new();
+        response.set_version(env!("CARGO_PKG_VERSION").to_string());
+        Ok(response)
+    }
+
     fn add_monitor_impl(
         &mut self,
         request: mc_mobilecoind_api::AddMonitorRequest,
@@ -2103,7 +2112,9 @@ build_api! {
 
     // Database encryption
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
-    unlock_db UnlockDbRequest Empty unlock_db_impl
+    unlock_db UnlockDbRequest Empty unlock_db_impl,
+
+    get_version Empty MobilecoindVersionResponse get_version_impl
 }
 
 #[cfg(test)]
@@ -5977,5 +5988,28 @@ mod test {
             .get_processed_block(&request)
             .expect("Failed getting processed block");
         assert_eq!(response.get_tx_outs().len(), 1);
+    }
+
+    #[test_with_logger]
+    fn test_get_version(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Send request.
+        let response = client
+            .get_version(&mc_mobilecoind_api::Empty::new())
+            .expect("Failed to get version");
+        assert!(!response.version.is_empty());
     }
 }
