@@ -5,5 +5,9 @@
 mod error;
 mod rct_bulletproofs;
 
-pub use error::Error;
-pub use rct_bulletproofs::*;
+pub use self::{
+    error::Error,
+    rct_bulletproofs::{
+        InputRing, OutputSecret, PresignedInputRing, SignatureRctBulletproofs, SignedInputRing,
+    },
+};

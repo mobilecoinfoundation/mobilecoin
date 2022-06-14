@@ -22,8 +22,7 @@ pub mod log {
 }
 
 /// Expose slog and select useful primitives.
-pub use slog;
-pub use slog::{o, FnValue, Level, Logger, PushFnValue};
+pub use slog::{self, o, FnValue, Level, Logger, PushFnValue};
 
 /// Create a logger that discards everything.
 pub fn create_null_logger() -> Logger {
