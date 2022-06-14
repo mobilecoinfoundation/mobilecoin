@@ -32,7 +32,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
 base64 = "0.13"
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
 pem = "1.0"
