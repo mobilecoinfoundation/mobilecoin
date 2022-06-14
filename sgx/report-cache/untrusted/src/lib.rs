@@ -176,7 +176,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         let retval = self.ra_client.verify_quote(&quote, Some(ias_nonce))?;
         log::debug!(
             self.logger,
-            "Quote verified by remote attestation service {:?}...",
+            "Quote verified by remote attestation service: {}",
             retval,
         );
         let report_body = VerificationReportData::try_from(&retval)
