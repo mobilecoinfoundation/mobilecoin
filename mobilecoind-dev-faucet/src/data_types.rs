@@ -3,6 +3,7 @@
 //! Serializeable data types that wrap the mobilecoind API.
 
 use mc_api::external::PublicAddress;
+use mc_mobilecoind_api as api;
 use mc_transaction_core::TokenId;
 use mc_util_serial::JsonU64;
 use serde_derive::{Deserialize, Serialize};
@@ -103,8 +104,8 @@ pub struct JsonReceiverTxReceipt {
     pub confirmation_number: String,
 }
 
-impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
-    fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
+impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
+    fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_recipient()),
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
@@ -167,8 +168,8 @@ pub struct JsonSubmitTxResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<Result<mc_mobilecoind_api::SubmitTxResponse, String>> for JsonSubmitTxResponse {
-    fn from(src: Result<mc_mobilecoind_api::SubmitTxResponse, String>) -> Self {
+impl From<Result<api::SubmitTxResponse, String>> for JsonSubmitTxResponse {
+    fn from(src: Result<api::SubmitTxResponse, String>) -> Self {
         match src {
             Ok(mut resp) => Self {
                 success: true,

@@ -18,11 +18,12 @@
 //! The worker does not require to be launched from the context of a tokio
 //! runtime.
 
-use mc_common::logger::{log, o, Logger};
-use mc_mobilecoind_api::{
+use api::{
     external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
     TxStatus, UnspentTxOut,
 };
+use mc_common::logger::{log, o, Logger};
+use mc_mobilecoind_api as api;
 use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
@@ -264,7 +265,7 @@ impl Worker {
 
         // Now wait for monitor state to at least pass this point
         loop {
-            let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
+            let mut req = api::GetMonitorStatusRequest::new();
             req.set_monitor_id(monitor_id.clone());
             match client.get_monitor_status(&req) {
                 Ok(resp) => {
@@ -454,7 +455,7 @@ impl WorkerTokenState {
 
         // Now, get a fresh unspent tx out list associated to this token
         let mut resp = {
-            let mut req = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+            let mut req = api::GetUnspentTxOutListRequest::new();
             req.token_id = *self.token_id;
             req.monitor_id = monitor_id.to_vec();
 
@@ -561,12 +562,12 @@ impl WorkerTokenState {
             // Generate an outlay
             // We will repeat this outlay MAX_OUTPUTS - 1 times
             // (-1 is for a change output)
-            let mut outlay = mc_mobilecoind_api::Outlay::new();
+            let mut outlay = api::Outlay::new();
             outlay.set_receiver(public_address.clone());
             outlay.set_value(self.target_value);
 
             // Generate a Tx
-            let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
+            let mut req = api::GenerateTxRequest::new();
             req.set_sender_monitor_id(monitor_id.to_vec());
             req.set_token_id(*self.token_id);
             req.set_input_list(non_target_value_utxos.into());
@@ -577,7 +578,7 @@ impl WorkerTokenState {
                 .map_err(|err| format!("Failed to generate split tx: {}", err))?;
 
             // Submit the Tx
-            let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+            let mut req = api::SubmitTxRequest::new();
             req.set_tx_proposal(resp.take_tx_proposal());
             let submit_tx_response = client
                 .submit_tx(&req)
