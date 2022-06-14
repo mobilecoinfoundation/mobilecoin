@@ -32,6 +32,12 @@ pub trait Connection: Display + Eq + Hash + Ord + PartialEq + PartialOrd + Send 
 pub trait AttestationError: Debug + Display + Send + Sync {
     /// Should the error result in re-attestation?
     fn should_reattest(&self) -> bool;
+
+    /// Should the error be retried?
+    /// Some errors like, failing to verify IAS report, are not retriable, since
+    /// report verification is deterministic and the report will probably not be
+    /// different the next time.
+    fn should_retry(&self) -> bool;
 }
 
 pub trait AttestedConnection: Connection {

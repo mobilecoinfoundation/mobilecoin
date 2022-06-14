@@ -119,6 +119,15 @@ impl AttestationError for ThickClientAttestationError {
     fn should_reattest(&self) -> bool {
         matches!(self, Self::Grpc(_) | Self::Ake(_) | Self::Cipher(_))
     }
+
+    fn should_retry(&self) -> bool {
+        match self {
+            Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
+            Self::Ake(AkeError::ReportVerification(_)) => false,
+            Self::Ake(_) => true,
+            Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
+        }
+    }
 }
 
 /// A connection from a client to a consensus enclave.
