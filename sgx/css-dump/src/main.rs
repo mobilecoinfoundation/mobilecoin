@@ -21,10 +21,10 @@ use std::{
 #[derive(Debug, Parser)]
 struct Config {
     /// The SIGSTRUCT file to read, or stdin
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     pub input: Option<PathBuf>,
     /// The output location, or stdout
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     pub output: Option<PathBuf>,
 }
 
