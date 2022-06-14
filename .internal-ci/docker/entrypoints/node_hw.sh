@@ -89,6 +89,7 @@ archive_curl()
 DOTENV_CONFIG_FILE=${DOTENV_CONFIG_FILE:-"/config/.env"}
 if [[ -f "${DOTENV_CONFIG_FILE}" ]]
 then
+    # Automatically export all loaded vars
     set -o allexport
     # shellcheck disable=SC1090 # optional import of .env
     source "${DOTENV_CONFIG_FILE}"
