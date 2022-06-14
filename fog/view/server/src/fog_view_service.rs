@@ -4,9 +4,13 @@ use crate::server::DbPollSharedState;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{view::MultiViewStoreQueryRequest, view_grpc::FogViewApi};
+use mc_fog_api::{
+    view::{FogViewStoreDecryptionError, MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
+    view_grpc::FogViewApi,
+};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
+use mc_fog_uri::{ConnectionUri, FogViewUri};
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
@@ -31,6 +35,9 @@ pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
     /// GRPC request authenticator.
     authenticator: Arc<dyn Authenticator + Send + Sync>,
 
+    /// The FogViewUri for this FogViewService.
+    fog_view_uri: FogViewUri,
+
     /// Slog logger object
     logger: Logger,
 }
@@ -43,6 +50,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         db: Arc<DB>,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
+        fog_view_uri: FogViewUri,
         logger: Logger,
     ) -> Self {
         Self {
@@ -50,6 +58,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             db,
             db_poll_shared_state,
             authenticator,
+            fog_view_uri,
             logger,
         }
     }
@@ -194,10 +203,32 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     /// an grpc error that contains the store's hostname.
     fn multi_view_store_query(
         &mut self,
-        _ctx: RpcContext,
-        _request: MultiViewStoreQueryRequest,
-        _sink: UnarySink<attest::Message>,
+        ctx: RpcContext,
+        request: MultiViewStoreQueryRequest,
+        sink: UnarySink<MultiViewStoreQueryResponse>,
     ) {
-        todo!()
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), logger);
+            }
+            let mut response = MultiViewStoreQueryResponse::new();
+            for query in request.queries {
+                let result = self.query_impl(query);
+                if let Ok(attested_message) = result {
+                    response.set_query_response(attested_message);
+                    return send_result(ctx, sink, Ok(response), logger);
+                }
+            }
+
+            let mut decryption_error = FogViewStoreDecryptionError::new();
+            let fog_view_store_uri = String::from(self.fog_view_uri.clone().url().clone());
+            decryption_error.set_fog_view_store_uri(fog_view_store_uri);
+            decryption_error.set_error_message(String::from(
+                "Could not decrypt a query embedded in the MultiViewStoreQuery",
+            ));
+            response.set_decryption_error(decryption_error);
+
+            send_result(ctx, sink, Ok(response), logger)
+        });
     }
 }
