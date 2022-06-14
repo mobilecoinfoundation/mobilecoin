@@ -1,0 +1,39 @@
+logging:
+  level: error
+  to_stderr: true
+
+filebeat.inputs:
+- type: udp
+  max_message_size: 65KiB
+  host: localhost:16666
+  fields_under_root: true
+  fields:
+    mc.network: ${MC_BRANCH}
+    mc.local_node_id: ${MC_CLIENT_RESPONDER_ID}
+
+processors:
+- rename:
+    fields:
+    - from: agent
+      to: beat_agent
+    ignore_missing: true
+- rename:
+    fields:
+    - from: log.file.path
+      to: source
+    ignore_missing: true
+
+output:
+  elasticsearch:
+    enabled: true
+    hosts: ["${ES_HOST}:${ES_PORT}"]
+    protocol: https
+    username: "${ES_USERNAME}"
+    password: "${ES_PASSWORD}"
+    index: "${ES_INDEX:filebeat}-%{+yyyy.MM.dd}"
+
+setup:
+  template:
+    enabled: true
+    name: ${ES_INDEX:filebeat}
+    pattern: ${ES_INDEX:filebeat}

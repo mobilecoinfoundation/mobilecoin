@@ -1,7 +1,4 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- $peers := .Values.global.node.networkConfig.peers }}
-{{- $threshold := .Values.global.node.networkConfig.threshold }}
-{{- $localPeerHostname := (include "consensusNodeConfig.peerHostname" .) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,31 +6,5 @@ metadata:
   labels:
     {{- include "consensusNodeConfig.labels" . | nindent 4 }}
 data:
-  network.toml: |
-    broadcast_peers = [
-  {{- range $key, $value := $peers }}
-    {{- $peerHostname := tpl $value.peer.hostname $ }}
-    {{- if not (eq $peerHostname $localPeerHostname) }}
-      "mcp://{{ $peerHostname }}:{{ $value.peer.port }}/?consensus-msg-key={{ $value.signerPublicKey }}",
-    {{- end }}
-  {{- end }}
-    ]
-
-    tx_source_urls = [
-  {{- range $key, $value := $peers }}
-    {{- $peerHostname := tpl $value.peer.hostname $ }}
-    {{- $ledgerArchiveLocation := tpl $value.ledgerArchiveLocation $ }}
-    {{- if not (eq $peerHostname $localPeerHostname) }}
-      "{{ $ledgerArchiveLocation }}",
-    {{- end }}
-  {{- end }}
-    ]
-
-    quorum_set = { threshold = {{ $threshold }}, members = [
-  {{- range $key, $value := $peers }}
-    {{- $peerHostname := tpl $value.peer.hostname $ }}
-    {{- if not (eq $peerHostname $localPeerHostname) }}
-      { type = "Node", args = "{{ $peerHostname }}:{{ $value.peer.port }}" },
-    {{- end }}
-  {{- end }}
-    ] }
+  network.json: |-
+    {{- include "consensusNodeConfig.networkJson" . | nindent 4 }}
