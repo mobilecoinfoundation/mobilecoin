@@ -2030,7 +2030,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 }
 
 macro_rules! build_api {
-    ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
+    ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident $(,)?)+)
     =>
     (
         impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver> MobilecoindApi for ServiceApi<T, FPR> {
@@ -2108,7 +2108,7 @@ build_api! {
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
     unlock_db UnlockDbRequest Empty unlock_db_impl,
 
-    get_version Empty MobilecoindVersionResponse get_version_impl
+    get_version Empty MobilecoindVersionResponse get_version_impl,
 }
 
 #[cfg(test)]
