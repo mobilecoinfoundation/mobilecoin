@@ -6,8 +6,10 @@ extern crate alloc;
 mod aes_impl;
 mod traits;
 
-pub use aes_impl::*;
-pub use traits::*;
+pub use crate::{
+    aes_impl::AeadMessageCipher,
+    traits::{CipherError, MessageCipher, ProstCipherError},
+};
 
 /// AesMessageCipher is the one we expect to use
 use aes_gcm::Aes256Gcm;

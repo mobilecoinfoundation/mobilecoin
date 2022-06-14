@@ -2,12 +2,11 @@
 
 //! dalek-cryptography based keys implementations
 
-// Badly-named Macros
-use alloc::vec;
-
-// Dependencies
-use crate::{traits::*, B64_CONFIG};
-use alloc::{string::ToString, vec::Vec};
+use crate::{
+    Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG,
+};
+use alloc::{string::ToString, vec, vec::Vec};
 use core::{
     convert::{AsRef, TryFrom},
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
@@ -569,6 +568,7 @@ impl Kex for X25519 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{ReprBytes, Unsigned};
     use mc_util_serial::{deserialize, serialize};
 
     #[test]

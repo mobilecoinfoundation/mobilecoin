@@ -7,6 +7,9 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
+mod error;
+pub use error::AmountError;
+
 use crate::{
     domain_separators::{
         AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
@@ -23,9 +26,6 @@ use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
-
-mod error;
-pub use error::AmountError;
 
 /// A commitment to an amount of MobileCoin or a related token, as it appears on
 /// the blockchain. This is a "blinded" commitment, and only the sender and

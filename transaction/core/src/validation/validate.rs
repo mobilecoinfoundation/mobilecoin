@@ -4,8 +4,6 @@
 
 extern crate alloc;
 
-use alloc::{format, vec::Vec};
-
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
     constants::*,
@@ -13,6 +11,7 @@ use crate::{
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
     Amount, BlockVersion, TokenId,
 };
+use alloc::{format, vec::Vec};
 use mc_common::HashSet;
 use rand_core::{CryptoRng, RngCore};
 
