@@ -3,9 +3,10 @@
 //! Mint auditor error data type.
 
 use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
-use diesel::result::Error as DieselError;
+use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
+use mc_api::display::Error as ApiDisplayError;
 use mc_blockchain_types::BlockIndex;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_util_serial::DecodeError;
@@ -40,6 +41,9 @@ pub enum Error {
 
     /// Gnosis: {0}
     Gnosis(GnosisError),
+
+    /// Api display: {0}
+    ApiDisplay(ApiDisplayError),
 
     /// Other: {0}
     Other(String),
@@ -90,12 +94,22 @@ impl From<GnosisError> for Error {
     }
 }
 
+impl From<ApiDisplayError> for Error {
+    fn from(err: ApiDisplayError) -> Self {
+        Self::ApiDisplay(err)
+    }
+}
+
 impl TransactionRetriableError for Error {
     fn should_retry(&self) -> bool {
-        matches!(
-            self,
-            Self::Diesel(DieselError::DatabaseError(_, _)) | Self::R2d2Pool(_)
-        )
+        match self {
+            Self::Diesel(DieselError::NotFound) => false,
+            Self::Diesel(DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _)) => {
+                false
+            }
+            Self::R2d2Pool(_) => true,
+            _ => false,
+        }
     }
 }
 

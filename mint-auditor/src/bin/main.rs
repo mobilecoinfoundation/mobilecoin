@@ -264,7 +264,6 @@ fn sync_loop(
                     &conn,
                     block_data.block(),
                     block_data.contents(),
-                    ledger_db,
                 )?;
                 update_counters(&Counters::get(&conn)?);
             }

@@ -3,7 +3,7 @@ CREATE TABLE block_audit_data (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL
     -- Future revision would add gnosis safe data here
 );
@@ -14,7 +14,7 @@ CREATE TABLE block_balance (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL,
     token_id UNSIGNED BIGINT NOT NULL,
     balance UNSIGNED BIGINT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE block_balance (
 -- Mint configs txs
 CREATE TABLE mint_config_txs (
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     -- The block index at which this mint config tx appreared.
     block_index UNSIGNED BIGINT NOT NULL,
     -- The token id this mint config tx is for.
@@ -35,7 +35,7 @@ CREATE TABLE mint_config_txs (
     nonce VARCHAR NOT NULL UNIQUE,
     -- The maximal amount that can be minted by configurations specified in
     -- this tx. This amount is shared amongst all configs.
-    mint_limit UNSIGNED BIGINT NOT NULL,
+    total_mint_limit UNSIGNED BIGINT NOT NULL,
     -- Tombstone block.
     tombstone_block UNSIGNED BIGINT NOT NULL,
     -- The protobuf-serialized MintConfigTx.
@@ -48,7 +48,7 @@ CREATE TABLE mint_config_txs (
 CREATE TABLE mint_configs (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys.
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     -- The mint config tx id this config is for.
     mint_config_tx_id INT NOT NULL,
     -- The maximal amount this configuration can mint from the moment it has
@@ -64,8 +64,10 @@ CREATE TABLE mint_configs (
 CREATE TABLE mint_txs (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys.
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INT PRIMARY KEY,
-    -- The token id this mint tx is for.
+    id INTEGER PRIMARY KEY,
+    -- The block index at which this mint tx appreared.
+    block_index UNSIGNED BIGINT NOT NULL,
+     -- The token id this mint tx is for.
     token_id UNSIGNED BIGINT NOT NULL,
     -- The amount that was minted.
     amount UNSIGNED BIGINT NOT NULL,

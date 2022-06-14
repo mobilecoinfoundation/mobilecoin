@@ -29,7 +29,7 @@ table! {
         block_index -> BigInt,
         token_id -> BigInt,
         nonce -> Text,
-        mint_limit -> BigInt,
+        total_mint_limit -> BigInt,
         tombstone_block -> BigInt,
         protobuf -> Binary,
     }
@@ -47,6 +47,7 @@ table! {
 table! {
     mint_txs (id) {
         id -> Nullable<Integer>,
+        block_index -> BigInt,
         token_id -> BigInt,
         amount -> BigInt,
         nonce -> Text,

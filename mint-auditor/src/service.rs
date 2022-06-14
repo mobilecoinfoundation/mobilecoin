@@ -209,7 +209,7 @@ mod tests {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
             mint_audit_db
-                .sync_block(block_data.block(), block_data.contents(), &ledger_db)
+                .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
 
@@ -238,9 +238,7 @@ mod tests {
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
-        mint_audit_db
-            .sync_block(&block, &block_contents, &ledger_db)
-            .unwrap();
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
@@ -264,9 +262,7 @@ mod tests {
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
-        mint_audit_db
-            .sync_block(&block, &block_contents, &ledger_db)
-            .unwrap();
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
         (mint_audit_db, test_db_context)
     }
 

@@ -10,6 +10,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
+mc-api = { path = "../api" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log", "loggers"] }
 mc-ledger-db = { path = "../ledger/db" }
@@ -30,6 +31,7 @@ hex = "0.4"
 hostname = "0.3.1"
 lazy_static = "1.4"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
+protobuf = "2.27.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.13"
