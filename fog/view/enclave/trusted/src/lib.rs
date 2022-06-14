@@ -120,6 +120,9 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
             serialize(&ENCLAVE.query(req, untrusted_query_response))
         }
         ViewEnclaveRequest::AddRecords(records) => serialize(&ENCLAVE.add_records(records)),
+        ViewEnclaveRequest::CreateMultiViewStoreQuery(client_query) => {
+            serialize(&ENCLAVE.create_multi_view_store_query_data(client_query))
+        }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
