@@ -2,7 +2,10 @@
 
 #![allow(non_snake_case)]
 
-use crate::traits::*;
+use crate::{
+    GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
+    KeyError, PrivateKey, PublicKey, Signature,
+};
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,

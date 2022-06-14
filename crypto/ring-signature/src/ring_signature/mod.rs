@@ -4,13 +4,7 @@
 
 #![allow(non_snake_case)]
 
-use curve25519_dalek::traits::MultiscalarMul;
 pub use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-
-use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
-use curve25519_dalek::constants::{RISTRETTO_BASEPOINT_COMPRESSED, RISTRETTO_BASEPOINT_POINT};
-use mc_crypto_hashes::{Blake2b512, Digest};
-use mc_crypto_keys::RistrettoPublic;
 
 mod curve_scalar;
 mod error;
@@ -18,11 +12,21 @@ mod generator_cache;
 mod key_image;
 mod mlsag;
 
-pub use curve_scalar::*;
-pub use error::Error;
-pub use generator_cache::*;
-pub use key_image::*;
-pub use mlsag::*;
+pub use self::{
+    curve_scalar::CurveScalar,
+    error::Error,
+    generator_cache::GeneratorCache,
+    key_image::KeyImage,
+    mlsag::{CryptoRngCore, ReducedTxOut, RingMLSAG},
+};
+
+use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
+use curve25519_dalek::{
+    constants::{RISTRETTO_BASEPOINT_COMPRESSED, RISTRETTO_BASEPOINT_POINT},
+    traits::MultiscalarMul,
+};
+use mc_crypto_hashes::{Blake2b512, Digest};
+use mc_crypto_keys::RistrettoPublic;
 
 /// The base point for blinding factors used with all amount commitments
 pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;

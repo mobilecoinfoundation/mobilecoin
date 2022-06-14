@@ -63,7 +63,7 @@ mod tests {
     use mc_util_test_helper::run_with_several_seeds;
 
     mod compat_20210122 {
-        use crate::*;
+        use super::*;
         use core::convert::TryFrom;
 
         // These example files were created by hacking the unit tests in
