@@ -7,6 +7,7 @@ license = "GPL-3.0"
 
 [dependencies]
 # mobilecoin
+mc-attest-ake = { path = "../../../../attest/ake", default-features = false }
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
 mc-common = { path = "../../../../common", default-features = false }
@@ -27,6 +28,9 @@ mc-oblivious-traits = "2.2"
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
 mc-fog-types = { path = "../../../types" }
 mc-fog-view-enclave-api = { path = "../api" }
+
+# third-party
+aes-gcm = "0.9.4"
 
 [dev-dependencies]
 mc-common = { path = "../../../../common", features = ["loggers"] }

@@ -4,7 +4,7 @@ use mc_util_uri::{Uri, UriScheme};
 
 pub use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
 
-/// Fog View Shard Scheme
+/// Fog View Router Scheme
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FogViewRouterScheme {}
 
