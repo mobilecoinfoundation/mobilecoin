@@ -37,7 +37,7 @@ pub trait AttestationError: Debug + Display + Send + Sync {
     /// Some errors like, failing to verify IAS report, are not retriable, since
     /// report verification is deterministic and the report will probably not be
     /// different the next time.
-    fn should_retry(self) -> bool;
+    fn should_retry(&self) -> bool;
 }
 
 pub trait AttestedConnection: Connection {
