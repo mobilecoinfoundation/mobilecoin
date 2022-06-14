@@ -40,7 +40,11 @@ pub enum Error {
 impl Error {
     /// Policy decision, whether the call should be retried.
     pub fn should_retry(&self) -> bool {
-        matches!(self, Error::Grpc(_) | Error::Attestation(_))
+        match self {
+            Error::Grpc(_) => true,
+            Error::Attestation(err) => err.should_retry(),
+            _ => false,
+        }
     }
 }
 
