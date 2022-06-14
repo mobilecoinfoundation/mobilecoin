@@ -19,7 +19,7 @@ mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 hex = "0.4"
 rand = "0.8"
 rand_hc = "0.3"

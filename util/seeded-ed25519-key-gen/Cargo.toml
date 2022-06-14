@@ -8,7 +8,7 @@ edition = "2021"
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../from-random" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 hex = "0.4"
 pem = "1.0"
 rand = "0.8"
