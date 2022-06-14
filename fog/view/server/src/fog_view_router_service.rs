@@ -2,6 +2,7 @@
 
 use futures::{future::try_join_all, FutureExt, SinkExt, TryFutureExt, TryStreamExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, WriteFlags};
+use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
@@ -95,7 +96,12 @@ async fn handle_request<E: ViewEnclaveProxy>(
                 }
             }
         } else if request.has_query() {
-            log::info!(logger, "Request has query");
+            let query: attest::Message = request.take_query();
+            // TODO: In the next PR, use this _shard_query_data to construct a
+            //  MultiViewStoreQuery and send it off to the Fog View Load
+            //  Balancers.
+            let _multi_view_store_query_data =
+                enclave.create_multi_view_store_query_data(query.into());
             let _result = route_query(shards.clone(), logger.clone()).await;
 
             let response = FogViewRouterResponse::new();
