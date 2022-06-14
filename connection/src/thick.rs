@@ -125,7 +125,7 @@ impl AttestationError for ThickClientAttestationError {
             Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
             Self::Ake(AkeError::ReportVerification(_)) => false,
             Self::Ake(_) => true,
-            _ => false,
+            Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
         }
     }
 }
