@@ -4,6 +4,8 @@
 # wrapper-ledger-distribution.sh - Wrapper script around ledger-distribution to
 # solve last/next and missing state logic.
 
+set -e
+
 # is_set <variable name>
 # check to see if required variable has a value
 is_set()
@@ -31,10 +33,23 @@ export MC_LEDGER_PATH=${MC_LEDGER_PATH:-"/ledger"}
 export MC_STATE_FILE=${MC_STATE_FILE:-"/ledger/.distribution-state"}
 export MC_SENTRY_DSN=${LEDGER_DISTRIBUTION_SENTRY_DSN}
 
-if [[ -f "/ledger/.distribution-state" ]]
+
+if [[ -f "${MC_STATE_FILE}" ]]
 then
+    # Check for valid state file
+    echo "mc.app:wrapper-ledger-distribution - State file found MC_START_FROM=last"
+    echo "mc.app:wrapper-ledger-distribution - Check for valid next_block"
+
+    next_block=$(jq -r .next_block "${MC_STATE_FILE}")
+    if [[ "${next_block}" -le 0 ]]
+    then
+        echo "mc.app:wrapper-ledger-distribution - Invalid next_block <= 0"
+        exit 1
+    fi
+
     export MC_START_FROM=last
 else
+    echo "mc.app:wrapper-ledger-distribution - no state file found MC_START_FROM=next"
     export MC_START_FROM=next
 fi
 

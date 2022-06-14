@@ -51,7 +51,7 @@ aesm_socket=/var/run/aesmd/aesm.socket
 aesm=0
 ledger=0
 echo "mc.app:wrapper-consensus-service Wait for ledger-distribution and aesm service to become ready"
-while [[ "${aesm}" -le 1 ]] && [[ "${ledger}" -le 1 ]]
+while [[ ${aesm} -le 1 ]] || [[ ${ledger} -le 1 ]]
 do
     sleep 10
 
@@ -75,6 +75,7 @@ do
         ((ledger++))
     else
         echo "mc.app:wrapper-consensus-service ledger-distribution is not RUNNING - reset counter"
+        ledger=0
     fi
 done
 

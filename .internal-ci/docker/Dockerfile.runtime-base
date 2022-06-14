@@ -15,7 +15,8 @@ RUN  apt-get update \
       curl \
       gnupg \
       supervisor \
-      libpq5
+      libpq5 \
+      jq
 
 # Install Filebeat repo
 RUN  curl --retry 5 -fL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - \
