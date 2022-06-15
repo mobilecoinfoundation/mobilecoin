@@ -4772,7 +4772,6 @@ dependencies = [
  "mc-util-keyfile",
  "mc-util-serial",
  "mc-util-uri",
- "protobuf",
  "rand 0.8.5",
  "rocket",
  "serde",

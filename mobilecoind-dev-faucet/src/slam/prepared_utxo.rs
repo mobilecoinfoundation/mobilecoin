@@ -14,7 +14,6 @@ use mc_transaction_core::{
     Amount, BlockVersion, TokenId,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
-use protobuf::RepeatedField;
 use rand::thread_rng;
 
 /// A UTXO that has been prepared for transaction building, by collecting
@@ -112,7 +111,8 @@ impl PreparedUtxo {
     > {
         // Get a membership proof for this utxo
         let mut req = mc_mobilecoind_api::GetMembershipProofsRequest::new();
-        req.mut_outputs().push(utxo_record.utxo.get_tx_out().clone());
+        req.mut_outputs()
+            .push(utxo_record.utxo.get_tx_out().clone());
 
         let proofs_resp = mobilecoind_api_client
             .get_membership_proofs_async(&req)
@@ -123,7 +123,8 @@ impl PreparedUtxo {
         // Get mixins for this utxo
         let mut req = mc_mobilecoind_api::GetMixinsRequest::new();
         req.set_num_mixins(RING_SIZE as u64 - 1);
-        req.mut_excluded().push(utxo_record.utxo.get_tx_out().clone());
+        req.mut_excluded()
+            .push(utxo_record.utxo.get_tx_out().clone());
 
         let mixins_resp = mobilecoind_api_client
             .get_mixins_async(&req)
@@ -145,8 +146,12 @@ impl PreparedUtxo {
         let mut rng = thread_rng();
         // Get block version to target
         let block_version = network_state.get_last_block_info().network_block_version;
-        let block_version = BlockVersion::try_from(block_version)
-            .map_err(|err| format!("Got invalid block version {} from network ({})", block_version, err))?;
+        let block_version = BlockVersion::try_from(block_version).map_err(|err| {
+            format!(
+                "Got invalid block version {} from network ({})",
+                block_version, err
+            )
+        })?;
 
         // Get minimum fee for this token id
         let value = self.utxo_record.utxo.value;

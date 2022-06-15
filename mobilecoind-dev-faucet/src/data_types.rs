@@ -81,7 +81,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
                     .collect(),
                 balances: balances.into_iter().map(convert_balance_pair).collect(),
                 queue_depths: queue_depths.into_iter().map(convert_balance_pair).collect(),
-                slam_status: slam_status.map(|x| x.to_string()),
+                slam_status: slam_status.map(|x| x.to_string()).unwrap_or_default(),
             },
             Err(err_str) => JsonFaucetStatus {
                 success: false,
