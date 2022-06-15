@@ -92,7 +92,7 @@ impl MintAuditorDb {
         block: &Block,
         block_contents: &BlockContents,
         ledger_db: &LedgerDB,
-    ) -> Result<(crate::db::models::BlockAuditData, HashMap<TokenId, u64>), Error> {
+    ) -> Result<(BlockAuditData, HashMap<TokenId, u64>), Error> {
         transaction(conn, |conn| {
             let block_index = block.index;
             log::info!(self.logger, "Syncing block {}", block_index);
