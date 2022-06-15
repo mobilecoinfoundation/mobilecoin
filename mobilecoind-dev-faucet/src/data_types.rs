@@ -8,7 +8,7 @@ use mc_mobilecoind_api as api;
 use mc_transaction_core::TokenId;
 use mc_util_serial::JsonU64;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 /// A request to the faucet to fund an address
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -212,6 +212,35 @@ pub struct JsonSlamRequest {
     pub consensus_uris: Option<Vec<String>>,
 }
 
+// Construct SlamParams from JsonSlamRequest, using defaults to fill in any
+// omitted values.
+impl TryFrom<&JsonSlamRequest> for SlamParams {
+    type Error = String;
+    fn try_from(req: &JsonSlamRequest) -> Result<SlamParams, String> {
+        let mut result = SlamParams::default();
+        if let Some(val) = req.target_num_tx.as_ref() {
+            result.target_num_tx = *val;
+        }
+        if let Some(val) = req.num_threads.as_ref() {
+            result.num_threads = *val;
+        }
+        if let Some(val) = req.retries.as_ref() {
+            result.retries = *val;
+        }
+        if let Some(val) = req.tombstone_offset.as_ref() {
+            result.tombstone_offset = *val;
+        }
+        if let Some(uris) = req.consensus_uris.as_ref() {
+            result.consensus_client_uris = uris
+                .iter()
+                .map(|uri| FromStr::from_str(uri.as_str()))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| format!("Invalid uri: {}", err))?;
+        }
+        Ok(result)
+    }
+}
+
 /// A slam resposne includes the parameters used to start the slam, and the
 /// report at the end
 #[derive(Debug, Default)]
@@ -226,15 +255,15 @@ pub struct SlamResponse {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonSlamParams {
     /// The target number of txs to submit
-    pub target_num_tx: JsonU64,
+    pub target_num_tx: u32,
     /// The number of threads to use to submit txs in parallel
-    pub num_threads: JsonU64,
+    pub num_threads: u32,
     /// The number of retries when submitting a transaction
-    pub retries: JsonU64,
+    pub retries: u32,
     /// How long to wait before retrying (seconds)
     pub retry_period: f32,
     /// How many blocks before the tombstone
-    pub tombstone_offset: JsonU64,
+    pub tombstone_offset: u32,
     /// Consensus URIs
     pub consensus_client_uris: Vec<String>,
 }
@@ -242,11 +271,11 @@ pub struct JsonSlamParams {
 impl From<SlamParams> for JsonSlamParams {
     fn from(src: SlamParams) -> JsonSlamParams {
         Self {
-            target_num_tx: JsonU64(src.target_num_tx as u64),
-            num_threads: JsonU64(src.num_threads as u64),
-            retries: JsonU64(src.retries as u64),
+            target_num_tx: src.target_num_tx,
+            num_threads: src.num_threads,
+            retries: src.retries,
             retry_period: src.retry_period.as_secs_f32(),
-            tombstone_offset: JsonU64(src.tombstone_offset as u64),
+            tombstone_offset: src.tombstone_offset,
             consensus_client_uris: src
                 .consensus_client_uris
                 .into_iter()
@@ -260,9 +289,9 @@ impl From<SlamParams> for JsonSlamParams {
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonSlamReport {
     /// Num utxos prepared
-    pub num_prepared_utxos: JsonU64,
+    pub num_prepared_utxos: u32,
     /// Num txs submitted
-    pub num_submitted_txs: JsonU64,
+    pub num_submitted_txs: u32,
     /// Prepare duration in seconds
     pub prepare_time: f32,
     /// Submit duration in seconds
@@ -272,8 +301,8 @@ pub struct JsonSlamReport {
 impl From<SlamReport> for JsonSlamReport {
     fn from(src: SlamReport) -> JsonSlamReport {
         Self {
-            num_prepared_utxos: JsonU64(src.num_prepared_utxos as u64),
-            num_submitted_txs: JsonU64(src.num_submitted_txs as u64),
+            num_prepared_utxos: src.num_prepared_utxos,
+            num_submitted_txs: src.num_submitted_txs,
             prepare_time: src.prepare_time.as_secs_f32(),
             submit_time: src.submit_time.as_secs_f32(),
         }

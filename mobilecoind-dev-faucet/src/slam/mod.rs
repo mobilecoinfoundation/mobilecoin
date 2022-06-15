@@ -8,7 +8,7 @@ use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use mc_util_uri::ConsensusClientUri;
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -24,15 +24,15 @@ use tx_submitter::{SubmitTxError, TxSubmitter};
 #[derive(Clone, Debug)]
 pub struct SlamParams {
     /// The total number of tx to try to submit
-    pub target_num_tx: usize,
+    pub target_num_tx: u32,
     /// The number of threads to use when submitting to consensus
-    pub num_threads: usize,
+    pub num_threads: u32,
     /// The number of retries to allow when submitting to consensus
-    pub retries: usize,
+    pub retries: u32,
     /// The period to wait between retries when submitting to consensus
     pub retry_period: Duration,
     /// How far forward to set the tombstone block
-    pub tombstone_offset: u64,
+    pub tombstone_offset: u32,
     /// The consensus uris to submit to
     pub consensus_client_uris: Vec<ConsensusClientUri>,
 }
@@ -54,9 +54,9 @@ impl Default for SlamParams {
 #[derive(Clone, Debug, Default)]
 pub struct SlamReport {
     /// The number of utxos successfully prepared
-    pub num_prepared_utxos: usize,
+    pub num_prepared_utxos: u32,
     /// The number of txs successfully submitted to the network
-    pub num_submitted_txs: usize,
+    pub num_submitted_txs: u32,
     /// The total time spent preparing Txs
     pub prepare_time: Duration,
     /// The total time spent submitting Txs
@@ -72,13 +72,13 @@ pub struct SlamState {
     // 1: Connecting
     // 2: Preparing utxos: Obtaining proofs of membership
     // 3: Submitting transactions
-    phase: AtomicUsize,
+    phase: AtomicU32,
     // The number of tx's we want to send in total in the slam
-    target_num_tx: AtomicUsize,
+    target_num_tx: AtomicU32,
     // The number of utxo's we have prepared so far in this slam
-    num_prepared_utxos: AtomicUsize,
+    num_prepared_utxos: AtomicU32,
     // The number of tx's we have successfully submitted so far in this slam
-    num_submitted_txs: AtomicUsize,
+    num_submitted_txs: AtomicU32,
     // The estimated block height of the network, updated during slam as we submit to consensus
     block_height: AtomicU64,
     // Whether it has been requested to stop the slam
@@ -144,7 +144,7 @@ impl SlamState {
 
         // A queue for the prepared utxos
         let (prepared_utxos_sender, prepared_utxos_receiver) =
-            async_channel::bounded::<PreparedUtxo>(params.target_num_tx);
+            async_channel::bounded::<PreparedUtxo>(params.target_num_tx as usize);
 
         while self.num_prepared_utxos.load(Ordering::SeqCst) < params.target_num_tx {
             if self.stop_requested.load(Ordering::SeqCst) {
@@ -271,7 +271,7 @@ impl SlamState {
 
     fn slam_worker_entry_point(
         self: Arc<Self>,
-        worker_num: usize,
+        worker_num: u32,
         params: SlamParams,
         prepared_utxos_receiver: async_channel::Receiver<PreparedUtxo>,
         recipient: PublicAddress,
@@ -325,14 +325,14 @@ impl SlamState {
         recipient: &PublicAddress,
         account_key: &AccountKey,
         network_state: &mc_mobilecoind_api::GetNetworkStatusResponse,
-        node_index_offset: usize,
+        node_index_offset: u32,
         tx_submitter: &TxSubmitter,
         logger: &Logger,
     ) {
         for _build_tries in 0..params.retries {
             let tx = prepared_utxo
                 .build_tx(
-                    self.block_height.load(Ordering::SeqCst) + params.tombstone_offset,
+                    self.block_height.load(Ordering::SeqCst) + params.tombstone_offset as u64,
                     recipient,
                     account_key,
                     network_state,
@@ -345,7 +345,7 @@ impl SlamState {
                 match tx_submitter.submit_tx(
                     prepared_utxo.index,
                     &tx,
-                    prepared_utxo.index + node_index_offset + tries,
+                    (prepared_utxo.index + node_index_offset + tries) as usize,
                     logger,
                 ) {
                     Ok(block_height) => {
@@ -452,9 +452,9 @@ pub enum SlamStatus {
     /// Step 1: Connecting to consensus
     Connecting,
     /// Step 2: Preparing UTXOs: {0}/{1}
-    PreparingUtxos(usize, usize),
+    PreparingUtxos(u32, u32),
     /// Step 3: Submitting Txs: {0}/{1}
-    SubmittingTxs(usize, usize),
+    SubmittingTxs(u32, u32),
 }
 
 /// This guard object is used in the start slam function to:

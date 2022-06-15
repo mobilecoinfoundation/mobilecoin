@@ -20,7 +20,7 @@ use rand::thread_rng;
 /// membership proofs and ring members.
 pub struct PreparedUtxo {
     /// The number associated to this utxo for logging
-    pub index: usize,
+    pub index: u32,
     /// A Utxo record from the faucet worker
     pub utxo_record: UtxoRecord,
     /// Ring of outputs
@@ -36,7 +36,7 @@ impl PreparedUtxo {
     ///
     /// Start with a UtxoRecord, and get proofs and mixins from mobilecoind
     pub async fn new(
-        index: usize,
+        index: u32,
         utxo_record: UtxoRecord,
         params: &SlamParams,
         mobilecoind_api_client: &MobilecoindApiClient,

@@ -43,7 +43,7 @@ impl TxSubmitter {
     /// Returns: Current block height on success, error if submission failed
     pub fn submit_tx(
         &self,
-        counter: usize,
+        counter: u32,
         tx: &Tx,
         node_index: usize,
         logger: &Logger,

@@ -25,9 +25,7 @@ use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
 use mc_util_uri::ConsensusClientUri;
-use std::{
-    collections::HashMap, future::Future, path::PathBuf, str::FromStr, sync::Arc, time::Duration,
-};
+use std::{collections::HashMap, future::Future, path::PathBuf, sync::Arc, time::Duration};
 use tokio::select;
 
 /// Command line config, set with defaults that will work with
@@ -367,38 +365,37 @@ impl State {
         req: &JsonSlamRequest,
         stop_requested: impl Future<Output = ()>,
     ) -> Result<SlamResponse, String> {
-        let mut params = SlamParams::default();
-        if let Some(val) = req.target_num_tx.as_ref() {
-            params.target_num_tx = *val as usize
-        }
-        if let Some(val) = req.num_threads.as_ref() {
-            params.num_threads = *val as usize
-        }
-        if let Some(val) = req.retries.as_ref() {
-            params.retries = *val as usize
-        }
-        if let Some(val) = req.tombstone_offset.as_ref() {
-            params.tombstone_offset = *val as u64
-        }
-        // Take consensus uris from the request if provided, or, use self.consensus_uris
-        // from config
-        if let Some(uris) = req.consensus_uris.as_ref() {
-            params.consensus_client_uris = uris
-                .iter()
-                .map(|uri| FromStr::from_str(uri.as_str()))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| format!("Invalid uri: {}", err))?;
-        } else if let Some(uris) = self.consensus_uris.as_ref() {
-            params.consensus_client_uris = uris.clone();
-        } else {
-            return Err("No consensus uris specified".to_owned());
+        let mut params = SlamParams::try_from(req)?;
+        if params.consensus_client_uris.is_empty() {
+            if let Some(uris) = self.consensus_uris.as_ref() {
+                params.consensus_client_uris = uris.clone();
+            } else {
+                return Err("No consensus uris specified".to_owned());
+            }
         }
 
         let logger = self.logger.new(o! {"task" => "slam"});
 
-        // Call start_slam, but wrap this in a task so that it will drive to completion
-        // even if rocket decides to drop this future. This ensures that the slam state
-        // is reset properly at the end.
+        // Question: When we call start_slam, should we wrap this in a task?
+        // I think it's possible that rocket may decide to drop this future?
+        // (For instance, if the person gets tired of waiting and does ctrl-c
+        // from their curl terminal.)
+        // If it does, does the SlamStateGuard destructor still fire?
+        //
+        // If that destructor does not fire then the slam state will not be reset
+        // at the end and all future slams will be unable to start.
+        //
+        // If we wrap this call in a task then even if rocket drops the future,
+        // the slam job will still continue, and then the destructor should fire.
+        //
+        // I think that dropping a future implies calling destructors of all
+        // objects on the stack in the async call, to avoid memory leaks,
+        // So I think we don't need to wrap this in a task and the slam state
+        // guard dtor will still be called no matter what.
+        //
+        // One issue also is, if the future is dropped before the threads are joined,
+        // then they will be detached. However, I think they always finish eventually
+        // anyways, so we will not be leaking threads, at least not permanently.
         let slam_state = self.slam_state.clone();
         let mut slam_fut = Box::pin(slam_state.start_slam(
             params.clone(),
