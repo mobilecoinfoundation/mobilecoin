@@ -105,7 +105,7 @@ $ ./tools/local_network/local_network.py --network-type dense5 --skip-build &
 
 Then, start a faucet and set it to also work in the background:
 ```
-$ ./target/docker/release/mobilecoind-dev-faucet --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" &
+$ ./target/release/mobilecoind-dev-faucet --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" &
 ```
 
 You should expect to see traffic on the network as soon as you launch this. This is the worker thread
