@@ -112,10 +112,7 @@ impl PreparedUtxo {
     > {
         // Get a membership proof for this utxo
         let mut req = mc_mobilecoind_api::GetMembershipProofsRequest::new();
-        req.set_outputs(RepeatedField::from(vec![utxo_record
-            .utxo
-            .get_tx_out()
-            .clone()]));
+        req.mut_outputs().push(utxo_record.utxo.get_tx_out().clone());
 
         let proofs_resp = mobilecoind_api_client
             .get_membership_proofs_async(&req)
