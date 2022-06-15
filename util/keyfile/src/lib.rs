@@ -154,7 +154,7 @@ mod testing {
     use bip39::{Language, MnemonicType};
     use mc_account_keys::AccountKey;
     use mc_account_keys_slip10::{Slip10Key, Slip10KeyGenerator};
-    use mc_util_test_utils::tempdir;
+    use mc_util_test_helper::tempdir;
 
     /// Test that round-tripping through a keyfile without fog gets the same
     /// result as creating the key directly.

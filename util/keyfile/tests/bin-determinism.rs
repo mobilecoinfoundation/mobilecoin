@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_util_test_utils::tempdir;
+use mc_util_test_helper::tempdir;
 use std::{env, io::Write, process::Command};
 use tempfile::NamedTempFile;
 

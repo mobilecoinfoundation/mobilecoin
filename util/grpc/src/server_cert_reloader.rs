@@ -146,7 +146,7 @@ mod tests {
     use grpcio::{ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder};
     use mc_common::logger::test_with_logger;
     use mc_crypto_x509_test_vectors::{ok_self_signed_1, ok_self_signed_2};
-    use mc_util_test_utils::tempdir;
+    use mc_util_test_helper::tempdir;
     use mc_util_uri::ConsensusClientUri;
     use std::{str::FromStr, thread, time::Duration};
 

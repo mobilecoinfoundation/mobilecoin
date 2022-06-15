@@ -165,7 +165,7 @@ fn compare_keyfile_names(a: &Path, b: &Path) -> Ordering {
 mod test {
     use super::*;
     use crate::mnemonic_acct::UncheckedMnemonicAccount;
-    use mc_util_test_utils::tempdir;
+    use mc_util_test_helper::tempdir;
     use std::convert::TryFrom;
 
     /// A default seed for [write_default_keyfiles()] calls.
