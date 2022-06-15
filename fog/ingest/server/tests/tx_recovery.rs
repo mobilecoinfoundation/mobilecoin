@@ -55,15 +55,8 @@ fn test_ingest_polling_integration(base_port: u16, mut rng: RngType, logger: Log
         {
             log::info!(logger, "Phase {}/{}", phase + 1, NUM_PHASES);
 
-            // In each phase we tear down Ingest and WatcherDB
-            let phase_helper = IngestServerTestHelper::from_existing(
-                base_port,
-                helper.ledger_db_path.clone(),
-                None,
-                helper.db_test_context.clone(),
-                logger.clone(),
-            );
-            let node = phase_helper.make_node(phase, phase..=phase);
+            // In each phase we tear down Ingest
+            let node = helper.make_node(phase, phase..=phase);
 
             node.activate().expect("Could not activate ingest");
 
@@ -86,8 +79,6 @@ fn test_ingest_polling_integration(base_port: u16, mut rng: RngType, logger: Log
                     &mut users,
                     &ingest_client,
                     &mut view_client,
-                    // add each test_block to the watcher for timestamp.
-                    phase_helper.watcher.clone(),
                     &mut helper.ledger,
                     &mut rng,
                     num_tx,

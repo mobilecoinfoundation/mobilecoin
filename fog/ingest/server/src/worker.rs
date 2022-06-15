@@ -8,9 +8,8 @@ use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_util_telemetry::{
-    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key,
 };
-use mc_watcher::watcher_db::WatcherDB;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -50,15 +49,12 @@ impl IngestWorker {
     /// Arguments:
     /// * Controller for this ingest server
     /// * LedgerDB to read blocks from
-    /// * WatcherDB to read block timestamps from
     /// * Logger to send log messages to
     ///
     /// Returns a freshly started IngestWorker thread handle
     pub fn new<R, DB>(
         controller: Arc<IngestController<R, DB>>,
         db: LedgerDB,
-        watcher: WatcherDB,
-        watcher_timeout: Duration,
         logger: Logger,
     ) -> Self
     where
@@ -69,14 +65,7 @@ impl IngestWorker {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
         let thread = Some(std::thread::spawn(move || {
-            Self::run(
-                thread_stop_requested,
-                controller,
-                db,
-                watcher,
-                watcher_timeout,
-                logger,
-            )
+            Self::run(thread_stop_requested, controller, db, logger)
         }));
         Self {
             stop_requested,
@@ -88,8 +77,6 @@ impl IngestWorker {
         stop_requested: Arc<AtomicBool>,
         controller: Arc<IngestController<R, DB>>,
         db: LedgerDB,
-        watcher: WatcherDB,
-        watcher_timeout: Duration,
         logger: Logger,
     ) where
         R: RaClient + Send + Sync + 'static,
@@ -157,27 +144,15 @@ impl IngestWorker {
 
                     // Tracing
                     let tracer = tracer!();
-
-                    let mut span = block_span_builder(&tracer, "poll_block", next_block_index)
+                    let span = block_span_builder(&tracer, "process_next_block", next_block_index)
                         .with_start_time(start_time)
+                        .with_attributes(vec![
+                            TELEMETRY_BLOCK_INDEX_KEY.i64(next_block_index as i64)
+                        ])
                         .start(&tracer);
-
-                    span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(next_block_index as i64));
-
                     let _active = mark_span_as_active(span);
 
-                    // Get the timestamp for the block.
-                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                        watcher.poll_block_timestamp(next_block_index, watcher_timeout)
-                    });
-
-                    tracer.in_span("process_next_block", |_cx| {
-                        controller.process_next_block(
-                            block_data.block(),
-                            block_data.contents(),
-                            timestamp,
-                        );
-                    });
+                    controller.process_next_block(&block_data);
                 }
             }
         }

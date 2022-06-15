@@ -16,8 +16,6 @@ use mc_fog_view_protocol::FogViewConnection;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_from_random::FromRandom;
-use mc_watcher::watcher_db::WatcherDB;
-use mc_watcher_api::TimestampResultCode;
 use mock_users::UserPool;
 use rand_core::{CryptoRng, RngCore};
 use std::{convert::TryFrom, env, path::PathBuf};
@@ -70,7 +68,6 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
     users: &mut UserPool,
     ingest: &FogIngestGrpcClient,
     view: &mut C,
-    watcher: WatcherDB,
     ledger_db: &mut LedgerDB,
     rng: &mut T,
     num_tx: usize,
@@ -88,11 +85,12 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
     // Make a random collection of transactions
     let test_block = users.random_test_block(num_tx, &acct_pubkey, rng);
     // Get a random timestamp
-    let (timestamp, timestamp_result_code) = if block_index > 0 {
-        (rng.next_u64(), TimestampResultCode::TimestampFound)
+    let timestamp = if block_index > 0 {
+        rng.next_u64()
     } else {
-        (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
+        u64::MAX
     };
+
     // Get the corresponding inputs to ingest and expected outputs from view
     let (txos, expected_result) = mock_users::test_block_to_inputs_and_expected_outputs(
         block_index,
@@ -101,43 +99,6 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
         timestamp,
     );
     let num_new_txos = txos.len();
-
-    // Add the timestamp information to watcher for this block index - note watcher
-    // does not allow signatures for block 0.
-    if block_index > 0 {
-        for src_url in watcher.get_config_urls().unwrap().iter() {
-            let block = Block {
-                // Dummy block - we don't work with blocks in this test framework
-                index: block_index,
-                ..Default::default()
-            };
-            let mut block_signature =
-                BlockSignature::from_block_and_keypair(&block, &Ed25519Pair::from_random(rng))
-                    .expect("Could not create block signature from keypair");
-            block_signature.set_signed_at(timestamp);
-            watcher
-                .add_block_signature(
-                    src_url,
-                    block_index,
-                    block_signature,
-                    format!("00/{}", block_index),
-                )
-                .expect("Could not add block signature");
-        }
-    }
-    // Sanity check that watcher is behaving correctly
-    assert_eq!(
-        watcher
-            .highest_common_block()
-            .expect("Could not get highest common block"),
-        block_index,
-    );
-    assert_eq!(
-        watcher
-            .get_block_timestamp(block_index)
-            .expect("Could not get block timestamp"),
-        (timestamp, timestamp_result_code)
-    );
 
     // Make them into a block, and ingest it. This is done by appending a block to
     // the ledger and having it be polled by ingest.
@@ -165,8 +126,14 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
         );
         (block, block_contents)
     };
+
+    let mut block_signature =
+        BlockSignature::from_block_and_keypair(&block, &Ed25519Pair::from_random(rng))
+            .expect("Could not create block signature from keypair");
+    block_signature.set_signed_at(timestamp);
+
     ledger_db
-        .append_block(&block, &block_contents, None)
+        .append_block(&block, &block_contents, Some(block_signature))
         .unwrap_or_else(|err| panic!("failed appending block {:?}: {:?}", block, err));
 
     // Make the users poll for transactions, until their num blocks matches

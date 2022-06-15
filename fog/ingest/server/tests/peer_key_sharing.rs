@@ -33,11 +33,9 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
         {
             log::info!(logger, "Phase {}/{}", phase_count + 1, NUM_PHASES);
 
-            // Create an ingest server with new ledger and watcher DBs, while reusing
-            // db_test_context.
+            // Create an ingest server with new ledger, while reusing db_test_context.
             let primary_helper = IngestServerTestHelper::from_existing(
                 BASE_PORT,
-                None,
                 None,
                 db_test_context.clone(),
                 logger.clone(),
@@ -51,7 +49,6 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
 
             let backup_helper = IngestServerTestHelper::from_existing(
                 BASE_PORT,
-                None,
                 None,
                 db_test_context.clone(),
                 logger.clone(),

@@ -3351,7 +3351,6 @@ dependencies = [
  "mc-util-keyfile",
  "mc-util-parse",
  "mc-util-uri",
- "mc-watcher",
  "predicates",
  "protobuf",
  "rand 0.8.5",
@@ -3513,8 +3512,6 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-test-helper",
  "mc-util-uri",
- "mc-watcher",
- "mc-watcher-api",
  "protobuf",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -3522,7 +3519,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempdir",
- "url",
 ]
 
 [[package]]
@@ -3543,11 +3539,9 @@ dependencies = [
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-util-from-random",
- "mc-watcher",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "tempdir",
- "url",
 ]
 
 [[package]]

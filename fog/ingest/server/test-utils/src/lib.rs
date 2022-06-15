@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPublic};
 use mc_fog_ingest_server::{
@@ -21,7 +21,6 @@ use mc_transaction_core::{
     MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
-use mc_watcher::watcher_db::WatcherDB;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
@@ -35,7 +34,6 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 use tempdir::TempDir;
-use url::Url;
 
 const OMAP_CAPACITY: u64 = 4096;
 
@@ -106,8 +104,6 @@ pub struct IngestServerTestHelper {
     pub base_port: u16,
     pub ledger: LedgerDB,
     pub ledger_db_path: PathBuf,
-    pub watcher: WatcherDB,
-    pub watcher_db_path: PathBuf,
     pub db_test_context: Arc<SqlRecoveryDbTestContext>,
     pub recovery_db: SqlRecoveryDb,
     pub rng: Hc128Rng,
@@ -115,31 +111,22 @@ pub struct IngestServerTestHelper {
 }
 
 impl IngestServerTestHelper {
-    /// Set up a new [LedgerDB], [WatcherDB], and [SqlRecoveryDbTestContext].
+    /// Set up a new [LedgerDB] and [SqlRecoveryDbTestContext].
     pub fn new(base_port: u16, logger: Logger) -> Self {
-        Self::from_existing(base_port, None, None, None, logger)
+        Self::from_existing(base_port, None, None, logger)
     }
 
-    /// Set up with optional pre-existing  [LedgerDB], [WatcherDB], and
+    /// Set up with optional pre-existing [LedgerDB] and
     /// [SqlRecoveryDbTestContext]. Pass [None] to instantiate each of those.
     pub fn from_existing(
         base_port: u16,
         ledger_db_path: impl Into<Option<PathBuf>>,
-        watcher_db_path: impl Into<Option<PathBuf>>,
         db_test_context: impl Into<Option<Arc<SqlRecoveryDbTestContext>>>,
         logger: Logger,
     ) -> Self {
         let blockchain_path = TempDir::new("blockchain")
             .expect("Could not make tempdir for blockchain state")
             .into_path();
-
-        let watcher_db_path = watcher_db_path.into().unwrap_or_else(|| {
-            // Set up the Watcher db.
-            let watcher_db_path = blockchain_path.join("watcher");
-            std::fs::create_dir(&watcher_db_path).expect("failed to create watcher dir");
-            WatcherDB::create(&watcher_db_path).expect("failed to create WarcherDB");
-            watcher_db_path
-        });
 
         // Set up an empty ledger db.
         let ledger_db_path = ledger_db_path.into().unwrap_or_else(|| {
@@ -156,15 +143,11 @@ impl IngestServerTestHelper {
 
         let rng = Hc128Rng::from_seed([42u8; 32]);
         let ledger = LedgerDB::open(&ledger_db_path).unwrap();
-        let tx_source_url = Url::from_str("https://localhost").unwrap();
-        let watcher = WatcherDB::open_rw(&watcher_db_path, &[tx_source_url], logger.clone())
-            .expect("Could not create watcher_db");
+
         IngestServerTestHelper {
             base_port,
             ledger,
             ledger_db_path,
-            watcher,
-            watcher_db_path,
             db_test_context,
             recovery_db,
             rng,
@@ -230,7 +213,6 @@ impl IngestServerTestHelper {
             max_transactions: 10_000,
             pubkey_expiry_window: 10,
             peer_checkup_period: Some(Duration::from_secs(5)),
-            watcher_timeout: Duration::from_secs(5),
             state_file: Some(StateFile::new(state_file_path.clone())),
             enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
             omap_capacity: OMAP_CAPACITY,
@@ -242,7 +224,6 @@ impl IngestServerTestHelper {
             config,
             ra_client,
             self.recovery_db.clone(),
-            self.watcher.clone(),
             self.ledger.clone(),
             logger,
         );
@@ -267,7 +248,7 @@ impl IngestServerTestHelper {
 
     /// Add a randomly-generated block to our [LedgerDB].
     pub fn add_test_block(&mut self) {
-        add_test_block(&mut self.ledger, &self.watcher, &mut self.rng);
+        add_test_block(&mut self.ledger, &mut self.rng);
     }
 
     /// Add N randomly-generated blocks to our [LedgerDB].
@@ -350,15 +331,10 @@ pub fn get_ingress_keys(nodes: &[TestIngestNode]) -> Vec<CompressedRistrettoPubl
 }
 
 /// Add an arbitrary block to ledger and a timestamp for it
-pub fn add_test_block<T: RngCore + CryptoRng>(
-    ledger: &mut LedgerDB,
-    watcher: &WatcherDB,
-    rng: &mut T,
-) {
+pub fn add_test_block(ledger: &mut LedgerDB, rng: &mut (impl RngCore + CryptoRng)) {
     // Make the new block and append to database
     let num_blocks = ledger.num_blocks().expect("Could not compute num_blocks");
     assert_ne!(0, num_blocks);
-    let tx_source_url = Url::from_str("https://localhost").unwrap();
 
     let last_block = ledger
         .get_block(num_blocks - 1)
@@ -396,18 +372,8 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
     );
 
     ledger
-        .append_block(&block, &block_contents, None)
+        .append_block(&block, &block_contents, Some(block_sig))
         .expect("Could not append block");
-
-    let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
-
-    watcher
-        .add_block_data(&tx_source_url, &block_data)
-        .expect("Could not add block data to watcher");
-
-    watcher
-        .add_block_signature(&tx_source_url, num_blocks, block_sig, "archive".to_string())
-        .expect("Could not add block signature to watcher");
 }
 
 /// Make a random output for a block

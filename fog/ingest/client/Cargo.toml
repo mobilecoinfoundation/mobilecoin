@@ -23,7 +23,6 @@ mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-util-from-random = { path = "../../../util/from-random" }
-mc-watcher = { path = "../../../watcher" }
 
 # third party
 assert_cmd = "2.0.4"

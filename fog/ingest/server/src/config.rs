@@ -25,10 +25,6 @@ pub struct IngestConfig {
     #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
-    /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
-
     /// Local Ingest Node ID
     #[clap(long, env = "MC_LOCAL_NODE_ID")]
     pub local_node_id: ResponderId,
@@ -88,12 +84,6 @@ pub struct IngestConfig {
     #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_PEER_CHECKUP_PERIOD")]
     pub peer_checkup_period: Duration,
 
-    /// The amount of time we wait for the watcher db to catchup if it falls
-    /// behind If this timeout is exceeded then the ETxOut's will have no
-    /// timestamp
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_WATCHER_TIMEOUT")]
-    pub watcher_timeout: Duration,
-
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
@@ -115,7 +105,6 @@ mod tests {
         let config = IngestConfig::try_parse_from(
          &["/usr/bin/fog_ingest_server",
       "--ledger-db", "/fog-data/ledger",
-      "--watcher-db", "/fog-data/watcher",
      "--ias-spid", "00000000000000000000000000000000", "--ias-api-key", "00000000000000000000000000000000",
       "--client-listen-uri", "insecure-fog-ingest://0.0.0.0:3226/",
       "--peer-listen-uri", "insecure-igp://0.0.0.0:8090/",

@@ -20,7 +20,6 @@ fn test_sync_keys_from_remote(logger: Logger) {
     let backup_helper = IngestServerTestHelper::from_existing(
         BASE_PORT,
         None,
-        None,
         primary_helper.db_test_context.clone(),
         logger.clone(),
     );

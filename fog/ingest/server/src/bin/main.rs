@@ -15,7 +15,6 @@ use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
-use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
 
 fn main() {
@@ -67,9 +66,6 @@ fn main() {
 
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
 
-    let watcher =
-        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
-
     // Start ingest server.
     let server_config = IngestServerConfig {
         max_transactions: config.max_transactions,
@@ -81,7 +77,6 @@ fn main() {
         peers: config.peers.iter().cloned().collect(),
         pubkey_expiry_window: config.pubkey_expiry_window,
         peer_checkup_period: Some(config.peer_checkup_period),
-        watcher_timeout: config.watcher_timeout,
         fog_report_id: config.fog_report_id.clone(),
         state_file: Some(StateFile::new(state_file_path)),
         enclave_path,
@@ -91,7 +86,6 @@ fn main() {
         server_config,
         ias_client,
         recovery_db,
-        watcher,
         ledger_db,
         logger.clone(),
     );

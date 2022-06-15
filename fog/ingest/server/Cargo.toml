@@ -45,8 +45,6 @@ mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-telemetry = { path = "../../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../../util/uri" }
-mc-watcher = { path = "../../../watcher" }
-mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
@@ -70,4 +68,3 @@ maplit = "1"
 rand_core = "0.6"
 rand_hc = "0.3"
 tempdir = "0.3"
-url = "2.2"

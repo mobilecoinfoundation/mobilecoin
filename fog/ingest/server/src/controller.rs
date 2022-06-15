@@ -11,7 +11,7 @@ use crate::{
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_net::RaClient;
-use mc_blockchain_types::{Block, BlockContents, BlockIndex};
+use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -40,6 +40,8 @@ use std::{
     convert::TryFrom,
     io::ErrorKind,
     sync::{Arc, Mutex, MutexGuard},
+    thread::sleep,
+    time::Duration,
 };
 
 /// The ingest controller sits under the grpc / networking layer, and implements
@@ -224,7 +226,7 @@ where
                             "Retry to restore state on connection error: {}",
                             err
                         );
-                        std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                        sleep(Duration::from_secs(retry_seconds));
                         retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                     }
                     Err(err) => {
@@ -404,13 +406,16 @@ where
     ///   database, there will be gaps in the RNG sequences (some of the entries
     ///   won't make it to database), and the client's won't be able to perform
     ///   balance checks successfully then.
-    pub fn process_next_block(
-        &self,
-        block: &Block,
-        block_contents: &BlockContents,
-        timestamp: u64,
-    ) {
+    pub fn process_next_block(&self, block_data: &BlockData) {
         let _process_next_block_timer = counters::PROCESS_NEXT_BLOCK_TIME.start_timer();
+
+        let block = block_data.block();
+        let block_contents = block_data.contents();
+        let signature_timestamp = block_data
+            .signature()
+            .as_ref()
+            .map(|sig| sig.signed_at())
+            .unwrap_or(u64::MAX);
 
         let ingress_pubkey: CompressedRistrettoPublic = self
             .enclave
@@ -490,7 +495,7 @@ where
                         }
                     }
 
-                    std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                    sleep(Duration::from_secs(retry_seconds));
                     retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                 }
             }
@@ -542,7 +547,7 @@ where
                 block_index: block.index,
                 global_txo_index,
                 redacted_txs: chunk.to_vec(),
-                timestamp,
+                timestamp: signature_timestamp,
             };
 
             log::trace!(self.logger, "into enclave");
@@ -582,7 +587,7 @@ where
                         }
                         Err(err) => {
                             log::crit!(self.logger, "Could not rotate kex rng pubkey in recovery database! Retrying...: {}", err);
-                            std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                            sleep(Duration::from_secs(retry_seconds));
                             retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                         }
                     };
@@ -623,7 +628,7 @@ where
                 // ingest invocation id.
                 iid.as_ref().expect("no ingest invocation id"),
                 block,
-                timestamp,
+                signature_timestamp,
                 &tx_rows,
             ) {
                 Ok(add_blocks_result) => {
@@ -656,7 +661,7 @@ where
                 }
                 Err(err) => {
                     log::crit!(self.logger, "add_block_data failed while attempting to add {} rows for block #{}: {}. Retrying in {} seconds", tx_rows.len(), block.index, err, retry_seconds);
-                    std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                    sleep(Duration::from_secs(retry_seconds));
                     retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                     let _ = db_metrics_timer.stop_and_discard();
                 }

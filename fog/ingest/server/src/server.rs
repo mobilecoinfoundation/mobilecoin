@@ -29,7 +29,6 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
-use mc_watcher::watcher_db::WatcherDB;
 use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Duration};
 
 /// The configuration options accepted by the IngestServer
@@ -77,11 +76,6 @@ pub struct IngestServerConfig {
     /// reports
     pub pubkey_expiry_window: u64,
 
-    /// The amount of time we wait for the watcher db to catchup if it falls
-    /// behind If this timeout is exceeded then the ETxOut's will have no
-    /// timestamp
-    pub watcher_timeout: Duration,
-
     /// report_id associated the reports produced by this ingest service.
     /// This should match what appears in users' public addresses.
     /// Defaults to empty string.
@@ -107,7 +101,6 @@ pub struct IngestServer<
 {
     config: IngestServerConfig,
     ledger_db: LedgerDB,
-    watcher: WatcherDB,
     controller: Arc<IngestController<R, DB>>,
     server: Option<grpcio::Server>,
     peer_server: Option<grpcio::Server>,
@@ -130,7 +123,6 @@ where
         config: IngestServerConfig,
         ra_client: R,
         recovery_db: DB,
-        watcher: WatcherDB,
         ledger_db: LedgerDB,
         logger: Logger,
     ) -> Self {
@@ -163,7 +155,6 @@ where
         Self {
             config,
             ledger_db,
-            watcher,
             controller,
             server: None,
             peer_server: None,
@@ -297,8 +288,6 @@ where
         self.ingest_worker = Some(IngestWorker::new(
             self.controller.clone(),
             self.ledger_db.clone(),
-            self.watcher.clone(),
-            self.config.watcher_timeout,
             self.logger.clone(),
         ));
 

@@ -14,7 +14,6 @@ mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-ledger-db = { path = "../../../../ledger/db" }
 mc-transaction-core = { path = "../../../../transaction/core" }
 mc-util-from-random = { path = "../../../../util/from-random" }
-mc-watcher = { path = "../../../../watcher" }
 
 # fog
 mc-fog-ingest-enclave = { path = "../../enclave" }
@@ -29,4 +28,3 @@ mc-fog-uri = { path = "../../../uri" }
 rand_core = "0.6"
 rand_hc = "0.3"
 tempdir = "0.3"
-url = "2.2"
