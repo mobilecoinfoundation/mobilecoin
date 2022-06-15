@@ -123,10 +123,7 @@ impl PreparedUtxo {
         // Get mixins for this utxo
         let mut req = mc_mobilecoind_api::GetMixinsRequest::new();
         req.set_num_mixins(RING_SIZE as u64 - 1);
-        req.set_excluded(RepeatedField::from(vec![utxo_record
-            .utxo
-            .get_tx_out()
-            .clone()]));
+        req.mut_excluded().push(utxo_record.utxo.get_tx_out().clone());
 
         let mixins_resp = mobilecoind_api_client
             .get_mixins_async(&req)
