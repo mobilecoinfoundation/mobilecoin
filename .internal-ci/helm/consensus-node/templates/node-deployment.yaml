@@ -46,13 +46,14 @@ spec:
       {{- toYaml .Values.node.tolerations | nindent 6 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      {{- if .Values.node.initContainers }}
       initContainers:
       {{- tpl (toYaml .Values.node.initContainers) . | nindent 6 }}
+      {{- end }}
       containers:
       - name: node
         image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
         imagePullPolicy: Always
-        command: [ '/usr/bin/supervisord' ]
         ports:
         - name: cns-client
           containerPort: 3223
@@ -72,8 +73,16 @@ spec:
             command:
             - '/usr/local/bin/grpc_health_probe'
             - '-addr=:8443'
-          failureThreshold: 30
+          failureThreshold: 2
+          periodSeconds: 10
+        startupProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 120
           periodSeconds: 30
+          initialDelaySeconds: 30
         envFrom:
         - secretRef:
             name: {{ include "consensusNode.ledgerDistribution.secret.name" . }}
@@ -81,6 +90,8 @@ spec:
             name: {{ include "consensusNode.msgSignerKey.secret.name" . }}
         - secretRef:
             name: ias
+        - configMapRef:
+            name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
         env:
         - name: PATH
           value: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64'
@@ -88,19 +99,6 @@ spec:
           value: '1'
         - name: RUST_LOG
           value: 'info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn'
-        - name: LOCAL_NODE_ID
-          valueFrom:
-            configMapKeyRef:
-              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
-              key: peerHostname
-        # Responder ID will need to be made variable when we fix load balanced consensus nodes.
-        - name: CLIENT_RESPONDER_ID
-          valueFrom:
-            configMapKeyRef:
-              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
-              key: clientHostname
-        - name: MC_LOG_EXTRA_CONTEXT
-          value: 'mc.local_node_id=$(LOCAL_NODE_ID)'
         - name: CONSENSUS_SERVICE_SENTRY_DSN
           valueFrom:
             configMapKeyRef:
@@ -116,17 +114,9 @@ spec:
             configMapKeyRef:
               name: mobilecoin-network
               key: network
-        - name: MC_BLOCK_VERSION
-          valueFrom:
-            configMapKeyRef:
-              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
-              key: blockVersion
-        # This file is generated at consensus node startup and should be persistent as long as its on the same node.
-        - name: SEALED_BLOCK_SIGNING_KEY
-          value: /sealed-signing-key/block-signing-key
         volumeMounts:
         - name: sealed-signing-key
-          mountPath: /sealed-signing-key
+          mountPath: /sealed
         - name: aesm-socket-dir
           mountPath: /var/run/aesmd
         - name: config-dir
@@ -137,9 +127,6 @@ spec:
           mountPath: /keys
         - name: node-cert
           mountPath: /certs
-          readOnly: true
-        - name: supervisor-conf
-          mountPath: /etc/supervisor/conf.d
           readOnly: true
         resources:
           {{- toYaml .Values.node.resources | nindent 10}}
@@ -196,19 +183,6 @@ spec:
       - name: node-cert
         secret:
           secretName: {{ include "consensusNode.fullname" . }}-internal-tls
-      - name: supervisor-conf
-        projected:
-          sources:
-          - configMap:
-              name: {{ include "consensusNode.fullname" . }}-supervisor-daemon
-          - configMap:
-              name: {{ include "consensusNode.fullname" . }}-supervisor-sgx
-          - configMap:
-              name: {{ include "consensusNode.fullname" . }}-supervisor-consensus
-          - configMap:
-              name: {{ include "consensusNode.fullname" . }}-supervisor-ledger-distribution
-          - configMap:
-              name: {{ include "consensusNode.fullname" . }}-supervisor-admin-http-gw
       - name: ledger-db-dir
         {{- if eq .Values.node.persistence.enabled true }}
         persistentVolumeClaim:

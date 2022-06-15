@@ -39,6 +39,9 @@ consensusNodeConfig:
       hostname: ''
     peer:
       hostname: ''
+    txSourceUrl: ''
+    msgSignerKey:
+     privateKey: ''
 
 ### Enable to launch child chart to create core common configMaps and secrets.
 #   See helm/mc-core-common-config/values.yaml for config details.
@@ -85,58 +88,7 @@ node:
     value: 'true'
     effect: NoSchedule
 
-  initContainers:
-  - name: copy-ledger-from-container
-    image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
-    imagePullPolicy: Always
-    env:
-    - name: INITIAL_KEYS_SEED
-      valueFrom:
-        secretKeyRef:
-          name: sample-keys-seeds
-          key: INITIAL_KEYS_SEED
-          optional: true
-    command: [ '/bin/bash' ]
-    # CBB 1.2+ - convert to using MNEMONIC keys
-    args:
-    - -c
-    - |
-      set -e
-      if [ ! -f /ledger/data.mdb ]; then
-        if [[ -n "${INITIAL_KEYS_SEED}" ]]; then
-          echo "INITIAL_KEYS_SEED found - populating origin data"
-          export INITIALIZE_LEDGER="true"
-          /usr/local/bin/generate_origin_data.sh
-          cp /tmp/sample_data/ledger/data.mdb /ledger
-        elif [ -f /var/lib/mobilecoin/origin_data/data.mdb ]; then
-          echo "Copying ledger /var/lib/mobilecoin/origin_data/data.mdb to /ledger"
-          cp /var/lib/mobilecoin/origin_data/data.mdb /ledger
-        else
-          echo "INITIAL_KEYS_SEED not set and cannot find origin ledger file"
-          exit 1
-        fi
-      else
-        echo "Ledger /ledger/data.mdb already exists"
-      fi
-    volumeMounts:
-    - name: ledger-db-dir
-      mountPath: /ledger
-  - name: migrate-ledger
-    image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
-    imagePullPolicy: Always
-    command: [ '/bin/bash' ]
-    args:
-    - -c
-    - |
-      set -e
-      if [[ -f "/ledger/data.mdb" ]]
-      then
-        cp /ledger/data.mdb /ledger/data.mdb.bak
-        /usr/bin/mc-ledger-migration --ledger-db /ledger
-      fi
-    volumeMounts:
-    - name: ledger-db-dir
-      mountPath: /ledger
+  initContainers: []
 
   persistence:
     enabled: true
