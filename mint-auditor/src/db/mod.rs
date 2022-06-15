@@ -5,19 +5,14 @@
 #[cfg(test)]
 pub mod test_utils;
 
-mod block_audit_data;
-mod block_balance;
 mod conn;
-mod counters;
 mod models;
 mod schema;
 mod transaction;
 
 pub use self::{
-    block_audit_data::{BlockAuditData, BlockAuditDataModel},
-    block_balance::{BlockBalance, BlockBalanceModel},
     conn::{Conn, ConnectionOptions},
-    counters::{Counters, CountersModel},
+    models::{BlockAuditData, BlockBalance, Counters},
     transaction::{transaction, TransactionRetriableError},
 };
 
@@ -85,13 +80,7 @@ impl MintAuditorDb {
         block: &Block,
         block_contents: &BlockContents,
         ledger_db: &LedgerDB,
-    ) -> Result<
-        (
-            crate::db::block_audit_data::BlockAuditData,
-            HashMap<TokenId, u64>,
-        ),
-        Error,
-    > {
+    ) -> Result<(crate::db::models::BlockAuditData, HashMap<TokenId, u64>), Error> {
         let conn = self.get_conn()?;
         self.sync_block_with_conn(&conn, block, block_contents, ledger_db)
     }
@@ -103,13 +92,7 @@ impl MintAuditorDb {
         block: &Block,
         block_contents: &BlockContents,
         ledger_db: &LedgerDB,
-    ) -> Result<
-        (
-            crate::db::block_audit_data::BlockAuditData,
-            HashMap<TokenId, u64>,
-        ),
-        Error,
-    > {
+    ) -> Result<(crate::db::models::BlockAuditData, HashMap<TokenId, u64>), Error> {
         transaction(conn, |conn| {
             let block_index = block.index;
             log::info!(self.logger, "Syncing block {}", block_index);

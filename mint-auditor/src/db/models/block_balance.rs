@@ -1,42 +1,54 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-pub use super::models::BlockBalance;
-
-use super::{schema, transaction, Conn};
-use crate::Error;
+use crate::db::{schema::block_balance, transaction, Conn, Error};
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
 use mc_common::HashMap;
 use mc_transaction_core::TokenId;
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
-/// Trait for providing convenience functions for interacting with the
-/// [BlockBalance] model/table.
-pub trait BlockBalanceModel {
-    /// Get a map of TokenId -> balance for a given block id.
-    fn get_balances_for_block(
-        conn: &Conn,
-        block_index: BlockIndex,
-    ) -> Result<HashMap<TokenId, u64>, Error>;
+/// Diesel model for the `block_balance` table.
+/// This stores the balance of each token for a specific block index.
+#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[table_name = "block_balance"]
+pub struct BlockBalance {
+    /// Block index.
+    pub block_index: i64,
 
-    /// Store a map of TokenId -> balance for a given block id.
-    fn set_balances_for_block(
-        conn: &Conn,
-        block_index: BlockIndex,
-        balances: &HashMap<TokenId, u64>,
-    ) -> Result<(), Error>;
+    /// Token id.
+    pub token_id: i64,
+
+    /// Balanace.
+    pub balance: i64,
 }
 
-impl BlockBalanceModel for BlockBalance {
-    fn get_balances_for_block(
+impl BlockBalance {
+    /// Get block index.
+    pub fn block_index(&self) -> u64 {
+        self.block_index as u64
+    }
+
+    /// Get token id.
+    pub fn token_id(&self) -> TokenId {
+        TokenId::from(self.token_id as u64)
+    }
+
+    /// Get balance.
+    pub fn balance(&self) -> u64 {
+        self.balance as u64
+    }
+
+    /// Get a map of TokenId -> balance for a given block id.
+    pub fn get_balances_for_block(
         conn: &Conn,
         block_index: BlockIndex,
     ) -> Result<HashMap<TokenId, u64>, Error> {
-        let query = schema::block_balance::table
-            .filter(schema::block_balance::columns::block_index.eq(block_index as i64))
+        let query = block_balance::table
+            .filter(block_balance::columns::block_index.eq(block_index as i64))
             .select((
-                schema::block_balance::columns::token_id,
-                schema::block_balance::columns::balance,
+                block_balance::columns::token_id,
+                block_balance::columns::balance,
             ));
 
         let rows = query.load::<(i64, i64)>(conn)?;
@@ -47,18 +59,19 @@ impl BlockBalanceModel for BlockBalance {
             .collect())
     }
 
-    fn set_balances_for_block(
+    /// Store a map of TokenId -> balance for a given block id.
+    pub fn set_balances_for_block(
         conn: &Conn,
         block_index: BlockIndex,
         balances: &HashMap<TokenId, u64>,
     ) -> Result<(), Error> {
         transaction(conn, |conn| {
-            for block_balance in balances.iter().map(|(token_id, balance)| BlockBalance {
+            for block_balance in balances.iter().map(|(token_id, balance)| Self {
                 block_index: block_index as i64,
                 token_id: *token_id.deref() as i64,
                 balance: *balance as i64,
             }) {
-                diesel::insert_into(schema::block_balance::table)
+                diesel::insert_into(block_balance::table)
                     .values(&block_balance)
                     .execute(conn)?;
             }
@@ -70,10 +83,7 @@ impl BlockBalanceModel for BlockBalance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{
-        block_audit_data::{BlockAuditData, BlockAuditDataModel},
-        test_utils::TestDbContext,
-    };
+    use crate::db::{models::BlockAuditData, test_utils::TestDbContext};
     use mc_common::logger::{test_with_logger, Logger};
 
     #[test_with_logger]

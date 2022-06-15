@@ -8,10 +8,7 @@ use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
     counters,
-    db::{
-        transaction, BlockAuditData, BlockAuditDataModel, BlockBalance, BlockBalanceModel,
-        Counters, CountersModel, MintAuditorDb,
-    },
+    db::{transaction, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
     gnosis::GnosisSafeConfig,
     Error, MintAuditorService,
 };
