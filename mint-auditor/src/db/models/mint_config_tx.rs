@@ -127,11 +127,429 @@ impl MintConfigTx {
         // unsigned ints.
         // We default our id to 0 since SQLite auto-inc values start at 1.
         let mint_amounts: Vec<i64> = mint_txs::table
-            .inner_join(mint_configs::table)
-            .filter(mint_configs::mint_config_tx_id.eq(self.id.unwrap_or_default()))
+            .inner_join(mint_configs::table.inner_join(mint_config_txs::table))
+            .filter(mint_config_txs::block_index.lt(mint_txs::block_index))
+            .filter(mint_config_txs::id.eq(self.id.unwrap_or_default()))
             .filter(mint_txs::block_index.lt(block_index as i64))
             .select(mint_txs::amount)
             .load::<i64>(conn)?;
         Ok(mint_amounts.into_iter().map(|val| val as u64).sum())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{super::MintTx, *};
+    use crate::db::test_utils::TestDbContext;
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    fn assert_mint_config_tx_eq(
+        sql_mint_config_tx: &MintConfigTx,
+        orig_mint_config_tx: &mc_transaction_core::mint::MintConfigTx,
+    ) {
+        assert_eq!(
+            sql_mint_config_tx.token_id(),
+            TokenId::from(orig_mint_config_tx.prefix.token_id)
+        );
+        assert_eq!(
+            sql_mint_config_tx.nonce,
+            hex::encode(&orig_mint_config_tx.prefix.nonce)
+        );
+        assert_eq!(
+            sql_mint_config_tx.total_mint_limit(),
+            orig_mint_config_tx.prefix.total_mint_limit
+        );
+        assert_eq!(
+            sql_mint_config_tx.tombstone_block(),
+            orig_mint_config_tx.prefix.tombstone_block
+        );
+        assert_eq!(sql_mint_config_tx.decode().unwrap(), *orig_mint_config_tx);
+    }
+
+    #[test_with_logger]
+    fn most_recent_for_token_works(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        // Initially we dont have a MintConfigTx for either token.
+        assert_eq!(
+            MintConfigTx::most_recent_for_token(0, token_id1, &conn).unwrap(),
+            None
+        );
+
+        assert_eq!(
+            MintConfigTx::most_recent_for_token(1, token_id1, &conn).unwrap(),
+            None
+        );
+
+        // Store a mint config at block index 5.
+        let (mint_config_tx1, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
+
+        // tx should not show up on any prior blocks and show up for any blocks after 5.
+        for block_index in 0..=5 {
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn).unwrap(),
+                None
+            );
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        for block_index in 6..10 {
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 5);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx1);
+
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        // Store a mint tx for the 2nd token at block index 7 and verify queries work as
+        // expected.
+        let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        MintConfigTx::insert(7, &mint_config_tx2, &conn).unwrap();
+
+        // For block indexes 0-5 we don't expect anything to be returned.
+        for block_index in 0..=5 {
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn).unwrap(),
+                None
+            );
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        // For block indexes 6-7 we expect only token_id1 to have data.
+        for block_index in 6..=7 {
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 5);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx1);
+
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        // For block indexes 8-10 we expect both to have data.
+        for block_index in 8..=10 {
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 5);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx1);
+
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 7);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx2);
+        }
+
+        // Add another mint config tx for token id 1 at block index 7.
+        let (mint_config_tx3, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        MintConfigTx::insert(7, &mint_config_tx3, &conn).unwrap();
+
+        // For block indexes 0-5 we don't expect anything to be returned.
+        for block_index in 0..=5 {
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn).unwrap(),
+                None
+            );
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        // For block indexes 6-7 we expect only token_id1 to have data.
+        for block_index in 6..=7 {
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 5);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx1);
+
+            assert_eq!(
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn).unwrap(),
+                None
+            );
+        }
+
+        // For block indexes 8-10 we expect both to have data, and token id 1 should
+        // have the new mint config tx.
+        for block_index in 8..=10 {
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id1, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 7);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx3);
+
+            let sql_mint_config_tx =
+                MintConfigTx::most_recent_for_token(block_index, token_id2, &conn)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(sql_mint_config_tx.block_index, 7);
+            assert_mint_config_tx_eq(&sql_mint_config_tx, &mint_config_tx2);
+        }
+    }
+
+    #[test_with_logger]
+    fn insert_enforces_uniqueness(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = TokenId::from(1);
+
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let (mint_config_tx1, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        // Store a mint config at block index 5.
+        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
+
+        // Trying again for the same block will fail.
+        assert!(MintConfigTx::insert(5, &mint_config_tx1, &conn).is_err());
+        assert!(MintConfigTx::insert(5, &mint_config_tx2, &conn).is_err());
+
+        // Trying for a different block but with the same nonce will fail.
+        assert!(MintConfigTx::insert(6, &mint_config_tx1, &conn).is_err());
+
+        // Sanity, inserting a different mint config at block index 6 should succeed.
+        assert!(MintConfigTx::insert(6, &mint_config_tx2, &conn).is_ok());
+    }
+
+    #[test_with_logger]
+    fn get_total_minted_before_block_works(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        // Create a fewtest mint config txs and insert them.
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
+        MintConfigTx::insert(10, &mint_config_tx2, &conn).unwrap();
+        MintConfigTx::insert(7, &mint_config_tx3, &conn).unwrap();
+
+        // Get our mint config txs from the database (and quick sanity check we got what
+        // we expected).
+        let sql_mint_config_tx_1 = MintConfigTx::most_recent_for_token(6, token_id1, &conn)
+            .unwrap()
+            .unwrap();
+        assert_eq!(sql_mint_config_tx_1.decode().unwrap(), mint_config_tx1);
+        assert!(sql_mint_config_tx_1.id.is_some());
+
+        let sql_mint_config_tx_2 = MintConfigTx::most_recent_for_token(11, token_id1, &conn)
+            .unwrap()
+            .unwrap();
+        assert_eq!(sql_mint_config_tx_2.decode().unwrap(), mint_config_tx2);
+        assert!(sql_mint_config_tx_2.id.is_some());
+
+        let sql_mint_config_tx_3 = MintConfigTx::most_recent_for_token(11, token_id2, &conn)
+            .unwrap()
+            .unwrap();
+        assert_eq!(sql_mint_config_tx_3.decode().unwrap(), mint_config_tx3);
+        assert!(sql_mint_config_tx_3.id.is_some());
+
+        assert_ne!(sql_mint_config_tx_1.id, sql_mint_config_tx_2.id);
+        assert_ne!(sql_mint_config_tx_2.id, sql_mint_config_tx_3.id);
+
+        let sql_mint_configs = [
+            &sql_mint_config_tx_1,
+            &sql_mint_config_tx_2,
+            &sql_mint_config_tx_3,
+        ];
+
+        // Initially nothing has been mounted at any point.
+        for block_index in 0..20 {
+            for sql_mint_config in &sql_mint_configs {
+                assert_eq!(
+                    sql_mint_config
+                        .get_total_minted_before_block(block_index, &conn)
+                        .unwrap(),
+                    0
+                );
+            }
+        }
+
+        // Get a mint config id for each mint config tx.
+        let mint_config_id1 =
+            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_1.id.unwrap(), &conn).unwrap()
+                [0]
+            .id;
+        let mint_config_id2 =
+            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_2.id.unwrap(), &conn).unwrap()
+                [0]
+            .id;
+        let mint_config_id3 =
+            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_3.id.unwrap(), &conn).unwrap()
+                [0]
+            .id;
+
+        // Write some mint txs so we have what to test with.
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+        MintTx::insert(3, mint_config_id1, &mint_tx1, &conn).unwrap();
+
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 200, &mut rng);
+        MintTx::insert(6, mint_config_id1, &mint_tx2, &conn).unwrap();
+
+        let mint_tx3 = create_mint_tx(token_id1, &signers1, 300, &mut rng);
+        MintTx::insert(8, mint_config_id1, &mint_tx3, &conn).unwrap();
+
+        let mint_tx4 = create_mint_tx(token_id1, &signers2, 400, &mut rng);
+        MintTx::insert(11, mint_config_id2, &mint_tx4, &conn).unwrap();
+
+        let mint_tx5 = create_mint_tx(token_id2, &signers3, 2000, &mut rng);
+        MintTx::insert(11, mint_config_id3, &mint_tx5, &conn).unwrap();
+
+        // Sanity test that we get the expected total minted amounts.
+
+        // The mint configuration is only active starting at block index 6 so even
+        // though the mint tx somehow entered at block index 3, we should not
+        // see it.
+        assert_eq!(
+            sql_mint_config_tx_1
+                .get_total_minted_before_block(6, &conn)
+                .unwrap(),
+            0
+        );
+
+        // At block index 7 we should see the 200 mint (but not the 100 one since it
+        // happened before the configuration was active).
+        assert_eq!(
+            sql_mint_config_tx_1
+                .get_total_minted_before_block(7, &conn)
+                .unwrap(),
+            200
+        );
+
+        // At block index 8 we should still see only 200 since the 300 mint only takes
+        // place after block 8.
+        assert_eq!(
+            sql_mint_config_tx_1
+                .get_total_minted_before_block(8, &conn)
+                .unwrap(),
+            200
+        );
+
+        // At block index 9 we should see both 200+300 mints.
+        assert_eq!(
+            sql_mint_config_tx_1
+                .get_total_minted_before_block(9, &conn)
+                .unwrap(),
+            500
+        );
+
+        // sql_mint_config_tx_2 only starts after block index 11, so before that we
+        // should not see anything fori t.
+        assert_eq!(
+            sql_mint_config_tx_2
+                .get_total_minted_before_block(11, &conn)
+                .unwrap(),
+            0,
+        );
+
+        //std::thread::sleep(std::time::Duration::from_millis(100000000));
+
+        assert_eq!(
+            sql_mint_config_tx_2
+                .get_total_minted_before_block(12, &conn)
+                .unwrap(),
+            400,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_2
+                .get_total_minted_before_block(120, &conn)
+                .unwrap(),
+            400,
+        );
+
+        // same for sql_mint_config_tx_3
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(11, &conn)
+                .unwrap(),
+            0,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(12, &conn)
+                .unwrap(),
+            2000,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(120, &conn)
+                .unwrap(),
+            2000,
+        );
+
+        // Adding another mint tx to sql_mint_config_tx_2 should work as expected.
+        let mint_tx6 = create_mint_tx(token_id2, &signers3, 3000, &mut rng);
+        MintTx::insert(12, mint_config_id3, &mint_tx6, &conn).unwrap();
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(11, &conn)
+                .unwrap(),
+            0,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(12, &conn)
+                .unwrap(),
+            2000,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(13, &conn)
+                .unwrap(),
+            5000,
+        );
+
+        assert_eq!(
+            sql_mint_config_tx_3
+                .get_total_minted_before_block(14, &conn)
+                .unwrap(),
+            5000,
+        );
     }
 }
