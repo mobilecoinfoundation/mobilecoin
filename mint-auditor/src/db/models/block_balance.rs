@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::db::{schema::block_balance, transaction, Conn, Error};
+use super::{schema::block_balance, transaction, Conn, Error};
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
 use mc_common::HashMap;
