@@ -80,7 +80,7 @@ impl MintAuditorDb {
         block: &Block,
         block_contents: &BlockContents,
         ledger_db: &LedgerDB,
-    ) -> Result<(crate::db::models::BlockAuditData, HashMap<TokenId, u64>), Error> {
+    ) -> Result<(BlockAuditData, HashMap<TokenId, u64>), Error> {
         let conn = self.get_conn()?;
         self.sync_block_with_conn(&conn, block, block_contents, ledger_db)
     }
