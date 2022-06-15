@@ -14,8 +14,6 @@ use std::{iter::empty, sync::Arc};
 type ConnectionType = SyncConnection<ThickClient<HardcodedCredentialsProvider>>;
 
 pub struct TxSubmitter {
-    #[allow(dead_code)]
-    uris: Vec<ConsensusClientUri>,
     conns: Vec<ConnectionType>,
 }
 
@@ -31,7 +29,7 @@ impl TxSubmitter {
         }
         let conns = Self::get_connections(&uris, env, logger)
             .map_err(|err| format!("consensus connection: {}", err))?;
-        Ok(Self { uris, conns })
+        Ok(Self { conns })
     }
 
     /// Submit a Tx to the network, without retries
