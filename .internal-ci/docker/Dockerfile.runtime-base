@@ -33,8 +33,8 @@ ENV LD_LIBRARY_PATH="/opt/intel/sgx-aesm-service/aesm"
 RUN  apt-get update \
   && apt-get install -y \
       filebeat \
-      sgx-aesm-service \
-      libsgx-epid \
+      sgx-aesm-service=2.16.100.4-focal1 \
+      libsgx-epid=2.16.100.4-focal1 \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
