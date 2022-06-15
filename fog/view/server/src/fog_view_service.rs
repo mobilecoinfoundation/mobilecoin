@@ -5,7 +5,7 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    view::{FogViewStoreDecryptionError, MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
+    view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
     view_grpc::FogViewApi,
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
@@ -220,13 +220,11 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
                 }
             }
 
-            let mut decryption_error = FogViewStoreDecryptionError::new();
-            let fog_view_store_uri = String::from(self.fog_view_uri.clone().url().clone());
-            decryption_error.set_fog_view_store_uri(fog_view_store_uri);
-            decryption_error.set_error_message(String::from(
-                "Could not decrypt a query embedded in the MultiViewStoreQuery",
-            ));
-            response.set_decryption_error(decryption_error);
+            let decryption_error = response.mut_decryption_error();
+            decryption_error.set_fog_view_store_uri(self.fog_view_uri.url().to_string());
+            decryption_error.set_error_message(
+                "Could not decrypt a query embedded in the MultiViewStoreQuery".to_string(),
+            );
 
             send_result(ctx, sink, Ok(response), logger)
         });
