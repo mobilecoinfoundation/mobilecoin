@@ -29,12 +29,13 @@ RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-ke
 ENV AESM_PATH="/opt/intel/sgx-aesm-service/aesm"
 ENV LD_LIBRARY_PATH="/opt/intel/sgx-aesm-service/aesm"
 
+ENV AESM_VERSION=2.16.100.4-focal1
 # Install packages
 RUN  apt-get update \
   && apt-get install -y \
       filebeat \
-      sgx-aesm-service=2.16.100.4-focal1 \
-      libsgx-epid=2.16.100.4-focal1 \
+      sgx-aesm-service=${AESM_VERSION} \
+      libsgx-epid=${AESM_VERSION} \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
