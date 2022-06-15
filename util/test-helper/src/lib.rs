@@ -65,7 +65,7 @@ pub fn random_str(len: usize, csprng: &mut (impl CryptoRng + RngCore)) -> String
 
 /// Get environment variable `OUT_DIR` provided by cargo.
 fn out() -> String {
-    std::env::var("OUT_DIR").expect("Missing environment variable OUT_DIR")
+    env!("OUT_DIR").to_string()
 }
 
 /// Create a temporary directory in the directory specified by the
