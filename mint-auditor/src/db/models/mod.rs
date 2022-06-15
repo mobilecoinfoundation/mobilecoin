@@ -4,6 +4,8 @@ mod block_audit_data;
 mod block_balance;
 mod counters;
 
-pub use block_audit_data::BlockAuditData;
-pub use block_balance::BlockBalance;
-pub use counters::Counters;
+pub use self::{
+    block_audit_data::BlockAuditData,
+    block_balance::BlockBalance,
+    counters::Counters,
+};
