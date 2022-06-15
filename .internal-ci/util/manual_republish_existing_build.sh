@@ -12,14 +12,14 @@ echo "no foot-guns, check the tag vars and remove this exit 0 to use!"
 exit 0
 
 source_org=mobilecoin
-source_tag=demo-v20220307170316
+source_tag=v1.2.1-dev
 
 push_org=mobilecoin
-push_tag=v1.1.3-dev
+push_tag=v1.2.2-dev
 
 images=(bootstrap-tools fogingest fog-ledger fogreport fogview go-grpc-gateway mobilecoind node_hw fog-test-client)
 
-charts=(consensus-node consensus-node-config fog-ingest fog-ingest-config fog-services fog-services-config mc-core-common-config mc-core-dev-env-setup mobilecoind )
+charts=(consensus-node consensus-node-config fog-ingest fog-ingest-config fog-services fog-services-config mc-core-common-config mc-core-dev-env-setup mobilecoind)
 
 for i in "${images[@]}"
 do
@@ -35,8 +35,15 @@ docker cp "bootstrap-tools:/usr/local/bin/generate-sample-ledger" ./
 docker cp "bootstrap-tools:/usr/local/bin/sample-keys" ./
 docker cp "bootstrap-tools:/usr/local/bin/fog-distribution" ./
 docker cp "bootstrap-tools:/usr/local/bin/fog_ingest_client" ./
-# docker cp "bootstrap-tools:/usr/local/bin/mc-consensus-mint-client" ./
-# docker cp "bootstrap-tools:/usr/local/bin/mc-util-seeded-ed25519-key-gen" ./
+docker cp "bootstrap-tools:/usr/local/bin/mc-consensus-mint-client" ./
+docker cp "bootstrap-tools:/usr/local/bin/mc-util-seeded-ed25519-key-gen" ./
+docker cp "bootstrap-tools:/usr/local/bin/fog-report-cli" ./
+docker cp "bootstrap-tools:/usr/local/bin/read-pubfile" ./
+docker cp "bootstrap-tools:/usr/local/bin/mc-util-grpc-token-generator" ./
+docker cp "bootstrap-tools:/usr/local/bin/test_client" ./
+docker cp "mobilecoind:/usr/bin/mc-mint-auditor" ./
+docker cp "mobilecoind:/usr/bin/mobilecoind-json" ./
+docker cp "mobilecoind:/enclaves/libingest-enclave.css" ./
 docker cp "fog-ledger:/usr/bin/libledger-enclave.signed.so" ./
 docker cp "fog-ledger:/usr/bin/ledger_server" ./
 docker cp "fog-ledger:/usr/bin/mobilecoind" ./
@@ -53,8 +60,6 @@ docker cp "node_hw:/usr/bin/consensus-service" ./
 docker cp "node_hw:/usr/bin/ledger-distribution" ./
 docker cp "node_hw:/usr/bin/ledger-from-archive" ./
 docker cp "node_hw:/usr/bin/libconsensus-enclave.signed.so" ./
-docker cp "fog-test-client:/usr/local/bin/test_client" ./
-docker cp "fog-test-client:/usr/local/bin/mc-util-grpc-token-generator" ./
 popd || exit 1
 
 for i in "${images[@]}"
