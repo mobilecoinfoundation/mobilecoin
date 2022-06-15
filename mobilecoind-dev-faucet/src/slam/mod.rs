@@ -255,7 +255,11 @@ impl SlamState {
             match worker.join() {
                 Ok(()) => {}
                 Err(_) => {
-                    log::error!(logger, "Slam worker error on join")
+                    // This error happens if a worker thread panics. The rest of
+                    // the server can still work OK, so ignore the panic.
+                    // The error type is Any, so we cannot easily log it, but it
+                    // was likely already logged.
+                    log::error!(logger, "Slam worker error on join; see previous logs for details")
                 }
             }
         }
