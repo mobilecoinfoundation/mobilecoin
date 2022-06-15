@@ -44,7 +44,8 @@ pub struct JsonFaucetStatus {
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub queue_depths: HashMap<JsonU64, JsonU64>,
     /// The status of the in-progress slam, if any
-    pub slam_status: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub slam_status: String,
 }
 
 /// The data obtained when the faucet gets its status successfully
