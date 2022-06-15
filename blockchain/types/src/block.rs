@@ -210,7 +210,7 @@ mod block_tests {
         tokens::Mob, tx::TxOutMembershipHash, Amount, Token,
     };
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore, SeedableRng};
+    use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore};
 
     // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
@@ -384,21 +384,15 @@ mod block_tests {
     /// we add/change Block/BlockContents and accidentally break id
     /// calculation of old blocks.
     fn test_hashing_is_consistent_block_version_one() {
-        // FIXME (#2042): This shouuld not use StdRng, because the rust standard library
-        // sometimes updates what RNG algorithm this point to. We should
-        // rerun this with Hc128 RNG (from mc_util_test_helper) and update the
-        // test vectors.
-        use rand::rngs::StdRng;
-
-        let mut rng = StdRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         //Check hash with memo
         let block = get_block(&mut rng);
         assert_eq!(
             block.id.as_ref(),
             &[
-                118, 205, 187, 34, 207, 104, 52, 137, 97, 124, 79, 205, 112, 204, 146, 217, 128,
-                178, 169, 214, 231, 120, 46, 237, 17, 93, 59, 136, 101, 131, 197, 217
+                222, 73, 210, 166, 125, 94, 48, 79, 128, 55, 120, 50, 68, 204, 131, 52, 
+                79, 71, 91, 196, 93, 86, 209, 152, 155, 234, 26, 192, 162, 165, 160, 20
             ]
         );
 
@@ -406,8 +400,8 @@ mod block_tests {
         assert_eq!(
             block_contents.hash().as_ref(),
             &[
-                130, 252, 161, 182, 34, 248, 219, 175, 99, 76, 204, 54, 204, 35, 147, 41, 168, 222,
-                68, 11, 76, 106, 243, 173, 136, 27, 208, 27, 85, 199, 193, 241
+                46, 242, 28, 218, 210, 76, 187, 220, 72, 72, 53, 58, 24, 41, 6, 239, 131, 
+                81, 192, 252, 93, 136, 35, 91, 185, 32, 94, 1, 156, 71, 94, 14
             ]
         );
 
@@ -416,16 +410,16 @@ mod block_tests {
         assert_eq!(
             block_with_no_memo.id.as_ref(),
             &[
-                243, 102, 219, 76, 169, 151, 159, 65, 84, 34, 178, 32, 207, 95, 133, 127, 68, 161,
-                140, 254, 120, 243, 90, 232, 156, 40, 132, 101, 203, 160, 12, 159
+                191, 207, 107, 78, 75, 166, 31, 130, 48, 139, 206, 247, 211, 79, 37, 153, 
+                169, 188, 212, 128, 226, 182, 22, 223, 6, 163, 168, 123, 127, 114, 70, 138
             ]
         );
 
         assert_eq!(
             block_with_no_memo.contents_hash.as_ref(),
             &[
-                69, 203, 184, 52, 204, 228, 5, 91, 161, 228, 220, 116, 182, 23, 169, 32, 76, 104,
-                121, 186, 195, 20, 142, 138, 69, 155, 193, 215, 226, 117, 134, 74
+                243, 164, 40, 173, 7, 115, 68, 93, 208, 45, 219, 161, 198, 90, 201, 188, 
+                104, 67, 1, 213, 3, 151, 104, 78, 72, 109, 223, 131, 19, 119, 118, 95
             ]
         );
     }
