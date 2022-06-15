@@ -1,54 +1,55 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-pub use super::models::BlockAuditData;
-
-use super::Conn;
-use crate::Error;
+use crate::{
+    db::{schema::block_audit_data, Conn},
+    Error,
+};
 use diesel::{dsl::max, prelude::*};
 use mc_blockchain_types::BlockIndex;
+use serde::{Deserialize, Serialize};
 
-/// Trait for providing convenience functions for interacting with the
-/// [BlockAuditData] model/table.
-pub trait BlockAuditDataModel {
-    /// Get block audit data for a given block index.
-    fn get(conn: &Conn, block_index: BlockIndex) -> Result<BlockAuditData, Error>;
-
-    /// Store block audit data.
-    fn set(&self, conn: &Conn) -> Result<(), Error>;
-
-    /// Get the last synced block index.
-    fn last_synced_block_index(conn: &Conn) -> Result<Option<BlockIndex>, Error>;
-    /// Get the audit data for the last synced block.
-    fn last_block_audit_data(conn: &Conn) -> Result<Option<BlockAuditData>, Error>;
+/// Diesel model for the `block_audit_data` table.
+/// This stores audit data for a specific block index.
+#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[table_name = "block_audit_data"]
+pub struct BlockAuditData {
+    /// Block index.
+    pub block_index: i64,
 }
 
-impl BlockAuditDataModel for BlockAuditData {
-    fn get(conn: &Conn, block_index: BlockIndex) -> Result<BlockAuditData, Error> {
-        use super::schema::block_audit_data::dsl;
-        Ok(dsl::block_audit_data
-            .select((dsl::block_index,))
-            .filter(dsl::block_index.eq(block_index as i64))
-            .get_result::<BlockAuditData>(conn)?)
+impl BlockAuditData {
+    /// Get block index.
+    pub fn block_index(&self) -> u64 {
+        self.block_index as u64
     }
 
-    fn set(&self, conn: &Conn) -> Result<(), Error> {
-        use super::schema::block_audit_data::dsl::block_audit_data;
-        diesel::replace_into(block_audit_data)
+    /// Get block audit data for a given block index.
+    pub fn get(conn: &Conn, block_index: BlockIndex) -> Result<Self, Error> {
+        Ok(block_audit_data::table
+            .select((block_audit_data::block_index,))
+            .filter(block_audit_data::block_index.eq(block_index as i64))
+            .get_result(conn)?)
+    }
+
+    /// Store block audit data.
+    pub fn set(&self, conn: &Conn) -> Result<(), Error> {
+        diesel::replace_into(block_audit_data::table)
             .values(self)
             .execute(conn)?;
 
         Ok(())
     }
 
-    fn last_synced_block_index(conn: &Conn) -> Result<Option<BlockIndex>, Error> {
-        use super::schema::block_audit_data::dsl::{block_audit_data, block_index};
-        Ok(block_audit_data
-            .select(max(block_index))
+    /// Get the last synced block index.
+    pub fn last_synced_block_index(conn: &Conn) -> Result<Option<BlockIndex>, Error> {
+        Ok(block_audit_data::table
+            .select(max(block_audit_data::block_index))
             .first::<Option<i64>>(conn)?
             .map(|val| val as BlockIndex))
     }
 
-    fn last_block_audit_data(conn: &Conn) -> Result<Option<BlockAuditData>, Error> {
+    /// Get the audit data for the last synced block.
+    pub fn last_block_audit_data(conn: &Conn) -> Result<Option<BlockAuditData>, Error> {
         Self::last_synced_block_index(conn)?
             .map(|block_index| Self::get(conn, block_index))
             .transpose()

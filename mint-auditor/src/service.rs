@@ -3,10 +3,7 @@
 //! Mint auditor GRPC service implementation.
 
 use crate::{
-    db::{
-        BlockAuditData, BlockAuditDataModel, BlockBalance, BlockBalanceModel, Counters,
-        CountersModel, MintAuditorDb,
-    },
+    db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb},
     Error,
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
