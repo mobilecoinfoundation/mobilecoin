@@ -42,7 +42,7 @@ rand_core = "0.6.3"
 rand_hc = "0.3"
 serde = "1.0"
 serde_json = "1.0"
-tiny-bip39 = "0.8"
+tiny-bip39 = "1.0"
 x509-signature = "0.5"
 
 [dev-dependencies]
