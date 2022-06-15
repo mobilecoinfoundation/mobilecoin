@@ -83,7 +83,7 @@ impl BlockBalance {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{models::BlockAuditData, test_utils::TestDbContext};
+    use crate::db::test_utils::TestDbContext;
     use mc_common::logger::{test_with_logger, Logger};
 
     #[test_with_logger]
