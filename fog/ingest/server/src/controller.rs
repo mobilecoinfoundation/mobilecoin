@@ -60,10 +60,10 @@ use std::{
 /// So the idea here is instead that the IngestController owns no threads, the
 /// IngestWorker is external to it, and all the grpcio threads are also external
 /// to it, and talk to Arc<IngestController> to accomplish their tasks.
-pub struct IngestController<
+pub struct IngestController<R, DB>
+where
     R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// The config object for the server
@@ -88,11 +88,10 @@ pub struct IngestController<
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestController<R, DB>
+impl<R, DB> IngestController<R, DB>
 where
+    R: RaClient + Send + Sync + 'static,
+    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Create a new ingest controller

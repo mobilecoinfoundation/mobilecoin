@@ -16,7 +16,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread::JoinHandle,
+    thread::{sleep, JoinHandle},
     time::{Duration, Instant, SystemTime},
 };
 
@@ -54,10 +54,7 @@ impl IngestWorker {
     /// * Logger to send log messages to
     ///
     /// Returns a freshly started IngestWorker thread handle
-    pub fn new<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    >(
+    pub fn new<R, DB>(
         controller: Arc<IngestController<R, DB>>,
         db: LedgerDB,
         watcher: WatcherDB,
@@ -65,105 +62,124 @@ impl IngestWorker {
         logger: Logger,
     ) -> Self
     where
+        R: RaClient + Send + Sync + 'static,
+        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
         IngestServiceError: From<<DB as RecoveryDb>::Error>,
     {
         let stop_requested = Arc::new(AtomicBool::new(false));
+        let thread_stop_requested = stop_requested.clone();
+        let thread = Some(std::thread::spawn(move || {
+            Self::run(
+                thread_stop_requested,
+                controller,
+                db,
+                watcher,
+                watcher_timeout,
+                logger,
+            )
+        }));
         Self {
-            stop_requested: stop_requested.clone(),
-            thread: Some(std::thread::spawn(move || {
-                let mut last_not_found_log: Option<LastNotFound> = None;
-                loop {
-                    let (next_block_index, is_idle) = controller.get_next_block_index();
+            stop_requested,
+            thread,
+        }
+    }
 
-                    if stop_requested.load(Ordering::SeqCst) {
-                        log::info!(
-                            logger,
-                            "Stop Requested: Polling loop stopped at block number {}, is_idle {}",
-                            next_block_index,
-                            is_idle
-                        );
-                        break;
-                    }
+    fn run<R, DB>(
+        stop_requested: Arc<AtomicBool>,
+        controller: Arc<IngestController<R, DB>>,
+        db: LedgerDB,
+        watcher: WatcherDB,
+        watcher_timeout: Duration,
+        logger: Logger,
+    ) where
+        R: RaClient + Send + Sync + 'static,
+        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
+        IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    {
+        let mut last_not_found_log: Option<LastNotFound> = None;
+        loop {
+            let (next_block_index, is_idle) = controller.get_next_block_index();
 
-                    if is_idle {
-                        std::thread::sleep(Self::POLLING_FREQUENCY);
-                        continue;
-                    }
+            if stop_requested.load(Ordering::SeqCst) {
+                log::info!(
+                    logger,
+                    "Stop Requested: Polling loop stopped at block number {}, is_idle {}",
+                    next_block_index,
+                    is_idle
+                );
+                break;
+            }
 
-                    let start_time = SystemTime::now();
+            if is_idle {
+                sleep(Self::POLLING_FREQUENCY);
+                continue;
+            }
 
-                    match db.get_block_data(next_block_index) {
-                        Err(LedgerError::NotFound) => {
-                            if let Some(rec) = &mut last_not_found_log {
-                                if rec.block_index == next_block_index {
-                                    // Log at debug level every 1 min
-                                    // This is mainly useful for debugging conformance tests, not
-                                    // prod, which uses
-                                    // prometheus metrics
-                                    if rec.time.elapsed() > Duration::from_secs(60) {
-                                        log::debug!(
-                                            logger,
-                                            "Waited 1 min for block {}",
-                                            next_block_index
-                                        );
-                                        rec.time = Instant::now();
-                                    }
-                                } else {
-                                    last_not_found_log = Some(LastNotFound::new(next_block_index));
-                                }
-                            } else {
-                                last_not_found_log = Some(LastNotFound::new(next_block_index));
+            let start_time = SystemTime::now();
+
+            match db.get_block_data(next_block_index) {
+                Err(LedgerError::NotFound) => {
+                    if let Some(rec) = &mut last_not_found_log {
+                        if rec.block_index == next_block_index {
+                            // Log at debug level every 1 min
+                            // This is mainly useful for debugging conformance tests, not
+                            // prod, which uses
+                            // prometheus metrics
+                            if rec.time.elapsed() > Duration::from_secs(60) {
+                                log::debug!(logger, "Waited 1 min for block {}", next_block_index);
+                                rec.time = Instant::now();
                             }
-                            std::thread::sleep(Self::POLLING_FREQUENCY)
+                        } else {
+                            last_not_found_log = Some(LastNotFound::new(next_block_index));
                         }
-                        Err(e) => {
-                            log::error!(
-                                logger,
-                                "Unexpected error when checking for block data {}: {:?}",
-                                next_block_index,
-                                e
-                            );
-                            std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                        }
-                        Ok(block_data) => {
-                            last_not_found_log = None;
-                            // If we were able to load a new block, update the ledger metrics. They
-                            // won't get updated automatically since the block got appended by an
-                            // external process (mobilecoind).
-                            if let Err(err) = db.update_metrics() {
-                                log::warn!(logger, "Failed updating ledger db metrics: {}", err);
-                            }
-
-                            // Tracing
-                            let tracer = tracer!();
-
-                            let mut span =
-                                block_span_builder(&tracer, "poll_block", next_block_index)
-                                    .with_start_time(start_time)
-                                    .start(&tracer);
-
-                            span.set_attribute(
-                                TELEMETRY_BLOCK_INDEX_KEY.i64(next_block_index as i64),
-                            );
-
-                            let _active = mark_span_as_active(span);
-
-                            // Get the timestamp for the block.
-                            let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                                watcher.poll_block_timestamp(next_block_index, watcher_timeout)
-                            });
-
-                            tracer.in_span("process_next_block", |_cx| {
-                                controller.process_next_block(
-                                    block_data.block(),
-                                    block_data.contents(),
-                                    timestamp,
-                                );
-                            });
-                        }
+                    } else {
+                        last_not_found_log = Some(LastNotFound::new(next_block_index));
                     }
+                    sleep(Self::POLLING_FREQUENCY)
                 }
-            })),
+                Err(e) => {
+                    log::error!(
+                        logger,
+                        "Unexpected error when checking for block data {}: {:?}",
+                        next_block_index,
+                        e
+                    );
+                    sleep(Self::ERROR_RETRY_FREQUENCY);
+                }
+                Ok(block_data) => {
+                    last_not_found_log = None;
+                    // If we were able to load a new block, update the ledger metrics. They
+                    // won't get updated automatically since the block got appended by an
+                    // external process (mobilecoind).
+                    if let Err(err) = db.update_metrics() {
+                        log::warn!(logger, "Failed updating ledger db metrics: {}", err);
+                    }
+
+                    // Tracing
+                    let tracer = tracer!();
+
+                    let mut span = block_span_builder(&tracer, "poll_block", next_block_index)
+                        .with_start_time(start_time)
+                        .start(&tracer);
+
+                    span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(next_block_index as i64));
+
+                    let _active = mark_span_as_active(span);
+
+                    // Get the timestamp for the block.
+                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                        watcher.poll_block_timestamp(next_block_index, watcher_timeout)
+                    });
+
+                    tracer.in_span("process_next_block", |_cx| {
+                        controller.process_next_block(
+                            block_data.block(),
+                            block_data.contents(),
+                            timestamp,
+                        );
+                    });
+                }
+            }
         }
     }
 }
@@ -243,7 +259,7 @@ impl PeerCheckupWorker {
                         last_refreshed_at = now;
                     }
 
-                    std::thread::sleep(Duration::from_secs(1));
+                    sleep(Duration::from_secs(1));
                 }
             })),
         }
@@ -312,7 +328,7 @@ impl ReportCacheWorker {
                         }
                     }
 
-                    std::thread::sleep(Duration::from_secs(1));
+                    sleep(Duration::from_secs(1));
                 }
             })),
         }
