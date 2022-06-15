@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::{schema::block_balance, transaction, Conn, Error};
+use super::super::{schema::block_balance, transaction, Conn, Error};
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
 use mc_common::HashMap;
@@ -82,7 +82,7 @@ impl BlockBalance {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::BlockAuditData, *};
     use crate::db::test_utils::TestDbContext;
     use mc_common::logger::{test_with_logger, Logger};
 
