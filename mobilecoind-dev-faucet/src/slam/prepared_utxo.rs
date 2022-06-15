@@ -147,9 +147,9 @@ impl PreparedUtxo {
     ) -> Result<Tx, String> {
         let mut rng = thread_rng();
         // Get block version to target
-        let block_version =
-            BlockVersion::try_from(network_state.get_last_block_info().network_block_version)
-                .map_err(|err| format!("Block version: {}", err))?;
+        let block_version = network_state.get_last_block_info().network_block_version;
+        let block_version = BlockVersion::try_from(block_version)
+            .map_err(|err| format!("Got invalid block version {} from network ({})", block_version, err))?;
 
         // Get minimum fee for this token id
         let value = self.utxo_record.utxo.value;
