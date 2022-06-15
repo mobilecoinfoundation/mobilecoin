@@ -15,7 +15,7 @@ use grpcio::ChannelBuilder;
 use mc_account_keys::AccountKey;
 use mc_api::printable::PrintableWrapper;
 use mc_common::logger::{log, Logger};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
@@ -162,7 +162,7 @@ impl State {
     > {
         // Create a monitor using our account key
         let monitor_id = {
-            let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
+            let mut req = api::AddMonitorRequest::new();
             req.set_account_key(account_key.into());
             req.set_num_subaddresses(2);
             req.set_name("faucet".to_string());
@@ -176,7 +176,7 @@ impl State {
 
         // Get the b58 public address for monitor
         let monitor_b58_address = {
-            let mut req = mc_mobilecoind_api::GetPublicAddressRequest::new();
+            let mut req = api::GetPublicAddressRequest::new();
             req.set_monitor_id(monitor_id.clone());
 
             let resp = mobilecoind_api_client
@@ -219,7 +219,7 @@ impl State {
     pub async fn handle_post(
         &self,
         req: &JsonFaucetRequest,
-    ) -> Result<mc_mobilecoind_api::SubmitTxResponse, String> {
+    ) -> Result<api::SubmitTxResponse, String> {
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
             .map_err(|err| format!("Could not decode b58 address: {}", err))?;
 
@@ -243,7 +243,7 @@ impl State {
         );
 
         // Generate a Tx sending this specific TxOut, less fees
-        let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
+        let mut req = api::GenerateTxFromTxOutListRequest::new();
         req.set_account_key((&self.account_key).into());
         req.set_input_list(vec![utxo_record.utxo].into());
         req.set_receiver(public_address.clone());
@@ -257,7 +257,7 @@ impl State {
             .map_err(|err| format!("Build Tx ended in error: {}", err))?;
 
         // Submit the tx proposal
-        let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+        let mut req = api::SubmitTxRequest::new();
         req.set_tx_proposal(resp.get_tx_proposal().clone());
 
         let resp = self
@@ -284,7 +284,7 @@ impl State {
         // Get up-to-date balances for all the tokens we are tracking
         let mut balances: HashMap<TokenId, u64> = Default::default();
         for (token_id, _) in self.faucet_payout_amounts.iter() {
-            let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
+            let mut req = api::GetBalanceRequest::new();
             req.set_monitor_id(self.monitor_id.clone());
             req.set_token_id(**token_id);
 
