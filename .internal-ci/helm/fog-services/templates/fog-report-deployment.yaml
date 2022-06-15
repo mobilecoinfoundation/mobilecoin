@@ -94,6 +94,7 @@ spec:
             command:
             - "/usr/local/bin/grpc_health_probe"
             - "-addr=:3222"
+          # Wait 5 min for startup
           failureThreshold: 30
           periodSeconds: 10
         # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
