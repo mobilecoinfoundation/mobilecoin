@@ -104,9 +104,9 @@ It is relatively straightforward to test the faucet locally using the `tools/loc
 
 ```
 $ cargo build --release
-$ ./tools/local_network/bootstrap.sh
-$ export LEDGER_BASE=/tmp/mobilenode/target/sample_data/ledger
 $ export MC_LOG=info
+$ export LEDGER_BASE=$PWD/target/sample_data/ledger
+$ ./tools/local_network/bootstrap.sh
 $ ./tools/local_network/local_network.py --network-type dense5 --skip-build &
 ```
 
@@ -209,3 +209,5 @@ If slam is taking too long or is stuck, it can be canceled like this:
 ```
 curl -s localhost:9090/cancel_slam -X POST
 ```
+
+This is an alternative to stopping the webserver and restarting it.
