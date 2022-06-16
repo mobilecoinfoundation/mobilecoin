@@ -89,8 +89,8 @@ pub struct SlamState {
 
 impl SlamState {
     /// Create a new slam state
-    pub fn new(env: Arc<grpcio::Environment>) -> Self {
-        Self {
+    pub fn new(env: Arc<grpcio::Environment>) -> Arc<Self> {
+        Arc::new(Self {
             phase: Default::default(),
             target_num_tx: Default::default(),
             num_prepared_utxos: Default::default(),
@@ -98,7 +98,7 @@ impl SlamState {
             block_height: Default::default(),
             stop_requested: Default::default(),
             env,
-        }
+        })
     }
 
     /// Start a slam operation with given parameters
@@ -259,7 +259,10 @@ impl SlamState {
                     // the server can still work OK, so ignore the panic.
                     // The error type is Any, so we cannot easily log it, but it
                     // was likely already logged.
-                    log::error!(logger, "Slam worker error on join; see previous logs for details")
+                    log::error!(
+                        logger,
+                        "Slam worker error on join; see previous logs for details"
+                    )
                 }
             }
         }

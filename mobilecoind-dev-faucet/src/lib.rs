@@ -155,7 +155,7 @@ impl State {
             logger,
         );
 
-        let slam_state = Arc::new(SlamState::new(grpc_env));
+        let slam_state = SlamState::new(grpc_env);
 
         State {
             mobilecoind_api_client,
