@@ -38,7 +38,8 @@ impl TxSubmitter {
     /// counter: The number of the utxo of this tx, for logging
     /// tx: The built tx to submit
     /// node_index: The node to submit to. (This will be reduced modulo num
-    /// nodes) logger: Logger
+    /// nodes)
+    /// logger: Logger
     ///
     /// Returns: Current block height on success, error if submission failed
     pub fn submit_tx(
