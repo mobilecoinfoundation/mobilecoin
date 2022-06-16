@@ -67,11 +67,11 @@ pub struct SlamReport {
 /// This allows one thread to conduct the slam while another thread checks on
 /// its status.
 pub struct SlamState {
-    // Phase is a state variable:
-    // 0: Not currently slamming
-    // 1: Connecting
-    // 2: Preparing utxos: Obtaining proofs of membership
-    // 3: Submitting transactions
+    // Phase tracks the state of the current slam operation if any.
+    // This is used to get the status of the slam operation asynchronously,
+    // and also to prevent a second slam from being started concurrently.
+    // The slam state guard is responsible for that check and for resetting the
+    // phase when the guard is dropped.
     phase: AtomicU32,
     // The number of tx's we want to send in total in the slam
     target_num_tx: AtomicU32,
@@ -88,6 +88,13 @@ pub struct SlamState {
 }
 
 impl SlamState {
+    /// Constants describing what phase of the slam operation we are in.
+    /// These are the legal values of self.phase
+    const NOT_CURRENTLY_SLAMMING: u32 = 0;
+    const CONNECTING: u32 = 1;
+    const PREPARING_UTXOS: u32 = 2;
+    const SUBMITTING_TRANSACTIONS: u32 = 3;
+
     /// Create a new slam state
     pub fn new(env: Arc<grpcio::Environment>) -> Arc<Self> {
         Arc::new(Self {
@@ -138,7 +145,8 @@ impl SlamState {
         let recipient = account_key.default_subaddress();
 
         // First, we have to prepare target_num_tx utxos
-        self.phase.store(2, Ordering::SeqCst);
+        self.phase
+            .store(SlamState::PREPARING_UTXOS, Ordering::SeqCst);
         log::info!(logger, "Slam status: {}", self.get_status().unwrap());
         let begin_prepare_time = Instant::now();
 
@@ -212,7 +220,8 @@ impl SlamState {
 
         // Now, we spawn worker threads, which build txs and
         // submits them, with retries, in parallel
-        self.phase.store(3, Ordering::SeqCst);
+        self.phase
+            .store(SlamState::SUBMITTING_TRANSACTIONS, Ordering::SeqCst);
         log::info!(logger, "Slam status: {}", self.get_status().unwrap());
         let begin_submit_time = Instant::now();
         let prepare_time = begin_submit_time.duration_since(begin_prepare_time);
@@ -320,11 +329,16 @@ impl SlamState {
     /// Arguments:
     /// * params: the slam parameters
     /// * prepared_utxo: The prepared utxo to build a Tx from
+    /// * recipient: the recipient of this Tx
+    /// * account_key: the account key that owns this prepared utxo
+    /// * network_state: a (recent) GetNetworkStatusResponse from mobilecoind,
+    ///   for block version and block height
     /// * node_index_offset: An arbitrary number used as an offset into the list
     ///   of consensus nodes we can submit to. By varying this we can distribute
     ///   the load across several nodes instead of submitting always to one
     ///   particular node
     /// * tx_submitter: An object which can actually submit a prepared tx
+    /// * logger
     fn build_and_submit_tx(
         &self,
         params: &SlamParams,
@@ -430,13 +444,13 @@ impl SlamState {
         // other one is tracking the progress of another thread anyways, so this seems
         // fine.
         match self.phase.load(Ordering::SeqCst) {
-            0 => None,
-            1 => Some(SlamStatus::Connecting),
-            2 => Some(SlamStatus::PreparingUtxos(
+            SlamState::NOT_CURRENTLY_SLAMMING => None,
+            SlamState::CONNECTING => Some(SlamStatus::Connecting),
+            SlamState::PREPARING_UTXOS => Some(SlamStatus::PreparingUtxos(
                 self.num_prepared_utxos.load(Ordering::SeqCst),
                 self.target_num_tx.load(Ordering::SeqCst),
             )),
-            3 => Some(SlamStatus::SubmittingTxs(
+            SlamState::SUBMITTING_TRANSACTIONS => Some(SlamStatus::SubmittingTxs(
                 self.num_submitted_txs.load(Ordering::SeqCst),
                 self.target_num_tx.load(Ordering::SeqCst),
             )),
@@ -482,7 +496,12 @@ impl<'a> SlamStateGuard<'a> {
     fn new(state: &'a SlamState, logger: &'a Logger) -> Result<Self, String> {
         if state
             .phase
-            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+            .compare_exchange(
+                SlamState::NOT_CURRENTLY_SLAMMING,
+                SlamState::CONNECTING,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
             .is_err()
         {
             return Err("Slam already in progress".to_owned());
@@ -498,10 +517,12 @@ impl<'a> Drop for SlamStateGuard<'a> {
     fn drop(&mut self) {
         self.state.num_prepared_utxos.store(0, Ordering::SeqCst);
         self.state.num_submitted_txs.store(0, Ordering::SeqCst);
-        self.state.phase.store(0, Ordering::SeqCst);
+        self.state
+            .phase
+            .store(SlamState::NOT_CURRENTLY_SLAMMING, Ordering::SeqCst);
         // Set stop requested to false to ensure that we can start a slam
         // next time
         self.state.stop_requested.store(false, Ordering::SeqCst);
-        log::info!(self.logger, "slam state guard dropped");
+        log::debug!(self.logger, "slam state guard dropped");
     }
 }
