@@ -4,7 +4,7 @@ use super::{GetUtxoError, UtxoRecord, Worker};
 use displaydoc::Display;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::logger::{log, o, Logger};
-use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
 use mc_util_uri::ConsensusClientUri;
 use std::{
     sync::{
@@ -283,7 +283,7 @@ impl SlamState {
         prepared_utxos_receiver: async_channel::Receiver<PreparedUtxo>,
         recipient: PublicAddress,
         account_key: AccountKey,
-        network_state: mc_mobilecoind_api::GetNetworkStatusResponse,
+        network_state: api::GetNetworkStatusResponse,
         tx_submitter: Arc<TxSubmitter>,
         logger: Logger,
     ) {
@@ -331,7 +331,7 @@ impl SlamState {
         prepared_utxo: PreparedUtxo,
         recipient: &PublicAddress,
         account_key: &AccountKey,
-        network_state: &mc_mobilecoind_api::GetNetworkStatusResponse,
+        network_state: &api::GetNetworkStatusResponse,
         node_index_offset: u32,
         tx_submitter: &TxSubmitter,
         logger: &Logger,
@@ -392,9 +392,9 @@ impl SlamState {
     fn get_receipts(
         tx: &mc_transaction_core::tx::Tx,
         recipient: &PublicAddress,
-    ) -> mc_mobilecoind_api::SubmitTxResponse {
+    ) -> api::SubmitTxResponse {
         // Construct sender receipt.
-        let mut sender_tx_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+        let mut sender_tx_receipt = api::SenderTxReceipt::new();
         sender_tx_receipt.set_key_image_list(tx.key_images().iter().map(Into::into).collect());
         sender_tx_receipt.set_tombstone(tx.prefix.tombstone_block);
 
@@ -404,7 +404,7 @@ impl SlamState {
             .outputs
             .iter()
             .map(|tx_out| {
-                let mut receiver_tx_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+                let mut receiver_tx_receipt = api::ReceiverTxReceipt::new();
                 receiver_tx_receipt.set_recipient(recipient.into());
                 receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
@@ -412,10 +412,10 @@ impl SlamState {
 
                 receiver_tx_receipt
             })
-            .collect::<Vec<mc_mobilecoind_api::ReceiverTxReceipt>>();
+            .collect::<Vec<api::ReceiverTxReceipt>>();
 
         // Return response.
-        let mut response = mc_mobilecoind_api::SubmitTxResponse::new();
+        let mut response = api::SubmitTxResponse::new();
         response.set_sender_tx_receipt(sender_tx_receipt);
         response.set_receiver_tx_receipt_list(receiver_tx_receipts.into());
         response

@@ -7,7 +7,7 @@ use mc_attest_verifier::Verifier;
 use mc_common::logger::{log, Logger};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_validation::FogResolver;
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, GetNetworkStatusResponse};
+use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
 use mc_transaction_core::{
     constants::RING_SIZE,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -102,15 +102,9 @@ impl PreparedUtxo {
     async fn get_proofs_and_mixins(
         utxo_record: &UtxoRecord,
         mobilecoind_api_client: &MobilecoindApiClient,
-    ) -> Result<
-        (
-            mc_mobilecoind_api::GetMembershipProofsResponse,
-            mc_mobilecoind_api::GetMixinsResponse,
-        ),
-        String,
-    > {
+    ) -> Result<(api::GetMembershipProofsResponse, api::GetMixinsResponse), String> {
         // Get a membership proof for this utxo
-        let mut req = mc_mobilecoind_api::GetMembershipProofsRequest::new();
+        let mut req = api::GetMembershipProofsRequest::new();
         req.mut_outputs()
             .push(utxo_record.utxo.get_tx_out().clone());
 
@@ -121,7 +115,7 @@ impl PreparedUtxo {
             .map_err(|err| format!("Request membership proofs ended in error: {}", err))?;
 
         // Get mixins for this utxo
-        let mut req = mc_mobilecoind_api::GetMixinsRequest::new();
+        let mut req = api::GetMixinsRequest::new();
         req.set_num_mixins(RING_SIZE as u64 - 1);
         req.mut_excluded()
             .push(utxo_record.utxo.get_tx_out().clone());
@@ -141,7 +135,7 @@ impl PreparedUtxo {
         tombstone_block: u64,
         recipient: &PublicAddress,
         account_key: &AccountKey,
-        network_state: &GetNetworkStatusResponse,
+        network_state: &api::GetNetworkStatusResponse,
     ) -> Result<Tx, String> {
         let mut rng = thread_rng();
         // Get block version to target
