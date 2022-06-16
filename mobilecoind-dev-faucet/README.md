@@ -43,7 +43,6 @@ following information:
     b58_address: <string>,
     // A progress report for slam if any is in-progress
     slam_status: <string>,
-
 }
 ```
 
@@ -54,21 +53,24 @@ Optionally, a json config object may be attached to adjust the parameters, overr
 
 ```
 {
-    /// Target num txs to submit in the slam.
-    /// Note: Ideally this is not more than the target_queue_depth number,
-    /// or we will have to split more Txs before we can slam which will take some time.
-    /// Default is 500.
+    // Target num txs to submit in the slam.
+    // Note: Ideally this is not more than the target_queue_depth number,
+    // or we will have to split more Txs before we can slam which will take some time.
+    // Default is 500.
     target_num_tx: <number>,
-    /// Number of threads to create during slamming
-    /// Default is 30.
+    // Number of threads to create during slamming
+    // Default is 30.
     num_threads: <number>,
-    /// Number of retries to use when submitting Txs
-    /// Default is 30.
+    // Number of retries to use when submitting Txs
+    // Default is 30.
     retries: <number>,
-    /// How much ahead of the network to set the tombstone block
-    /// Default is 20.
+    // The back-off period between retries, in milliseconds
+    // Default is 1000
+    retry_peiod_ms: <number>,
+    // How much ahead of the network to set the tombstone block
+    // Default is 20.
     tombstone_offset: <number>,
-    /// Which consensus endpoints to submit transactions to
+    // Which consensus endpoints to submit transactions to
     consensus_uris: <list of strings>,
 }
 ```

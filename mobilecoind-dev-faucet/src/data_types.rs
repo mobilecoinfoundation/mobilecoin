@@ -8,7 +8,7 @@ use mc_mobilecoind_api as api;
 use mc_transaction_core::TokenId;
 use mc_util_serial::JsonU64;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, time::Duration};
 
 /// A request to the faucet to fund an address
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -206,6 +206,8 @@ pub struct JsonSlamRequest {
     pub num_threads: Option<u32>,
     /// Number of retries to use when submitting Txs
     pub retries: Option<u32>,
+    /// The back-off period between retries, in milliseconds
+    pub retry_period_ms: Option<u32>,
     /// How much ahead of the network to set the tombstone block
     pub tombstone_offset: Option<u32>,
     /// Which consensus endpoints to submit transactions to
@@ -226,6 +228,9 @@ impl TryFrom<&JsonSlamRequest> for SlamParams {
         }
         if let Some(val) = req.retries.as_ref() {
             result.retries = *val;
+        }
+        if let Some(val) = req.retry_period_ms.as_ref() {
+            result.retry_period = Duration::from_millis(*val as u64);
         }
         if let Some(val) = req.tombstone_offset.as_ref() {
             result.tombstone_offset = *val;
@@ -260,8 +265,8 @@ pub struct JsonSlamParams {
     pub num_threads: u32,
     /// The number of retries when submitting a transaction
     pub retries: u32,
-    /// How long to wait before retrying (seconds)
-    pub retry_period: f32,
+    /// How long to wait before retrying, in milliseconds
+    pub retry_period: u32,
     /// How many blocks before the tombstone
     pub tombstone_offset: u32,
     /// Consensus URIs
@@ -274,7 +279,7 @@ impl From<SlamParams> for JsonSlamParams {
             target_num_tx: src.target_num_tx,
             num_threads: src.num_threads,
             retries: src.retries,
-            retry_period: src.retry_period.as_secs_f32(),
+            retry_period: src.retry_period.as_millis().try_into().unwrap_or(u32::MAX),
             tombstone_offset: src.tombstone_offset,
             consensus_client_uris: src
                 .consensus_client_uris
