@@ -31,7 +31,7 @@ spec:
             # match on this helm chart install
             app: fog-view
             helm.sh/chart: {{ include "fogView.chart" . }}
-            {{- include "fogView.selectorLabels" . | nindent 6 }}
+            {{- include "fogView.selectorLabels" . | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -41,7 +41,7 @@ spec:
               # match on this helm chart install
               app: fog-view
               helm.sh/chart: {{ include "fogView.chart" . }}
-              {{- include "fogView.selectorLabels" . | nindent 6 }}
+              {{- include "fogView.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       initContainers:

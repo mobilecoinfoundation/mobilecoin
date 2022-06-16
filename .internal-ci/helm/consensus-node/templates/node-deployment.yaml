@@ -42,6 +42,7 @@ spec:
       affinity:
         podAntiAffinity:
           requireDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
           - topologyKey: kubernetes.io/hostname
             labelSelector:
               matchLabels:

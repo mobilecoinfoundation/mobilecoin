@@ -32,7 +32,7 @@ spec:
             # match on this helm chart install
             app: fog-ingest
             helm.sh/chart: {{ include "fogIngest.chart" . }}
-            {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+            {{- include "fogIngest.selectorLabels" . | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -42,7 +42,7 @@ spec:
               # match on this helm chart install
               app: fog-ingest
               helm.sh/chart: {{ include "fogIngest.chart" . }}
-              {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+              {{- include "fogIngest.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       terminationGracePeriodSeconds: 30
