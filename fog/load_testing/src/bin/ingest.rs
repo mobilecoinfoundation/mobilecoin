@@ -15,9 +15,8 @@
 use clap::Parser;
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
-use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
+use mc_blockchain_types::{Block, BlockContents, BlockVersion};
 use mc_common::logger::{log, Logger};
-use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_rand::McRng;
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_load_testing::get_bin_path;
@@ -25,11 +24,8 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
-use mc_watcher::watcher_db::WatcherDB;
-use rand::thread_rng;
 use retry::{delay, retry, OperationResult};
 use std::{
     path::Path,
@@ -157,7 +153,8 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         ..Default::default()
     };
 
-    let signer = Ed25519Pair::from_random(&mut thread_rng());
+    let mut csprng = McRng {};
+    let rng = &mut csprng;
 
     {
         // First make grpcio env
@@ -187,17 +184,6 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         // Make recovery db available via env var
         std::env::set_var("DATABASE_URL", db_test_context.db_url());
 
-        // Set up the Watcher DB
-        let watcher_db_path =
-            TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        WatcherDB::create(watcher_db_path.path()).unwrap();
-        let watcher = WatcherDB::open_rw(
-            watcher_db_path.path(),
-            &["http://bash.org".parse().unwrap()],
-            logger.clone(),
-        )
-        .unwrap();
-
         // Set up a fresh ledger db.
         let ledger_db_path =
             TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
@@ -210,8 +196,8 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
             block_version,
             &mut ledger_db,
             1u64,
-            &AccountKey::random(&mut McRng {}),
-            &mut McRng {},
+            &AccountKey::random(rng),
+            rng,
         );
 
         // Dir for state file
@@ -226,7 +212,6 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         let mut command = std::process::Command::new(ingest_server_binary.to_str().unwrap());
         command
             .args(&["--ledger-db", ledger_db_path.path().to_str().unwrap()])
-            .args(&["--watcher-db", watcher_db_path.path().to_str().unwrap()])
             .args(&["--client-listen-uri", &client_listen_uri.to_string()])
             .args(&["--peer-listen-uri", &peer_listen_uri.to_string()])
             .args(&["--ias-spid", &"0".repeat(32)])
@@ -302,9 +287,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 ledger_db.num_txos().unwrap()
             );
 
-            let accounts: Vec<AccountKey> = (0..20)
-                .map(|_i| AccountKey::random(&mut McRng {}))
-                .collect();
+            let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(rng)).collect();
             let recipient_pub_keys = accounts
                 .iter()
                 .map(|account| account.default_subaddress())
@@ -317,7 +300,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 CHUNK_SIZE,
                 CHUNK_SIZE,
                 &last_block,
-                &mut McRng {},
+                rng,
             );
 
             log::info!(
@@ -336,32 +319,6 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 ledger_db
                     .append_block(block, block_contents, None)
                     .expect("Adding block failed");
-
-                // Add the timestamp information to watcher for this block index - note watcher
-                // does not allow signatures for block 0.
-                if block.index > 0 {
-                    for src_url in watcher.get_config_urls().unwrap().iter() {
-                        let mut block_signature =
-                            BlockSignature::from_block_and_keypair(block, &signer)
-                                .expect("Could not create block signature from keypair");
-                        block_signature.set_signed_at(block.index);
-                        watcher
-                            .add_block_signature(
-                                src_url,
-                                block.index,
-                                block_signature,
-                                format!("00/{}", block.index),
-                            )
-                            .expect("Could not add block signature");
-                    }
-                }
-                // Sanity check that watcher is behaving correctly
-                assert_eq!(
-                    watcher
-                        .highest_common_block()
-                        .expect("Could not get highest common block"),
-                    block.index,
-                );
 
                 // Poll for a change in recovery_db highest_known_block_index
                 loop {

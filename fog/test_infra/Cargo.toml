@@ -28,7 +28,6 @@ mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }
 mc-util-keyfile = { path = "../../util/keyfile" }
-mc-watcher = { path = "../../watcher" }
 mc-watcher-api = { path = "../../watcher/api" }
 
 # from fog
@@ -46,4 +45,3 @@ rand_core = "0.6"
 rand_hc = "0.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
-url = "2.2"

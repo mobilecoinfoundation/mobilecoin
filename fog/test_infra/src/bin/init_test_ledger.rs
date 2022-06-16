@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 #![deny(missing_docs)]
 
-//! Initialize a ledger db with genesis block,
-//! and a watcher db suitable for conformance testing
+//! Initialize a ledger db with genesis block.
 //!
 //! Use command line arguments to configure locations of keys and ledger etc.
 
@@ -20,10 +19,6 @@ struct Config {
     /// Path to output ledger
     #[clap(long = "ledger-db", env = "MC_LEDGER_DB")]
     pub ledger: PathBuf,
-
-    /// Path to output watcher db
-    #[clap(long = "watcher-db", env = "MC_WATCHER_DB")]
-    pub watcher: PathBuf,
 
     // Seed to use when generating blocks
     #[clap(long, default_value = "42", env = "MC_SEED")]
@@ -59,8 +54,4 @@ fn main() {
         0,
         logger.clone(),
     );
-
-    // Initialize the watcher db
-    mc_watcher::watcher_db::create_or_open_rw_watcher_db(&config.watcher, &[], logger)
-        .expect("Could not create watcher_db");
 }

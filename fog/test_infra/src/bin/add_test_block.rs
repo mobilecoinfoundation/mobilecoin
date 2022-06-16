@@ -12,7 +12,6 @@
 //! Command-line arguments:
 //! - keys (path to keys directory for the test)
 //! - ledger (path to ledger directory to modify)
-//! - watcher (path to watcher directory to modify)
 //! - seed (a seed to use for the Rng when making the new transactions)
 //! - fog_pubkey (a hex-encoded fog public key to encrypt fog hints against)
 //!
@@ -28,8 +27,7 @@
 use clap::Parser;
 use core::convert::TryFrom;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
-use mc_common::logger::create_root_logger;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -40,14 +38,13 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Token,
+    Amount, BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, str::FromStr, time::SystemTime};
-use url::Url;
+use std::{path::PathBuf, time::SystemTime};
 
 /// The command-line arguments
 #[derive(Debug, Parser)]
@@ -59,10 +56,6 @@ struct Config {
     /// Path to output ledger
     #[clap(long = "ledger-db", short, env = "MC_LEDGER_DB")]
     pub ledger: PathBuf,
-
-    /// Path to output watcher db
-    #[clap(long = "watcher-db", short, env = "MC_WATCHER_DB")]
-    pub watcher: PathBuf,
 
     // Seed to use when generating randomness
     #[clap(long, short, default_value = "99", env = "MC_SEED")]
@@ -96,8 +89,6 @@ fn main() {
     std::env::set_var("MC_LOG_STDERR", "1");
     let config = Config::parse();
 
-    let logger = create_root_logger();
-
     // Read fog public key and decompress it
     let fog_pubkey = RistrettoPublic::try_from(&config.fog_pubkey)
         .expect("Could not parse fog_pubkey as Ristretto");
@@ -111,15 +102,6 @@ fn main() {
     let mut ledger = LedgerDB::open(&config.ledger).expect("Could not open ledger db");
     let num_blocks = ledger.num_blocks().expect("Could not compute num_blocks");
     assert_ne!(0, num_blocks);
-
-    // Open the watcher db
-    let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &config.watcher,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
 
     // Read seed, expand to 32 bytes and create an Rng
     let mut hasher = Blake2b256::new();
@@ -226,16 +208,6 @@ fn main() {
         ledger
             .append_block(&block, &block_contents, None)
             .expect("Could not append block");
-
-        let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
-
-        watcher
-            .add_block_data(&tx_source_url, &block_data)
-            .expect("Could not add block data to watcher");
-
-        watcher
-            .add_block_signature(&tx_source_url, num_blocks, block_sig, "archive".to_string())
-            .expect("Could not add block signature to watcher");
     }
 
     // Print hex-encoded key images of new tx outs, in correct order, on stdout.

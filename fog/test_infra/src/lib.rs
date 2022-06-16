@@ -9,16 +9,16 @@ pub mod db_tests;
 pub mod mock_client;
 pub mod mock_users;
 
-use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::ring_signature::KeyImage;
+use mc_transaction_core::{ring_signature::KeyImage, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mock_users::UserPool;
 use rand_core::{CryptoRng, RngCore};
-use std::{convert::TryFrom, env, path::PathBuf};
+use std::{convert::TryFrom, env, path::PathBuf, thread::sleep, time::Duration};
 
 /// Function for turning string constants into run-time enclave paths
 ///
@@ -152,20 +152,17 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
             if retries == 0 {
                 panic!("users did not converge to ledger_db.num_blocks before we ran out of retry attempts");
             }
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            sleep(Duration::from_millis(100));
         }
     }
 
     // Check if all the transactions that were sent were recovered
     let result = users.compute_delta(&checkpoint);
-    if result == expected_result {
-        return global_txo_count + num_new_txos;
-    }
-
-    panic!(
-        "polling failed to yield expected result {:?}, obtained {:?}",
-        expected_result, result
+    assert_eq!(
+        result, expected_result,
+        "polling failed to yield expected result"
     );
+    global_txo_count + num_new_txos
 }
 
 /// Throw all the user phones in the pool and see if they can recover them via

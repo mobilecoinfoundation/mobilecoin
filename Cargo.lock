@@ -4195,13 +4195,11 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
- "mc-watcher",
  "mc-watcher-api",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
  "serde_json",
- "url",
 ]
 
 [[package]]
