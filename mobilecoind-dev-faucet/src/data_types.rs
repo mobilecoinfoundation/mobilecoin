@@ -297,10 +297,10 @@ pub struct JsonSlamReport {
     pub num_prepared_utxos: u32,
     /// Num txs submitted
     pub num_submitted_txs: u32,
-    /// Prepare duration in seconds
-    pub prepare_time: f32,
-    /// Submit duration in seconds
-    pub submit_time: f32,
+    /// Prepare duration in milliseconds
+    pub prepare_time: u32,
+    /// Submit duration in milliseconds
+    pub submit_time: u32,
 }
 
 impl From<SlamReport> for JsonSlamReport {
@@ -308,8 +308,8 @@ impl From<SlamReport> for JsonSlamReport {
         Self {
             num_prepared_utxos: src.num_prepared_utxos,
             num_submitted_txs: src.num_submitted_txs,
-            prepare_time: src.prepare_time.as_secs_f32(),
-            submit_time: src.submit_time.as_secs_f32(),
+            prepare_time: src.prepare_time.as_millis().try_into().unwrap_or(u32::MAX),
+            submit_time: src.submit_time.as_millis().try_into().unwrap_or(u32::MAX),
         }
     }
 }
