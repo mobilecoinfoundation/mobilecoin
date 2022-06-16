@@ -2,7 +2,6 @@
 
 //! Model file for the mint_configs table.
 
-//use crate::{db::schema::*, Error};
 use crate::{
     db::{
         schema::{mint_config_txs, mint_configs, mint_txs},
@@ -281,8 +280,6 @@ mod tests {
                 .unwrap(),
             0,
         );
-
-        //std::thread::sleep(std::time::Duration::from_millis(100000000));
 
         assert_eq!(
             mint_config2
