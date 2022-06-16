@@ -27,7 +27,7 @@ use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api as api;
 use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
 use std::{
-    cmp::max,
+    cmp::min,
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -146,16 +146,19 @@ impl TokenStateReceiver {
 /// Note: The sort order here is used by the get_any_utxo function to select the
 /// error which is most likely to be resolved, so that the slam worker can
 /// decide whether to retry, or give up on the idea that it can get more utxos.
+///
+/// "less serious" errors i.e. errors that are more likely to be resolved soon,
+/// should compare less, and so be listed earlier.
 #[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd)]
 pub enum GetUtxoError {
-    /// Unknown Token Id
-    UnknownTokenId,
-    /// Channel closed (internal error)
-    ChannelClosed,
-    /// Funds are depleted
-    FundsDepleted,
     /// Faucet is busy
     Busy,
+    /// Funds are depleted
+    FundsDepleted,
+    /// Channel closed (internal error)
+    ChannelClosed,
+    /// Unknown Token Id
+    UnknownTokenId,
 }
 
 /// The worker is responsible for pre-splitting the faucet's balance so that it
@@ -352,10 +355,11 @@ impl Worker {
             match receiver.get_utxo() {
                 Ok(utxo) => return Ok(utxo),
                 Err(err) => {
-                    // Note: this depends on the way rust derives partial ord for enums.
-                    // None is always the least, and then within GetUtxoError, the top-to-bottom
-                    // listing order in code determines the order, with the top being the least
-                    least_serious_error = max(least_serious_error, Some(err));
+                    if let Some(prev_err) = least_serious_error {
+                        least_serious_error = Some(min(prev_err, err));
+                    } else {
+                        least_serious_error = Some(err);
+                    }
                 }
             }
         }
