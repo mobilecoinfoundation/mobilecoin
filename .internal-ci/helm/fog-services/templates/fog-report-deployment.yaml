@@ -20,6 +20,18 @@ spec:
         app: fog-report
         {{- include "fogServices.labels" . | nindent 8 }}
     spec:
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match on this helm chart install
+            app: fog-report
+            helm.sh/chart: {{ include "fogReport.chart" . }}
+            {{- include "fogReport.selectorLabels" . | nindent 6 }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       initContainers:

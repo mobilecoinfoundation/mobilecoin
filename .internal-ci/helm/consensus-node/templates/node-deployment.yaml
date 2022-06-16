@@ -28,20 +28,28 @@ spec:
         client-load-balanced: 'true'
         {{- end }}
     spec:
-      nodeSelector:
-        {{- toYaml .Values.node.nodeSelector | nindent 8 }}
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match app and helm chart version
+            app: consensus-node
+            helm.sh/chart: {{ include "consensusNode.chart" . }}
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - consensus-node
-              topologyKey: 'kubernetes.io/hostname'
+          requireDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                # match all consensus-nodes deployed by the same chart version
+                app: consensus-node
+                helm.sh/chart: {{ include "consensusNode.chart" . }}
+      nodeSelector:
+        {{- toYaml .Values.node.nodeSelector | nindent 8 }}
       tolerations:
       {{- toYaml .Values.node.tolerations | nindent 6 }}
       imagePullSecrets:

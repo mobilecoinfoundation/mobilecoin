@@ -21,6 +21,28 @@ spec:
         app: fog-ingest
         {{- include "fogIngest.labels" . | nindent 8 }}
     spec:
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match on this helm chart install
+            app: fog-ingest
+            helm.sh/chart: {{ include "fogIngest.chart" . }}
+            {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              # match on this helm chart install
+              app: fog-ingest
+              helm.sh/chart: {{ include "fogIngest.chart" . }}
+              {{- include "fogIngest.selectorLabels" . | nindent 6 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       terminationGracePeriodSeconds: 30
