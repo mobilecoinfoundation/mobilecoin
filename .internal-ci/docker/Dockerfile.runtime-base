@@ -29,13 +29,32 @@ RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-ke
 ENV AESM_PATH="/opt/intel/sgx-aesm-service/aesm"
 ENV LD_LIBRARY_PATH="/opt/intel/sgx-aesm-service/aesm"
 
+# Since we are specifying versions (thanks intel), we need to install all the deps.
+# libsgx-ae-epid libsgx-ae-le libsgx-ae-pce
+# libsgx-aesm-epid-plugin libsgx-aesm-launch-plugin libsgx-aesm-pce-plugin
+# libsgx-enclave-common libsgx-epid libsgx-launch libsgx-pce-logic libsgx-urts
+# sgx-aesm-service
+# Use `apt show -a sgx-aesm-service` to find version
 ENV AESM_VERSION=2.16.100.4-focal1
-# Install packages
+# Use `apt show -a libsgx-pce-logic` to find the version thats compatible with aesm.
+ENV PCE_LOGIC_VERSION=1.13.100.4-focal1
+
+# Install  packages
 RUN  apt-get update \
   && apt-get install -y \
       filebeat \
       sgx-aesm-service=${AESM_VERSION} \
       libsgx-epid=${AESM_VERSION} \
+      libsgx-ae-epid=${AESM_VERSION} \
+      libsgx-ae-le=${AESM_VERSION} \
+      libsgx-ae-pce=${AESM_VERSION} \
+      libsgx-aesm-epid-plugin=${AESM_VERSION} \
+      libsgx-aesm-launch-plugin=${AESM_VERSION} \
+      libsgx-aesm-pce-plugin=${AESM_VERSION} \
+      libsgx-enclave-common=${AESM_VERSION} \
+      libsgx-launch=${AESM_VERSION} \
+      libsgx-urts=${AESM_VERSION} \
+      libsgx-pce-logic=${PCE_LOGIC_VERSION} \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
