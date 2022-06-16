@@ -43,7 +43,6 @@ class TestLedger:
                 f'cd {self.ledger_db_path} && exec {self.target_dir}/init_test_ledger',
                 f'--keys {keys_dir}',
                 f'--ledger-db {self.ledger_db_path}',
-                f'--watcher-db {self.watcher_db_path}',
                 f'--seed {self.seed}',
             ])
             print(cmd)
@@ -69,7 +68,6 @@ class TestLedger:
         cmd = ' '.join([
             f'exec {self.target_dir}/add_test_block',
             f'--ledger-db {self.ledger_db_path}',
-            f'--watcher-db {self.watcher_db_path}',
             f'--keys {self.keys_dir}',
             f'--seed {self.seed}',
             f'--fog-pubkey {fog_pubkey}',

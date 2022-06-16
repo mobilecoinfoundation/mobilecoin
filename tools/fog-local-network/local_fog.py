@@ -120,7 +120,6 @@ class FogIngest:
             f'--local-node-id localhost:{self.peer_port}',
             f'--state-file {self.state_file_path}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-            f'--watcher-db {self.watcher_db_path}',
         ])
         self.ingest_server_process = log_and_popen_shell(cmd)
 
@@ -302,7 +301,6 @@ class FogLedger:
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-            f'--watcher-db {self.watcher_db_path}',
         ])
         self.ledger_server_process = log_and_popen_shell(cmd)
 
