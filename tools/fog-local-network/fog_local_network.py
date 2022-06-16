@@ -86,7 +86,6 @@ class FogNetwork(Network):
             BASE_INGEST_PEER_PORT,
             BASE_INGEST_ADMIN_PORT,
             BASE_INGEST_ADMIN_HTTP_GATEWAY_PORT,
-            self.mobilecoind.watcher_db,
             release=True,
         )
         self.fog_ingest.start()
@@ -119,7 +118,6 @@ class FogNetwork(Network):
             BASE_LEDGER_CLIENT_PORT,
             BASE_LEDGER_ADMIN_PORT,
             BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
-            self.mobilecoind.watcher_db,
             release=True,
         )
         self.fog_ledger.start()

@@ -23,14 +23,13 @@ DEADLINE_SECONDS = 60
 FOG_REPORT_RETRY_SECONDS = 30
 
 
-# A class that represents a handle to a new ledger_db and watcher_db which can be populated by the test
+# A class that represents a handle to a new ledger_db which can be populated by the test
 #
 # This mocks out the inputs to fog that normally come from consensus
 class TestLedger:
-    def __init__(self, name, ledger_db_path, watcher_db_path, keys_dir, release, initial_seed=0):
+    def __init__(self, name, ledger_db_path, keys_dir, release, initial_seed=0):
         self.name = name
         self.ledger_db_path = ledger_db_path
-        self.watcher_db_path = watcher_db_path
         self.keys_dir = keys_dir
         self.release = release
         self.target_dir = target_dir(self.release)
@@ -92,22 +91,15 @@ class TestLedger:
 
     def clone(self, clone_name):
         ledger_db_path = f"{self.ledger_db_path}-{clone_name}"
-        watcher_db_path = f"{self.watcher_db_path}-{clone_name}"
 
         os.makedirs(ledger_db_path)
-        os.makedirs(watcher_db_path)
 
         shutil.copy(
             os.path.join(self.ledger_db_path, 'data.mdb'),
             os.path.join(ledger_db_path, 'data.mdb'),
         )
 
-        shutil.copy(
-            os.path.join(self.watcher_db_path, 'data.mdb'),
-            os.path.join(watcher_db_path, 'data.mdb'),
-        )
-
-        return TestLedger(clone_name, ledger_db_path, watcher_db_path, self.keys_dir, self.release, self.seed)
+        return TestLedger(clone_name, ledger_db_path, self.keys_dir, self.release, self.seed)
 
 
 # Parse a line that came back from the balance_check program on STDOUT
@@ -404,8 +396,7 @@ class FogConformanceTest:
     def make_ledger(self, name):
         ledger_dir = os.path.join(self.work_dir, name)
         ledger_db_dir = os.path.join(ledger_dir, 'ledger_db')
-        watcher_db_dir = os.path.join(ledger_dir, 'watcher_db')
-        test_ledger = TestLedger(name, ledger_db_dir, watcher_db_dir, keys_dir = self.keys_dir, release = self.release)
+        test_ledger = TestLedger(name, ledger_db_dir, keys_dir = self.keys_dir, release = self.release)
         return test_ledger
 
     # Create the databases and servers in the workdir and run the actual test
@@ -469,7 +460,6 @@ class FogConformanceTest:
             peer_port = BASE_INGEST_PEER_PORT,
             admin_port = BASE_INGEST_ADMIN_PORT,
             admin_http_gateway_port = BASE_INGEST_ADMIN_HTTP_GATEWAY_PORT,
-            watcher_db_path = ledger1.watcher_db_path,
             release = self.release,
         )
         self.fog_ingest.start()
@@ -491,7 +481,6 @@ class FogConformanceTest:
             client_port = BASE_LEDGER_CLIENT_PORT,
             admin_port = BASE_LEDGER_ADMIN_PORT,
             admin_http_gateway_port = BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
-            watcher_db_path = ledger2.watcher_db_path,
             release = self.release,
         )
         self.fog_ledger.start()
@@ -803,7 +792,6 @@ class FogConformanceTest:
             peer_port = BASE_INGEST_PEER_PORT + 1,
             admin_port = BASE_INGEST_ADMIN_PORT + 1,
             admin_http_gateway_port = BASE_INGEST_ADMIN_HTTP_GATEWAY_PORT + 1,
-            watcher_db_path = ledger1.watcher_db_path,
             release = self.release,
         )
         self.fog_ingest2.start()

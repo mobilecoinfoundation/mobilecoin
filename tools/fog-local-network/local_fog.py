@@ -75,15 +75,13 @@ class FogIngest:
     # peer_port: The port to which peers can make attested connections
     # admin_port: The administrative port
     # admin_http_gateway_port: The admin http port
-    # watcher_db_path: A path to the watcher_db to use as input
     # release: True if we should use the release mode binaries
-    def __init__(self, name, work_dir, ledger_db_path, client_port, peer_port, admin_port, admin_http_gateway_port, watcher_db_path, release):
+    def __init__(self, name, work_dir, ledger_db_path, client_port, peer_port, admin_port, admin_http_gateway_port, release):
         assert os.path.exists(ledger_db_path)
 
         self.name = name
         self.work_dir = work_dir
         self.ledger_db_path = ledger_db_path
-        self.watcher_db_path = watcher_db_path
 
         self.client_port = client_port
         self.client_listen_url = f"insecure-fog-ingest://{LISTEN_HOST}:{self.client_port}/"
@@ -266,10 +264,9 @@ class FogReport:
 
 
 class FogLedger:
-    def __init__(self, name, ledger_db_path, client_responder_id, client_port, admin_port, admin_http_gateway_port, watcher_db_path, release):
+    def __init__(self, name, ledger_db_path, client_responder_id, client_port, admin_port, admin_http_gateway_port, release):
         self.name = name
         self.ledger_db_path = ledger_db_path
-        self.watcher_db_path = watcher_db_path
 
         self.client_responder_id = client_responder_id
         self.client_port = client_port
@@ -289,7 +286,6 @@ class FogLedger:
 
     def start(self):
         assert os.path.exists(os.path.join(self.ledger_db_path, 'data.mdb')), self.ledger_db_path
-        assert os.path.exists(os.path.join(self.watcher_db_path, 'data.mdb')), self.watcher_db_path
         self.stop()
 
         print(f'Starting fog ledger {self.name}')
