@@ -16,13 +16,11 @@ use mc_util_grpc::{
     Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
-use mc_watcher::watcher_db::WatcherDB;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
     ledger: L,
-    watcher: WatcherDB,
     enclave: E,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
@@ -33,7 +31,6 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     pub fn new(
         ledger: L,
-        watcher: WatcherDB,
         enclave: E,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
@@ -41,16 +38,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     ) -> Self {
         Self {
             ledger,
-            watcher,
             enclave,
             authenticator,
             logger,
             db_poll_shared_state,
         }
-    }
-
-    pub fn get_watcher(&mut self) -> WatcherDB {
-        self.watcher.clone()
     }
 
     pub fn get_ledger(&mut self) -> L {

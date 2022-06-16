@@ -22,7 +22,6 @@ use mc_util_grpc::{
     TokenAuthenticator,
 };
 use mc_util_uri::ConnectionUri;
-use mc_watcher::watcher_db::WatcherDB;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Display)]
@@ -84,7 +83,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
         config: LedgerServerConfig,
         enclave: E,
         ledger: LedgerDB,
-        watcher: WatcherDB,
         ra_client: R,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
@@ -104,7 +102,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
 
         let key_image_service = KeyImageService::new(
             ledger.clone(),
-            watcher.clone(),
             enclave.clone(),
             shared_state,
             client_authenticator.clone(),
@@ -116,18 +113,10 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             client_authenticator.clone(),
             logger.clone(),
         );
-        let block_service = BlockService::new(
-            ledger.clone(),
-            watcher.clone(),
-            client_authenticator.clone(),
-            logger.clone(),
-        );
-        let untrusted_tx_out_service = UntrustedTxOutService::new(
-            ledger,
-            watcher,
-            client_authenticator.clone(),
-            logger.clone(),
-        );
+        let block_service =
+            BlockService::new(ledger.clone(), client_authenticator.clone(), logger.clone());
+        let untrusted_tx_out_service =
+            UntrustedTxOutService::new(ledger, client_authenticator.clone(), logger.clone());
 
         Self {
             config,
@@ -159,7 +148,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             self.db_fetcher = Some(DbFetcher::new(
                 self.key_image_service.get_ledger(),
                 self.enclave.clone(),
-                self.key_image_service.get_watcher(),
                 self.key_image_service.get_db_poll_shared_state(),
                 readiness_indicator.clone(),
                 self.logger.clone(),

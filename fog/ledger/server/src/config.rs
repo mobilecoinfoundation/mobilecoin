@@ -25,10 +25,6 @@ pub struct LedgerServerConfig {
     #[clap(long, parse(from_os_str), env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
-    /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
-
     /// Client Responder id.
     ///
     /// This ID needs to match the host:port clients use in their URI when

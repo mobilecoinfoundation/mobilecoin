@@ -14,7 +14,6 @@ use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
 use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
-use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
 
 fn main() {
@@ -50,14 +49,11 @@ fn main() {
     );
 
     let db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
-    let watcher =
-        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut server = LedgerServer::new(
         config.clone(),
         enclave,
         db,
-        watcher,
         ias_client,
         SystemTimeProvider::default(),
         logger.clone(),

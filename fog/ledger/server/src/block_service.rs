@@ -3,21 +3,18 @@
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    external,
     ledger::{BlockData, BlockRequest, BlockResponse},
     ledger_grpc::FogBlockApi,
 };
 use mc_ledger_db::{self, Error as DbError, Ledger};
 use mc_util_grpc::{rpc_database_err, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::SVC_COUNTERS;
-use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BlockService<L: Ledger + Clone> {
     ledger: L,
-    watcher: WatcherDB,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
@@ -25,13 +22,11 @@ pub struct BlockService<L: Ledger + Clone> {
 impl<L: Ledger + Clone> BlockService<L> {
     pub fn new(
         ledger: L,
-        watcher: WatcherDB,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
             ledger,
-            watcher,
             authenticator,
             logger,
         }
@@ -68,29 +63,23 @@ impl<L: Ledger + Clone> BlockService<L> {
 
     fn get_block(&mut self, block_index: u64) -> Result<BlockData, DbError> {
         let mut result = BlockData::new();
-        let block_contents = self.ledger.get_block_contents(block_index)?;
-        let block = self.ledger.get_block(block_index)?;
-        for output in block_contents.outputs {
-            result.outputs.push(external::TxOut::from(&output));
-        }
+
+        let block_data = self.ledger.get_block_data(block_index)?;
+
+        let block = block_data.block();
         result.index = block_index;
         result.global_txo_count = block.cumulative_txo_count;
 
-        // Get the timestamp of the block_index if possible
-        let (timestamp, ts_result): (u64, TimestampResultCode) =
-            match self.watcher.get_block_timestamp(block_index) {
-                Ok((ts, res)) => (ts, res),
-                Err(err) => {
-                    log::error!(
-                        self.logger,
-                        "Could not obtain timestamp for block {} due to error {:?}",
-                        block_index,
-                        err
-                    );
-                    (u64::MAX, TimestampResultCode::WatcherDatabaseError)
-                }
-            };
+        for output in &block_data.contents().outputs {
+            result.outputs.push(output.into());
+        }
 
+        // Get the timestamp of the block_index if possible
+        let (timestamp, ts_result) = if let Some(signature) = block_data.signature() {
+            (signature.signed_at(), TimestampResultCode::TimestampFound)
+        } else {
+            (u64::MAX, TimestampResultCode::Unavailable)
+        };
         result.timestamp = timestamp;
         result.timestamp_result_code = ts_result as u32;
 

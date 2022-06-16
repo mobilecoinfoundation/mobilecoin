@@ -3724,7 +3724,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempdir",
- "url",
 ]
 
 [[package]]

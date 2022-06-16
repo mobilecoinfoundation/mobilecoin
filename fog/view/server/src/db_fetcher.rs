@@ -93,19 +93,15 @@ impl DbFetcher {
         let thread_shared_state = shared_state.clone();
         let thread_num_queued_records_limiter = num_queued_records_limiter.clone();
         let join_handle = Some(
-            ThreadBuilder::new()
-                .name("ViewDbFetcher".to_owned())
-                .spawn(move || {
-                    DbFetcherThread::start(
-                        db,
-                        thread_stop_requested,
-                        thread_shared_state,
-                        thread_num_queued_records_limiter,
-                        readiness_indicator,
-                        logger,
-                    )
-                })
-                .expect("Could not spawn thread"),
+            DbFetcherThread::start(
+                db,
+                thread_stop_requested,
+                thread_shared_state,
+                thread_num_queued_records_limiter,
+                readiness_indicator,
+                logger,
+            )
+            .expect("Could not spawn thread"),
         );
 
         Self {
@@ -185,17 +181,21 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
         readiness_indicator: ReadinessIndicator,
         logger: Logger,
-    ) {
-        let thread = Self {
-            db,
-            stop_requested,
-            shared_state,
-            block_tracker: BlockTracker::new(logger.clone()),
-            num_queued_records_limiter,
-            readiness_indicator,
-            logger,
-        };
-        thread.run();
+    ) -> std::io::Result<JoinHandle<()>> {
+        ThreadBuilder::new()
+            .name("ViewDbFetcher".to_owned())
+            .spawn(move || {
+                Self {
+                    db,
+                    stop_requested,
+                    shared_state,
+                    block_tracker: BlockTracker::new(logger.clone()),
+                    num_queued_records_limiter,
+                    readiness_indicator,
+                    logger,
+                }
+                .run();
+            })
     }
 
     fn run(mut self) {

@@ -12,14 +12,12 @@ use mc_fog_api::{
 use mc_ledger_db::{self, Error as DbError, Ledger};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::SVC_COUNTERS;
-use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct UntrustedTxOutService<L: Ledger + Clone> {
     ledger: L,
-    watcher: WatcherDB,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
@@ -27,13 +25,11 @@ pub struct UntrustedTxOutService<L: Ledger + Clone> {
 impl<L: Ledger + Clone> UntrustedTxOutService<L> {
     pub fn new(
         ledger: L,
-        watcher: WatcherDB,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
             ledger,
-            watcher,
             authenticator,
             logger,
         }
@@ -125,20 +121,12 @@ impl<L: Ledger + Clone> UntrustedTxOutService<L> {
             })?;
 
         // Get the timestamp of the block_index if possible
-        let (timestamp, ts_result): (u64, TimestampResultCode) =
-            match self.watcher.get_block_timestamp(block_index) {
-                Ok((ts, res)) => (ts, res),
-                Err(err) => {
-                    log::error!(
-                        self.logger,
-                        "Could not obtain timestamp for block {} due to error {:?}",
-                        block_index,
-                        err
-                    );
-                    (u64::MAX, TimestampResultCode::WatcherDatabaseError)
-                }
-            };
-
+        let signature = self.ledger.get_block_signature(block_index);
+        let (timestamp, ts_result) = match signature {
+            Ok(signature) => (signature.signed_at(), TimestampResultCode::TimestampFound),
+            Err(DbError::NotFound) => (u64::MAX, TimestampResultCode::Unavailable),
+            _ => (u64::MAX, TimestampResultCode::WatcherDatabaseError),
+        };
         result.block_index = block_index;
         result.timestamp = timestamp;
         result.timestamp_result_code = ts_result as u32;

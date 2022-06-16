@@ -13,9 +13,8 @@ use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
-    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Tracer,
 };
-use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};
 use std::{
     sync::{
@@ -42,7 +41,6 @@ impl DbFetcher {
     pub fn new<DB: Ledger + Clone + Send + Sync + 'static, E: LedgerEnclaveProxy>(
         db: DB,
         enclave: E,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
         logger: Logger,
@@ -51,21 +49,16 @@ impl DbFetcher {
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = db_poll_shared_state;
         let join_handle = Some(
-            ThreadBuilder::new()
-                .name("LedgerDbFetcher".to_owned())
-                .spawn(move || {
-                    DbFetcherThread::start(
-                        db,
-                        thread_stop_requested,
-                        0,
-                        enclave,
-                        watcher,
-                        thread_shared_state,
-                        readiness_indicator,
-                        logger,
-                    )
-                })
-                .expect("Could not spawn thread"),
+            DbFetcherThread::start(
+                db,
+                thread_stop_requested,
+                0,
+                enclave,
+                thread_shared_state,
+                readiness_indicator,
+                logger,
+            )
+            .expect("Could not spawn thread"),
         );
 
         Self {
@@ -91,12 +84,12 @@ impl Drop for DbFetcher {
     }
 }
 
-struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> {
+struct DbFetcherThread<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static>
+{
     db: DB,
     stop_requested: Arc<AtomicBool>,
     next_block_index: u64,
     enclave: E,
-    watcher: WatcherDB,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
     readiness_indicator: ReadinessIndicator,
     logger: Logger,
@@ -104,7 +97,9 @@ struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync +
 
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database. Add join handle
-impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetcherThread<DB, E> {
+impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static>
+    DbFetcherThread<DB, E>
+{
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
@@ -113,22 +108,24 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
         stop_requested: Arc<AtomicBool>,
         next_block_index: u64,
         enclave: E,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
         logger: Logger,
-    ) {
-        let thread = Self {
-            db,
-            stop_requested,
-            next_block_index,
-            enclave,
-            watcher,
-            db_poll_shared_state,
-            readiness_indicator,
-            logger,
-        };
-        thread.run();
+    ) -> std::io::Result<JoinHandle<()>> {
+        ThreadBuilder::new()
+            .name("LedgerDbFetcher".to_owned())
+            .spawn(move || {
+                Self {
+                    db,
+                    stop_requested,
+                    next_block_index,
+                    enclave,
+                    db_poll_shared_state,
+                    readiness_indicator,
+                    logger,
+                }
+                .run()
+            })
     }
 
     fn run(mut self) {
@@ -178,11 +175,10 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     fn load_block_data(&mut self) -> bool {
         // Default to true: if there is an error, we may have more work, we don't know
         let mut may_have_more_work = true;
-        let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
-        match self.db.get_block_contents(self.next_block_index) {
+        match self.db.get_block_data(self.next_block_index) {
             Err(LedgerError::NotFound) => may_have_more_work = false,
             Err(e) => {
                 log::error!(
@@ -193,26 +189,27 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
             }
-            Ok(block_contents) => {
+            Ok(block_data) => {
                 // Tracing
                 let tracer = tracer!();
-
-                let mut span = block_span_builder(&tracer, "poll_block", self.next_block_index)
+                let span = block_span_builder(&tracer, "poll_block", self.next_block_index)
                     .with_start_time(start_time)
+                    .with_attributes(vec![
+                        TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64)
+                    ])
                     .start(&tracer);
-
-                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
-
                 let _active = mark_span_as_active(span);
 
                 // Get the timestamp for the block.
-                let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                    self.watcher
-                        .poll_block_timestamp(self.next_block_index, watcher_timeout)
-                });
+                let timestamp = block_data
+                    .signature()
+                    .as_ref()
+                    .map(|sig| sig.signed_at())
+                    .unwrap_or(u64::MAX);
 
                 // Add block to enclave.
-                let records = block_contents
+                let records = block_data
+                    .contents()
                     .key_images
                     .iter()
                     .map(|key_image| KeyImageData {
