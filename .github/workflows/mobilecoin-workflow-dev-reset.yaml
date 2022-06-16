@@ -90,7 +90,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: eu-central-1
-        BUCKET: mobilecoin.eu.development.chain
+        BUCKET: mobilecoin.eu.infradev.chain
         NAMESPACE: ${{ inputs.namespace }}
       run: |
         aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node1.${NAMESPACE}.infradev.mobilecoin.com
