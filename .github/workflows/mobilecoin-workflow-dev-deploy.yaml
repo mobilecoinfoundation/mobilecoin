@@ -375,9 +375,11 @@ jobs:
         chart_name: fog-services
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
+        # Set orderedReady for compatibility with 1.1.3 chart - remove after 1.2.x
         chart_set: |
           --set=image.org=${{ inputs.docker_image_org }}
           --set=global.certManagerClusterIssuer=zerossl-prod-http
+          --set=fogLedger.podManagementPolicy=OrderedReady
         release_name: fog-services
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
