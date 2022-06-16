@@ -31,8 +31,8 @@ spec:
           matchLabels:
             # match on this helm chart install
             app: fog-ledger
-            helm.sh/chart: {{ include "fogLedger.chart" . }}
-            {{- include "fogLedger.selectorLabels" . | nindent 12 }}
+            helm.sh/chart: {{ include "fogServices.chart" . }}
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -41,8 +41,8 @@ spec:
             labelSelector:
               # match on this helm chart install
               app: fog-ledger
-              helm.sh/chart: {{ include "fogLedger.chart" . }}
-              {{- include "fogLedger.selectorLabels" . | nindent 14 }}
+              helm.sh/chart: {{ include "fogServices.chart" . }}
+              {{- include "fogServices.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       terminationGracePeriodSeconds: 30

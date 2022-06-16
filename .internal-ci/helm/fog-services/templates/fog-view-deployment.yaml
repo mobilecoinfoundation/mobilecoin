@@ -8,6 +8,11 @@ metadata:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.fogView.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
   selector:
     matchLabels:
       app: fog-view
@@ -30,8 +35,8 @@ spec:
           matchLabels:
             # match on this helm chart install
             app: fog-view
-            helm.sh/chart: {{ include "fogView.chart" . }}
-            {{- include "fogView.selectorLabels" . | nindent 12 }}
+            helm.sh/chart: {{ include "fogServices.chart" . }}
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -40,8 +45,8 @@ spec:
             labelSelector:
               # match on this helm chart install
               app: fog-view
-              helm.sh/chart: {{ include "fogView.chart" . }}
-              {{- include "fogView.selectorLabels" . | nindent 14 }}
+              helm.sh/chart: {{ include "fogServices.chart" . }}
+              {{- include "fogServices.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       initContainers:

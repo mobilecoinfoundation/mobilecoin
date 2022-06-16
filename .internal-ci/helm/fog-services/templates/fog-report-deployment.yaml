@@ -30,8 +30,8 @@ spec:
           matchLabels:
             # match on this helm chart install
             app: fog-report
-            helm.sh/chart: {{ include "fogReport.chart" . }}
-            {{- include "fogReport.selectorLabels" . | nindent 12 }}
+            helm.sh/chart: {{ include "fogServices.chart" . }}
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       initContainers:

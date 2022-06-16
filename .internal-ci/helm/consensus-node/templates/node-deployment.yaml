@@ -41,7 +41,7 @@ spec:
             helm.sh/chart: {{ include "consensusNode.chart" . }}
       affinity:
         podAntiAffinity:
-          requireDuringSchedulingIgnoredDuringExecution:
+          requiredDuringSchedulingIgnoredDuringExecution:
           # Require pods to be on separate nodes.
           - topologyKey: kubernetes.io/hostname
             labelSelector:
