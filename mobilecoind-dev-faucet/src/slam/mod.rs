@@ -125,7 +125,7 @@ impl SlamState {
     /// error message.
     pub async fn start_slam(
         self: Arc<Self>,
-        params: SlamParams,
+        params: &SlamParams,
         account_key: &AccountKey,
         mobilecoind_api_client: &MobilecoindApiClient,
         worker: &Worker,
@@ -167,7 +167,7 @@ impl SlamState {
                     match PreparedUtxo::new(
                         counter,
                         utxo_record,
-                        &params,
+                        params,
                         mobilecoind_api_client,
                         logger,
                     )
@@ -243,7 +243,7 @@ impl SlamState {
                 std::thread::spawn(move || {
                     this.slam_worker_entry_point(
                         worker_num,
-                        params,
+                        &params,
                         prepared_utxos_receiver,
                         recipient,
                         account_key,
@@ -288,7 +288,7 @@ impl SlamState {
     fn slam_worker_entry_point(
         self: Arc<Self>,
         worker_num: u32,
-        params: SlamParams,
+        params: &SlamParams,
         prepared_utxos_receiver: async_channel::Receiver<PreparedUtxo>,
         recipient: PublicAddress,
         account_key: AccountKey,
@@ -305,7 +305,7 @@ impl SlamState {
             match prepared_utxos_receiver.try_recv() {
                 Ok(prepared_utxo) => {
                     self.build_and_submit_tx(
-                        &params,
+                        params,
                         prepared_utxo,
                         &recipient,
                         &account_key,

@@ -397,28 +397,31 @@ impl State {
         // then they will be detached. However, I think they always finish eventually
         // anyways, so we will not be leaking threads, at least not permanently.
         let slam_state = self.slam_state.clone();
-        let mut slam_fut = Box::pin(slam_state.start_slam(
-            params.clone(),
-            &self.account_key,
-            &self.mobilecoind_api_client,
-            &self.worker,
-            &logger,
-        ));
 
-        // Block on either, the slam finishing, or shutdown being requested.
-        // If shutdown is requested, then ask slam to stop, then block on slam stopping
-        let report = select! {
-            slam_result = &mut slam_fut => {
-                slam_result
-            },
-            _ = stop_requested => {
-                // This passes a signal to the slam worker threads to join
-                self.slam_state.request_stop();
-                // Now actually wait for the slam future to finish, so that the worker threads
-                // are joined and we don't just leak them
-                (&mut slam_fut).await
-            }
-        }?;
+        let report = {
+            let mut slam_fut = Box::pin(slam_state.start_slam(
+                &params,
+                &self.account_key,
+                &self.mobilecoind_api_client,
+                &self.worker,
+                &logger,
+            ));
+
+            // Block on either, the slam finishing, or shutdown being requested.
+            // If shutdown is requested, then ask slam to stop, then block on slam stopping
+            select! {
+                slam_result = &mut slam_fut => {
+                    slam_result
+                },
+                _ = stop_requested => {
+                    // This passes a signal to the slam worker threads to join
+                    self.slam_state.request_stop();
+                    // Now actually wait for the slam future to finish, so that the worker threads
+                    // are joined and we don't just leak them
+                    (&mut slam_fut).await
+                }
+            }?
+        };
 
         Ok(SlamResponse { params, report })
     }
