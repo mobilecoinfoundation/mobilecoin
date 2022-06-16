@@ -68,7 +68,7 @@ do
     echo "-- sending mint tx for account key ${k}"
 
     mc-consensus-mint-client generate-and-submit-mint-tx \
-        --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+        --node "mc://node1.${NAMESPACE}.infradev.mobilecoin.com/" \
         --signing-key "${token_signer_key}" \
         --recipient "$(cat "${k}")" \
         --token-id "${token_id}" \

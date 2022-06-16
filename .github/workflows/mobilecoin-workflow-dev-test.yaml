@@ -131,7 +131,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           INITIALIZE_LEDGER="true" \
-          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
+          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.infradev.mobilecoin.com:443" \
           /util/generate_origin_data.sh
 
   fog-distribution:
@@ -172,15 +172,15 @@ jobs:
         command: |
           test_client \
             --key-dir /tmp/sample_data/fog_keys \
-            --consensus mc://node1.${{ inputs.namespace }}.development.mobilecoin.com/ \
-            --consensus mc://node2.${{ inputs.namespace }}.development.mobilecoin.com/ \
-            --consensus mc://node3.${{ inputs.namespace }}.development.mobilecoin.com/ \
+            --consensus mc://node1.${{ inputs.namespace }}.infradev.mobilecoin.com/ \
+            --consensus mc://node2.${{ inputs.namespace }}.infradev.mobilecoin.com/ \
+            --consensus mc://node3.${{ inputs.namespace }}.infradev.mobilecoin.com/ \
             --num-clients 6 \
             --num-transactions 32 \
             --consensus-wait 300 \
             --transfer-amount 20 \
-            --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
-            --fog-ledger fog-ledger://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+            --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.infradev.mobilecoin.com:443 \
+            --fog-ledger fog-ledger://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.infradev.mobilecoin.com:443
 
 
     - name: Test - mobilecoind-grpc (previously Wallet Integration)

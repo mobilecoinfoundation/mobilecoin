@@ -50,7 +50,7 @@ governor_signer_key="/minting-keys/minter${token_id}_governor.private.pem"
 token_signer_key="/minting-keys/token${token_id}_signer.public.pem"
 
 mc-consensus-mint-client generate-and-submit-mint-config-tx \
-    --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+    --node "mc://node1.${NAMESPACE}.infradev.mobilecoin.com/" \
     --signing-key "${governor_signer_key}" \
     --token-id "${token_id}" \
     --config "1000000000:${token_id}:${token_signer_key}" \

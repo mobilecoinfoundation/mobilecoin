@@ -87,7 +87,7 @@ python3 integration_test.py \
     --mobilecoind-addr "mobilecoind:3229" \
     --mint-auditor-addr "mobilecoind-mint-auditor:7774" \
     --mint-client-bin /usr/local/bin/mc-consensus-mint-client \
-    --node-url "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+    --node-url "mc://node1.${NAMESPACE}.infradev.mobilecoin.com/" \
     --mint-signing-key "${token_signer_key}"
 
 popd >/dev/null || exit 1

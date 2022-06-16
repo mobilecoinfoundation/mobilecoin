@@ -60,13 +60,13 @@ fi
 
 test_client \
     --key-dir "${key_dir}" \
-    --consensus "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
-    --consensus "mc://node2.${NAMESPACE}.development.mobilecoin.com/" \
-    --consensus "mc://node3.${NAMESPACE}.development.mobilecoin.com/" \
+    --consensus "mc://node1.${NAMESPACE}.infradev.mobilecoin.com/" \
+    --consensus "mc://node2.${NAMESPACE}.infradev.mobilecoin.com/" \
+    --consensus "mc://node3.${NAMESPACE}.infradev.mobilecoin.com/" \
     --token-id "${token_id}" \
     --num-clients 6 \
     --num-transactions 32 \
     --consensus-wait 300 \
     --transfer-amount 20 \
-    --fog-view "fog-view://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
-    --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"
+    --fog-view "fog-view://${user}fog.${NAMESPACE}.infradev.mobilecoin.com:443" \
+    --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.infradev.mobilecoin.com:443"
