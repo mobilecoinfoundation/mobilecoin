@@ -60,7 +60,7 @@ jobs:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
         release_name: ${{ matrix.chart }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -74,7 +74,7 @@ jobs:
       with:
         action: pvcs-delete
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 

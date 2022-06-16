@@ -136,7 +136,7 @@ jobs:
       with:
         action: namespace-create
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -169,7 +169,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         object_name: sample-keys-seeds
@@ -207,7 +207,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         object_name: consensus-minting-secrets
@@ -239,7 +239,7 @@ jobs:
           --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
         release_name: mc-core-dev-env-setup
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -269,7 +269,7 @@ jobs:
         chart_wait_timeout: 10m
         release_name: ${{ matrix.release_name }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -292,7 +292,7 @@ jobs:
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -313,7 +313,7 @@ jobs:
         chart_wait_timeout: 5m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -335,7 +335,7 @@ jobs:
           --set=image.org=${{ inputs.docker_image_org }}
         release_name: fog-ingest-${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -345,7 +345,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
@@ -357,7 +357,7 @@ jobs:
         action: fog-ingest-activate
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
@@ -380,6 +380,6 @@ jobs:
           --set=global.certManagerClusterIssuer=zerossl-prod-http
         release_name: fog-services
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}

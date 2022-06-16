@@ -18,7 +18,7 @@ jobs:
     with:
       namespace: ${{ github.event.inputs.namespace }}
     secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
@@ -34,7 +34,7 @@ jobs:
       with:
         action: namespace-delete
         namespace: ${{ github.event.inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 

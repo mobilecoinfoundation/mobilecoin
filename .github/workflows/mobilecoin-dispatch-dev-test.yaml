@@ -47,7 +47,7 @@ jobs:
       testing_1_1 : ${{ github.event.inputs.testing_1_1 == 'true' && 'true' || 'false' }}
       testing_1_2: ${{ github.event.inputs.testing_1_2 == 'true' && 'true' || 'false' }}
     secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}

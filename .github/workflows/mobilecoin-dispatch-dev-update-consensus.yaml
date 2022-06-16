@@ -52,7 +52,7 @@ jobs:
       minting_config_enabled: ${{ github.event.inputs.minting_config_enabled }}
       block_version: "${{ github.event.inputs.block_version }}"
     secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER_INFRA_DEV }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
