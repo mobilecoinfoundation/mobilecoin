@@ -261,18 +261,15 @@ impl SlamState {
             // Note: this is blocking, we could use async_thread instead I guess. But it
             // only blocks one thread at most since only one slam can happen at
             // a time, so it likely doesn't matter
-            match worker.join() {
-                Ok(()) => {}
-                Err(_) => {
-                    // This error happens if a worker thread panics. The rest of
-                    // the server can still work OK, so ignore the panic.
-                    // The error type is Any, so we cannot easily log it, but it
-                    // was likely already logged.
-                    log::error!(
-                        logger,
-                        "Slam worker error on join; see previous logs for details"
-                    )
-                }
+            if worker.join().is_err() {
+                // This error happens if a worker thread panics. The rest of
+                // the server can still work OK, so ignore the panic.
+                // The error type is Any, so we cannot easily log it, but it
+                // was likely already logged.
+                log::error!(
+                    logger,
+                    "Slam worker error on join; see previous logs for details"
+                );
             }
         }
         let submit_time = Instant::now().duration_since(begin_submit_time);
@@ -381,8 +378,18 @@ impl SlamState {
                         }
                         return;
                     }
-                    Err(SubmitTxError::Fatal) => return,
-                    Err(SubmitTxError::Rebuild) => break,
+                    Err(SubmitTxError::Fatal) => {
+                        log::warn!(
+                            logger,
+                            "Fatal error when submitting tx #{}, giving up on this tx",
+                            prepared_utxo.index
+                        );
+                        return;
+                    }
+                    Err(SubmitTxError::Rebuild) => {
+                        log::debug!(logger, "Rebuilding tx #{}", prepared_utxo.index);
+                        break;
+                    }
                     Err(SubmitTxError::Retry) => {
                         std::thread::sleep(params.retry_period);
                     }
