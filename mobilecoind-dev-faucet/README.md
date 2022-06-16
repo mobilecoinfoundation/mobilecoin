@@ -71,6 +71,13 @@ Optionally, a json config object may be attached to adjust the parameters, overr
     /// Which consensus endpoints to submit transactions to
     consensus_uris: <list of strings>,
 }
+```
+
+This post will not return a response until the slam is finished. The response will
+contain a report of how many Tx's were prepared and submitted successfully and how long
+each step took.
+
+POST requests to `/cancel_slam` will cancel an in-progress slam.
 
 ### Launching
 
@@ -104,6 +111,7 @@ $ ./tools/local_network/local_network.py --network-type dense5 --skip-build &
 ```
 
 Then, start a faucet and set it to also work in the background:
+
 ```
 $ ./target/release/mobilecoind-dev-faucet --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" &
 ```
@@ -186,4 +194,18 @@ You can check on the status of a slam by hitting the status endpoint:
 ```
 $ curl -s localhost:9090/status
 {"success":true,"b58_address":"5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5","faucet_payout_amounts":{"2":"20480","1":"20480","0":"8000000000"},"balances":{"0":"12499999777600000000","1":"0","2":"0"},"queue_depths":{"1":"0","2":"0","0":"0"},"slam_status":"Step 2: Preparing UTXOs: 324/500"}
+```
+
+When the slam finishes, the initial post returns a response containing a report like this:
+
+```
+{"success":true,"params":{"target_num_tx":500,"num_threads":30,"retries":30,"retry_period":1.0,"tombstone_offset":10,"consensus_client_uris":["insecure-mc://localhost:3200/","insecure-mc://localhost:3201/","insecure-mc://localhost:3202/","insecure-mc://localhost:3203/","insecure-mc://localhost:3204/"]},"report":{"num_prepared_utxos":"500","num_submitted_txs":"500","prepare_time":67.67402,"submit_time":11.472368}}
+```
+
+#### Canceling a slam
+
+If slam is taking too long or is stuck, it can be canceled like this:
+
+```
+curl -s localhost:9090/cancel_slam -X POST
 ```
