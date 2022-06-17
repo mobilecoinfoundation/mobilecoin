@@ -87,7 +87,7 @@ impl MintConfigTx {
                 protobuf: encode(tx),
             };
 
-            diesel::insert_into(schema::mint_config_txs::table)
+            diesel::insert_into(mint_config_txs::table)
                 .values(&obj)
                 .execute(conn)?;
 
