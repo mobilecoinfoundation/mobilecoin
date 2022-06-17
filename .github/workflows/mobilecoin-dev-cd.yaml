@@ -57,7 +57,7 @@ jobs:
   build-rust-hardware-projects:
     runs-on: [self-hosted, Linux, large]
     container:
-      image: mobilecoin/rust-sgx-base@sha256:6e9ec00ee70045392599cc3c25e74184e072e3d5a5d7abdd713c25207043afda
+      image: mobilecoin/rust-sgx-base@sha256:1be28a65be74022072feb929bb9b900cf303de3cd8d3a1af49d583407b0c002b
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
       MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
