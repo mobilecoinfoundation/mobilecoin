@@ -18,7 +18,7 @@ enclave {
                                               [out, size=outbuf_len] uint8_t *outbuf,
                                               size_t outbuf_len,
                                               [out] size_t* outbuf_used,
-                                              [out] uint64_t* outbuf_retry_id);
+                                              [in, out] uint64_t* outbuf_retry_id);
 
     };
 };
