@@ -252,9 +252,6 @@ jobs:
     env:
       NUM_RUNNERS: ${{ matrix.num_runners }}
       RUNNER_INDEX: ${{ matrix.runner_index }}
-      # TEST_DATABASE_URL points at the server, as Fog recovery DB tests create
-      # and drop PG databases as needed.
-      TEST_DATABASE_URL: postgres://postgres:postgres@postgres
 
     steps:
       - name: Check out code
@@ -275,6 +272,8 @@ jobs:
           # additional cargo flags.
           grep -q fog-distribution /tmp/fog-test-packages && \
             echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages || true
+      - name: Start postgres
+        run: service postgresql start
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
@@ -282,21 +281,10 @@ jobs:
           # limiting the number of build-jobs helps with that.
           args: $(cat /tmp/fog-test-packages) --build-jobs 4
           junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
-
-    services:
-      # Spin up a PostgreSQL server
-      postgres:
-        image: postgres
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
 
 
   fog-ingest-tests:
@@ -308,44 +296,23 @@ jobs:
         uses: actions/checkout@v3
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
+      - name: Start postgres
+        run: service postgresql start
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
           # These tests time out without release mode.
           args: -p 'mc-fog-ingest-*' --release
           junit_xml_filename: junit-fog-ingest-tests.xml
-    env:
-      # TEST_DATABASE_URL points at the server, as Fog recovery DB tests create
-      # and drop PG databases as needed.
-      TEST_DATABASE_URL: postgres://postgres:postgres@postgres
-
-    services:
-      # Spin up a PostgreSQL server
-      postgres:
-        image: postgres
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
 
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
     container: gcr.io/mobilenode-211420/builder-install:1_28
-
-    env:
-      # DATABASE_URL points to a specific database.
-      DATABASE_URL: postgres://postgres:postgres@postgres/fog_local
-      # Set env vars so PG tools like createdb and dropdb do the right thing.
-      PGHOST: postgres
-      PGUSER: postgres
-      PGPASSWORD: postgres
 
     steps:
       - name: Check out code
@@ -366,8 +333,14 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           ./build.sh
+
+          service postgresql start
       - name: fog_conformance_tests.py
         working-directory: tools/fog-local-network
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
         run: |
           . ./env/bin/activate
           python3 fog_conformance_tests.py --release
@@ -376,33 +349,10 @@ jobs:
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
-    services:
-      # Spin up a PostgreSQL server
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
     container: gcr.io/mobilenode-211420/builder-install:1_28
-
-    env:
-      # DATABASE_URL points to a specific database.
-      DATABASE_URL: postgres://postgres:postgres@postgres/fog_local
-      # Set env vars so PG tools like createdb and dropdb do the right thing.
-      PGHOST: postgres
-      PGUSER: postgres
-      PGPASSWORD: postgres
 
     steps:
       - name: Check out code
@@ -458,7 +408,13 @@ jobs:
 
           # Generate sample Fog keys.
           "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
+
+          service postgresql start
       - name: Run local network
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
         run: |
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/fog-local-network"
@@ -504,21 +460,6 @@ jobs:
         uses: ./.github/actions/upload-core-dumps
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
-
-    services:
-      # Spin up a PostgreSQL server
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
 
   publish-test-results:
