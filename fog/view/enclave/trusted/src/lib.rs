@@ -37,14 +37,14 @@ pub extern "C" fn viewenclave_call(
     if inbuf.is_null()
         || outbuf.is_null()
         || unsafe { sgx_is_outside_enclave(inbuf as *const c_void, inbuf_len) } == 1
-        || unsafe { sgx_is_outside_enclave(outbuf as *const c_void, outbuf_len) } != 1
+        || unsafe { sgx_is_outside_enclave(outbuf as *const c_void, outbuf_len) } == 1
     {
         eprintln!("inbuf or outbuf was out of bounds!");
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
     }
     if unsafe {
         sgx_is_outside_enclave(outbuf_used as *const c_void, core::mem::size_of::<usize>())
-    } != 1
+    } == 1
     {
         eprintln!("outbuf_used was out of bounds! {:?}", outbuf_used);
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
@@ -55,7 +55,7 @@ pub extern "C" fn viewenclave_call(
             outbuf_retry_id as *const c_void,
             core::mem::size_of::<u64>(),
         )
-    } != 1
+    } == 1
     {
         eprintln!("outbuf_retry_id was out of bounds! {:?}", outbuf_retry_id);
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
