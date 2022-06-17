@@ -255,7 +255,7 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+            mr_signer_verifier.allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_consensus_enclave_measurement::get_mr_signer_verifier(None)
@@ -274,7 +274,7 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+            mr_signer_verifier.allow_hardening_advisories(mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None)
@@ -293,7 +293,7 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+            mr_signer_verifier.allow_hardening_advisories(mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_fog_ledger_enclave_measurement::get_mr_signer_verifier(None)
@@ -312,7 +312,7 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+            mr_signer_verifier.allow_hardening_advisories(mc_fog_view_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_fog_view_enclave_measurement::get_mr_signer_verifier(None)

@@ -177,7 +177,7 @@ impl Config {
                     signature.version(),
                 );
                 mr_signer_verifier
-                    .allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+                    .allow_hardening_advisories(mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES);
                 mr_signer_verifier
             };
 
