@@ -424,13 +424,13 @@ mod test {
             69, 251, 36, 34, 76, 54, 51, 236, 141, 181, 29, 9, 11, 241, 29, 228, 222, 118, 194,
             134, 108, 6, 1, 2, 49, 80, 32, 217, 151, 134, 184, 44,
         ]));
-        mr_enclave1.allow_hardening_advisory("INTEL-SA-00334");
+        mr_enclave1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
 
         let mut mr_enclave2 = MrEnclaveVerifier::new(MrEnclave::from([
             209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198, 84,
             121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
         ]));
-        mr_enclave2.allow_hardening_advisory("INTEL-SA-00334");
+        mr_enclave2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")
@@ -452,7 +452,7 @@ mod test {
             10,
             10,
         );
-        mr_signer1.allow_hardening_advisory("INTEL-SA-00334");
+        mr_signer1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
         let mut mr_signer2 = MrSignerVerifier::new(
             MrSigner::from([
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
@@ -461,7 +461,7 @@ mod test {
             1,
             1,
         );
-        mr_signer2.allow_hardening_advisory("INTEL-SA-00334");
+        mr_signer2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")
