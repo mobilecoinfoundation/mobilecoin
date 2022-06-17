@@ -108,8 +108,8 @@ It is relatively straightforward to test the faucet locally using the `tools/loc
 $ cargo build --release
 $ export MC_LOG=info
 $ export LEDGER_BASE=$PWD/target/sample_data/ledger
-$ ./tools/local_network/bootstrap.sh
-$ ./tools/local_network/local_network.py --network-type dense5 --skip-build &
+$ ./tools/local-network/bootstrap.sh
+$ ./tools/local-network/local_network.py --network-type dense5 --skip-build &
 ```
 
 Then, start a faucet and set it to also work in the background:
