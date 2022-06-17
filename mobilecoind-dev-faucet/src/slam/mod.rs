@@ -438,7 +438,7 @@ impl SlamState {
         // Return response.
         let mut response = api::SubmitTxResponse::new();
         response.set_sender_tx_receipt(sender_tx_receipt);
-        response.set_receiver_tx_receipt_list(receiver_tx_receipts.into());
+        response.set_receiver_tx_receipt_list(receiver_tx_receipts);
         response
     }
 
