@@ -92,7 +92,7 @@ impl MintTx {
             block_index: block_index as i64,
             token_id: tx.prefix.token_id as i64,
             amount: tx.prefix.amount as i64,
-            nonce: hex::encode(&tx.prefix.nonce),
+            nonce: tx.prefix.nonce.encode_hex(),
             recipient_b58_address,
             tombstone_block: tx.prefix.tombstone_block as i64,
             protobuf: encode(tx),
