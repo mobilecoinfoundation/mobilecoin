@@ -94,11 +94,8 @@ impl MintConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        super::{MintConfigTx, MintTx},
-        *,
-    };
-    use crate::db::test_utils::TestDbContext;
+    use super::*;
+    use crate::db::{test_utils::TestDbContext, MintConfigTx, MintTx};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
