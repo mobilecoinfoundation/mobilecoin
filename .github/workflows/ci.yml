@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -38,7 +38,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -93,7 +93,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -134,7 +134,7 @@ jobs:
 
   cbindgen:
     runs-on: [self-hosted, Linux, small]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -150,7 +150,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -169,7 +169,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     strategy:
       matrix:
@@ -208,7 +208,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     strategy:
       matrix:
@@ -241,7 +241,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     strategy:
       matrix:
@@ -289,7 +289,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -312,7 +312,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code
@@ -352,7 +352,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: gcr.io/mobilenode-211420/builder-install:1_28
+    container: mobilecoin/builder-install:v0.0.10
 
     steps:
       - name: Check out code

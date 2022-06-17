@@ -36,16 +36,8 @@ runs:
       # and writing this to the GITHUB_ENV environment file."
       # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
       run: |
-        # builder-install has cargo set up under /root, so handle that.
-        [[ -d /root/.cargo/bin ]] && {
-          # Hack: Make it writable so we can install tools without sudo.
-          chmod a+w /root/.cargo/bin
-          # Add to env.
-          echo 'CARGO_HOME=/root/.cargo/' >> $GITHUB_ENV
-          echo 'RUSTUP_HOME=/root/.cargo/' >> $GITHUB_ENV
-          # Add to path.
-          echo '/root/.cargo/bin' >> $GITHUB_PATH
-        }
+        # Temp workaround for non-executable cbindgen
+        [[ -f /opt/cargo/bin/cbindgen ]] && chmod 0755 /opt/cargo/bin/cbindgen
 
         # build config
         echo 'IAS_MODE=DEV' >> $GITHUB_ENV
@@ -76,7 +68,7 @@ runs:
       if: ${{ inputs.sgx_sdk == 'true' }}
       shell: bash
       run: |
-        [[ -d /opt/intel/sgxsdk ]] || sudo ./docker/install_sgx.sh
+        [[ -d /opt/intel/sgxsdk ]] || ./docker/install_sgx.sh
         # Ideally we'd just add "source /opt/intel/sgxsdk/environment" to
         # GITHUB_ENV, but it has a custom parser that rejects that.
         source /opt/intel/sgxsdk/environment
