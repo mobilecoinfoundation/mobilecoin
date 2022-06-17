@@ -6,7 +6,7 @@ use crate::{
     db::{
         last_insert_rowid,
         models::MintConfig,
-        schema::{self, mint_config_txs, mint_configs, mint_txs},
+        schema::{mint_config_txs, mint_configs, mint_txs},
         transaction, Conn,
     },
     Error,

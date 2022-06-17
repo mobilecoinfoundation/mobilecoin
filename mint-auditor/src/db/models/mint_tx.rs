@@ -3,10 +3,7 @@
 //! Model file for the mint_txs table.
 
 use crate::{
-    db::{
-        schema::mint_txs,
-        Conn,
-    },
+    db::{schema::mint_txs, Conn},
     Error,
 };
 use diesel::prelude::*;
