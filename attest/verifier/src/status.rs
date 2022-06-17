@@ -428,6 +428,26 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRENCLAVE and advisory passes when the advisory is given for both.
+    #[test]
+    fn mrenclave_config_sw_pass() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00239".to_owned()],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
     /// MRENCLAVE and config advisory fails.
     #[test]
     fn mrenclave_config_sw_fail_config() {
@@ -641,7 +661,7 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRSIGNER, product, and minimum version fails if the advisory isn't
+    /// MRSIGNER, product, and minimum version succeds if all advisories are
     /// accounted for as both config and sw.
     #[test]
     fn mrsigner_pass_config_sw() {
