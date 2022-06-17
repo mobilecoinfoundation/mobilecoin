@@ -4,7 +4,7 @@
 
 use crate::{
     db::{
-        schema::mint_txs::{self},
+        schema::mint_txs,
         Conn,
     },
     Error,
