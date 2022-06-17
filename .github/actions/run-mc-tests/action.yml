@@ -17,7 +17,14 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Check for nextest
+      id: meta
+      shell: bash
+      run: |
+        NEXTEST_PRESENT=$(command -v cargo-nextest >/dev/null && echo true || echo false)
+        echo ::set-output name=nextest_present::$NEXTEST_PRESENT
     - name: Install cargo nextest
+      if: steps.meta.outputs.nextest_present != 'true'
       uses: taiki-e/install-action@nextest
     - name: Run MC tests
       shell: bash

@@ -29,6 +29,7 @@ runs:
     #- name: Set up dependency cache
     #  uses: Swatinem/rust-cache@v1
     - name: Set up env vars
+      id: env
       shell: bash
       # "You can make an environment variable available to any subsequent steps
       # in a workflow job by defining or updating the environment variable
@@ -57,8 +58,13 @@ runs:
 
         HOST_TARGET_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
         echo "HOST_TARGET_TRIPLE=$HOST_TARGET_TRIPLE" >> $GITHUB_ENV
+
+        CARGO_PRESENT=$(command -v cargo >/dev/null && echo true || echo false)
+        echo ::set-output name=cargo_present::$CARGO_PRESENT
+
     # Install rust per `rust-toolchain`. No-op most of the time.
     - name: Install Rust
+      if: steps.env.outputs.cargo_present != 'true'
       uses: actions-rs/toolchain@v1
       with:
         # Honors rust-toolchain file, installing that version.
