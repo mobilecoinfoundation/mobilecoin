@@ -8,6 +8,11 @@ metadata:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.fogView.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
   selector:
     matchLabels:
       app: fog-view
@@ -20,6 +25,28 @@ spec:
         app: fog-view
         {{- include "fogServices.labels" . | nindent 8 }}
     spec:
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match on this helm chart install
+            app: fog-view
+            helm.sh/chart: {{ include "fogServices.chart" . }}
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              # match on this helm chart install
+              app: fog-view
+              helm.sh/chart: {{ include "fogServices.chart" . }}
+              {{- include "fogServices.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       initContainers:
@@ -105,8 +132,8 @@ spec:
             command:
             - "/usr/local/bin/grpc_health_probe"
             - "-addr=:3225"
-          # wait up to 2 hours for start up
-          failureThreshold: 240
+          # wait up to 4 hours for start up
+          failureThreshold: 480
           periodSeconds: 30
         # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
         livenessProbe:

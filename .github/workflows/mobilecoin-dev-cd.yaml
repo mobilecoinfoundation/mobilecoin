@@ -16,6 +16,9 @@ on:
     - feature/*
     - develop
 
+# don't run more than one at a time for a branch/tag
+concurrency: mobilecoin-dev-cd-${{ github.ref }}
+
 jobs:
 ############################################
 # Generate environment information
