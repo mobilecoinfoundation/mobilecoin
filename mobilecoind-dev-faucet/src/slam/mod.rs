@@ -433,7 +433,7 @@ impl SlamState {
 
                 receiver_tx_receipt
             })
-            .collect::<Vec<api::ReceiverTxReceipt>>();
+            .collect();
 
         // Return response.
         let mut response = api::SubmitTxResponse::new();
