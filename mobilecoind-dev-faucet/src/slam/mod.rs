@@ -420,7 +420,7 @@ impl SlamState {
         sender_tx_receipt.set_tombstone(tx.prefix.tombstone_block);
 
         // Construct receiver receipts.
-        let receiver_tx_receipts: Vec<_> = tx
+        let receiver_tx_receipts = tx
             .prefix
             .outputs
             .iter()
