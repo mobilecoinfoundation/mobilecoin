@@ -11,6 +11,7 @@ use crate::{
 };
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
+use mc_transaction_core::mint::MintConfig as CoreMintConfig;
 use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
 
@@ -39,14 +40,14 @@ impl MintConfig {
     }
 
     /// Get the original MintConfig
-    pub fn decode(&self) -> Result<mc_transaction_core::mint::MintConfig, Error> {
+    pub fn decode(&self) -> Result<CoreMintConfig, Error> {
         Ok(decode(&self.protobuf)?)
     }
 
     /// Insert a new MintConfig into the database.
     pub fn insert(
         mint_config_tx_id: i32,
-        config: &mc_transaction_core::mint::MintConfig,
+        config: &CoreMintConfig,
         conn: &Conn,
     ) -> Result<(), Error> {
         let obj = Self {
@@ -73,7 +74,8 @@ impl MintConfig {
             .load::<Self>(conn)?)
     }
 
-    /// Get the total amount minted by this configuration before the given block index.
+    /// Get the total amount minted by this configuration before the given block
+    /// index.
     pub fn get_total_minted_before_block(
         &self,
         block_index: BlockIndex,
@@ -103,13 +105,12 @@ mod tests {
 
     fn assert_mint_configs_match(
         mint_config_tx_id: i32,
-        expected: &[mc_transaction_core::mint::MintConfig],
+        expected: &[CoreMintConfig],
         actual: &[MintConfig],
     ) {
         assert_eq!(expected.len(), actual.len());
 
-        let expected_set: HashSet<mc_transaction_core::mint::MintConfig> =
-            expected.iter().cloned().collect();
+        let expected_set: HashSet<CoreMintConfig> = expected.iter().cloned().collect();
         let actual_set = HashSet::from_iter(actual.iter().map(|c| c.decode().unwrap()));
         assert_eq!(expected_set, actual_set);
 

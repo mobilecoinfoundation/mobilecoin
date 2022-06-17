@@ -13,7 +13,7 @@ use crate::{
 };
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{mint::MintConfigTx as CoreMintConfigTx, TokenId};
 use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
 
@@ -66,14 +66,14 @@ impl MintConfigTx {
     }
 
     /// Get the original MintConfigTx
-    pub fn decode(&self) -> Result<mc_transaction_core::mint::MintConfigTx, Error> {
+    pub fn decode(&self) -> Result<CoreMintConfigTx, Error> {
         Ok(decode(&self.protobuf)?)
     }
 
     /// Insert a new MintConfigTx into the database.
     pub fn insert(
         block_index: BlockIndex,
-        tx: &mc_transaction_core::mint::MintConfigTx,
+        tx: &CoreMintConfigTx,
         conn: &Conn,
     ) -> Result<(), Error> {
         transaction(conn, |conn| {
@@ -117,7 +117,8 @@ impl MintConfigTx {
             .optional()?)
     }
 
-    /// Get the total amount minted by all configurations in this MintConfigTx before the given block index.
+    /// Get the total amount minted by all configurations in this MintConfigTx
+    /// before the given block index.
     pub fn get_total_minted_before_block(
         &self,
         block_index: BlockIndex,
@@ -146,7 +147,7 @@ mod tests {
 
     fn assert_mint_config_tx_eq(
         sql_mint_config_tx: &MintConfigTx,
-        orig_mint_config_tx: &mc_transaction_core::mint::MintConfigTx,
+        orig_mint_config_tx: &CoreMintConfigTx,
     ) {
         assert_eq!(
             sql_mint_config_tx.token_id(),

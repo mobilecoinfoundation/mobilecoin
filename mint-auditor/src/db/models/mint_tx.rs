@@ -10,10 +10,11 @@ use crate::{
     Error,
 };
 use diesel::prelude::*;
+use hex::ToHex;
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use mc_blockchain_types::BlockIndex;
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{mint::MintTx as CoreMintTx, TokenId};
 use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
 
@@ -71,7 +72,7 @@ impl MintTx {
     }
 
     /// Get the original MintTx
-    pub fn decode(&self) -> Result<mc_transaction_core::mint::MintTx, Error> {
+    pub fn decode(&self) -> Result<CoreMintTx, Error> {
         Ok(decode(&self.protobuf)?)
     }
 
@@ -79,7 +80,7 @@ impl MintTx {
     pub fn insert(
         block_index: BlockIndex,
         mint_config_id: Option<i32>,
-        tx: &mc_transaction_core::mint::MintTx,
+        tx: &CoreMintTx,
         conn: &Conn,
     ) -> Result<(), Error> {
         let recipient = PublicAddress::new(&tx.prefix.spend_public_key, &tx.prefix.view_public_key);
