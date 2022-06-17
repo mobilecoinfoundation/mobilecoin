@@ -179,7 +179,8 @@ impl Config {
                     signature.product_id(),
                     signature.version(),
                 );
-                mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+                mr_signer_verifier
+                    .allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
                 mr_signer_verifier
             };
 

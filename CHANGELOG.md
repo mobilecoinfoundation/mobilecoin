@@ -22,8 +22,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 * Replace `structopt` with `clap`.
 * Updated grpcio from 0.9 to 0.10.
 
-## [1.2.0]
-
 ### Added
 
  - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
