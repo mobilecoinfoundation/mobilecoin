@@ -117,7 +117,7 @@ impl MintConfigTx {
             .optional()?)
     }
 
-    /// Get the total amount minted by all configurations in this MintConfigTx.
+    /// Get the total amount minted by all configurations in this MintConfigTx before the given block index.
     pub fn get_total_minted_before_block(
         &self,
         block_index: BlockIndex,
