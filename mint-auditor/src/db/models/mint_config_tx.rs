@@ -109,9 +109,9 @@ impl MintConfigTx {
         conn: &Conn,
     ) -> Result<Option<MintConfigTx>, Error> {
         Ok(mint_config_txs::table
-            .filter(schema::mint_config_txs::token_id.eq(*token_id as i64))
-            .filter(schema::mint_config_txs::block_index.lt(block_index as i64))
-            .order_by(schema::mint_config_txs::block_index.desc())
+            .filter(mint_config_txs::token_id.eq(*token_id as i64))
+            .filter(mint_config_txs::block_index.lt(block_index as i64))
+            .order_by(mint_config_txs::block_index.desc())
             .limit(1)
             .first::<MintConfigTx>(conn)
             .optional()?)
