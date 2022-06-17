@@ -496,6 +496,15 @@ impl Ord for ViewAccountKey {
     }
 }
 
+impl From<&AccountKey> for ViewAccountKey {
+    fn from(account_key: &AccountKey) -> Self {
+        ViewAccountKey {
+            view_private_key: *account_key.view_private_key(),
+            spend_public_key: RistrettoPublic::from(account_key.spend_private_key()),
+        }
+    }
+}
+
 impl ViewAccountKey {
     /// A user's ViewAccountKey, without a fog service.
     ///
