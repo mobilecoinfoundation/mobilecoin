@@ -161,8 +161,6 @@ mod tests {
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
         initialize_ledger, mint_config_tx_to_validated as to_validated,
     };
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
     use std::sync::Arc;
 
     /// Starts the service on localhost and connects a client to it.
@@ -187,7 +185,7 @@ mod tests {
 
     /// Create a test database with some data in it.
     fn get_test_db(logger: &Logger) -> (MintAuditorDb, TestDbContext) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
 

@@ -287,15 +287,13 @@ mod tests {
         initialize_ledger, mint_config_tx_to_validated as to_validated, KeyImage,
     };
     use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
     use std::iter::FromIterator;
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
     #[test_with_logger]
     fn test_sync_block_happy_flow(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
         let token_id3 = TokenId::from(3);
@@ -533,7 +531,7 @@ mod tests {
     // Attempting to skip a block when syncing should fail.
     #[test_with_logger]
     fn test_sync_block_refuses_skipping_a_block(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
         let mint_audit_db = test_db_context.get_db_instance(logger.clone());
@@ -565,7 +563,7 @@ mod tests {
     // Attempting to sync the same block twice should fail.
     #[test_with_logger]
     fn test_sync_block_refuses_same_block(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
         let mint_audit_db = test_db_context.get_db_instance(logger.clone());
@@ -596,7 +594,7 @@ mod tests {
     // Attempting to sync an old block should fail.
     #[test_with_logger]
     fn test_sync_block_refuses_going_backwards(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
         let mint_audit_db = test_db_context.get_db_instance(logger.clone());
@@ -631,7 +629,7 @@ mod tests {
     // being increased.
     #[test_with_logger]
     fn test_sync_block_increases_counter_on_over_burn(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
 
@@ -819,7 +817,7 @@ mod tests {
     // MintTxs that do not match an active MintConfig get counted.
     #[test_with_logger]
     fn test_sync_block_counts_mint_txs_without_active_config(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
 
@@ -1003,7 +1001,7 @@ mod tests {
     // MintTxs that exceed the MintConfigTx limit get counted.
     #[test_with_logger]
     fn test_sync_blocks_counts_mint_txs_exceeding_total_mint_limit(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
 
         let test_db_context = TestDbContext::default();

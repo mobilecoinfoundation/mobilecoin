@@ -99,8 +99,6 @@ mod tests {
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
     use std::collections::HashSet;
 
     fn assert_mint_configs_match(
@@ -111,7 +109,7 @@ mod tests {
         assert_eq!(expected.len(), actual.len());
 
         let expected_set: HashSet<mc_transaction_core::mint::MintConfig> =
-            HashSet::from_iter(expected.iter().cloned());
+            expected.iter().cloned().collect();
         let actual_set = HashSet::from_iter(actual.iter().map(|c| c.decode().unwrap()));
         assert_eq!(expected_set, actual_set);
 
@@ -125,7 +123,7 @@ mod tests {
 
     #[test_with_logger]
     fn get_by_mint_config_tx_id_works(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let token_id1 = TokenId::from(1);
@@ -177,7 +175,7 @@ mod tests {
 
     #[test_with_logger]
     fn get_total_minted_before_block_works(logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let token_id1 = TokenId::from(1);
