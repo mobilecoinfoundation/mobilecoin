@@ -13,7 +13,7 @@ use mc_common::{
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_util_serial::{decode, encode};
 use prost::Message;
-use std::{str::FromStr, sync::Arc};
+use std::{str, sync::Arc};
 use url::Url;
 
 /// Block datas database name.
@@ -113,16 +113,12 @@ impl BlockDataStore {
             value_bytes.len()
         );
 
-        match db_txn.put(
+        Ok(db_txn.put(
             self.block_datas_by_index,
             &key_bytes,
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
-        ) {
-            Ok(()) => Ok(()),
-            Err(lmdb::Error::KeyExist) => Err(WatcherDBError::AlreadyExists),
-            Err(err) => Err(err.into()),
-        }
+        )?)
     }
 
     /// Get BlockData for a given block index provided by a specific tx source
@@ -136,11 +132,7 @@ impl BlockDataStore {
         let mut key_bytes = block_index.to_be_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
-        let stored_block_data_bytes = match db_txn.get(self.block_datas_by_index, &key_bytes) {
-            Ok(bytes) => Ok(bytes),
-            Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
-            Err(err) => Err(err.into()),
-        }?;
+        let stored_block_data_bytes = db_txn.get(self.block_datas_by_index, &key_bytes)?;
 
         let stored_block_data: StoredBlockData = decode(stored_block_data_bytes)?;
 
@@ -180,7 +172,7 @@ impl BlockDataStore {
             }
 
             let tx_source_url_bytes = &key_bytes[first_key_bytes.len()..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = Url::parse(str::from_utf8(tx_source_url_bytes)?)?;
 
             // Get the StoredBlockData.
             let stored_block_data: StoredBlockData = decode(value_bytes)?;
@@ -221,9 +213,7 @@ impl BlockDataStore {
                         break;
                     }
                 }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                Err(err) => Err(err)?,
             }
 
             block_index += 1;
@@ -245,9 +235,8 @@ impl BlockDataStore {
             &encode(block),
             WriteFlags::NO_OVERWRITE,
         ) {
-            Ok(()) => Ok(hash),
-            Err(lmdb::Error::KeyExist) => Ok(hash),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::KeyExist) => Ok(hash),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -264,9 +253,8 @@ impl BlockDataStore {
             &encode(block_contents),
             WriteFlags::NO_OVERWRITE,
         ) {
-            Ok(()) => Ok(hash),
-            Err(lmdb::Error::KeyExist) => Ok(hash),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::KeyExist) => Ok(hash),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -275,10 +263,8 @@ impl BlockDataStore {
         db_txn: &impl Transaction,
         hash: &[u8],
     ) -> Result<Block, WatcherDBError> {
-        db_txn
-            .get(self.blocks_by_hash, &hash)
-            .map_err(WatcherDBError::from)
-            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
+        let bytes = db_txn.get(self.blocks_by_hash, &hash)?;
+        Ok(decode(bytes)?)
     }
 
     fn get_block_contents_by_hash(
@@ -286,10 +272,8 @@ impl BlockDataStore {
         db_txn: &impl Transaction,
         hash: &[u8],
     ) -> Result<BlockContents, WatcherDBError> {
-        db_txn
-            .get(self.block_contents_by_hash, &hash)
-            .map_err(WatcherDBError::from)
-            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
+        let bytes = db_txn.get(self.block_contents_by_hash, &hash)?;
+        Ok(decode(bytes)?)
     }
 }
 

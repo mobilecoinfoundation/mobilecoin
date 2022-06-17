@@ -25,7 +25,7 @@ use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
     convert::{TryFrom, TryInto},
     path::Path,
-    str::FromStr,
+    str,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -385,23 +385,20 @@ impl WatcherDB {
         cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
-                result
-                    .map_err(WatcherDBError::from)
-                    .and_then(|(key_bytes2, value_bytes)| {
-                        // Sanity check.
-                        assert_eq!(key_bytes, key_bytes2);
+                let (key_bytes2, value_bytes) = result?;
+                // Sanity check.
+                assert_eq!(key_bytes, key_bytes2);
 
-                        let signature_data: BlockSignatureData = decode(value_bytes)?;
-                        log::trace!(
-                            self.logger,
-                            "Got block signatures for {:?} ({:?})",
-                            block_index,
-                            signature_data,
-                        );
-                        Ok(signature_data)
-                    })
+                let signature_data: BlockSignatureData = decode(value_bytes)?;
+                log::trace!(
+                    self.logger,
+                    "Got block signatures for {:?} ({:?})",
+                    block_index,
+                    signature_data,
+                );
+                Ok(signature_data)
             })
-            .collect::<Result<Vec<_>, WatcherDBError>>()
+            .collect()
     }
 
     /// Get the earliest timestamp for a given block.
@@ -533,15 +530,16 @@ impl WatcherDB {
 
         let last_synced_map = self.get_url_to_last_synced(&db_txn)?;
 
-        let last_synced: Vec<u64> = last_synced_map
+        let last_synced = last_synced_map
             .values()
             .map(|opt_block_index| {
                 // If this URL has never added a signature, it is at 0
                 opt_block_index.unwrap_or(0)
             })
-            .collect();
+            .min()
+            .unwrap_or(0);
 
-        Ok(*last_synced.iter().min().unwrap_or(&0))
+        Ok(last_synced)
     }
 
     /// Store the current configuration into the database.
@@ -552,7 +550,7 @@ impl WatcherDB {
 
         match db_txn.del(self.config, &CONFIG_DB_KEY_TX_SOURCE_URLS, None) {
             Ok(_) | Err(lmdb::Error::NotFound) => {}
-            Err(err) => return Err(WatcherDBError::LmdbError(err)),
+            Err(err) => Err(err)?,
         };
         for url in tx_source_urls.iter() {
             db_txn.put(
@@ -575,17 +573,11 @@ impl WatcherDB {
     ) -> Result<Vec<Url>, WatcherDBError> {
         let mut cursor = db_txn.open_ro_cursor(self.config)?;
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&CONFIG_DB_KEY_TX_SOURCE_URLS)
             .filter_map(|r| r.ok())
-            .map(|(_db_key, db_value)| {
-                Url::from_str(
-                    &String::from_utf8(db_value.to_vec())
-                        .expect("from_utf8 failed: corrupted config db?"),
-                )
-                .expect("Url::from_str failed: corrupted config db?")
-            })
-            .collect())
+            .map(|(_db_key, db_value)| bytes_to_url(db_value))
+            .collect()
     }
 
     // Helper method to get a map of Url -> Last Synced Block
@@ -614,9 +606,7 @@ impl WatcherDB {
                 Err(lmdb::Error::NotFound) => {
                     results.insert(src_url.clone(), None);
                 }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                Err(err) => Err(err)?,
             };
         }
         Ok(results)
@@ -789,11 +779,11 @@ impl WatcherDB {
         hash: &[u8],
     ) -> Result<Option<VerificationReport>, WatcherDBError> {
         let value_bytes = db_txn.get(self.verification_reports_by_hash, &hash)?;
-        if value_bytes.is_empty() {
-            Ok(None)
+        Ok(if value_bytes.is_empty() {
+            None
         } else {
-            Ok(Some(mc_util_serial::decode(value_bytes)?))
-        }
+            Some(mc_util_serial::decode(value_bytes)?)
+        })
     }
 
     /// Get a verification report for a given block signer.
@@ -838,7 +828,7 @@ impl WatcherDB {
             }
 
             let tx_source_url_bytes = &key_bytes[signer_key_bytes.len()..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = bytes_to_url(tx_source_url_bytes)?;
 
             // Resolve the hash into the actual report.
             let verification_report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
@@ -896,7 +886,7 @@ impl WatcherDB {
         match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
             Ok(_value_bytes) => Ok(true),
             Err(lmdb::Error::NotFound) => Ok(false),
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -953,7 +943,7 @@ impl WatcherDB {
                 );
                 Ok(())
             }
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -967,8 +957,7 @@ impl WatcherDB {
 
         let mut results = HashMap::default();
         for (key_bytes, value_bytes) in cursor.iter_start().filter_map(Result::ok) {
-            let url_str = String::from_utf8(key_bytes.to_vec())?;
-            let url = Url::from_str(&url_str)?;
+            let url = bytes_to_url(key_bytes)?;
 
             let block_signer = Ed25519Public::try_from(value_bytes)?;
 
@@ -995,9 +984,8 @@ impl WatcherDB {
             &key_bytes,
             Some(&value_bytes),
         ) {
-            Ok(()) => Ok(()),
-            Err(lmdb::Error::NotFound) => Ok(()),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::NotFound) => Ok(()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -1034,11 +1022,8 @@ impl WatcherDB {
 
         // Remove last synced.
         match db_txn.del(self.last_synced, &src_url.as_str().as_bytes(), None) {
-            Ok(()) => {}
-            Err(lmdb::Error::NotFound) => {}
-            Err(err) => {
-                return Err(err.into());
-            }
+            Ok(()) | Err(lmdb::Error::NotFound) => {}
+            Err(err) => Err(err)?,
         };
 
         // Remove verification reports.
@@ -1051,7 +1036,7 @@ impl WatcherDB {
             }
 
             let tx_source_url_bytes = &key_bytes[signer_key_size..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = bytes_to_url(tx_source_url_bytes)?;
             if &tx_source_url == src_url {
                 cursor.del(WriteFlags::empty())?;
             }
@@ -1094,6 +1079,10 @@ pub fn create_or_open_rw_watcher_db(
     // WatcherDB does't exist, or is empty. Create a new WatcherDB, and open it.
     WatcherDB::create(watcher_db_path)?;
     WatcherDB::open_rw(watcher_db_path, src_urls, logger)
+}
+
+fn bytes_to_url(bytes: &[u8]) -> Result<Url, WatcherDBError> {
+    Ok(Url::parse(str::from_utf8(bytes)?)?)
 }
 
 #[cfg(test)]

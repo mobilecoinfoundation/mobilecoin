@@ -15,7 +15,6 @@ use mc_ledger_sync::ReqwestTransactionsFetcher;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
-    iter::FromIterator,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -198,9 +197,7 @@ impl Watcher {
                             match self.watcher_db.add_block_data(src_url, block_data) {
                                 Ok(()) => {}
                                 Err(WatcherDBError::AlreadyExists) => {}
-                                Err(err) => {
-                                    return Err(err.into());
-                                }
+                                Err(err) => Err(err)?,
                             };
                         }
 
@@ -271,25 +268,23 @@ fn parallel_fetch_blocks(
     url_to_block_index: HashMap<Url, BlockIndex>,
     transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
 ) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
-    Ok(HashMap::from_iter(
-        url_to_block_index
-            .into_par_iter()
-            .map(|(src_url, block_index)| {
-                let block_fetch_result = transactions_fetcher_by_url
-                    .get(&src_url)
-                    .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
-                    .and_then(|transactions_fetcher| {
-                        assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
+    Ok(url_to_block_index
+        .into_par_iter()
+        .map(|(src_url, block_index)| {
+            let block_fetch_result = transactions_fetcher_by_url
+                .get(&src_url)
+                .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
+                .and_then(|transactions_fetcher| {
+                    assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
 
-                        transactions_fetcher
-                            .get_block_data_by_index(block_index, None)
-                            .map_err(WatcherError::from)
-                    });
+                    transactions_fetcher
+                        .get_block_data_by_index(block_index, None)
+                        .map_err(WatcherError::from)
+                });
 
-                (src_url, (block_index, block_fetch_result))
-            })
-            .collect::<Vec<_>>(),
-    ))
+            (src_url, (block_index, block_fetch_result))
+        })
+        .collect())
 }
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.
