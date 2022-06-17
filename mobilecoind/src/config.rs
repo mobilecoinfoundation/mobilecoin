@@ -176,8 +176,9 @@ impl Config {
                     signature.product_id(),
                     signature.version(),
                 );
-                mr_signer_verifier
-                    .allow_hardening_advisories(mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES);
+                mr_signer_verifier.allow_hardening_advisories(
+                    mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES,
+                );
                 mr_signer_verifier
             };
 
