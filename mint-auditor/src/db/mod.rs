@@ -36,7 +36,7 @@ embed_migrations!("migrations/");
 no_arg_sql_function!(
     last_insert_rowid,
     diesel::sql_types::Integer,
-    "Represents the SQL last_insert_row() function"
+    "Represents the SQLite last_insert_rowid() function"
 );
 
 /// Mint Auditor Database.
