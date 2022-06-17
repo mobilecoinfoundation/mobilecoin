@@ -161,8 +161,6 @@ mod tests {
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
         initialize_ledger, mint_config_tx_to_validated as to_validated,
     };
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
     use std::sync::Arc;
 
     /// Starts the service on localhost and connects a client to it.
@@ -187,7 +185,7 @@ mod tests {
 
     /// Create a test database with some data in it.
     fn get_test_db(logger: &Logger) -> (MintAuditorDb, TestDbContext) {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
 
@@ -209,7 +207,7 @@ mod tests {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
             mint_audit_db
-                .sync_block(block_data.block(), block_data.contents(), &ledger_db)
+                .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
 
@@ -238,9 +236,7 @@ mod tests {
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
-        mint_audit_db
-            .sync_block(&block, &block_contents, &ledger_db)
-            .unwrap();
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
@@ -264,9 +260,7 @@ mod tests {
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
-        mint_audit_db
-            .sync_block(&block, &block_contents, &ledger_db)
-            .unwrap();
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
         (mint_audit_db, test_db_context)
     }
 
