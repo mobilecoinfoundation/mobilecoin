@@ -8,7 +8,7 @@ links = "mc-fog-report-api"
 [dependencies]
 futures = "0.3"
 grpcio = "0.10.2"
-protobuf = "2.27.1"
+protobuf = "3.0.3"
 
 mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }

@@ -19,7 +19,7 @@ mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 clap = { version = "3.2", features = ["derive", "env"] }
 dirs = "4.0"
 displaydoc = "0.2"
-protobuf = "2.27.1"
+protobuf = "3.0.3"
 retry = "1.3"
 # TODO: Replace with https://github.com/awslabs/aws-sdk-rust when it is ready.
 rusoto_core = { version = "0.48.0", features = ["rustls"], default_features = false }

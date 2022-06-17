@@ -32,7 +32,7 @@ hex = "0.4"
 hostname = "0.3.1"
 lazy_static = "1.4"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
-protobuf = "2.27.1"
+protobuf = "3.0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.13"
@@ -45,5 +45,5 @@ mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
 
-protobuf = "2.27.1"
+protobuf = "3.0.3"
 tempfile = "3.3"
