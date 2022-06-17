@@ -22,8 +22,9 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
 clap = { version = "3.2", features = ["derive", "env"] }
-diesel = { version = "1.4.8", features = ["sqlite", "r2d2"] }
-diesel_migrations = { version = "1.4.0", features = ["sqlite"] }
+# Override diesel dependency with our fork, to statically link SQLite.
+diesel = { version = "1.4", features = ["sqlite-bundled", "r2d2"] }
+diesel_migrations = { version = "1.4", features = ["sqlite"] }
 displaydoc = "0.2"
 grpcio = "0.10.2"
 hex = "0.4"
