@@ -73,7 +73,7 @@ impl MintConfig {
             .load::<Self>(conn)?)
     }
 
-    /// Get the total amount minted by this configuration.
+    /// Get the total amount minted by this configuration before the given block index.
     pub fn get_total_minted_before_block(
         &self,
         block_index: BlockIndex,
