@@ -225,13 +225,6 @@ jobs:
         uses: ./.github/actions/upload-core-dumps
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
-      - name: Upload logs
-        if: success() || failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: fog_conformance_tmp_fog
-          path: /tmp/fog*
-          if-no-files-found: ignore
 
     services:
       # Spin up a PostgreSQL server
@@ -361,13 +354,6 @@ jobs:
         uses: ./.github/actions/upload-core-dumps
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
-      - name: Upload logs
-        if: success() || failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: local_network_tmp_fog
-          path: /tmp/fog*
-          if-no-files-found: ignore
 
     services:
       # Spin up a PostgreSQL server
