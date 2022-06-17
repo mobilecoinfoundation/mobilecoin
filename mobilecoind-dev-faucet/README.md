@@ -100,7 +100,7 @@ Other options are:
 
 ### Usage with cURL
 
-It is relatively straightforward to test the faucet locally using the `tools/local_network.py` script. First simply follow those instructions to start a local network from your shell.
+It is relatively straightforward to test the faucet locally using the `tools/local_network.py` script. First simply follow those [instructions to start a local network](../tools/local-network/README.md) from your shell.
 
 (depending on if you run in docker or not your ledger base may be different)
 
