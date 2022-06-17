@@ -308,8 +308,8 @@ impl From<SlamReport> for JsonSlamReport {
         Self {
             num_prepared_utxos: src.num_prepared_utxos,
             num_submitted_txs: src.num_submitted_txs,
-            prepare_time: src.prepare_time.as_millis().try_into().unwrap_or(u32::MAX),
-            submit_time: src.submit_time.as_millis().try_into().unwrap_or(u32::MAX),
+            prepare_time: src.prepare_time.as_millis().try_into().unwrap_or(0),
+            submit_time: src.submit_time.as_millis().try_into().unwrap_or(0),
         }
     }
 }
