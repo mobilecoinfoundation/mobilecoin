@@ -8,7 +8,7 @@
 //! is a m-of-n threshold signature if only k valid signatures are required from
 //! a signing group of size n.
 
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 #![deny(missing_docs)]
 
 extern crate alloc;

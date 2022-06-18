@@ -2,7 +2,7 @@
 
 //! Common types and methods. no_std-compatible crate.
 
-#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(missing_docs)]
 #![warn(unused_extern_crates)]
 
