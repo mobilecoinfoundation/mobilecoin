@@ -6,7 +6,6 @@
 
 use crate::{avr::Kind as AvrKind, status::Kind as StatusKind, Error, Verify};
 use alloc::{vec, vec::Vec};
-use core::convert::TryFrom;
 use mbedtls::{
     alloc::{Box as MbedtlsBox, List as MbedtlsList},
     hash::Type as HashType,

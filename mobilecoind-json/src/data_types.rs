@@ -11,7 +11,6 @@ use mc_mobilecoind_api as api;
 use mc_util_serial::JsonU64;
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
-use std::convert::TryFrom;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonPasswordRequest {
@@ -1360,7 +1359,7 @@ mod test {
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator};
+    use std::collections::HashMap;
 
     /// Test conversion of TxProposal
     #[test]

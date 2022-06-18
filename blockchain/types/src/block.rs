@@ -202,7 +202,6 @@ pub fn compute_block_id(
 mod block_tests {
     use super::*;
     use alloc::{vec, vec::Vec};
-    use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_transaction_core::{

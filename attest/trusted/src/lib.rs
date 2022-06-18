@@ -7,10 +7,7 @@
 
 extern crate alloc;
 
-use alloc::vec;
-
-use alloc::vec::Vec;
-use core::convert::TryFrom;
+use alloc::{vec, vec::Vec};
 use displaydoc::Display;
 use mc_attest_core::{
     IntelSealed, IntelSealingError, ParseSealedError, Report, ReportData, Sealed, SgxError,

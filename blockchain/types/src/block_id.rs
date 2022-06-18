@@ -3,7 +3,6 @@
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
 use core::{
-    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::Hash,
 };

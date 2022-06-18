@@ -3,7 +3,7 @@
 //! Build script, emits source DIR as a variable
 
 use cargo_emit::pair;
-use std::{convert::TryFrom, env::var, path::PathBuf};
+use std::{env::var, path::PathBuf};
 
 fn main() {
     let mut search_path =

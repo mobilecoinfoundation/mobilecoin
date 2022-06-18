@@ -16,7 +16,6 @@ use mc_common::{
 use protobuf::Message;
 use reqwest::Error as ReqwestError;
 use std::{
-    convert::TryFrom,
     fs,
     sync::{
         atomic::{AtomicU64, Ordering},

@@ -31,7 +31,7 @@ use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
-use std::{collections::HashSet, iter::FromIterator, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
@@ -504,7 +504,6 @@ mod combine_tests {
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::convert::TryFrom;
 
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);

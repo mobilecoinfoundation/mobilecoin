@@ -3,8 +3,6 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::TryFrom;
-
 use curve25519_dalek::ristretto::RistrettoPoint;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};

@@ -5,7 +5,6 @@
 use displaydoc::Display;
 use mc_util_build_script::Environment;
 use std::{
-    convert::TryFrom,
     env::{var, VarError},
     result::Result as StdResult,
 };

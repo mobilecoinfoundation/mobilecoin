@@ -2,11 +2,9 @@
 
 //! Convert between the Rust and Protobuf versions of [ValidatedMintConfigTx]
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::mint::{MintConfigTx, ValidatedMintConfigTx};
-
-use std::convert::TryFrom;
 
 /// Convert ValidatedMintConfigTx --> external::ValidatedMintConfigTx.
 impl From<&ValidatedMintConfigTx> for external::ValidatedMintConfigTx {

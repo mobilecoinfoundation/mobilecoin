@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{Error, KexRngPubkey, StoredRng};
-use core::{convert::TryFrom, marker::Sized};
 use digest::generic_array::{ArrayLength, GenericArray};
 use mc_crypto_keys::Kex;
 use mc_util_repr_bytes::ReprBytes;

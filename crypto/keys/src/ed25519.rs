@@ -10,7 +10,6 @@ use crate::{
 use alloc::{vec, vec::Vec};
 use core::{
     cmp::Ordering,
-    convert::TryFrom,
     hash::{Hash, Hasher},
 };
 use digest::{

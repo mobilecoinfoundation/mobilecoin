@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{BufferedRng, Error, KexRngCore, KexRngPubkey, NewFromKex, StoredRng};
-use core::convert::TryFrom;
 use digest::generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_keys::{Kex, KeyError};
 use mc_util_repr_bytes::ReprBytes;
@@ -49,11 +48,11 @@ where
     }
 }
 
-// Initialization from a Kex::Secret
+// Initialization from a `Kex::Secret`
 //
-// Note: this cannot use the core::convert::From trait because it conflicts,
-// according to rust's rules, some unknown KexAlgo may specify StoredRng as
-// the Secret type.
+// Note: this cannot use the `From` trait because it conflicts,
+// according to rust's rules, some unknown `KexAlgo` may specify `StoredRng` as
+// the `Secret` type.
 impl<Core, KexAlgo> BufferedKexRng<Core, KexAlgo>
 where
     Core: KexRngCore<KexAlgo>,

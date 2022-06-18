@@ -8,7 +8,6 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use mc_attest_core::{ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{

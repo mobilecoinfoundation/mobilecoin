@@ -323,7 +323,7 @@ mod tests {
     use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
     use maplit::btreeset;
     use mc_common::logger::test_with_logger;
-    use std::{iter::FromIterator, sync::Arc};
+    use std::sync::Arc;
 
     fn get_node(
         slot_index: SlotIndex,

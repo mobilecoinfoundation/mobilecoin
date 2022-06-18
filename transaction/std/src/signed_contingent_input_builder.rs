@@ -369,13 +369,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use maplit::btreemap;
-
     use crate::{
         test_utils::get_input_credentials, EmptyMemoBuilder, MemoType, TransactionBuilder,
     };
     use assert_matches::assert_matches;
-    use core::convert::TryFrom;
+    use maplit::btreemap;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_crypto_ring_signature_signer::NoKeysRingSigner;

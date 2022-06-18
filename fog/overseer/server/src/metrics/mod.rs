@@ -6,7 +6,7 @@ pub mod counters;
 
 use mc_common::logger::{log, Logger};
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
-use std::{collections::HashSet, convert::TryInto};
+use std::collections::HashSet;
 
 /// Increments the `unresponsive_node_count` metric.
 pub fn increment_unresponsive_node_count(logger: &Logger) {

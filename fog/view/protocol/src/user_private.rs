@@ -107,7 +107,6 @@ impl From<&AccountKey> for UserPrivate {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use core::convert::TryFrom;
     use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata};

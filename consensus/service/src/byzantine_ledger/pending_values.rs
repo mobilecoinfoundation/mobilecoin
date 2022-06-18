@@ -166,7 +166,7 @@ mod tests {
     };
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
     use mockall::predicate::eq;
-    use std::{collections::HashSet, iter::FromIterator};
+    use std::collections::HashSet;
 
     #[test]
     /// Should only allow valid values to be pushed.

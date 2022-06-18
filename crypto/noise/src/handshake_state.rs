@@ -9,7 +9,6 @@ use crate::{
     symmetric_state::{SymmetricError, SymmetricOutput, SymmetricState},
 };
 use alloc::vec::Vec;
-use core::convert::{TryFrom, TryInto};
 use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};

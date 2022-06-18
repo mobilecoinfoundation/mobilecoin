@@ -22,7 +22,7 @@ use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
 use mc_util_uri::ConnectionUri;
 use protobuf::RepeatedField;
 use retry::{retry, Error as RetryError};
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 /// Fog ingest GRPC client.
 pub struct FogIngestGrpcClient {

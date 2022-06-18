@@ -1,9 +1,8 @@
 //! Convert to/from blockchain::Block
 
-use crate::{blockchain, convert::ConversionError};
+use crate::{blockchain, ConversionError};
 use mc_blockchain_types::{Block, BlockContentsHash, BlockID};
 use mc_transaction_core::tx::TxOutMembershipElement;
-use std::convert::TryFrom;
 
 /// Convert Block --> blockchain::Block.
 impl From<&Block> for blockchain::Block {

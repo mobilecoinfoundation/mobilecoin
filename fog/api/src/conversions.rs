@@ -6,7 +6,6 @@ use crate::{fog_common, ingest_common};
 use mc_api::ConversionError;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_types::common;
-use std::convert::TryFrom;
 
 impl From<&common::BlockRange> for fog_common::BlockRange {
     fn from(common_block_range: &common::BlockRange) -> fog_common::BlockRange {

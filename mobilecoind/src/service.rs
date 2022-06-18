@@ -49,10 +49,7 @@ use mc_util_grpc::{
 };
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
-use std::{
-    convert::{TryFrom, TryInto},
-    sync::{Arc, Mutex, RwLock},
-};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct Service {
     /// Sync thread.
@@ -2148,12 +2145,7 @@ mod test {
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{
-        assert_matches::assert_matches,
-        convert::{TryFrom, TryInto},
-        iter::FromIterator,
-        str::FromStr,
-    };
+    use std::{assert_matches::assert_matches, str::FromStr};
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 

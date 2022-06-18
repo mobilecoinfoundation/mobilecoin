@@ -2,7 +2,6 @@
 
 use crate::common::BlockRange;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use crc::Crc;
 use displaydoc::Display;
 use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
@@ -343,7 +342,7 @@ pub struct FogTxOut {
 
 // Convert a TxOut to a FogTxOut in the efficient way (omitting compressed
 // commitment)
-impl core::convert::From<&TxOut> for FogTxOut {
+impl From<&TxOut> for FogTxOut {
     #[inline]
     fn from(src: &TxOut) -> Self {
         Self {

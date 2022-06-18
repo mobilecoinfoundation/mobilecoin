@@ -23,7 +23,6 @@ use lmdb::{
 };
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
-    convert::{TryFrom, TryInto},
     path::Path,
     str,
     sync::Arc,
@@ -1098,7 +1097,6 @@ pub mod tests {
     use mc_util_test_helper::run_with_one_seed;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {

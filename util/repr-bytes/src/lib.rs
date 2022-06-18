@@ -111,31 +111,32 @@ impl Display for LengthMismatch {
 // - Impls of ReprBytes in terms of other traits
 ////
 
-/// Derive ReprBytes from AsRef<[u8]>, TryFrom<&[u8]>, and Size as a typenum.
-/// This is expected to be the right implementation for almost all cryptographic
-/// primitives, e.g. X25519, CompressedRistretto, etc.
+/// Derive [ReprBytes] from [AsRef<[u8]>], [TryFrom<&[u8]>], and `Size` as a
+/// typenum. This is expected to be the right implementation for almost all
+/// cryptographic primitives, e.g. X25519, CompressedRistretto, etc.
 /// It can't work for e.g. RistrettoPoint, which doesn't have AsRef<[u8]>.
 ///
 /// Arguments:
-///   - $mytype is the type you want to impl ReprBytes
-///   - $mysize is a typenum, representing the size of the canonical
+///   - `$mytype` is the type you want to `impl ReprBytes`
+///   - `$mysize` is a typenum, representing the size of the canonical
 ///     representation
 ///
 /// Requirements:
-///   - <AsRef<[u8]> for $mytype>::as_ref().len() always equals $mysize::USIZE
-///   - <TryFrom<&[u8]> for $mytype>::Error implements core::fmt::Display
-///   - <TryFrom<&'a[u8]> for $mytype>::Error is the same for all values of 'a,
-///     OR they are all convertible to the value when 'a = 'static, via
-///     core::convert::From.
+///   - `<AsRef<[u8]> for $mytype>::as_ref().len()` always equals
+///     `$mysize::USIZE`
+///   - `<TryFrom<&[u8]> for $mytype>::Error` implements `core::fmt::Display`
+///   - `<TryFrom<&'a[u8]> for $mytype>::Error` is the same for all values of
+///     'a, OR they are all convertible to the value when 'a = 'static, via
+///     [From].
 #[macro_export]
 macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     ($mytype:ty, $mysize:ty) => {
         impl $crate::ReprBytes for $mytype {
             type Size = $mysize;
-            type Error = <$mytype as ::core::convert::TryFrom<&'static [u8]>>::Error;
+            type Error = <$mytype as TryFrom<&'static [u8]>>::Error;
 
             fn from_bytes(src: &$crate::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-                <Self as ::core::convert::TryFrom<&[u8]>>::try_from(src.as_slice())
+                <Self as TryFrom<&[u8]>>::try_from(src.as_slice())
             }
 
             fn to_bytes(&self) -> $crate::GenericArray<u8, Self::Size> {
@@ -174,7 +175,7 @@ macro_rules! derive_into_vec_from_repr_bytes {
 #[macro_export]
 macro_rules! derive_try_from_slice_from_repr_bytes {
     ($mytype:ty) => {
-        impl<'a> ::core::convert::TryFrom<&'a [u8]> for $mytype {
+        impl<'a> TryFrom<&'a [u8]> for $mytype {
             type Error = <Self as $crate::ReprBytes>::Error;
             fn try_from(src: &'a [u8]) -> Result<Self, Self::Error> {
                 if src.len() != <Self as $crate::ReprBytes>::size() {
@@ -220,7 +221,6 @@ macro_rules! derive_prost_message_from_repr_bytes {
             where
                 B: $crate::_exports::prost::bytes::Buf,
             {
-                use ::core::convert::TryInto;
                 use $crate::_exports::{alloc::string::ToString, prost::encoding::*};
                 if tag == 1 {
                     let expected_size = <Self as $crate::ReprBytes>::size();
@@ -410,19 +410,14 @@ macro_rules! derive_core_cmp_from_as_ref {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use generic_array::sequence::{Concat, Split};
-    use typenum::{U12, U20, U4};
-
-    use core::convert::{TryFrom, TryInto};
-
     extern crate alloc;
-    use alloc::vec::Vec;
-
     extern crate serde_cbor;
 
+    use super::*;
+    use alloc::vec::Vec;
+    use generic_array::sequence::{Concat, Split};
     use prost::Message;
+    use typenum::{U12, U20, U4};
 
     // A test type which can implement AsRef<[u8]>
     #[derive(Default, Debug, Eq, PartialEq)]

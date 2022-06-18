@@ -25,7 +25,6 @@ use mc_util_telemetry::{
     mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, Span,
 };
 use std::{
-    convert::TryInto,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -871,7 +870,6 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
-    use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_blockchain_types::{compute_block_id, BlockVersion};
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};

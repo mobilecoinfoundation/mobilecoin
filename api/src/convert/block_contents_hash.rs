@@ -1,8 +1,7 @@
 //! Convert to/from blockchain::BlockContentsHash
 
-use crate::{blockchain, convert::ConversionError};
+use crate::{blockchain, ConversionError};
 use mc_blockchain_types::BlockContentsHash;
-use std::convert::TryFrom;
 
 /// Convert BlockContentsHash --> blockchain::BlockContentsHash.
 impl From<&BlockContentsHash> for blockchain::BlockContentsHash {

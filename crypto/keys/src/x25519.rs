@@ -8,7 +8,6 @@ use crate::{
 };
 use alloc::{string::ToString, vec, vec::Vec};
 use core::{
-    convert::{AsRef, TryFrom},
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
     str::from_utf8,
 };
@@ -153,7 +152,6 @@ impl AsRef<[u8]> for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::*;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -167,7 +165,6 @@ impl AsRef<[u8]> for X25519Public {
     /// use mc_crypto_keys::*;
     /// use mc_crypto_digestible::Digestible;
     /// use sha2::{Digest, Sha256};
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -209,7 +206,6 @@ impl Clone for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Public;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey1 = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -446,7 +442,6 @@ impl Clone for X25519Private {
     /// # Examples
     ///
     /// ```
-    /// use core::convert::TryFrom;
     /// use mc_crypto_keys::*;
     ///
     /// let key = [0x55u8; 32];
@@ -503,7 +498,6 @@ impl<'de> Deserialize<'de> for X25519Private {
 ///
 /// ```
 /// use mc_crypto_keys::*;
-/// use std::convert::TryFrom;
 ///
 /// let mut key = [0x55u8; 32];
 /// key[0] = 0x50u8; // scalar values are clamped by dalek
@@ -536,7 +530,6 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Private;
-    /// use std::convert::TryFrom;
     ///
     /// let mut key = [0x55u8; 32];
     /// key[0] = 0x50u8; // scalar values are clamped by dalek

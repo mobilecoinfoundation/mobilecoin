@@ -34,11 +34,7 @@ use mc_util_grpc::{
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
-use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{str::FromStr, sync::Arc};
 
 // Callback method for returning the latest SCP message issued by the local
 // node, used to implement the `fetch_latest_msg` RPC call.

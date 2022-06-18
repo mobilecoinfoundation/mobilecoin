@@ -26,7 +26,7 @@ use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.

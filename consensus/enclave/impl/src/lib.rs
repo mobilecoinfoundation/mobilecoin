@@ -29,7 +29,7 @@ use alloc::{
 };
 use constant_time_division::ct_u64_divide;
 use constant_time_token_map::CtTokenMap;
-use core::{cmp::min, convert::TryFrom};
+use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -1032,7 +1032,6 @@ fn mint_output<T: Digestible>(
 mod tests {
     use super::*;
     use alloc::vec;
-    use core::iter::FromIterator;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};

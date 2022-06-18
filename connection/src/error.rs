@@ -11,7 +11,7 @@ use mc_blockchain_types::ConvertError;
 use mc_consensus_api::{consensus_common::ProposeTxResult, ConversionError};
 use mc_crypto_noise::CipherError;
 use mc_transaction_core::validation::TransactionValidationError;
-use std::{array::TryFromSliceError, convert::TryInto, result::Result as StdResult};
+use std::{array::TryFromSliceError, result::Result as StdResult};
 
 pub type Result<T> = StdResult<T, Error>;
 pub type RetryResult<T> = StdResult<T, RetryError<Error>>;

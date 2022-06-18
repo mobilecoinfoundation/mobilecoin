@@ -7,7 +7,6 @@ use crate::{
     ConversionError,
 };
 use mc_blockchain_types::{BlockContents, BlockData, BlockSignature};
-use std::convert::TryFrom;
 
 /// Convert BlockData --> ArchiveBlock.
 impl From<&BlockData> for ArchiveBlock {

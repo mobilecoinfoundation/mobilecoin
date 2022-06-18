@@ -46,7 +46,6 @@ use secrecy::{ExposeSecret, SecretVec};
 use sha2::Sha512;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     ops::Range,

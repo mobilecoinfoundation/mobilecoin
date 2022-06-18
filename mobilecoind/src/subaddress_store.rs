@@ -15,7 +15,7 @@ use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, Wri
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const SUBADDRESS_PUBLIC_SPEND_KEY_TO_INDEX_DATA_DB_NAME: &str =

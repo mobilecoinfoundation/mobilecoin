@@ -18,7 +18,6 @@ pub use rng_store::{RngStore, StorageDataSize, StorageMetaSize};
 
 use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use mc_attest_core::{
     IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
 };
