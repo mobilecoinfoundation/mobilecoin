@@ -378,8 +378,6 @@ mod mlsag_tests {
     use mc_util_test_helper::{RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
 
-    extern crate std;
-
     #[derive(Clone)]
     struct RingMLSAGParameters {
         message: [u8; 32],

@@ -598,6 +598,7 @@ mod test {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use sha2::Sha512;
+    use std::eprintln;
 
     #[test]
     fn walkthrough_ix_25519_aesgcm_sha512() {
@@ -634,7 +635,7 @@ mod test {
         .expect("Could not create responder");
 
         // Create a message for transmission to the responder
-        std::eprintln!("Initiator is writing first message...");
+        eprintln!("Initiator is writing first message...");
         let output1 = initiator
             .write_message(&mut csprng, challenge.as_bytes())
             .expect("Initiator could not write initial message");
@@ -655,7 +656,7 @@ mod test {
         );
 
         // Give the message to the responder to examine/parse/decrypt
-        std::eprintln!("Responder is reading first message...");
+        eprintln!("Responder is reading first message...");
         let output2 = responder
             .read_message(&output1.payload)
             .expect("Responder could not read first message");
@@ -668,7 +669,7 @@ mod test {
         // the payload should be in plaintext here, since we're IX, so check that it is
         assert_eq!(challenge.as_bytes(), output2.payload.as_slice());
 
-        std::eprintln!("Responder has done Kex, writing response message");
+        eprintln!("Responder has done Kex, writing response message");
         let output3 = responder
             .write_message(&mut csprng, response.as_bytes())
             .expect("Responder could not write reply");
@@ -681,7 +682,7 @@ mod test {
 
         let payload_len = output3.payload.len();
         let response_len = response.as_bytes().len();
-        std::eprintln!(
+        eprintln!(
             "response = {:02x?}\noutput3.payload = {:02x?}",
             response.as_bytes(),
             &output3.payload
@@ -691,7 +692,7 @@ mod test {
             &output3.payload[(payload_len - response_len)..]
         );
 
-        std::eprintln!("Initiator is trying to read response");
+        eprintln!("Initiator is trying to read response");
         let output4 = initiator
             .read_message(&output3.payload)
             .expect("Initiator could not read response");

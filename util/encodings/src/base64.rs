@@ -62,7 +62,6 @@ pub fn base64_size(byte_len: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
     use super::*;
 
     #[test]

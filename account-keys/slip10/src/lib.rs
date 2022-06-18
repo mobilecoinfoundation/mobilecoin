@@ -154,8 +154,6 @@ impl From<Slip10Key> for AccountKey {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
     use super::*;
     use bip39::Language;
 

@@ -448,9 +448,7 @@ pub struct FogTxOutMetadata {
 
 #[cfg(test)]
 mod view_tests {
-    extern crate std;
     use super::*;
-
     use mc_test_vectors_tx_out_records::{CorrectTxOutRecordData, IncorrectTxOutRecordData};
     use mc_util_test_vector::TestVector;
     use mc_util_test_with_data::test_with_data;
