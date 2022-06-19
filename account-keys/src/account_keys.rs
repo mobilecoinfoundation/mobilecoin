@@ -462,7 +462,7 @@ pub struct ViewAccountKey {
     #[prost(message, required, tag = "1")]
     view_private_key: RistrettoPrivate,
 
-    /// Private key `B` used for generating Public Addresses.
+    /// Public key `B` used for generating Public Addresses.
     #[prost(message, required, tag = "2")]
     spend_public_key: RistrettoPublic,
 }
@@ -529,8 +529,7 @@ impl ViewAccountKey {
         &self.spend_public_key
     }
 
-    /// Create an account key with random secret keys, and no fog service
-    /// (intended for tests).
+    /// Create a view account key with random keys
     pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new(
             &RistrettoPublic::from_random(rng),
@@ -764,5 +763,21 @@ mod account_key_tests {
         // Note: The fog_authority_fingerprint is published, so it is known by the
         // verifier.
         verify_signature(&subaddress, &fog_authority_spki);
+    }
+
+    #[test]
+    // Account Key and View Account Key derived from same keys should generate the
+    // same subaddresses
+    fn test_view_account_keys_subaddresses() {
+        let mut rng: StdRng = SeedableRng::from_seed([42u8, 32]);
+        let view_private = RistrettoPrivate::from_random(&mut rng);
+        let spend_private = RistrettoPrivate::from_random(&mut rng);
+        let account_key = AccountKey::new(&spend_private, &view_private);
+        let view_account_key = ViewAccountKey::from(&account_key);
+
+        assert_eq!(
+            account_key.default_subaddress(),
+            view_account_key.default_subaddress()
+        )
     }
 }
