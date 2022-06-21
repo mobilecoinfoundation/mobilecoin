@@ -14,6 +14,7 @@ mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-featu
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }

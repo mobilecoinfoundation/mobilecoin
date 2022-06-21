@@ -28,6 +28,7 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", features = ["hex_fmt"] }
 
 base64 = { version = "0.13", default-features = false, features = ["alloc"] }
 bitflags = "1.2"

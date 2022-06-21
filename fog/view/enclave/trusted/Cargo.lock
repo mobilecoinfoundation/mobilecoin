@@ -730,6 +730,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
+ "mc-util-repr-bytes",
  "prost",
  "rjson",
  "serde",
@@ -770,6 +771,7 @@ dependencies = [
  "chrono",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -799,6 +801,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-types",
  "mc-util-from-random",
+ "mc-util-repr-bytes",
  "prost",
  "serde",
  "zeroize",
@@ -1444,6 +1447,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array",
+ "hex_fmt",
  "prost",
  "serde",
 ]

@@ -7,6 +7,8 @@
 #![feature(core_intrinsics)]
 
 extern crate alloc;
+#[macro_use]
+extern crate mc_util_repr_bytes;
 
 mod error;
 mod ias;

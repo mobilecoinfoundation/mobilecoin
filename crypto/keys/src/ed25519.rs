@@ -8,10 +8,6 @@ use crate::{
     Signature as SignatureTrait, SignatureError, Signer, Verifier,
 };
 use alloc::{vec, vec::Vec};
-use core::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-};
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
@@ -24,8 +20,9 @@ use ed25519_dalek::{
 use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -100,7 +97,7 @@ impl DistinguishedEncoding for Ed25519Signature {
 }
 
 /// An Ed25519 public key.
-#[derive(Copy, Clone, Debug, Default, Deserialize, Eq, Serialize, Digestible)]
+#[derive(Copy, Clone, Default, Deserialize, Serialize, Digestible)]
 pub struct Ed25519Public(DalekPublicKey);
 
 impl AsRef<[u8]> for Ed25519Public {
@@ -119,16 +116,16 @@ impl TryFrom<&[u8]> for Ed25519Public {
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
-derive_into_vec_from_repr_bytes!(Ed25519Public);
-
 impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
     fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
         self.0.as_bytes()
     }
 }
 
-derive_core_cmp_from_as_ref! { Ed25519Public, [u8; PUBLIC_KEY_LENGTH] }
+derive_core_cmp_from_as_ref!(Ed25519Public, [u8; PUBLIC_KEY_LENGTH]);
+derive_debug_and_display_hex_from_as_ref!(Ed25519Public);
+derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
+derive_into_vec_from_repr_bytes!(Ed25519Public);
 derive_prost_message_from_repr_bytes!(Ed25519Public);
 
 // ASN.1 DER SubjectPublicKeyInfo Bytes -- this is a set of nested TLVs
@@ -207,12 +204,22 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
 }
 
 /// An Ed25519 private key
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Ed25519Private(SecretKey);
 
 impl AsRef<[u8]> for Ed25519Private {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl core::fmt::Debug for Ed25519Private {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "Ed25519Private for pubkey: {:?}",
+            Ed25519Public::from(self)
+        )
     }
 }
 
@@ -364,7 +371,7 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 }
 
 /// An Ed25519 signature.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct Ed25519Signature(Signature);
 
 impl Ed25519Signature {
@@ -389,34 +396,6 @@ impl Digestible for Ed25519Signature {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"ed25519-sig", &self);
-    }
-}
-
-// Deriving doesn't work, ed25519 crate says:
-// derive `PartialEq` after const generics are available
-impl Eq for Ed25519Signature {}
-
-impl PartialEq for Ed25519Signature {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl PartialOrd for Ed25519Signature {
-    fn partial_cmp(&self, other: &Ed25519Signature) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
-    }
-}
-
-impl Ord for Ed25519Signature {
-    fn cmp(&self, other: &Ed25519Signature) -> Ordering {
-        self.to_bytes().cmp(&other.to_bytes())
-    }
-}
-
-impl Hash for Ed25519Signature {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_bytes().hash(state)
     }
 }
 
@@ -449,6 +428,8 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
 
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
 derive_prost_message_from_repr_bytes!(Ed25519Signature);
+derive_core_cmp_from_as_ref!(Ed25519Signature);
+derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {

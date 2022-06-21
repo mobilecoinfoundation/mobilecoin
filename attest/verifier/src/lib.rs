@@ -66,7 +66,9 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use core::fmt;
 use displaydoc::Display;
+use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
     Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
@@ -149,7 +151,7 @@ impl From<VerifyError> for Error {
 
 /// A builder structure used to construct a report verifier based on the
 /// criteria specified.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, PartialEq, Serialize)]
 pub struct Verifier {
     /// A list of DER-encoded trust anchor certificates.
     trust_anchors: Vec<Vec<u8>>,
@@ -376,6 +378,18 @@ impl Verifier {
         // Construct the top-level verifier, and verify the IAS report
         IasReportVerifier::new(trust_anchors, self.status_verifiers.clone(), and_verifiers)
             .verify(report)
+    }
+}
+
+impl fmt::Debug for Verifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Verifier")
+            .field("trust_anchors", &HexList(&self.trust_anchors))
+            .field("report_body_verifiers", &self.report_body_verifiers)
+            .field("quote_verifiers", &self.quote_verifiers)
+            .field("avr_verifiers", &self.avr_verifiers)
+            .field("status_verifiers", &self.status_verifiers)
+            .finish()
     }
 }
 

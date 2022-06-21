@@ -48,16 +48,15 @@ use hkdf::Hkdf;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_util_repr_bytes::{
-    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
-    derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
+    derive_debug_and_display_hex_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
+    derive_serde_from_repr_bytes,
 };
 use sha2::Sha512;
 use zeroize::Zeroize;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
-#[derive(
-    Clone, Copy, Debug, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
-)]
+#[derive(Clone, Copy, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
 pub struct EncryptedMemo(GenericArray<u8, U66>);
 
 impl AsRef<[u8]> for EncryptedMemo {
@@ -99,6 +98,7 @@ derive_repr_bytes_from_as_ref_and_try_from!(EncryptedMemo, U66);
 derive_into_vec_from_repr_bytes!(EncryptedMemo);
 derive_serde_from_repr_bytes!(EncryptedMemo);
 derive_prost_message_from_repr_bytes!(EncryptedMemo);
+derive_debug_and_display_hex_from_as_ref!(EncryptedMemo);
 
 impl EncryptedMemo {
     /// Helper to ease syntax when decrypting
@@ -117,7 +117,7 @@ impl EncryptedMemo {
 ///
 /// Note that a memo payload may be invalid / uninterpretable, or refer to new
 /// memo types that have been introduced at a later date.
-#[derive(Clone, Copy, Default, Debug, Eq, Digestible, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Default, Eq, Digestible, Ord, PartialEq, PartialOrd)]
 pub struct MemoPayload(GenericArray<u8, U66>);
 
 impl MemoPayload {
@@ -221,6 +221,7 @@ derive_repr_bytes_from_as_ref_and_try_from!(MemoPayload, U66);
 derive_into_vec_from_repr_bytes!(MemoPayload);
 derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
+derive_debug_and_display_hex_from_as_ref!(MemoPayload);
 
 /// An error which can occur when handling memos
 #[derive(Debug, Display, Eq, PartialEq)]

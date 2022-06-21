@@ -4,18 +4,18 @@ use crate::{
     ring_signature::{Error, PedersenGens, Scalar},
     Commitment,
 };
-use core::fmt;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_prost_message_from_repr_bytes,
-    derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
+    GenericArray, ReprBytes,
 };
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A Pedersen commitment in compressed Ristretto format.
-#[derive(Copy, Clone, Default, Deserialize, Digestible, Eq, Serialize, Zeroize)]
+#[derive(Copy, Clone, Default, Deserialize, Digestible, Serialize, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedCommitment {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,
@@ -43,16 +43,6 @@ impl From<&CompressedRistretto> for CompressedCommitment {
     }
 }
 
-impl fmt::Debug for CompressedCommitment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "CompressedCommitment({})",
-            hex_fmt::HexFmt(self.point.as_bytes())
-        )
-    }
-}
-
 impl AsRef<[u8; 32]> for CompressedCommitment {
     fn as_ref(&self) -> &[u8; 32] {
         self.point.as_bytes()
@@ -67,9 +57,6 @@ impl From<&[u8; 32]> for CompressedCommitment {
     }
 }
 
-// Implements Ord, PartialOrd, PartialEq, Hash.
-derive_core_cmp_from_as_ref!(CompressedCommitment, [u8; 32]);
-
 impl ReprBytes for CompressedCommitment {
     type Error = Error;
     type Size = U32;
@@ -83,6 +70,8 @@ impl ReprBytes for CompressedCommitment {
     }
 }
 
+derive_core_cmp_from_as_ref!(CompressedCommitment, [u8; 32]);
+derive_debug_and_display_hex_from_as_ref!(CompressedCommitment);
 derive_prost_message_from_repr_bytes!(CompressedCommitment);
 derive_try_from_slice_from_repr_bytes!(CompressedCommitment);
 

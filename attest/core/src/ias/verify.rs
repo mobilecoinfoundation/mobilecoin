@@ -33,6 +33,7 @@ use core::{
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
+use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
@@ -488,13 +489,7 @@ impl FromHex for VerificationSignature {
     }
 }
 
-impl Debug for VerificationSignature {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_tuple("VerificationSignature")
-            .field(&HexFmt(&self.0))
-            .finish()
-    }
-}
+derive_debug_and_display_hex_from_as_ref!(VerificationSignature);
 
 const TAG_SIGNATURE_CONTENTS: u32 = 1;
 
