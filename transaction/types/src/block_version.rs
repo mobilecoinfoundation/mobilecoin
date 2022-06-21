@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use core::{convert::TryFrom, fmt, hash::Hash, ops::Deref, str::FromStr};
+use core::{fmt, hash::Hash, ops::Deref, str::FromStr};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};

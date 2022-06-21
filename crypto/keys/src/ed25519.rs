@@ -8,7 +8,6 @@ use crate::{
     Signature as SignatureTrait, SignatureError, Signer, Verifier,
 };
 use alloc::{vec, vec::Vec};
-use core::convert::TryFrom;
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
@@ -434,13 +433,22 @@ derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {
+    extern crate std;
+
     use super::*;
     use crate::{ReprBytes, Unsigned};
     use mc_crypto_digestible::Digestible;
     use mc_crypto_hashes::PseudoMerlin;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use semver::{Version, VersionReq};
     use sha2::Sha512;
+    use std::{
+        eprintln,
+        process::Command,
+        string::{String, ToString},
+    };
+    use tempdir::TempDir;
 
     #[derive(Digestible)]
     struct YoloStruct {
@@ -523,15 +531,6 @@ mod ed25519_tests {
     //
     // So we're skipping validation of ED25519_SIG_DER_PREFIX, but we're validating
     // the others
-
-    extern crate std;
-    use semver::{Version, VersionReq};
-    use std::{
-        eprintln,
-        process::Command,
-        string::{String, ToString},
-    };
-    use tempdir::TempDir;
 
     // Run and log a command, panic if it fails
     // It is sad that std::process::Command doesn't have a flag like `bash -x`

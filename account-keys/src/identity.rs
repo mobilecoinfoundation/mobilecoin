@@ -14,10 +14,7 @@
 
 use crate::AccountKey;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
-use core::{
-    convert::{From, TryFrom},
-    hash::Hash,
-};
+use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::SimpleHkdf;
 use mc_crypto_hashes::Blake2b256;

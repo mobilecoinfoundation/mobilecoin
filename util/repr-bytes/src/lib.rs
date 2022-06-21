@@ -136,10 +136,10 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     ($mytype:ty, $mysize:ty) => {
         impl $crate::ReprBytes for $mytype {
             type Size = $mysize;
-            type Error = <$mytype as ::core::convert::TryFrom<&'static [u8]>>::Error;
+            type Error = <$mytype as TryFrom<&'static [u8]>>::Error;
 
             fn from_bytes(src: &$crate::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-                <Self as ::core::convert::TryFrom<&[u8]>>::try_from(src.as_slice())
+                <Self as TryFrom<&[u8]>>::try_from(src.as_slice())
             }
 
             fn to_bytes(&self) -> $crate::GenericArray<u8, Self::Size> {
@@ -178,7 +178,7 @@ macro_rules! derive_into_vec_from_repr_bytes {
 #[macro_export]
 macro_rules! derive_try_from_slice_from_repr_bytes {
     ($mytype:ty) => {
-        impl<'a> ::core::convert::TryFrom<&'a [u8]> for $mytype {
+        impl<'a> TryFrom<&'a [u8]> for $mytype {
             type Error = <Self as $crate::ReprBytes>::Error;
             fn try_from(src: &'a [u8]) -> Result<Self, Self::Error> {
                 if src.len() != <Self as $crate::ReprBytes>::size() {
@@ -224,7 +224,6 @@ macro_rules! derive_prost_message_from_repr_bytes {
             where
                 B: $crate::_exports::prost::bytes::Buf,
             {
-                use ::core::convert::TryInto;
                 use $crate::_exports::{alloc::string::ToString, prost::encoding::*};
                 if tag == 1 {
                     let expected_size = <Self as $crate::ReprBytes>::size();
@@ -445,13 +444,11 @@ macro_rules! derive_debug_and_display_hex_from_as_ref {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     extern crate alloc;
     extern crate serde_cbor;
 
+    use super::*;
     use alloc::{format, vec::Vec};
-    use core::convert::{TryFrom, TryInto};
     use generic_array::sequence::{Concat, Split};
     use prost::Message;
     use typenum::{U12, U20, U4};

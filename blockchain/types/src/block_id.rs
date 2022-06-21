@@ -2,7 +2,7 @@
 
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
-use core::{convert::TryFrom, hash::Hash};
+use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 use prost::{

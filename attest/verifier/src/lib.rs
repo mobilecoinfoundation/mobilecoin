@@ -400,8 +400,6 @@ mod test {
     use mc_attest_core::{MrEnclave, MrSigner, VerificationSignature};
     use mc_util_encodings::FromHex;
 
-    extern crate std;
-
     const TEST_ANCHORS: &[&str] = &[include_str!(
         "../data/Dev_AttestationReportSigningCACert.pem"
     )];

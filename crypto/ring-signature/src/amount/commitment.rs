@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{

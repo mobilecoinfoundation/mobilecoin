@@ -26,7 +26,6 @@ use primitive_types::{U256, U512};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    convert::TryFrom,
     fmt::Display,
     sync::Arc,
     time::{Duration, Instant},
@@ -2411,7 +2410,6 @@ mod ballot_protocol_tests {
     use crate::{core_types::*, quorum_set::*, test_utils::*};
     use maplit::{btreeset, hashset};
     use mc_common::logger::test_with_logger;
-    use std::iter::FromIterator;
 
     // TODO: reject a message if it contains a ballot containing incorrectly ordered
     // values.

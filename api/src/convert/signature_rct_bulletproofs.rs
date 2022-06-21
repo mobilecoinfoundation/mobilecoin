@@ -2,12 +2,11 @@
 
 //! Convert to/from external::SignatureRctBulletproofs
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{
     ring_ct::SignatureRctBulletproofs, ring_signature::RingMLSAG, CompressedCommitment,
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
 impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
     fn from(source: &SignatureRctBulletproofs) -> Self {

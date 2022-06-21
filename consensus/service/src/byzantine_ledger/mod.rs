@@ -338,8 +338,6 @@ mod tests {
     use serial_test::serial;
     use std::{
         collections::BTreeSet,
-        convert::TryInto,
-        iter::FromIterator,
         sync::{Arc, Mutex},
         time::Instant,
     };

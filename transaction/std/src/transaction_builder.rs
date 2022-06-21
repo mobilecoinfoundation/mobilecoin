@@ -707,7 +707,6 @@ pub mod transaction_builder_tests {
         NewTxError, TokenId, TxOutGiftCode,
     };
     use rand::{rngs::StdRng, SeedableRng};
-    use std::convert::TryFrom;
 
     // Helper which produces a list of block_version, TokenId pairs to iterate over
     // in tests

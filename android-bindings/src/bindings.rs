@@ -9,10 +9,8 @@ use crate::{
     error::McError,
     ffi::{jni_big_int_to_u64, jni_ffi_call, jni_ffi_call_or, RUST_OBJ_FIELD},
 };
-
 use aes_gcm::Aes256Gcm;
 use bip39::{Language, Mnemonic};
-use core::convert::TryFrom;
 use generic_array::{typenum::U66, GenericArray};
 use jni::{
     objects::{JObject, JString},

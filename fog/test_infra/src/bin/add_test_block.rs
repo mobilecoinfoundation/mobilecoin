@@ -26,7 +26,6 @@
 //! is returned.
 
 use clap::Parser;
-use core::convert::TryFrom;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
 use mc_common::logger::create_root_logger;

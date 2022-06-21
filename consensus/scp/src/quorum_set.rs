@@ -11,7 +11,6 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
     hash::{Hash, Hasher},
-    iter::FromIterator,
 };
 
 use crate::{

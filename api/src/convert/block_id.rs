@@ -1,8 +1,7 @@
 //! Convert to/from blockchain::BlockID
 
-use crate::{blockchain, convert::ConversionError};
+use crate::{blockchain, ConversionError};
 use mc_blockchain_types::BlockID;
-use std::convert::TryFrom;
 
 /// Convert BlockID --> blockchain::BlockID.
 impl From<&BlockID> for blockchain::BlockID {

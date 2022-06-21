@@ -81,7 +81,6 @@ pub fn merged_block_num_to_s3block_path(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::From;
 
     #[test]
     fn test_block_num_to_s3block_path() {

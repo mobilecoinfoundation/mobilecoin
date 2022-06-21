@@ -20,7 +20,6 @@ use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
-    convert::TryFrom,
     marker::PhantomData,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -372,7 +371,7 @@ mod tests {
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use serial_test::serial;
-    use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
+    use std::{str::FromStr, sync::Mutex, thread::sleep};
 
     // A contraption that allows us to return a specific VerificationReport for a
     // given ConsensusClientUri while also allowing the tests to control it.

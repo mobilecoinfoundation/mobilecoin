@@ -869,7 +869,6 @@ mod tests {
     use mc_consensus_scp::{core_types::Ballot, msg::*, *};
     use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
     use mc_peers_test_utils::{test_node_id, test_peer_uri, MockPeerConnection};
-    use std::convert::TryFrom;
 
     #[test_with_logger]
     // A node with the trivial quorum set should never be "behind".

@@ -6,7 +6,6 @@ use aligned_cmov::{
     GenericArray,
 };
 use blake2::{Blake2b512, Digest};
-use core::convert::TryInto;
 
 /// The ExtraMeta is additional bytes we stick onto the end of user-provided
 /// metadata, in order to authenticate responses from untrusted

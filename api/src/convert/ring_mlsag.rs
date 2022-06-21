@@ -1,8 +1,7 @@
 //! Convert to/from external::RingMLSAG
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::ring_signature::{CurveScalar, KeyImage, RingMLSAG};
-use std::convert::TryFrom;
 
 impl From<&RingMLSAG> for external::RingMLSAG {
     fn from(source: &RingMLSAG) -> Self {

@@ -14,7 +14,7 @@ use mc_transaction_core::{
     tx::TxHash,
 };
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
+use std::{hash::Hash, result::Result as StdResult};
 
 /// A single value in a consensus round.
 #[derive(
@@ -206,7 +206,6 @@ mod tests {
     use mc_consensus_scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers_test_utils::test_node_id_and_signer;
-    use std::convert::TryFrom;
 
     // Create a minimal ConsensusMsg for testing
     fn create_msg_node_a() -> ConsensusMsg {

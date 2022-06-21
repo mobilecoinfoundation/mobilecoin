@@ -191,7 +191,7 @@ mod tests {
     use mc_fog_recovery_db_iface::IngressPublicKeyStatus;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{cmp::min, iter::FromIterator};
+    use std::cmp::min;
 
     #[test_with_logger]
     fn next_blocks_empty(logger: Logger) {

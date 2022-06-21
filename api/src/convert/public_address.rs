@@ -1,8 +1,7 @@
 //! Convert to/from external::PublicAddress
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_account_keys::PublicAddress;
-use std::convert::TryFrom;
 
 impl From<&PublicAddress> for external::PublicAddress {
     fn from(src: &PublicAddress) -> Self {

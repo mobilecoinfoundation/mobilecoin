@@ -630,7 +630,6 @@ mod mint_tx_tests {
         initialize_ledger, mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 

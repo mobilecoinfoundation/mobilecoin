@@ -16,7 +16,7 @@ use mc_transaction_core::{tokens::Mob, BlockVersion, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
-use std::{cmp, collections::HashMap, convert::From, iter::FromIterator, sync::Arc};
+use std::{cmp, collections::HashMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct BlockchainApiService<L: Ledger + Clone> {
@@ -189,7 +189,7 @@ mod tests {
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator, time::Duration};
+    use std::{collections::HashMap, time::Duration};
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server<L: Ledger + Clone + 'static>(

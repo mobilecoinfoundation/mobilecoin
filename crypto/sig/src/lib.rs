@@ -9,9 +9,9 @@
 //! cryptography operations, and this crate provides a way to create signatures
 //! that is compatible with these key pairs.
 
-use core::convert::TryInto;
-use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 pub use schnorrkel_og::{Signature, SignatureError, SIGNATURE_LENGTH};
+
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 /// Create a deterministic Schnorrkel signature
 ///
@@ -64,7 +64,6 @@ mod tests {
 
     mod compat_20210122 {
         use super::*;
-        use core::convert::TryFrom;
 
         // These example files were created by hacking the unit tests in
         // the tests module to save their data to /tmp, and then manually

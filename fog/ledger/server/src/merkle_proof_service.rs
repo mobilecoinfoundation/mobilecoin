@@ -15,7 +15,7 @@ use mc_util_grpc::{
     send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
-use std::{convert::From, sync::Arc};
+use std::sync::Arc;
 
 // Maximum number of TxOuts that may be returned for a single request.
 pub const MAX_REQUEST_SIZE: usize = 2000;

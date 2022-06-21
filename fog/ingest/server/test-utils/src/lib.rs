@@ -26,7 +26,6 @@ use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     collections::BTreeSet,
-    convert::TryInto,
     ops::{Deref, DerefMut},
     path::PathBuf,
     str::FromStr,

@@ -3,8 +3,6 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::TryFrom;
-
 use curve25519_dalek::ristretto::RistrettoPoint;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
@@ -377,8 +375,6 @@ mod mlsag_tests {
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
-
-    extern crate std;
 
     #[derive(Clone)]
     struct RingMLSAGParameters {

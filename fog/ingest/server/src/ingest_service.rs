@@ -27,7 +27,7 @@ use mc_util_grpc::{
 };
 use mc_util_metrics::SVC_COUNTERS;
 use protobuf::RepeatedField;
-use std::{convert::TryInto, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 /// Implements the ingest grpc api
 #[derive(Clone)]

@@ -7,7 +7,6 @@ use crate::{
     keys::{McAccountKey, McPublicAddress},
     LibMcError,
 };
-use core::convert::TryFrom;
 use crc::Crc;
 use generic_array::{typenum::U66, GenericArray};
 use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};

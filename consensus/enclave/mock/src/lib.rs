@@ -39,10 +39,7 @@ use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
-use std::{
-    convert::TryFrom,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {

@@ -352,7 +352,6 @@ mod test {
     use mc_blockchain_types::BlockVersion;
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     // Test that encryption happy path works as expected.

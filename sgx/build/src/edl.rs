@@ -4,7 +4,6 @@
 
 use crate::{conf, tools::assert_path_exists};
 use std::{
-    convert::TryFrom,
     env::var,
     ffi::OsString,
     path::{Path, PathBuf},

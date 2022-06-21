@@ -4,7 +4,7 @@
 
 use crate::{Digest, LengthMismatch, ReprBytes, Unsigned};
 use alloc::{string::String, vec::Vec};
-use core::{convert::TryFrom, fmt::Debug, hash::Hash};
+use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;

@@ -2,11 +2,9 @@
 
 //! Convert to/from external:MintConfig/MintConfigTxPrefix/MintConfigTx.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
-
-use std::convert::TryFrom;
 
 /// Convert MintConfig --> external::MintConfig.
 impl From<&MintConfig> for external::MintConfig {

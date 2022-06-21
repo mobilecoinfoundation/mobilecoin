@@ -7,7 +7,6 @@ use mc_transaction_core::{
     onetime_keys::create_shared_secret,
     tx::{TxIn, TxOut, TxOutMembershipProof},
 };
-use std::convert::TryFrom;
 use zeroize::Zeroize;
 
 /// Credentials required to construct a ring signature for an input.

@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::Error;
-use crate::ring_signature::{hash_to_point, Scalar};
-use core::convert::TryFrom;
+use super::{hash_to_point, Error, Scalar};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};

@@ -9,10 +9,7 @@ use mc_util_repr_bytes::{
     derive_debug_and_display_hex_from_as_ref, derive_prost_message_from_repr_bytes,
     derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
 };
-use std::{
-    convert::{AsRef, TryFrom},
-    ops::Deref,
-};
+use std::ops::Deref;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Digestible)]
 pub struct DatabaseByteArrayKey([u8; 32]);

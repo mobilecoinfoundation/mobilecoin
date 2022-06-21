@@ -1,9 +1,8 @@
 //! Convert to/from external::CurveScalar
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_core::ring_signature::CurveScalar;
-use std::convert::TryFrom;
 
 /// Convert RistrettoPrivate --> external::CurveScalar.
 impl From<&RistrettoPrivate> for external::CurveScalar {

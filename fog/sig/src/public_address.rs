@@ -4,7 +4,6 @@
 //! public addresses.
 
 use crate::{Error, Verifier};
-use core::convert::TryInto;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::Ed25519Signature;
 use mc_crypto_x509_utils::{

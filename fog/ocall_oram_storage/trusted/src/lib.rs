@@ -601,9 +601,9 @@ extern "C" {
 // when untrusted memory is tampered with
 #[cfg(test)]
 mod helpers {
-    use super::*;
-
     extern crate std;
+
+    use super::*;
     use lazy_static::lazy_static;
     use mc_util_test_helper::get_seeded_rng;
     use std::panic::{catch_unwind, AssertUnwindSafe};
