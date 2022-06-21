@@ -98,7 +98,7 @@ derive_repr_bytes_from_as_ref_and_try_from!(EncryptedMemo, U66);
 derive_into_vec_from_repr_bytes!(EncryptedMemo);
 derive_serde_from_repr_bytes!(EncryptedMemo);
 derive_prost_message_from_repr_bytes!(EncryptedMemo);
-derive_debug_and_display_hex_from_as_ref!(EncryptedMemo, [u8]);
+derive_debug_and_display_hex_from_as_ref!(EncryptedMemo);
 
 impl EncryptedMemo {
     /// Helper to ease syntax when decrypting
@@ -221,7 +221,7 @@ derive_repr_bytes_from_as_ref_and_try_from!(MemoPayload, U66);
 derive_into_vec_from_repr_bytes!(MemoPayload);
 derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
-derive_debug_and_display_hex_from_as_ref!(MemoPayload, [u8]);
+derive_debug_and_display_hex_from_as_ref!(MemoPayload);
 
 /// An error which can occur when handling memos
 #[derive(Debug, Display, Eq, PartialEq)]
