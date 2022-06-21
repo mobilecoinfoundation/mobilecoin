@@ -73,7 +73,7 @@ parser.add_argument("--ssh-dir", action='store_true', help='Mount $HOME/.ssh dir
 parser.add_argument("--ssh-agent", action='store_true', help='Use ssh-agent on host machine for ssh authentication. Also controlled by SSH_AUTH_SOCK env variable')
 parser.add_argument("--expose", nargs='+', default=None, help="Any additional ports to expose")
 parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
-parser.add_argument("cmd", nargs=argparse.REMAINDER, default=None, help="Run this command inside the bash shell instead of an interactive prompt")
+parser.add_argument("--cmd", nargs='+', default=None, help="Run this command inside the bash shell instead of an interactive prompt")
 
 args = parser.parse_args()
 
@@ -304,7 +304,6 @@ docker_run.extend(["/bin/bash"])
 
 if args.cmd:
     cmd = ' '.join(args.cmd)
-    cmd = f'"{cmd}"'
     vprint('Running command in docker:', cmd)
     docker_run.extend(["-c", cmd])
 
