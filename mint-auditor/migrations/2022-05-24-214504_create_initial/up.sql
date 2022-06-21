@@ -85,22 +85,6 @@ CREATE TABLE mint_txs (
     FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
 );
 
--- Mints on the mobilecoin blockchain
-CREATE TABLE mobilecoin_mint_txs (
-    -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
-    -- we would've wanted to use the block_index for that we can't.
-    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
-    id INTEGER PRIMARY KEY,
-    block_index UNSIGNED BIGINT NOT NULL,
-    token_id UNSIGNED BIGINT NOT NULL,
-    amount UNSIGNED BITINT NOT NULL,
-    recipient_b58_address VARCHAR NOT NULL,
-    nonce_hex VARCHAR NOT NULL UNIQUE,
-    tombstone_block UNSIGNED BIGINT NOT NULL,
-    -- Constraints
-    FOREIGN KEY (block_index) REFERENCES block_audit_data(block_index)
-);
-
 -- Processed gnosis safe transactions
 CREATE TABLE gnosis_safe_txs (
     eth_tx_hash VARCHAR NOT NULL UNIQUE PRIMARY KEY,

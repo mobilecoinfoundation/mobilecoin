@@ -92,18 +92,6 @@ table! {
     }
 }
 
-table! {
-    mobilecoin_mint_txs (id) {
-        id -> Nullable<Integer>,
-        block_index -> BigInt,
-        token_id -> BigInt,
-        amount -> Integer,
-        recipient_b58_address -> Text,
-        nonce_hex -> Text,
-        tombstone_block -> BigInt,
-    }
-}
-
 joinable!(gnosis_safe_deposits -> gnosis_safe_txs (eth_tx_hash));
 joinable!(gnosis_safe_withdrawals -> gnosis_safe_txs (eth_tx_hash));
 joinable!(mint_configs -> mint_config_txs (mint_config_tx_id));
@@ -119,5 +107,4 @@ allow_tables_to_appear_in_same_query!(
     mint_config_txs,
     mint_configs,
     mint_txs,
-    mobilecoin_mint_txs,
 );
