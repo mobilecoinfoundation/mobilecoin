@@ -134,8 +134,8 @@ impl ClientBuilder {
 
         log::info!(
             self.logger,
-            "About to start LedgerServerConn to {:?}",
-            self.ledger_server_address.clone()
+            "About to start LedgerServerConn to {}",
+            self.ledger_server_address
         );
         let (fog_merkle_proof, fog_key_image, fog_untrusted, fog_block) =
             self.build_fog_ledger_server_conns(grpc_env.clone());

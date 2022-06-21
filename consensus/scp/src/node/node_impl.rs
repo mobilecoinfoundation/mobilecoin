@@ -16,6 +16,7 @@ use mc_common::{
 use std::{
     collections::{BTreeSet, HashMap},
     fmt::Display,
+    mem,
     time::Duration,
 };
 
@@ -126,7 +127,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         ));
 
         // Advance to the next slot.
-        let externalized_slot = std::mem::replace(&mut self.current_slot, next_slot);
+        let externalized_slot = mem::replace(&mut self.current_slot, next_slot);
 
         self.push_externalized_slot(externalized_slot);
 
@@ -322,7 +323,7 @@ mod tests {
     use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
     use maplit::btreeset;
     use mc_common::logger::test_with_logger;
-    use std::{iter::FromIterator, sync::Arc};
+    use std::sync::Arc;
 
     fn get_node(
         slot_index: SlotIndex,

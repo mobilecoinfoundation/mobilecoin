@@ -16,7 +16,6 @@ use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave
 use mc_util_metrics::IntGauge;
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use std::{
-    convert::TryFrom,
     io::Error as IOError,
     sync::{
         atomic::{AtomicBool, Ordering},

@@ -17,7 +17,6 @@ use pkg_config::{Config, Error as PkgConfigError};
 use rand::{thread_rng, RngCore};
 use std::{
     collections::HashSet,
-    convert::TryFrom,
     fs,
     io::Error as IoError,
     path::{Path, PathBuf},

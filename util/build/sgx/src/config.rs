@@ -3,7 +3,6 @@
 //! SGX Config XML Builder
 
 use std::{
-    convert::TryInto,
     fmt::{Display, Formatter, Result as FmtResult},
     fs::File,
     io::Write,

@@ -163,7 +163,6 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> RngStore<OSC> {
 mod tests {
     use super::*;
     use alloc::{collections::BTreeSet, format};
-    use core::convert::TryFrom;
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::RistrettoPublic;
     use mc_oblivious_traits::HeapORAMStorageCreator;

@@ -252,7 +252,6 @@ impl Verify<VerificationReportData> for MrSignerVerifier {
 mod test {
     use super::*;
     use alloc::vec;
-    use core::convert::TryFrom;
     use mc_attest_core::VerificationReport;
     use mc_sgx_types::sgx_measurement_t;
 

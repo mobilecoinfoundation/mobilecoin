@@ -8,7 +8,7 @@ use crate::{impl_memo_type_conversions, RegisteredMemoType};
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::MemoError;
-use std::{convert::TryInto, str};
+use std::str;
 
 /// MobileCoin account owners can create a special TxOut called a "gift code".
 /// This TxOut is sent to a special subaddress at index u64::MAX - 2 reserved

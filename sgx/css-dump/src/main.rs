@@ -10,7 +10,6 @@ use clap::Parser;
 use hex_fmt::HexFmt;
 use mc_sgx_css::Signature;
 use std::{
-    convert::TryFrom,
     fmt::Write,
     fs,
     io::{self, Read, Write as IoWrite},

@@ -27,7 +27,6 @@ use mc_fog_report_validation::{
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use std::{
-    convert::TryFrom,
     path::PathBuf,
     process::exit,
     str::FromStr,

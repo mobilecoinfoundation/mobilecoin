@@ -14,7 +14,7 @@ use mc_mobilecoind_json::data_types::*;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::RepeatedField;
 use rocket::{delete, get, post, routes, serde::json::Json};
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance

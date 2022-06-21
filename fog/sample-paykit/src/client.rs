@@ -7,7 +7,7 @@ use crate::{
     error::{Error, Result},
     BlockInfo, MemoHandlerError, TransactionStatus,
 };
-use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
+use core::{result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
@@ -1041,7 +1041,7 @@ mod test_build_transaction_helper {
     };
     use mc_transaction_core_test_utils::get_outputs;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator};
+    use std::collections::HashMap;
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}

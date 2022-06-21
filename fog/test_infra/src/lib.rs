@@ -20,7 +20,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use mock_users::UserPool;
 use rand_core::{CryptoRng, RngCore};
-use std::{convert::TryFrom, env, path::PathBuf};
+use std::{env, path::PathBuf};
 
 /// Function for turning string constants into run-time enclave paths
 ///

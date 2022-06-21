@@ -6,7 +6,6 @@ pub(crate) use alloc::{format as _alloc_format, vec::Vec};
 pub(crate) use base64::{decode_config_slice as b64_decode, encode_config_slice as b64_encode};
 pub(crate) use core::{
     cmp::{Ord, Ordering},
-    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -76,7 +75,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                         self,
                         value: &'de [u8],
                     ) -> core::result::Result<Self::Value, E> {
-                        use $crate::traits::TryFrom;
                         Self::Value::try_from(value)
                             .map_err(|convert_error| {
                                 E::custom(
@@ -95,8 +93,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                         self,
                         value: &[u8],
                     ) -> core::result::Result<Self::Value, E> {
-                        use $crate::traits::TryFrom;
-
                         Self::Value::try_from(value)
                             .map_err(|convert_error| {
                                 E::custom(
@@ -118,7 +114,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                     where
                         A::Error: $crate::traits::DeserializeError
                     {
-                        use $crate::traits::TryFrom;
                         use $crate::traits::DeserializeError;
 
                         let mut bytes = $crate::traits::Vec::<u8>::with_capacity(<Self::Value as $crate::traits::IntelLayout>::X86_64_CSIZE);
@@ -304,7 +299,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
             }
         }
 
-        impl<'bytes> $crate::traits::TryFrom<&'bytes [u8]> for $wrapper {
+        impl<'bytes> TryFrom<&'bytes [u8]> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: &[u8]) -> core::result::Result<Self, Self::Error> {
@@ -318,7 +313,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
             }
         }
 
-        impl $crate::traits::TryFrom<$crate::traits::Vec<u8>> for $wrapper {
+        impl TryFrom<$crate::traits::Vec<u8>> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: $crate::traits::Vec<u8>) -> core::result::Result<Self, Self::Error> {
@@ -483,7 +478,7 @@ macro_rules! impl_sgx_newtype_for_bytearray {
             }
         }
 
-        impl<'src> $crate::traits::TryFrom<&'src [u8]> for $wrapper {
+        impl<'src> TryFrom<&'src [u8]> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: &[u8]) -> core::result::Result<Self, $crate::traits::EncodingError> {
@@ -496,7 +491,7 @@ macro_rules! impl_sgx_newtype_for_bytearray {
             }
         }
 
-        impl $crate::traits::TryFrom<$crate::traits::Vec<u8>> for $wrapper {
+        impl TryFrom<$crate::traits::Vec<u8>> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: $crate::traits::Vec<u8>) -> core::result::Result<Self, $crate::traits::EncodingError> {

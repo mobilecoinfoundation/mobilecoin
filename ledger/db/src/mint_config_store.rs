@@ -437,7 +437,6 @@ pub mod tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
-    use std::iter::FromIterator;
 
     pub fn init_mint_config_store() -> (MintConfigStore, Environment) {
         let env = get_env();

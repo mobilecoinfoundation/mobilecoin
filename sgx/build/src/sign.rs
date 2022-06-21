@@ -3,7 +3,6 @@
 //! Builder for signing an enclave using the sgx_sign binary application
 
 use std::{
-    convert::TryInto,
     env::var,
     fmt::{Display, Formatter, Result as FmtResult},
     fs::File,

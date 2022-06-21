@@ -16,7 +16,6 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
 impl From<&UnspentTxOut> for api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
@@ -184,7 +183,6 @@ mod test {
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     #[test]
     fn test_unspent_tx_out_conversion() {

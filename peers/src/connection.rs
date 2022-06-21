@@ -40,7 +40,6 @@ use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use protobuf::RepeatedField;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     hash::{Hash, Hasher},
     ops::Range,
     result::Result as StdResult,

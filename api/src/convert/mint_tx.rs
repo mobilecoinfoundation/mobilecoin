@@ -2,12 +2,10 @@
 
 //! Convert to/from external:MintTx/MintTxPrefix.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::mint::{MintTx, MintTxPrefix};
-
-use std::convert::TryFrom;
 
 /// Convert MintTxPrefix --> external::MintTxPrefix.
 impl From<&MintTxPrefix> for external::MintTxPrefix {

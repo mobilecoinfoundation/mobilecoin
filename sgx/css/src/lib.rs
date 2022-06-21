@@ -4,7 +4,6 @@
 #![no_std]
 
 use core::{
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Formatter, Result as FmtResult},
     mem::size_of,
     ptr::read_unaligned,

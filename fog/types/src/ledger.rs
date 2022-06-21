@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use displaydoc::Display;
 use mc_transaction_core::{
     ring_signature::KeyImage,

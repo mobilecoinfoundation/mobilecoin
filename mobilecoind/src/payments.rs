@@ -31,7 +31,6 @@ use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{
     cmp::{max, Reverse},
-    convert::TryFrom,
     iter::empty,
     str::FromStr,
     sync::{

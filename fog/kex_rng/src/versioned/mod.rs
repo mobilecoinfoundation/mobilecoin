@@ -2,7 +2,6 @@
 
 use crate::{BufferedRng, Error, KexRng, KexRngCore, KexRngPubkey, NewFromKex, StoredRng};
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use mc_crypto_keys::{Kex, Ristretto};
 use rand_core::{CryptoRng, RngCore};
 

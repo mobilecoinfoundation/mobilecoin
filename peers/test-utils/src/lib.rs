@@ -28,7 +28,6 @@ use sha2::{Digest, Sha512_256};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeSet, VecDeque},
-    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     ops::Range,

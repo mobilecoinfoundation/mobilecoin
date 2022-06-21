@@ -678,7 +678,6 @@ mod msg_tests {
     use super::*;
     use crate::test_utils::test_node_id;
     use rand::seq::SliceRandom;
-    use std::iter::FromIterator;
     extern crate mc_util_test_helper;
 
     #[test]

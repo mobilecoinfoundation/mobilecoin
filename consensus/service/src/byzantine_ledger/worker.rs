@@ -927,7 +927,6 @@ mod tests {
     use rand::rngs::StdRng;
     use rand_core::SeedableRng;
     use std::{
-        convert::TryFrom,
         ops::Add,
         sync::{
             atomic::{AtomicBool, AtomicU64},

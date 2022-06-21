@@ -183,7 +183,6 @@ impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, 
 mod predicates_tests {
     use super::*;
     use crate::{core_types::*, msg::*, quorum_set::*, test_utils::test_node_id};
-    use std::iter::FromIterator;
 
     #[test]
     // BallotSetPredicate can be used to pick a quorum that intersects with a given

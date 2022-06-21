@@ -287,7 +287,6 @@ mod tests {
         initialize_ledger, mint_config_tx_to_validated as to_validated, KeyImage,
     };
     use mc_util_from_random::FromRandom;
-    use std::iter::FromIterator;
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 

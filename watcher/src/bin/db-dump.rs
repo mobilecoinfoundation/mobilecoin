@@ -9,7 +9,7 @@ use mc_common::logger::{create_app_logger, o};
 use mc_crypto_keys::Ed25519Public;
 use mc_util_repr_bytes::ReprBytes;
 use mc_watcher::{error::WatcherDBError, watcher_db::WatcherDB};
-use std::{convert::TryFrom, path::PathBuf};
+use std::path::PathBuf;
 use url::Url;
 
 /// Command line configuration.

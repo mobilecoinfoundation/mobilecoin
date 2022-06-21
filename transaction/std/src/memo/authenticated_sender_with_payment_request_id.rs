@@ -10,7 +10,6 @@ use super::{
     RegisteredMemoType,
 };
 use crate::impl_memo_type_conversions;
-use core::convert::TryInto;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,

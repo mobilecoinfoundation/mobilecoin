@@ -6,7 +6,6 @@ use crate::{impl_sgx_wrapper_reqs, traits::SgxWrapperType};
 use alloc::vec::Vec;
 use core::{
     cmp::{Ord, Ordering},
-    convert::TryInto,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };

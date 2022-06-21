@@ -11,7 +11,6 @@ use mc_account_keys_slip10::{Error as Slip10Error, Slip10KeyGenerator};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 
 /// An enumeration of errors which can occur when converting an
 /// [`UncheckedMnemonicAccount`] to an

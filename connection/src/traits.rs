@@ -14,7 +14,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Debug, Display, Result as FmtResult},
     hash::Hash,
-    iter::FromIterator,
     ops::Range,
     result::Result as StdResult,
     time::Duration,

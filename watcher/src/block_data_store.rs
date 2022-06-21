@@ -286,7 +286,6 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::iter::FromIterator;
 
     #[test_with_logger]
     fn block_data_store_happy_path(logger: Logger) {

@@ -2,7 +2,7 @@
 
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
-use core::{convert::TryFrom, fmt::Debug};
+use core::fmt::Debug;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_ring_signature::KeyImage;
 use mc_transaction_core::{

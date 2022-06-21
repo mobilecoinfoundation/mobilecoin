@@ -37,7 +37,6 @@ use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
     io::ErrorKind,
     sync::{Arc, Mutex, MutexGuard},
 };

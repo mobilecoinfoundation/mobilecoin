@@ -9,9 +9,7 @@ use crate::{
     },
     traits::{CryptoBox, Error},
 };
-
 use core::{
-    convert::TryFrom,
     marker::PhantomData,
     ops::{Add, Sub},
 };

@@ -40,7 +40,6 @@ use mc_transaction_core::{
     tx::TxOut,
 };
 use std::{
-    convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -424,7 +423,6 @@ mod test {
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     #[test_with_logger]
     fn test_sync_monitor(logger: Logger) {

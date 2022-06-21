@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::user_private::UserPrivate;
+use crate::UserPrivate;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use displaydoc::Display;
 use mc_common::HashMap;
 use mc_crypto_box::Error as CryptoBoxError;

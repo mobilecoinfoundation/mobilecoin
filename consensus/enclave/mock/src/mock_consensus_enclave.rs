@@ -103,7 +103,6 @@ mod mock_consensus_enclave_tests {
     use super::MockConsensusEnclave;
     use mc_consensus_enclave_api::ConsensusEnclave;
     use mc_crypto_keys::X25519Public;
-    use std::convert::TryFrom;
 
     #[test]
     // Calling methods on the mock should return the specified values.

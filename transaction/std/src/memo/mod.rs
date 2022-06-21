@@ -43,9 +43,18 @@
 //! | 0x0201          | Gift Code Funding Memo                            |
 //! | 0x0202          | Gift Code Cancellation Memo                       |
 
-use crate::impl_memo_enum;
-use core::{convert::TryFrom, fmt::Debug};
-use displaydoc::Display;
+pub use self::{
+    authenticated_common::compute_category1_hmac,
+    authenticated_sender::AuthenticatedSenderMemo,
+    authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
+    burn_redemption::BurnRedemptionMemo,
+    credential::SenderMemoCredential,
+    destination::{DestinationMemo, DestinationMemoError},
+    gift_code_cancellation::GiftCodeCancellationMemo,
+    gift_code_funding::GiftCodeFundingMemo,
+    gift_code_sender::GiftCodeSenderMemo,
+    unused::UnusedMemo,
+};
 
 mod authenticated_common;
 mod authenticated_sender;
@@ -59,16 +68,9 @@ mod gift_code_sender;
 mod macros;
 mod unused;
 
-pub use authenticated_common::compute_category1_hmac;
-pub use authenticated_sender::AuthenticatedSenderMemo;
-pub use authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo;
-pub use burn_redemption::BurnRedemptionMemo;
-pub use credential::SenderMemoCredential;
-pub use destination::{DestinationMemo, DestinationMemoError};
-pub use gift_code_cancellation::GiftCodeCancellationMemo;
-pub use gift_code_funding::GiftCodeFundingMemo;
-pub use gift_code_sender::GiftCodeSenderMemo;
-pub use unused::UnusedMemo;
+use crate::impl_memo_enum;
+use core::fmt::Debug;
+use displaydoc::Display;
 
 /// A trait that all registered memo types should implement.
 /// This creates a single source of truth for the memo type bytes.

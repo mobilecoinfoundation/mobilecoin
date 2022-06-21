@@ -7,7 +7,6 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::TxOut,
 };
-use std::convert::TryFrom;
 
 impl From<&BlockContents> for blockchain::BlockContents {
     fn from(source: &BlockContents) -> Self {

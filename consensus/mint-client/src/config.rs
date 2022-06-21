@@ -21,7 +21,6 @@ use mc_transaction_core::{
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
 use std::{
-    convert::TryFrom,
     fs,
     path::{Path, PathBuf},
 };

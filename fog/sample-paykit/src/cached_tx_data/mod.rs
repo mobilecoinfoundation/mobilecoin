@@ -3,7 +3,6 @@
 use crate::error::{Error, Result, TxOutMatchingError};
 use core::{
     cmp::{max, min},
-    convert::TryFrom,
     ops::{Range, RangeInclusive},
     result::Result as StdResult,
 };

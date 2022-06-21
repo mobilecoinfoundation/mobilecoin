@@ -2,9 +2,8 @@
 
 //! Convert to/from external::Tx.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{ring_ct::SignatureRctBulletproofs, tx};
-use std::convert::TryFrom;
 
 /// Convert mc_transaction_core::tx::Tx --> external::Tx.
 impl From<&tx::Tx> for external::Tx {

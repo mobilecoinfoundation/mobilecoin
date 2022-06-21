@@ -1,9 +1,8 @@
 //! Convert to/from blockchain::BlockSignature
 
-use crate::{blockchain, convert::ConversionError, external};
+use crate::{blockchain, external, ConversionError};
 use mc_blockchain_types::BlockSignature;
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use std::convert::TryFrom;
 
 /// Convert BlockSignature --> blockchain::BlockSignature.
 impl From<&BlockSignature> for blockchain::BlockSignature {

@@ -9,7 +9,6 @@ use crate::{
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
-    convert::{AsRef, TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
