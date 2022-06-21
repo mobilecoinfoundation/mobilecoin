@@ -304,7 +304,6 @@ docker_run.extend(["/bin/bash"])
 
 if args.cmd:
     cmd = ' '.join(args.cmd)
-    cmd = f'"{cmd}"'
     vprint('Running command in docker:', cmd)
     docker_run.extend(["-c", cmd])
 
