@@ -396,7 +396,7 @@ mod test {
                 token_id: TokenId::from(1),
                 eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
                 aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
+                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
             }],
         };
 
@@ -479,7 +479,7 @@ mod test {
                 token_id: TokenId::from(1),
                 eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
                 aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
+                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
             }],
         };
 
@@ -498,7 +498,7 @@ mod test {
                     )
                     .unwrap(),
                     aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
-                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
+                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
                 },
                 // Unknown aux burn contract address
                 AuditedToken {
@@ -508,7 +508,7 @@ mod test {
                         "0x0000000000000000000000000000000000000000",
                     )
                     .unwrap(),
-                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
+                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
                 },
                 // Unknown aux burn function sig
                 AuditedToken {
