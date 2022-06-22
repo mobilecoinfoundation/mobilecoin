@@ -87,7 +87,7 @@ mobilecoind \
 ```
 #### Depositing to the safe
 
-Depositing to the safe is as simple as sending a standard Ethereum transaction that moves your desired token (`RinkUSDT` in this case) into the safe's address.
+Depositing to the safe is as simple as sending a standard Ethereum transaction that moves your desired token (`RinkUSDT` in this example) into the safe's address.
 
 Once the Gnosis transaction service notices the transaction and the auditor syncs it you should see a log message similar to this:
 `2022-06-21 20:40:42.785395662 UTC INFO Processing gnosis safe deposit: EthereumTransfer { from: EthAddr("0xdc079a637a1417020916FfB8a39fF5a2801A0F07"), to: EthAddr("0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe"), token_address: Some(EthAddr("0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B")), tx_hash: EthTxHash("0x744372bb82b2d0f0e7b2722d163ffef97656562b40cc7fad9a1809d14aaf626a"), tx_type: "ERC20_TRANSFER", value: JsonU64(10000000000000000000) }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:128`
