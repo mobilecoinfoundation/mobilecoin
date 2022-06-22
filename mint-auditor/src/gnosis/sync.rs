@@ -308,8 +308,9 @@ impl GnosisSync {
 
         if !aux_data_bytes.starts_with(&audited_token.aux_burn_function_sig) {
             return Err(GnosisError::ApiResultParse(format!(
-                "aux contract data {} does not start with the expected function signature",
+                "aux contract data {} does not start with the expected function signature ({})",
                 aux_contract_value.data,
+                hex::encode(audited_token.aux_burn_function_sig),
             )));
         }
 
