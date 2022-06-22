@@ -93,7 +93,7 @@ CREATE TABLE gnosis_safe_txs (
 
 -- Deposits to the gnosis safe.
 CREATE TABLE gnosis_safe_deposits (
-    -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
+    -- Diesel requires having a primary key and Diesel doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
     -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
     id INTEGER PRIMARY KEY,
