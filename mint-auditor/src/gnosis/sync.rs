@@ -159,7 +159,8 @@ impl GnosisSync {
         if multi_sig_tx.safe != self.audited_safe.safe_addr {
             log::warn!(
                 self.logger,
-                "Received MultiSig transaction for a different safe: {:?}",
+                "Received MultiSig transaction for a different safe than {}: {:?}",
+                self.audited_safe.safe_addr,
                 multi_sig_tx
             );
             return Ok(());
