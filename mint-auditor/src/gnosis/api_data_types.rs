@@ -195,7 +195,7 @@ impl RawGnosisTransaction {
 }
 
 impl From<Value> for RawGnosisTransaction {
-    fn from(value: Value) -> Self {
-        Self { raw: value }
+    fn from(raw: Value) -> Self {
+        Self { raw }
     }
 }
