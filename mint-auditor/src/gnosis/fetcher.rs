@@ -87,7 +87,7 @@ impl GnosisSafeFetcher {
 
         let response = self
             .client
-            .get(url.as_str())
+            .get(url.clone())
             .send()
             .map_err(|err| Error::Other(format!("Failed to fetch '{}': {}", url, err)))?;
         if response.status() != StatusCode::OK {
