@@ -252,7 +252,7 @@ impl GnosisSync {
         // parameters - the ethereum address receiving the withdrawal and the
         // amount being moved out of the safe.
         let transfer_data_decoded = transfer_data.data_decoded.as_ref().ok_or_else(|| {
-            GnosisError::ApiResultParse("multiSend transfer first value has no decided data".into())
+            GnosisError::ApiResultParse("multiSend transfer first value has no decoded data".into())
         })?;
         if transfer_data_decoded.method != "transfer" {
             return Err(GnosisError::ApiResultParse(format!(
