@@ -118,12 +118,12 @@ CREATE TABLE gnosis_safe_withdrawals (
     safe_address VARCHAR NOT NULL,
     token_address VARCHAR NOT NULL,
     amount UNSIGNED BIGINT NOT NULL,
-    mobilecoin_tx_out_public_key_hex VARCHAR NOT NULL,
+    mc_tx_out_public_key_hex VARCHAR NOT NULL,
     -- Constraints
     FOREIGN KEY (eth_tx_hash) REFERENCES gnosis_safe_txs(eth_tx_hash)
 );
 CREATE INDEX idx__gnosis_safe_withdrawals__eth_block_number ON gnosis_safe_withdrawals(eth_block_number);
-CREATE INDEX idx__gnosis_safe_withdrawals__mobilecoin_tx_out_public_key_hex ON gnosis_safe_withdrawals(mobilecoin_tx_out_public_key_hex);
+CREATE INDEX idx__gnosis_safe_withdrawals__mc_tx_out_public_key_hex ON gnosis_safe_withdrawals(mc_tx_out_public_key_hex);
 
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (

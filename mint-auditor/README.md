@@ -48,7 +48,7 @@ To play around with Gnosis auditing the first step is to create a safe. This can
 Once the safe is created, it will be assigned an address on the Ethereum blockchain. This assumes you have a wallet that your browser can connect to such as [MetaMask](https://metamask.io/). Note that creating a Gnosis Safe requires submitting a transaction to the Ethereum blockchain, so your wallet will need to have some ETH to pay the gas fees.
 
 The Ethereum network you are testing with will need to have the metadata contract deployed. For the Rinkeby test network, this was already done and assigned the address `0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40`.
-You will also need to know the 4 byte signature of the metadata contract `emitBytes` function. For the contract mentioned above, this is `[0xc7, 0x6f, 0x06, 0x35]` (since this is derived from the function signature, it should be the same for all unmodified deployments of this contract).
+You will also need to know the 4 byte signature of the metadata contract `emitBytes` function. For the contract mentioned above, this is `AUX_BURN_FUNCTION_SIG.to_vec()` (since this is derived from the function signature, it should be the same for all unmodified deployments of this contract).
 
 #### Running the mint auditor
 
@@ -63,7 +63,7 @@ api_url = "https://safe-transaction.rinkeby.gnosis.io/"
 token_id = 1
 eth_token_contract_addr = "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B" # RinkUSDT
 aux_burn_contract_addr = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40" # Auxiliary metadata contract address
-aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35] # Auxiliary metadata emitBytes function signature hash
+aux_burn_function_sig = AUX_BURN_FUNCTION_SIG.to_vec() # Auxiliary metadata emitBytes function signature hash
 ```
 
 2. Start mobilecoind to sync the ledger:
@@ -120,5 +120,5 @@ The steps to do that are:
 12. Click `Add transaction`.
 13. Now that everything is ready, click `Create Batch` and then `Send Batch`. Once the transaction goes through your wallet should contain the deposit and you should see a log message from the mint-auditor:
     ```
-    2022-06-21 21:11:05.933236816 UTC INFO Processing withdrawal from multi-sig tx: GnosisSafeWithdrawal { id: None, eth_tx_hash: "0x0e781edb7739aa88ad2ffb6a69aab46ff9e32dbd0f0c87e4006a176838b075d2", eth_block_number: 10892902, safe_address: "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe", token_address: "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B", amount: 1000000000000000000, mobilecoin_tx_out_public_key_hex: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00" }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:170
+    2022-06-21 21:11:05.933236816 UTC INFO Processing withdrawal from multi-sig tx: GnosisSafeWithdrawal { id: None, eth_tx_hash: "0x0e781edb7739aa88ad2ffb6a69aab46ff9e32dbd0f0c87e4006a176838b075d2", eth_block_number: 10892902, safe_address: "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe", token_address: "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B", amount: 1000000000000000000, mc_tx_out_public_key_hex: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00" }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:170
     ```

@@ -128,7 +128,11 @@ impl MintAuditorDb {
             };
 
             // Process mints.
-            log::trace!(self.logger, "Processing {} mints", block_contents.mint_txs.len());
+            log::trace!(
+                self.logger,
+                "Processing {} mints",
+                block_contents.mint_txs.len()
+            );
             for mint_tx in &block_contents.mint_txs {
                 // Balance accounting.
                 let balance = balance_map

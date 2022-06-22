@@ -30,7 +30,7 @@ pub struct GnosisSafeWithdrawal {
     pub amount: i64,
 
     /// Associated mobilecoin transaction public key (hex-encoded).
-    pub mobilecoin_tx_out_public_key_hex: String,
+    pub mc_tx_out_public_key_hex: String,
 }
 
 impl GnosisSafeWithdrawal {

@@ -53,7 +53,7 @@ table! {
         safe_address -> Text,
         token_address -> Text,
         amount -> BigInt,
-        mobilecoin_tx_out_public_key_hex -> Text,
+        mc_tx_out_public_key_hex -> Text,
     }
 }
 

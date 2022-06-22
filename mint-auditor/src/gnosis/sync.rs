@@ -337,7 +337,7 @@ impl GnosisSync {
             safe_address: multi_sig_tx.safe.to_string(),
             token_address: transfer_data.to.to_string(),
             amount: transfer_value as i64,
-            mobilecoin_tx_out_public_key_hex: hex::encode(tx_out_pub_key),
+            mc_tx_out_public_key_hex: hex::encode(tx_out_pub_key),
         })
     }
 }
@@ -367,20 +367,26 @@ mod test {
     // Must match the contents of the test JSON file.
     const SAFE_ADDRESS: &str = "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe";
     const ETH_TOKEN_CONTRACT_ADDRESS: &str = "0xD92E713d051C37EbB2561803a3b5FBAbc4962431";
+    const AUX_BURN_CONTRACT_ADDRESS: &str = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40";
+    const AUX_BURN_FUNCTION_SIG: [u8; 4] = [0xc7, 0x6f, 0x06, 0x35];
+
+    // Helper to parse ALL_TRANSACTIONS_JSON into a list of RawGnosisTransactions
+    fn get_raw_transactions() -> Vec<RawGnosisTransaction> {
+        let all_transactions_response: AllTransactionsResponse =
+            serde_json::from_str(ALL_TRANSACTIONS_JSON).unwrap();
+        all_transactions_response
+            .results
+            .into_iter()
+            .map(RawGnosisTransaction::from)
+            .collect()
+    }
 
     #[test_with_logger]
     fn process_transactions_works(logger: Logger) {
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
-
-        let all_transactions_respone: AllTransactionsResponse =
-            serde_json::from_str(ALL_TRANSACTIONS_JSON).unwrap();
-        let raw_transactions = all_transactions_respone
-            .results
-            .into_iter()
-            .map(RawGnosisTransaction::from)
-            .collect::<Vec<_>>();
+        let raw_transactions = get_raw_transactions();
 
         // Must match the contents of the test JSON file.
         let audited_safe_config = AuditedSafeConfig {
@@ -389,11 +395,8 @@ mod test {
             tokens: vec![AuditedToken {
                 token_id: TokenId::from(1),
                 eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_contract_addr: EthAddr::from_str(
-                    "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
-                )
-                .unwrap(),
-                aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0x35],
+                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
             }],
         };
 
@@ -442,7 +445,7 @@ mod test {
                 safe_address: SAFE_ADDRESS.to_string(),
                 token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
                 amount: 500000,
-                mobilecoin_tx_out_public_key_hex:
+                mc_tx_out_public_key_hex:
                     "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
             },
             GnosisSafeWithdrawal {
@@ -453,7 +456,7 @@ mod test {
                 safe_address: SAFE_ADDRESS.to_string(),
                 token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
                 amount: 2000000,
-                mobilecoin_tx_out_public_key_hex:
+                mc_tx_out_public_key_hex:
                     "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
             },
         ];
@@ -465,14 +468,7 @@ mod test {
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
-
-        let all_transactions_respone: AllTransactionsResponse =
-            serde_json::from_str(ALL_TRANSACTIONS_JSON).unwrap();
-        let raw_transactions = all_transactions_respone
-            .results
-            .into_iter()
-            .map(RawGnosisTransaction::from)
-            .collect::<Vec<_>>();
+        let raw_transactions = get_raw_transactions();
 
         // Must match the contents of the test JSON file.
         // (Except the safe address, since that is what we are testing here)
@@ -482,11 +478,8 @@ mod test {
             tokens: vec![AuditedToken {
                 token_id: TokenId::from(1),
                 eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_contract_addr: EthAddr::from_str(
-                    "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
-                )
-                .unwrap(),
-                aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0x35],
+                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
             }],
         };
 
@@ -504,11 +497,8 @@ mod test {
                         "0x0000000000000000000000000000000000000000",
                     )
                     .unwrap(),
-                    aux_burn_contract_addr: EthAddr::from_str(
-                        "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
-                    )
-                    .unwrap(),
-                    aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0x35],
+                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
                 },
                 // Unknown aux burn contract address
                 AuditedToken {
@@ -518,16 +508,13 @@ mod test {
                         "0x0000000000000000000000000000000000000000",
                     )
                     .unwrap(),
-                    aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0x35],
+                    aux_burn_function_sig: AUX_BURN_FUNCTION_SIG.clone(),
                 },
                 // Unknown aux burn function sig
                 AuditedToken {
                     token_id: TokenId::from(1),
                     eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                    aux_burn_contract_addr: EthAddr::from_str(
-                        "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
-                    )
-                    .unwrap(),
+                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
                     aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0xFF],
                 },
             ],

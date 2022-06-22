@@ -98,8 +98,8 @@ impl GnosisSafeFetcher {
             )));
         }
 
-        response
-            .json()
-            .map_err(|err| Error::ApiResultParse(format!("Failed parsing JSON from '{}': {}", url, err)))
+        response.json().map_err(|err| {
+            Error::ApiResultParse(format!("Failed parsing JSON from '{}': {}", url, err))
+        })
     }
 }
