@@ -116,7 +116,7 @@ The steps to do that are:
     ```
     This is obtained by looking at https://rinkeby.etherscan.io/address/0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40#code
 10. Method will be automatically selected to the only one available - `emitBytes`.
-11. `metadata (bytes)` should be 32 bytes in hex-encoding that represents the TxOut public key. For example, put `0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`.
+11. `metadata (bytes)` should be 32 hex-encoded bytes (i.e. 64 hex chars) that represents the TxOut public key. For example, put `0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`.
 12. Click `Add transaction`.
 13. Now that everything is ready, click `Create Batch` and then `Send Batch`. Once the transaction goes through your wallet should contain the deposit and you should see a log message from the mint-auditor:
     ```
