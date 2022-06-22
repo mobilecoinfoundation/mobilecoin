@@ -31,7 +31,7 @@ impl GnosisSafeFetcher {
     /// (https://github.com/safe-global/safe-transaction-service/)
     pub fn new(mut base_url: Url, logger: Logger) -> Result<Self, Error> {
         if !base_url.path().ends_with('/') {
-            base_url.push("/");
+            base_url = base_url.join(&format!("{}/", base_url.path()))?;
         }
 
         let logger = logger.new(o!("url" => base_url.to_string()));
