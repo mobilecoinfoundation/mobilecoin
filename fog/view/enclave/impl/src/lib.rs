@@ -15,7 +15,10 @@ use core::ops::DerefMut;
 use mc_attest_ake::Ready;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
-use mc_common::logger::{log, Logger};
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
@@ -203,6 +206,7 @@ where
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+<<<<<<< HEAD
         let client_query_bytes = self.ake.client_decrypt(client_query.clone())?;
 
         let mut encryptors = self.store_encryptors.lock()?;
@@ -217,7 +221,24 @@ where
                 data,
             });
         }
+=======
+        Ok(self
+            .ake
+            .reencrypt_client_message_for_backends(client_query)?)
+>>>>>>> 8b34d6bf (Rename)
+    }
 
-        Ok(results)
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
+        Ok(self.ake.backend_init(view_store_id)?)
+    }
+
+    fn view_store_connect(
+        &self,
+        view_store_id: ResponderId,
+        view_store_auth_response: ClientAuthResponse,
+    ) -> Result<()> {
+        Ok(self
+            .ake
+            .backend_connect(view_store_id, view_store_auth_response)?)
     }
 }

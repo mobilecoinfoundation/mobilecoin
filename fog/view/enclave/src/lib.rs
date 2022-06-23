@@ -155,8 +155,27 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn view_store_connect(
+        &self,
+        view_store_id: ResponderId,
+        view_store_auth_response: ClientAuthResponse,
+    ) -> Result<()> {
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::ViewStoreConnect(
+            view_store_id,
+            view_store_auth_response,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn client_close(&self, channel_id: ClientSession) -> Result<()> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::ClientClose(channel_id))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::ViewStoreInit(view_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
