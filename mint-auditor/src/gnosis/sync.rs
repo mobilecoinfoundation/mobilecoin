@@ -150,7 +150,6 @@ impl GnosisSync {
                     u64::from(transfer.value),
                 );
                 deposit.insert(conn)?;
-                continue;
             }
             // We don't know what this is.
             else {
