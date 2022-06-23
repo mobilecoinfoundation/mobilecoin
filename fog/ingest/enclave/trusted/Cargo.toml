@@ -69,7 +69,7 @@ overflow-checks = false
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55" }
+cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "7c1804bf4f95ef84a7a53be93552ddf1708135bb" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
