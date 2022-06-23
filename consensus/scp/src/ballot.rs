@@ -1,79 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Core types for MobileCoin's implementation of SCP.
+//! The ballot contains the value on which to consense.
+
+use mc_common::HasherBuilder;
+use mc_consensus_scp_types::Value;
 use mc_crypto_digestible::Digestible;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
-    clone::Clone,
-    cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd},
-    collections::hash_map::DefaultHasher,
+    cmp::Ordering,
     fmt,
-    fmt::{Debug, Display},
-    hash::{Hash, Hasher},
-    sync::Arc,
+    hash::{BuildHasher, Hash, Hasher},
 };
-
-/// A generic node identifier.
-pub trait GenericNodeId:
-    Clone + Debug + Display + Eq + PartialEq + Ord + PartialOrd + Hash + Digestible
-{
-}
-impl<T> GenericNodeId for T where
-    T: Clone
-        + Debug
-        + Display
-        + Serialize
-        + DeserializeOwned
-        + Eq
-        + PartialEq
-        + Ord
-        + PartialOrd
-        + Hash
-        + Digestible
-{
-}
-
-/// Application-specific function for combining multiple values. Must be
-/// deterministic.
-pub type CombineFn<V, E> = Arc<(dyn Fn(&[V]) -> Result<Vec<V>, E> + Sync + Send)>;
-
-/// Application-specific validation of value.
-pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;
-
-/// The node identifier is used when reasoning about messages in federated
-/// voting.
-///
-/// For example, in production SCP, a message is signed by the node that emitted
-/// it, and the public key is a component of that node's identifier, so that the
-/// signature can be verified.
-pub trait Identifier: Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send {
-    /// Get Identifier as bytes.
-    fn as_bytes(&self) -> [u8; 4];
-}
-
-/// Slot index.
-pub type SlotIndex = u64;
-
-/// The value on which to consense.
-pub trait Value:
-    Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible + 'static
-{
-}
-
-impl<T> Value for T where
-    T: Hash
-        + Eq
-        + PartialEq
-        + Debug
-        + Clone
-        + PartialOrd
-        + Ord
-        + Send
-        + Serialize
-        + Digestible
-        + 'static
-{
-}
 
 /// The ballot contains the value on which to consense.
 ///
@@ -125,7 +62,7 @@ impl<V: Value> PartialOrd for Ballot<V> {
 // This makes debugging easier when looking at large ballots.
 impl<V: Value> fmt::Display for Ballot<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = HasherBuilder::default().build_hasher();
         self.X.hash(&mut hasher);
         let hashed_X_values = hasher.finish();
         write!(f, "<{}, {}:{:x}>", self.N, self.X.len(), hashed_X_values)
@@ -133,7 +70,7 @@ impl<V: Value> fmt::Display for Ballot<V> {
 }
 
 #[cfg(test)]
-mod core_types_tests {
+mod tests {
     use super::*;
 
     #[test]

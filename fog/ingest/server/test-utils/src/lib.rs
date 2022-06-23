@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_attest_net::{Client as AttestClient, RaClient};
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPublic};
@@ -394,11 +395,13 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
             .as_secs(),
     );
 
+    let metadata = make_block_metadata(block.id.clone(), rng);
+
     ledger
         .append_block(&block, &block_contents, None)
         .expect("Could not append block");
 
-    let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
+    let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
 
     watcher
         .add_block_data(&tx_source_url, &block_data)

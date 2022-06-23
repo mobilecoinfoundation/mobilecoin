@@ -18,6 +18,7 @@ path = "src/bin/add_test_block.rs"
 [dependencies]
 # from public
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }

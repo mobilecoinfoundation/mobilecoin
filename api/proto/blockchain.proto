@@ -4,6 +4,7 @@
 
 syntax = "proto3";
 import "external.proto";
+import "quorum_set.proto";
 
 package blockchain;
 
@@ -70,10 +71,32 @@ message BlockSignature {
     uint64 signed_at = 3;
 }
 
+message BlockMetadataContents {
+    /// The Block ID.
+    BlockID block_id = 1;
+
+    /// Quorum set configuration at the time of externalization.
+    quorum_set.QuorumSet quorum_set = 2;
+
+    /// IAS report for the enclave which generated the signature.
+    external.VerificationReport verification_report = 3;
+}
+
+message BlockMetadata {
+    /// Metadata signed by the consensus node.
+    BlockMetadataContents contents = 1;
+
+    /// Message signing key (signer).
+    external.Ed25519Public node_key = 2;
+
+    /// Signature using `node_key` over the Digestible encoding of `contents`.
+    external.Ed25519Signature signature = 3;
+}
+
 // Version 1 of an archived block.
 // Note: The block.version field within the block may or may not be equal to 1.
 message ArchiveBlockV1 {
-    // Block
+    // The block (header).
     Block block = 1;
 
     // Contents of the block.
@@ -81,6 +104,9 @@ message ArchiveBlockV1 {
 
     // Block signature, when available.
     BlockSignature signature = 3;
+
+    /// Additional signed metadata about this block.
+    BlockMetadata metadata = 4;
 }
 
 // An archived block.

@@ -27,6 +27,7 @@
 
 use clap::Parser;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
@@ -226,7 +227,8 @@ fn main() {
             .append_block(&block, &block_contents, None)
             .expect("Could not append block");
 
-        let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
 
         watcher
             .add_block_data(&tx_source_url, &block_data)
@@ -241,7 +243,7 @@ fn main() {
     let output = JsonOutput {
         key_images: new_key_images
             .iter()
-            .map(|key_image| hex::encode(AsRef::<[u8]>::as_ref(key_image)))
+            .map(|key_image| hex::encode(key_image.as_bytes()))
             .collect(),
     };
     print!("{}", serde_json::to_string(&output).unwrap());

@@ -5,7 +5,7 @@
 use displaydoc::Display;
 use mc_blockchain_types::BlockID;
 use mc_common::{NodeID, ResponderId};
-use mc_consensus_scp::Msg;
+use mc_consensus_scp::msg::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, SignatureError, Signer, Verifier};
 use mc_ledger_db::Ledger;
@@ -203,7 +203,7 @@ impl ConsensusMsg {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, QuorumSet, SlotIndex};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers_test_utils::test_node_id_and_signer;
 

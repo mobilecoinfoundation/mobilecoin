@@ -7,8 +7,11 @@ edition = "2021"
 [dependencies]
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-common = { path = "../../common", default-features = false }
+mc-consensus-scp-types = { path = "../../consensus/scp/types" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
 mc-transaction-core = { path = "../../transaction/core" }
@@ -24,6 +27,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]
+mc-blockchain-test-utils = { path = "../test-utils" }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-test-helper = { path = "../../util/test-helper" }

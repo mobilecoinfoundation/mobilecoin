@@ -7,15 +7,13 @@
 //! over the API. This module provides conversions between "equivalent" types,
 //! such as `mc_api::blockchain::Block` and `mc_blockchain_types::Block`.
 
-mod error;
-pub use self::error::ConversionError;
-
 // blockchain
 mod archive_block;
 mod block;
 mod block_contents;
 mod block_contents_hash;
 mod block_id;
+mod block_metadata;
 mod block_signature;
 
 // external
@@ -28,7 +26,9 @@ mod ed25519_signature;
 mod key_image;
 mod mint_config;
 mod mint_tx;
+mod node;
 mod public_address;
+mod quorum_set;
 mod ring_mlsag;
 mod ristretto_private;
 mod signature_rct_bulletproofs;
@@ -47,6 +47,10 @@ mod watcher;
 
 // printable
 mod tx_out_gift_code;
+
+// error
+mod error;
+pub use error::ConversionError;
 
 use mc_blockchain_types::BlockIndex;
 use std::path::PathBuf;

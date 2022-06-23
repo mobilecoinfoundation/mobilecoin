@@ -22,6 +22,7 @@ std = [
 ]
 
 [dependencies]
+mc-attest-verifier-types = { path = "../verifier/types" }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-crypto-rand = { path = "../../crypto/rand" }

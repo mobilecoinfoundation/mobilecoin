@@ -130,7 +130,8 @@ impl Ledger for MockLedger {
         let block = self.get_block(block_number)?;
         let contents = self.get_block_contents(block_number)?;
         let signature = self.get_block_signature(block_number).ok();
-        Ok(BlockData::new(block, contents, signature))
+        // FIXME: Add metadata.
+        Ok(BlockData::new(block, contents, signature, None))
     }
 
     /// Gets block index by a TxOut global index.

@@ -9,7 +9,7 @@ INC="-I ../fog/api/proto -I ../api/proto -I ../fog/report/api/proto -I ../attest
 
 mkdir -p docs gen
 
-for proto_file in blockchain external consensus_client consensus_config consensus_common fog_common ledger view report kex_rng attest; do
+for proto_file in blockchain external quorum_set consensus_client consensus_config consensus_common fog_common ledger view report kex_rng attest; do
     protoc $INC --grpc-gateway_out ./gen \
          --go_out ./gen --go_opt paths=source_relative \
          --go-grpc_out ./gen --go-grpc_opt paths=source_relative \

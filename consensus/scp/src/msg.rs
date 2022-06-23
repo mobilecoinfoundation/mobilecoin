@@ -1,22 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Message types for the phases of SCP.
-use crate::{
-    core_types::{Ballot, GenericNodeId, SlotIndex, Value},
-    msg::Topic::*,
-    quorum_set::QuorumSet,
-};
-use mc_common::NodeID;
+use crate::{ballot::Ballot, GenericNodeId, QuorumSet, SlotIndex, Topic::*, Value};
+use mc_common::{HashSet, HasherBuilder, NodeID};
 use mc_crypto_digestible::Digestible;
-use mc_util_serial::prost::alloc::fmt::Formatter;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
+    collections::BTreeSet,
     fmt,
-    fmt::{Debug, Display},
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
 };
 
 /// The highest possible ballot counter.
@@ -287,19 +281,7 @@ pub struct Msg<V: Value, ID: GenericNodeId = NodeID> {
     pub topic: Topic<V>,
 }
 
-impl<
-        V: Value,
-        ID: GenericNodeId
-            + Clone
-            + Debug
-            + Display
-            + Serialize
-            + DeserializeOwned
-            + Eq
-            + PartialEq
-            + Hash,
-    > Msg<V, ID>
-{
+impl<V: Value, ID: GenericNodeId + DeserializeOwned> Msg<V, ID> {
     /// Creates a new Msg.
     pub fn new(
         sender_id: ID,
@@ -622,16 +604,17 @@ impl<
 }
 
 impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let format_opt_ballot = |b: &Option<Ballot<V>>| match b {
             None => "<>".to_string(),
             Some(b) => format!("{}", b),
         };
 
         // Returns "<set.len, hash(set)>".
+        let hasher_builder = HasherBuilder::default();
         let format_b_tree_set = |b_tree_set: &BTreeSet<V>| {
             let hash = {
-                let mut hasher = DefaultHasher::new();
+                let mut hasher = hasher_builder.build_hasher();
                 b_tree_set.hash(&mut hasher);
                 hasher.finish()
             };
@@ -677,8 +660,8 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
 mod msg_tests {
     use super::*;
     use crate::test_utils::test_node_id;
+    use core::iter::FromIterator;
     use rand::seq::SliceRandom;
-    extern crate mc_util_test_helper;
 
     #[test]
     /// Prepare implies "vote_or_accept prepare" for B, P, and PP.
@@ -732,7 +715,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(votes_or_accepts_prepared, expected);
     }
 
@@ -753,7 +736,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
 
         assert_eq!(votes_or_accepts_prepared, expected);
     }
@@ -786,7 +769,7 @@ mod msg_tests {
             );
 
             let accepts_prepared = msg.accepts_prepared();
-            let expected = HashSet::from_iter(vec![prepared, prepared_prime]);
+            let expected = HashSet::from_iter([prepared, prepared_prime]);
             assert_eq!(accepts_prepared, expected);
         }
 
@@ -831,7 +814,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(9, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(9, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -851,7 +834,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -1054,8 +1037,8 @@ mod msg_tests {
     // NominatePayload serialize/deserialize work as expected.
     fn nominatepayload_deserialize_works() {
         let payload = NominatePayload::<u32> {
-            X: BTreeSet::from_iter(vec![1, 2, 3]),
-            Y: BTreeSet::from_iter(vec![10, 20, 30]),
+            X: BTreeSet::from_iter([1, 2, 3]),
+            Y: BTreeSet::from_iter([10, 20, 30]),
         };
 
         let serialized_payload = mc_util_serial::serialize(&payload).unwrap();

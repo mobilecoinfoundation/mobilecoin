@@ -68,7 +68,7 @@ fn main() {
         let mut cur_signer = None;
         for block_index in 0..max_block_count {
             let signer = match watcher_db.get_block_data(tx_src_url, block_index) {
-                Ok(block_data) => block_data.signature().clone().map(|sig| *sig.signer()),
+                Ok(block_data) => block_data.signature().map(|sig| *sig.signer()),
                 Err(WatcherDBError::NotFound) => None,
                 Err(err) => {
                     panic!(

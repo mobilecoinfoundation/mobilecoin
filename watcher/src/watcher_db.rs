@@ -1865,13 +1865,12 @@ pub mod tests {
                     BlockData::new(
                         block.clone(),
                         contents.clone(),
-                        Some(
-                            BlockSignature::from_block_and_keypair(
-                                block,
-                                &Ed25519Pair::from_random(&mut rng),
-                            )
-                            .unwrap(),
-                        ),
+                        BlockSignature::from_block_and_keypair(
+                            block,
+                            &Ed25519Pair::from_random(&mut rng),
+                        )
+                        .unwrap(),
+                        None,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -1888,7 +1887,7 @@ pub mod tests {
                     .add_block_signature(
                         &url1,
                         block_data.block().index,
-                        block_data.signature().clone().unwrap(),
+                        block_data.signature().cloned().unwrap(),
                         filename.clone(),
                     )
                     .unwrap();
@@ -1898,7 +1897,7 @@ pub mod tests {
                     .add_block_signature(
                         &url2,
                         block_data.block().index,
-                        block_data.signature().clone().unwrap(),
+                        block_data.signature().cloned().unwrap(),
                         filename.clone(),
                     )
                     .unwrap();
@@ -1906,7 +1905,7 @@ pub mod tests {
                 watcher_db
                     .add_verification_report(
                         &url1,
-                        block_data.signature().clone().unwrap().signer(),
+                        block_data.signature().unwrap().signer(),
                         &verification_report_a,
                         &[],
                     )
@@ -1915,7 +1914,7 @@ pub mod tests {
                 watcher_db
                     .add_verification_report(
                         &url2,
-                        block_data.signature().clone().unwrap().signer(),
+                        block_data.signature().unwrap().signer(),
                         &verification_report_a,
                         &[],
                     )
@@ -1927,26 +1926,26 @@ pub mod tests {
                 let block_sigs = watcher_db
                     .get_block_signatures(block_data.block().index)
                     .unwrap();
+                let block_signature = block_data.signature().cloned().unwrap();
+
                 assert_eq!(
                     block_sigs,
                     vec![
                         BlockSignatureData {
                             src_url: url1.as_str().to_string(),
                             archive_filename: filename.clone(),
-                            block_signature: block_data.signature().clone().unwrap(),
+                            block_signature: block_signature.clone(),
                         },
                         BlockSignatureData {
                             src_url: url2.as_str().to_string(),
                             archive_filename: filename.clone(),
-                            block_signature: block_data.signature().clone().unwrap(),
+                            block_signature: block_signature.clone(),
                         }
                     ]
                 );
 
                 let verification_reports = watcher_db
-                    .get_verification_reports_for_signer(
-                        block_data.signature().clone().unwrap().signer(),
-                    )
+                    .get_verification_reports_for_signer(block_signature.signer())
                     .unwrap();
                 assert_eq!(
                     verification_reports,
@@ -1979,19 +1978,19 @@ pub mod tests {
                 let block_sigs = watcher_db
                     .get_block_signatures(block_data.block().index)
                     .unwrap();
+                let block_signature = block_data.signature().cloned().unwrap();
+
                 assert_eq!(
                     block_sigs,
                     vec![BlockSignatureData {
                         src_url: url2.as_str().to_string(),
                         archive_filename: filename.clone(),
-                        block_signature: block_data.signature().clone().unwrap(),
+                        block_signature: block_signature.clone(),
                     }]
                 );
 
                 let verification_reports = watcher_db
-                    .get_verification_reports_for_signer(
-                        block_data.signature().clone().unwrap().signer(),
-                    )
+                    .get_verification_reports_for_signer(block_signature.signer())
                     .unwrap();
                 assert_eq!(
                     verification_reports,

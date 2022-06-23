@@ -722,6 +722,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
+ "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-rand",
@@ -788,14 +789,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-attest-verifier-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "hex_fmt",
+ "mc-crypto-digestible",
+ "mc-util-encodings",
+ "prost",
+ "serde",
+]
+
+[[package]]
 name = "mc-blockchain-types"
 version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "hex_fmt",
  "mc-account-keys",
+ "mc-attest-verifier-types",
  "mc-common",
+ "mc-consensus-scp-types",
  "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
  "mc-transaction-core",
@@ -820,11 +837,24 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-util-serial",
+ "prost",
  "rand_core",
  "serde",
  "sha3",
  "siphasher",
  "slog",
+]
+
+[[package]]
+name = "mc-consensus-scp-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "prost",
+ "serde",
 ]
 
 [[package]]

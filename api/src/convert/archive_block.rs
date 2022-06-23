@@ -6,7 +6,7 @@ use crate::{
     blockchain::{ArchiveBlock, ArchiveBlocks},
     ConversionError,
 };
-use mc_blockchain_types::{BlockContents, BlockData, BlockSignature};
+use mc_blockchain_types::{BlockContents, BlockData, BlockMetadata, BlockSignature};
 
 /// Convert BlockData --> ArchiveBlock.
 impl From<&BlockData> for ArchiveBlock {
@@ -18,6 +18,10 @@ impl From<&BlockData> for ArchiveBlock {
 
         if let Some(signature) = src.signature() {
             archive_block_v1.set_signature(signature.into());
+        }
+
+        if let Some(metadata) = src.metadata() {
+            archive_block_v1.set_metadata(metadata.into());
         }
 
         archive_block
@@ -46,8 +50,14 @@ impl TryFrom<&ArchiveBlock> for BlockData {
             signature.verify(&block)?;
         }
 
+        let metadata = archive_block_v1
+            .metadata
+            .as_ref()
+            .map(BlockMetadata::try_from) // also verifies its signature.
+            .transpose()?;
+
         if block.contents_hash == block_contents.hash() && block.is_block_id_valid() {
-            Ok(BlockData::new(block, block_contents, signature))
+            Ok(BlockData::new(block, block_contents, signature, metadata))
         } else {
             Err(ConversionError::InvalidContents)
         }
@@ -94,7 +104,10 @@ impl TryFrom<&ArchiveBlocks> for Vec<BlockData> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_blockchain_types::{Block, BlockID, BlockSignature, BlockVersion};
+    use mc_blockchain_test_utils::make_block_metadata;
+    use mc_blockchain_types::{
+        Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+    };
     use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
     use mc_transaction_core::{
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
@@ -155,7 +168,8 @@ mod tests {
             let signature =
                 BlockSignature::from_block_and_keypair(&block, &(signer.into())).unwrap();
 
-            let block_data = BlockData::new(block, block_contents, Some(signature));
+            let metadata = make_block_metadata(block.id.clone(), &mut rng);
+            let block_data = BlockData::new(block, block_contents, signature, metadata);
             blocks_data.push(block_data);
         }
 
@@ -178,8 +192,12 @@ mod tests {
             &BlockContents::try_from(archive_block.get_v1().get_block_contents()).unwrap()
         );
         assert_eq!(
-            block_data.signature().clone().unwrap(),
+            block_data.signature().cloned().unwrap(),
             BlockSignature::try_from(archive_block.get_v1().get_signature()).unwrap()
+        );
+        assert_eq!(
+            block_data.metadata().cloned().unwrap(),
+            BlockMetadata::try_from(archive_block.get_v1().get_metadata()).unwrap()
         );
 
         // ArchiveBlock -> BlockData
@@ -201,6 +219,21 @@ mod tests {
                 .mut_signature()
                 .mut_signature()
                 .mut_data()[0] += 1;
+            assert_eq!(
+                BlockData::try_from(&archive_block),
+                Err(ConversionError::InvalidSignature)
+            );
+        }
+
+        // ArchiveBlock with invalid metadata cannot be converted back to BlockData
+        {
+            let mut archive_block = ArchiveBlock::from(&block_data);
+            archive_block
+                .mut_v1()
+                .mut_metadata()
+                .mut_contents()
+                .mut_quorum_set()
+                .threshold += 1;
             assert_eq!(
                 BlockData::try_from(&archive_block),
                 Err(ConversionError::InvalidSignature)
@@ -240,8 +273,12 @@ mod tests {
                 &BlockContents::try_from(archive_block.get_v1().get_block_contents()).unwrap()
             );
             assert_eq!(
-                block_data.signature().clone().unwrap(),
+                block_data.signature().cloned().unwrap(),
                 BlockSignature::try_from(archive_block.get_v1().get_signature()).unwrap()
+            );
+            assert_eq!(
+                block_data.metadata().cloned().unwrap(),
+                BlockMetadata::try_from(archive_block.get_v1().get_metadata()).unwrap()
             );
         }
 

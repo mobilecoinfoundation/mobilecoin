@@ -14,11 +14,10 @@ use mc_consensus_api::consensus_peer::{ConsensusMsgResponse, ConsensusMsgResult}
 use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use mc_consensus_scp::{
     msg::{Msg, NominatePayload},
-    quorum_set::QuorumSet,
-    SlotIndex, Topic,
+    QuorumSet, SlotIndex, Topic,
 };
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
-use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
+use mc_ledger_db::{test_utils::MockLedger, Ledger};
 use mc_peers::{
     ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
 };
@@ -385,7 +384,6 @@ mod threaded_broadcaster_tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_connection::ConnectionManager;
-    use mc_consensus_scp::QuorumSet;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers::{
         Broadcast, ThreadedBroadcaster,

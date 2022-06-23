@@ -6,7 +6,6 @@ use crate::{impl_sgx_wrapper_reqs, traits::SgxWrapperType};
 use alloc::vec::Vec;
 use core::{
     cmp::{Ord, Ordering},
-    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -116,11 +115,8 @@ impl From<u32> for EpidGroupId {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-    use std::format;
-
     use super::*;
-    use core::convert::TryFrom;
+    use alloc::format;
     use mc_util_serial::*;
 
     #[test]
