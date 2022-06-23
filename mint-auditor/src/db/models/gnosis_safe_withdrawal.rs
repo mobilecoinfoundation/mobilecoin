@@ -20,7 +20,7 @@ pub struct GnosisSafeWithdrawal {
     /// Ethereum block number.
     pub eth_block_number: i64,
 
-    /// Gnosis safe address receiving the withdrawal.
+    /// Gnosis safe address  being withdrawn from.
     pub safe_address: String,
 
     /// Token contract address that is being withdrawn.
