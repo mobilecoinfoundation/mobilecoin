@@ -282,7 +282,7 @@ impl GnosisSync {
             ))
         })?;
 
-        // The second value (dummy transfer to auxiliary contract) shoulld contain the
+        // The second value (dummy transfer to auxiliary contract) should contain the
         // MobileCoin tx out public key in the data. There is no decoded version
         // of the data since the Gnosis API does not how to decode custom contracts.
         let aux_contract_value = &value_decoded[1];
