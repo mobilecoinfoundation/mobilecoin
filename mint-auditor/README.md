@@ -55,7 +55,7 @@ You will also need to know the 4 byte signature of the metadata contract `emitBy
 
 1. The mint auditor requires a configuration file for auditing Gnosis safe. Below is an example of how this file should look like:
 
-```
+```toml
 [[safes]]
 safe_addr = "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe" # Safe address that is available once it is created
 api_url = "https://safe-transaction.rinkeby.gnosis.io/"
