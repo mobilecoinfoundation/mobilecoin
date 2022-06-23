@@ -94,7 +94,7 @@ mod tests {
         token_id = 1
         eth_token_contract_addr = "0xd92e713d051c37ebb2561803a3b5fbabc4962431"
         aux_burn_contract_addr = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40"
-        aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35] 
+        aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35]
 
 
         [[safes.tokens]]
