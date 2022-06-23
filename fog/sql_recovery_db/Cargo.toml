@@ -38,7 +38,7 @@ diesel-derive-enum = { version = "1", features = ["postgres"] }
 diesel_migrations = { version = "1.4", features = ["postgres"] }
 displaydoc = { version = "0.2", default-features = false }
 prost = "0.10"
-r2d2 = "0.8.9"
+r2d2 = "0.8.10"
 rand = "0.8"
 rand_core = "0.6"
 retry = "1.3"
