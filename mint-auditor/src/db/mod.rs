@@ -135,18 +135,18 @@ impl MintAuditorDb {
             );
             for mint_tx in &block_contents.mint_txs {
                 // Balance accounting.
-                let balance = balance_map
+                let mint_balance = balance_map
                     .entry(TokenId::from(mint_tx.prefix.token_id))
                     .or_default();
 
-                *balance += mint_tx.prefix.amount;
+                *mint_balance += mint_tx.prefix.amount;
                 log::info!(
                     self.logger,
                     "Block {}: Minted {} of token id {}, balance is now {}",
                     block_index,
                     mint_tx.prefix.amount,
                     mint_tx.prefix.token_id,
-                    balance,
+                    mint_balance,
                 );
 
                 // Try and match the mint tx to an active mint config.
@@ -167,7 +167,7 @@ impl MintAuditorDb {
                 // Store the mint tx.
                 MintTx::insert(
                     block_index,
-                    mint_config.and_then(|config| config.id),
+                    mint_config.and_then(|config| config.id()),
                     mint_tx,
                     conn,
                 )?;
@@ -187,28 +187,28 @@ impl MintAuditorDb {
                 .collect::<Vec<_>>();
 
             for amount in burn_amounts {
-                let balance = balance_map.entry(amount.token_id).or_default();
+                let burn_balance = balance_map.entry(amount.token_id).or_default();
 
-                if amount.value > *balance {
+                if amount.value > *burn_balance {
                     log::crit!(
                         self.logger,
                         "Block {}: Burned {} of token id {} but only had {}. Setting balance to 0",
                         block_index,
                         amount.value,
                         amount.token_id,
-                        balance
+                        burn_balance
                     );
-                    *balance = 0;
+                    *burn_balance = 0;
                     counters.num_burns_exceeding_balance += 1;
                 } else {
-                    *balance -= amount.value;
+                    *burn_balance -= amount.value;
                     log::info!(
                         self.logger,
                         "Block {}: Burned {} of token id {}, balance is now {}",
                         block_index,
                         amount.value,
                         amount.token_id,
-                        balance,
+                        burn_balance,
                     );
                 }
             }
@@ -218,9 +218,7 @@ impl MintAuditorDb {
             log::trace!(self.logger, "Updating counters: {:?}", counters);
             counters.set(conn)?;
 
-            let block_audit_data = BlockAuditData {
-                block_index: block_index as i64,
-            };
+            let block_audit_data = BlockAuditData::new(block_index);
             log::trace!(
                 self.logger,
                 "Storing block audit data: {:?}",
@@ -272,8 +270,10 @@ impl MintAuditorDb {
 
         // SQLite auto-increment ids start at 1, so calling unwrap_or_default() on the
         // id field will result on no rows returned if no id is available.
-        let sql_mint_configs =
-            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx.id.unwrap_or_default(), conn)?;
+        let sql_mint_configs = MintConfig::get_by_mint_config_tx_id(
+            sql_mint_config_tx.id().unwrap_or_default(),
+            conn,
+        )?;
 
         let message = mint_tx.prefix.hash();
 
@@ -357,9 +357,7 @@ mod tests {
 
             assert_eq!(
                 mint_audit_data,
-                BlockAuditData {
-                    block_index: block_data.block().index as i64,
-                }
+                BlockAuditData::new(block_data.block().index),
             );
             assert_eq!(balance_map, Default::default());
         }
@@ -395,12 +393,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64,
-            }
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
         assert_eq!(balance_map, Default::default());
 
         // Sync a block that contains a few mint transactions.
@@ -425,12 +418,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64,
-            }
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
         assert_eq!(
             balance_map,
             HashMap::from_iter([(token_id1, 101), (token_id2, 2)])
@@ -481,12 +469,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64,
-            }
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
 
         assert_eq!(
             balance_map,
@@ -538,12 +521,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64,
-            }
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
 
         assert_eq!(
             balance_map,
@@ -737,12 +715,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64,
-            }
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
         assert_eq!(
             balance_map,
             HashMap::from_iter([(token_id1, 101), (token_id2, 2)])
@@ -796,12 +769,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(
-            mint_audit_data,
-            BlockAuditData {
-                block_index: block.index as i64
-            },
-        );
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
         assert_eq!(
             balance_map,
             HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),

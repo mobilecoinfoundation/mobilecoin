@@ -25,7 +25,7 @@ For Gnosis auditing, an additional parameter (`--gnosis-safe-config gnosis-safe.
 
 ### Gnosis Safe Auditing
 
-The mint auditor supports syncing data fron a Gnosis safe. It uses the [Gnosis transaction service API](https://github.com/safe-global/safe-transaction-service/) to get the data. This service is operated by Gnosis, and is available for [ETH main net](https://safe-transaction.gnosis.io/) and [Rinkeby, an ETH test net](https://safe-transaction.rinkeby.gnosis.io/).
+The mint auditor supports syncing data from a Gnosis safe. It uses the [Gnosis transaction service API](https://github.com/safe-global/safe-transaction-service/) to get the data. This service is operated by Gnosis, and is available for [ETH main net](https://safe-transaction.gnosis.io/) and [Rinkeby, an ETH test net](https://safe-transaction.rinkeby.gnosis.io/).
 
 Mints on the MobileCoin blockchain are expected to correlate with a deposit to a safe. The expected process is:
 1. A deposit of the appropriate backing token is made to the safe using a standard Ethereum transaction.

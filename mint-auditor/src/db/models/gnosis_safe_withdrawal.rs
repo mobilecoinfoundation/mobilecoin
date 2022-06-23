@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin FoundationD
+//
 
 use crate::{
     db::{schema::gnosis_safe_withdrawals, Conn},
@@ -12,36 +13,82 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
 pub struct GnosisSafeWithdrawal {
     /// Id (required to keep Diesel happy).
-    pub id: Option<i32>,
+    id: Option<i32>,
 
     /// Ethereum transaction hash.
-    pub eth_tx_hash: String,
+    eth_tx_hash: String,
 
     /// Ethereum block number.
-    pub eth_block_number: i64,
+    eth_block_number: i64,
 
-    /// Gnosis safe address  being withdrawn from.
-    pub safe_address: String,
+    /// Gnosis safe address being withdrawn from.
+    safe_address: String,
 
     /// Token contract address that is being withdrawn.
-    pub token_address: String,
+    token_address: String,
 
     /// Amount withdrawan.
-    pub amount: i64,
+    amount: i64,
 
     /// Associated mobilecoin transaction public key (hex-encoded).
-    pub mc_tx_out_public_key_hex: String,
+    mc_tx_out_public_key_hex: String,
 }
 
 impl GnosisSafeWithdrawal {
-    /// Get amount withdrawan.
-    pub fn amount(&self) -> u64 {
-        self.amount as u64
+    /// Construct a new [GnosisSafeWithdrawal] object.
+    pub fn new(
+        id: Option<i32>,
+        eth_tx_hash: String,
+        eth_block_number: u64,
+        safe_address: String,
+        token_address: String,
+        amount: u64,
+        mc_tx_out_public_key_hex: String,
+    ) -> Self {
+        Self {
+            id,
+            eth_tx_hash,
+            eth_block_number: eth_block_number as i64,
+            safe_address,
+            token_address,
+            amount: amount as i64,
+            mc_tx_out_public_key_hex,
+        }
+    }
+
+    /// Get id.
+    pub fn id(&self) -> Option<i32> {
+        self.id
+    }
+
+    /// Get ethereum transaction hash.
+    pub fn eth_tx_hash(&self) -> &str {
+        &self.eth_tx_hash
     }
 
     /// Get ethereum block number.
     pub fn eth_block_number(&self) -> u64 {
         self.eth_block_number as u64
+    }
+
+    /// Get safe address.
+    pub fn safe_address(&self) -> &str {
+        &self.safe_address
+    }
+
+    /// Get token address.
+    pub fn token_address(&self) -> &str {
+        &self.token_address
+    }
+
+    /// Get amount withdrawan.
+    pub fn amount(&self) -> u64 {
+        self.amount as u64
+    }
+
+    /// Get associated mobilecoin transaction public key (hex-encoded).
+    pub fn mc_tx_out_public_key_hex(&self) -> &str {
+        &self.mc_tx_out_public_key_hex
     }
 }
 

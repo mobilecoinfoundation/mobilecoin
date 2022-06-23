@@ -13,6 +13,7 @@ use super::{
     AuditedSafeConfig,
 };
 use crate::{
+    counters,
     db::{Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb},
     error::Error,
     gnosis::Error as GnosisError,
@@ -64,6 +65,7 @@ impl GnosisSync {
                 self.process_transactions(transactions);
             }
             Err(err) => {
+                counters::NUM_FAILED_GNOSIS_GET_ALL_TRANSACTION_DATA.inc();
                 log::error!(self.logger, "Failed to fetch Gnosis transactions: {}", err);
             }
         }
@@ -130,7 +132,23 @@ impl GnosisSync {
                     "Processing gnosis safe deposit: {:?}",
                     transfer
                 );
-                GnosisSafeDeposit::insert_eth_transfer(tx.eth_block_number, transfer, conn)?;
+
+                // Empty token address means ETH
+                let token_address = transfer
+                    .token_address
+                    .clone()
+                    .unwrap_or_default()
+                    .to_string();
+
+                let deposit = GnosisSafeDeposit::new(
+                    None,
+                    transfer.tx_hash.to_string(),
+                    tx.eth_block_number,
+                    transfer.to.to_string(),
+                    token_address,
+                    u64::from(transfer.value),
+                );
+                deposit.insert(conn)?;
                 continue;
             }
             // We don't know what this is.
@@ -284,7 +302,8 @@ impl GnosisSync {
 
         // The second value (dummy transfer to auxiliary contract) should contain the
         // MobileCoin tx out public key in the data. There is no decoded version
-        // of the data since the Gnosis API does not know how to decode custom contracts.
+        // of the data since the Gnosis API does not know how to decode custom
+        // contracts.
         let aux_contract_value = &value_decoded[1];
         if aux_contract_value.to != audited_token.aux_burn_contract_addr {
             return Err(GnosisError::ApiResultParse(format!(
@@ -330,15 +349,15 @@ impl GnosisSync {
         let tx_out_pub_key = &aux_data_bytes[aux_data_bytes.len() - 32..];
 
         // Parsed everything we need.
-        Ok(GnosisSafeWithdrawal {
-            id: None,
-            eth_tx_hash: multi_sig_tx.tx_hash.to_string(),
-            eth_block_number: multi_sig_tx.eth_block_number as i64,
-            safe_address: multi_sig_tx.safe.to_string(),
-            token_address: transfer_data.to.to_string(),
-            amount: transfer_value as i64,
-            mc_tx_out_public_key_hex: hex::encode(tx_out_pub_key),
-        })
+        Ok(GnosisSafeWithdrawal::new(
+            None,
+            multi_sig_tx.tx_hash.to_string(),
+            multi_sig_tx.eth_block_number,
+            multi_sig_tx.safe.to_string(),
+            transfer_data.to.to_string(),
+            transfer_value,
+            hex::encode(tx_out_pub_key),
+        ))
     }
 }
 
@@ -410,24 +429,22 @@ mod test {
             .load::<GnosisSafeDeposit>(&conn)
             .unwrap();
         let expected_deposits = vec![
-            GnosisSafeDeposit {
-                id: Some(2),
-                eth_tx_hash: "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7"
-                    .to_string(),
-                eth_block_number: 10824613,
-                safe_address: SAFE_ADDRESS.to_string(),
-                token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
-                amount: 1000000,
-            },
-            GnosisSafeDeposit {
-                id: Some(1),
-                eth_tx_hash: "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849"
-                    .to_string(),
-                eth_block_number: 10824662,
-                safe_address: SAFE_ADDRESS.to_string(),
-                token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
-                amount: 10000000,
-            },
+            GnosisSafeDeposit::new(
+                Some(2),
+                "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7".to_string(),
+                10824613,
+                SAFE_ADDRESS.to_string(),
+                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                1000000,
+            ),
+            GnosisSafeDeposit::new(
+                Some(1),
+                "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849".to_string(),
+                10824662,
+                SAFE_ADDRESS.to_string(),
+                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                10000000,
+            ),
         ];
         assert_eq!(deposits, expected_deposits);
 
@@ -437,28 +454,24 @@ mod test {
             .load::<GnosisSafeWithdrawal>(&conn)
             .unwrap();
         let expected_withdrawals = vec![
-            GnosisSafeWithdrawal {
-                id: Some(2),
-                eth_tx_hash: "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4"
-                    .to_string(),
-                eth_block_number: 10824635,
-                safe_address: SAFE_ADDRESS.to_string(),
-                token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
-                amount: 500000,
-                mc_tx_out_public_key_hex:
-                    "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
-            },
-            GnosisSafeWithdrawal {
-                id: Some(1),
-                eth_tx_hash: "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28"
-                    .to_string(),
-                eth_block_number: 10824678,
-                safe_address: SAFE_ADDRESS.to_string(),
-                token_address: ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
-                amount: 2000000,
-                mc_tx_out_public_key_hex:
-                    "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
-            },
+            GnosisSafeWithdrawal::new(
+                Some(2),
+                "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4".to_string(),
+                10824635,
+                SAFE_ADDRESS.to_string(),
+                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                500000,
+                "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
+            ),
+            GnosisSafeWithdrawal::new(
+                Some(1),
+                "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28".to_string(),
+                10824678,
+                SAFE_ADDRESS.to_string(),
+                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                2000000,
+                "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
+            ),
         ];
         assert_eq!(withdrawals, expected_withdrawals);
     }
