@@ -100,6 +100,7 @@ where
             Arc::new(recovery_db),
             db_poll_thread.get_shared_state(),
             client_authenticator,
+            config.client_listen_uri.clone(),
             logger.clone(),
         ));
         log::debug!(logger, "Constructed View GRPC Service");
