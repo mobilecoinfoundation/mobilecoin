@@ -16,11 +16,7 @@ use url::Url;
 pub struct GnosisSafeFetcher {
     /// Base URL for the gnosis safe-transaction-service API.
     base_url: Url,
-
-    /// The [reqwest::Client].
     client: Client,
-
-    /// Logger.
     logger: Logger,
 }
 
