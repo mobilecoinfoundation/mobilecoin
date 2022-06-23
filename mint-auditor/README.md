@@ -29,7 +29,8 @@ The mint auditor supports syncing data fron a Gnosis safe. It uses the [Gnosis t
 
 Mints on the MobileCoin blockchain are expected to correlate with a deposit to a safe. The expected process is:
 1. A deposit of the appropriate backing token is made to the safe using a standard Ethereum transaction.
-2. A MintTx is then submitted to the MobileCoin blockchain, embedding the deposit transaction hash in the nonce of the MobileCoin MintTx. The nonce allows linking the MobileCoin mint to the Ethereum safe deposit.
+2. A MintTx is then submitted to the MobileCoin blockchain, embedding the deposit transaction hash in the nonce of the
+   MobileCoin MintTx. The nonce allows linking the MobileCoin mint to the Gnosis safe deposit.
 
 Similarly, burns on the MobileCoin blockchain are expected to correlate with a withdrawal from a safe. The expected process is:
 1. A transaction on the MobileCoin blockchain that moves the desired token to the burn address is issued.
