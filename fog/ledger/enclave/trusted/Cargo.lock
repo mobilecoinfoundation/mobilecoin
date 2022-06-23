@@ -304,8 +304,8 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.1"
-source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55#9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55"
+version = "0.2.2"
+source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=7c1804bf4f95ef84a7a53be93552ddf1708135bb#7c1804bf4f95ef84a7a53be93552ddf1708135bb"
 dependencies = [
  "libc",
 ]
