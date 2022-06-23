@@ -244,7 +244,7 @@ impl GnosisSync {
             GnosisError::ApiResultParse("decoded data parameter is missing value_decoded".into())
         })?;
 
-        // Each value contains a single transfer. We expect to have two trasnfers:
+        // Each value contains a single transfer. We expect to have two transfers:
         // 1) A transfer moving the token being withdrawn from the safe
         // 2) A "dummy" transfer into the auxiliary contract, used to record the
         // matching MobileCoin tx out public key of the matching burn.
