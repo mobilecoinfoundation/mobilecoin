@@ -64,7 +64,7 @@ api_url = "https://safe-transaction.rinkeby.gnosis.io/"
 token_id = 1
 eth_token_contract_addr = "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B" # RinkUSDT
 aux_burn_contract_addr = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40" # Auxiliary metadata contract address
-aux_burn_function_sig = AUX_BURN_FUNCTION_SIG.to_vec() # Auxiliary metadata emitBytes function signature hash
+aux_burn_function_sig = [0xc7, 0x6f, 0x06, 0x35] # Auxiliary metadata emitBytes function signature hash
 ```
 
 2. Start mobilecoind to sync the ledger:
