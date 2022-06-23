@@ -38,7 +38,7 @@ Similarly, burns on the MobileCoin blockchain are expected to correlate with a w
     1. A transaction that moves the desired token out of the safe
     1. A transaction to an auxiliary contract (see more details below) that is used to link withdrawal to the MobileCoin burn.
 
-Gnosis deposits are easily linked to the matching MobileCoin mints via the Ethereum transaction hash. Linking withdrawals is more difficult since standard Ethererum transactions do not have a way of including metadata. In an ideal world we would've had the option of including the MobileCoin burn transaction TxOut public key in the Ethereum withdrawal transaction, but there is no easy way to do that.
+Gnosis deposits are easily linked to the matching MobileCoin mints via the Ethereum transaction hash. Linking withdrawals is more difficult since standard Ethereum transactions do not have a way of including metadata. In an ideal world we would've had the option of including the MobileCoin burn transaction TxOut public key in the Ethereum withdrawal transaction, but there is no easy way to do that.
 The solution we came up with is to deploy an "auxiliary contract", who has a single function that accepts arbitrary metadata bytes, and use that as part of a Gnosis batched transfer to include extra data in addition to the token transfer. Such contract can be seen [here](https://github.com/tbrent/ethereum-metadata) and is [deployed to the Rinkeby network](https://rinkeby.etherscan.io/address/0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40).
 
 #### Setting up
