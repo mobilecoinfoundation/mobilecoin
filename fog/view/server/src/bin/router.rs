@@ -37,7 +37,7 @@ fn main() {
     let mut shard_uris: Vec<FogViewStoreUri> = Vec::new();
     for i in 0..50 {
         let shard_uri_string = format!(
-            "insecure-fog-view-store://node{}.test.mobilecoin.com:3225",
+            "insecure-fog-view://node{}.test.mobilecoin.com:3225",
             i
         );
         let shard_uri = FogViewStoreUri::from_str(&shard_uri_string).unwrap();
