@@ -48,7 +48,7 @@ impl GnosisSafeFetcher {
     }
 
     /// Fetch transaction data.
-    /// This method will continously reach out to the API service until all
+    /// This method will continuously reach out to the API service until all
     /// transactions have been fetched. Because of pagination, this might result
     /// in multiple requests. This returns only transactions that were
     /// executed and confirmed.
