@@ -45,6 +45,34 @@ impl PartialEq for EthAddr {
 
 impl Eq for EthAddr {}
 
+/// Ethereum 32 byte transaction hash.
+/// We currently do not store the decoded bytes since we have no use for them.
+#[derive(Clone, Debug, Default, DeserializeFromStr, Eq, PartialEq, SerializeDisplay)]
+pub struct EthTxHash(pub String);
+
+impl FromStr for EthTxHash {
+    type Err = Error;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        if !src.starts_with("0x") {
+            return Err(Error::InvalidTxHash(src.to_string()));
+        }
+
+        let bytes = hex::decode(&src[2..]).map_err(|_| Error::InvalidTxHash(src.to_string()))?;
+        if bytes.len() != 32 {
+            return Err(Error::InvalidTxHash(src.to_string()));
+        }
+
+        Ok(Self(src.to_string()))
+    }
+}
+
+impl fmt::Display for EthTxHash {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

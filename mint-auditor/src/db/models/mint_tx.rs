@@ -20,34 +20,39 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
 pub struct MintTx {
     /// Auto incrementing primary key.
-    pub id: Option<i32>,
+    id: Option<i32>,
 
     /// The block index at which this mint tx appreared.
-    pub block_index: i64,
+    block_index: i64,
 
     /// The token id this mint tx is for.
-    pub token_id: i64,
+    token_id: i64,
 
     /// The amount being minted.
-    pub amount: i64,
+    amount: i64,
 
     /// The nonce, as hex-encoded bytes.
-    pub nonce: String,
+    nonce: String,
 
     /// The recipient of the mint.
-    pub recipient_b58_address: String,
+    recipient_b58_address: String,
 
     /// Tombstone block.
-    pub tombstone_block: i64,
+    tombstone_block: i64,
 
     /// The protobuf-serialized MintTx.
-    pub protobuf: Vec<u8>,
+    protobuf: Vec<u8>,
 
     /// The mint config id, when we are able to match it with one.
-    pub mint_config_id: Option<i32>,
+    mint_config_id: Option<i32>,
 }
 
 impl MintTx {
+    /// Get id.
+    pub fn id(&self) -> Option<i32> {
+        self.id
+    }
+
     /// Get block index.
     pub fn block_index(&self) -> u64 {
         self.block_index as u64
@@ -63,9 +68,24 @@ impl MintTx {
         self.amount as u64
     }
 
+    /// Get nonce.
+    pub fn nonce(&self) -> &str {
+        &self.nonce
+    }
+
+    /// Get recipient b58 address.
+    pub fn recipient_b58_address(&self) -> &str {
+        &self.recipient_b58_address
+    }
+
     /// Get tombstone block.
     pub fn tombstone_block(&self) -> u64 {
         self.tombstone_block as u64
+    }
+
+    /// Get mint config id, when we are able to match it with one.
+    pub fn mint_config_id(&self) -> Option<i32> {
+        self.mint_config_id
     }
 
     /// Get the original MintTx

@@ -22,29 +22,34 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
 pub struct MintConfigTx {
     /// Auto incrementing primary key.
-    pub id: Option<i32>,
+    id: Option<i32>,
 
     /// The block index at which this mint config tx appreared.
-    pub block_index: i64,
+    block_index: i64,
 
     /// The token id this mint config tx is for.
-    pub token_id: i64,
+    token_id: i64,
 
     /// The nonce, as hex-encoded bytes.
-    pub nonce: String,
+    nonce: String,
 
     /// The maximal amount that can be minted by configurations specified in
     /// this tx. This amount is shared amongst all configs.
-    pub total_mint_limit: i64,
+    total_mint_limit: i64,
 
     /// Tombstone block.
-    pub tombstone_block: i64,
+    tombstone_block: i64,
 
     /// The protobuf-serialized MintConfigTx.
-    pub protobuf: Vec<u8>,
+    protobuf: Vec<u8>,
 }
 
 impl MintConfigTx {
+    /// Get id.
+    pub fn id(&self) -> Option<i32> {
+        self.id
+    }
+
     /// Get block index.
     pub fn block_index(&self) -> u64 {
         self.block_index as u64
@@ -53,6 +58,11 @@ impl MintConfigTx {
     /// Get token id.
     pub fn token_id(&self) -> TokenId {
         TokenId::from(self.token_id as u64)
+    }
+
+    /// Get nonce.
+    pub fn nonce(&self) -> &str {
+        &self.nonce
     }
 
     /// Get mint limit.
@@ -408,15 +418,15 @@ mod tests {
         let mint_config_id1 =
             MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_1.id.unwrap(), &conn).unwrap()
                 [0]
-            .id;
+            .id();
         let mint_config_id2 =
             MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_2.id.unwrap(), &conn).unwrap()
                 [0]
-            .id;
+            .id();
         let mint_config_id3 =
             MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx_3.id.unwrap(), &conn).unwrap()
                 [0]
-            .id;
+            .id();
 
         // Write some mint txs so we have what to test with.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);

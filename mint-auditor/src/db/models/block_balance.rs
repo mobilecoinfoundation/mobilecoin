@@ -14,16 +14,25 @@ use std::ops::Deref;
 #[table_name = "block_balance"]
 pub struct BlockBalance {
     /// Block index.
-    pub block_index: i64,
+    block_index: i64,
 
     /// Token id.
-    pub token_id: i64,
+    token_id: i64,
 
     /// Balanace.
-    pub balance: i64,
+    balance: i64,
 }
 
 impl BlockBalance {
+    /// Construct a new [BlockBalance] object.
+    pub fn new(block_index: BlockIndex, token_id: TokenId, balance: u64) -> Self {
+        Self {
+            block_index: block_index as i64,
+            token_id: *token_id as i64,
+            balance: balance as i64,
+        }
+    }
+
     /// Get block index.
     pub fn block_index(&self) -> u64 {
         self.block_index as u64
@@ -91,10 +100,10 @@ mod tests {
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
 
-        BlockAuditData { block_index: 0 }
+        BlockAuditData::new(0)
             .set(&mint_auditor_db.get_conn().unwrap())
             .unwrap();
-        BlockAuditData { block_index: 1 }
+        BlockAuditData::new(1)
             .set(&mint_auditor_db.get_conn().unwrap())
             .unwrap();
 

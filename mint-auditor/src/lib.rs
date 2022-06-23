@@ -17,6 +17,5 @@ pub use crate::{error::Error, service::MintAuditorService};
 
 #[macro_use]
 extern crate diesel;
-//#[allow(unused_imports)] // Needed for embedded_migrations!
 #[macro_use]
 extern crate diesel_migrations;

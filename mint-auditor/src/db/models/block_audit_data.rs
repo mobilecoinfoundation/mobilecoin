@@ -14,10 +14,16 @@ use serde::{Deserialize, Serialize};
 #[table_name = "block_audit_data"]
 pub struct BlockAuditData {
     /// Block index.
-    pub block_index: i64,
+    block_index: i64,
 }
 
 impl BlockAuditData {
+    /// Construct a new [BlockAuditData] object.
+    pub fn new(block_index: BlockIndex) -> Self {
+        Self {
+            block_index: block_index as i64,
+        }
+    }
     /// Get block index.
     pub fn block_index(&self) -> u64 {
         self.block_index as u64

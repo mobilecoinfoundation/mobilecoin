@@ -20,20 +20,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
 pub struct MintConfig {
     /// Auto incrementing primary key.
-    pub id: Option<i32>,
+    id: Option<i32>,
 
     /// id linking to the mint_config_txs table.
-    pub mint_config_tx_id: i32,
+    mint_config_tx_id: i32,
 
     /// The maximal amount this configuration can mint from the moment it has
     /// been applied.
-    pub mint_limit: i64,
+    mint_limit: i64,
 
     /// The protobuf-serialized MintConfig.
-    pub protobuf: Vec<u8>,
+    protobuf: Vec<u8>,
 }
 
 impl MintConfig {
+    /// Get id.
+    pub fn id(&self) -> Option<i32> {
+        self.id
+    }
+
+    /// Get mint config tx id.
+    pub fn mint_config_tx_id(&self) -> i32 {
+        self.mint_config_tx_id
+    }
+
     /// Get mint limit.
     pub fn mint_limit(&self) -> u64 {
         self.mint_limit as u64
@@ -148,17 +158,17 @@ mod tests {
 
         // Get the MintConfigs and sanity check them.
         let mint_configs1 =
-            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx1.id.unwrap(), &conn).unwrap();
+            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx1.id().unwrap(), &conn).unwrap();
         let mint_configs2 =
-            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx2.id.unwrap(), &conn).unwrap();
+            MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx2.id().unwrap(), &conn).unwrap();
 
         assert_mint_configs_match(
-            sql_mint_config_tx1.id.unwrap(),
+            sql_mint_config_tx1.id().unwrap(),
             &mint_config_tx1.prefix.configs[..],
             &mint_configs1,
         );
         assert_mint_configs_match(
-            sql_mint_config_tx2.id.unwrap(),
+            sql_mint_config_tx2.id().unwrap(),
             &mint_config_tx2.prefix.configs[..],
             &mint_configs2,
         );
@@ -205,14 +215,14 @@ mod tests {
             .unwrap();
 
         let mint_config1 =
-            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx1.id.unwrap(), &conn).unwrap()
-                [0];
+            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx1.id().unwrap(), &conn)
+                .unwrap()[0];
         let mint_config2 =
-            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx2.id.unwrap(), &conn).unwrap()
-                [0];
+            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx2.id().unwrap(), &conn)
+                .unwrap()[0];
         let mint_config3 =
-            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx3.id.unwrap(), &conn).unwrap()
-                [0];
+            &MintConfig::get_by_mint_config_tx_id(sql_mint_config_tx3.id().unwrap(), &conn)
+                .unwrap()[0];
 
         // Write some mint txs so we have what to test with.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);

@@ -1,0 +1,271 @@
+{
+    "count": 4,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "safe": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe",
+            "to": "0x40A2aCCbd92BCA938b02010E17A5b8929b49130D",
+            "value": "0",
+            "data": "0x8d80ff0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000015200d92e713d051c37ebb2561803a3b5fbabc496243100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044a9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f0700000000000000000000000000000000000000000000000000000000001e84800076bd419fba96583d968b422d4f3cb2a70bf4cf4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064c76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200000000000000000000000000000",
+            "operation": 1,
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "safeTxGas": 0,
+            "baseGas": 0,
+            "gasPrice": "0",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": 1,
+            "executionDate": "2022-06-10T00:15:23Z",
+            "submissionDate": "2022-06-10T00:15:05.753508Z",
+            "modified": "2022-06-10T00:15:23Z",
+            "blockNumber": 10824678,
+            "transactionHash": "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28",
+            "safeTxHash": "0x38da0f210b9e3d5426767c3ee4b78e4ab78f6d13e5f48e2c40fe86eb59d933b3",
+            "executor": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+            "isExecuted": true,
+            "isSuccessful": true,
+            "ethGasPrice": "1500000008",
+            "maxFeePerGas": "24000000000",
+            "maxPriorityFeePerGas": "1500000000",
+            "gasUsed": 73582,
+            "fee": "110373000588656",
+            "origin": "{\"url\":\"https://apps.gnosis-safe.io/tx-builder\",\"name\":\"Transaction Builder\"}",
+            "dataDecoded": {
+                "method": "multiSend",
+                "parameters": [
+                    {
+                        "name": "transactions",
+                        "type": "bytes",
+                        "value": "0x00d92e713d051c37ebb2561803a3b5fbabc496243100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044a9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f0700000000000000000000000000000000000000000000000000000000001e84800076bd419fba96583d968b422d4f3cb2a70bf4cf4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064c76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                        "valueDecoded": [
+                            {
+                                "operation": 0,
+                                "to": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                                "value": "0",
+                                "data": "0xa9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f0700000000000000000000000000000000000000000000000000000000001e8480",
+                                "dataDecoded": {
+                                    "method": "transfer",
+                                    "parameters": [
+                                        {
+                                            "name": "to",
+                                            "type": "address",
+                                            "value": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+                                        },
+                                        {
+                                            "name": "value",
+                                            "type": "uint256",
+                                            "value": "2000000"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "operation": 0,
+                                "to": "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
+                                "value": "0",
+                                "data": "0xc76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                                "dataDecoded": null
+                            }
+                        ]
+                    }
+                ]
+            },
+            "confirmationsRequired": 1,
+            "confirmations": [
+                {
+                    "owner": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+                    "submissionDate": "2022-06-10T00:15:23Z",
+                    "transactionHash": null,
+                    "signature": "0x000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000000000001",
+                    "signatureType": "APPROVED_HASH"
+                }
+            ],
+            "trusted": true,
+            "signatures": "0x000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000000000001",
+            "transfers": [
+                {
+                    "type": "ERC20_TRANSFER",
+                    "executionDate": "2022-06-10T00:15:23Z",
+                    "blockNumber": 10824678,
+                    "transactionHash": "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28",
+                    "to": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+                    "value": "2000000",
+                    "tokenId": null,
+                    "tokenAddress": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                    "tokenInfo": {
+                        "type": "ERC20",
+                        "address": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                        "name": "TestUsdtToken",
+                        "symbol": "TUSDT",
+                        "decimals": 6,
+                        "logoUri": "https://safe-transaction-assets.gnosis-safe.io/tokens/logos/0xD92E713d051C37EbB2561803a3b5FBAbc4962431.png"
+                    },
+                    "from": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe"
+                }
+            ],
+            "txType": "MULTISIG_TRANSACTION"
+        },
+        {
+            "executionDate": "2022-06-10T00:11:23Z",
+            "to": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+            "data": "0xa9059cbb000000000000000000000000ec018400ffe5ad6e0b42aa592ee1cf6092972dee0000000000000000000000000000000000000000000000000000000000989680",
+            "txHash": "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849",
+            "blockNumber": 10824662,
+            "transfers": [
+                {
+                    "type": "ERC20_TRANSFER",
+                    "executionDate": "2022-06-10T00:11:23Z",
+                    "blockNumber": 10824662,
+                    "transactionHash": "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849",
+                    "to": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe",
+                    "value": "10000000",
+                    "tokenId": null,
+                    "tokenAddress": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                    "tokenInfo": {
+                        "type": "ERC20",
+                        "address": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                        "name": "TestUsdtToken",
+                        "symbol": "TUSDT",
+                        "decimals": 6,
+                        "logoUri": "https://safe-transaction-assets.gnosis-safe.io/tokens/logos/0xD92E713d051C37EbB2561803a3b5FBAbc4962431.png"
+                    },
+                    "from": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+                }
+            ],
+            "txType": "ETHEREUM_TRANSACTION",
+            "from": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+        },
+        {
+            "safe": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe",
+            "to": "0x40A2aCCbd92BCA938b02010E17A5b8929b49130D",
+            "value": "0",
+            "data": "0x8d80ff0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000015200d92e713d051c37ebb2561803a3b5fbabc496243100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044a9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000007a1200076bd419fba96583d968b422d4f3cb2a70bf4cf4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064c76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200000000000000000000000000000",
+            "operation": 1,
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "safeTxGas": 0,
+            "baseGas": 0,
+            "gasPrice": "0",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": 0,
+            "executionDate": "2022-06-10T00:04:38Z",
+            "submissionDate": "2022-06-10T00:04:25.717305Z",
+            "modified": "2022-06-10T00:04:38Z",
+            "blockNumber": 10824635,
+            "transactionHash": "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4",
+            "safeTxHash": "0x06c30e691afaf2077a5e1fd2bc705ea8c4f25ff77ee40aa3c3ee46242478b05e",
+            "executor": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+            "isExecuted": true,
+            "isSuccessful": true,
+            "ethGasPrice": "1500000009",
+            "maxFeePerGas": "24000000000",
+            "maxPriorityFeePerGas": "1500000000",
+            "gasUsed": 90682,
+            "fee": "136023000816138",
+            "origin": "{\"url\":\"https://apps.gnosis-safe.io/tx-builder\",\"name\":\"Transaction Builder\"}",
+            "dataDecoded": {
+                "method": "multiSend",
+                "parameters": [
+                    {
+                        "name": "transactions",
+                        "type": "bytes",
+                        "value": "0x00d92e713d051c37ebb2561803a3b5fbabc496243100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044a9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000007a1200076bd419fba96583d968b422d4f3cb2a70bf4cf4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064c76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                        "valueDecoded": [
+                            {
+                                "operation": 0,
+                                "to": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                                "value": "0",
+                                "data": "0xa9059cbb000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000007a120",
+                                "dataDecoded": {
+                                    "method": "transfer",
+                                    "parameters": [
+                                        {
+                                            "name": "to",
+                                            "type": "address",
+                                            "value": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+                                        },
+                                        {
+                                            "name": "value",
+                                            "type": "uint256",
+                                            "value": "500000"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "operation": 0,
+                                "to": "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40",
+                                "value": "0",
+                                "data": "0xc76f0635000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                                "dataDecoded": null
+                            }
+                        ]
+                    }
+                ]
+            },
+            "confirmationsRequired": 1,
+            "confirmations": [
+                {
+                    "owner": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+                    "submissionDate": "2022-06-10T00:04:38Z",
+                    "transactionHash": null,
+                    "signature": "0x000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000000000001",
+                    "signatureType": "APPROVED_HASH"
+                }
+            ],
+            "trusted": true,
+            "signatures": "0x000000000000000000000000dc079a637a1417020916ffb8a39ff5a2801a0f07000000000000000000000000000000000000000000000000000000000000000001",
+            "transfers": [
+                {
+                    "type": "ERC20_TRANSFER",
+                    "executionDate": "2022-06-10T00:04:38Z",
+                    "blockNumber": 10824635,
+                    "transactionHash": "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4",
+                    "to": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07",
+                    "value": "500000",
+                    "tokenId": null,
+                    "tokenAddress": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                    "tokenInfo": {
+                        "type": "ERC20",
+                        "address": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                        "name": "TestUsdtToken",
+                        "symbol": "TUSDT",
+                        "decimals": 6,
+                        "logoUri": "https://safe-transaction-assets.gnosis-safe.io/tokens/logos/0xD92E713d051C37EbB2561803a3b5FBAbc4962431.png"
+                    },
+                    "from": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe"
+                }
+            ],
+            "txType": "MULTISIG_TRANSACTION"
+        },
+        {
+            "executionDate": "2022-06-09T23:59:07Z",
+            "to": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+            "data": "0xa9059cbb000000000000000000000000ec018400ffe5ad6e0b42aa592ee1cf6092972dee00000000000000000000000000000000000000000000000000000000000f4240",
+            "txHash": "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7",
+            "blockNumber": 10824613,
+            "transfers": [
+                {
+                    "type": "ERC20_TRANSFER",
+                    "executionDate": "2022-06-09T23:59:07Z",
+                    "blockNumber": 10824613,
+                    "transactionHash": "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7",
+                    "to": "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe",
+                    "value": "1000000",
+                    "tokenId": null,
+                    "tokenAddress": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                    "tokenInfo": {
+                        "type": "ERC20",
+                        "address": "0xD92E713d051C37EbB2561803a3b5FBAbc4962431",
+                        "name": "TestUsdtToken",
+                        "symbol": "TUSDT",
+                        "decimals": 6,
+                        "logoUri": "https://safe-transaction-assets.gnosis-safe.io/tokens/logos/0xD92E713d051C37EbB2561803a3b5FBAbc4962431.png"
+                    },
+                    "from": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+                }
+            ],
+            "txType": "ETHEREUM_TRANSACTION",
+            "from": "0xdc079a637a1417020916FfB8a39fF5a2801A0F07"
+        }
+    ]
+}

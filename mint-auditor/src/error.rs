@@ -18,6 +18,9 @@ pub enum Error {
     /// Not found
     NotFound,
 
+    /// Already exists: {0}
+    AlreadyExists(String),
+
     /// IO: {0}
     Io(IoError),
 
@@ -71,6 +74,9 @@ impl From<DieselError> for Error {
     fn from(err: DieselError) -> Self {
         match err {
             DieselError::NotFound => Self::NotFound,
+            DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, info) => {
+                Self::AlreadyExists(info.message().to_string())
+            }
             err => Self::Diesel(err),
         }
     }
