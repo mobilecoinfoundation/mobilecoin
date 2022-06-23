@@ -164,6 +164,16 @@ pub struct RawGnosisTransaction {
 }
 
 impl RawGnosisTransaction {
+    /// Deserialize transaction from JSON.
+    pub fn from_json_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from(serde_json::from_slice::<Value>(bytes)?))
+    }
+
+    /// Serialize transaction into JSON.
+    pub fn to_json_string(&self) -> String {
+        self.raw.to_string()
+    }
+
     /// Decode a Gnosis Safe transaction.
     pub fn decode(&self) -> Result<Transaction, Error> {
         Ok(serde_json::from_value(self.raw.clone())?)
@@ -181,16 +191,6 @@ impl RawGnosisTransaction {
             })?;
         EthTxHash::from_str(hash_str)
             .map_err(|err| Error::Other(format!("Failed parsing tx hash '{}': {}", hash_str, err)))
-    }
-
-    /// Serialize transaction into JSON.
-    pub fn to_json_string(&self) -> String {
-        self.raw.to_string()
-    }
-
-    /// Deserialize transaction from JSON.
-    pub fn from_json_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        Ok(Self::from(serde_json::from_slice::<Value>(bytes)?))
     }
 }
 

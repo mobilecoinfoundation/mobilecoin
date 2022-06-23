@@ -393,7 +393,7 @@ mod tests {
 
         let (mint_audit_data, balance_map) =
             mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        assert_eq!(mint_audit_data, BlockAuditData::new(block.index),);
+        assert_eq!(mint_audit_data, BlockAuditData::new(block.index));
         assert_eq!(balance_map, Default::default());
 
         // Sync a block that contains a few mint transactions.

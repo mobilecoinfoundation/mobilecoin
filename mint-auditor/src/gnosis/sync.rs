@@ -7,16 +7,17 @@
 //! handle adding/removing safes/tokens for Gnosis transactions that were
 //! already processed.
 
-use super::{
-    api_data_types::{EthereumTransaction, MultiSigTransaction, RawGnosisTransaction, Transaction},
-    fetcher::GnosisSafeFetcher,
-    AuditedSafeConfig,
-};
 use crate::{
     counters,
     db::{Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb},
     error::Error,
-    gnosis::Error as GnosisError,
+    gnosis::{
+        api_data_types::{
+            EthereumTransaction, MultiSigTransaction, RawGnosisTransaction, Transaction,
+        },
+        fetcher::GnosisSafeFetcher,
+        AuditedSafeConfig, Error as GnosisError,
+    },
 };
 use mc_common::logger::{log, Logger};
 
