@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_config_txs` table.
 /// This stores audit data for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct MintConfigTx {
     /// Auto incrementing primary key.
     id: Option<i32>,
@@ -31,7 +33,7 @@ pub struct MintConfigTx {
     token_id: i64,
 
     /// The nonce, as hex-encoded bytes.
-    nonce: String,
+    nonce_hex: String,
 
     /// The maximal amount that can be minted by configurations specified in
     /// this tx. This amount is shared amongst all configs.
@@ -61,8 +63,8 @@ impl MintConfigTx {
     }
 
     /// Get nonce.
-    pub fn nonce(&self) -> &str {
-        &self.nonce
+    pub fn nonce_hex(&self) -> &str {
+        &self.nonce_hex
     }
 
     /// Get mint limit.
@@ -91,7 +93,7 @@ impl MintConfigTx {
                 id: None,
                 block_index: block_index as i64,
                 token_id: tx.prefix.token_id as i64,
-                nonce: hex::encode(&tx.prefix.nonce),
+                nonce_hex: hex::encode(&tx.prefix.nonce),
                 total_mint_limit: tx.prefix.total_mint_limit as i64,
                 tombstone_block: tx.prefix.tombstone_block as i64,
                 protobuf: encode(tx),
@@ -164,7 +166,7 @@ mod tests {
             TokenId::from(orig_mint_config_tx.prefix.token_id)
         );
         assert_eq!(
-            sql_mint_config_tx.nonce,
+            sql_mint_config_tx.nonce_hex,
             hex::encode(&orig_mint_config_tx.prefix.nonce)
         );
         assert_eq!(

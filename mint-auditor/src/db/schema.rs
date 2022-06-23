@@ -3,6 +3,14 @@
 #![allow(missing_docs)]
 
 table! {
+    audited_mints (id) {
+        id -> Nullable<Integer>,
+        mint_tx_id -> Integer,
+        gnosis_safe_deposit_id -> Integer,
+    }
+}
+
+table! {
     block_audit_data (id) {
         id -> Nullable<Integer>,
         block_index -> BigInt,
@@ -35,6 +43,7 @@ table! {
         safe_address -> Text,
         token_address -> Text,
         amount -> BigInt,
+        expected_mc_mint_tx_nonce_hex -> Text,
     }
 }
 
@@ -62,7 +71,7 @@ table! {
         id -> Nullable<Integer>,
         block_index -> BigInt,
         token_id -> BigInt,
-        nonce -> Text,
+        nonce_hex -> Text,
         total_mint_limit -> BigInt,
         tombstone_block -> BigInt,
         protobuf -> Binary,
@@ -84,7 +93,7 @@ table! {
         block_index -> BigInt,
         token_id -> BigInt,
         amount -> BigInt,
-        nonce -> Text,
+        nonce_hex -> Text,
         recipient_b58_address -> Text,
         tombstone_block -> BigInt,
         protobuf -> Binary,
@@ -92,12 +101,15 @@ table! {
     }
 }
 
+joinable!(audited_mints -> gnosis_safe_deposits (gnosis_safe_deposit_id));
+joinable!(audited_mints -> mint_txs (mint_tx_id));
 joinable!(gnosis_safe_deposits -> gnosis_safe_txs (eth_tx_hash));
 joinable!(gnosis_safe_withdrawals -> gnosis_safe_txs (eth_tx_hash));
 joinable!(mint_configs -> mint_config_txs (mint_config_tx_id));
 joinable!(mint_txs -> mint_configs (mint_config_id));
 
 allow_tables_to_appear_in_same_query!(
+    audited_mints,
     block_audit_data,
     block_balance,
     counters,

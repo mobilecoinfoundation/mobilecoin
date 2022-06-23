@@ -6,8 +6,10 @@ use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
+use hex::FromHexError;
 use mc_api::display::Error as ApiDisplayError;
 use mc_blockchain_types::BlockIndex;
+use mc_crypto_keys::KeyError;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_util_serial::DecodeError;
 use std::io::Error as IoError;
@@ -20,6 +22,12 @@ pub enum Error {
 
     /// Already exists: {0}
     AlreadyExists(String),
+
+    /// Object not saved to database
+    ObjectNotSaved,
+
+    /// Deposit and mint mismatch: {0}
+    DepositAndMintMismatch(String),
 
     /// IO: {0}
     Io(IoError),
@@ -47,6 +55,18 @@ pub enum Error {
 
     /// Api display: {0}
     ApiDisplay(ApiDisplayError),
+
+    /// Hex parse: {0}
+    HexParse(FromHexError),
+
+    /// Crypto key: {0}
+    Key(KeyError),
+
+    /// Invalid length: expected {0}, got {1}
+    InvalidLength(usize, usize),
+
+    /// Invalid nonce identifier: {0:?}
+    InvalidNonceIdentifier(Vec<u8>),
 
     /// Other: {0}
     Other(String),
@@ -103,6 +123,18 @@ impl From<GnosisError> for Error {
 impl From<ApiDisplayError> for Error {
     fn from(err: ApiDisplayError) -> Self {
         Self::ApiDisplay(err)
+    }
+}
+
+impl From<FromHexError> for Error {
+    fn from(err: FromHexError) -> Self {
+        Self::HexParse(err)
+    }
+}
+
+impl From<KeyError> for Error {
+    fn from(err: KeyError) -> Self {
+        Self::Key(err)
     }
 }
 

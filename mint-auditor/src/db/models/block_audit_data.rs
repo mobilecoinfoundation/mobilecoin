@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `block_audit_data` table.
 /// This stores audit data for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name = "block_audit_data"]
 pub struct BlockAuditData {
     /// Block index.

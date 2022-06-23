@@ -12,7 +12,7 @@ mod sync_thread;
 pub mod api_data_types;
 
 pub use self::{
-    config::{AuditedSafeConfig, GnosisSafeConfig},
+    config::{AuditedSafeConfig, AuditedToken, GnosisSafeConfig},
     error::Error,
     eth_data_types::{EthAddr, EthTxHash},
     sync::GnosisSync,

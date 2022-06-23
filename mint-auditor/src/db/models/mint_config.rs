@@ -17,7 +17,9 @@ use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_configs` table.
 /// This stores audit data for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct MintConfig {
     /// Auto incrementing primary key.
     id: Option<i32>,

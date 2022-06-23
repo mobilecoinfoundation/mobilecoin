@@ -6,11 +6,14 @@ use crate::{
     error::Error,
 };
 use diesel::prelude::*;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `gnosis_safe_withdrawals` table.
 /// This table stores withdrawals into the monitored gnosis safe.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct GnosisSafeWithdrawal {
     /// Id (required to keep Diesel happy).
     id: Option<i32>,
@@ -89,6 +92,12 @@ impl GnosisSafeWithdrawal {
     /// Get associated mobilecoin transaction public key (hex-encoded).
     pub fn mc_tx_out_public_key_hex(&self) -> &str {
         &self.mc_tx_out_public_key_hex
+    }
+
+    /// Get the associated mobilecoin transaction public key
+    pub fn mc_tx_out_public_key(&self) -> Result<CompressedRistrettoPublic, Error> {
+        let key_bytes = hex::decode(&self.mc_tx_out_public_key_hex)?;
+        Ok(CompressedRistrettoPublic::try_from(&key_bytes[..])?)
     }
 }
 

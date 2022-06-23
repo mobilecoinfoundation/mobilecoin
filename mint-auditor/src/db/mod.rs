@@ -7,6 +7,7 @@ pub mod test_utils;
 
 mod conn;
 mod models;
+mod sql_types;
 mod transaction;
 
 /// Db schema (made public for anyone wanting to do custom queries).
@@ -15,9 +16,10 @@ pub mod schema;
 pub use self::{
     conn::{Conn, ConnectionOptions},
     models::{
-        BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
+        AuditedMint, BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
         GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
+    sql_types::{SqlEthAddr, SqlEthTxHash},
     transaction::{transaction, TransactionRetriableError},
 };
 

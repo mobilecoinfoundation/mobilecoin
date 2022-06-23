@@ -35,7 +35,7 @@ CREATE TABLE mint_config_txs (
     -- The token id this mint config tx is for.
     token_id BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
     -- The maximal amount that can be minted by configurations specified in
     -- this tx. This amount is shared amongst all configs.
     total_mint_limit BIGINT NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE mint_txs (
     -- The amount that was minted.
     amount BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
     -- The recipient of the mint.
     recipient_b58_address TEXT NOT NULL,
     -- Tombstone block.
@@ -83,6 +83,7 @@ CREATE TABLE mint_txs (
     -- Constraints
     FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
 );
+CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
 
 -- Processed gnosis safe transactions
 CREATE TABLE gnosis_safe_txs (
@@ -98,10 +99,14 @@ CREATE TABLE gnosis_safe_deposits (
     safe_address VARCHAR(42) NOT NULL,
     token_address VARCHAR(42) NOT NULL,
     amount BIGINT NOT NULL,
+    -- This is the expected nonce of the matching MintTx we want to see on the MobileCoin blockchain.
+    -- It is derived from eth_tx_hash, but is stored here to make querying easier and more efficient.
+    expected_mc_mint_tx_nonce_hex VARCHAR(128) NOT NULL,
     -- Constraints
     FOREIGN KEY (eth_tx_hash) REFERENCES gnosis_safe_txs(eth_tx_hash)
 );
 CREATE INDEX idx__gnosis_safe_deposits__eth_block_number ON gnosis_safe_deposits(eth_block_number);
+CREATE INDEX idx__gnosis_safe_deposits__expected_mc_mint_tx_nonce_hex ON gnosis_safe_deposits(expected_mc_mint_tx_nonce_hex);
 
 -- Withdrawals from the gnosis safe.
 CREATE TABLE gnosis_safe_withdrawals (
@@ -117,6 +122,18 @@ CREATE TABLE gnosis_safe_withdrawals (
 );
 CREATE INDEX idx__gnosis_safe_withdrawals__eth_block_number ON gnosis_safe_withdrawals(eth_block_number);
 CREATE INDEX idx__gnosis_safe_withdrawals__mc_tx_out_public_key_hex ON gnosis_safe_withdrawals(mc_tx_out_public_key_hex);
+
+-- Mapping between MintTxs and GnosisSafeDeposits that match eachother.
+-- This essentially is the audit log that shows which mints/deposits were a match.
+-- If a mint or deposit are not referenced by this table that means something questionable happened.
+CREATE TABLE audited_mints (
+    id INTEGER PRIMARY KEY,
+    mint_tx_id INTEGER NOT NULL,
+    gnosis_safe_deposit_id INTEGER NOT NULL,
+    -- Constraints
+    FOREIGN KEY (mint_tx_id) REFERENCES mint_txs(id),
+    FOREIGN KEY (gnosis_safe_deposit_id) REFERENCES gnosis_safe_deposits(id)
+);
 
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
