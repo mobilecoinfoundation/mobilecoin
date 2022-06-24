@@ -8,7 +8,7 @@ use mc_blockchain_types::BlockIndex;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     ffi::OsStr,
     fs,
     ops::RangeInclusive,
@@ -16,7 +16,7 @@ use std::{
 };
 
 /// Container for keys with a range of block indexes that are valid per key.
-pub type KeyValidityMap = BTreeMap<Ed25519Public, Vec<RangeInclusive<BlockIndex>>>;
+pub type KeyValidityMap = HashMap<Ed25519Public, Vec<RangeInclusive<BlockIndex>>>;
 
 const PUBLIC_KEY_TAG: &str = "PUBLIC KEY";
 
