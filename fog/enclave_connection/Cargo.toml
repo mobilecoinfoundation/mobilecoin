@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-enclave-connection"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"

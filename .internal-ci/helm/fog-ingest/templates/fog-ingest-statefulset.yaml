@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "fogIngest.labels" . | nindent 4 }}
 spec:
+  podManagementPolicy: Parallel
   replicas: {{ .Values.fogIngest.replicaCount }}
   selector:
     matchLabels:

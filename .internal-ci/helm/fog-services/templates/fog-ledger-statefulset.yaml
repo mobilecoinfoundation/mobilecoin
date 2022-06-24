@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
+  podManagementPolicy: {{ .Values.fogLedger.podManagementPolicy }}
   replicas: {{ .Values.fogLedger.replicaCount }}
   selector:
     matchLabels:
@@ -76,8 +77,9 @@ spec:
             command:
             - "/usr/local/bin/grpc_health_probe"
             - "-addr=:3228"
-          failureThreshold: 30
-          periodSeconds: 10
+          # Wait up to 2 hours for startup
+          failureThreshold: 240
+          periodSeconds: 30
         # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
         livenessProbe:
           exec:

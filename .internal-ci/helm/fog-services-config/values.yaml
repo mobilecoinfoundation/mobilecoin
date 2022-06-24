@@ -48,7 +48,7 @@ fogView:
     POSTGRES_MAX_LIFETIME: '120'
     POSTGRES_CONNECTION_TIMEOUT: '5'
     POSTGRES_MAX_CONNECTIONS: '3'
-    OMAP_CAPACITY: '4194304'
+    MC_OMAP_CAPACITY: '4194304'
 
 fogLedger:
   ### Cookie salts will be generated if no values are provided
@@ -60,7 +60,7 @@ fogLedger:
     cookie:
       salt: ''
   configMap:
-    OMAP_CAPACITY: '4194304'
+    MC_OMAP_CAPACITY: '4194304'
 
 ### fogPublicFQDN
 #   Public domain names for ingres into fog services.

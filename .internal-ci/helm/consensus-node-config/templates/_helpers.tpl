@@ -64,7 +64,34 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- tpl .Values.node.peer.hostname . }}
 {{- end }}
 
+{{/* TX_SOURCE_URL */}}
+{{- define "consensusNodeConfig.txSourceUrl" -}}
+{{- tpl .Values.node.txSourceUrl . }}
+{{- end }}
+
 {{/* ledgerDistributionAWSPath */}}
 {{- define "consensusNodeConfig.ledgerDistributionAWSPath" -}}
 {{ printf "s3://%s/%s?region=%s" .Values.global.node.ledgerDistribution.s3Bucket (include "consensusNodeConfig.clientHostname" .) .Values.global.node.ledgerDistribution.awsRegion }}
+{{- end }}
+
+{{/* networkJson */}}
+{{- define "consensusNodeConfig.networkJson" -}}
+{{- $peers := .Values.global.node.networkConfig.peers }}
+{{- $localPeer := (include "consensusNodeConfig.peerHostname" .) }}
+{{- $threshold := .Values.global.node.networkConfig.threshold }}
+{{- $broadcastPeers := list }}
+{{- $txSourceUrls := list }}
+{{- $members := list }}
+{{- range $key, $value := $peers }}
+{{- $peer := tpl $value.peer.hostname $ }}
+{{- $archive := tpl $value.ledgerArchiveLocation $ }}
+{{- if not (eq $peer $localPeer) }}
+{{- $broadcastPeers = append $broadcastPeers (printf "mcp://%s:%s/?consensus-msg-key=%s" $peer $value.peer.port $value.signerPublicKey) }}
+{{- $txSourceUrls = append $txSourceUrls $archive }}
+{{- $members = append $members (dict "type" "Node" "args" (printf "%s:%s" $peer $value.peer.port)) }}
+{{- end }}
+{{- end }}
+{{- $quorumSet := dict "threshold" (atoi $threshold) "members" $members }}
+{{- $networkJson := dict "broadcast_peers" $broadcastPeers "tx_source_urls" $txSourceUrls "quorum_set" $quorumSet }}
+{{- toPrettyJson $networkJson }}
 {{- end }}

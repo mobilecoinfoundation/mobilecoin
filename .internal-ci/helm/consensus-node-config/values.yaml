@@ -13,6 +13,9 @@ node:
   peer:
     hostname: ''
 
+  ### S3 bucket for thin node's ledger
+  txSourceUrl: ''
+
   ### This nodes's Message Signing Key
   msgSignerKey:
      privateKey: ''

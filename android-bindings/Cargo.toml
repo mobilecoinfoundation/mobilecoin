@@ -1,6 +1,6 @@
 [package]
 name = "mc-android-bindings"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["MobileCoin"]
 edition = "2018"
 resolver = "2"
@@ -11,6 +11,9 @@ name = "mobilecoin_android"
 crate-type = ["cdylib"]
 
 [dependencies]
+# External dependencies
+crc = "3.0.0"
+
 # fog
 mc-fog-kex-rng = { path = "../fog/kex_rng" }
 
