@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -38,7 +38,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -93,7 +93,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -134,7 +134,7 @@ jobs:
 
   cbindgen:
     runs-on: [self-hosted, Linux, small]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -150,7 +150,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -169,7 +169,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     strategy:
       matrix:
@@ -208,7 +208,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     strategy:
       matrix:
@@ -241,7 +241,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     strategy:
       matrix:
@@ -282,14 +282,14 @@ jobs:
           args: $(cat /tmp/fog-test-packages) --build-jobs 4
           junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
         env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://localhost
+          # TEST_DATABASE_URL points at the server; omitting the host defaults to unix socket.
+          # Fog recovery DB tests create and drop PG databases.
+          TEST_DATABASE_URL: postgres://
 
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -305,14 +305,14 @@ jobs:
           args: -p 'mc-fog-ingest-*' --release
           junit_xml_filename: junit-fog-ingest-tests.xml
         env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://localhost
+          # TEST_DATABASE_URL points at the server; omitting the host defaults to unix socket.
+          # Fog recovery DB tests create and drop PG databases.
+          TEST_DATABASE_URL: postgres://
 
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -338,9 +338,8 @@ jobs:
       - name: fog_conformance_tests.py
         working-directory: tools/fog-local-network
         env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://localhost
+          # DATABASE_URL points at a specific DB. The test script has FOG_SQL_DATABASE_NAME=fog_local.
+          DATABASE_URL: postgres:///fog_local
         run: |
           . ./env/bin/activate
           python3 fog_conformance_tests.py --release
@@ -352,7 +351,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.12
 
     steps:
       - name: Check out code
@@ -412,9 +411,8 @@ jobs:
           service postgresql start
       - name: Run local network
         env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://localhost
+          # DATABASE_URL points at a specific DB. The test script has FOG_SQL_DATABASE_NAME=fog_local.
+          DATABASE_URL: postgres:///fog_local
         run: |
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/fog-local-network"

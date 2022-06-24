@@ -10,7 +10,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_29
+  builder-install: &builder-install mobilecoin/builder-install:v0.0.12
   android-bindings-builder: &android-bindings-builder gcr.io/mobilenode-211420/android-bindings-builder:1_4
   default-xcode-version: &default-xcode-version "12.0.0"
 
@@ -142,7 +142,7 @@ commands:
             set -x
 
             command -v cargo-trim >/dev/null \
-              || (cd .. && rustup run --install stable cargo install cargo-trim)
+              || (cd .. && cargo install cargo-trim)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
@@ -247,8 +247,9 @@ commands:
           command: |
             command -v rustup >/dev/null \
               || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain stable
+            . ${CARGO_HOME:-~/.cargo}/env
             # Installs the toolchain specified in `rust-toolchain`
-            "$HOME/.cargo/bin/rustup" show active-toolchain
+            rustup show active-toolchain
 
   install-ci-deps:
     parameters:
@@ -258,11 +259,11 @@ commands:
           name: Install CI dependencies
           command: |
             cd ..
-            command -v sccache >/dev/null || rustup run --install stable cargo install sccache
-            command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
-            command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
+            command -v sccache >/dev/null || cargo install sccache
+            command -v cargo-cache >/dev/null || cargo install cargo-cache
+            command -v cargo2junit >/dev/null || cargo install cargo2junit
             <<# parameters.cbindgen >>
-              command -v cbindgen >/dev/null || rustup run --install stable cargo install cbindgen
+              command -v cbindgen >/dev/null || cargo install cbindgen
             <</ parameters.cbindgen >>
 
   update-ci-deps:
@@ -297,7 +298,7 @@ commands:
             echo "Starting PostgreSQL"
             service postgresql start
             # Setup test environment
-            TEST_DATABASE_URL="postgres://localhost"
+            TEST_DATABASE_URL="postgres://"
             echo "export TEST_DATABASE_URL=\"$TEST_DATABASE_URL\"" >> $BASH_ENV
 
   prepare-for-build:
@@ -305,6 +306,12 @@ commands:
       cbindgen: { type: boolean, default: false }
       os: { type: enum, enum: [ "linux", "macos", "windows" ], default: linux }
     steps:
+      - run:
+          name: Work around git safe directory check
+          command: |
+            [[ -d /tmp/_circleci_local_build_repo ]] && \
+              git config --global --add safe.directory /tmp/_circleci_local_build_repo || \
+              true
       - checkout
       - when:
           condition: { equal: [ << parameters.os >>, macos ] }
@@ -432,6 +439,9 @@ commands:
             export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            # DATABASE_URL points at a specific DB.
+            # The test script has FOG_SQL_DATABASE_NAME=fog_local.
+            export DATABASE_URL=postgres:///fog_local
 
             apt-get update && apt-get install -y python3-venv
             cd tools/fog-local-network
@@ -470,6 +480,9 @@ commands:
             export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export MC_LOG=trace
+            # DATABASE_URL points at a specific DB.
+            # The test script has FOG_SQL_DATABASE_NAME=fog_local.
+            export DATABASE_URL=postgres:///fog_local
 
             cargo build -p mc-util-keyfile -p mc-util-generate-sample-ledger -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-sql-recovery-db  -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --release
             export FOG_AUTHORITY_ROOT=$(./target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
@@ -764,8 +777,20 @@ jobs:
     environment:
       <<: *default-build-environment
     steps:
-      - checkout
       - prepare-for-build
+      - run:
+          name: Install go as needed
+          command: |
+            command -v go >/dev/null || (
+              wget https://go.dev/dl/go1.18.3.linux-amd64.tar.gz
+              tar -C /usr/local -xzf go1.18.3.linux-amd64.tar.gz
+              rm go1.18.3.linux-amd64.tar.gz
+
+              echo 'export GOPATH=/usr/local/go' >> $BASH_ENV
+              echo 'export PATH=$PATH:$GOPATH/bin' >> $BASH_ENV
+            )
+            . $BASH_ENV
+            go version
       - run:
           name: go build
           command: cd go-grpc-gateway && ./install_tools.sh && ./build.sh
