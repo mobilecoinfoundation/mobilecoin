@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/mobilecoin/api
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE

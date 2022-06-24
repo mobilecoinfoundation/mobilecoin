@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/mobilecoin/mobilecoind-api
+deps:
+  - buf.build/mobilecoin/api
+  - buf.build/mobilecoin/consensus-api
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE

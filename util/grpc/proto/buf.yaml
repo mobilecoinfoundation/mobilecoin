@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/mobilecoin/grpc-util
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE
