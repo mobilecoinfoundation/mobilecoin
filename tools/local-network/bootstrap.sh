@@ -26,8 +26,9 @@ echo "PWD: $PWD"
 PROJECT_ROOT=$PWD
 
 # Collect parameters for the bootstrap
-SAMPLE_KEYS_NUM=${NUM_KEYS:-20}
-BOOTSTRAP_NUM=${NUM_UTXOS_PER_ACCOUNT:-100}
+NUM_KEYS=${NUM_KEYS=20}
+NUM_UTXOS_PER_ACCOUNT=${NUM_UTXOS_PER_ACCOUNT=100}
+MAX_TOKEN_ID=${MAX_TOKEN_ID=0}
 
 TARGET="./target/sample_data"
 
@@ -39,7 +40,12 @@ if [ -d $TARGET ]; then
 
         OLD_NUM_KEYS=$(jq .NUM_KEYS < $TARGET/conf.json)
         OLD_NUM_UTXOS=$(jq .NUM_UTXOS_PER_ACCOUNT < $TARGET/conf.json)
-        if [ "$OLD_NUM_KEYS" -eq "$SAMPLE_KEYS_NUM" -a "$OLD_NUM_UTXOS" -eq "$BOOTSTRAP_NUM" ]; then
+        OLD_MAX_TOKEN_ID=$(jq .MAX_TOKEN_ID < $TARGET/conf.json)
+        if [ \
+            "$OLD_NUM_KEYS" -eq "$NUM_KEYS" -a \
+            "$OLD_NUM_UTXOS" -eq "$NUM_UTXOS_PER_ACCOUNT" -a \
+            "$OLD_MAX_TOKEN_ID" -eq "$MAX_TOKEN_ID" \
+        ]; then
             echo "Skipping bootstrap"
             exit 0
         else
@@ -50,10 +56,27 @@ if [ -d $TARGET ]; then
     fi
 fi
 
+if [ -d $TARGET/ledger ]; then
+    echo "Can't bootstrap on top of pre-existing ledger, please delete $TARGET to start from scratch."
+    exit 1
+fi
+
 mkdir -p $TARGET
 cd $TARGET
 
 set -x
 
-cargo run -p mc-util-keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
-cargo run -p mc-util-generate-sample-ledger --bin generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM}
+cargo run \
+    -p mc-util-keyfile \
+    --bin sample-keys \
+    --release \
+    -- \
+    --num $NUM_KEYS \
+    --output-dir keys
+cargo run \
+    -p mc-util-generate-sample-ledger \
+    --bin generate-sample-ledger \
+    --release \
+    -- \
+    --txs $NUM_UTXOS_PER_ACCOUNT \
+    --max-token-id $MAX_TOKEN_ID

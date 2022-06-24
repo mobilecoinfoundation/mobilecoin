@@ -70,9 +70,10 @@ pub fn bootstrap_ledger(
     log::info!(logger, "recipients: {}", recipients.len());
     log::info!(
         logger,
-        "Making {:?} outputs of {:?} picoMOB.",
+        "Making {:?} outputs of {:?} picoMOB, up to token ID {:?}.",
         num_outputs,
-        picomob_per_output
+        picomob_per_output,
+        max_token_id,
     );
 
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
@@ -85,6 +86,7 @@ pub fn bootstrap_ledger(
     } else {
         BLOCK_VERSION
     };
+    log::info!(logger, "Using block version {}", block_version);
 
     for block_index in 0..num_blocks as u64 {
         log::info!(logger, "Creating block {} of {}.", block_index, num_blocks);
@@ -99,7 +101,12 @@ pub fn bootstrap_ledger(
                         token_id: token_id.into(),
                     };
                     outputs.push(create_output(
-                        recipient, amount, &mut rng, hint_text, &logger,
+                        block_version,
+                        recipient,
+                        amount,
+                        &mut rng,
+                        hint_text,
+                        &logger,
                     ));
                 }
             }
@@ -131,23 +138,35 @@ pub fn bootstrap_ledger(
     }
 
     for (block, block_contents) in blocks_and_contents {
-        db.append_block(&block, &block_contents, None).unwrap();
+        db.append_block(&block, &block_contents, None).expect("Duplicate key, because of re-using old sample ledger. Delete target/sample_data/ledger  to start from scratch.");
     }
 
     // Write conf.json
     let mut file = std::fs::File::create("conf.json").expect("File creation");
     use std::io::Write;
-    write!(&mut file,
-           r##"{{ "NUM_KEYS": {}, "NUM_UTXOS_PER_ACCOUNT": {}, "NUM_BLOCKS": {}, "NUM_EXTRA_KEY_IMAGES_PER_BLOCK": {}, "GIT_COMMIT": "{}" }}"##,
-           recipients.len(),
-           outputs_per_recipient_per_block,
-           num_blocks,
-           key_images_per_block,
-           mc_util_build_info::git_commit(),
-    ).expect("File I/O");
+    write!(
+        &mut file,
+        r##"
+{{
+    "NUM_KEYS": {},
+    "NUM_UTXOS_PER_ACCOUNT": {},
+    "NUM_BLOCKS": {},
+    "NUM_EXTRA_KEY_IMAGES_PER_BLOCK": {},
+    "MAX_TOKEN_ID": {},
+    "GIT_COMMIT": "{}"
+ }}"##,
+        recipients.len(),
+        outputs_per_recipient_per_block,
+        num_blocks,
+        key_images_per_block,
+        max_token_id,
+        mc_util_build_info::git_commit(),
+    )
+    .expect("File I/O");
 }
 
 fn create_output(
+    block_version: BlockVersion,
     recipient: &PublicAddress,
     amount: Amount,
     rng: &mut FixedRng,
@@ -169,7 +188,7 @@ fn create_output(
         EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    let output = TxOut::new(BLOCK_VERSION, amount, recipient, &tx_private_key, hint).unwrap();
+    let output = TxOut::new(block_version, amount, recipient, &tx_private_key, hint).unwrap();
     log::debug!(logger, "Creating output: {:?}", output);
     output
 }
@@ -197,6 +216,7 @@ mod tests {
         // Case with short hint text
         let hint_slice = "Vaccine 90% effective";
         let output = create_output(
+            BLOCK_VERSION,
             &account_key.subaddress(0),
             amount,
             &mut fixed_rng,
@@ -210,6 +230,7 @@ mod tests {
         // Case hint text longer than ENCRYPTED_FOG_HINT_LEN
         let hint_slice = "Covid-19 Vaccine 90% Up to 90% Effective in Late-Stage Trials - LONDON — the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19 — setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year.";
         let output = create_output(
+            BLOCK_VERSION,
             &account_key.subaddress(0),
             amount,
             &mut fixed_rng,
@@ -224,6 +245,7 @@ mod tests {
         // Case with empty string as hint text
         let hint_slice = "";
         let output = create_output(
+            BLOCK_VERSION,
             &account_key.subaddress(0),
             amount,
             &mut fixed_rng,

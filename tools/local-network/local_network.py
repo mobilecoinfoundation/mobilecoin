@@ -559,7 +559,10 @@ class Network:
     def default_entry_point(self, network_type, skip_build=False, block_version=None):
         self.block_version = block_version
 
-        if network_type == 'dense5':
+        if network_type == 'singleton':
+            self.add_node('a', [], QuorumSet(0, []))
+
+        elif network_type == 'dense5':
             #  5 node interconnected network requiring 4 out of 5  nodes.
             num_nodes = 5
             for i in range(num_nodes):
