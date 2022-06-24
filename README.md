@@ -82,7 +82,7 @@ MobileCoin is a payment network with no central authority. The fundamental goal 
 
 Here we review a few design concepts that are essential for understanding the software.
 
-##### Transactions
+### Transactions
 
 The MobileCoin blockchain is the source of truth for the allocation of value. It consists of an ordered collection of *transaction outputs*, organized into blocks. Each *transaction output* ("*txo*") has a unique corresponding construction called a *key image*. Every *txo* initially appears in the blockchain in a spendable state, as an *unspent transaction output* or *utxo*. Every successful payment consumes some *utxos* as inputs and creates new *utxos* as outputs. When a *utxo* is consumed, its corresponding *key image* is permanently added to the blockchain, ensuring that it can not be spent a second time.
 
