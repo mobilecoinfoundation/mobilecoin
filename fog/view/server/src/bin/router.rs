@@ -44,10 +44,7 @@ fn main() {
             .build(),
     );
     for i in 0..50 {
-        let shard_uri_string = format!(
-            "insecure-fog-view://node{}.test.mobilecoin.com:3225",
-            i
-        );
+        let shard_uri_string = format!("insecure-fog-view://node{}.test.mobilecoin.com:3225", i);
         let shard_uri = FogViewUri::from_str(&shard_uri_string).unwrap();
         let fog_view_grpc_client = FogViewApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
