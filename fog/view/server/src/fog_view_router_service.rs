@@ -15,7 +15,10 @@ use mc_util_metrics::SVC_COUNTERS;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct FogViewRouterService<E: ViewEnclaveProxy> {
+pub struct FogViewRouterService<E>
+where
+    E: ViewEnclaveProxy,
+{
     enclave: E,
     shard_clients: Vec<Arc<FogViewApiClient>>,
     logger: Logger,
@@ -37,7 +40,10 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     }
 }
 
-impl<E: ViewEnclaveProxy> FogViewRouterApi for FogViewRouterService<E> {
+impl<E> FogViewRouterApi for FogViewRouterService<E>
+where
+    E: ViewEnclaveProxy,
+{
     fn request(
         &mut self,
         ctx: RpcContext,

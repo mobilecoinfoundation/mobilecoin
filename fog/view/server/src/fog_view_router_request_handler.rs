@@ -24,13 +24,16 @@ use std::{str::FromStr, sync::Arc};
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
-pub async fn handle_requests<E: ViewEnclaveProxy>(
+pub async fn handle_requests<E>(
     shard_clients: Vec<Arc<FogViewApiClient>>,
     enclave: E,
     mut requests: RequestStream<FogViewRouterRequest>,
     mut responses: DuplexSink<FogViewRouterResponse>,
     logger: Logger,
-) -> Result<(), grpcio::Error> {
+) -> Result<(), grpcio::Error>
+where
+    E: ViewEnclaveProxy,
+{
     while let Some(request) = requests.try_next().await? {
         let result = handle_request(
             request,
@@ -50,12 +53,15 @@ pub async fn handle_requests<E: ViewEnclaveProxy>(
 
 /// Handles a client's request by performing either an authentication or a
 /// query.
-pub async fn handle_request<E: ViewEnclaveProxy>(
+pub async fn handle_request<E>(
     mut request: FogViewRouterRequest,
     shard_clients: Vec<Arc<FogViewApiClient>>,
     enclave: E,
     logger: Logger,
-) -> Result<FogViewRouterResponse, RpcStatus> {
+) -> Result<FogViewRouterResponse, RpcStatus>
+where
+    E: ViewEnclaveProxy,
+{
     if request.has_auth() {
         return handle_auth_request(enclave, request.take_auth(), logger).await;
     } else if request.has_query() {
@@ -71,11 +77,14 @@ pub async fn handle_request<E: ViewEnclaveProxy>(
 }
 
 /// Handles a client's authentication request.
-async fn handle_auth_request<E: ViewEnclaveProxy>(
+async fn handle_auth_request<E>(
     enclave: E,
     auth_message: attest::AuthMessage,
     logger: Logger,
-) -> Result<FogViewRouterResponse, RpcStatus> {
+) -> Result<FogViewRouterResponse, RpcStatus>
+where
+    E: ViewEnclaveProxy,
+{
     let (client_auth_response, _) = enclave.client_accept(auth_message.into()).map_err(|err| {
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
@@ -86,12 +95,15 @@ async fn handle_auth_request<E: ViewEnclaveProxy>(
 }
 
 /// Handles a client's query request.
-async fn handle_query_request<E: ViewEnclaveProxy>(
+async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
     shard_clients: Vec<Arc<FogViewApiClient>>,
     logger: Logger,
-) -> Result<FogViewRouterResponse, RpcStatus> {
+) -> Result<FogViewRouterResponse, RpcStatus>
+where
+    E: ViewEnclaveProxy,
+{
     let mut query_responses: Vec<attest::Message> = Vec::with_capacity(shard_clients.len());
     let mut shard_clients = shard_clients.clone();
     // TODO: use retry crate?
