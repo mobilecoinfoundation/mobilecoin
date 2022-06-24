@@ -26,7 +26,7 @@ pub fn setup_default_tracer_with_tags(
     extra_tags: &[(&'static str, String)],
 ) -> Result<Option<sdk::trace::Tracer>, Error> {
     let telemetry_enabled = std::env::var("MC_TELEMETRY")
-        .map(|val| val == "0" || val.to_lowercase() == "true")
+        .map(|val| val == "1" || val.to_lowercase() == "true")
         .unwrap_or(false);
     if !telemetry_enabled {
         return Ok(None);
