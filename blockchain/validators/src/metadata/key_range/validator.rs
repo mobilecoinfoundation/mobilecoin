@@ -37,12 +37,10 @@ impl KeyRangeValidator {
     ) -> Result<(), ValidationError> {
         let ranges = self.config.get(key).ok_or(ValidationError::UnknownPubKey)?;
 
-        for range in ranges {
-            if range.contains(&block_index) {
-                return Ok(());
-            }
+        if ranges.iter().any(|range| range.contains(&block_index)) {
+            Ok(())
+        } else {
+            Err(ValidationError::InvalidPubKey)
         }
-
-        Err(ValidationError::InvalidPubKey)
     }
 }
