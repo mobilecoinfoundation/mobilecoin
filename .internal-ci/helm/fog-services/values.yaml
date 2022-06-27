@@ -88,7 +88,7 @@ fogReport:
       POSTGRES_MAX_CONNECTIONS: '3'
 
 fogView:
-  replicaCount: 2
+  replicaCount: 4
   image:
     org: ''
     name: fogview
