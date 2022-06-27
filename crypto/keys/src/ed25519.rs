@@ -106,6 +106,12 @@ impl AsRef<[u8]> for Ed25519Public {
     }
 }
 
+impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
+    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
+        self.0.as_bytes()
+    }
+}
+
 impl TryFrom<&[u8]> for Ed25519Public {
     type Error = KeyError;
 
@@ -116,9 +122,11 @@ impl TryFrom<&[u8]> for Ed25519Public {
     }
 }
 
-impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
-    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
-        self.0.as_bytes()
+impl TryFrom<Vec<u8>> for Ed25519Public {
+    type Error = KeyError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
     }
 }
 
@@ -290,6 +298,14 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
     }
 }
 
+impl TryFrom<Vec<u8>> for Ed25519Private {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Ed25519Pair(Keypair);
 
@@ -359,6 +375,14 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
     }
 }
 
+impl TryFrom<Vec<u8>> for Ed25519Pair {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
+    }
+}
+
 impl Verifier<Ed25519Signature> for Ed25519Pair {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
@@ -423,6 +447,14 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
 
     fn try_from(bytes: &'a [u8]) -> Result<Self, SignatureError> {
         Ok(Self(Signature::try_from(bytes)?))
+    }
+}
+
+impl TryFrom<Vec<u8>> for Ed25519Signature {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
     }
 }
 
