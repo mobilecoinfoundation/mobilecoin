@@ -239,8 +239,7 @@ impl PartialEq for AccountKey {
 
 impl PartialOrd for AccountKey {
     fn partial_cmp(&self, other: &AccountKey) -> Option<Ordering> {
-        self.default_subaddress()
-            .partial_cmp(&other.default_subaddress())
+        Some(self.default_subaddress().cmp(&other.default_subaddress()))
     }
 }
 
@@ -485,8 +484,7 @@ impl PartialEq for ViewAccountKey {
 
 impl PartialOrd for ViewAccountKey {
     fn partial_cmp(&self, other: &ViewAccountKey) -> Option<Ordering> {
-        self.default_subaddress()
-            .partial_cmp(&other.default_subaddress())
+        Some(self.default_subaddress().cmp(&other.default_subaddress()))
     }
 }
 
@@ -778,6 +776,13 @@ mod account_key_tests {
         assert_eq!(
             account_key.default_subaddress(),
             view_account_key.default_subaddress()
-        )
+        );
+
+        assert_eq!(
+            account_key.change_subaddress(),
+            view_account_key.change_subaddress()
+        );
+
+        assert_eq!(account_key.subaddress(500), view_account_key(500));
     }
 }
