@@ -10,7 +10,7 @@ use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.17.100.3";
+const SGX_VERSION: &str = "2.16.100.4";
 
 const VIEW_ENCLAVE_PRODUCT_ID: u16 = 3;
 const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 3;

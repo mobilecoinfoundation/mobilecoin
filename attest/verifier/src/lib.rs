@@ -392,9 +392,7 @@ mod test {
         "../data/Dev_AttestationReportSigningCACert.pem"
     )];
 
-    /// This function provides a recorded response using SW_HARDENING_NEEDED for
-    /// the INTEL-SA-00334 (LVI) advisory
-    fn get_334_report() -> VerificationReport {
+    fn get_ias_report() -> VerificationReport {
         VerificationReport {
             sig: VerificationSignature::from(vec![164u8, 105, 80, 134, 234, 173, 20, 233, 176, 192, 25, 170, 37, 122, 173, 94, 120, 55, 98, 212, 183, 187, 59, 31, 240, 29, 174, 87, 172, 54, 130, 3, 13, 59, 86, 196, 184, 158, 92, 217, 70, 198, 227, 246, 144, 228, 146, 81, 119, 241, 39, 69, 6, 15, 100, 53, 62, 28, 53, 194, 127, 121, 234, 167, 234, 97, 45, 195, 138, 118, 4, 207, 165, 114, 78, 22, 85, 167, 77, 74, 135, 25, 115, 81, 97, 222, 27, 227, 110, 0, 210, 66, 161, 3, 166, 188, 114, 73, 50, 201, 9, 138, 41, 27, 144, 163, 91, 255, 221, 42, 194, 86, 198, 103, 130, 155, 90, 64, 61, 249, 48, 106, 69, 205, 196, 118, 35, 153, 243, 197, 124, 204, 79, 205, 125, 181, 12, 190, 13, 25, 192, 30, 53, 190, 149, 11, 230, 63, 116, 15, 55, 231, 226, 169, 242, 126, 181, 8, 81, 98, 140, 166, 26, 138, 66, 4, 170, 178, 111, 158, 129, 140, 217, 171, 157, 212, 23, 225, 191, 137, 187, 254, 127, 111, 138, 209, 39, 250, 26, 250, 96, 217, 48, 113, 99, 175, 107, 179, 17, 213, 139, 116, 98, 193, 149, 89, 202, 239, 248, 42, 155, 39, 67, 173, 142, 59, 191, 54, 26, 196, 19, 67, 25, 159, 210, 199, 112, 156, 218, 117, 76, 1, 30, 251, 240, 15, 57, 141, 41, 242, 70, 42, 134, 68, 224, 117, 137, 47, 152, 246, 220, 192, 32, 201, 242, 58]),
             chain: vec![
@@ -404,8 +402,6 @@ mod test {
             http_body: String::from("{\"nonce\":\"ca1bb26d4a756cabf422206fc1953e4b\",\"id\":\"179687352362288239547319787000716174273\",\"timestamp\":\"2020-09-14T23:07:16.215597\",\"version\":4,\"epidPseudonym\":\"g4cL6vn6M9IDTPSqhX8Pf7Sr9+T7z4gDo9AS85sRtTzb/TwNlXWinJvc32CaMyYxBS47BasT0X28+sZcwivjU0sMLvw4m6+fzHNNn35aDNSpxb0Uex3jzgDuCRFnf8ALnusnQCta9T4+pdSa8q+jiH/rH8o5rhWhbMEWQOn6eL4=\",\"advisoryURL\":\"https://security-center.intel.com\",\"advisoryIDs\":[\"INTEL-SA-00334\"],\"isvEnclaveQuoteStatus\":\"SW_HARDENING_NEEDED\",\"isvEnclaveQuoteBody\":\"AgABAMYLAAALAAoAAAAAAJa61F5HK4XuN+hpUAosFDUAAAAAAAAAAAAAAAAAAAAADw8DBf+ABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAHAAAAAAAAAEX7JCJMNjPsjbUdCQvxHeTedsKGbAYBAjFQINmXhrgsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADRH0aZv+C3tUfOY+GILgHu0MZUeSireJoxWoeJjyxTTQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACrVp3CmSVw8JKk216nJxDjuvgQhd5061+C3IFKOR4zFbRGu2agQhwp2GNkGUHW8zZaRLp4BJ0UyeGr0mJbxhkU\"}"),
         }
     }
-
-    // FIXME: Add 334+615 exemplar
 
     /// Ensure a verifier without any status verifiers can pass.
     #[test]
@@ -417,7 +413,7 @@ mod test {
                 &IasNonce::from_hex("ca1bb26d4a756cabf422206fc1953e4b")
                     .expect("Could not parse nonce hex"),
             )
-            .verify(&get_334_report())
+            .verify(&get_ias_report())
             .expect("Could not verify IAS report");
     }
 
@@ -428,19 +424,19 @@ mod test {
             69, 251, 36, 34, 76, 54, 51, 236, 141, 181, 29, 9, 11, 241, 29, 228, 222, 118, 194,
             134, 108, 6, 1, 2, 49, 80, 32, 217, 151, 134, 184, 44,
         ]));
-        mr_enclave1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_enclave1.allow_hardening_advisory("INTEL-SA-00334");
 
         let mut mr_enclave2 = MrEnclaveVerifier::new(MrEnclave::from([
             209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198, 84,
             121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
         ]));
-        mr_enclave2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_enclave2.allow_hardening_advisory("INTEL-SA-00334");
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")
-            .mr_enclave(mr_enclave1.clone())
-            .mr_enclave(mr_enclave2.clone())
-            .verify(&get_334_report())
+            .mr_enclave(mr_enclave1)
+            .mr_enclave(mr_enclave2)
+            .verify(&get_ias_report())
             .expect("Could not verify IAS report");
     }
 
@@ -456,7 +452,7 @@ mod test {
             10,
             10,
         );
-        mr_signer1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_signer1.allow_hardening_advisory("INTEL-SA-00334");
         let mut mr_signer2 = MrSignerVerifier::new(
             MrSigner::from([
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
@@ -465,14 +461,14 @@ mod test {
             1,
             1,
         );
-        mr_signer2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_signer2.allow_hardening_advisory("INTEL-SA-00334");
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")
-            .mr_signer(mr_signer1.clone())
-            .mr_signer(mr_signer2.clone())
+            .mr_signer(mr_signer1)
+            .mr_signer(mr_signer2)
             .debug(true)
-            .verify(&get_334_report())
+            .verify(&get_ias_report())
             .expect("Could not verify IAS report");
     }
 }
