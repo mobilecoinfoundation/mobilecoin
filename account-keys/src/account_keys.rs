@@ -137,14 +137,14 @@ impl PublicAddress {
         spend_public_key: &RistrettoPublic,
         view_public_key: &RistrettoPublic,
         fog_report_url: impl ToString,
-        fog_report_id: String,
+        fog_report_id: impl ToString,
         fog_authority_sig: impl AsRef<[u8]>,
     ) -> Self {
         Self {
             view_public_key: *view_public_key,
             spend_public_key: *spend_public_key,
             fog_report_url: fog_report_url.to_string(),
-            fog_report_id,
+            fog_report_id: fog_report_id.to_string(),
             fog_authority_sig: fog_authority_sig.as_ref().to_vec(),
         }
     }
@@ -263,8 +263,8 @@ impl AccountKey {
     #[inline]
     pub fn new(spend_private_key: &RistrettoPrivate, view_private_key: &RistrettoPrivate) -> Self {
         Self {
-            spend_private_key: *spend_private_key,
-            view_private_key: *view_private_key,
+            spend_private_key: spend_private_key.clone(),
+            view_private_key: view_private_key.clone(),
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
             fog_authority_spki: Default::default(),
@@ -286,14 +286,14 @@ impl AccountKey {
         spend_private_key: &RistrettoPrivate,
         view_private_key: &RistrettoPrivate,
         fog_report_url: impl ToString,
-        fog_report_id: String,
+        fog_report_id: impl ToString,
         fog_authority_spki: impl AsRef<[u8]>,
     ) -> Self {
         Self {
-            spend_private_key: *spend_private_key,
-            view_private_key: *view_private_key,
+            spend_private_key: spend_private_key.clone(),
+            view_private_key: view_private_key.clone(),
             fog_report_url: fog_report_url.to_string(),
-            fog_report_id,
+            fog_report_id: fog_report_id.to_string(),
             fog_authority_spki: fog_authority_spki.as_ref().to_vec(),
         }
     }
@@ -351,9 +351,9 @@ impl AccountKey {
         Self::new_with_fog(
             &RistrettoPrivate::from_random(rng),
             &RistrettoPrivate::from_random(rng),
-            "fog://example.com".to_string(),
-            Default::default(),
-            <Vec<u8>>::default(),
+            "fog://example.com",
+            "",
+            &[],
         )
     }
 
@@ -519,7 +519,7 @@ impl Ord for ViewAccountKey {
 impl From<&AccountKey> for ViewAccountKey {
     fn from(account_key: &AccountKey) -> Self {
         ViewAccountKey {
-            view_private_key: *account_key.view_private_key(),
+            view_private_key: account_key.view_private_key().clone(),
             spend_public_key: account_key.spend_private_key().into(),
         }
     }

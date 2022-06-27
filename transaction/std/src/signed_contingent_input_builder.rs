@@ -513,8 +513,8 @@ pub mod tests {
             let sender = AccountKey::new_with_fog(
                 &FromRandom::from_random(&mut rng),
                 &FromRandom::from_random(&mut rng),
-                "fog://demo.com".to_string(),
-                Default::default(),
+                "fog://demo.com",
+                "",
                 vec![],
             );
             let recipient = AccountKey::random_with_fog(&mut rng);
@@ -870,8 +870,8 @@ pub mod tests {
             let alice = AccountKey::new_with_fog(
                 &FromRandom::from_random(&mut rng),
                 &FromRandom::from_random(&mut rng),
-                "fog://alice.com".to_string(),
-                Default::default(),
+                "fog://alice.com",
+                "",
                 vec![],
             );
             let bob = AccountKey::random_with_fog(&mut rng);

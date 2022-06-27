@@ -3,17 +3,16 @@
 //! Convert to/from external:MintConfig/MintConfigTxPrefix/MintConfigTx.
 
 use crate::{external, ConversionError};
-use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
 
 /// Convert MintConfig --> external::MintConfig.
 impl From<&MintConfig> for external::MintConfig {
     fn from(src: &MintConfig) -> Self {
-        let mut dst = external::MintConfig::new();
-        dst.set_token_id(src.token_id);
-        dst.set_signer_set((&src.signer_set).into());
-        dst.set_mint_limit(src.mint_limit);
-        dst
+        Self {
+            token_id: src.token_id,
+            signer_set: Some((&src.signer_set).into()),
+            mint_limit: src.mint_limit,
+        }
     }
 }
 
@@ -22,11 +21,16 @@ impl TryFrom<&external::MintConfig> for MintConfig {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintConfig) -> Result<Self, Self::Error> {
-        let signer_set = SignerSet::try_from(source.get_signer_set())?;
+        let signer_set = source
+            .signer_set
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+
         Ok(Self {
-            token_id: source.get_token_id(),
+            token_id: source.token_id,
             signer_set,
-            mint_limit: source.get_mint_limit(),
+            mint_limit: source.mint_limit,
         })
     }
 }
@@ -34,13 +38,13 @@ impl TryFrom<&external::MintConfig> for MintConfig {
 /// Convert MintConfigTxPrefix --> external::MintConfigTxPrefix.
 impl From<&MintConfigTxPrefix> for external::MintConfigTxPrefix {
     fn from(src: &MintConfigTxPrefix) -> Self {
-        let mut dst = external::MintConfigTxPrefix::new();
-        dst.set_token_id(src.token_id);
-        dst.set_configs(src.configs.iter().map(external::MintConfig::from).collect());
-        dst.set_nonce(src.nonce.clone());
-        dst.set_tombstone_block(src.tombstone_block);
-        dst.set_total_mint_limit(src.total_mint_limit);
-        dst
+        Self {
+            token_id: src.token_id,
+            configs: src.configs.iter().map(external::MintConfig::from).collect(),
+            nonce: src.nonce.clone(),
+            tombstone_block: src.tombstone_block,
+            total_mint_limit: src.total_mint_limit,
+        }
     }
 }
 
@@ -49,18 +53,18 @@ impl TryFrom<&external::MintConfigTxPrefix> for MintConfigTxPrefix {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintConfigTxPrefix) -> Result<Self, Self::Error> {
-        let configs: Vec<MintConfig> = source
-            .get_configs()
+        let configs = source
+            .configs
             .iter()
             .map(MintConfig::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<_, _>>()?;
 
         Ok(Self {
-            token_id: source.get_token_id(),
+            token_id: source.token_id,
             configs,
-            nonce: source.get_nonce().to_vec(),
-            tombstone_block: source.get_tombstone_block(),
-            total_mint_limit: source.get_total_mint_limit(),
+            nonce: source.nonce.to_vec(),
+            tombstone_block: source.tombstone_block,
+            total_mint_limit: source.total_mint_limit,
         })
     }
 }
@@ -68,10 +72,10 @@ impl TryFrom<&external::MintConfigTxPrefix> for MintConfigTxPrefix {
 /// Convert MintConfigTx --> external::MintConfigTx.
 impl From<&MintConfigTx> for external::MintConfigTx {
     fn from(src: &MintConfigTx) -> Self {
-        let mut dst = external::MintConfigTx::new();
-        dst.set_prefix((&src.prefix).into());
-        dst.set_signature((&src.signature).into());
-        dst
+        Self {
+            prefix: Some((&src.prefix).into()),
+            signature: Some((&src.signature).into()),
+        }
     }
 }
 
@@ -80,8 +84,16 @@ impl TryFrom<&external::MintConfigTx> for MintConfigTx {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintConfigTx) -> Result<Self, Self::Error> {
-        let prefix = MintConfigTxPrefix::try_from(source.get_prefix())?;
-        let signature = MultiSig::try_from(source.get_signature())?;
+        let prefix = source
+            .prefix
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+        let signature = source
+            .signature
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
         Ok(Self { prefix, signature })
     }
@@ -91,55 +103,25 @@ impl TryFrom<&external::MintConfigTx> for MintConfigTx {
 mod tests {
     use super::*;
     use crate::convert::ed25519_multisig::tests::{test_multi_sig, test_signer_set};
-    use mc_util_serial::{decode, encode};
-    use protobuf::Message;
+    use mc_util_serial::round_trip_message;
 
     #[test]
     // MintConfig -> external::MintConfig -> MintConfig should be the identity
     // function.
-    fn test_convert_mint_config() {
+    fn mint_config_round_trip() {
         let source = MintConfig {
             token_id: 123,
             signer_set: test_signer_set(),
             mint_limit: 10000,
         };
 
-        // decode(encode(source)) should be the identity function.
-        {
-            let bytes = encode(&source);
-            let recovered = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Converting mc_transaction_core::mint::MintConfig -> external::MintConfig ->
-        // mc_transaction_core::mint::MintConfig should be the identity function.
-        {
-            let external = external::MintConfig::from(&source);
-            let recovered = MintConfig::try_from(&external).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Encoding with prost, decoding with protobuf should be the identity
-        // function.
-        {
-            let bytes = encode(&source);
-            let recovered = external::MintConfig::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, external::MintConfig::from(&source));
-        }
-
-        // Encoding with protobuf, decoding with prost should be the identity function.
-        {
-            let external = external::MintConfig::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
-            let recovered: MintConfig = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
+        round_trip_message::<MintConfig, external::MintConfig>(&source);
     }
 
     #[test]
     // MintConfigTx -> external::MintConfigTx -> MintConfigTx should be the
     // identity function.
-    fn test_convert_mint_config_tx() {
+    fn mint_config_tx_round_trip() {
         let source = MintConfigTx {
             prefix: MintConfigTxPrefix {
                 token_id: 123,
@@ -162,36 +144,6 @@ mod tests {
             signature: test_multi_sig(),
         };
 
-        // decode(encode(source)) should be the identity function.
-        {
-            let bytes = encode(&source);
-            let recovered = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Converting mc_transaction_core::mint::MintConfigTx ->
-        // external::MintConfigTx -> mc_transaction_core::mint::
-        // MintConfigTx should be the identity function.
-        {
-            let external = external::MintConfigTx::from(&source);
-            let recovered = MintConfigTx::try_from(&external).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Encoding with prost, decoding with protobuf should be the identity
-        // function.
-        {
-            let bytes = encode(&source);
-            let recovered = external::MintConfigTx::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, external::MintConfigTx::from(&source));
-        }
-
-        // Encoding with protobuf, decoding with prost should be the identity function.
-        {
-            let external = external::MintConfigTx::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
-            let recovered: MintConfigTx = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
+        round_trip_message::<MintConfigTx, external::MintConfigTx>(&source);
     }
 }

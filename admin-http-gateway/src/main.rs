@@ -8,7 +8,7 @@
 use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
-use mc_util_grpc::{admin, admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
+use mc_util_grpc::{admin, admin::AdminApiClient, ConnectionUriGrpcioChannel};
 use mc_util_uri::AdminUri;
 use rocket::{
     form::Form,
@@ -83,7 +83,7 @@ impl TryFrom<&admin::GetInfoResponse> for JsonInfoResponse {
 fn info(state: &rocket::State<State>) -> Result<Json<JsonInfoResponse>, String> {
     let info = state
         .admin_api_client
-        .get_info(&Empty::new())
+        .get_info(&())
         .map_err(|err| format!("Failed getting info: {}", err))?;
 
     Ok(Json(JsonInfoResponse::try_from(&info)?))
@@ -99,8 +99,9 @@ fn set_rust_log(
     state: &rocket::State<State>,
     form: Form<SetRustLogForm>,
 ) -> Result<Redirect, String> {
-    let mut req = admin::SetRustLogRequest::new();
-    req.set_rust_log(form.rust_log.clone());
+    let req = admin::SetRustLogRequest {
+        rust_log: form.into_inner().rust_log,
+    };
 
     let _resp = state
         .admin_api_client
@@ -114,7 +115,7 @@ fn set_rust_log(
 fn metrics(state: &rocket::State<State>) -> Result<String, String> {
     let resp = state
         .admin_api_client
-        .get_prometheus_metrics(&Empty::new())
+        .get_prometheus_metrics(&())
         .map_err(|err| format!("failed getting metrics: {}", err))?;
     Ok(resp.metrics)
 }

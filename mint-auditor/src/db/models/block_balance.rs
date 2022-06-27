@@ -3,10 +3,9 @@
 use super::super::{schema::block_balance, transaction, Conn, Error};
 use diesel::prelude::*;
 use mc_blockchain_types::BlockIndex;
-use mc_common::HashMap;
 use mc_transaction_core::TokenId;
 use serde::{Deserialize, Serialize};
-use std::ops::Deref;
+use std::{ops::Deref, collections::HashMap};
 
 /// Diesel model for the `block_balance` table.
 /// This stores the balance of each token for a specific block index.

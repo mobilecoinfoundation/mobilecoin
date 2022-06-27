@@ -29,12 +29,11 @@ clap = { version = "3.2", features = ["derive", "env"] }
 diesel = { version = "1.4", features = ["sqlite-bundled", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 displaydoc = "0.2"
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
 hex = "0.4"
-hostname = "0.3.1"
+hostname = "0.3"
 lazy_static = "1.4"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
-protobuf = "2.27.1"
 rayon = "1.5"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip", "json"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -50,5 +49,5 @@ mc-ledger-db = { path = "../ledger/db", features = ["test_utils"] }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-test-helper = { path = "../util/test-helper" }
 
-protobuf = "2.27.1"
+prost = "0.10"
 tempfile = "3.3"

@@ -58,8 +58,8 @@ use mc_transaction_std::{
 };
 
 use mc_util_from_random::FromRandom;
+use mc_util_serial::Message;
 use mc_util_uri::FogUri;
-use protobuf::Message;
 use rand::{rngs::StdRng, SeedableRng};
 use sha2::Sha512;
 use std::{
@@ -467,9 +467,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_PrintableWrapper_b58_1decode(
             let b58_string: String = env.get_string(b58_string)?.into();
             let printable_wrapper = PrintableWrapper::b58_decode(b58_string)
                 .map_err(|err| McError::Other(format!("{}", err)))?;
-            let wrapper_bytes = printable_wrapper
-                .write_to_bytes()
-                .map_err(|err| McError::Other(format!("{}", err)))?;
+            let wrapper_bytes = printable_wrapper.encode_to_vec();
             Ok(env.byte_array_from_slice(&wrapper_bytes)?)
         },
     )
@@ -486,7 +484,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_PrintableWrapper_b58_1encode(
         &env,
         |env| {
             let wrapper_bytes = env.convert_byte_array(wrapper_bytes)?;
-            let printable_wrapper = PrintableWrapper::parse_from_bytes(&wrapper_bytes)
+            let printable_wrapper = PrintableWrapper::decode(&wrapper_bytes[..])
                 .map_err(|err| McError::Other(format!("{}", err)))?;
             let b58_string = printable_wrapper
                 .b58_encode()
@@ -966,7 +964,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1view_1key(
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
 
-            let mbox = Box::new(Mutex::new(*account_key.view_private_key()));
+            let mbox = Box::new(Mutex::new(account_key.view_private_key().clone()));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
@@ -984,7 +982,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1spend_1key(
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
 
-            let mbox = Box::new(Mutex::new(*account_key.spend_private_key()));
+            let mbox = Box::new(Mutex::new(account_key.spend_private_key().clone()));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
@@ -1891,8 +1889,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1input(
             ring,
             membership_proofs,
             real_index as usize,
-            *onetime_private_key,
-            *view_private_key,
+            onetime_private_key.clone(),
+            view_private_key.clone(),
         );
         tx_builder.add_input(input_credentials_result?);
 

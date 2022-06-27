@@ -1,74 +1,63 @@
 //! Convert to/from external::TxOut
 
 use crate::{external, ConversionError};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, EncryptedMemo, MaskedAmount};
+use mc_transaction_core::{tx::TxOut, EncryptedMemo};
 
-/// Convert tx::TxOut --> external::TxOut.
-impl From<&tx::TxOut> for external::TxOut {
-    fn from(source: &tx::TxOut) -> Self {
-        let mut tx_out = external::TxOut::new();
-
-        let masked_amount = external::MaskedAmount::from(&source.masked_amount);
-        tx_out.set_masked_amount(masked_amount);
-
-        let target_key_bytes = source.target_key.as_bytes().to_vec();
-        tx_out.mut_target_key().set_data(target_key_bytes);
-
-        let public_key_bytes = source.public_key.as_bytes().to_vec();
-        tx_out.mut_public_key().set_data(public_key_bytes);
-
-        let hint_bytes = source.e_fog_hint.as_ref().to_vec();
-        tx_out.mut_e_fog_hint().set_data(hint_bytes);
-
-        if let Some(ref memo) = source.e_memo {
-            tx_out
-                .mut_e_memo()
-                .set_data(AsRef::<[u8]>::as_ref(memo).to_vec());
+/// Convert TxOut --> external::TxOut.
+impl From<&TxOut> for external::TxOut {
+    fn from(source: &TxOut) -> Self {
+        Self {
+            masked_amount: Some((&source.masked_amount).into()),
+            target_key: Some((&source.target_key).into()),
+            public_key: Some((&source.public_key).into()),
+            e_fog_hint: Some((&source.e_fog_hint).into()),
+            e_memo: source.e_memo.as_ref().map(external::EncryptedMemo::from),
         }
-
-        tx_out
     }
 }
 
-/// Convert external::TxOut --> tx::TxOut.
-impl TryFrom<&external::TxOut> for tx::TxOut {
+/// Convert external::TxOut --> TxOut.
+impl TryFrom<&external::TxOut> for TxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
-        let masked_amount = MaskedAmount::try_from(source.get_masked_amount())?;
+        let masked_amount = source
+            .masked_amount
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
-        let target_key_bytes: &[u8] = source.get_target_key().get_data();
-        let target_key: CompressedRistrettoPublic = RistrettoPublic::try_from(target_key_bytes)
-            .map_err(|_| ConversionError::KeyCastError)?
-            .into();
+        let target_key = source
+            .target_key
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
-        let public_key_bytes: &[u8] = source.get_public_key().get_data();
-        let public_key: CompressedRistrettoPublic = RistrettoPublic::try_from(public_key_bytes)
-            .map_err(|_| ConversionError::KeyCastError)?
-            .into();
+        let public_key = source
+            .public_key
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
-        let e_fog_hint = EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
-            .map_err(|_| ConversionError::ArrayCastError)?;
+        let e_fog_hint = source
+            .e_fog_hint
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
-        let e_memo_bytes = source.get_e_memo().get_data();
-        let e_memo = if e_memo_bytes.is_empty() {
-            None
-        } else {
-            Some(
-                EncryptedMemo::try_from(e_memo_bytes)
-                    .map_err(|_| ConversionError::ArrayCastError)?,
-            )
-        };
+        let e_memo = source
+            .e_memo
+            .as_ref()
+            .map(EncryptedMemo::try_from)
+            .transpose()?;
 
-        let tx_out = tx::TxOut {
+        Ok(Self {
             masked_amount,
             target_key,
             public_key,
             e_fog_hint,
             e_memo,
-        };
-        Ok(tx_out)
+        })
     }
 }
 
@@ -84,7 +73,7 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
-    // tx::TxOut -> external::TxOut --> tx::TxOut
+    // TxOut -> external::TxOut --> TxOut
     fn test_tx_out_from_tx_out_stored() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
@@ -92,7 +81,7 @@ mod tests {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
-        let source = tx::TxOut {
+        let source = TxOut {
             masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
                 .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
@@ -103,12 +92,12 @@ mod tests {
 
         let converted = external::TxOut::from(&source);
 
-        let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
+        let recovered_tx_out = TxOut::try_from(&converted).unwrap();
         assert_eq!(source.masked_amount, recovered_tx_out.masked_amount);
     }
 
     #[test]
-    // tx::TxOut -> external::TxOut --> tx::TxOut
+    // TxOut -> external::TxOut --> TxOut
     fn test_tx_out_from_tx_out_stored_with_memo() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
@@ -116,7 +105,7 @@ mod tests {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
-        let source = tx::TxOut {
+        let source = TxOut {
             masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
                 .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
@@ -127,7 +116,7 @@ mod tests {
 
         let converted = external::TxOut::from(&source);
 
-        let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
+        let recovered_tx_out = TxOut::try_from(&converted).unwrap();
         assert_eq!(source.masked_amount, recovered_tx_out.masked_amount);
         assert_eq!(source.target_key, recovered_tx_out.target_key);
         assert_eq!(source.public_key, recovered_tx_out.public_key);

@@ -8,9 +8,8 @@ license = "GPL-3.0"
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
-protobuf = "2.27.1"
 
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
@@ -29,7 +28,6 @@ mc-watcher-api = { path = "../../watcher/api" }
 
 [dev-dependencies]
 mc-fog-kex-rng = { path = "../kex_rng" }
-mc-fog-report-api-test-utils = { path = "../../fog/report/api/test-utils" }
 mc-fog-types = { path = "../types" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-test-helper = { path = "../../util/test-helper" }
@@ -38,4 +36,4 @@ mc-util-test-helper = { path = "../../util/test-helper" }
 mc-util-build-grpc = { path = "../../util/build/grpc" }
 mc-util-build-script = { path = "../../util/build/script" }
 
-cargo-emit = "0.2.1"
+cargo-emit = "0.2"

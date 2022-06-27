@@ -8,10 +8,9 @@ use mc_fog_report_api::{
     },
     report::{Report as ProtobufReport, ReportResponse as ProtobufReportResponse},
 };
-use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
 use mc_fog_report_types::{Report as ProstReport, ReportResponse as ProstReportResponse};
+use mc_util_serial::round_trip_message;
 use prost::Message as ProstMessage;
-use protobuf::{Message as ProtobufMessage, RepeatedField};
 
 // Round trip a structure through protobuf type, once using serialization to
 // bytes and deserialization, and once using the From conversions.

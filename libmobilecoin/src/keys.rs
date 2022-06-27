@@ -35,7 +35,7 @@ impl<'a> TryFromFfi<&McAccountKey<'a>> for AccountKey {
                 &spend_private_key,
                 &view_private_key,
                 <&str>::try_from_ffi(fog_info.report_url)?,
-                fog_info.report_id.ffi_try_into()?,
+                <&str>::try_from_ffi(fog_info.report_id)?,
                 fog_info.authority_spki.as_slice(),
             ))
         } else {

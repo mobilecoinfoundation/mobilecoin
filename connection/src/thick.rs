@@ -21,7 +21,7 @@ use grpcio::{
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
-use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
+use mc_attest_api::attest::{AttestedApiClient, Message};
 use mc_attest_core::VerificationReport;
 use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
@@ -30,10 +30,8 @@ use mc_common::{
     trace_time,
 };
 use mc_consensus_api::{
-    consensus_client_grpc::ConsensusClientApiClient,
-    consensus_common::{BlocksRequest, ProposeTxResult},
-    consensus_common_grpc::BlockchainApiClient,
-    empty::Empty,
+    consensus_client::ConsensusClientApiClient,
+    consensus_common::{BlockchainApiClient, BlocksRequest, ProposeTxResult},
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
@@ -331,37 +329,37 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> Result<Vec<Block>> {
         trace_time!(self.logger, "ThickClient::get_blocks");
 
-        let mut request = BlocksRequest::new();
-        request.set_offset(range.start);
-        let limit = u32::try_from(range.end - range.start).or(Err(Error::RequestTooLarge))?;
-        request.set_limit(limit);
+        let request = BlocksRequest {
+            offset: range.start,
+            limit: u32::try_from(range.end - range.start).or(Err(Error::RequestTooLarge))?,
+        };
 
         self.authenticated_attested_call(|this, call_option| {
             this.blockchain_api_client
                 .get_blocks_async_opt(&request, call_option)
         })?
-        .get_blocks()
-        .iter()
-        .map(|proto_block| Block::try_from(proto_block).map_err(Error::from))
-        .collect::<Result<Vec<Block>>>()
+        .blocks
+        .into_iter()
+        .map(|proto_block| Ok(Block::try_from(&proto_block)?))
+        .collect()
     }
 
     fn fetch_block_ids(&mut self, range: Range<BlockIndex>) -> Result<Vec<BlockID>> {
         trace_time!(self.logger, "ThickClient::get_block_ids");
 
-        let mut request = BlocksRequest::new();
-        request.set_offset(range.start);
-        let limit = u32::try_from(range.end - range.start).or(Err(Error::RequestTooLarge))?;
-        request.set_limit(limit);
+        let request = BlocksRequest {
+            offset: range.start,
+            limit: u32::try_from(range.end - range.start).or(Err(Error::RequestTooLarge))?,
+        };
 
         self.authenticated_attested_call(|this, call_option| {
             this.blockchain_api_client
                 .get_blocks_async_opt(&request, call_option)
         })?
-        .get_blocks()
-        .iter()
-        .map(|proto_block| BlockID::try_from(proto_block.get_id()).map_err(Error::from))
-        .collect::<Result<Vec<BlockID>>>()
+        .blocks
+        .into_iter()
+        .map(|proto_block| Ok(BlockID::try_from(&proto_block.id)?))
+        .collect()
     }
 
     fn fetch_block_height(&mut self) -> Result<BlockIndex> {
@@ -370,7 +368,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         Ok(self
             .authenticated_attested_call(|this, call_option| {
                 this.blockchain_api_client
-                    .get_last_block_info_async_opt(&Empty::new(), call_option)
+                    .get_last_block_info_async_opt(&(), call_option)
             })?
             .index)
     }
@@ -380,7 +378,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
 
         let block_info = self.authenticated_attested_call(|this, call_option| {
             this.blockchain_api_client
-                .get_last_block_info_async_opt(&Empty::new(), call_option)
+                .get_last_block_info_async_opt(&(), call_option)
         })?;
 
         Ok(block_info.into())

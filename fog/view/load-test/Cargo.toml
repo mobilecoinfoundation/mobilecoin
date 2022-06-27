@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 # third party
 clap = { version = "3.2", features = ["derive", "env"] }
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
 
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }

@@ -158,7 +158,7 @@ fn generate_tx_out_record_data() -> TxOutRecordData {
 
     TxOutRecordData {
         tx_out_records,
-        recipient_view_private_key: *recipient_account.view_private_key(),
-        spurious_view_private_key: *spurious_account.view_private_key(),
+        recipient_view_private_key: recipient_account.view_private_key().clone(),
+        spurious_view_private_key: spurious_account.view_private_key().clone(),
     }
 }

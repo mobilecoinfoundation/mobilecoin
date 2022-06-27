@@ -9,14 +9,13 @@ use mc_crypto_multisig::{MultiSig, SignerSet};
 /// Convert MultiSig<Ed25519Signature> --> external::Ed25519MultiSig.
 impl From<&MultiSig<Ed25519Signature>> for external::Ed25519MultiSig {
     fn from(src: &MultiSig<Ed25519Signature>) -> Self {
-        let mut dst = external::Ed25519MultiSig::new();
-        dst.set_signatures(
-            src.signatures()
+        Self {
+            signatures: src
+                .signatures()
                 .iter()
                 .map(external::Ed25519Signature::from)
                 .collect(),
-        );
-        dst
+        }
     }
 }
 
@@ -26,7 +25,7 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
 
     fn try_from(source: &external::Ed25519MultiSig) -> Result<Self, Self::Error> {
         let signatures: Vec<Ed25519Signature> = source
-            .get_signatures()
+            .signatures
             .iter()
             .map(Ed25519Signature::try_from)
             .collect::<Result<Vec<_>, _>>()?;
@@ -38,15 +37,14 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
 /// Convert SignerSet<Ed25519Public> --> external::Ed25519SignerSet.
 impl From<&SignerSet<Ed25519Public>> for external::Ed25519SignerSet {
     fn from(src: &SignerSet<Ed25519Public>) -> Self {
-        let mut dst = external::Ed25519SignerSet::new();
-        dst.set_signers(
-            src.signers()
+        Self {
+            signers: src
+                .signers()
                 .iter()
                 .map(external::Ed25519Public::from)
                 .collect(),
-        );
-        dst.set_threshold(src.threshold());
-        dst
+            threshold: src.threshold(),
+        }
     }
 }
 
@@ -56,12 +54,12 @@ impl TryFrom<&external::Ed25519SignerSet> for SignerSet<Ed25519Public> {
 
     fn try_from(source: &external::Ed25519SignerSet) -> Result<Self, Self::Error> {
         let signers: Vec<Ed25519Public> = source
-            .get_signers()
+            .signers
             .iter()
             .map(Ed25519Public::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let threshold = source.get_threshold();
+        let threshold = source.threshold;
 
         Ok(Self::new(signers, threshold))
     }
@@ -73,7 +71,7 @@ pub mod tests {
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_util_from_random::FromRandom;
     use mc_util_serial::{decode, encode};
-    use protobuf::Message;
+    use prost::Message;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -134,14 +132,14 @@ pub mod tests {
         // function.
         {
             let bytes = encode(&source);
-            let recovered = external::Ed25519SignerSet::parse_from_bytes(&bytes).unwrap();
+            let recovered = external::Ed25519SignerSet::decode(&bytes[..]).unwrap();
             assert_eq!(recovered, external::Ed25519SignerSet::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
             let external = external::Ed25519SignerSet::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
+            let bytes = external.encode_to_vec();
             let recovered: SignerSet<Ed25519Public> = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }
@@ -172,14 +170,14 @@ pub mod tests {
         // function.
         {
             let bytes = encode(&source);
-            let recovered = external::Ed25519MultiSig::parse_from_bytes(&bytes).unwrap();
+            let recovered = external::Ed25519MultiSig::decode(&bytes[..]).unwrap();
             assert_eq!(recovered, external::Ed25519MultiSig::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
             let external = external::Ed25519MultiSig::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
+            let bytes = external.encode_to_vec();
             let recovered: MultiSig<Ed25519Signature> = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }

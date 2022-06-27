@@ -6,35 +6,63 @@ use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipHash},
 };
 
-/// Convert TxOutMembershipElement -> external::TxOutMembershipElement
 impl From<&TxOutMembershipElement> for external::TxOutMembershipElement {
     fn from(src: &TxOutMembershipElement) -> Self {
-        let mut dst = external::TxOutMembershipElement::new();
-        dst.mut_range().set_from(src.range.from);
-        dst.mut_range().set_to(src.range.to);
-        dst.mut_hash().set_data(src.hash.to_vec());
-        dst
+        Self {
+            range: Some((&src.range).into()),
+            hash: Some((&src.hash).into()),
+        }
     }
 }
 
-/// Convert external::TxOutMembershipElement -> TxOutMembershipElement
 impl TryFrom<&external::TxOutMembershipElement> for TxOutMembershipElement {
     type Error = ConversionError;
 
     fn try_from(src: &external::TxOutMembershipElement) -> Result<Self, Self::Error> {
-        let range = Range::new(src.get_range().get_from(), src.get_range().get_to())
-            .map_err(|_e| ConversionError::Other)?;
+        let range = src
+            .range
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
-        let bytes: &[u8] = src.get_hash().get_data();
-        let mut hash = [0u8; 32];
-        if bytes.len() != hash.len() {
-            return Err(ConversionError::ArrayCastError);
+        let hash = src
+            .hash
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+
+        Ok(TxOutMembershipElement { range, hash })
+    }
+}
+
+impl From<&Range> for external::Range {
+    fn from(src: &Range) -> Self {
+        Self {
+            from: src.from,
+            to: src.to,
         }
-        hash.copy_from_slice(bytes);
+    }
+}
 
-        Ok(TxOutMembershipElement {
-            range,
-            hash: TxOutMembershipHash::from(hash),
-        })
+impl TryFrom<&external::Range> for Range {
+    type Error = ConversionError;
+
+    fn try_from(src: &external::Range) -> Result<Self, Self::Error> {
+        Range::new(src.from, src.to).map_err(|_| ConversionError::Other)
+    }
+}
+
+impl From<&TxOutMembershipHash> for external::TxOutMembershipHash {
+    fn from(src: &TxOutMembershipHash) -> Self {
+        Self { data: src.to_vec() }
+    }
+}
+
+impl TryFrom<&external::TxOutMembershipHash> for TxOutMembershipHash {
+    type Error = ConversionError;
+
+    fn try_from(src: &external::TxOutMembershipHash) -> Result<Self, Self::Error> {
+        let bytes: &[u8; 32] = src.data.as_slice().try_into()?;
+        Ok(Self(*bytes))
     }
 }

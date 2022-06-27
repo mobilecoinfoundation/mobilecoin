@@ -28,7 +28,7 @@ lazy_static! {
 
 /// Adds all the known source files under the given path which match the given
 /// extensions and filenames.
-pub fn rerun_if_path_changed(path: &Path) {
+pub fn rerun_if_path_changed(path: impl AsRef<Path>) {
     let extensions = EXTENSION_SET
         .lock()
         .expect("Could not acquire lock on extensions");
@@ -36,21 +36,22 @@ pub fn rerun_if_path_changed(path: &Path) {
         .lock()
         .expect("Could not acquire lock on extensions");
 
-    for entry in WalkDir::new(path).into_iter().flatten() {
-        if entry.path().components().any(|c| c.as_os_str() == "target") {
+    for entry in WalkDir::new(path.as_ref()).into_iter().flatten() {
+        let path = entry.path();
+        if path.components().any(|c| c.as_os_str() == "target") {
             continue;
         }
 
         if entry.file_type().is_file() {
-            if let Some(ext) = entry.path().extension() {
+            if let Some(ext) = path.extension() {
                 if extensions.contains(ext) {
-                    rerun_if_changed!(entry.path().display());
-                    rerun_if_changed!(entry.path().parent().unwrap().display());
+                    rerun_if_changed!(path.display());
+                    rerun_if_changed!(path.parent().unwrap().display());
                 }
             }
             let fname = entry.file_name();
             if files.contains(fname) {
-                rerun_if_changed!(entry.path().display());
+                rerun_if_changed!(path.display());
             }
         }
     }

@@ -8,16 +8,12 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::Logger;
-use mc_mint_auditor_api::{
-    empty::Empty,
-    mint_auditor::{
-        BlockAuditData as GrpcBlockAuditData, Counters as GrpcCounters, GetBlockAuditDataRequest,
-        GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
-    },
-    mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
+use mc_mint_auditor_api::mint_auditor::{
+    create_mint_auditor_api, BlockAuditData as GrpcBlockAuditData, Counters as GrpcCounters,
+    GetBlockAuditDataRequest, GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
+    MintAuditorApi,
 };
 use mc_util_grpc::{rpc_logger, send_result};
-use std::collections::HashMap;
 
 /// Mint auditor GRPC service implementation.
 #[derive(Clone)]
@@ -57,7 +53,7 @@ impl MintAuditorService {
                     RpcStatusCode::NOT_FOUND,
                     format!(
                         "Block audit data not found for block index {}",
-                        req.get_block_index()
+                        req.block_index
                     ),
                 ),
                 _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
@@ -66,17 +62,15 @@ impl MintAuditorService {
         let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
             .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
-        let mut grpc_block_audit_data = GrpcBlockAuditData::new();
-        grpc_block_audit_data.set_block_index(block_audit_data.block_index());
-        grpc_block_audit_data.set_balances(HashMap::from_iter(
-            balances
+        let block_audit_data = Some(GrpcBlockAuditData {
+            block_index: block_audit_data.block_index(),
+            balances: balances
                 .into_iter()
-                .map(|(token_id, balance)| (*token_id, balance)),
-        ));
+                .map(|(token_id, balance)| (*token_id, balance))
+                .collect(),
+        });
 
-        let mut resp = GetBlockAuditDataResponse::new();
-        resp.set_block_audit_data(grpc_block_audit_data);
-        Ok(resp)
+        Ok(GetBlockAuditDataResponse { block_audit_data })
     }
 
     fn get_last_block_audit_data_impl(&self) -> Result<GetLastBlockAuditDataResponse, RpcStatus> {
@@ -97,17 +91,15 @@ impl MintAuditorService {
         let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
             .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
-        let mut grpc_block_audit_data = GrpcBlockAuditData::new();
-        grpc_block_audit_data.set_block_index(block_audit_data.block_index());
-        grpc_block_audit_data.set_balances(HashMap::from_iter(
-            balances
+        let block_audit_data = Some(GrpcBlockAuditData {
+            block_index: block_audit_data.block_index(),
+            balances: balances
                 .into_iter()
-                .map(|(token_id, balance)| (*token_id, balance)),
-        ));
+                .map(|(token_id, balance)| (*token_id, balance))
+                .collect(),
+        });
 
-        let mut resp = GetLastBlockAuditDataResponse::new();
-        resp.set_block_audit_data(grpc_block_audit_data);
-        Ok(resp)
+        Ok(GetLastBlockAuditDataResponse { block_audit_data })
     }
 
     fn get_counters_impl(&self) -> Result<GrpcCounters, RpcStatus> {
@@ -133,14 +125,14 @@ impl MintAuditorApi for MintAuditorService {
     fn get_last_block_audit_data(
         &mut self,
         ctx: RpcContext,
-        _req: Empty,
+        _req: (),
         sink: UnarySink<GetLastBlockAuditDataResponse>,
     ) {
         let logger = rpc_logger(&ctx, &self.logger);
         send_result(ctx, sink, self.get_last_block_audit_data_impl(), &logger)
     }
 
-    fn get_counters(&mut self, ctx: RpcContext, _req: Empty, sink: UnarySink<GrpcCounters>) {
+    fn get_counters(&mut self, ctx: RpcContext, _req: (), sink: UnarySink<GrpcCounters>) {
         let logger = rpc_logger(&ctx, &self.logger);
         send_result(ctx, sink, self.get_counters_impl(), &logger)
     }
@@ -258,11 +250,9 @@ mod tests {
 
         let response = client.get_block_audit_data(&request).unwrap();
 
-        assert_eq!(response.get_block_audit_data().block_index, 2,);
-        assert_eq!(
-            response.get_block_audit_data().get_balances(),
-            &HashMap::from_iter([(1, 101), (22, 2)])
-        );
+        let block_audit_data = response.block_audit_data.unwrap();
+        assert_eq!(block_audit_data.block_index, 2,);
+        assert_eq!(block_audit_data.balances, [(1, 101), (22, 2)].into());
     }
 
     #[test_with_logger]
@@ -270,12 +260,11 @@ mod tests {
         let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
         let (client, _server) = get_client_server(&mint_auditor_db, &logger);
 
-        let response = client.get_last_block_audit_data(&Empty::default()).unwrap();
-        assert_eq!(response.get_block_audit_data().block_index, 2,);
-        assert_eq!(
-            response.get_block_audit_data().get_balances(),
-            &HashMap::from_iter([(1, 101), (22, 2)])
-        );
+        let response = client.get_last_block_audit_data(&()).unwrap();
+
+        let block_audit_data = response.block_audit_data.unwrap();
+        assert_eq!(block_audit_data.block_index, 2);
+        assert_eq!(block_audit_data.balances, [(1, 101), (22, 2)].into());
     }
 
     #[test_with_logger]
@@ -283,7 +272,7 @@ mod tests {
         let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
         let (client, _server) = get_client_server(&mint_auditor_db, &logger);
 
-        let response = client.get_counters(&Empty::default()).unwrap();
+        let response = client.get_counters(&()).unwrap();
 
         // The number of blocks synced depends on the database that [get_test_db]
         // generates.

@@ -6,22 +6,13 @@ use mc_transaction_core::tx;
 /// Convert tx::TxPrefix --> external::TxPrefix.
 impl From<&tx::TxPrefix> for external::TxPrefix {
     fn from(source: &tx::TxPrefix) -> Self {
-        let mut tx_prefix = external::TxPrefix::new();
-
-        let inputs: Vec<external::TxIn> = source.inputs.iter().map(external::TxIn::from).collect();
-        tx_prefix.set_inputs(inputs.into());
-
-        let outputs: Vec<external::TxOut> =
-            source.outputs.iter().map(external::TxOut::from).collect();
-        tx_prefix.set_outputs(outputs.into());
-
-        tx_prefix.set_fee(source.fee);
-
-        tx_prefix.set_fee_token_id(source.fee_token_id);
-
-        tx_prefix.set_tombstone_block(source.tombstone_block);
-
-        tx_prefix
+        Self {
+            inputs: source.inputs.iter().map(external::TxIn::from).collect(),
+            outputs: source.outputs.iter().map(external::TxOut::from).collect(),
+            fee: source.fee,
+            fee_token_id: source.fee_token_id,
+            tombstone_block: source.tombstone_block,
+        }
     }
 }
 
@@ -30,25 +21,20 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxPrefix) -> Result<Self, Self::Error> {
-        let mut inputs: Vec<tx::TxIn> = Vec::new();
-        for out in source.get_inputs() {
-            let tx_out = tx::TxIn::try_from(out)?;
-            inputs.push(tx_out);
-        }
-
-        let mut outputs: Vec<tx::TxOut> = Vec::new();
-        for out in source.get_outputs() {
-            let tx_out = tx::TxOut::try_from(out)?;
-            outputs.push(tx_out);
-        }
-
-        let tx_prefix = tx::TxPrefix {
-            inputs,
-            outputs,
-            fee: source.get_fee(),
-            fee_token_id: source.get_fee_token_id(),
-            tombstone_block: source.get_tombstone_block(),
-        };
-        Ok(tx_prefix)
+        Ok(Self {
+            inputs: source
+                .inputs
+                .iter()
+                .map(tx::TxIn::try_from)
+                .collect::<Result<_, _>>()?,
+            outputs: source
+                .outputs
+                .iter()
+                .map(tx::TxOut::try_from)
+                .collect::<Result<_, _>>()?,
+            fee: source.fee,
+            fee_token_id: source.fee_token_id,
+            tombstone_block: source.tombstone_block,
+        })
     }
 }

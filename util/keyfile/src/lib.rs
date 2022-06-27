@@ -3,18 +3,20 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+pub use json_format::RootIdentityJson;
+pub use mnemonic_acct::UncheckedMnemonicAccount;
+
+pub mod config;
+pub mod keygen;
+
 mod error;
 mod json_format;
 mod mnemonic_acct;
-pub use json_format::RootIdentityJson;
-pub use mnemonic_acct::UncheckedMnemonicAccount;
-pub mod config;
-pub mod keygen;
 
 use crate::error::Error;
 use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -106,45 +108,43 @@ pub fn read_pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, Error
 }
 
 /// Write user b58 public address to disk
-pub fn write_b58pubfile<P: AsRef<Path>>(
-    path: P,
-    addr: &PublicAddress,
-) -> Result<(), std::io::Error> {
-    let mut wrapper = PrintableWrapper::new();
-    wrapper.set_public_address(addr.into());
-
-    let data = wrapper.b58_encode().map_err(to_io_error)?;
+pub fn write_b58pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), Error> {
+    let data = PrintableWrapper::from(addr)
+        .b58_encode()
+        .map_err(|err| Error::Encode(err.to_string()))?;
 
     File::create(path)?.write_all(data.as_ref())?;
     Ok(())
 }
 
 /// Read user b58 public address from disk
-pub fn read_b58pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, std::io::Error> {
+pub fn read_b58pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, Error> {
     read_b58pubfile_data(&mut File::open(path)?)
 }
 
 /// Read user b58 pubfile from any implementor of `Read`
-pub fn read_b58pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, std::io::Error> {
+pub fn read_b58pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, Error> {
     let data = {
         let mut data = String::new();
         buffer.read_to_string(&mut data)?;
         data
     };
 
-    let wrapper = PrintableWrapper::b58_decode(data).map_err(to_io_error)?;
+    let wrapper = PrintableWrapper::b58_decode(data).map_err(to_decode_error)?;
 
-    if !wrapper.has_public_address() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Printable Wrapper did not contain public address",
-        ));
+    match wrapper.wrapper {
+        Some(printable_wrapper::Wrapper::PublicAddress(public_address)) => {
+            PublicAddress::try_from(&public_address).map_err(to_decode_error)
+        }
+
+        _ => Err(to_decode_error(
+            "PrintableWrapper did not contain public address",
+        )),
     }
-    wrapper.get_public_address().try_into().map_err(to_io_error)
 }
 
-fn to_io_error<E: 'static + std::error::Error + Send + Sync>(err: E) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
+fn to_decode_error<E: ToString>(err: E) -> Error {
+    Error::Decode(err.to_string())
 }
 
 #[cfg(test)]

@@ -3,21 +3,19 @@
 //! Convert to/from external:MintTx/MintTxPrefix.
 
 use crate::{external, ConversionError};
-use mc_crypto_keys::RistrettoPublic;
-use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::mint::{MintTx, MintTxPrefix};
 
 /// Convert MintTxPrefix --> external::MintTxPrefix.
 impl From<&MintTxPrefix> for external::MintTxPrefix {
     fn from(src: &MintTxPrefix) -> Self {
-        let mut dst = external::MintTxPrefix::new();
-        dst.set_token_id(src.token_id);
-        dst.set_amount(src.amount);
-        dst.set_view_public_key((&src.view_public_key).into());
-        dst.set_spend_public_key((&src.spend_public_key).into());
-        dst.set_nonce(src.nonce.clone());
-        dst.set_tombstone_block(src.tombstone_block);
-        dst
+        Self {
+            amount: src.amount,
+            token_id: src.token_id,
+            nonce: src.nonce.clone(),
+            tombstone_block: src.tombstone_block,
+            view_public_key: Some((&src.view_public_key).into()),
+            spend_public_key: Some((&src.spend_public_key).into()),
+        }
     }
 }
 
@@ -26,16 +24,24 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintTxPrefix) -> Result<Self, Self::Error> {
-        let view_public_key = RistrettoPublic::try_from(source.get_view_public_key())?;
-        let spend_public_key = RistrettoPublic::try_from(source.get_spend_public_key())?;
+        let view_public_key = source
+            .view_public_key
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+        let spend_public_key = source
+            .spend_public_key
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
         Ok(Self {
-            token_id: source.get_token_id(),
-            amount: source.get_amount(),
+            token_id: source.token_id,
+            amount: source.amount,
             view_public_key,
             spend_public_key,
-            nonce: source.get_nonce().to_vec(),
-            tombstone_block: source.get_tombstone_block(),
+            nonce: source.nonce.to_vec(),
+            tombstone_block: source.tombstone_block,
         })
     }
 }
@@ -43,10 +49,10 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
 /// Convert MintTx --> external::MintTx.
 impl From<&MintTx> for external::MintTx {
     fn from(src: &MintTx) -> Self {
-        let mut dst = external::MintTx::new();
-        dst.set_prefix((&src.prefix).into());
-        dst.set_signature((&src.signature).into());
-        dst
+        Self {
+            prefix: Some((&src.prefix).into()),
+            signature: Some((&src.signature).into()),
+        }
     }
 }
 
@@ -55,8 +61,16 @@ impl TryFrom<&external::MintTx> for MintTx {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintTx) -> Result<Self, Self::Error> {
-        let prefix = MintTxPrefix::try_from(source.get_prefix())?;
-        let signature = MultiSig::try_from(source.get_signature())?;
+        let prefix = source
+            .prefix
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+        let signature = source
+            .signature
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
 
         Ok(Self { prefix, signature })
     }
@@ -66,17 +80,14 @@ impl TryFrom<&external::MintTx> for MintTx {
 mod tests {
     use super::*;
     use crate::convert::ed25519_multisig::tests::test_multi_sig;
+    use mc_crypto_keys::RistrettoPublic;
     use mc_util_from_random::FromRandom;
-    use mc_util_serial::{decode, encode};
-    use protobuf::Message;
-    use rand_core::{RngCore, SeedableRng};
-    use rand_hc::Hc128Rng;
+    use mc_util_serial::round_trip_message;
+    use mc_util_test_helper::{get_seeded_rng, RngCore};
 
     #[test]
-    // MintTx -> external::MintTx -> MintTx should be the identity
-    // function.
     fn test_convert_mint_tx() {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let source = MintTx {
             prefix: MintTxPrefix {
@@ -90,35 +101,6 @@ mod tests {
             signature: test_multi_sig(),
         };
 
-        // decode(encode(source)) should be the identity function.
-        {
-            let bytes = encode(&source);
-            let recovered = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Converting mc_transaction_core::mint::MintTx -> external::MintTx ->
-        // mc_transaction_core::mint::MintTx should be the identity function.
-        {
-            let external = external::MintTx::from(&source);
-            let recovered = MintTx::try_from(&external).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Encoding with prost, decoding with protobuf should be the identity
-        // function.
-        {
-            let bytes = encode(&source);
-            let recovered = external::MintTx::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, external::MintTx::from(&source));
-        }
-
-        // Encoding with protobuf, decoding with prost should be the identity function.
-        {
-            let external = external::MintTx::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
-            let recovered: MintTx = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
+        round_trip_message::<MintTx, external::MintTx>(&source);
     }
 }

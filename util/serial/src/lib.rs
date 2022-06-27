@@ -2,12 +2,16 @@
 
 #![no_std]
 
-extern crate alloc;
-use alloc::vec::Vec;
-
 pub extern crate prost;
 
+#[cfg(feature = "test_utils")]
+mod test_utils;
+#[cfg(feature = "test_utils")]
+pub use test_utils::{round_trip_message, round_trip_message_and_conversion};
+
 pub use prost::{DecodeError, EncodeError, Message};
+
+use prost::alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,
@@ -123,31 +127,10 @@ mod json_u64 {
 #[cfg(feature = "serde_with")]
 pub use json_u64::JsonU64;
 
-/// Take a prost type and try to roundtrip it through a protobuf type
-#[cfg(feature = "test_utils")]
-pub fn round_trip_message<SRC: Message + Eq + Default, DEST: protobuf::Message>(prost_val: &SRC) {
-    let prost_bytes = encode(prost_val);
-
-    let dest_val =
-        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
-
-    let protobuf_bytes = dest_val
-        .write_to_bytes()
-        .expect("Writing protobuf to bytes failed");
-
-    let final_val: SRC = decode(&protobuf_bytes).expect("Parsing prost from protobuf bytes failed");
-
-    assert_eq!(
-        *prost_val, final_val,
-        "Round-trip check failed!\nprost: {:?}\nprotobuf: {:?}",
-        prost_val, final_val
-    );
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use alloc::vec;
+    use prost::alloc::vec;
     use serde::{Deserialize, Serialize};
 
     #[test]

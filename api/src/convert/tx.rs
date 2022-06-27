@@ -3,26 +3,33 @@
 //! Convert to/from external::Tx.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{ring_ct::SignatureRctBulletproofs, tx};
+use mc_transaction_core::tx::Tx;
 
-/// Convert mc_transaction_core::tx::Tx --> external::Tx.
-impl From<&tx::Tx> for external::Tx {
-    fn from(source: &tx::Tx) -> Self {
-        let mut tx = external::Tx::new();
-        tx.set_prefix(external::TxPrefix::from(&source.prefix));
-        tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
-        tx
+impl From<&Tx> for external::Tx {
+    fn from(source: &Tx) -> Self {
+        Self {
+            prefix: Some((&source.prefix).into()),
+            signature: Some((&source.signature).into()),
+        }
     }
 }
 
-/// Convert external::Tx --> mc_transaction_core::tx::Tx.
-impl TryFrom<&external::Tx> for tx::Tx {
+impl TryFrom<&external::Tx> for Tx {
     type Error = ConversionError;
 
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
-        let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
-        let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-        Ok(tx::Tx { prefix, signature })
+        let prefix = source
+            .prefix
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+        let signature = source
+            .signature
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+
+        Ok(Tx { prefix, signature })
     }
 }
 
@@ -39,7 +46,7 @@ mod tests {
         test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
         SignedContingentInputBuilder, TransactionBuilder,
     };
-    use protobuf::Message;
+    use mc_util_serial::round_trip_message;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
@@ -82,35 +89,7 @@ mod tests {
                 .build(&NoKeysRingSigner {}, &mut rng)
                 .unwrap();
 
-            // decode(encode(tx)) should be the identity function.
-            {
-                let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = mc_util_serial::decode(&bytes).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
-
-            // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx
-            // should be the identity function.
-            {
-                let external_tx: external::Tx = external::Tx::from(&tx);
-                let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
-
-            // Encoding with prost, decoding with protobuf should be the identity function.
-            {
-                let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
-                assert_eq!(recovered_tx, external::Tx::from(&tx));
-            }
-
-            // Encoding with protobuf, decoding with prost should be the identity function.
-            {
-                let external_tx: external::Tx = external::Tx::from(&tx);
-                let bytes = external_tx.write_to_bytes().unwrap();
-                let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
+            round_trip_message::<Tx, external::Tx>(&tx);
         }
     }
 
@@ -200,35 +179,7 @@ mod tests {
                 .build(&NoKeysRingSigner {}, &mut rng)
                 .unwrap();
 
-            // decode(encode(tx)) should be the identity function.
-            {
-                let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = mc_util_serial::decode(&bytes).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
-
-            // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx
-            // should be the identity function.
-            {
-                let external_tx: external::Tx = external::Tx::from(&tx);
-                let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
-
-            // Encoding with prost, decoding with protobuf should be the identity function.
-            {
-                let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
-                assert_eq!(recovered_tx, external::Tx::from(&tx));
-            }
-
-            // Encoding with protobuf, decoding with prost should be the identity function.
-            {
-                let external_tx: external::Tx = external::Tx::from(&tx);
-                let bytes = external_tx.write_to_bytes().unwrap();
-                let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
-                assert_eq!(tx, recovered_tx);
-            }
+            round_trip_message::<Tx, external::Tx>(&tx);
         }
     }
 }

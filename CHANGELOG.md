@@ -19,8 +19,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 * Updated `rust-toolchain` version to newer nightly
   * enables use of [Generic Associated Types](https://github.com/rust-lang/rust/issues/44265) and [static async fn in traits](https://github.com/rust-lang/rust/issues/91611)
 * Replaced `datatest` with a custom `test_with_data` macro.
-* Replace `structopt` with `clap`.
-* Updated grpcio from 0.9 to 0.10.
+* Replaced `structopt` with `clap`.
+* Replaced `protobuf` with `prost`.
 
 ## [1.2.0]
 

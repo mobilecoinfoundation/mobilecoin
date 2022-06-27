@@ -175,6 +175,10 @@ exclude = [
 opt-level = 0
 rpath = true
 
+[profile.dev.package.grpcio-sys]
+debug = false
+opt-level = 1
+
 [profile.release]
 opt-level = 3
 rpath = false
@@ -213,6 +217,10 @@ cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d77
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
+
+# Use our fork of grpcio+compiler
+grpcio = { path = "../grpc-rs" }
+grpcio-compiler = { path = "../grpc-rs/compiler" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }

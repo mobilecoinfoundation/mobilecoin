@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use prost::Message as ProstMessage;
-use protobuf::Message as ProtobufMessage;
 
 /// Take a ProstMessage value, and a ProtobufMessage type. Try to encode the
 /// prost message, decode as protobuf, re-encode that, and decode as prost
@@ -24,7 +23,7 @@ pub fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessag
         DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
 
     let protobuf_bytes = dest_val
-        .write_to_bytes()
+        .encode_to_vec()
         .expect("Writing protobuf to bytes failed");
 
     let final_val: SRC = mc_util_serial::decode(&protobuf_bytes)
@@ -37,7 +36,7 @@ pub fn round_trip_protobuf_object<SRC: ProtobufMessage + Eq, DEST: ProstMessage 
     protobuf_val: &SRC,
 ) {
     let protobuf_bytes = protobuf_val
-        .write_to_bytes()
+        .encode_to_vec()
         .expect("Writing protobuf to bytes failed");
 
     let prost_val: DEST =

@@ -21,7 +21,7 @@ mc-watcher-api = { path = "../watcher/api" }
 bs58 = "0.4.0"
 crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
-protobuf = "2.27.1"
+prost = "0.10"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }

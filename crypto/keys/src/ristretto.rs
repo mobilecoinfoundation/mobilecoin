@@ -40,51 +40,20 @@ use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
-#[derive(Clone, Copy, Default, Zeroize)]
+#[derive(Clone, Default, Zeroize)]
+#[zeroize(drop)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
 
-impl AsRef<[u8; 32]> for RistrettoPrivate {
-    fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
-
-impl TryFrom<&[u8; 32]> for RistrettoPrivate {
-    type Error = KeyError;
-
-    fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
-        Ok(Self(
-            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
-        ))
-    }
-}
-
-impl AsRef<[u8]> for RistrettoPrivate {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl TryFrom<&[u8]> for RistrettoPrivate {
-    type Error = KeyError;
-    fn try_from(src: &[u8]) -> Result<Self, KeyError> {
-        let bytes: &[u8; 32] = src
-            .try_into()
-            .map_err(|_| KeyError::LengthMismatch(src.len(), 32))?;
-        Self::try_from(bytes)
-    }
-}
-
-derive_repr_bytes_from_as_ref_and_try_from!(RistrettoPrivate, U32);
-derive_into_vec_from_repr_bytes!(RistrettoPrivate);
-derive_serde_from_repr_bytes!(RistrettoPrivate);
-derive_prost_message_from_repr_bytes!(RistrettoPrivate);
-
 impl RistrettoPrivate {
+    /// View the byte encoding of this instance.
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        self.0.as_bytes()
+    }
+
     /// This is used by some code that used to use ReprBytes32 API
     /// This is okay in code that is not generic over the key type.
     pub fn to_bytes(&self) -> [u8; 32] {
-        *self.0.as_bytes()
+        *self.as_bytes()
     }
 
     /// Sign the given bytes using a deterministic scheme based on Schnorrkel.
@@ -131,6 +100,43 @@ impl From<Scalar> for RistrettoPrivate {
         Self(scalar)
     }
 }
+
+impl AsRef<[u8; 32]> for RistrettoPrivate {
+    fn as_ref(&self) -> &[u8; 32] {
+        self.as_bytes()
+    }
+}
+
+impl TryFrom<&[u8; 32]> for RistrettoPrivate {
+    type Error = KeyError;
+
+    fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
+        Ok(Self(
+            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
+        ))
+    }
+}
+
+impl AsRef<[u8]> for RistrettoPrivate {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl TryFrom<&[u8]> for RistrettoPrivate {
+    type Error = KeyError;
+    fn try_from(src: &[u8]) -> Result<Self, KeyError> {
+        let bytes: &[u8; 32] = src
+            .try_into()
+            .map_err(|_| KeyError::LengthMismatch(src.len(), 32))?;
+        Self::try_from(bytes)
+    }
+}
+
+derive_repr_bytes_from_as_ref_and_try_from!(RistrettoPrivate, U32);
+derive_into_vec_from_repr_bytes!(RistrettoPrivate);
+derive_serde_from_repr_bytes!(RistrettoPrivate);
+derive_prost_message_from_repr_bytes!(RistrettoPrivate);
 
 impl Debug for RistrettoPrivate {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {

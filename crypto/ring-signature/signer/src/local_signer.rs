@@ -29,15 +29,15 @@ impl RingSigner for LocalRingSigner {
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
         // First, compute the one-time private key
-        let onetime_private_key = match ring.input_secret.onetime_key_derive_data {
-            OneTimeKeyDeriveData::OneTimeKey(key) => key,
+        let onetime_private_key = match &ring.input_secret.onetime_key_derive_data {
+            OneTimeKeyDeriveData::OneTimeKey(key) => key.clone(),
             OneTimeKeyDeriveData::SubaddressIndex(subaddress_index) => {
                 let public_key = RistrettoPublic::try_from(&real_input.public_key)?;
 
                 recover_onetime_private_key(
                     &public_key,
                     self.key.view_private_key(),
-                    &self.key.subaddress_spend_private(subaddress_index),
+                    &self.key.subaddress_spend_private(*subaddress_index),
                 )
             }
         };

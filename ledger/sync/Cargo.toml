@@ -26,9 +26,9 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.10.3"
-mockall = "0.11.1"
-protobuf = "2.27.1"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
+mockall = "0.11"
+prost = "0.10"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "1.3"

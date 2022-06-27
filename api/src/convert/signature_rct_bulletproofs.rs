@@ -6,32 +6,29 @@ use crate::{external, ConversionError};
 use mc_transaction_core::{
     ring_ct::SignatureRctBulletproofs, ring_signature::RingMLSAG, CompressedCommitment,
 };
-use protobuf::RepeatedField;
 
 impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
     fn from(source: &SignatureRctBulletproofs) -> Self {
-        let mut signature = external::SignatureRctBulletproofs::new();
-
-        let ring_signatures: Vec<external::RingMLSAG> = source
+        let ring_signatures = source
             .ring_signatures
             .iter()
-            .map(external::RingMLSAG::from)
+            .map(external::RingMlsag::from)
             .collect();
-        signature.set_ring_signatures(ring_signatures.into());
 
-        let pseudo_output_commitments: Vec<external::CompressedRistretto> = source
+        let pseudo_output_commitments = source
             .pseudo_output_commitments
             .iter()
             .map(external::CompressedRistretto::from)
             .collect();
-        signature.set_pseudo_output_commitments(pseudo_output_commitments.into());
 
-        signature.set_range_proof_bytes(source.range_proof_bytes.clone());
-        signature.set_range_proofs(RepeatedField::from_vec(source.range_proofs.clone()));
-        signature.set_pseudo_output_token_ids(source.pseudo_output_token_ids.clone());
-        signature.set_output_token_ids(source.output_token_ids.clone());
-
-        signature
+        Self {
+            ring_signatures,
+            pseudo_output_commitments,
+            range_proof_bytes: source.range_proof_bytes.clone(),
+            range_proofs: source.range_proofs.clone(),
+            pseudo_output_token_ids: source.pseudo_output_token_ids.clone(),
+            output_token_ids: source.output_token_ids.clone(),
+        }
     }
 }
 
@@ -39,29 +36,24 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
     type Error = ConversionError;
 
     fn try_from(source: &external::SignatureRctBulletproofs) -> Result<Self, Self::Error> {
-        let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
-        for ring_signature in source.get_ring_signatures() {
-            ring_signatures.push(RingMLSAG::try_from(ring_signature)?);
-        }
+        let ring_signatures = source
+            .ring_signatures
+            .iter()
+            .map(RingMLSAG::try_from)
+            .collect::<Result<_, _>>()?;
+        let pseudo_output_commitments = source
+            .pseudo_output_commitments
+            .iter()
+            .map(CompressedCommitment::try_from)
+            .collect::<Result<_, _>>()?;
 
-        let mut pseudo_output_commitments: Vec<CompressedCommitment> = Vec::new();
-        for pseudo_output_commitment in source.get_pseudo_output_commitments() {
-            pseudo_output_commitments
-                .push(CompressedCommitment::try_from(pseudo_output_commitment)?);
-        }
-
-        let range_proof_bytes = source.get_range_proof_bytes().to_vec();
-        let range_proofs = source.get_range_proofs().to_vec();
-        let pseudo_output_token_ids = source.get_pseudo_output_token_ids().to_vec();
-        let output_token_ids = source.get_output_token_ids().to_vec();
-
-        Ok(SignatureRctBulletproofs {
+        Ok(Self {
             ring_signatures,
             pseudo_output_commitments,
-            range_proof_bytes,
-            range_proofs,
-            pseudo_output_token_ids,
-            output_token_ids,
+            range_proof_bytes: source.range_proof_bytes.clone(),
+            range_proofs: source.range_proofs.clone(),
+            pseudo_output_token_ids: source.pseudo_output_token_ids.clone(),
+            output_token_ids: source.output_token_ids.clone(),
         })
     }
 }

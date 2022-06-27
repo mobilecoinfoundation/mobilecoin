@@ -29,9 +29,7 @@ fn test_b58pub_length<T: RngCore + CryptoRng>(
         let acct_key = AccountKey::from(&root_id);
         let addr = acct_key.default_subaddress();
 
-        let mut wrapper = PrintableWrapper::new();
-        wrapper.set_public_address((&addr).into());
-
+        let wrapper = PrintableWrapper::from(&addr);
         let data = wrapper.b58_encode().unwrap();
 
         if data.len() >= B58_ADDRESS_LIMIT {

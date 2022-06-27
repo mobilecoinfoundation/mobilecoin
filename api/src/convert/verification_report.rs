@@ -2,27 +2,34 @@
 
 //! Convert to/from external::VerificationReport
 
-use crate::external;
+use crate::{external, ConversionError};
 use mc_attest_verifier_types::VerificationReport;
 
 impl From<&VerificationReport> for external::VerificationReport {
     fn from(src: &VerificationReport) -> Self {
-        let mut dst = external::VerificationReport::new();
-
-        dst.set_sig((&src.sig).into());
-        dst.set_chain(src.chain.as_slice().into());
-        dst.set_http_body(src.http_body.clone());
-        dst
+        Self {
+            sig: Some((&src.sig).into()),
+            chain: src.chain.clone(),
+            http_body: src.http_body.clone(),
+        }
     }
 }
 
-impl From<&external::VerificationReport> for VerificationReport {
-    fn from(src: &external::VerificationReport) -> Self {
-        VerificationReport {
-            sig: src.get_sig().into(),
-            chain: src.get_chain().to_vec(),
-            http_body: src.get_http_body().to_owned(),
-        }
+impl TryFrom<&external::VerificationReport> for VerificationReport {
+    type Error = ConversionError;
+
+    fn try_from(src: &external::VerificationReport) -> Result<Self, Self::Error> {
+        let sig = src
+            .sig
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+
+        Ok(Self {
+            sig,
+            chain: src.chain.to_vec(),
+            http_body: src.http_body.to_owned(),
+        })
     }
 }
 
@@ -34,7 +41,7 @@ mod tests {
 
     /// Test round-trip conversion of prost to protobuf to prost
     #[test]
-    fn prost_to_proto_roundtrip() {
+    fn round_trip() {
         let report = VerificationReport {
             sig: b"this is a fake signature".as_slice().into(),
             chain: pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
@@ -48,7 +55,7 @@ mod tests {
         // external -> prost
         let proto_report = external::VerificationReport::from(&report);
         // prost -> external
-        let prost_report = VerificationReport::from(&proto_report);
+        let prost_report = VerificationReport::try_from(&proto_report).unwrap();
 
         assert_eq!(report, prost_report);
     }

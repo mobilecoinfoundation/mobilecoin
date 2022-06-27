@@ -110,9 +110,7 @@ impl MintTx {
         tx: &CoreMintTx,
     ) -> Result<Self, Error> {
         let recipient = PublicAddress::new(&tx.prefix.spend_public_key, &tx.prefix.view_public_key);
-        let mut wrapper = PrintableWrapper::new();
-        wrapper.set_public_address((&recipient).into());
-        let recipient_b58_addr = wrapper.b58_encode()?;
+        let recipient_b58_addr = PrintableWrapper::from(&recipient).b58_encode()?;
 
         Ok(Self {
             id: None,

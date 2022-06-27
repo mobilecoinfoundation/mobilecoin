@@ -29,19 +29,8 @@ use diesel::{
 use diesel_migrations::embed_migrations;
 use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
-use mc_common::{
-    logger::{log, Logger},
-    HashMap,
-};
-use mc_transaction_core::{tx::TxOut, TokenId};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Duration;
-
-embed_migrations!("migrations/");
-
 no_arg_sql_function!(
     last_insert_rowid,
-    diesel::sql_types::Integer,
     "Represents the SQLite last_insert_rowid() function"
 );
 

@@ -48,7 +48,7 @@ mc-fog-uri = { path = "../../uri" }
 clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
 hex = "0.4"
 lazy_static = "1.4"
 rand = "0.8"

@@ -55,5 +55,5 @@ pub use self::{
 
 pub(crate) use self::{
     boundary::{ffi_boundary, ffi_boundary_with_error},
-    into_ffi::{FfiTryFrom, FfiTryInto, FromFfi, IntoFfi, TryFromFfi},
+    into_ffi::{FfiTryFrom, FromFfi, IntoFfi, TryFromFfi},
 };

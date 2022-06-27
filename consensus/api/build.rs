@@ -25,7 +25,7 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(api_proto_path.split(':').collect::<Vec<&str>>());
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs_with_externs(
         all_proto_dirs.as_slice(),
         &[
             "consensus_client.proto",
@@ -33,5 +33,11 @@ fn main() {
             "consensus_config.proto",
             "consensus_peer.proto",
         ],
+        [
+            (".attest".to_owned(), "mc_attest_api::attest".to_owned()),
+            (".blockchain".to_owned(), "mc_api::blockchain".to_owned()),
+            (".external".to_owned(), "mc_api::external".to_owned()),
+        ]
+        .into(),
     );
 }

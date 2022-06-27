@@ -24,5 +24,5 @@ mc-crypto-noise = { path = "../../crypto/noise" }
 aead = "0.4"
 digest = "0.10"
 futures = "0.3"
-grpcio = "0.10.3"
-protobuf = "2.27.1"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
+prost = "0.10"

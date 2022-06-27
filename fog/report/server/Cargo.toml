@@ -32,12 +32,12 @@ mc-util-uri = { path = "../../../util/uri" }
 clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec"] }
 pem = "1.0"
 prost = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-signature = "1.5.0"
+signature = "1.5"
 x509-signature = "0.5"
 zeroize = "1"
 

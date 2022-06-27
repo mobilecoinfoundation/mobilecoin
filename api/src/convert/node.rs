@@ -3,15 +3,15 @@
 //! Convert between Rust and proto representations of NodeID.
 
 use crate::{quorum_set::Node as NodeProto, ConversionError};
+use core::str::FromStr;
 use mc_common::{NodeID, ResponderId};
-use std::str::FromStr;
 
 impl From<&NodeID> for NodeProto {
     fn from(node: &NodeID) -> NodeProto {
-        let mut proto = NodeProto::new();
-        proto.responder_id = node.responder_id.to_string();
-        proto.set_public_key((&node.public_key).into());
-        proto
+        Self {
+            responder_id: node.responder_id.to_string(),
+            public_key: Some((&node.public_key).into()),
+        }
     }
 }
 
@@ -21,7 +21,12 @@ impl TryFrom<&NodeProto> for NodeID {
     fn try_from(proto: &NodeProto) -> Result<Self, Self::Error> {
         let responder_id = ResponderId::from_str(&proto.responder_id)
             .map_err(|_| ConversionError::InvalidContents)?;
-        let public_key = proto.get_public_key().try_into()?;
+        let public_key = proto
+            .public_key
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?
+            .try_into()?;
+
         Ok(NodeID {
             responder_id,
             public_key,

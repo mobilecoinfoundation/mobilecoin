@@ -23,7 +23,9 @@ mod compressed_ristretto;
 mod curve_scalar;
 mod ed25519_multisig;
 mod ed25519_signature;
+mod encrypted_fog_hint;
 mod key_image;
+mod memo;
 mod mint_config;
 mod mint_tx;
 mod node;
@@ -53,7 +55,7 @@ mod error;
 pub use error::ConversionError;
 
 use mc_blockchain_types::BlockIndex;
-use std::path::PathBuf;
+use std::{format, path::PathBuf};
 
 /// Helper method for getting the suggested path/filename for a given block
 /// index.

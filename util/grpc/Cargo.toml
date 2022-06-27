@@ -5,9 +5,6 @@ authors = ["MobileCoin"]
 edition = "2021"
 description = "Runtime gRPC Utilities"
 
-[badges]
-circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
-
 [dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-util-build-info = { path = "../build/info" }
@@ -20,19 +17,19 @@ clap = { version = "3.2", features = ["derive", "env"] }
 cookie = "0.16"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.3"
+grpcio = { version = "0.10", default-features = false, features = ["prost-codec", "boringssl"] }
 hex = "0.4"
 hex_fmt = "0.3"
 hmac = "0.12"
 lazy_static = "1.4"
 prometheus = "0.13"
-protobuf = "2.27.1"
+prost = "0.10"
 rand = "0.8"
 retry = "1.3"
 serde = "1"
 sha2 = { version = "0.10", default-features = false }
 signal-hook = "0.3"
-subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+subtle = { version = "2.4", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 [build-dependencies]

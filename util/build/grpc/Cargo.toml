@@ -7,4 +7,5 @@ edition = "2021"
 [dependencies]
 mc-util-build-script = { path = "../../build/script" }
 
-protoc-grpcio = "3.0.0"
+grpcio-compiler = { version = "0.10", default-features = false, features = ["prost-codec"] }
+prost-build = "0.10"

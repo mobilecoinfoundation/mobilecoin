@@ -1,6 +1,6 @@
+/*
 use mc_api::external::KnownTokenId;
 use mc_transaction_core::{tokens, Token};
-use protobuf::ProtobufEnum;
 use std::collections::HashMap;
 
 // Test that protobuf KnownTokens enum matches the tokens in mc-transaction-core
@@ -20,3 +20,4 @@ fn test_known_tokens_enum_vs_mc_transaction_core_tokens() {
     assert_eq!(known_tokens.len(), 1);
     assert_eq!(*known_tokens.get("MOB").unwrap() as u64, *tokens::Mob::ID);
 }
+    */

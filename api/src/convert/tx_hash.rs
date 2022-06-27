@@ -6,9 +6,9 @@ use mc_transaction_core::tx;
 /// Convert tx::TxHash --> external::TxHash.
 impl From<&tx::TxHash> for external::TxHash {
     fn from(other: &tx::TxHash) -> Self {
-        let mut tx_hash = external::TxHash::new();
-        tx_hash.set_hash(other.to_vec());
-        tx_hash
+        Self {
+            hash: other.to_vec(),
+        }
     }
 }
 
@@ -17,7 +17,7 @@ impl TryFrom<&external::TxHash> for tx::TxHash {
     type Error = ConversionError;
 
     fn try_from(value: &external::TxHash) -> Result<Self, Self::Error> {
-        let hash_bytes: &[u8] = value.get_hash();
+        let hash_bytes: &[u8] = &value.hash;
         tx::TxHash::try_from(hash_bytes).or(Err(ConversionError::ArrayCastError))
     }
 }
@@ -37,8 +37,9 @@ mod tests {
     #[test]
     // external::TxHash --> tx::TxHash
     fn test_tx_hash_try_from() {
-        let mut source = external::TxHash::new();
-        source.set_hash(vec![7u8; 32]);
+        let source = external::TxHash {
+            hash: vec![7u8; 32],
+        };
         let converted = tx::TxHash::try_from(&source).unwrap();
         assert_eq!(converted.0, [7u8; 32]);
     }
@@ -46,16 +47,18 @@ mod tests {
     #[test]
     // Unmarshalling too many bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_many_bytes() {
-        let mut source = external::TxHash::new();
-        source.set_hash(vec![7u8; 99]); // Too many bytes.
+        let source = external::TxHash {
+            hash: vec![7u8; 99], // Too many bytes.
+        };
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 
     #[test]
     // Unmarshalling too few bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_few_bytes() {
-        let mut source = external::TxHash::new();
-        source.set_hash(vec![7u8; 3]); // Too few bytes.
+        let source = external::TxHash {
+            hash: vec![7u8; 3], // Too few bytes.
+        };
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 }

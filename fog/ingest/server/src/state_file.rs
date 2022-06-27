@@ -47,7 +47,7 @@ impl StateFile {
     /// Unfortunately there's no way to do 4 in the rust stdlib, so we would
     /// need to use nix or something. https://github.com/rust-lang/rust/issues/32255#issuecomment-308296338
     pub fn write(&self, state_data: &IngestStateFile) -> Result<()> {
-        let proto_data = state_data.write_to_bytes().map_err(|e| {
+        let proto_data = state_data.encode_to_vec().map_err(|e| {
             Error::new(
                 ErrorKind::Other,
                 format!("failed serializing state data: {}", e),

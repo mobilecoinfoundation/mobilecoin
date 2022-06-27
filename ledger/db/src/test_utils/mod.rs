@@ -219,7 +219,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         membership_proofs,
         real_index,
         onetime_private_key,
-        *sender.view_private_key(),
+        sender.view_private_key().clone(),
     )
     .unwrap();
     transaction_builder.add_input(input_credentials);

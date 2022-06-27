@@ -5,24 +5,13 @@ use mc_account_keys::PublicAddress;
 
 impl From<&PublicAddress> for external::PublicAddress {
     fn from(src: &PublicAddress) -> Self {
-        let mut dst = external::PublicAddress::new();
-
-        dst.set_view_public_key(external::CompressedRistretto::from(src.view_public_key()));
-        dst.set_spend_public_key(external::CompressedRistretto::from(src.spend_public_key()));
-
-        if let Some(url) = src.fog_report_url() {
-            dst.set_fog_report_url(url.to_string());
+        Self {
+            view_public_key: Some(src.view_public_key().into()),
+            spend_public_key: Some(src.spend_public_key().into()),
+            fog_report_url: src.fog_report_url().unwrap_or_default().to_string(),
+            fog_report_id: src.fog_report_id().unwrap_or_default().to_string(),
+            fog_authority_sig: src.fog_authority_sig().unwrap_or_default().to_vec(),
         }
-
-        if let Some(sig) = src.fog_authority_sig() {
-            dst.set_fog_authority_sig(sig.to_vec());
-        }
-
-        if let Some(key) = src.fog_report_id() {
-            dst.set_fog_report_id(key.to_string());
-        }
-
-        dst
     }
 }
 
@@ -74,12 +63,16 @@ mod tests {
             let public_address = AccountKey::random(&mut rng).default_subaddress();
             let proto_credentials = external::PublicAddress::from(&public_address);
             assert_eq!(
-                *proto_credentials.get_view_public_key(),
-                external::CompressedRistretto::from(public_address.view_public_key())
+                proto_credentials.view_public_key,
+                Some(external::CompressedRistretto::from(
+                    public_address.view_public_key()
+                ))
             );
             assert_eq!(
-                *proto_credentials.get_spend_public_key(),
-                external::CompressedRistretto::from(public_address.spend_public_key())
+                proto_credentials.spend_public_key,
+                Some(external::CompressedRistretto::from(
+                    public_address.spend_public_key()
+                ))
             );
             assert_eq!(proto_credentials.fog_report_url, String::from(""));
 
@@ -106,12 +99,16 @@ mod tests {
 
             let proto_credentials = external::PublicAddress::from(&public_address);
             assert_eq!(
-                *proto_credentials.get_view_public_key(),
-                external::CompressedRistretto::from(public_address.view_public_key())
+                proto_credentials.view_public_key,
+                Some(external::CompressedRistretto::from(
+                    public_address.view_public_key()
+                ))
             );
             assert_eq!(
-                *proto_credentials.get_spend_public_key(),
-                external::CompressedRistretto::from(public_address.spend_public_key())
+                proto_credentials.spend_public_key,
+                Some(external::CompressedRistretto::from(
+                    public_address.spend_public_key()
+                ))
             );
             assert_eq!(
                 proto_credentials.fog_report_url,

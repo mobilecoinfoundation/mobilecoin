@@ -6,23 +6,15 @@ use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules};
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {
     fn from(source: &tx::TxIn) -> Self {
-        let mut tx_in = external::TxIn::new();
-
-        let ring: Vec<external::TxOut> = source.ring.iter().map(external::TxOut::from).collect();
-        tx_in.set_ring(ring.into());
-
-        let proofs: Vec<external::TxOutMembershipProof> = source
-            .proofs
-            .iter()
-            .map(external::TxOutMembershipProof::from)
-            .collect();
-        tx_in.set_proofs(proofs.into());
-
-        if let Some(input_rules) = source.input_rules.as_ref() {
-            tx_in.set_input_rules(input_rules.into());
+        Self {
+            ring: source.ring.iter().map(external::TxOut::from).collect(),
+            proofs: source
+                .proofs
+                .iter()
+                .map(external::TxOutMembershipProof::from)
+                .collect(),
+            input_rules: source.input_rules.as_ref().map(external::InputRules::from),
         }
-
-        tx_in
     }
 }
 
@@ -31,17 +23,17 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxIn) -> Result<Self, Self::Error> {
-        let mut ring: Vec<tx::TxOut> = Vec::new();
-        for out in source.get_ring() {
-            let tx_out = tx::TxOut::try_from(out)?;
-            ring.push(tx_out);
-        }
+        let ring = source
+            .ring
+            .iter()
+            .map(tx::TxOut::try_from)
+            .collect::<Result<_, _>>()?;
 
-        let mut proofs: Vec<TxOutMembershipProof> = Vec::new();
-        for proof in source.get_proofs() {
-            let tx_proof = TxOutMembershipProof::try_from(proof)?;
-            proofs.push(tx_proof);
-        }
+        let proofs = source
+            .proofs
+            .iter()
+            .map(TxOutMembershipProof::try_from)
+            .collect::<Result<_, _>>()?;
 
         let input_rules = source
             .input_rules
@@ -49,30 +41,25 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
             .map(InputRules::try_from)
             .transpose()?;
 
-        let tx_in = tx::TxIn {
+        Ok(Self {
             ring,
             proofs,
             input_rules,
-        };
-        Ok(tx_in)
+        })
     }
 }
 
 /// Convert InputRules --> external::InputRules.
 impl From<&InputRules> for external::InputRules {
     fn from(source: &InputRules) -> Self {
-        let mut input_rules = external::InputRules::new();
-
-        let required_outputs = source
-            .required_outputs
-            .iter()
-            .map(external::TxOut::from)
-            .collect();
-        input_rules.set_required_outputs(required_outputs);
-
-        input_rules.set_max_tombstone_block(source.max_tombstone_block);
-
-        input_rules
+        Self {
+            required_outputs: source
+                .required_outputs
+                .iter()
+                .map(external::TxOut::from)
+                .collect(),
+            max_tombstone_block: source.max_tombstone_block,
+        }
     }
 }
 
@@ -82,14 +69,13 @@ impl TryFrom<&external::InputRules> for InputRules {
 
     fn try_from(source: &external::InputRules) -> Result<Self, Self::Error> {
         let required_outputs = source
-            .get_required_outputs()
+            .required_outputs
             .iter()
             .map(tx::TxOut::try_from)
             .collect::<Result<Vec<_>, _>>()?;
-        let max_tombstone_block = source.max_tombstone_block;
         Ok(InputRules {
             required_outputs,
-            max_tombstone_block,
+            max_tombstone_block: source.max_tombstone_block,
         })
     }
 }

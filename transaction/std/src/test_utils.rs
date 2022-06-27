@@ -144,7 +144,7 @@ pub fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         membership_proofs,
         real_index,
         onetime_key_derive_data,
-        *account.view_private_key(),
+        account.view_private_key().clone(),
     )
     .unwrap()
 }

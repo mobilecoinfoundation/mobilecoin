@@ -172,14 +172,14 @@ mod testing {
         };
         let txo_record = TxOutRecord::new(fog_txout, meta);
 
-        let protobuf = mc_util_serial::encode(&txo_record);
+        let bytes = mc_util_serial::encode(&txo_record);
 
         // Encrypt with user_id.get_view_pubkey()
         let payload = VersionedCryptoBox::default()
             .encrypt(
                 &mut rng,
                 &RistrettoPublic::try_from(decrypted_hint.get_view_pubkey()).unwrap(),
-                &protobuf,
+                &bytes,
             )
             .expect("CryptoBox encryption should not fail");
 
@@ -187,6 +187,6 @@ mod testing {
         let (_result, plaintext) = VersionedCryptoBox::default()
             .decrypt(&recipient.default_subaddress_view_private(), &payload)
             .expect("Could not decrypt cryptogram");
-        assert_eq!(plaintext, protobuf);
+        assert_eq!(plaintext, bytes);
     }
 }

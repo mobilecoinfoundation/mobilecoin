@@ -13,7 +13,6 @@ use mc_fog_report_validation::{ingest_report::Error as IngestReportError, FogPub
 use mc_transaction_core::AmountError;
 use mc_transaction_std::TxBuilderError;
 use mc_util_serial::DecodeError;
-use protobuf::ProtobufError;
 use std::os::raw::c_int;
 
 impl From<LibMcError> for McError {
@@ -167,12 +166,6 @@ impl From<FogKexRngError> for LibMcError {
         } else {
             LibMcError::InvalidInput(format!("{:?}", err))
         }
-    }
-}
-
-impl From<ProtobufError> for LibMcError {
-    fn from(err: ProtobufError) -> Self {
-        LibMcError::InvalidInput(format!("{:?}", err))
     }
 }
 

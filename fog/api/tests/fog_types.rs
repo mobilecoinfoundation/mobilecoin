@@ -6,7 +6,6 @@
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_api::kex_rng;
 use mc_fog_kex_rng::{KexRngPubkey, StoredRng};
-use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::Range,
@@ -14,6 +13,7 @@ use mc_transaction_core::{
     Amount, EncryptedMemo, MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
+use mc_util_serial::round_trip_message;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
 use mc_watcher_api::TimestampResultCode;
 

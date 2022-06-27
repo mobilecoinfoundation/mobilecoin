@@ -4,8 +4,7 @@
 
 use crate::{
     quorum_set::{
-        QuorumSet as QuorumSetProto, QuorumSetMember as QuorumSetMemberProto,
-        QuorumSetMember_oneof_member,
+        quorum_set_member, QuorumSet as QuorumSetProto, QuorumSetMember as QuorumSetMemberProto,
     },
     ConversionError,
 };
@@ -14,15 +13,15 @@ use mc_blockchain_types::{NodeID, QuorumSet, QuorumSetMember, QuorumSetMemberWra
 // QuorumSet
 impl From<&QuorumSet> for QuorumSetProto {
     fn from(qs: &QuorumSet) -> Self {
-        let mut proto = QuorumSetProto::new();
         let members = qs
             .members
             .iter()
             .filter_map(|m| (*m).as_ref().map(Into::into))
             .collect();
-        proto.threshold = qs.threshold;
-        proto.set_members(members);
-        proto
+        QuorumSetProto {
+            threshold: qs.threshold,
+            members,
+        }
     }
 }
 
@@ -53,13 +52,12 @@ impl TryFrom<&QuorumSetProto> for QuorumSet {
 
 // QuorumSetMember
 impl From<&QuorumSetMember<NodeID>> for QuorumSetMemberProto {
-    fn from(member: &QuorumSetMember<NodeID>) -> QuorumSetMemberProto {
-        let mut proto = QuorumSetMemberProto::new();
-        match member {
-            QuorumSetMember::Node(id) => proto.set_node(id.into()),
-            QuorumSetMember::InnerSet(qs) => proto.set_inner_set(qs.into()),
-        }
-        proto
+    fn from(src: &QuorumSetMember<NodeID>) -> QuorumSetMemberProto {
+        let member = Some(match src {
+            QuorumSetMember::Node(id) => quorum_set_member::Member::Node(id.into()),
+            QuorumSetMember::InnerSet(qs) => quorum_set_member::Member::InnerSet(qs.into()),
+        });
+        QuorumSetMemberProto { member }
     }
 }
 
@@ -68,10 +66,8 @@ impl TryFrom<&QuorumSetMemberProto> for QuorumSetMember<NodeID> {
 
     fn try_from(proto: &QuorumSetMemberProto) -> Result<Self, Self::Error> {
         match proto.member.as_ref() {
-            Some(QuorumSetMember_oneof_member::node(id)) => {
-                Ok(QuorumSetMember::Node(id.try_into()?))
-            }
-            Some(QuorumSetMember_oneof_member::inner_set(qs)) => {
+            Some(quorum_set_member::Member::Node(id)) => Ok(QuorumSetMember::Node(id.try_into()?)),
+            Some(quorum_set_member::Member::InnerSet(qs)) => {
                 Ok(QuorumSetMember::InnerSet(qs.try_into()?))
             }
             None => Err(ConversionError::ObjectMissing),

@@ -2409,7 +2409,7 @@ pub mod transaction_builder_tests {
                 membership_proofs,
                 real_index,
                 OneTimeKeyDeriveData::OneTimeKey(onetime_private_key),
-                *alice.view_private_key(),
+                alice.view_private_key().clone(),
             )
             .unwrap();
 
@@ -3355,7 +3355,7 @@ pub mod transaction_builder_tests {
             );
             let tx_out_gift_code = TxOutGiftCode {
                 global_index,
-                onetime_private_key: gift_code_tx_out_private_key,
+                onetime_private_key: gift_code_tx_out_private_key.clone(),
                 shared_secret: funding_output_ss,
             };
 

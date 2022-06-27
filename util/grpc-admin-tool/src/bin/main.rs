@@ -6,7 +6,8 @@
 use clap::{Parser, Subcommand};
 use grpcio::ChannelBuilder;
 use mc_util_grpc::{
-    admin::SetRustLogRequest, admin_grpc::AdminApiClient, empty::Empty, ConnectionUriGrpcioChannel,
+    admin::{AdminApiClient, SetRustLogRequest},
+    ConnectionUriGrpcioChannel,
 };
 use mc_util_uri::AdminUri;
 use std::{str::FromStr, sync::Arc};
@@ -56,15 +57,13 @@ fn main() {
     match config.cmd {
         Command::Metrics => {
             let response = client
-                .get_prometheus_metrics(&Empty::new())
+                .get_prometheus_metrics(&())
                 .expect("failed calling get_prometheus_metrics");
             println!("{}", response.metrics);
         }
 
         Command::GetInfo => {
-            let response = client
-                .get_info(&Empty::new())
-                .expect("failed calling get_info");
+            let response = client.get_info(&()).expect("failed calling get_info");
 
             println!("Service name: {}", response.name);
             println!("Service id:   {}", response.id);
@@ -74,18 +73,17 @@ fn main() {
         }
 
         Command::SetRustLog { rust_log } => {
-            let mut request = SetRustLogRequest::new();
-            request.set_rust_log(rust_log);
+            let request = SetRustLogRequest { rust_log };
 
-            let _ = client
+            client
                 .set_rust_log(&request)
                 .expect("failed calling set_rust_log");
             println!("Done.");
         }
 
         Command::TestLogError => {
-            let _ = client
-                .test_log_error(&Empty::new())
+            client
+                .test_log_error(&())
                 .expect("failed calling test_log_error");
             println!("Done.");
         }

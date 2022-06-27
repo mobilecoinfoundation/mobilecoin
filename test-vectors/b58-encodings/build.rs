@@ -9,9 +9,9 @@ fn main() {
             .map(|n| {
                 let account_key = AccountKey::from(&RootIdentity::from(&[n; 32]));
                 let public_address = account_key.default_subaddress();
-                let mut wrapper = PrintableWrapper::new();
-                wrapper.set_public_address((&public_address).try_into().unwrap());
+                let wrapper = PrintableWrapper::from(&public_address);
                 let b58_encoded = wrapper.b58_encode().unwrap();
+
                 B58EncodePublicAddressWithoutFog {
                     view_public_key: public_address.view_public_key().to_bytes(),
                     spend_public_key: public_address.spend_public_key().to_bytes(),
@@ -32,8 +32,7 @@ fn main() {
                     fog_authority_spki: Vec::new(),
                 });
                 let public_address = account_key.default_subaddress();
-                let mut wrapper = PrintableWrapper::new();
-                wrapper.set_public_address((&public_address).try_into().unwrap());
+                let wrapper = PrintableWrapper::from(&public_address);
                 let b58_encoded = wrapper.b58_encode().unwrap();
                 B58EncodePublicAddressWithFog {
                     view_public_key: public_address.view_public_key().to_bytes(),

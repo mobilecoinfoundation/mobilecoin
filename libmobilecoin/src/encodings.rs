@@ -4,7 +4,7 @@ use crate::{common::*, LibMcError};
 use libc::ssize_t;
 use mc_api::printable::PrintableWrapper;
 use mc_util_ffi::*;
-use protobuf::Message;
+use mc_util_serial::Message;
 
 /* ==== PrintableWrapper ==== */
 
@@ -12,7 +12,7 @@ impl<'a> TryFromFfi<&McBuffer<'a>> for PrintableWrapper {
     type Error = LibMcError;
 
     fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, Self::Error> {
-        Self::parse_from_bytes(src).map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
+        Self::decode(src.as_slice()).map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
     }
 }
 
@@ -57,7 +57,7 @@ pub extern "C" fn mc_printable_wrapper_b58_decode(
             String::try_from_ffi(b58_encoded_string).expect("b58_encoded_string is invalid");
 
         let printable_wrapper = PrintableWrapper::b58_decode(b58_encoded_string)?;
-        let wrapper_bytes = printable_wrapper.write_to_bytes()?;
+        let wrapper_bytes = printable_wrapper.encode_to_vec();
 
         if let Some(out_printable_wrapper_proto_bytes) =
             out_printable_wrapper_proto_bytes.into_option()

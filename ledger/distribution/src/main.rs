@@ -13,7 +13,7 @@ use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
-use protobuf::Message;
+use prost::Message;
 use retry::{delay, retry, OperationResult};
 use rusoto_core::Region;
 use rusoto_s3::{PutObjectRequest, S3Client, S3};
@@ -162,9 +162,7 @@ impl BlockHandler for S3BlockWriter {
         self.write_bytes_to_s3(
             dir.to_str().unwrap(),
             filename.to_str().unwrap(),
-            &archive_block
-                .write_to_bytes()
-                .expect("failed to serialize ArchiveBlock"),
+            &archive_block.encode_to_vec(),
         );
     }
 
@@ -198,9 +196,7 @@ impl BlockHandler for S3BlockWriter {
         self.write_bytes_to_s3(
             dir.to_str().unwrap(),
             filename.to_str().unwrap(),
-            &archive_blocks
-                .write_to_bytes()
-                .expect("failed to serialize ArchiveBlocks"),
+            &archive_blocks.encode_to_vec(),
         );
     }
 }
@@ -228,10 +224,7 @@ impl BlockHandler for LocalBlockWriter {
         );
 
         let archive_block = blockchain::ArchiveBlock::from(block_data);
-
-        let bytes = archive_block
-            .write_to_bytes()
-            .expect("failed to serialize ArchiveBlock");
+        let bytes = archive_block.encode_to_vec();
 
         let dest = self
             .path
@@ -270,9 +263,7 @@ impl BlockHandler for LocalBlockWriter {
 
         let archive_blocks = blockchain::ArchiveBlocks::from(blocks_data);
 
-        let bytes = archive_blocks
-            .write_to_bytes()
-            .expect("failed to serialize ArchiveBlock");
+        let bytes = archive_blocks.encode_to_vec();
 
         let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
             blocks_data.len() as u64,

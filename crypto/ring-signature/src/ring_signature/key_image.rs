@@ -24,11 +24,6 @@ impl KeyImage {
     pub fn as_bytes(&self) -> &[u8; 32] {
         self.point.as_bytes()
     }
-
-    /// Copies `self` into a new Vec.
-    pub fn to_vec(&self) -> alloc::vec::Vec<u8> {
-        self.point.as_bytes().to_vec()
-    }
 }
 
 impl From<&RistrettoPrivate> for KeyImage {

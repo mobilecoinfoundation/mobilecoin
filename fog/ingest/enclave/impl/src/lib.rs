@@ -240,7 +240,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
             return Err(Error::Attest(AttestEnclaveError::NotFound));
         }
 
-        let private_key = *self.ake.get_identity().private_key.lock()?;
+        let private_key = self.ake.get_identity().private_key.lock()?.clone();
         let public_key = RistrettoPublic::from(&private_key);
 
         Ok((
