@@ -135,7 +135,8 @@ impl AvrConfigRecord {
 mod tests {
     use super::*;
 
-    const IAS_FULL: &str = include_str!("../../../attest/core/data/test/ias_full.toml");
+    const IAS_FULL: &str = include_str!("../../../../../attest/core/data/test/ias_full.toml");
+    const IAS_HISTORY: &str = "src/metadata/avr/data/sample_ias_records.toml";
 
     #[test]
     fn test_avr_history_serialization_works() {
@@ -170,7 +171,7 @@ mod tests {
     #[test]
     fn test_avr_validator_loads_from_valid_records() {
         // Load test records
-        let path = Path::new("tests/data/sample_ias_records.toml");
+        let path = Path::new(IAS_HISTORY);
         let config = AvrConfig::load(path).unwrap();
         let avr_count = config
             .avr_records
@@ -184,15 +185,15 @@ mod tests {
 
     #[test]
     fn test_avr_validator_creation_fails_if_intermediate_ranges_are_missing() {
-        let path = Path::new("data/sample_ias_records.toml");
+        let path = Path::new(IAS_HISTORY);
         let mut avr_config = AvrConfig::load(path).unwrap();
         avr_config.avr_records[1].last_block_index = None;
 
         // Assert that the validator fails to load a last_block on an intermediate
         // range is missing.
         assert!(matches!(
-        avr_config.create_avr_validator(),
-        Err(ValidationError::Other(_))
-    ));
+            avr_config.create_avr_validator(),
+            Err(ValidationError::Other(_))
+        ));
     }
 }

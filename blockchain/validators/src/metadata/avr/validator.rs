@@ -3,6 +3,7 @@
 //! Types for reading and writing historical Intel Attestation
 //! Verification Reports from MobileCoin consensus enclaves
 
+use crate::ParseError;
 use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, VerificationReport};
 use mc_common::ResponderId;
@@ -43,4 +44,12 @@ pub struct AvrValidationRecord {
 
     /// Intel Attestation Verification Report for the enclave session
     pub avr: VerificationReport,
+}
+
+impl AvrValidator {
+    /// Create AVR validate from AVR history config file
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
+        let mut avr_history = crate::metadata::avr::AvrConfig::load(path)?;
+        Ok(avr_history.create_avr_validator()?)
+    }
 }
