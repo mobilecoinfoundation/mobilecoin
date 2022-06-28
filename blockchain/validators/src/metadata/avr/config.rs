@@ -8,7 +8,7 @@ use crate::{
     ValidationError,
 };
 use mc_attest_core::serial;
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, VerificationReport};
 use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Public;
@@ -45,8 +45,7 @@ impl AvrConfig {
     /// Parse records recovered from toml and pre-validate avrs. Consumes self
     pub fn create_avr_validator(&mut self) -> Result<AvrValidator, ValidationError> {
         let mut avr_history = HashMap::new();
-        let mut avr_verifier = Verifier::new(IAS_ANCHORS)?;
-        avr_verifier.debug(DEBUG_ENCLAVE);
+        let avr_verifier = Verifier::new(IAS_ANCHORS)?;
         let mut responder_id_to_empty_last_blocks = HashMap::new();
         for record in &self.avr_records {
             let last_block_index = match record.last_block_index.as_ref() {
