@@ -823,6 +823,9 @@ mod account_key_tests {
             view_account_key.gift_code_subaddress()
         );
 
-        assert_eq!(account_key.subaddress(500), view_account_key(500));
+        assert_eq!(
+            account_key.subaddress(500),
+            view_account_key.subaddress(500)
+        );
     }
 }
