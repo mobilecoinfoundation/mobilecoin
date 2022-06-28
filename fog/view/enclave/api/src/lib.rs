@@ -129,6 +129,9 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// Accept an inbound authentication request
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)>;
 
+    /// Destroy a peer association
+    fn client_close(&self, channel_id: ClientSession) -> Result<()>;
+
     /// Begin a connection to a Fog View Store. The enclave calling this method
     /// will act as a client to the Fog View Store.
     fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest>;
@@ -141,9 +144,6 @@ pub trait ViewEnclaveApi: ReportableEnclave {
         view_store_id: ResponderId,
         view_store_auth_response: ClientAuthResponse,
     ) -> Result<()>;
-
-    /// Destroy a peer association
-    fn client_close(&self, channel_id: ClientSession) -> Result<()>;
 
     /// Service a user's encrypted QueryRequest
     fn query(
