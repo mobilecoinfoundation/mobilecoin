@@ -182,6 +182,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Constructs a ClientAuthRequest to be sent to an enclave backend.
+    ///
+    /// Differs from peer_init in that this enclave does not establish a peer
+    /// connection to the enclave described by `backend_id`. Rather, this
+    /// enclave serves as a client to this other backend enclave.
     pub fn backend_init(&self, backend_id: ResponderId) -> Result<ClientAuthRequest> {
         let mut csprng = McRng::default();
 
@@ -195,6 +199,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Connect to an enclave backend as a client.
+    ///
+    /// This establishes the client to backend enclave connection, see
+    /// `backend_init` for more details on how this differs from a peer
+    /// connection.
     pub fn backend_connect(
         &self,
         backend_id: ResponderId,
@@ -429,6 +437,36 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         })
     }
 
+    /// Transforms an incoming client message, i.e. a message sent from a client
+    /// to the current enclave, into a list of outbound  messages for
+    /// other enclaves that serve as backends to the current enclave.
+    ///
+    ///                               / --> Backend Enclave 1
+    ///   Client -> Current Enclave ---> Backend Enclave 2
+    ///                              \ --> Backend Enclave N
+    pub fn reencrypt_client_message_for_backends(
+        &self,
+        incoming_client_message: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+        let client_query_bytes: Vec<u8> = self.client_decrypt(incoming_client_message.clone())?;
+        let mut backends = self.backends.lock()?;
+        let backend_messages = backends
+            .iter_mut()
+            .map(|(_, encryptor)| {
+                let aad = incoming_client_message.aad.clone();
+                let data = encryptor.encrypt(&aad, &client_query_bytes)?;
+                let channel_id = incoming_client_message.channel_id.clone();
+                Ok(EnclaveMessage {
+                    aad,
+                    channel_id,
+                    data,
+                })
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(backend_messages)
+    }
+
     //
     // IAS related
     //
@@ -560,35 +598,6 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // Save the result
         *(self.current_ias_report.lock()?) = Some(ias_report);
         Ok(())
-    }
-
-    /// Transforms an incoming client message, i.e. a message sent from a client
-    /// to the current enclave, into a list of outbound  messages for
-    /// other enclaves that serve as backends to the current enclave.
-    ///                                 --> Backend Enclave 1
-    ///                               /
-    ///   Client -> Current Enclave ---> Backend Enclave 2
-    ///                              \
-    ///                               \ --> Backend Enclave N
-    pub fn reencrypt_client_message_for_backends(
-        &self,
-        incoming_client_message: EnclaveMessage<ClientSession>,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        let mut backends = self.backends.lock()?;
-        let client_query_bytes: Vec<u8> = self.client_decrypt(incoming_client_message.clone())?;
-        let mut backend_messages = Vec::with_capacity(backends.len());
-        for (_, encryptor) in backends.iter_mut() {
-            let aad = incoming_client_message.aad.clone();
-            let data = encryptor.encrypt(&aad, &client_query_bytes)?;
-            let channel_id = incoming_client_message.channel_id.clone();
-            backend_messages.push(EnclaveMessage {
-                aad,
-                channel_id,
-                data,
-            });
-        }
-
-        Ok(backend_messages)
     }
 
     //
