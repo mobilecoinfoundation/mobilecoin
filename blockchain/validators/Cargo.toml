@@ -6,7 +6,10 @@ edition = "2021"
 
 [dependencies]
 # MobileCoin dependencies
+mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-blockchain-types = { path = "../types" }
+mc-common = { path = "../../common" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 
 # External dependencies

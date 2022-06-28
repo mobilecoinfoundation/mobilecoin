@@ -3,4 +3,5 @@
 //! Intel Attestation Service Support
 
 pub mod json;
+pub mod serial;
 pub mod verify;

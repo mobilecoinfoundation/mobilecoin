@@ -2584,8 +2584,11 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "hex",
+ "mc-attest-core",
+ "mc-attest-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
+ "mc-common",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
