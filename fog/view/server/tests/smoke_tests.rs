@@ -104,8 +104,7 @@ fn get_test_environment(
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier
-            .allow_hardening_advisories(mc_fog_view_enclave_measurement::HARDENING_ADVISORIES);
+        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);

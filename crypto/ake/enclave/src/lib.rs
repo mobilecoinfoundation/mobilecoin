@@ -133,11 +133,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut mr_enclave_verifier = MrEnclaveVerifier::new(report_body.mr_enclave());
         // INTEL-SA-00334: LVI hardening is handled via rustc arguments set in
         // mc-util-build-enclave
-        //
-        // INTEL-SA-00615: MMIO Stale Data is handled by using [out] parameters
-        // in our ECALL/OCALL definitions (EDLs), and only performing direct
-        // writes aligned to quadword (8B) boundaries (e.g. in ORAMStorage)
-        mr_enclave_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_enclave_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         verifier
             .mr_enclave(mr_enclave_verifier)
