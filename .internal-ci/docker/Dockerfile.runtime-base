@@ -35,10 +35,9 @@ ENV LD_LIBRARY_PATH="/opt/intel/sgx-aesm-service/aesm"
 # libsgx-enclave-common libsgx-epid libsgx-launch libsgx-pce-logic libsgx-urts
 # sgx-aesm-service
 # Use `apt show -a sgx-aesm-service` to find version
-ENV AESM_VERSION=2.17.100.3-focal1
+ENV AESM_VERSION=2.16.100.4-focal1
 # Use `apt show -a libsgx-pce-logic` to find the version thats compatible with aesm.
-ENV PCE_LOGIC_VERSION=1.14.100.3-focal1
-
+ENV PCE_LOGIC_VERSION=1.13.100.4-focal1
 
 # Install  packages
 RUN  apt-get update \
