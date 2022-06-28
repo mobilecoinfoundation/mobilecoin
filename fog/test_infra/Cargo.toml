@@ -23,7 +23,7 @@ mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys" }
-mc-ledger-db = { path = "../../ledger/db" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
