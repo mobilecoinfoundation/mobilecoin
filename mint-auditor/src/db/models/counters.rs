@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{schema::counters, Conn},
+    counters as prom_counters,
+    db::{schema::counters, transaction, Conn},
     Error,
 };
 use diesel::prelude::*;
@@ -15,17 +16,17 @@ use serde::{Deserialize, Serialize};
 #[table_name = "counters"]
 pub struct Counters {
     /// Id (required to keep Diesel happy).
-    pub id: i32,
+    id: i32,
 
     /// The number of blocks synced so far.
-    pub num_blocks_synced: i64,
+    num_blocks_synced: i64,
 
     /// The number of burn transactions that exceeded the minted amount.
-    pub num_burns_exceeding_balance: i64,
+    num_burns_exceeding_balance: i64,
 
     /// The number of mint transactions that did not match an active mint
     /// configuration.
-    pub num_mint_txs_without_matching_mint_config: i64,
+    num_mint_txs_without_matching_mint_config: i64,
 }
 
 impl Counters {
@@ -34,15 +35,66 @@ impl Counters {
         self.num_blocks_synced as u64
     }
 
+    /// Atomically increase the number of blocks synced so far.
+    pub fn inc_num_blocks_synced(conn: &Conn) -> Result<(), Error> {
+        match diesel::update(counters::table)
+            .set(counters::num_blocks_synced.eq(counters::num_blocks_synced + 1))
+            .execute(conn)?
+        {
+            0 => Err(Error::NotFound),
+            1 => Ok(()),
+            num_rows => Err(Error::Other(format!(
+                "inc_num_blocks_synced: unexpected number of rows ({})",
+                num_rows
+            ))),
+        }
+    }
+
     /// Get the number of burn transactions that exceeded the minted amount.
     pub fn num_burns_exceeding_balance(&self) -> u64 {
         self.num_burns_exceeding_balance as u64
     }
 
+    /// Atomically increase the number of burn transactions that exceeded the
+    /// minted amount.
+    pub fn inc_num_burns_exceeding_balance(conn: &Conn) -> Result<(), Error> {
+        match diesel::update(counters::table)
+            .set(
+                counters::num_burns_exceeding_balance.eq(counters::num_burns_exceeding_balance + 1),
+            )
+            .execute(conn)?
+        {
+            0 => Err(Error::NotFound),
+            1 => Ok(()),
+            num_rows => Err(Error::Other(format!(
+                "inc_num_burns_exceeding_balance: unexpected number of rows ({})",
+                num_rows
+            ))),
+        }
+    }
     /// Get the number of mint transactions that did not match an active mint
     /// configuration.
     pub fn num_mint_txs_without_matching_mint_config(&self) -> u64 {
         self.num_mint_txs_without_matching_mint_config as u64
+    }
+
+    /// Atomically increase the number of mint transactions that did not match
+    /// an active mint configuration.
+    pub fn inc_num_mint_txs_without_matching_mint_config(conn: &Conn) -> Result<(), Error> {
+        match diesel::update(counters::table)
+            .set(
+                counters::num_mint_txs_without_matching_mint_config
+                    .eq(counters::num_mint_txs_without_matching_mint_config + 1),
+            )
+            .execute(conn)?
+        {
+            0 => Err(Error::NotFound),
+            1 => Ok(()),
+            num_rows => Err(Error::Other(format!(
+                "inc_num_mint_txs_without_matching_mint_config: unexpected number of rows ({})",
+                num_rows
+            ))),
+        }
     }
 
     /// Get all counters.
@@ -54,13 +106,26 @@ impl Counters {
         }
     }
 
-    /// Set all counters.
-    pub fn set(&self, conn: &Conn) -> Result<(), Error> {
-        diesel::replace_into(counters::table)
-            .values(self)
-            .execute(conn)?;
+    /// Ensure we have a row in the counters table.
+    pub fn ensure_exists(conn: &Conn) -> Result<(), Error> {
+        transaction(conn, |conn| -> Result<(), Error> {
+            match counters::table.get_result::<Self>(conn) {
+                Ok(_) => Ok(()),
+                Err(diesel::result::Error::NotFound) => Ok(diesel::insert_into(counters::table)
+                    .values(Self::default())
+                    .execute(conn)
+                    .map(|_| ())?),
+                Err(e) => Err(e.into()),
+            }
+        })
+    }
 
-        Ok(())
+    /// Update prometheus counters.
+    pub fn update_prometheus(&self) {
+        prom_counters::NUM_BLOCKS_SYNCED.set(self.num_blocks_synced);
+        prom_counters::NUM_BURNS_EXCEEDING_BALANCE.set(self.num_burns_exceeding_balance);
+        prom_counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
+            .set(self.num_mint_txs_without_matching_mint_config);
     }
 }
 
@@ -74,23 +139,36 @@ mod tests {
     fn counters_sanity_test(logger: Logger) {
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
 
-        let mut counters = Counters::get(&mint_auditor_db.get_conn().unwrap()).unwrap();
-        assert_eq!(counters, Counters::default());
+        assert_eq!(Counters::get(&conn).unwrap(), Counters::default());
 
-        counters.num_blocks_synced = 123;
-        counters.set(&mint_auditor_db.get_conn().unwrap()).unwrap();
-        assert_eq!(
-            Counters::get(&mint_auditor_db.get_conn().unwrap()).unwrap(),
-            counters
-        );
+        Counters::ensure_exists(&conn).unwrap();
+        Counters::ensure_exists(&conn).unwrap();
+        Counters::ensure_exists(&conn).unwrap();
 
-        counters.num_blocks_synced = 1234;
-        counters.num_burns_exceeding_balance = 5;
-        counters.set(&mint_auditor_db.get_conn().unwrap()).unwrap();
-        assert_eq!(
-            Counters::get(&mint_auditor_db.get_conn().unwrap()).unwrap(),
-            counters
-        );
+        Counters::inc_num_blocks_synced(&conn).unwrap();
+        Counters::inc_num_blocks_synced(&conn).unwrap();
+        Counters::inc_num_blocks_synced(&conn).unwrap();
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), 3);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
+
+        Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
+        Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
+        Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
+        Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), 3);
+        assert_eq!(counters.num_burns_exceeding_balance(), 4);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
+
+        Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
+        Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), 3);
+        assert_eq!(counters.num_burns_exceeding_balance(), 4);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 2);
     }
 }

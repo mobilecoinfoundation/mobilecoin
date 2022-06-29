@@ -77,6 +77,10 @@ impl MintAuditorDb {
         let conn = pool.get()?;
         embedded_migrations::run_with_output(&conn, &mut std::io::stdout())?;
 
+        // Ensure we have a row in the counters table (this makes all the atomic updates
+        // in [Counters] work as expected).
+        Counters::ensure_exists(&conn)?;
+
         Ok(Self::new(pool, logger))
     }
 
@@ -106,11 +110,11 @@ impl MintAuditorDb {
             let block_index = block.index;
             log::info!(self.logger, "Syncing block {}", block_index);
 
-            let mut counters = Counters::get(conn)?;
+            //let counters = Counters::get(conn)?;
 
             // Ensure that we are syncing the next block and haven't skipped any blocks (or
             // went backwards).
-            let next_block_index = counters.num_blocks_synced as BlockIndex;
+            let next_block_index = Counters::get(conn)?.num_blocks_synced();
             if block_index != next_block_index {
                 return Err(Error::UnexpectedBlockIndex(block_index, next_block_index));
             }
@@ -165,7 +169,7 @@ impl MintAuditorDb {
                         mint_tx,
                     );
 
-                    counters.num_mint_txs_without_matching_mint_config += 1;
+                    Counters::inc_num_mint_txs_without_matching_mint_config(conn)?;
                 }
 
                 // Store the mint tx.
@@ -203,7 +207,7 @@ impl MintAuditorDb {
                         burn_balance
                     );
                     *burn_balance = 0;
-                    counters.num_burns_exceeding_balance += 1;
+                    Counters::inc_num_burns_exceeding_balance(conn)?;
                 } else {
                     *burn_balance -= amount.value;
                     log::info!(
@@ -218,9 +222,7 @@ impl MintAuditorDb {
             }
 
             // Update the database.
-            counters.num_blocks_synced += 1;
-            log::trace!(self.logger, "Updating counters: {:?}", counters);
-            counters.set(conn)?;
+            Counters::inc_num_blocks_synced(conn)?;
 
             let block_audit_data = BlockAuditData::new(block_index);
             log::trace!(
@@ -532,15 +534,10 @@ mod tests {
         );
 
         // Sanity check counters.
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block.index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
 
     // Attempting to skip a block when syncing should fail.
@@ -725,7 +722,10 @@ mod tests {
         );
 
         // At this point nothing has been over-burned.
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 0);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            0
+        );
 
         // Sync a block with two burn transactions that results in one of them
         // over-burning.
@@ -779,7 +779,10 @@ mod tests {
         );
 
         // Over-burn has been recorded.
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 1);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            1
+        );
 
         // Over burn once again, see that counter increases.
         let tx_out1 = TxOut::new(
@@ -816,7 +819,10 @@ mod tests {
 
         mint_audit_db.sync_block(&block, &block_contents).unwrap();
 
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 3);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            3
+        );
     }
 
     // MintTxs that do not match an active MintConfig get counted.
@@ -904,15 +910,10 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                assert_eq!(
-                    Counters::get(conn).unwrap(),
-                    Counters {
-                        id: 0,
-                        num_blocks_synced: block.index as i64 + 1,
-                        num_burns_exceeding_balance: 0,
-                        num_mint_txs_without_matching_mint_config: 1,
-                    }
-                );
+                let counters = Counters::get(&conn).unwrap();
+                assert_eq!(counters.num_blocks_synced(), block.index + 1);
+                assert_eq!(counters.num_burns_exceeding_balance(), 0);
+                assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
 
                 // Chosen arbitrarily, we just need to return an error to ensure the transaction
                 // gets rolled back.
@@ -957,15 +958,10 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                assert_eq!(
-                    Counters::get(conn).unwrap(),
-                    Counters {
-                        id: 0,
-                        num_blocks_synced: block.index as i64 + 1,
-                        num_burns_exceeding_balance: 0,
-                        num_mint_txs_without_matching_mint_config: 1,
-                    }
-                );
+                let counters = Counters::get(&conn).unwrap();
+                assert_eq!(counters.num_blocks_synced(), block.index + 1);
+                assert_eq!(counters.num_burns_exceeding_balance(), 0);
+                assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
 
                 // Chosen arbitrarily, we just need to return an error to ensure the transaction
                 // gets rolled back.
@@ -992,15 +988,10 @@ mod tests {
             .unwrap();
         mint_audit_db.sync_block(&block, &block_contents).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block.index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
 
     // MintTxs that exceed the MintConfigTx limit get counted.
@@ -1088,15 +1079,10 @@ mod tests {
 
         mint_audit_db.sync_block(&block, &block_contents).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block.index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
 
         // Minting more should get flagged since we are exceeding the total mint limit.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
@@ -1114,14 +1100,9 @@ mod tests {
 
         mint_audit_db.sync_block(&block, &block_contents).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block.index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 1,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
     }
 }

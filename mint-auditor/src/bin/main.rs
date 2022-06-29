@@ -7,7 +7,6 @@ use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
-    counters,
     db::{transaction, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
     Error, MintAuditorService,
@@ -288,20 +287,12 @@ fn sync_loop(
                         block_data.contents(),
                     )
                 })?;
-                update_counters(&Counters::get(&conn)?);
+                Counters::get(&conn)?.update_prometheus();
             }
         };
     }
 
     Ok(())
-}
-
-/// Update prometheus counters.
-fn update_counters(counters: &Counters) {
-    counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
-    counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
-    counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
-        .set(counters.num_mint_txs_without_matching_mint_config as i64);
 }
 
 /// Load a gnosis safe config file.

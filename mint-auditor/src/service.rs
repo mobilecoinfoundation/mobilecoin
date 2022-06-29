@@ -303,10 +303,10 @@ mod tests {
 
         let response = client.get_counters(&Empty::default()).unwrap();
 
+        // This depends on what database [get_test_db] generates.
         assert_eq!(
-            Counters::try_from(&response).unwrap(),
-            // This depends on what database [get_test_db] generates.
-            Counters {
+            response,
+            GrpcCounters {
                 num_blocks_synced: 3,
                 num_mint_txs_without_matching_mint_config: 0,
                 ..Default::default()
