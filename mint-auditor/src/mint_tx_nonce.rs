@@ -4,7 +4,6 @@ use crate::{gnosis::EthTxHash, Error};
 use mc_transaction_core::mint::constants::NONCE_LENGTH;
 
 /// Data structure for representing what is encoded in a MintTx nonce.
-/// See https://ethereum.org/en/developers/docs/networks/ for description of each network.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MintTxNonce {
     /// A mint backed by a deposit to a Gnosis Safe on the Ethereum blockchain.
