@@ -165,8 +165,8 @@ pub struct RawGnosisTransaction {
 
 impl RawGnosisTransaction {
     /// Deserialize transaction from JSON.
-    pub fn from_json_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        Ok(Self::from(serde_json::from_slice::<Value>(bytes)?))
+    pub fn from_json(src: &str) -> Result<Self, Error> {
+        Ok(Self::from(serde_json::from_str::<Value>(src)?))
     }
 
     /// Serialize transaction into JSON.

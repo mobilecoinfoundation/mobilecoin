@@ -39,8 +39,6 @@ impl GnosisSafeTx {
 
     /// Decode a Gnosis Safe transaction.
     pub fn decode(&self) -> Result<RawGnosisTransaction, Error> {
-        Ok(RawGnosisTransaction::from_json_bytes(
-            self.raw_tx_json.as_bytes(),
-        )?)
+        Ok(RawGnosisTransaction::from_json(&self.raw_tx_json)?)
     }
 }
