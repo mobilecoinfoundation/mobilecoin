@@ -6,7 +6,7 @@ use crate::{
         last_insert_rowid,
         models::{SqlEthAddr, SqlEthTxHash},
         schema::gnosis_safe_withdrawals,
-        Conn, SqlEthAddr, SqlEthTxHash,
+        Conn,
     },
     error::Error,
     gnosis::{EthAddr, EthTxHash},

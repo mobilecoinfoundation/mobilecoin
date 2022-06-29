@@ -15,7 +15,7 @@ use std::{
 /// We currently do not store the decoded bytes since we want to maintain the
 /// original capitalization (which is how Ethereum addresses represent a
 /// checksum). We don't have a need for the raw bytes.
-#[derive(Clone, Debug, Default, DeserializeFromStr, Ord, PartialOrd, SerializeDisplay)]
+#[derive(Clone, Debug, Default, DeserializeFromStr, SerializeDisplay)]
 pub struct EthAddr(pub String);
 
 impl EthAddr {
@@ -54,6 +54,18 @@ impl PartialEq for EthAddr {
 }
 
 impl Eq for EthAddr {}
+
+impl PartialOrd for EthAddr {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.to_lowercase().partial_cmp(&other.0.to_lowercase())
+    }
+}
+
+impl Ord for EthAddr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.to_lowercase().cmp(&other.0.to_lowercase())
+    }
+}
 
 impl Hash for EthAddr {
     fn hash<H: Hasher>(&self, state: &mut H) {
