@@ -35,7 +35,7 @@ CREATE TABLE mint_config_txs (
     -- The token id this mint config tx is for.
     token_id BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
     -- The maximal amount that can be minted by configurations specified in
     -- this tx. This amount is shared amongst all configs.
     total_mint_limit BIGINT NOT NULL,
@@ -71,9 +71,9 @@ CREATE TABLE mint_txs (
     -- The amount that was minted.
     amount BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
     -- The recipient of the mint.
-    recipient_b58_address TEXT NOT NULL,
+    recipient_b58_addr TEXT NOT NULL,
     -- Tombstone block.
     tombstone_block BIGINT NOT NULL,
     -- The protobuf-serialized MintTx.
@@ -83,6 +83,7 @@ CREATE TABLE mint_txs (
     -- Constraints
     FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
 );
+CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
 
 -- Processed gnosis safe transactions
 CREATE TABLE gnosis_safe_txs (
@@ -95,21 +96,25 @@ CREATE TABLE gnosis_safe_deposits (
     id INTEGER PRIMARY KEY,
     eth_tx_hash VARCHAR(66) NOT NULL UNIQUE,
     eth_block_number BIGINT NOT NULL,
-    safe_address VARCHAR(42) NOT NULL,
-    token_address VARCHAR(42) NOT NULL,
+    safe_addr VARCHAR(42) NOT NULL,
+    token_addr VARCHAR(42) NOT NULL,
     amount BIGINT NOT NULL,
+    -- This is the expected nonce of the matching MintTx we want to see on the MobileCoin blockchain.
+    -- It is derived from eth_tx_hash, but is stored here to make querying easier and more efficient.
+    expected_mc_mint_tx_nonce_hex VARCHAR(128) NOT NULL,
     -- Constraints
     FOREIGN KEY (eth_tx_hash) REFERENCES gnosis_safe_txs(eth_tx_hash)
 );
 CREATE INDEX idx__gnosis_safe_deposits__eth_block_number ON gnosis_safe_deposits(eth_block_number);
+CREATE INDEX idx__gnosis_safe_deposits__expected_mc_mint_tx_nonce_hex ON gnosis_safe_deposits(expected_mc_mint_tx_nonce_hex);
 
 -- Withdrawals from the gnosis safe.
 CREATE TABLE gnosis_safe_withdrawals (
     id INTEGER PRIMARY KEY,
     eth_tx_hash VARCHAR(66) NOT NULL UNIQUE,
     eth_block_number BIGINT NOT NULL,
-    safe_address VARCHAR(42) NOT NULL,
-    token_address VARCHAR(42) NOT NULL,
+    safe_addr VARCHAR(42) NOT NULL,
+    token_addr VARCHAR(42) NOT NULL,
     amount BIGINT NOT NULL,
     mc_tx_out_public_key_hex VARCHAR(64) NOT NULL,
     -- Constraints

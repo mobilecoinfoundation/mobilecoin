@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_config_txs` table.
 /// This stores audit data for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct MintConfigTx {
     /// Auto incrementing primary key.
     id: Option<i32>,
@@ -31,7 +33,7 @@ pub struct MintConfigTx {
     token_id: i64,
 
     /// The nonce, as hex-encoded bytes.
-    nonce: String,
+    nonce_hex: String,
 
     /// The maximal amount that can be minted by configurations specified in
     /// this tx. This amount is shared amongst all configs.
@@ -61,8 +63,8 @@ impl MintConfigTx {
     }
 
     /// Get nonce.
-    pub fn nonce(&self) -> &str {
-        &self.nonce
+    pub fn nonce_hex(&self) -> &str {
+        &self.nonce_hex
     }
 
     /// Get mint limit.
@@ -80,35 +82,53 @@ impl MintConfigTx {
         Ok(decode(&self.protobuf)?)
     }
 
-    /// Insert a new MintConfigTx into the database.
-    pub fn insert(
-        block_index: BlockIndex,
-        tx: &CoreMintConfigTx,
-        conn: &Conn,
-    ) -> Result<(), Error> {
-        transaction(conn, |conn| {
-            let obj = Self {
-                id: None,
-                block_index: block_index as i64,
-                token_id: tx.prefix.token_id as i64,
-                nonce: hex::encode(&tx.prefix.nonce),
-                total_mint_limit: tx.prefix.total_mint_limit as i64,
-                tombstone_block: tx.prefix.tombstone_block as i64,
-                protobuf: encode(tx),
-            };
+    /// Create an instance of this object from a
+    /// [mc_transaction_core::mint::MintConfigTx] and some extra information.
+    pub fn from_core_mint_config_tx(block_index: BlockIndex, tx: &CoreMintConfigTx) -> Self {
+        Self {
+            id: None,
+            block_index: block_index as i64,
+            token_id: tx.prefix.token_id as i64,
+            nonce_hex: hex::encode(&tx.prefix.nonce),
+            total_mint_limit: tx.prefix.total_mint_limit as i64,
+            tombstone_block: tx.prefix.tombstone_block as i64,
+            protobuf: encode(tx),
+        }
+    }
 
+    /// Insert a new MintConfigTx into the database.
+    pub fn insert(&mut self, conn: &Conn) -> Result<(), Error> {
+        let core_mint_config_tx = self.decode()?;
+        let mint_config_tx = self.clone();
+
+        let mint_config_tx_id = transaction(conn, |conn| -> Result<i32, Error> {
             diesel::insert_into(mint_config_txs::table)
-                .values(&obj)
+                .values(mint_config_tx)
                 .execute(conn)?;
 
             let mint_config_tx_id = diesel::select(last_insert_rowid).get_result::<i32>(conn)?;
 
-            for config in &tx.prefix.configs {
-                MintConfig::insert(mint_config_tx_id, config, conn)?;
+            for config in &core_mint_config_tx.prefix.configs {
+                MintConfig::insert_from_core_mint_config(mint_config_tx_id, config, conn)?;
             }
 
-            Ok(())
-        })
+            Ok(mint_config_tx_id)
+        })?;
+
+        self.id = Some(mint_config_tx_id);
+        Ok(())
+    }
+
+    /// Helper for inserting from a [mc_transaction_core::mint::MintConfigTx]
+    /// and some extra information.
+    pub fn insert_from_core_mint_config_tx(
+        block_index: BlockIndex,
+        config_tx: &CoreMintConfigTx,
+        conn: &Conn,
+    ) -> Result<Self, Error> {
+        let mut mint_config_tx = Self::from_core_mint_config_tx(block_index, config_tx);
+        mint_config_tx.insert(conn)?;
+        Ok(mint_config_tx)
     }
 
     /// Get the most recent MintConfigTx for a given token id that was active
@@ -164,7 +184,7 @@ mod tests {
             TokenId::from(orig_mint_config_tx.prefix.token_id)
         );
         assert_eq!(
-            sql_mint_config_tx.nonce,
+            sql_mint_config_tx.nonce_hex,
             hex::encode(&orig_mint_config_tx.prefix.nonce)
         );
         assert_eq!(
@@ -201,7 +221,7 @@ mod tests {
 
         // Store a mint config at block index 5.
         let (mint_config_tx1, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).unwrap();
 
         // tx should not show up on any prior blocks and show up for any blocks after 5.
         for block_index in 0..=5 {
@@ -232,7 +252,7 @@ mod tests {
         // Store a mint tx for the 2nd token at block index 7 and verify queries work as
         // expected.
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id2, &mut rng);
-        MintConfigTx::insert(7, &mint_config_tx2, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(7, &mint_config_tx2, &conn).unwrap();
 
         // For block indexes 0-5 we don't expect anything to be returned.
         for block_index in 0..=5 {
@@ -280,7 +300,7 @@ mod tests {
 
         // Add another mint config tx for token id 1 at block index 7.
         let (mint_config_tx3, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        MintConfigTx::insert(7, &mint_config_tx3, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(7, &mint_config_tx3, &conn).unwrap();
 
         // For block indexes 0-5 we don't expect anything to be returned.
         for block_index in 0..=5 {
@@ -341,17 +361,17 @@ mod tests {
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         // Store a mint config at block index 5.
-        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).unwrap();
 
         // Trying again for the same block will fail.
-        assert!(MintConfigTx::insert(5, &mint_config_tx1, &conn).is_err());
-        assert!(MintConfigTx::insert(5, &mint_config_tx2, &conn).is_err());
+        assert!(MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).is_err());
+        assert!(MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx2, &conn).is_err());
 
         // Trying for a different block but with the same nonce will fail.
-        assert!(MintConfigTx::insert(6, &mint_config_tx1, &conn).is_err());
+        assert!(MintConfigTx::insert_from_core_mint_config_tx(6, &mint_config_tx1, &conn).is_err());
 
         // Sanity, inserting a different mint config at block index 6 should succeed.
-        assert!(MintConfigTx::insert(6, &mint_config_tx2, &conn).is_ok());
+        assert!(MintConfigTx::insert_from_core_mint_config_tx(6, &mint_config_tx2, &conn).is_ok());
     }
 
     #[test_with_logger]
@@ -369,9 +389,9 @@ mod tests {
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
-        MintConfigTx::insert(5, &mint_config_tx1, &conn).unwrap();
-        MintConfigTx::insert(10, &mint_config_tx2, &conn).unwrap();
-        MintConfigTx::insert(7, &mint_config_tx3, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(10, &mint_config_tx2, &conn).unwrap();
+        MintConfigTx::insert_from_core_mint_config_tx(7, &mint_config_tx3, &conn).unwrap();
 
         // Get our mint config txs from the database (and quick sanity check we got what
         // we expected).
@@ -430,19 +450,19 @@ mod tests {
 
         // Write some mint txs so we have what to test with.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
-        MintTx::insert(3, mint_config_id1, &mint_tx1, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(3, mint_config_id1, &mint_tx1, &conn).unwrap();
 
         let mint_tx2 = create_mint_tx(token_id1, &signers1, 200, &mut rng);
-        MintTx::insert(6, mint_config_id1, &mint_tx2, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(6, mint_config_id1, &mint_tx2, &conn).unwrap();
 
         let mint_tx3 = create_mint_tx(token_id1, &signers1, 300, &mut rng);
-        MintTx::insert(8, mint_config_id1, &mint_tx3, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(8, mint_config_id1, &mint_tx3, &conn).unwrap();
 
         let mint_tx4 = create_mint_tx(token_id1, &signers2, 400, &mut rng);
-        MintTx::insert(11, mint_config_id2, &mint_tx4, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(11, mint_config_id2, &mint_tx4, &conn).unwrap();
 
         let mint_tx5 = create_mint_tx(token_id2, &signers3, 2000, &mut rng);
-        MintTx::insert(11, mint_config_id3, &mint_tx5, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(11, mint_config_id3, &mint_tx5, &conn).unwrap();
 
         // Sanity test that we get the expected total minted amounts.
 
@@ -531,7 +551,7 @@ mod tests {
 
         // Adding another mint tx to sql_mint_config_tx_2 should work as expected.
         let mint_tx6 = create_mint_tx(token_id2, &signers3, 3000, &mut rng);
-        MintTx::insert(12, mint_config_id3, &mint_tx6, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(12, mint_config_id3, &mint_tx6, &conn).unwrap();
 
         assert_eq!(
             sql_mint_config_tx_3

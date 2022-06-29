@@ -3,8 +3,13 @@
 //! Type wrappers for Ethereum addresses.
 
 use super::Error;
+use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::{fmt, str::FromStr};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 
 /// Ethereum 20 byte address.
 /// We currently do not store the decoded bytes since we want to maintain the
@@ -12,6 +17,11 @@ use std::{fmt, str::FromStr};
 /// checksum). We don't have a need for the raw bytes.
 #[derive(Clone, Debug, Default, DeserializeFromStr, SerializeDisplay)]
 pub struct EthAddr(pub String);
+
+impl EthAddr {
+    /// Ethereum address payload length (excludes the `0x` prefix).
+    pub const LEN: usize = 20;
+}
 
 impl FromStr for EthAddr {
     type Err = Error;
@@ -22,7 +32,7 @@ impl FromStr for EthAddr {
         }
 
         let bytes = hex::decode(&src[2..]).map_err(|_| Error::InvalidAddress(src.to_string()))?;
-        if bytes.len() != 20 {
+        if bytes.len() != Self::LEN {
             return Err(Error::InvalidAddress(src.to_string()));
         }
 
@@ -45,10 +55,55 @@ impl PartialEq for EthAddr {
 
 impl Eq for EthAddr {}
 
+impl PartialOrd for EthAddr {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.to_lowercase().partial_cmp(&other.0.to_lowercase())
+    }
+}
+
+impl Ord for EthAddr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.to_lowercase().cmp(&other.0.to_lowercase())
+    }
+}
+
+impl Hash for EthAddr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_lowercase().hash(state);
+    }
+}
+
 /// Ethereum 32 byte transaction hash.
-/// We currently do not store the decoded bytes since we have no use for them.
-#[derive(Clone, Debug, Default, DeserializeFromStr, Eq, PartialEq, SerializeDisplay)]
-pub struct EthTxHash(pub String);
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    DeserializeFromStr,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    SerializeDisplay,
+)]
+pub struct EthTxHash(pub [u8; Self::LEN]);
+
+impl EthTxHash {
+    /// The length (in bytes) of an Ethereum transaction hash.
+    pub const LEN: usize = 32;
+}
+
+impl TryFrom<&[u8]> for EthTxHash {
+    type Error = Error;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Self(
+            src.try_into()
+                .map_err(|_| Error::InvalidTxHash(hex::encode(src)))?,
+        ))
+    }
+}
 
 impl FromStr for EthTxHash {
     type Err = Error;
@@ -58,18 +113,27 @@ impl FromStr for EthTxHash {
             return Err(Error::InvalidTxHash(src.to_string()));
         }
 
-        let bytes = hex::decode(&src[2..]).map_err(|_| Error::InvalidTxHash(src.to_string()))?;
-        if bytes.len() != 32 {
-            return Err(Error::InvalidTxHash(src.to_string()));
-        }
-
-        Ok(Self(src.to_string()))
+        Self::try_from(
+            &hex::decode(&src[2..]).map_err(|_| Error::InvalidTxHash(src.to_string()))?[..],
+        )
     }
 }
 
 impl fmt::Display for EthTxHash {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
+
+impl AsRef<[u8]> for EthTxHash {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl FromRandom for EthTxHash {
+    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        Self(FromRandom::from_random(rng))
     }
 }
 
