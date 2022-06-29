@@ -531,8 +531,8 @@ impl ViewAccountKey {
     /// Create a view account key with random keys
     pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new(
-            &RistrettoPrivate::from_random(rng),
-            &RistrettoPublic::from_random(rng),
+            RistrettoPrivate::from_random(rng),
+            RistrettoPublic::from_random(rng),
         )
     }
 
