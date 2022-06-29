@@ -181,7 +181,7 @@ impl GnosisSync {
         }
 
         match self.parse_withdrawal_with_pub_key_multi_sig_tx(multi_sig_tx) {
-            Ok(withdrawal) => {
+            Ok(mut withdrawal) => {
                 log::info!(
                     self.logger,
                     "Processing withdrawal from multi-sig tx: {:?}",

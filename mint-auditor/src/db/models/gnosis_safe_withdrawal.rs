@@ -105,15 +105,21 @@ impl GnosisSafeWithdrawal {
         let key_bytes = hex::decode(&self.mc_tx_out_public_key_hex)?;
         Ok(CompressedRistrettoPublic::try_from(&key_bytes[..])?)
     }
-}
 
-impl GnosisSafeWithdrawal {
     /// Insert a withdrawal into the database.
-    /// This consumes the object since we are not back-filling the id field.
-    pub fn insert(self, conn: &Conn) -> Result<(), Error> {
+    pub fn insert(&mut self, conn: &Conn) -> Result<(), Error> {
+        if let Some(id) = self.id {
+            return Err(Error::AlreadyExists(format!(
+                "GnosisSafeWithdrawal already has an id ({})",
+                id
+            )));
+        }
+
         diesel::insert_into(gnosis_safe_withdrawals::table)
-            .values(self)
+            .values(self.clone())
             .execute(conn)?;
+
+        self.id = Some(diesel::select(last_insert_rowid).get_result::<i32>(conn)?);
 
         Ok(())
     }

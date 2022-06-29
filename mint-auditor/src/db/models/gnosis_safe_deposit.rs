@@ -103,7 +103,6 @@ impl GnosisSafeDeposit {
     }
 
     /// Insert a deposit into the database.
-    /// This consumes the object since we are not back-filling the id field.
     pub fn insert(&mut self, conn: &Conn) -> Result<(), Error> {
         if let Some(id) = self.id {
             return Err(Error::AlreadyExists(format!(
