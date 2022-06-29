@@ -9,7 +9,7 @@ use crate::{
     ledger_sync::LedgerSync, transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError,
     NetworkState,
 };
-use mc_blockchain_types::{compute_block_id, Block, BlockData, BlockID, BlockIndex};
+use mc_blockchain_types::{compute_block_id, Block, BlockData, BlockID, BlockIndex, BlockMetadata};
 use mc_common::{
     logger::{log, Logger},
     trace_time, ResponderId,
@@ -41,13 +41,20 @@ const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 /// Telemetry metadata: number of blocks appended to the local ledger.
 const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
 
-pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
+pub type BlockMetadataProvider = Arc<dyn Fn(&BlockData) -> Option<BlockMetadata> + Send + Sync>;
+
+pub struct LedgerSyncService<
+    L: Ledger,
+    BC: BlockchainConnection + 'static,
+    TF: TransactionsFetcher + 'static,
+> {
     ledger: L,
     manager: ConnectionManager<BC>,
     transactions_fetcher: Arc<TF>,
     /// Timeout for network requests.
     get_blocks_timeout: Duration,
     get_block_contents_timeout: Duration,
+    metadata_provider: BlockMetadataProvider,
     logger: Logger,
 }
 
@@ -56,6 +63,22 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 {
     /// Creates a new LdegerSyncService.
     pub fn new(
+        ledger: L,
+        manager: ConnectionManager<BC>,
+        transactions_fetcher: TF,
+        logger: Logger,
+    ) -> Self {
+        Self::with_metadata_provider(
+            Arc::new(|block_data: &BlockData| block_data.metadata().cloned()),
+            ledger,
+            manager,
+            transactions_fetcher,
+            logger,
+        )
+    }
+
+    pub fn with_metadata_provider(
+        metadata_provider: BlockMetadataProvider,
         ledger: L,
         manager: ConnectionManager<BC>,
         transactions_fetcher: TF,
@@ -72,6 +95,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             ledger,
             manager,
             transactions_fetcher: Arc::new(transactions_fetcher),
+            metadata_provider,
             get_blocks_timeout: DEFAULT_GET_BLOCKS_TIMEOUT,
             get_block_contents_timeout: DEFAULT_GET_BLOCK_CONTENTS_TIMEOUT,
             logger,
@@ -201,11 +225,14 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
         for block_data in blocks {
             let append_block_start = SystemTime::now();
-            // FIXME: Add metadata, too.
-            // We cannot just propagate the signature and metadata from upstream.
-            self.ledger
-                .append_block(block_data.block(), block_data.contents(), None, None)?;
-
+            let metadata = (self.metadata_provider)(block_data);
+            // TODO: Propagate downloaded block signature if the metadata/AVR can verify it.
+            self.ledger.append_block(
+                block_data.block(),
+                block_data.contents(),
+                None,
+                metadata.as_ref(),
+            )?;
             let append_block_end = SystemTime::now();
 
             // HACK: `append_block` reports a span but does not tie it to a specific
@@ -764,8 +791,7 @@ pub fn identify_safe_blocks<L: Ledger>(
 ) -> Vec<BlockData> {
     // The highest block externalized by the local node.
     let highest_local_block = ledger
-        .num_blocks()
-        .and_then(|num_blocks| ledger.get_block(num_blocks - 1))
+        .get_latest_block()
         .expect("Failed getting highest local block");
 
     let mut safe_blocks: Vec<BlockData> = Vec::with_capacity(blocks.len());
@@ -781,11 +807,7 @@ pub fn identify_safe_blocks<L: Ledger>(
         if block.parent_id != last_safe_block.id {
             log::error!(
                 logger,
-                "The block's parent_id must be the last safe block in the chain."
-            );
-            log::error!(
-                logger,
-                "block: {:?}, expected parent_id: {:?}",
+                "The block's parent_id must be the last safe block in the chain.\nblock: {:?}, expected parent_id: {:?}",
                 block,
                 last_safe_block.id
             );
@@ -863,10 +885,12 @@ pub fn identify_safe_blocks<L: Ledger>(
 mod tests {
     use super::*;
     use crate::{test_utils::MockTransactionsFetcher, SCPNetworkState};
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_scp::{ballot::Ballot, msg::*, *};
     use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
     use mc_peers_test_utils::{test_node_id, test_peer_uri, MockPeerConnection};
+    use mc_util_test_helper::get_seeded_rng;
 
     #[test_with_logger]
     // A node with the trivial quorum set should never be "behind".
@@ -874,7 +898,6 @@ mod tests {
         // Local node with trivial quorum set.
         let local_node_id = test_node_id(11);
         let quorum_set = QuorumSet::empty();
-
         let network_state = SCPNetworkState::new(local_node_id, quorum_set);
         let ledger = get_mock_ledger(25);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
@@ -889,10 +912,8 @@ mod tests {
     // "behind".
     #[test_with_logger]
     fn test_is_behind(logger: Logger) {
-        let trivial_quorum_set = QuorumSet::empty();
-
-        let node_a = (test_node_id(22), trivial_quorum_set.clone());
-        let node_b = (test_node_id(33), trivial_quorum_set);
+        let node_a = (test_node_id(22), QuorumSet::empty());
+        let node_b = (test_node_id(33), QuorumSet::empty());
 
         let local_node_id = test_node_id(11);
         let local_quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
@@ -1547,6 +1568,77 @@ mod tests {
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 1);
             assert!(nodes.contains(&test_peer_uri(2).responder_id().unwrap()));
+        }
+    }
+
+    #[test_with_logger]
+    fn test_append_safe_blocks_default_metadata_provider(logger: Logger) {
+        let ledger = get_mock_ledger(10);
+        let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
+        let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
+        let mut sync_service =
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+
+        let mut blocks = get_test_ledger_blocks(15);
+        blocks.drain(0..10);
+
+        sync_service
+            .append_safe_blocks(&blocks)
+            .expect("failed to append blocks");
+
+        for expected_block in blocks {
+            let block_data = sync_service
+                .ledger
+                .get_block_data(expected_block.block().index)
+                .unwrap();
+            assert_eq!(block_data.block(), expected_block.block());
+            assert_eq!(block_data.contents(), expected_block.contents());
+            assert_eq!(block_data.signature(), None);
+            assert_eq!(block_data.metadata(), expected_block.metadata());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_append_safe_blocks_custom_metadata_provider(logger: Logger) {
+        let metadata_provider: BlockMetadataProvider = Arc::new(|block_data| {
+            Some(make_block_metadata(
+                block_data.block().id.clone(),
+                &mut get_seeded_rng(),
+            ))
+        });
+
+        let ledger = get_mock_ledger(10);
+        let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
+        let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
+        let mut sync_service = LedgerSyncService::with_metadata_provider(
+            metadata_provider.clone(),
+            ledger,
+            conn_manager,
+            transactions_fetcher,
+            logger.clone(),
+        );
+
+        let mut blocks = get_test_ledger_blocks(15);
+        blocks.drain(0..10);
+
+        sync_service
+            .append_safe_blocks(&blocks)
+            .expect("failed to append blocks");
+
+        for expected_block in blocks {
+            let block_data = sync_service
+                .ledger
+                .get_block_data(expected_block.block().index)
+                .unwrap();
+            assert_eq!(block_data.block(), expected_block.block());
+            assert_eq!(block_data.contents(), expected_block.contents());
+            assert_eq!(block_data.signature(), None);
+            assert_eq!(
+                block_data.metadata(),
+                metadata_provider(&expected_block).as_ref()
+            );
+            // Sanity check.
+            assert_ne!(block_data.metadata(), expected_block.metadata());
         }
     }
 }

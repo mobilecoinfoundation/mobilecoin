@@ -30,6 +30,7 @@ mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 mc-peers = { path = "../../peers" }
+mc-sgx-report-cache-api = { path = "../../sgx/report-cache/api" }
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
