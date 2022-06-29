@@ -2,30 +2,34 @@
 //
 
 use crate::{
-    db::{schema::gnosis_safe_withdrawals, Conn},
+    db::{schema::gnosis_safe_withdrawals, Conn, SqlEthAddr, SqlEthTxHash},
     error::Error,
+    gnosis::{EthAddr, EthTxHash},
 };
 use diesel::prelude::*;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `gnosis_safe_withdrawals` table.
 /// This table stores withdrawals into the monitored gnosis safe.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct GnosisSafeWithdrawal {
     /// Id (required to keep Diesel happy).
     id: Option<i32>,
 
     /// Ethereum transaction hash.
-    eth_tx_hash: String,
+    eth_tx_hash: SqlEthTxHash,
 
     /// Ethereum block number.
     eth_block_number: i64,
 
     /// Gnosis safe address being withdrawn from.
-    safe_address: String,
+    safe_addr: SqlEthAddr,
 
     /// Token contract address that is being withdrawn.
-    token_address: String,
+    token_addr: SqlEthAddr,
 
     /// Amount withdrawan.
     amount: i64,
@@ -38,19 +42,19 @@ impl GnosisSafeWithdrawal {
     /// Construct a new [GnosisSafeWithdrawal] object.
     pub fn new(
         id: Option<i32>,
-        eth_tx_hash: String,
+        eth_tx_hash: EthTxHash,
         eth_block_number: u64,
-        safe_address: String,
-        token_address: String,
+        safe_addr: EthAddr,
+        token_addr: EthAddr,
         amount: u64,
         mc_tx_out_public_key_hex: String,
     ) -> Self {
         Self {
             id,
-            eth_tx_hash,
+            eth_tx_hash: eth_tx_hash.into(),
             eth_block_number: eth_block_number as i64,
-            safe_address,
-            token_address,
+            safe_addr: safe_addr.into(),
+            token_addr: token_addr.into(),
             amount: amount as i64,
             mc_tx_out_public_key_hex,
         }
@@ -62,7 +66,7 @@ impl GnosisSafeWithdrawal {
     }
 
     /// Get ethereum transaction hash.
-    pub fn eth_tx_hash(&self) -> &str {
+    pub fn eth_tx_hash(&self) -> &EthTxHash {
         &self.eth_tx_hash
     }
 
@@ -72,13 +76,13 @@ impl GnosisSafeWithdrawal {
     }
 
     /// Get safe address.
-    pub fn safe_address(&self) -> &str {
-        &self.safe_address
+    pub fn safe_addr(&self) -> &EthAddr {
+        &self.safe_addr
     }
 
     /// Get token address.
-    pub fn token_address(&self) -> &str {
-        &self.token_address
+    pub fn token_addr(&self) -> &EthAddr {
+        &self.token_addr
     }
 
     /// Get amount withdrawan.
@@ -89,6 +93,12 @@ impl GnosisSafeWithdrawal {
     /// Get associated mobilecoin transaction public key (hex-encoded).
     pub fn mc_tx_out_public_key_hex(&self) -> &str {
         &self.mc_tx_out_public_key_hex
+    }
+
+    /// Get the associated mobilecoin transaction public key
+    pub fn mc_tx_out_public_key(&self) -> Result<CompressedRistrettoPublic, Error> {
+        let key_bytes = hex::decode(&self.mc_tx_out_public_key_hex)?;
+        Ok(CompressedRistrettoPublic::try_from(&key_bytes[..])?)
     }
 }
 

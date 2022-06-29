@@ -7,6 +7,7 @@ pub mod test_utils;
 
 mod conn;
 mod models;
+mod sql_types;
 mod transaction;
 
 /// Db schema (made public for anyone wanting to do custom queries).
@@ -18,6 +19,7 @@ pub use self::{
         BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
         GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
+    sql_types::{SqlEthAddr, SqlEthTxHash},
     transaction::{transaction, TransactionRetriableError},
 };
 
@@ -165,7 +167,7 @@ impl MintAuditorDb {
                 }
 
                 // Store the mint tx.
-                MintTx::insert(
+                MintTx::insert_from_core_mint_tx(
                     block_index,
                     mint_config.and_then(|config| config.id()),
                     mint_tx,

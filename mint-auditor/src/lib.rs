@@ -11,9 +11,10 @@ pub mod gnosis;
 
 mod convert;
 mod error;
+mod mint_tx_nonce;
 mod service;
 
-pub use crate::{error::Error, service::MintAuditorService};
+pub use crate::{error::Error, mint_tx_nonce::MintTxNonce, service::MintAuditorService};
 
 #[macro_use]
 extern crate diesel;

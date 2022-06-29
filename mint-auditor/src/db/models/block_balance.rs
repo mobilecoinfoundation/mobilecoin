@@ -10,7 +10,7 @@ use std::ops::Deref;
 
 /// Diesel model for the `block_balance` table.
 /// This stores the balance of each token for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name = "block_balance"]
 pub struct BlockBalance {
     /// Block index.

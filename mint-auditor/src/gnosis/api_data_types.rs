@@ -110,7 +110,7 @@ pub struct EthereumTransfer {
     /// Token contract address that is being transferred
     /// None for Eth transfers
     #[serde(rename = "tokenAddress")]
-    pub token_address: Option<EthAddr>,
+    pub token_addr: Option<EthAddr>,
 
     /// Transaction hash
     #[serde(rename = "transactionHash")]

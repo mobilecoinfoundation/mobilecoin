@@ -50,11 +50,11 @@ impl GnosisSafeFetcher {
     /// executed and confirmed.
     pub fn get_all_transaction_data(
         &self,
-        safe_address: &EthAddr,
+        safe_addr: &EthAddr,
     ) -> Result<Vec<RawGnosisTransaction>, Error> {
         let mut url = self.base_url.join(&format!(
             "api/v1/safes/{}/all-transactions/?executed=true&queued=false&trusted=true",
-            safe_address
+            safe_addr
         ))?;
 
         let mut raw_transactions = Vec::new();
