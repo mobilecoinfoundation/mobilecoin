@@ -36,9 +36,8 @@ impl AuditedMint {
         let deposit_id = deposit.id().ok_or(Error::ObjectNotSaved)?;
 
         // The deposit safe needs to match the audited safe configuration.
+        // This shouldn't happen and indicates misuse of this function.
         if deposit.safe_addr() != &config.safe_addr {
-            // TODO: a specific variant? depends on whether the code that calls this is
-            // likely to fail
             return Err(Error::Other(format!(
                 "Gnosis safe deposit addr {} does not match audited safe addr {}",
                 deposit.safe_addr(),
@@ -50,10 +49,11 @@ impl AuditedMint {
         let audited_token = config
             .get_token_by_eth_contract_addr(deposit.token_addr())
             .ok_or_else(|| {
-                Error::Other(format!(
-                    "Gnosis safe deposit token addr {} is not audited",
-                    deposit.token_addr()
-                ))
+                Error::EthereumTokenNotAudited(
+                    deposit.token_addr().clone(),
+                    deposit.safe_addr().clone(),
+                    *deposit.eth_tx_hash(),
+                )
             })?;
 
         let result = transaction(conn, |conn| {
@@ -119,8 +119,16 @@ impl AuditedMint {
 
         // Count certain errors. This needs to happen outside of the transaction because
         // errors result in the transaction getting rolled back.
-        if let Err(Error::DepositAndMintMismatch(_)) = result {
-            Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+        match result {
+            Err(Error::DepositAndMintMismatch(_)) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
+
+            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
+
+            _ => {}
         }
 
         result
@@ -344,7 +352,7 @@ mod tests {
 
         assert!(matches!(
             AuditedMint::attempt_match_deposit_with_mint(&deposit1, &config, &conn),
-            Err(Error::Other(_))
+            Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
         // Check that nothing was written to the `audited_mints` table

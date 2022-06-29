@@ -2,7 +2,10 @@
 
 //! Mint auditor error data type.
 
-use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
+use crate::{
+    db::TransactionRetriableError,
+    gnosis::{Error as GnosisError, EthAddr, EthTxHash},
+};
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
@@ -28,6 +31,9 @@ pub enum Error {
 
     /// Deposit and mint mismatch: {0}
     DepositAndMintMismatch(String),
+
+    /// Ethereum token {0} not audited in safe {1} (tx hash: {2})
+    EthereumTokenNotAudited(EthAddr, EthAddr, EthTxHash),
 
     /// IO: {0}
     Io(IoError),

@@ -105,6 +105,14 @@ message Counters {
 
     // Number of `MintTx`s that did not match an active mint config.
     uint64 num_mint_txs_without_matching_mint_config = 3;
+
+    // Number of mismatching MintTxs and Gnosis deposits.
+    uint64 num_mismatching_mints_and_deposits = 4;
+
+    // Number of times we encountered deposits to an unknown Ethereum token
+    // contract address.
+    uint64 num_unknown_ethereum_token_deposits = 5;
+
 }
 
 message GetBlockAuditDataRequest {

@@ -151,6 +151,9 @@ CREATE TABLE counters (
     num_mint_txs_without_matching_mint_config BIGINT NOT NULL,
 
     -- Number of mismatched mints and Gnosis deposits.
-    num_mismatching_mints_and_deposits BIGINT NOT NULL
+    num_mismatching_mints_and_deposits BIGINT NOT NULL,
+
+    -- Number of times we encountered deposits to an unaudited Ethereum token contract address.
+    num_unknown_ethereum_token_deposits BIGINT NOT NULL
 );
 

@@ -14,6 +14,7 @@ impl From<&Counters> for mc_mint_auditor_api::Counters {
             src.num_mint_txs_without_matching_mint_config(),
         );
         dst.set_num_mismatching_mints_and_deposits(src.num_mismatching_mints_and_deposits());
+        dst.set_num_unknown_ethereum_token_deposits(src.num_unknown_ethereum_token_deposits());
         dst
     }
 }
