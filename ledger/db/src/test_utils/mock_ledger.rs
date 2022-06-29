@@ -95,12 +95,6 @@ impl Ledger for MockLedger {
         Ok(())
     }
 
-    fn append_block_data(&mut self, block_data: &BlockData) -> Result<(), Error> {
-        assert_eq!(block_data.block().index, self.num_blocks().unwrap());
-        self.set_block_data(block_data.clone());
-        Ok(())
-    }
-
     fn num_blocks(&self) -> Result<u64, Error> {
         Ok(self.lock().block_data_by_index.len() as u64)
     }
