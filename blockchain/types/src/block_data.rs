@@ -9,19 +9,19 @@ use serde::{Deserialize, Serialize};
 pub struct BlockData {
     #[prost(message, required, tag = 1)]
     /// The block header.
-    pub block: Block,
+    block: Block,
 
     /// The block contents.
     #[prost(message, required, tag = 2)]
-    pub contents: BlockContents,
+    contents: BlockContents,
 
     /// A signature over the [Block].
     #[prost(message, optional, tag = 3)]
-    pub signature: Option<BlockSignature>,
+    signature: Option<BlockSignature>,
 
     /// Block metadata.
     #[prost(message, optional, tag = 4)]
-    pub metadata: Option<BlockMetadata>,
+    metadata: Option<BlockMetadata>,
 }
 
 impl BlockData {
@@ -67,5 +67,24 @@ impl BlockData {
     /// Get the metadata.
     pub fn metadata(&self) -> Option<&BlockMetadata> {
         self.metadata.as_ref()
+    }
+
+    /// Map this [BlockData] to another, after applying the given mutation.
+    pub fn mutate(
+        mut self,
+        mutate: impl FnOnce(
+            &mut Block,
+            &mut BlockContents,
+            &mut Option<BlockSignature>,
+            &mut Option<BlockMetadata>,
+        ),
+    ) -> Self {
+        mutate(
+            &mut self.block,
+            &mut self.contents,
+            &mut self.signature,
+            &mut self.metadata,
+        );
+        self
     }
 }

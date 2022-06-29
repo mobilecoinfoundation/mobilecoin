@@ -777,7 +777,7 @@ fn add_block_to_ledger(
     .expect("failed to add block");
     let block_index = block_data.block().index;
 
-    let signature = block_data.signature.expect("missing signature");
+    let signature = block_data.signature().expect("missing signature");
     for src_url in watcher.get_config_urls().unwrap().iter() {
         watcher
             .add_block_signature(

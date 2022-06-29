@@ -1052,16 +1052,16 @@ mod ledger_db_test {
         assert_eq!(2, ledger_db.num_blocks().unwrap());
 
         // The origin block should still be in the ledger:
-        assert_eq!(origin.block, ledger_db.get_block(0).unwrap());
+        assert_eq!(origin.block(), &ledger_db.get_block(0).unwrap());
         // The origin's TxOut should still be in the ledger:
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
         // The new block should be in the ledger:
-        assert_eq!(block_data.block, ledger_db.get_block(1).unwrap());
+        assert_eq!(block_data.block(), &ledger_db.get_block(1).unwrap());
         assert_eq!(5, ledger_db.num_txos().unwrap());
 
         // Each TxOut from the current block should be in the ledger.
-        for (i, tx_out) in block_data.contents.outputs.iter().enumerate() {
+        for (i, tx_out) in block_data.contents().outputs.iter().enumerate() {
             // The first tx_out is the origin block, tx_outs are for the following block
             // hence the + 1
             assert_eq!(
@@ -1094,7 +1094,7 @@ mod ledger_db_test {
         // === Create and append the origin block. ===
         let origin = add_origin_block(&mut ledger_db);
 
-        let origin_tx_out = origin.contents.outputs[0].clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
         assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None);
@@ -1263,7 +1263,7 @@ mod ledger_db_test {
 
         // === Create and append the origin block. ===
         let origin = add_origin_block(&mut ledger_db);
-        let origin_tx_out = origin.contents.outputs[0].clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
 
         assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None);
 
@@ -1664,7 +1664,7 @@ mod ledger_db_test {
         // Each TxOut from the current block should be in the ledger.
         assert_eq!(5, ledger_db.num_txos().unwrap());
 
-        for (i, tx_out) in block1.contents.outputs.iter().enumerate() {
+        for (i, tx_out) in block1.contents().outputs.iter().enumerate() {
             // The first tx_out is the origin block, tx_outs are for the following block
             // hence the + 1
             assert_eq!(
@@ -1681,11 +1681,11 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block1.contents.key_images.get(0).unwrap())
+            .contains_key_image(block1.contents().key_images.get(0).unwrap())
             .unwrap());
 
         let block1_key_images = ledger_db.get_key_images_by_block(1).unwrap();
-        assert_eq!(block1.contents.key_images, block1_key_images);
+        assert_eq!(block1.contents().key_images, block1_key_images);
 
         //  === Write another block - this one has a MintTx in addition to all
         // the other txs.
@@ -1763,7 +1763,7 @@ mod ledger_db_test {
         // Each TxOut from the current block should be in the ledger.
         assert_eq!(9, ledger_db.num_txos().unwrap());
 
-        for (i, tx_out) in block2.contents.outputs.iter().enumerate() {
+        for (i, tx_out) in block2.contents().outputs.iter().enumerate() {
             assert_eq!(
                 ledger_db.get_tx_out_by_index((i + 5) as u64).unwrap(),
                 *tx_out
@@ -1778,11 +1778,11 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block2.contents.key_images.get(0).unwrap())
+            .contains_key_image(block2.contents().key_images.get(0).unwrap())
             .unwrap());
 
         let block2_key_images = ledger_db.get_key_images_by_block(2).unwrap();
-        assert_eq!(block2.contents.key_images, block2_key_images);
+        assert_eq!(block2.contents().key_images, block2_key_images);
     }
 
     #[test]
@@ -1935,7 +1935,7 @@ mod ledger_db_test {
         // === Create and append the origin block. ===
         let origin = add_origin_block(&mut ledger_db);
 
-        let origin_tx_out = origin.contents.outputs[0].clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
         assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None,);
@@ -2291,13 +2291,11 @@ mod ledger_db_test {
         let block_data = get_origin_block();
         let mut ledger_db = create_db();
 
-        let block = Block {
-            version: 1337,
-            ..block_data.block
-        };
+        let mut block = block_data.block().clone();
+        block.version = 1337;
 
         assert_eq!(
-            ledger_db.append_block(&block, &block_data.contents, None, None),
+            ledger_db.append_block(&block, block_data.contents(), None, None),
             Err(Error::InvalidBlockVersion(block.version))
         );
     }
@@ -2497,7 +2495,7 @@ mod ledger_db_test {
 
         let block_one = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin.block,
+            origin.block(),
             &Default::default(),
             &block_one_contents,
         );
@@ -2518,20 +2516,20 @@ mod ledger_db_test {
 
         // append_block rejects a block with invalid id.
         {
-            let mut block_data = origin.clone();
-            block_data.block.id.0[0] += 1;
+            let mut block = origin.block().clone();
+            block.id.0[0] += 1;
             assert_eq!(
-                ledger_db.append_block_data(&block_data),
-                Err(Error::InvalidBlockID(block_data.block.id.clone()))
+                ledger_db.append_block(&block, origin.contents(), None, None),
+                Err(Error::InvalidBlockID(block.id.clone()))
             );
         }
 
         // append_block rejects a block with invalid contents hash.
         {
-            let mut block_data = origin.clone();
-            block_data.block.contents_hash.0[0] += 1;
+            let mut block = origin.block().clone();
+            block.contents_hash.0[0] += 1;
             assert_eq!(
-                ledger_db.append_block_data(&block_data),
+                ledger_db.append_block(&block, origin.contents(), None, None),
                 Err(Error::InvalidBlockContents)
             );
         }
@@ -2558,7 +2556,7 @@ mod ledger_db_test {
                 BLOCK_VERSION,
                 &bad_parent_id,
                 1,
-                origin.block.cumulative_txo_count,
+                origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );
@@ -2571,9 +2569,9 @@ mod ledger_db_test {
             // This block correctly has block zero as its parent.
             let block_one_good = Block::new(
                 BLOCK_VERSION,
-                &origin.block.id,
+                &origin.block().id,
                 1,
-                origin.block.cumulative_txo_count,
+                origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );

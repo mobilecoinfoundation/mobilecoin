@@ -370,7 +370,7 @@ pub fn add_test_block(
     watcher
         .add_block_signature(
             &tx_source_url,
-            block_data.block.index,
+            block_data.block().index,
             block_data.signature().cloned().unwrap(),
             "archive".to_string(),
         )

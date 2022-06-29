@@ -106,22 +106,24 @@ impl Ledger for MockLedger {
     }
 
     fn get_block(&self, block_index: BlockIndex) -> Result<Block, Error> {
-        self.get_block_data(block_index).map(|bd| bd.block)
+        self.get_block_data(block_index)
+            .map(|bd| bd.block().clone())
     }
 
     fn get_block_contents(&self, block_index: BlockIndex) -> Result<BlockContents, Error> {
-        self.get_block_data(block_index).map(|bd| bd.contents)
+        self.get_block_data(block_index)
+            .map(|bd| bd.contents().clone())
     }
 
     fn get_block_signature(&self, block_index: BlockIndex) -> Result<BlockSignature, Error> {
         self.get_block_data(block_index)
-            .map(|bd| bd.signature.ok_or(Error::NotFound))
+            .map(|bd| bd.signature().cloned().ok_or(Error::NotFound))
             .and_then(|res| res)
     }
 
     fn get_block_metadata(&self, block_index: BlockIndex) -> Result<BlockMetadata, Error> {
         self.get_block_data(block_index)
-            .map(|bd| bd.metadata.ok_or(Error::NotFound))
+            .map(|bd| bd.metadata().cloned().ok_or(Error::NotFound))
             .and_then(|res| res)
     }
 
@@ -199,7 +201,7 @@ impl Ledger for MockLedger {
 
     fn get_key_images_by_block(&self, block_index: BlockIndex) -> Result<Vec<KeyImage>, Error> {
         self.get_block_data(block_index)
-            .map(|bd| bd.contents.key_images)
+            .map(|bd| bd.contents().key_images.clone())
     }
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
@@ -279,7 +281,7 @@ mod tests {
         assert_eq!(origin, ledger.get_block_data(0).unwrap());
 
         assert_eq!(2, ledger.num_txos().unwrap());
-        let origin_tx_out = origin.contents.outputs[0].clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger.get_tx_out_by_index(0).unwrap());
 
         assert_eq!(ledger.get_key_images_by_block(0).unwrap(), vec![]);
@@ -293,16 +295,16 @@ mod tests {
         assert_eq!(2, ledger.num_blocks().unwrap());
 
         // The origin block should still be in the ledger:
-        assert_eq!(origin.block, ledger.get_block(0).unwrap());
+        assert_eq!(origin.block(), &ledger.get_block(0).unwrap());
         // The origin's TxOut should still be in the ledger:
         assert_eq!(origin_tx_out, ledger.get_tx_out_by_index(0).unwrap());
 
         // The new block should be in the ledger:
-        assert_eq!(block_data.block, ledger.get_block(1).unwrap());
+        assert_eq!(block_data.block(), &ledger.get_block(1).unwrap());
         assert_eq!(4, ledger.num_txos().unwrap());
 
         // Each TxOut from the current block should be in the ledger.
-        for tx_out in block_data.contents.outputs {
+        for tx_out in &block_data.contents().outputs {
             let index = ledger
                 .get_tx_out_index_by_public_key(&tx_out.public_key)
                 .unwrap();
@@ -311,17 +313,17 @@ mod tests {
                 ledger.get_tx_out_index_by_hash(&tx_out.hash()).unwrap()
             );
 
-            assert_eq!(ledger.get_tx_out_by_index(index).unwrap(), tx_out);
+            assert_eq!(&ledger.get_tx_out_by_index(index).unwrap(), tx_out);
 
             assert_eq!(
-                block_data.block.index,
+                block_data.block().index,
                 ledger.get_block_index_by_tx_out_index(index).unwrap()
             );
         }
 
-        let key_images = block_data.contents.key_images;
+        let key_images = &block_data.contents().key_images;
         assert!(ledger.contains_key_image(&key_images[0]).unwrap());
-        assert_eq!(key_images, ledger.get_key_images_by_block(1).unwrap());
+        assert_eq!(key_images, &ledger.get_key_images_by_block(1).unwrap());
     }
 
     #[test]
@@ -330,9 +332,9 @@ mod tests {
         let (ledger, blocks) = get_mock_ledger_and_blocks(5);
 
         for block_data in blocks {
-            let block_index = block_data.block.index;
+            let block_index = block_data.block().index;
             let block = ledger.get_block(block_index).unwrap();
-            assert_eq!(block, block_data.block);
+            assert_eq!(&block, block_data.block());
         }
         assert_eq!(ledger.get_block(42), Err(Error::NotFound));
     }
@@ -344,9 +346,9 @@ mod tests {
         let (ledger, blocks) = get_mock_ledger_and_blocks(5);
 
         for block_data in blocks {
-            let block_index = block_data.block.index;
+            let block_index = block_data.block().index;
             let block_contents = ledger.get_block_contents(block_index).unwrap();
-            assert_eq!(block_contents, block_data.contents);
+            assert_eq!(&block_contents, block_data.contents());
         }
         assert_eq!(ledger.get_block_contents(42), Err(Error::NotFound));
     }
@@ -358,8 +360,8 @@ mod tests {
         let (ledger, blocks) = get_mock_ledger_and_blocks(5);
 
         for block_data in blocks {
-            let block_index = block_data.block.index;
-            for tx_out in &block_data.contents.outputs {
+            let block_index = block_data.block().index;
+            for tx_out in &block_data.contents().outputs {
                 let tx_out_index = ledger
                     .get_tx_out_index_by_public_key(&tx_out.public_key)
                     .expect("Failed getting tx out index");
@@ -384,7 +386,7 @@ mod tests {
 
         for block_data in blocks {
             // The ledger should each key image.
-            for key_image in &block_data.contents.key_images {
+            for key_image in &block_data.contents().key_images {
                 assert!(ledger.contains_key_image(key_image).unwrap());
             }
         }
@@ -397,9 +399,9 @@ mod tests {
         let (ledger, blocks) = get_mock_ledger_and_blocks(5);
 
         for block_data in blocks {
-            let block_index = block_data.block.index;
+            let block_index = block_data.block().index;
             assert_eq!(
-                block_data.contents.key_images,
+                block_data.contents().key_images,
                 ledger.get_key_images_by_block(block_index).unwrap()
             );
         }

@@ -1382,8 +1382,9 @@ mod tests {
         let blocks = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let mut block_data = blocks[1].clone();
-        block_data.block.parent_id = BlockID([200u8; 32]);
+        let block_data = blocks[1].clone().mutate(|block, _, _, _| {
+            block.parent_id = BlockID([200u8; 32]);
+        });
 
         let potentially_safe_blocks = vec![block_data];
 
@@ -1409,11 +1410,9 @@ mod tests {
 
         // Modify a block to reuse a key image from block 1.
         let block_one = blocks[1].clone();
-        let mut block_two = blocks[2].clone();
-        block_two
-            .contents
-            .key_images
-            .push(block_one.contents().key_images[0]);
+        let block_two = blocks[2].clone().mutate(|_, contents, _, _| {
+            contents.key_images.push(block_one.contents().key_images[0]);
+        });
 
         let potentially_safe_blocks = vec![block_one, block_two];
 
@@ -1442,11 +1441,9 @@ mod tests {
 
         // Modify a block to reuse a key image from block 1.
         let block_one = blocks[1].clone();
-        let mut block_two = blocks[2].clone();
-        block_two
-            .contents
-            .key_images
-            .push(block_one.contents().key_images[0]);
+        let block_two = blocks[2].clone().mutate(|_, contents, _, _| {
+            contents.key_images.push(block_one.contents().key_images[0]);
+        });
 
         let potentially_safe_blocks = vec![block_two];
 
@@ -1467,8 +1464,9 @@ mod tests {
         let blocks = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let mut block_one = blocks[1].clone();
-        block_one.block.id = BlockID([99u8; 32]);
+        let block_one = blocks[1].clone().mutate(|block, _, _, _| {
+            block.id = BlockID([99u8; 32]);
+        });
 
         let potentially_safe_blocks: Vec<BlockData> = vec![block_one];
 
