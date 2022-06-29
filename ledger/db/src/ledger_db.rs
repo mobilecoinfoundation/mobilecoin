@@ -903,7 +903,7 @@ impl LedgerDB {
 /// Creates a LedgerDB instance at the given path.
 pub fn create_ledger_in(path: &Path) -> LedgerDB {
     let path = PathBuf::from(path);
-    let _ = std::fs::create_dir_all(&path);
+    std::fs::create_dir_all(&path).expect("Could not create dirs");
     LedgerDB::create(&path).expect("Could not create ledger_db");
     LedgerDB::open(&path).expect("Could not open ledger_db")
 }
