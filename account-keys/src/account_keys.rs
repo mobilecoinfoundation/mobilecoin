@@ -476,7 +476,8 @@ impl AccountKey {
 }
 
 /// View AccountKey, containing the view private key and the spend public key.
-#[derive(Clone, Message)]
+#[derive(Clone, Message, Zeroize)]
+#[zeroize(drop)]
 pub struct ViewAccountKey {
     /// Private key 'a' used for view-key matching.
     #[prost(message, required, tag = "1")]
@@ -519,7 +520,7 @@ impl From<&AccountKey> for ViewAccountKey {
     fn from(account_key: &AccountKey) -> Self {
         ViewAccountKey {
             view_private_key: *account_key.view_private_key(),
-            spend_public_key: RistrettoPublic::from(account_key.spend_private_key()),
+            spend_public_key: account_key.spend_private_key().into(),
         }
     }
 }
@@ -528,13 +529,13 @@ impl ViewAccountKey {
     /// A user's ViewAccountKey, without a fog service.
     ///
     /// # Arguments
-    /// * `spend_public_key` - The user's public spend key `B`.
     /// * `view_private_key` - The user's private view key `a`.
+    /// * `spend_public_key` - The user's public spend key `B`.
     #[inline]
-    pub fn new(spend_public_key: &RistrettoPublic, view_private_key: &RistrettoPrivate) -> Self {
+    pub fn new(view_private_key: RistrettoPrivate, spend_public_key: RistrettoPublic) -> Self {
         Self {
-            spend_public_key: *spend_public_key,
-            view_private_key: *view_private_key,
+            view_private_key,
+            spend_public_key,
         }
     }
 
