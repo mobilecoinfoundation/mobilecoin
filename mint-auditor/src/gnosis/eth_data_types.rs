@@ -121,9 +121,7 @@ impl AsRef<[u8]> for EthTxHash {
 
 impl FromRandom for EthTxHash {
     fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = Self([0u8; Self::LEN]);
-        rng.fill_bytes(&mut result.0);
-        result
+        Self(FromRandom::from_random(rng))
     }
 }
 
