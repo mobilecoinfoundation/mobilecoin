@@ -803,7 +803,7 @@ mod account_key_tests {
     // Account Key and View Account Key derived from same keys should generate the
     // same subaddresses
     fn test_view_account_keys_subaddresses() {
-        let mut rng: StdRng = SeedableRng::from_seed([42u8, 32]);
+        let mut rng: StdRng = SeedableRng::from_seed([42u8; 32]);
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
         let account_key = AccountKey::new(&spend_private, &view_private);
