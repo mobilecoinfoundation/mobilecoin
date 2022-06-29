@@ -123,6 +123,18 @@ CREATE TABLE gnosis_safe_withdrawals (
 CREATE INDEX idx__gnosis_safe_withdrawals__eth_block_number ON gnosis_safe_withdrawals(eth_block_number);
 CREATE INDEX idx__gnosis_safe_withdrawals__mc_tx_out_public_key_hex ON gnosis_safe_withdrawals(mc_tx_out_public_key_hex);
 
+-- Mapping between MintTxs and GnosisSafeDeposits that match eachother.
+-- This essentially is the audit log that shows which mints/deposits were a match.
+-- If a mint or deposit are not referenced by this table that means something questionable happened.
+CREATE TABLE audited_mints (
+    id INTEGER PRIMARY KEY,
+    mint_tx_id INTEGER NOT NULL,
+    gnosis_safe_deposit_id INTEGER NOT NULL,
+    -- Constraints
+    FOREIGN KEY (mint_tx_id) REFERENCES mint_txs(id),
+    FOREIGN KEY (gnosis_safe_deposit_id) REFERENCES gnosis_safe_deposits(id)
+);
+
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
     -- Not nullable because we only have a single row in this table and the code that inserts to it hard-codes the id to 0.

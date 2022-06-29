@@ -23,6 +23,12 @@ pub enum Error {
     /// Already exists: {0}
     AlreadyExists(String),
 
+    /// Object not saved to database
+    ObjectNotSaved,
+
+    /// Deposit and mint mismatch: {0}
+    DepositAndMintMismatch(String),
+
     /// IO: {0}
     Io(IoError),
 

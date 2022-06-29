@@ -1,11 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::MintAuditorDb,
-    gnosis::{AuditedSafeConfig, AuditedToken, EthAddr, GnosisSafeConfig},
+    db::{Conn, GnosisSafeDeposit, GnosisSafeTx, MintAuditorDb, MintTx},
+    gnosis::{
+        api_data_types::RawGnosisTransaction, AuditedSafeConfig, AuditedToken, EthAddr, EthTxHash,
+        GnosisSafeConfig,
+    },
 };
 use mc_common::logger::Logger;
 use mc_transaction_core::TokenId;
+use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
+use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
+use serde_json::json;
 use std::str::FromStr;
 use tempfile::{tempdir, TempDir};
 use url::Url;
@@ -58,4 +64,43 @@ impl TestDbContext {
         MintAuditorDb::new_from_path(&self.db_path, 7, logger)
             .expect("failed creating new MintAuditorDb")
     }
+}
+
+/// Insert a mock GnosisSafeTx that has a specific tx hash
+pub fn insert_gnosis_deposit(deposit: &mut GnosisSafeDeposit, conn: &Conn) {
+    let raw_tx = RawGnosisTransaction::from(json!({
+        "txHash": deposit.eth_tx_hash(),
+    }));
+    GnosisSafeTx::insert(&raw_tx, conn).unwrap();
+    deposit.insert(conn).unwrap();
+}
+
+/// Create a GnosisSafeDeposit used for testing.
+pub fn create_gnosis_safe_deposit(
+    amount: u64,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> GnosisSafeDeposit {
+    GnosisSafeDeposit::new(
+        None,
+        EthTxHash::from_random(rng),
+        1,
+        EthAddr::from_str(SAFE_ADDR).unwrap(),
+        EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+        amount,
+    )
+}
+
+/// Create a MintTx that matches a GnosisSafeDeposit.
+pub fn insert_mint_tx_from_deposit(
+    deposit: &GnosisSafeDeposit,
+    conn: &Conn,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> MintTx {
+    let config = &test_gnosis_config().safes[0];
+    let token_id = config.tokens[0].token_id;
+
+    let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id, rng);
+    let mut mint_tx = create_mint_tx(token_id, &signers, deposit.amount(), rng);
+    mint_tx.prefix.nonce = hex::decode(&deposit.expected_mc_mint_tx_nonce_hex()).unwrap();
+    MintTx::insert_from_core_mint_tx(0, None, &mint_tx, conn).unwrap()
 }
