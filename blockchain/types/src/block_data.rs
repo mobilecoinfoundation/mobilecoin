@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 /// An object that holds all data included in and associated with a block.
 #[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockData {
-    #[prost(message, required, tag = 1)]
     /// The block header.
+    #[prost(message, required, tag = 1)]
     block: Block,
 
     /// The block contents.
