@@ -45,17 +45,6 @@ impl AuditedMint {
             )));
         }
 
-        // Get the audited token information
-        let audited_token = config
-            .get_token_by_eth_contract_addr(deposit.token_addr())
-            .ok_or_else(|| {
-                Error::EthereumTokenNotAudited(
-                    deposit.token_addr().clone(),
-                    deposit.safe_addr().clone(),
-                    *deposit.eth_tx_hash(),
-                )
-            })?;
-
         let result = transaction(conn, |conn| {
             // Currently we only support 1:1 mapping between deposits and mints, so ensure
             // that there isn't already a match for this deposit.
@@ -93,6 +82,17 @@ impl AuditedMint {
             }
 
             // Check and see if the tokens match.
+            let audited_token = config
+                .get_token_by_eth_contract_addr(deposit.token_addr())
+                .ok_or_else(|| {
+                    Error::EthereumTokenNotAudited(
+                        deposit.token_addr().clone(),
+                        deposit.safe_addr().clone(),
+                        *deposit.eth_tx_hash(),
+                    )
+                })?;
+
+
             if audited_token.token_id != mint_tx.token_id() {
                 return Err(Error::DepositAndMintMismatch(format!(
                     "MintTx token_id={} does not match audited token_id={} (nonce={})",
