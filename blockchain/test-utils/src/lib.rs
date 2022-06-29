@@ -36,7 +36,7 @@ pub fn get_blocks<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Vec<BlockData> {
     let recipients = (0..num_recipients)
-        .map(|_i| AccountKey::random(rng).default_subaddress())
+        .map(|_| AccountKey::random(rng).default_subaddress())
         .collect::<Vec<_>>();
     get_blocks_with_recipients(
         block_version,

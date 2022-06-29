@@ -167,7 +167,7 @@ impl IngestServerTestHelper {
         }
     }
 
-    /// Add an origin block with 2 random outputs to the local [LedgerDB].
+    /// Add an origin block and random output to the local [LedgerDB].
     pub fn add_origin_block(&mut self) {
         let rng = &mut self.rng;
         let key_images = vec![];

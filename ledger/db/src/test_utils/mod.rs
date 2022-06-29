@@ -41,6 +41,7 @@ impl TxOutputsOrdering for InverseTxOutputsOrdering {
 /// recipient.
 ///
 /// # Arguments:
+/// * `block_version` - The block version to use for the transaction.
 /// * `ledger` - A ledger containing `tx_out`.
 /// * `tx_out` - The TxOut that will be spent.
 /// * `sender` - The owner of `tx_out`.
@@ -78,6 +79,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
 /// Creates a transaction that sends an arbitrary amount to a single recipient.
 ///
 /// # Arguments:
+/// * `block_version` - The block version to use for the transaction.
 /// * `ledger` - A ledger containing `tx_out`.
 /// * `tx_out` - The TxOut that will be spent.
 /// * `sender` - The owner of `tx_out`.
@@ -112,6 +114,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 /// Creates a transaction that sends an arbitrary amount to a single recipient.
 ///
 /// # Arguments:
+/// * `block_version` - The block version to use for the transaction.
 /// * `ledger` - A ledger containing `tx_out`.
 /// * `tx_out` - The TxOut that will be spent.
 /// * `sender` - The owner of `tx_out`.
@@ -147,9 +150,10 @@ pub fn create_transaction_with_amount_and_comparer<
     )
 }
 
-/// Creates a transaction that sends an arbitrary amount to a single recipient.
+/// Creates a transaction that sends an arbitrary amount to a group of recipients.
 ///
 /// # Arguments:
+/// * `block_version` - The block version to use for the transaction.
 /// * `ledger` - A ledger containing `tx_out`.
 /// * `tx_out` - The TxOut that will be spent.
 /// * `sender` - The owner of `tx_out`.
@@ -224,24 +228,16 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         token_id: sender_amount.token_id,
     };
 
-    let rest = value % recipients.len() as u64;
+    let mut rest = value % recipients.len() as u64;
 
-    // Output
-    for (idx, recipient) in recipients.iter().enumerate() {
-        if idx == 0 && rest != 0 {
-            let mut dup_amount = amount;
-            dup_amount.value += rest;
-            transaction_builder
-                .add_output(dup_amount, recipient, rng)
-                .unwrap();
-            continue;
-        }
-
+    for recipient in recipients.iter() {
+        let mut tx_amount = amount;
+        tx_amount.value += rest;
+        rest = 0;
         transaction_builder
-            .add_output(amount, recipient, rng)
+            .add_output(tx_amount, recipient, rng)
             .unwrap();
     }
-
     // Tombstone block
     transaction_builder.set_tombstone_block(tombstone_block);
 
