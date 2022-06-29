@@ -336,7 +336,7 @@ mod tests {
             let block = ledger.get_block(block_index).unwrap();
             assert_eq!(&block, block_data.block());
         }
-        assert_eq!(ledger.get_block(42), Err(Error::NotFound));
+        assert_eq!(ledger.get_block(5), Err(Error::NotFound));
     }
 
     #[test]
@@ -350,7 +350,7 @@ mod tests {
             let block_contents = ledger.get_block_contents(block_index).unwrap();
             assert_eq!(&block_contents, block_data.contents());
         }
-        assert_eq!(ledger.get_block_contents(42), Err(Error::NotFound));
+        assert_eq!(ledger.get_block_contents(5), Err(Error::NotFound));
     }
 
     #[test]
@@ -374,7 +374,7 @@ mod tests {
         }
 
         assert_eq!(
-            ledger.get_block_index_by_tx_out_index(42),
+            ledger.get_block_index_by_tx_out_index(10),
             Err(Error::NotFound)
         );
     }
