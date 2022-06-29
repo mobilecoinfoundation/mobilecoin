@@ -2,7 +2,12 @@
 //
 
 use crate::{
-    db::{schema::gnosis_safe_withdrawals, Conn, SqlEthAddr, SqlEthTxHash},
+    db::{
+        last_insert_rowid,
+        models::{SqlEthAddr, SqlEthTxHash},
+        schema::gnosis_safe_withdrawals,
+        Conn, SqlEthAddr, SqlEthTxHash,
+    },
     error::Error,
     gnosis::{EthAddr, EthTxHash},
 };

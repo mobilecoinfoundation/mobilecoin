@@ -1,7 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{last_insert_rowid, schema::gnosis_safe_deposits, Conn, SqlEthAddr, SqlEthTxHash},
+    db::{
+        last_insert_rowid,
+        models::{SqlEthAddr, SqlEthTxHash},
+        schema::gnosis_safe_deposits,
+        Conn,
+    },
     error::Error,
     gnosis::{EthAddr, EthTxHash},
     MintTxNonce,
