@@ -201,7 +201,11 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
         for block_data in blocks {
             let append_block_start = SystemTime::now();
-            self.ledger.append_block_data(block_data)?;
+            // FIXME: Add metadata, too.
+            // We cannot just propagate the signature and metadata from upstream.
+            self.ledger
+                .append_block(block_data.block(), block_data.contents(), None, None)?;
+
             let append_block_end = SystemTime::now();
 
             // HACK: `append_block` reports a span but does not tie it to a specific
