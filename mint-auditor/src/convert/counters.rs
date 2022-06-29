@@ -13,6 +13,7 @@ impl From<&Counters> for mc_mint_auditor_api::Counters {
         dst.set_num_mint_txs_without_matching_mint_config(
             src.num_mint_txs_without_matching_mint_config(),
         );
+        dst.set_num_mismatching_mints_and_deposits(src.num_mismatching_mints_and_deposits());
         dst
     }
 }

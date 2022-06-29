@@ -148,6 +148,9 @@ CREATE TABLE counters (
     num_burns_exceeding_balance BIGINT NOT NULL,
 
     -- Number of `MintTx`s that did not match an active mint config.
-    num_mint_txs_without_matching_mint_config BIGINT NOT NULL
+    num_mint_txs_without_matching_mint_config BIGINT NOT NULL,
+
+    -- Number of mismatched mints and Gnosis deposits.
+    num_mismatching_mints_and_deposits BIGINT NOT NULL
 );
 

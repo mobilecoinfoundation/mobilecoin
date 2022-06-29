@@ -9,7 +9,10 @@
 
 use crate::{
     counters,
-    db::{AuditedMint, Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb},
+    db::{
+        AuditedMint, Conn, Counters, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal,
+        MintAuditorDb,
+    },
     error::Error,
     gnosis::{
         api_data_types::{
@@ -118,6 +121,10 @@ impl GnosisSync {
                 Ok(())
             })
             .expect("failed processing transaction");
+
+            Counters::get(&conn)
+                .expect("failed getting counters")
+                .update_prometheus();
         }
     }
 

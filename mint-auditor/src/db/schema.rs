@@ -32,6 +32,7 @@ table! {
         num_blocks_synced -> BigInt,
         num_burns_exceeding_balance -> BigInt,
         num_mint_txs_without_matching_mint_config -> BigInt,
+        num_mismatching_mints_and_deposits -> BigInt,
     }
 }
 

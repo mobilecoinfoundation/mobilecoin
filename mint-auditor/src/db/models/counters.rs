@@ -27,6 +27,9 @@ pub struct Counters {
     /// The number of mint transactions that did not match an active mint
     /// configuration.
     num_mint_txs_without_matching_mint_config: i64,
+
+    /// The number of mismatching MintTxs and Gnosis deposits.
+    num_mismatching_mints_and_deposits: i64,
 }
 
 impl Counters {
@@ -97,6 +100,30 @@ impl Counters {
         }
     }
 
+    /// Get the number of blocks synced so far.
+    pub fn num_mismatching_mints_and_deposits(&self) -> u64 {
+        self.num_mismatching_mints_and_deposits as u64
+    }
+
+    /// Atomically increase the number of mismatching MintTxs and Gnosis
+    /// deposits.
+    pub fn inc_num_mismatching_mints_and_deposits(conn: &Conn) -> Result<(), Error> {
+        match diesel::update(counters::table)
+            .set(
+                counters::num_mismatching_mints_and_deposits
+                    .eq(counters::num_mismatching_mints_and_deposits + 1),
+            )
+            .execute(conn)?
+        {
+            0 => Err(Error::NotFound),
+            1 => Ok(()),
+            num_rows => Err(Error::Other(format!(
+                "inc_num_mismatching_mints_and_deposits: unexpected number of rows ({})",
+                num_rows
+            ))),
+        }
+    }
+
     /// Get all counters.
     pub fn get(conn: &Conn) -> Result<Self, Error> {
         match counters::table.get_result(conn) {
@@ -126,6 +153,8 @@ impl Counters {
         prom_counters::NUM_BURNS_EXCEEDING_BALANCE.set(self.num_burns_exceeding_balance);
         prom_counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
             .set(self.num_mint_txs_without_matching_mint_config);
+        prom_counters::NUM_MISMATCHING_MINTS_AND_DEPOSITS
+            .set(self.num_mismatching_mints_and_deposits());
     }
 }
 
@@ -154,6 +183,7 @@ mod tests {
         assert_eq!(counters.num_blocks_synced(), 3);
         assert_eq!(counters.num_burns_exceeding_balance(), 0);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
+        assert_eq!(counters.num_mismatching_mints_and_deposits(), 0);
 
         Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
         Counters::inc_num_burns_exceeding_balance(&conn).unwrap();
@@ -163,6 +193,7 @@ mod tests {
         assert_eq!(counters.num_blocks_synced(), 3);
         assert_eq!(counters.num_burns_exceeding_balance(), 4);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
+        assert_eq!(counters.num_mismatching_mints_and_deposits(), 0);
 
         Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
         Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
@@ -170,5 +201,15 @@ mod tests {
         assert_eq!(counters.num_blocks_synced(), 3);
         assert_eq!(counters.num_burns_exceeding_balance(), 4);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 2);
+        assert_eq!(counters.num_mismatching_mints_and_deposits(), 0);
+
+        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
+        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
+        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), 3);
+        assert_eq!(counters.num_burns_exceeding_balance(), 4);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 2);
+        assert_eq!(counters.num_mismatching_mints_and_deposits(), 3);
     }
 }

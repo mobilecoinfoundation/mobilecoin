@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{schema::audited_mints, transaction, Conn, GnosisSafeDeposit, MintTx},
+    db::{schema::audited_mints, transaction, Conn, Counters, GnosisSafeDeposit, MintTx},
     gnosis::AuditedSafeConfig,
     Error,
 };
@@ -56,7 +56,7 @@ impl AuditedMint {
                 ))
             })?;
 
-        transaction(conn, |conn| {
+        let result = transaction(conn, |conn| {
             // Currently we only support 1:1 mapping between deposits and mints, so ensure
             // that there isn't already a match for this deposit.
             let existing_match = audited_mints::table
@@ -95,7 +95,7 @@ impl AuditedMint {
             // Check and see if the tokens match.
             if audited_token.token_id != mint_tx.token_id() {
                 return Err(Error::DepositAndMintMismatch(format!(
-                    "MintTx token_id={} does not match audited token_=id{} (nonce={})",
+                    "MintTx token_id={} does not match audited token_id={} (nonce={})",
                     mint_tx.token_id(),
                     audited_token.token_id,
                     deposit.expected_mc_mint_tx_nonce_hex(),
@@ -115,7 +115,15 @@ impl AuditedMint {
                 .execute(conn)?;
 
             Ok(mint_tx)
-        })
+        });
+
+        // Count certain errors. This needs to happen outside of the transaction because
+        // errors result in the transaction getting rolled back.
+        if let Err(Error::DepositAndMintMismatch(_)) = result {
+            Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+        }
+
+        result
     }
 }
 
@@ -198,6 +206,14 @@ mod tests {
             AuditedMint::attempt_match_deposit_with_mint(&deposit2, config, &conn),
             Err(Error::AlreadyExists(_))
         ));
+
+        // No mismatching pairs were found.
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_mints_and_deposits(),
+            0
+        );
     }
 
     #[test_with_logger]
@@ -229,6 +245,14 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_mints_and_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -293,6 +317,14 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_mints_and_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
