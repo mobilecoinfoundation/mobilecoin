@@ -927,7 +927,7 @@ mod tests {
         test_utils::{
             add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
         },
-        MockLedger,
+        MockLedger, // Don't use test_utils::MockLedger.
     };
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
     use mc_peers::MockBroadcast;

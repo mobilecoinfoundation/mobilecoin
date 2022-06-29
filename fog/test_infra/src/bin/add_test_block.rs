@@ -27,7 +27,6 @@
 
 use clap::Parser;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
-
 use mc_blockchain_types::BlockVersion;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
