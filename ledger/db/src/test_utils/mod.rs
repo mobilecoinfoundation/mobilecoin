@@ -150,7 +150,8 @@ pub fn create_transaction_with_amount_and_comparer<
     )
 }
 
-/// Creates a transaction that sends an arbitrary amount to a group of recipients.
+/// Creates a transaction that sends an arbitrary amount to a group of
+/// recipients.
 ///
 /// # Arguments:
 /// * `block_version` - The block version to use for the transaction.
