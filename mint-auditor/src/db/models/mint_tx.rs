@@ -157,9 +157,9 @@ impl MintTx {
         Ok(mint_tx)
     }
 
-    /// Attempt to find all MintTxs that do not have a matching entry in the
+    /// Attempt to find all [MintTx]s that do not have a matching entry in the
     /// `audited_mints` table.
-    pub fn find_unaudited_mint_txs(conn: &Conn) -> Result<Vec<MintTx>, Error> {
+    pub fn find_unaudited_mint_txs(conn: &Conn) -> Result<Vec<Self>, Error> {
         Ok(mint_txs::table
             .filter(not(exists(
                 audited_mints::table
@@ -169,12 +169,12 @@ impl MintTx {
             .load(conn)?)
     }
 
-    /// Attempt to find a MintTx that has a given nonce and no matching entry in
-    /// the `audited_mints` table.
+    /// Attempt to find a [MintTx] that has a given nonce and no matching entry
+    /// in the `audited_mints` table.
     pub fn find_unaudited_mint_tx_by_nonce(
         nonce_hex: &str,
         conn: &Conn,
-    ) -> Result<Option<MintTx>, Error> {
+    ) -> Result<Option<Self>, Error> {
         Ok(mint_txs::table
             .filter(mint_txs::nonce_hex.eq(nonce_hex))
             .filter(not(exists(
