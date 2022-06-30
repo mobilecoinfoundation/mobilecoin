@@ -6,6 +6,6 @@ pub mod config;
 pub mod verifier;
 
 pub use self::{
-    config::{AvrConfig, AvrConfigRecord},
+    config::{AvrHistoryConfig, AvrHistoryRecord},
     verifier::{get_signing_key_from_verification_report_data, AvrVerificationRecord, AvrVerifier},
 };

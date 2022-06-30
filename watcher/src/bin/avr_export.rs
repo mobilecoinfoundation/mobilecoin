@@ -5,7 +5,7 @@
 
 use clap::Parser;
 use mc_blockchain_types::VerificationReport;
-use mc_blockchain_verifiers::{AvrConfig, AvrConfigRecord};
+use mc_blockchain_verifiers::{AvrHistoryConfig, AvrHistoryRecord};
 use mc_common::{
     logger::{create_app_logger, o},
     ResponderId,
@@ -85,7 +85,7 @@ fn main() {
                 if avr_for_signer.eq(&cur_avr) {
                     cur_end_index += 1
                 } else {
-                    avr_records.push(AvrConfigRecord::new(
+                    avr_records.push(AvrHistoryRecord::new(
                         &create_responder_id(tx_src_url),
                         cur_start_index,
                         cur_end_index,
@@ -104,7 +104,7 @@ fn main() {
     if avr_records.is_empty() {
         println!("No AVR history found to export in WatcherDB");
     } else {
-        let avr_reports = AvrConfig::new(avr_records);
+        let avr_reports = AvrHistoryConfig::new(avr_records);
         let avr_history_toml = toml::to_string_pretty(&avr_reports).unwrap();
         let avr_history_json = serde_json::to_string_pretty(&avr_reports).unwrap();
         config.avr_history.set_extension("toml");

@@ -5,7 +5,7 @@
 //! signed consensus enclave and that the block signing key
 //! presented matches the signing key in the AVR.
 
-use crate::{AvrConfig, VerificationError};
+use crate::{AvrHistoryConfig, VerificationError};
 use mc_attest_core::VerificationReportData;
 use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockData, BlockIndex, VerificationReport};
@@ -52,12 +52,16 @@ pub struct AvrVerificationRecord {
 impl AvrVerifier {
     /// Create new AVR verifier
     pub fn new(
-        avr_history: HashMap<Ed25519Public, AvrVerificationRecord>,
-        trust_chain_verifier: Verifier,
-    ) -> Self {
-        Self {
-            avr_history,
-            avr_verifier: trust_chain_verifier,
+        avr_history_config: &Option<AvrHistoryConfig>,
+        avr_verifier: &Verifier,
+    ) -> Result<Self, VerificationError> {
+        if let Some(avr_history_config) = avr_history_config {
+            avr_history_config.verify_data(avr_verifier)
+        } else {
+            Ok(Self {
+                avr_history: HashMap::new(),
+                avr_verifier: avr_verifier.clone(),
+            })
         }
     }
 
@@ -136,11 +140,12 @@ impl AvrVerifier {
     }
 }
 
-impl TryFrom<AvrConfig> for AvrVerifier {
+impl TryFrom<&AvrHistoryConfig> for AvrVerifier {
     type Error = VerificationError;
 
-    fn try_from(config: AvrConfig) -> Result<Self, Self::Error> {
-        config.verify_data()
+    fn try_from(config: &AvrHistoryConfig) -> Result<Self, Self::Error> {
+        let avr_verifier = Verifier::default();
+        config.verify_data(&avr_verifier)
     }
 }
 
@@ -161,5 +166,5 @@ pub fn get_signing_key_from_verification_report_data(
             report_bytes.len()
         )));
     }
-    Ok(Ed25519Public::try_from(report_bytes)?)
+    Ok(Ed25519Public::try_from(&report_bytes[32..64])?)
 }

@@ -14,7 +14,7 @@ pub mod test_utils;
 pub use crate::{
     error::{ParseError, VerificationError},
     metadata_verifiers::{
-        avr::get_signing_key_from_verification_report_data, AvrConfig, AvrConfigRecord,
+        avr::get_signing_key_from_verification_report_data, AvrHistoryConfig, AvrHistoryRecord,
         MetadataVerifier,
     },
 };

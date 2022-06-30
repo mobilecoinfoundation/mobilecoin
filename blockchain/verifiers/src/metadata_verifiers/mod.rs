@@ -6,5 +6,5 @@ pub mod avr;
 pub mod message_signing_key;
 pub mod metadata_verifier;
 
-pub use avr::{AvrConfig, AvrConfigRecord};
+pub use avr::{AvrHistoryConfig, AvrHistoryRecord};
 pub use metadata_verifier::MetadataVerifier;
