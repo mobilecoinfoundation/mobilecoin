@@ -17,7 +17,7 @@ use toml::de::Error as FromTomlError;
 
 /// Block metadata validation errors
 #[derive(Debug, Display, Eq, PartialEq)]
-pub enum ValidationError {
+pub enum VerificationError {
     /// Failed to parse key: {0}
     Key(KeyError),
 
@@ -30,52 +30,70 @@ pub enum ValidationError {
     /// Signature error: {0}
     Signature(String),
 
-    /// Block Signer key: {0} does not match public key from AVR: {0}
+    /// Block signing key: {0} does not match public key from AVR: {0}
     InvalidBlockSigningKey(String, String),
 
-    /// No AVR found for signing key {0}
+    /// No AVR found for signing key: {0}
     AvrNotFound(String),
 
-    /// Signer key contained in AVR was invalid: {0},
+    /// Signer key contained in AVR was invalid: {0}
     AvrKeyData(String),
 
-    /// AVR failed to verify against intel roots of trust: {0},
+    /// AVR failed to verify against Intel roots of trust: {0}
     InvalidAvr(String),
 
     /// Signing Key is out of range for block: {0}
-    BlockSigningKeyExpired(BlockIndex),
+    BlockSigningKeyNotInRange(BlockIndex),
 
     /// ResponderId: {0} does not match expected ResponderId: {1}
     ResponderIdMismatch(ResponderId, ResponderId),
 
-    /// No block signature found at for block: {0},
+    /// Block signing key: {0} valid at multiple ranges: {1}-{2} and {3}-{4}
+    DuplicateBlockSigningKey(String, BlockIndex, BlockIndex, BlockIndex, BlockIndex),
+
+    /// No block signature found for block: {0}
     NoBlockSignature(BlockIndex),
 
-    /// Other error: {0}
+    /// starting index: {0} is greater than final index: {1} for ResponderID: {2}
+    InvalidRange(BlockIndex, BlockIndex, ResponderId),
+
+    /// Range Overlap: {0}-{1} {2}-{3} for ResponderId: {4}
+    ResponderRangeOverlap(BlockIndex, BlockIndex, BlockIndex, BlockIndex, ResponderId),
+
+    /// Configuration parsing failure: {0}
+    ConfigParse(String),
+
+    /// Other {0}
     Other(String),
 }
 
-impl From<SignatureError> for ValidationError {
+impl From<SignatureError> for VerificationError {
     fn from(src: SignatureError) -> Self {
         Self::Signature(src.to_string())
     }
 }
 
-impl From<KeyError> for ValidationError {
+impl From<KeyError> for VerificationError {
     fn from(err: KeyError) -> Self {
-        ValidationError::Key(err)
+        VerificationError::Key(err)
     }
 }
 
-impl From<VerifierError> for ValidationError {
+impl From<VerifierError> for VerificationError {
     fn from(err: VerifierError) -> Self {
-        ValidationError::InvalidAvr(err.to_string())
+        VerificationError::InvalidAvr(err.to_string())
     }
 }
 
-impl From<VerifyError> for ValidationError {
+impl From<VerifyError> for VerificationError {
     fn from(err: VerifyError) -> Self {
-        ValidationError::AvrKeyData(err.to_string())
+        VerificationError::AvrKeyData(err.to_string())
+    }
+}
+
+impl From<ParseError> for VerificationError {
+    fn from(err: ParseError) -> Self {
+        VerificationError::ConfigParse(err.to_string())
     }
 }
 
@@ -108,9 +126,6 @@ pub enum ParseError {
 
     /// Failed to parse JSON: {0}
     Json(String),
-
-    /// Validation of the metadata in the config file failed: {0}
-    Validation(String),
 }
 
 impl From<KeyError> for ParseError {
@@ -146,11 +161,5 @@ impl From<FromTomlError> for ParseError {
 impl From<JsonError> for ParseError {
     fn from(src: JsonError) -> Self {
         Self::Json(src.to_string())
-    }
-}
-
-impl From<ValidationError> for ParseError {
-    fn from(src: ValidationError) -> Self {
-        Self::Validation(src.to_string())
     }
 }

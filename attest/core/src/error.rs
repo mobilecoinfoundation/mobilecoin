@@ -668,8 +668,6 @@ pub enum VerifyError {
     IasQuoteMismatch,
     /// There was an error parsing the timestamp {0}: {1}
     TimestampParse(String, String),
-    /// There was an error encoding ias key material to hex: {0}
-    Encoding(EncodingError),
     /// There was an unknown error
     Unknown,
 }
@@ -719,11 +717,5 @@ impl From<NonceError> for VerifyError {
 impl From<EpidPseudonymError> for VerifyError {
     fn from(src: EpidPseudonymError) -> VerifyError {
         VerifyError::EpidPseudonym(src)
-    }
-}
-
-impl From<EncodingError> for VerifyError {
-    fn from(src: EncodingError) -> VerifyError {
-        VerifyError::Encoding(src)
     }
 }

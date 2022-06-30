@@ -21,7 +21,7 @@ mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
 mc-blockchain-types = { path = "../blockchain/types" }
-mc-blockchain-validators = { path = "../blockchain/validators" }
+mc-blockchain-verifiers = { path = "../blockchain/verifiers" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }

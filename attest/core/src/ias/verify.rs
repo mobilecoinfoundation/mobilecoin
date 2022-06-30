@@ -228,18 +228,6 @@ impl VerificationReportData {
                 })?;
         Ok(timestamp.into())
     }
-
-    /// Try to get public key bytes from the quote
-    pub fn signing_key_bytes(&self) -> Result<[u8; 32], VerifyError> {
-        let report_data = self.quote.report_body()?.report_data();
-        let report_data_bytes: &[u8] = report_data.as_ref();
-        if report_data_bytes.len() != 64 {
-            return Err(VerifyError::IasQuoteMismatch);
-        }
-        Ok(report_data_bytes[32..64]
-            .try_into()
-            .map_err(EncodingError::from)?)
-    }
 }
 
 impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {

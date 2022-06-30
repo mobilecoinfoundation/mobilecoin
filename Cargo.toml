@@ -16,7 +16,7 @@ members = [
     "attest/verifier",
     "attest/verifier/types",
     "blockchain/types",
-    "blockchain/validators",
+    "blockchain/verifiers",
     "common",
     "connection",
     "connection/test-utils",
