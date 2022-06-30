@@ -2,7 +2,7 @@
 
 use crate::{
     db::{schema::audited_mints, transaction, Conn, Counters, GnosisSafeDeposit, MintTx},
-    gnosis::AuditedSafeConfig,
+    gnosis::{AuditedSafeConfig, GnosisSafeConfig},
     Error,
 };
 use diesel::prelude::*;
@@ -23,10 +23,11 @@ pub struct AuditedMint {
 }
 
 impl AuditedMint {
-    /// Attempt to find a matching MintTx for a given GnosisSafeDeposit, and if
-    /// successful return the MintTx and record the match in the database.
-    /// Note that each MintTx can be matched to at most one GnosisSafeDeposit,
-    /// so calling this repeatedly over the same deposit will fail.
+    /// Attempt to find a matching [MintTx] for a given [GnosisSafeDeposit], and
+    /// if successful return the [MintTx] and record the match in the
+    /// database. Note that each [MintTx] can be matched to at most one
+    /// [GnosisSafeDeposit], so calling this repeatedly over the same
+    /// deposit will fail.
     pub fn attempt_match_deposit_with_mint(
         deposit: &GnosisSafeDeposit,
         config: &AuditedSafeConfig,
@@ -75,6 +76,7 @@ impl AuditedMint {
             Self::verify_mint_tx_matches_deposit(&mint_tx, deposit, config)?;
 
             // Associate the deposit with the mint.
+            // TODO break into helper method and use in tests.
             let audited_mint = Self {
                 id: None,
                 mint_tx_id: mint_tx
@@ -106,6 +108,86 @@ impl AuditedMint {
         result
     }
 
+    /// Attempt to find a matching [GnosisSafeDeposit] for a given [MintTx], and
+    /// if successful return the [GnosisSafeDeposit] and record the match in the
+    /// database. Note that each [GnosisSafeDeposit] can be matched to at
+    /// most one [MintTx], so calling this repeatedly over the same deposit
+    /// will fail.
+    pub fn attempt_match_mint_with_deposit(
+        mint_tx: &MintTx,
+        config: &GnosisSafeConfig,
+        conn: &Conn,
+    ) -> Result<GnosisSafeDeposit, Error> {
+        // We only operate on objects that were saved to the database.
+        let mint_tx_id = mint_tx.id().ok_or(Error::ObjectNotSaved)?;
+
+        let result = transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
+            // Currently we only support 1:1 mapping between deposits and mints, so ensure
+            // that there isn't already a match for this mint.
+            let existing_match = audited_mints::table
+                .filter(audited_mints::mint_tx_id.eq(mint_tx_id))
+                .first::<AuditedMint>(conn)
+                .optional()?;
+            if let Some(existing_match) = existing_match {
+                return Err(Error::AlreadyExists(format!(
+                    "MintTx id={} already matched with gnosis_safe_deposit_id={}",
+                    existing_match.mint_tx_id, existing_match.gnosis_safe_deposit_id,
+                )));
+            }
+
+            // See if we can find a GnosisSafeDeposit that matches the nonce and has not
+            // been associated with a mint.
+            let deposit =
+                GnosisSafeDeposit::find_unaudited_deposit_by_nonce(mint_tx.nonce_hex(), conn)?
+                    .ok_or(Error::NotFound)?;
+
+            // See if the deposit we found is for a safe we are auditing.
+            let audited_safe_config = config
+                .get_audited_safe_config_by_safe_addr(deposit.safe_addr())
+                .ok_or_else(|| Error::GnosisSafeNotAudited(deposit.safe_addr().clone()))?;
+
+            // See if they match.
+            Self::verify_mint_tx_matches_deposit(mint_tx, &deposit, &audited_safe_config)?;
+
+            // Associate the mint with the deposit.
+            // TODO break into helper method and use in tests.
+            let audited_mint = Self {
+                id: None,
+                mint_tx_id,
+                gnosis_safe_deposit_id: deposit.id().expect(
+                    "got a GnosisSafeDeposit without id but database auto-populates that field",
+                ),
+            };
+            diesel::insert_into(audited_mints::table)
+                .values(&audited_mint)
+                .execute(conn)?;
+
+            Ok(deposit)
+        });
+
+        // Count certain errors. This needs to happen outside of the transaction because
+        // errors result in the transaction getting rolled back.
+        match result {
+            Err(Error::GnosisSafeNotAudited(_)) => {
+                todo!()
+            }
+
+            Err(Error::DepositAndMintMismatch(_)) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
+
+            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
+
+            _ => {}
+        }
+
+        result
+    }
+
+    /// Verify that the details of a MintTx match the details of a
+    /// GnosisSafeDeposit (amount/nonce/token).
     fn verify_mint_tx_matches_deposit(
         mint_tx: &MintTx,
         deposit: &GnosisSafeDeposit,
@@ -386,5 +468,71 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_mint_with_deposit_happy_flow(logger: Logger) {
+        let config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        // Create gnosis deposits (that are not yet in the database).
+        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
+        let mut deposit2 = create_gnosis_safe_deposit(200, &mut rng);
+
+        // Create MintTxs.
+        let sql_mint_tx1 = insert_mint_tx_from_deposit(&deposit1, &conn, &mut rng);
+        let sql_mint_tx2 = insert_mint_tx_from_deposit(&deposit2, &conn, &mut rng);
+
+        // Initially the database is empty.
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx1, &config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx2, &config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert_audited_mints_table_is_empty(&conn);
+
+        // Insert the first deposit to the database, we should get a match now.
+        insert_gnosis_deposit(&mut deposit1, &conn);
+
+        assert_eq!(
+            deposit1,
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx1, &config, &conn).unwrap()
+        );
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx2, &config, &conn),
+            Err(Error::NotFound)
+        ));
+
+        // Insert the second deposit to the database, we should get a match on both.
+        insert_gnosis_deposit(&mut deposit2, &conn);
+
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx1, &config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+        assert_eq!(
+            deposit2,
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx2, &config, &conn).unwrap()
+        );
+
+        // Trying again should return AlreadyExists
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx2, &config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+
+        // No mismatching pairs were found.
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_mints_and_deposits(),
+            0
+        );
     }
 }

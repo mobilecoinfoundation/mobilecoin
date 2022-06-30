@@ -35,6 +35,9 @@ pub enum Error {
     /// Ethereum token {0} not audited in safe {1} (tx hash: {2})
     EthereumTokenNotAudited(EthAddr, EthAddr, EthTxHash),
 
+    /// Gnosis safe {0} not audited
+    GnosisSafeNotAudited(EthAddr),
+
     /// IO: {0}
     Io(IoError),
 
