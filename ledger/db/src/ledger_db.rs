@@ -10,7 +10,7 @@ use lmdb::{
 };
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockID, BlockIndex, BlockMetadata, BlockSignature,
-    MAX_BLOCK_VERSION,
+    BlockVersion, MAX_BLOCK_VERSION,
 };
 use mc_common::{logger::global_log, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -172,7 +172,7 @@ impl Ledger for LedgerDB {
         let mut db_transaction = self.env.begin_rw_txn()?;
 
         // Validate the block is safe to append.
-        self.validate_append_block(block, block_contents, &db_transaction)?;
+        self.validate_append_block(block, block_contents, metadata, &db_transaction)?;
 
         // Write key images included in block.
         self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
@@ -656,6 +656,7 @@ impl LedgerDB {
         &self,
         block: &Block,
         block_contents: &BlockContents,
+        metadata: Option<&BlockMetadata>,
         db_transaction: &impl Transaction,
     ) -> Result<(), Error> {
         // Check version is correct
@@ -770,6 +771,12 @@ impl LedgerDB {
             {
                 return Err(Error::DuplicateMintConfigTx);
             }
+        }
+
+        let block_version = BlockVersion::try_from(block.version)
+            .or(Err(Error::InvalidBlockVersion(block.version)))?;
+        if block_version.require_block_metadata() && metadata.is_none() {
+            return Err(Error::BlockMetadataRequired);
         }
 
         // All good
@@ -924,7 +931,7 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use crate::test_utils::{add_block_contents_to_ledger, add_txos_and_key_images_to_ledger};
-    use mc_blockchain_test_utils::get_blocks;
+    use mc_blockchain_test_utils::{get_blocks, make_block_metadata};
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::{membership_proofs::compute_implied_merkle_root, BlockVersion};
     use mc_transaction_core_test_utils::{
@@ -2385,6 +2392,59 @@ mod ledger_db_test {
                     Err(Error::InvalidBlockVersion(invalid_block.version))
                 );
             }
+        }
+    }
+
+    #[test]
+    fn append_block_requires_metadata() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin = add_origin_block(&mut ledger_db);
+        let mut last_block = origin.block().clone();
+
+        // MAX_BLOCK_VERSION sets the current max block version
+        for block_version in BlockVersion::iterator() {
+            // In each iteration we add a few blocks with the same version.
+            for _ in 0..3 {
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| create_test_tx_out(block_version, &mut rng))
+                    .collect();
+
+                let key_images: Vec<KeyImage> =
+                    (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+                let block_contents = BlockContents {
+                    key_images,
+                    outputs,
+                    ..Default::default()
+                };
+                last_block = Block::new_with_parent(
+                    block_version,
+                    &last_block,
+                    &Default::default(),
+                    &block_contents,
+                );
+
+                let metadata = make_block_metadata(last_block.id.clone(), &mut rng);
+
+                let result = ledger_db.append_block(&last_block, &block_contents, None, None);
+
+                if block_version.require_block_metadata() {
+                    assert_eq!(result, Err(Error::BlockMetadataRequired));
+                    ledger_db
+                        .append_block(&last_block, &block_contents, None, Some(&metadata))
+                        .unwrap();
+                } else {
+                    result.unwrap();
+                }
+            }
+
+            // All blocks should've been written (+ origin block).
+            assert_eq!(
+                ledger_db.num_blocks().unwrap(),
+                1 + (3 * (*block_version + 1)) as u64
+            );
         }
     }
 
