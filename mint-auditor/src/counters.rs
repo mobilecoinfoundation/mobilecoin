@@ -26,6 +26,12 @@ lazy_static::lazy_static! {
     /// Number of times we encountered a mint that is associated with an unaudited safe.
     pub static ref NUM_MINTS_TO_UNKNOWN_SAFE: IntGauge = OP_COUNTERS.gauge("num_mints_to_unknown_safe");
 
+    /// Number of unexpected errors attempting to match deposits to mints.
+    pub static ref NUM_UNEXPECTED_ERRORS_MATCHING_DEPOSITS_TO_MINTS: IntGauge = OP_COUNTERS.gauge("num_unexpected_errors_matching_deposits_to_mints");
+
+    /// Number of unexpected errors attempting to match mints to deposits.
+    pub static ref NUM_UNEXPECTED_ERRORS_MATCHING_MINTS_TO_DEPOSITS: IntGauge = OP_COUNTERS.gauge("num_unexpected_errors_matching_mints_to_deposits");
+
     /// Number of times we failed to fetch gnosis transactions.
     pub static ref NUM_FAILED_GNOSIS_GET_ALL_TRANSACTION_DATA: IntCounter = OP_COUNTERS.counter("num_failed_gnosis_get_all_transaction_data");
 }

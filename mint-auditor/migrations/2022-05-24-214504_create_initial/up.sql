@@ -157,6 +157,12 @@ CREATE TABLE counters (
     num_unknown_ethereum_token_deposits BIGINT NOT NULL,
 
     -- Number of times we encountered a mint that is associated with an unaudited safe.
-    num_mints_to_unknown_safe BIGINT NOT NULL
+    num_mints_to_unknown_safe BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match deposits to mints.
+    num_unexpected_errors_matching_deposits_to_mints BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match mints to deposits.
+    num_unexpected_errors_matching_mints_to_deposits BIGINT NOT NULL
 );
 

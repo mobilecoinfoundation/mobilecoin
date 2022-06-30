@@ -300,7 +300,7 @@ fn sync_loop(
                     // If we were configured to audit Gnosis safes, attempt to do that with
                     // information we found in the block.
                     if let Some(config) = gnosis_safe_config {
-                        audit_block_data(&sync_block_data, config, &conn, logger);
+                        audit_block_data(&sync_block_data, config, &conn, logger)?;
                     }
 
                     Ok(())
@@ -319,7 +319,7 @@ fn audit_block_data(
     config: &GnosisSafeConfig,
     conn: &Conn,
     logger: &Logger,
-) {
+) -> Result<(), Error> {
     for mint_tx in &sync_block_data.mint_txs {
         match AuditedMint::attempt_match_mint_with_deposit(mint_tx, config, &conn) {
             Ok(deposit) => {
@@ -333,6 +333,17 @@ fn audit_block_data(
             Err(Error::NotFound) => {
                 log::debug!(logger, "MintTx with nonce={} does not currently have matching Gnosis deposit, this could be fine if the safe data is not fully synced.", mint_tx.nonce_hex());
             }
+            Err(Error::GnosisSafeNotAudited(_)) => {
+                Counters::inc_num_mints_to_unknown_safe(conn)?;
+            }
+
+            Err(Error::DepositAndMintMismatch(_)) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
+
+            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
             Err(err) => {
                 log::error!(
                     logger,
@@ -345,6 +356,8 @@ fn audit_block_data(
             }
         };
     }
+
+    Ok(())
 }
 
 /// Load a gnosis safe config file.

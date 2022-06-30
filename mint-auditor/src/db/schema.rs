@@ -35,6 +35,8 @@ table! {
         num_mismatching_mints_and_deposits -> BigInt,
         num_unknown_ethereum_token_deposits -> BigInt,
         num_mints_to_unknown_safe -> BigInt,
+        num_unexpected_errors_matching_deposits_to_mints -> BigInt,
+        num_unexpected_errors_matching_mints_to_deposits -> BigInt,
     }
 }
 

@@ -18,164 +18,78 @@ pub struct Counters {
     /// Id (required to keep Diesel happy).
     id: i32,
 
-    /// The number of blocks synced so far.
+    /// Number of blocks synced so far.
     num_blocks_synced: i64,
 
-    /// The number of burn transactions that exceeded the minted amount.
+    /// Number of burn transactions that exceeded the minted amount.
     num_burns_exceeding_balance: i64,
 
-    /// The number of mint transactions that did not match an active mint
+    /// Number of mint transactions that did not match an active mint
     /// configuration.
     num_mint_txs_without_matching_mint_config: i64,
 
-    /// The number of mismatching MintTxs and Gnosis deposits.
+    /// Number of mismatching MintTxs and Gnosis deposits.
     num_mismatching_mints_and_deposits: i64,
 
-    /// The number of times we encountered deposits to an unknown Ethereum token
+    /// Number of times we encountered deposits to an unknown Ethereum token
     /// contract address.
     num_unknown_ethereum_token_deposits: i64,
 
-    //The number of times we encountered a mint that is associated with an unaudited safe.
+    /// Number of times we encountered a mint that is associated with an
+    /// unaudited safe.
     num_mints_to_unknown_safe: i64,
+
+    /// Number of unexpected errors attempting to match deposits to mints.
+    num_unexpected_errors_matching_deposits_to_mints: i64,
+
+    // Number of unexpected errors attempting to match mints to deposits.
+    num_unexpected_errors_matching_mints_to_deposits: i64,
+}
+
+// A helper macro for DRYING up get/inc methods for each counter.
+// Unfortunately we need to pass both the member name (which ends being the
+// getter method name) and the increment method name, since Rust macros do not
+// currently support identifier concatenation.
+macro_rules! impl_get_and_inc {
+    ($( $var_name:ident $inc_fn_name:ident $(,)?)+) => (
+        impl Counters {
+            $(
+                /// Get $var_name.
+                pub fn $var_name(&self) -> u64 {
+                    self.$var_name as u64
+                }
+
+                /// Atomically increase $var_name.
+                pub fn $inc_fn_name(conn: &Conn) -> Result<(), Error> {
+                    match diesel::update(counters::table)
+                        .set(counters::$var_name.eq(counters::$var_name + 1))
+                        .execute(conn)?
+                    {
+                        0 => Err(Error::NotFound),
+                        1 => Ok(()),
+                        num_rows => Err(Error::Other(format!(
+                            "$var_name: unexpected number of rows ({})",
+                            num_rows
+                        ))),
+                    }
+                }
+            )+
+        }
+    )
+}
+
+impl_get_and_inc! {
+    num_blocks_synced inc_num_blocks_synced,
+    num_burns_exceeding_balance inc_num_burns_exceeding_balance,
+    num_mint_txs_without_matching_mint_config inc_num_mint_txs_without_matching_mint_config,
+    num_mismatching_mints_and_deposits inc_num_mismatching_mints_and_deposits,
+    num_unknown_ethereum_token_deposits inc_num_unknown_ethereum_token_deposits,
+    num_mints_to_unknown_safe inc_num_mints_to_unknown_safe,
+    num_unexpected_errors_matching_deposits_to_mints inc_num_unexpected_errors_matching_deposits_to_mints,
+    num_unexpected_errors_matching_mints_to_deposits inc_num_unexpected_errors_matching_mints_to_deposits,
 }
 
 impl Counters {
-    /// Get the number of blocks synced so far.
-    pub fn num_blocks_synced(&self) -> u64 {
-        self.num_blocks_synced as u64
-    }
-
-    /// Atomically increase the number of blocks synced so far.
-    pub fn inc_num_blocks_synced(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(counters::num_blocks_synced.eq(counters::num_blocks_synced + 1))
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_blocks_synced: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-
-    /// Get the number of burn transactions that exceeded the minted amount.
-    pub fn num_burns_exceeding_balance(&self) -> u64 {
-        self.num_burns_exceeding_balance as u64
-    }
-
-    /// Atomically increase the number of burn transactions that exceeded the
-    /// minted amount.
-    pub fn inc_num_burns_exceeding_balance(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(
-                counters::num_burns_exceeding_balance.eq(counters::num_burns_exceeding_balance + 1),
-            )
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_burns_exceeding_balance: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-    /// Get the number of mint transactions that did not match an active mint
-    /// configuration.
-    pub fn num_mint_txs_without_matching_mint_config(&self) -> u64 {
-        self.num_mint_txs_without_matching_mint_config as u64
-    }
-
-    /// Atomically increase the number of mint transactions that did not match
-    /// an active mint configuration.
-    pub fn inc_num_mint_txs_without_matching_mint_config(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(
-                counters::num_mint_txs_without_matching_mint_config
-                    .eq(counters::num_mint_txs_without_matching_mint_config + 1),
-            )
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_mint_txs_without_matching_mint_config: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-
-    /// Get the number of blocks synced so far.
-    pub fn num_mismatching_mints_and_deposits(&self) -> u64 {
-        self.num_mismatching_mints_and_deposits as u64
-    }
-
-    /// Atomically increase the number of mismatching MintTxs and Gnosis
-    /// deposits.
-    pub fn inc_num_mismatching_mints_and_deposits(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(
-                counters::num_mismatching_mints_and_deposits
-                    .eq(counters::num_mismatching_mints_and_deposits + 1),
-            )
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_mismatching_mints_and_deposits: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-
-    /// Get the number of times we encountered deposits to an unknown Ethereum
-    /// token contract address.
-    pub fn num_unknown_ethereum_token_deposits(&self) -> u64 {
-        self.num_unknown_ethereum_token_deposits as u64
-    }
-
-    /// Atomically increase the number of times we encountered deposits to an
-    /// unknown Ethereum token contract address.
-    pub fn inc_num_unknown_ethereum_token_deposits(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(
-                counters::num_unknown_ethereum_token_deposits
-                    .eq(counters::num_unknown_ethereum_token_deposits + 1),
-            )
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_unknown_ethereum_token_deposits: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-
-    /// Get the number of blocks synced so far.
-    pub fn num_mints_to_unknown_safe(&self) -> u64 {
-        self.num_mints_to_unknown_safe as u64
-    }
-
-    /// Atomically increase the number of blocks synced so far.
-    pub fn inc_num_mints_to_unknown_safe(conn: &Conn) -> Result<(), Error> {
-        match diesel::update(counters::table)
-            .set(counters::num_mints_to_unknown_safe.eq(counters::num_mints_to_unknown_safe + 1))
-            .execute(conn)?
-        {
-            0 => Err(Error::NotFound),
-            1 => Ok(()),
-            num_rows => Err(Error::Other(format!(
-                "inc_num_mints_to_unknown_safe: unexpected number of rows ({})",
-                num_rows
-            ))),
-        }
-    }
-
     /// Get all counters.
     pub fn get(conn: &Conn) -> Result<Self, Error> {
         match counters::table.get_result(conn) {
@@ -208,6 +122,10 @@ impl Counters {
         prom_counters::NUM_MISMATCHING_MINTS_AND_DEPOSITS
             .set(self.num_mismatching_mints_and_deposits);
         prom_counters::NUM_MINTS_TO_UNKNOWN_SAFE.set(self.num_mints_to_unknown_safe);
+        prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_DEPOSITS_TO_MINTS
+            .set(self.num_unexpected_errors_matching_deposits_to_mints);
+        prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_MINTS_TO_DEPOSITS
+            .set(self.num_unexpected_errors_matching_mints_to_deposits);
     }
 }
 
@@ -229,6 +147,9 @@ mod tests {
         Counters::ensure_exists(&conn).unwrap();
         Counters::ensure_exists(&conn).unwrap();
 
+        // Since all get/inc methods are implemented the same way we don't need to test
+        // each and every one. We test two just to see they are not affecting
+        // eachother.
         assert_eq!(Counters::get(&conn).unwrap().num_blocks_synced(), 0);
         Counters::inc_num_blocks_synced(&conn).unwrap();
         Counters::inc_num_blocks_synced(&conn).unwrap();
@@ -247,58 +168,5 @@ mod tests {
             Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
             4
         );
-
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_mint_txs_without_matching_mint_config(),
-            0
-        );
-        Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
-        Counters::inc_num_mint_txs_without_matching_mint_config(&conn).unwrap();
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_mint_txs_without_matching_mint_config(),
-            2
-        );
-
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_mismatching_mints_and_deposits(),
-            0
-        );
-        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
-        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
-        Counters::inc_num_mismatching_mints_and_deposits(&conn).unwrap();
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_mismatching_mints_and_deposits(),
-            3
-        );
-
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_unknown_ethereum_token_deposits(),
-            0
-        );
-        Counters::inc_num_unknown_ethereum_token_deposits(&conn).unwrap();
-        Counters::inc_num_unknown_ethereum_token_deposits(&conn).unwrap();
-        Counters::inc_num_unknown_ethereum_token_deposits(&conn).unwrap();
-        Counters::inc_num_unknown_ethereum_token_deposits(&conn).unwrap();
-        assert_eq!(
-            Counters::get(&conn)
-                .unwrap()
-                .num_unknown_ethereum_token_deposits(),
-            4
-        );
-
-        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 0);
-        Counters::inc_num_mints_to_unknown_safe(&conn).unwrap();
-        Counters::inc_num_mints_to_unknown_safe(&conn).unwrap();
-        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 2);
     }
 }
