@@ -1,5 +1,13 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Serialization helper for making [VerificationReport] readable
+
 use crate::{VerificationReport, VerificationSignature};
-use alloc::{format, string::String, vec::Vec};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
 // Intermediate representation of a VerificationReport with hex-encoded strings
@@ -39,11 +47,12 @@ pub fn deserialize<'de, D: Deserializer<'de>>(
             let sig: VerificationSignature = hex::decode(encoded_report.sig.as_str())
                 .map_err(|err| D::Error::custom(format!("{}", err)))?
                 .into();
-            let chain: Vec<Vec<u8>> = encoded_report
+            let chain = encoded_report
                 .chain
                 .iter()
-                .map(|hex_string| hex::decode(hex_string.as_str()).unwrap_or_default())
-                .collect();
+                .map(|hex_string| hex::decode(hex_string.as_str()))
+                .collect::<Result<Vec<Vec<u8>>, _>>()
+                .map_err(|err| D::Error::custom(err.to_string()))?;
             Ok(Some(VerificationReport {
                 sig,
                 chain,

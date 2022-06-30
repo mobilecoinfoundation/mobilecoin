@@ -4,8 +4,6 @@
 
 #![deny(missing_docs)]
 
-extern crate core;
-
 pub mod error;
 pub mod metadata_verifiers;
 #[cfg(test)]

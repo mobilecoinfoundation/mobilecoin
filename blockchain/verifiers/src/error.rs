@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Errors that can occur during Block Metadata validation and parsing
-//! of file containing historical metadata records
+//! of files containing historical metadata records
 
 use displaydoc::Display;
 use hex::FromHexError;
@@ -21,14 +21,14 @@ pub enum VerificationError {
     /// Failed to parse key: {0}
     Key(KeyError),
 
-    /// Unrecognized message signing key.
-    UnknownPubKey,
+    /// Unrecognized message signing key
+    UnknownMessageSigningKey,
 
-    /// Expired/Invalid message signing key.
-    InvalidPubKey,
+    /// Expired/Invalid message signing key
+    InvalidMessageSigningKey,
 
-    /// Signature error: {0}
-    Signature(String),
+    /// Invalid metadata signature: {0}
+    BlockMetadataSignature(String),
 
     /// Block signing key: {0} does not match public key from AVR: {0}
     InvalidBlockSigningKey(String, String),
@@ -36,13 +36,13 @@ pub enum VerificationError {
     /// No AVR found for signing key: {0}
     AvrNotFound(String),
 
-    /// Signer key contained in AVR was invalid: {0}
+    /// Block signing key contained in AVR was invalid: {0}
     AvrKeyData(String),
 
     /// AVR failed to verify against Intel roots of trust: {0}
     InvalidAvr(String),
 
-    /// Signing Key is out of range for block: {0}
+    /// Block signing key is out of range for block: {0}
     BlockSigningKeyNotInRange(BlockIndex),
 
     /// ResponderId: {0} does not match expected ResponderId: {1}
@@ -54,10 +54,10 @@ pub enum VerificationError {
     /// No block signature found for block: {0}
     NoBlockSignature(BlockIndex),
 
-    /// start index: {0} greater than final index: {1} for ResponderID: {2}
+    /// Start index: {0} greater than final index: {1} for ResponderID: {2}
     InvalidRange(BlockIndex, BlockIndex, ResponderId),
 
-    /// Range Overlap: {0}-{1} {2}-{3} for ResponderId: {4}
+    /// Range overlap: {0}-{1} {2}-{3} for ResponderId: {4}
     ResponderRangeOverlap(BlockIndex, BlockIndex, BlockIndex, BlockIndex, ResponderId),
 
     /// Configuration parsing failure: {0}
@@ -69,7 +69,7 @@ pub enum VerificationError {
 
 impl From<SignatureError> for VerificationError {
     fn from(src: SignatureError) -> Self {
-        Self::Signature(src.to_string())
+        Self::BlockMetadataSignature(src.to_string())
     }
 }
 
@@ -103,8 +103,8 @@ pub enum ParseError {
     /// Unrecognized extension in '{0}'
     UnrecognizedExtension(PathBuf),
 
-    /// Invalid pub_key value: {0}
-    InvalidPubKeyValue(String),
+    /// Invalid message signing key value: {0}
+    InvalidMessageSigningKeyValue(String),
 
     /// Failed to parse key: {0}
     Key(KeyError),

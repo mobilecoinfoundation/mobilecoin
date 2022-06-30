@@ -47,7 +47,7 @@ impl Config {
         Ok(config)
     }
 
-    /// Get a [KeyValidityMap] from this config.
+    /// Get a [MessageSigningKeyValidityMap] from this config.
     pub fn to_validity_map(&self) -> Result<MessageSigningKeyValidityMap, ParseError> {
         let mut map = MessageSigningKeyValidityMap::new();
         for config in &self.configs {
@@ -143,7 +143,7 @@ fn parse_pem_or_hex(
     } else if value.len() == 64 {
         Ed25519Public::try_from(hex::decode(value)?)?
     } else {
-        Err(ParseError::InvalidPubKeyValue(value.to_owned()))?
+        Err(ParseError::InvalidMessageSigningKeyValue(value.to_owned()))?
     })
 }
 

@@ -149,8 +149,8 @@ fn fetch_avr(
                     0 => None,
                     1 => reports[0].as_ref().cloned(),
                     _ => panic!(
-                        "fatal: multiple AVRs found for signing key {:?} from {:?}",
-                        signer, tx_src_url
+                        "fatal: multiple AVRs found for signing key {:?} from {}, {:?}",
+                        signer, tx_src_url, reports
                     ),
                 }
             }
@@ -158,8 +158,8 @@ fn fetch_avr(
         },
         // If there are multiple reports available, DO NOT boostrap from it
         _ => panic!(
-            "fatal: multiple AVRs found for signing key {:?} from {:?}",
-            signer, tx_src_url
+            "fatal: multiple AVRs found for signing key {:?} from {}, {:?}",
+            signer, tx_src_url, reports
         ),
     }
 }

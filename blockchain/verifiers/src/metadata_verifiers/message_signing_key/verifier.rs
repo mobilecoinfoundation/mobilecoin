@@ -21,20 +21,20 @@ impl MessageSigningKeyVerifier {
     }
 
     /// Verifies that the given signing key is allowed at the given block index.
-    pub fn validate(
+    pub fn verify(
         &self,
-        key: &Ed25519Public,
+        message_signing_key: &Ed25519Public,
         block_index: BlockIndex,
     ) -> Result<(), VerificationError> {
         let ranges = self
             .config
-            .get(key)
-            .ok_or(VerificationError::UnknownPubKey)?;
+            .get(message_signing_key)
+            .ok_or(VerificationError::UnknownMessageSigningKey)?;
 
         if ranges.iter().any(|range| range.contains(&block_index)) {
             Ok(())
         } else {
-            Err(VerificationError::InvalidPubKey)
+            Err(VerificationError::InvalidMessageSigningKey)
         }
     }
 }
