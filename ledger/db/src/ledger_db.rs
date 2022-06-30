@@ -442,7 +442,9 @@ impl LedgerDB {
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
-        let block_metadata = env.open_db(Some(BLOCK_METADATA_DB_NAME))?;
+        // Block metadata was added later, so we call create_db instead of open_db.
+        // If the Database exists, create_db returns it.
+        let block_metadata = env.create_db(Some(BLOCK_METADATA_DB_NAME), DatabaseFlags::empty())?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;

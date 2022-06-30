@@ -80,7 +80,12 @@ impl BlockDataStore {
         let block_datas_by_index = env.open_db(Some(BLOCK_DATAS_BY_INDEX_DB_NAME))?;
         let blocks_by_hash = env.open_db(Some(BLOCKS_BY_HASH_DB_NAME))?;
         let block_contents_by_hash = env.open_db(Some(BLOCK_CONTENTS_BY_HASH_DB_NAME))?;
-        let block_metadata_by_hash = env.open_db(Some(BLOCK_METADATA_BY_HASH_DB_NAME))?;
+
+        // Block metadata was added later, so we call create_db instead of open_db.
+        // If the Database exists, create_db returns it.
+        let block_metadata_by_hash =
+            env.create_db(Some(BLOCK_METADATA_BY_HASH_DB_NAME), DatabaseFlags::empty())?;
+
         Ok(Self {
             block_datas_by_index,
             blocks_by_hash,
