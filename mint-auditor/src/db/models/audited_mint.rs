@@ -345,20 +345,20 @@ mod tests {
         let conn = mint_auditor_db.get_conn().unwrap();
 
         // Create gnosis deposit.
-        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
-        insert_gnosis_deposit(&mut deposit1, &conn);
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
 
         // Create MintTxs with a mismatching amount.
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let mut mint_tx1 = create_mint_tx(token_id1, &signers1, deposit1.amount() + 1, &mut rng);
+        let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mut mint_tx = create_mint_tx(token_id1, &signers, deposit.amount() + 1, &mut rng);
 
-        mint_tx1.prefix.nonce = hex::decode(&deposit1.expected_mc_mint_tx_nonce_hex()).unwrap();
+        mint_tx.prefix.nonce = hex::decode(&deposit.expected_mc_mint_tx_nonce_hex()).unwrap();
 
         // Insert the MintTx to the database, and check that the mismatch is
         // detected.
-        MintTx::insert_from_core_mint_tx(0, None, &mint_tx1, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(0, None, &mint_tx, &conn).unwrap();
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit, config, &conn),
             Err(Error::DepositAndMintMismatch(_))
         ));
 
@@ -382,10 +382,10 @@ mod tests {
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        let deposit1 = create_gnosis_safe_deposit(100, &mut rng);
+        let deposit = create_gnosis_safe_deposit(100, &mut rng);
 
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit, config, &conn),
             Err(Error::ObjectNotSaved)
         ));
 
@@ -401,13 +401,13 @@ mod tests {
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
-        insert_gnosis_deposit(&mut deposit1, &conn);
-        insert_mint_tx_from_deposit(&deposit1, &conn, &mut rng);
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
+        insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.safe_addr = EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, &config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit, &config, &conn),
             Err(Error::Other(_))
         ));
 
@@ -423,14 +423,14 @@ mod tests {
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
-        insert_gnosis_deposit(&mut deposit1, &conn);
-        insert_mint_tx_from_deposit(&deposit1, &conn, &mut rng);
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
+        insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.tokens[0].token_id = TokenId::from(123);
 
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, &config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit, &config, &conn),
             Err(Error::DepositAndMintMismatch(_))
         ));
 
@@ -454,15 +454,15 @@ mod tests {
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
-        insert_gnosis_deposit(&mut deposit1, &conn);
-        insert_mint_tx_from_deposit(&deposit1, &conn, &mut rng);
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
+        insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.tokens[0].eth_token_contract_addr =
             EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
 
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, &config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit, &config, &conn),
             Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
@@ -550,8 +550,8 @@ mod tests {
         insert_gnosis_deposit(&mut deposit, &conn);
 
         // Create  MintTxs with a mismatching amount.
-        let (_mint_config_tx, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let mut mint_tx = create_mint_tx(token_id1, &signers1, deposit.amount() + 1, &mut rng);
+        let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mut mint_tx = create_mint_tx(token_id1, &signers, deposit.amount() + 1, &mut rng);
 
         mint_tx.prefix.nonce = hex::decode(&deposit.expected_mc_mint_tx_nonce_hex()).unwrap();
 
@@ -585,8 +585,8 @@ mod tests {
         let conn = mint_auditor_db.get_conn().unwrap();
 
         // TODO create helper method to create sql mint tx from token id and amount
-        let (_mint_config_tx, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let mint_tx = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+        let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mint_tx = create_mint_tx(token_id1, &signers, 100, &mut rng);
         let sql_mint_tx = MintTx::from_core_mint_tx(0, None, &mint_tx).unwrap();
 
         assert!(matches!(
@@ -616,6 +616,61 @@ mod tests {
         assert!(matches!(
             AuditedMint::attempt_match_mint_with_deposit(&mint_tx, &config, &conn),
             Err(Error::GnosisSafeNotAudited(_))
+        ));
+
+        // Check that nothing was written to the `audited_mints` table
+        assert_audited_mints_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_mint_with_deposit_mismatched_token_id(logger: Logger) {
+        let mut config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
+        let sql_mint_tx = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+
+        config.safes[0].tokens[0].token_id = TokenId::from(123);
+
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
+            Err(Error::DepositAndMintMismatch(_))
+        ));
+
+        // Check that nothing was written to the `audited_mints` table
+        assert_audited_mints_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_mints_and_deposits(),
+            1
+        );
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_mint_with_deposit_mismatched_token_addr(logger: Logger) {
+        let mut config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+        insert_gnosis_deposit(&mut deposit, &conn);
+        let sql_mint_tx = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+
+        config.safes[0].tokens[0].eth_token_contract_addr =
+            EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
+
+        assert!(matches!(
+            AuditedMint::attempt_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
+            Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
         // Check that nothing was written to the `audited_mints` table
