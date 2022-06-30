@@ -23,6 +23,9 @@ lazy_static::lazy_static! {
     /// Number of deposits to an unaudited Ethereum token contract address.
     pub static ref NUM_UNKNOWN_ETHEREUM_TOKEN_DEPOSITS: IntGauge = OP_COUNTERS.gauge("num_unknown_ethereum_token_deposits");
 
+    /// Number of times we encountered a mint that is associated with an unaudited safe.
+    pub static ref NUM_MINTS_TO_UNKNOWN_SAFE: IntGauge = OP_COUNTERS.gauge("num_mints_to_unknown_safe");
+
     /// Number of times we failed to fetch gnosis transactions.
     pub static ref NUM_FAILED_GNOSIS_GET_ALL_TRANSACTION_DATA: IntCounter = OP_COUNTERS.counter("num_failed_gnosis_get_all_transaction_data");
 }

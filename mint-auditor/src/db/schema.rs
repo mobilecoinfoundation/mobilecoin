@@ -34,6 +34,7 @@ table! {
         num_mint_txs_without_matching_mint_config -> BigInt,
         num_mismatching_mints_and_deposits -> BigInt,
         num_unknown_ethereum_token_deposits -> BigInt,
+        num_mints_to_unknown_safe -> BigInt,
     }
 }
 

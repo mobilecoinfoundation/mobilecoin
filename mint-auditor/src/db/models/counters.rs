@@ -34,6 +34,9 @@ pub struct Counters {
     /// The number of times we encountered deposits to an unknown Ethereum token
     /// contract address.
     num_unknown_ethereum_token_deposits: i64,
+
+    //The number of times we encountered a mint that is associated with an unaudited safe.
+    num_mints_to_unknown_safe: i64,
 }
 
 impl Counters {
@@ -153,6 +156,26 @@ impl Counters {
         }
     }
 
+    /// Get the number of blocks synced so far.
+    pub fn num_mints_to_unknown_safe(&self) -> u64 {
+        self.num_mints_to_unknown_safe as u64
+    }
+
+    /// Atomically increase the number of blocks synced so far.
+    pub fn inc_num_mints_to_unknown_safe(conn: &Conn) -> Result<(), Error> {
+        match diesel::update(counters::table)
+            .set(counters::num_mints_to_unknown_safe.eq(counters::num_mints_to_unknown_safe + 1))
+            .execute(conn)?
+        {
+            0 => Err(Error::NotFound),
+            1 => Ok(()),
+            num_rows => Err(Error::Other(format!(
+                "inc_num_mints_to_unknown_safe: unexpected number of rows ({})",
+                num_rows
+            ))),
+        }
+    }
+
     /// Get all counters.
     pub fn get(conn: &Conn) -> Result<Self, Error> {
         match counters::table.get_result(conn) {
@@ -184,6 +207,7 @@ impl Counters {
             .set(self.num_mint_txs_without_matching_mint_config);
         prom_counters::NUM_MISMATCHING_MINTS_AND_DEPOSITS
             .set(self.num_mismatching_mints_and_deposits);
+        prom_counters::NUM_MINTS_TO_UNKNOWN_SAFE.set(self.num_mints_to_unknown_safe);
     }
 }
 
@@ -271,5 +295,10 @@ mod tests {
                 .num_unknown_ethereum_token_deposits(),
             4
         );
+
+        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 0);
+        Counters::inc_num_mints_to_unknown_safe(&conn).unwrap();
+        Counters::inc_num_mints_to_unknown_safe(&conn).unwrap();
+        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 2);
     }
 }

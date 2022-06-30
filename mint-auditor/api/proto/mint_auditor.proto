@@ -113,6 +113,8 @@ message Counters {
     // contract address.
     uint64 num_unknown_ethereum_token_deposits = 5;
 
+    // Number of times we encountered a mint that is associated with an unaudited safe.
+    uint64 num_mints_to_unknown_safe = 6;
 }
 
 message GetBlockAuditDataRequest {

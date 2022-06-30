@@ -154,6 +154,9 @@ CREATE TABLE counters (
     num_mismatching_mints_and_deposits BIGINT NOT NULL,
 
     -- Number of times we encountered deposits to an unaudited Ethereum token contract address.
-    num_unknown_ethereum_token_deposits BIGINT NOT NULL
+    num_unknown_ethereum_token_deposits BIGINT NOT NULL,
+
+    -- Number of times we encountered a mint that is associated with an unaudited safe.
+    num_mints_to_unknown_safe BIGINT NOT NULL
 );
 
