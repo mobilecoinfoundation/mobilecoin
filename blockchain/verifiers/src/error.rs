@@ -54,7 +54,8 @@ pub enum VerificationError {
     /// No block signature found for block: {0}
     NoBlockSignature(BlockIndex),
 
-    /// starting index: {0} is greater than final index: {1} for ResponderID: {2}
+    /// starting index: {0} is greater than final index: {1} for ResponderID:
+    /// {2}
     InvalidRange(BlockIndex, BlockIndex, ResponderId),
 
     /// Range Overlap: {0}-{1} {2}-{3} for ResponderId: {4}

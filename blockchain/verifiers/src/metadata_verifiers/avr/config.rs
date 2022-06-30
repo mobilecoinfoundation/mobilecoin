@@ -51,7 +51,7 @@ impl AvrConfig {
     /// avr verifier object.
     pub fn verify_data(&self) -> Result<AvrVerifier, VerificationError> {
         let mut avr_history: HashMap<Ed25519Public, AvrVerificationRecord> = HashMap::new();
-        let trust_chain_verifier = Verifier::default();
+        let avr_verifier = Verifier::default();
         for (i, record) in self.avr_records.iter().enumerate() {
             if record.first_block_index > record.last_block_index {
                 return Err(VerificationError::InvalidRange(
@@ -73,7 +73,7 @@ impl AvrConfig {
                 ));
             }
             if let Some(avr) = record.avr.as_ref() {
-                let verification_data = trust_chain_verifier.verify(avr)?;
+                let verification_data = avr_verifier.verify(avr)?;
                 let signing_key =
                     get_signing_key_from_verification_report_data(&verification_data)?;
                 if let Some(rec) = avr_history.get(&signing_key) {
@@ -95,7 +95,7 @@ impl AvrConfig {
         }
         Ok(AvrVerifier {
             avr_history,
-            avr_verifier: trust_chain_verifier,
+            avr_verifier,
         })
     }
 }
