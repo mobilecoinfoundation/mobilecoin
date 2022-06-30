@@ -544,9 +544,8 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
-        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
-        let verification_report = enclave.get_ias_report().unwrap();
+        let enclave = ConsensusServiceMockEnclave::new(BLOCK_VERSION, &mut rng);
+        let verification_report = enclave.verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -927,9 +926,8 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
-        enclave.blockchain_config.lock().unwrap().block_version = BlockVersion::MAX;
-        let verification_report = enclave.get_ias_report().unwrap();
+        let enclave = ConsensusServiceMockEnclave::new(BlockVersion::MAX, &mut rng);
+        let verification_report = enclave.verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
