@@ -342,6 +342,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
+    use mc_blockchain_test_utils::make_verification_report;
     use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -557,9 +558,10 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
+        let mut enclave = ConsensusServiceMockEnclave::default();
         enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
-        let verification_report = enclave.get_ias_report().unwrap();
+        let verification_report = make_verification_report(&mut rng);
+        enclave.verification_report = verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -938,9 +940,10 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
+        let mut enclave = ConsensusServiceMockEnclave::default();
         enclave.blockchain_config.lock().unwrap().block_version = BlockVersion::MAX;
-        let verification_report = enclave.get_ias_report().unwrap();
+        let verification_report = make_verification_report(&mut rng);
+        enclave.verification_report = verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),

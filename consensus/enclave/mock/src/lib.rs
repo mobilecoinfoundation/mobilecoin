@@ -46,6 +46,7 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
+    pub verification_report: VerificationReport,
 }
 
 impl Default for ConsensusServiceMockEnclave {
@@ -54,11 +55,13 @@ impl Default for ConsensusServiceMockEnclave {
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let blockchain_config = Arc::new(Mutex::new(BlockchainConfig::default()));
+        let verification_report = VerificationReport::default();
 
         Self {
             signing_keypair,
             minting_trust_root_keypair,
             blockchain_config,
+            verification_report,
         }
     }
 }
@@ -95,7 +98,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
     }
 
     fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+        Ok(self.verification_report.clone())
     }
 }
 
