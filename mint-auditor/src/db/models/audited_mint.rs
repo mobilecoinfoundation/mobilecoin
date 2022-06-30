@@ -71,36 +71,8 @@ impl AuditedMint {
             // a mismatching nonce.
             assert_eq!(mint_tx.nonce_hex(), deposit.expected_mc_mint_tx_nonce_hex());
 
-            // Found a mint, check to see if the amount matches the deposit.
-            if mint_tx.amount() != deposit.amount() {
-                return Err(Error::DepositAndMintMismatch(format!(
-                    "MintTx amount={} does not match GnosisSafeDeposit amount={} (nonce={})",
-                    mint_tx.amount(),
-                    deposit.amount(),
-                    deposit.expected_mc_mint_tx_nonce_hex(),
-                )));
-            }
-
-            // Check and see if the tokens match.
-            let audited_token = config
-                .get_token_by_eth_contract_addr(deposit.token_addr())
-                .ok_or_else(|| {
-                    Error::EthereumTokenNotAudited(
-                        deposit.token_addr().clone(),
-                        deposit.safe_addr().clone(),
-                        *deposit.eth_tx_hash(),
-                    )
-                })?;
-
-
-            if audited_token.token_id != mint_tx.token_id() {
-                return Err(Error::DepositAndMintMismatch(format!(
-                    "MintTx token_id={} does not match audited token_id={} (nonce={})",
-                    mint_tx.token_id(),
-                    audited_token.token_id,
-                    deposit.expected_mc_mint_tx_nonce_hex(),
-                )));
-            }
+            // Check that the mint and deposit details match.
+            Self::verify_mint_tx_matches_deposit(&mint_tx, deposit, config)?;
 
             // Associate the deposit with the mint.
             let audited_mint = Self {
@@ -132,6 +104,63 @@ impl AuditedMint {
         }
 
         result
+    }
+
+    fn verify_mint_tx_matches_deposit(
+        mint_tx: &MintTx,
+        deposit: &GnosisSafeDeposit,
+        config: &AuditedSafeConfig,
+    ) -> Result<(), Error> {
+        // The deposit safe needs to match the audited safe configuration.
+        // This shouldn't happen and indicates misuse of this function.
+        if deposit.safe_addr() != &config.safe_addr {
+            return Err(Error::Other(format!(
+                "Gnosis safe deposit addr {} does not match audited safe addr {}",
+                deposit.safe_addr(),
+                config.safe_addr
+            )));
+        }
+
+        // Nonces should match.
+        if mint_tx.nonce_hex() != deposit.expected_mc_mint_tx_nonce_hex() {
+            return Err(Error::DepositAndMintMismatch(format!(
+                "MintTx nonce {} does not match expected nonce {}",
+                mint_tx.nonce_hex(),
+                deposit.expected_mc_mint_tx_nonce_hex()
+            )));
+        }
+
+        // Check to see if the amount matches the deposit.
+        if mint_tx.amount() != deposit.amount() {
+            return Err(Error::DepositAndMintMismatch(format!(
+                "MintTx amount={} does not match GnosisSafeDeposit amount={} (nonce={})",
+                mint_tx.amount(),
+                deposit.amount(),
+                deposit.expected_mc_mint_tx_nonce_hex(),
+            )));
+        }
+
+        // Check and see if the tokens match.
+        let audited_token = config
+            .get_token_by_eth_contract_addr(deposit.token_addr())
+            .ok_or_else(|| {
+                Error::EthereumTokenNotAudited(
+                    deposit.token_addr().clone(),
+                    deposit.safe_addr().clone(),
+                    *deposit.eth_tx_hash(),
+                )
+            })?;
+
+        if audited_token.token_id != mint_tx.token_id() {
+            return Err(Error::DepositAndMintMismatch(format!(
+                "MintTx token_id={} does not match audited token_id={} (nonce={})",
+                mint_tx.token_id(),
+                audited_token.token_id,
+                deposit.expected_mc_mint_tx_nonce_hex(),
+            )));
+        }
+
+        Ok(())
     }
 }
 
