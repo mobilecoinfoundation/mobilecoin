@@ -6,10 +6,10 @@
 //! transaction data.
 
 use crate::{
-    ledger_sync::LedgerSync, transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError,
-    NetworkState,
+    BlockMetadataProvider, LedgerSync, LedgerSyncError, NetworkState, PassThroughMetadataProvider,
+    TransactionsFetcher,
 };
-use mc_blockchain_types::{compute_block_id, Block, BlockData, BlockID, BlockIndex, BlockMetadata};
+use mc_blockchain_types::{compute_block_id, Block, BlockData, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     trace_time, ResponderId,
@@ -41,12 +41,11 @@ const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 /// Telemetry metadata: number of blocks appended to the local ledger.
 const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
 
-pub type BlockMetadataProvider = Arc<dyn Fn(&BlockData) -> Option<BlockMetadata> + Send + Sync>;
-
 pub struct LedgerSyncService<
     L: Ledger,
     BC: BlockchainConnection + 'static,
     TF: TransactionsFetcher + 'static,
+    BMP: BlockMetadataProvider = PassThroughMetadataProvider,
 > {
     ledger: L,
     manager: ConnectionManager<BC>,
@@ -54,7 +53,7 @@ pub struct LedgerSyncService<
     /// Timeout for network requests.
     get_blocks_timeout: Duration,
     get_block_contents_timeout: Duration,
-    metadata_provider: BlockMetadataProvider,
+    metadata_provider: BMP,
     logger: Logger,
 }
 
@@ -69,16 +68,24 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         logger: Logger,
     ) -> Self {
         Self::with_metadata_provider(
-            Arc::new(|block_data: &BlockData| block_data.metadata().cloned()),
+            PassThroughMetadataProvider {},
             ledger,
             manager,
             transactions_fetcher,
             logger,
         )
     }
+}
 
+impl<
+        L: Ledger,
+        BC: BlockchainConnection + 'static,
+        TF: TransactionsFetcher + 'static,
+        BMP: BlockMetadataProvider,
+    > LedgerSyncService<L, BC, TF, BMP>
+{
     pub fn with_metadata_provider(
-        metadata_provider: BlockMetadataProvider,
+        metadata_provider: BMP,
         ledger: L,
         manager: ConnectionManager<BC>,
         transactions_fetcher: TF,
@@ -225,7 +232,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
         for block_data in blocks {
             let append_block_start = SystemTime::now();
-            let metadata = (self.metadata_provider)(block_data);
+            let metadata = self.metadata_provider.get_metadata(block_data);
             // TODO: Propagate downloaded block signature if the metadata/AVR can verify it.
             self.ledger.append_block(
                 block_data.block(),
@@ -267,7 +274,8 @@ impl<
         L: Ledger,
         BC: BlockchainConnection + 'static,
         TF: TransactionsFetcher + 'static,
-    > LedgerSync<NS> for LedgerSyncService<L, BC, TF>
+        BMP: BlockMetadataProvider,
+    > LedgerSync<NS> for LedgerSyncService<L, BC, TF, BMP>
 {
     /// Returns true if the local ledger is behind the network's consensus view
     /// of the ledger.
@@ -886,6 +894,7 @@ mod tests {
     use super::*;
     use crate::{test_utils::MockTransactionsFetcher, SCPNetworkState};
     use mc_blockchain_test_utils::make_block_metadata;
+    use mc_blockchain_types::BlockMetadata;
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_scp::{ballot::Ballot, msg::*, *};
     use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
@@ -1600,18 +1609,23 @@ mod tests {
 
     #[test_with_logger]
     fn test_append_safe_blocks_custom_metadata_provider(logger: Logger) {
-        let metadata_provider: BlockMetadataProvider = Arc::new(|block_data| {
-            Some(make_block_metadata(
-                block_data.block().id.clone(),
-                &mut get_seeded_rng(),
-            ))
-        });
+        #[derive(Copy, Clone)]
+        struct RandomMetadata {}
+        impl BlockMetadataProvider for RandomMetadata {
+            fn get_metadata(&self, block_data: &BlockData) -> Option<BlockMetadata> {
+                Some(make_block_metadata(
+                    block_data.block().id.clone(),
+                    &mut get_seeded_rng(),
+                ))
+            }
+        }
 
+        let metadata_provider = RandomMetadata {};
         let ledger = get_mock_ledger(10);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service = LedgerSyncService::with_metadata_provider(
-            metadata_provider.clone(),
+            metadata_provider,
             ledger,
             conn_manager,
             transactions_fetcher,
@@ -1635,7 +1649,7 @@ mod tests {
             assert_eq!(block_data.signature(), None);
             assert_eq!(
                 block_data.metadata(),
-                metadata_provider(&expected_block).as_ref()
+                metadata_provider.get_metadata(&expected_block).as_ref()
             );
             // Sanity check.
             assert_ne!(block_data.metadata(), expected_block.metadata());

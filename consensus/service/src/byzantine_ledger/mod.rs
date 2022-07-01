@@ -6,6 +6,7 @@
 //! peers.
 
 mod ledger_sync_state;
+mod metadata_provider;
 mod pending_values;
 mod task_message;
 mod worker;
@@ -17,18 +18,16 @@ use crate::{
     tx_manager::{TxManager, TxManagerError},
 };
 use displaydoc::Display;
-use mc_blockchain_types::{BlockMetadata, BlockMetadataContents};
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_ledger_sync::{BlockMetadataProvider, LedgerSyncService, ReqwestTransactionsFetcher};
+use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
 };
-use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::mint::constants::{MAX_MINT_CONFIG_TXS_PER_BLOCK, MAX_MINT_TXS_PER_BLOCK};
 use mc_util_metered_channel::Sender;
 use std::{
@@ -41,6 +40,8 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+use self::metadata_provider::ConsensusMetadataProvider;
 
 /// Time we're allowed to stay behind before we initiate catchup.
 /// This reduces the amount of unnecessary catchups due to minor network issues.
@@ -215,7 +216,7 @@ impl ByzantineLedger {
         let worker_handle = {
             let ledger_sync_service = LedgerSyncService::with_metadata_provider(
                 // Always generate metadata with this node's quorum set and AVR.
-                make_metadata_provider(quorum_set, enclave.clone(), msg_signer_key.clone()),
+                ConsensusMetadataProvider::new(quorum_set, enclave.clone(), msg_signer_key.clone()),
                 ledger.clone(),
                 peer_manager.clone(),
                 ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(),
@@ -313,25 +314,6 @@ impl Drop for ByzantineLedger {
     fn drop(&mut self) {
         self.stop()
     }
-}
-
-fn make_metadata_provider(
-    quorum_set: QuorumSet,
-    enclave: impl ReportableEnclave + Send + Sync + 'static,
-    msg_signing_key: Arc<Ed25519Pair>,
-) -> BlockMetadataProvider {
-    Arc::new(move |block_data| {
-        let verification_report = enclave.get_ias_report().expect("failed to get AVR");
-        let contents = BlockMetadataContents::new(
-            block_data.block().id.clone(),
-            quorum_set.clone(),
-            verification_report,
-        );
-        Some(
-            BlockMetadata::from_contents_and_keypair(contents, &msg_signing_key)
-                .expect("failed to sign metadata"),
-        )
-    })
 }
 
 #[cfg(test)]
