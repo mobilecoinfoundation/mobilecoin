@@ -25,5 +25,5 @@ mc-util-uri = { path = "../../../util/uri" }
 
 base64 = "0.13"
 clap = { version = "3.2", features = ["derive", "env"] }
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"

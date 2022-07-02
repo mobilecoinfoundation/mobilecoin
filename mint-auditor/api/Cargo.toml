@@ -12,7 +12,7 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
 
 futures = "0.3"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 protobuf = "2.27.1"
 
 [build-dependencies]
