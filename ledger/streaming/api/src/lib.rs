@@ -26,4 +26,4 @@ pub use crate::{
 };
 
 pub use mc_api::blockchain::{ArchiveBlock, ArchiveBlocks};
-pub use mc_transaction_core::{BlockData, BlockIndex};
+pub use mc_blockchain_types::{BlockData, BlockIndex};

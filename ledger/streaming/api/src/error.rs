@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use crate::BlockIndex;
 use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
-use mc_consensus_scp::SlotIndex;
 use mc_crypto_keys::SignatureError;
 use mc_ledger_db::Error as LedgerDBError;
 use protobuf::ProtobufError;
@@ -36,7 +36,7 @@ pub enum Error {
     BlockValidation(String),
 
     /// SCP Consensus Behind: last externalized block {0} - highest block {1}
-    ConsensusBlocked(SlotIndex, SlotIndex),
+    ConsensusBlocked(BlockIndex, BlockIndex),
 }
 
 impl std::error::Error for Error {}

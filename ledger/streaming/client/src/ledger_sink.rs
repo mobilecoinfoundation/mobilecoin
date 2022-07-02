@@ -198,11 +198,7 @@ fn start_sink_thread(
     std::thread::spawn(move || {
         while let Some(block_data) = rcv_in.blocking_recv() {
             // If there's an error syncing the blocks, end thread
-            if let Err(err) = ledger.append_block(
-                block_data.block(),
-                block_data.contents(),
-                block_data.signature().clone(),
-            ) {
+            if let Err(err) = ledger.append_block_data(&block_data) {
                 log::error!(
                     logger,
                     "Error during attempt to write block {}: {}",

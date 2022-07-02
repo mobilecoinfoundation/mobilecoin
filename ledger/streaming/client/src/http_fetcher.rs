@@ -1,16 +1,18 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [Fetcher] that downloads [BlockData] from the given URI.
+//! A [Fetcher] that downloads [ArchiveBlocks] from the given URI.
 
 use crate::BlockchainUrl;
 use displaydoc::Display;
 use futures::{lock::Mutex, Future, FutureExt, Stream, StreamExt};
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, o, Logger},
     LruCache,
 };
-use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, Error, Fetcher, Result};
-use mc_transaction_core::{Block, BlockData, BlockIndex};
+use mc_ledger_streaming_api::{
+    ArchiveBlock, ArchiveBlocks, BlockData, BlockIndex, Error, Fetcher, Result,
+};
 use protobuf::Message;
 use reqwest::Client;
 use std::{

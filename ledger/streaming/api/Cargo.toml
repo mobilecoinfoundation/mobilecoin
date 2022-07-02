@@ -8,17 +8,16 @@ build = "build.rs"
 edition = "2021"
 
 [features]
-test_utils = ["mc-consensus-scp/test_utils"]
+test_utils = ["mc-consensus-scp/test_utils", "mc-blockchain-test-utils"]
 
 [dependencies]
 mc-api = { path = "../../../api" }
-mc-attest-core = { path = "../../../attest/core" }
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils", optional = true }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
-mc-consensus-scp = { path = "../../../consensus/scp" }
 mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
-mc-transaction-core = { path = "../../../transaction/core" }
 
 displaydoc = "0.2"
 futures = "0.3"
@@ -32,6 +31,7 @@ mc-util-build-script = { path = "../../../util/build/script" }
 cargo-emit = "0.2"
 
 [dev-dependencies]
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
