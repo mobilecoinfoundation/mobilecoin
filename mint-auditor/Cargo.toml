@@ -13,9 +13,11 @@ mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log", "loggers"] }
+mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-mint-auditor-api = { path = "api" }
 mc-transaction-core = { path = "../transaction/core" }
+mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-metrics = { path = "../util/metrics" }
 mc-util-parse = { path = "../util/parse" }
@@ -45,7 +47,6 @@ url = "2.2"
 mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
-mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
 
 protobuf = "2.27.1"

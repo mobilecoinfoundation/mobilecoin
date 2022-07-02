@@ -7,19 +7,26 @@
 pub mod data_types;
 use data_types::*;
 
+mod slam;
+use slam::{SlamParams, SlamState};
+
+pub use slam::{SlamReport, SlamStatus};
+
 mod worker;
-use worker::Worker;
+use worker::{GetUtxoError, UtxoRecord, Worker};
 
 use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_account_keys::AccountKey;
 use mc_api::printable::PrintableWrapper;
-use mc_common::logger::{log, Logger};
+use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use mc_util_uri::ConsensusClientUri;
+use std::{collections::HashMap, future::Future, path::PathBuf, sync::Arc, time::Duration};
+use tokio::select;
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
@@ -57,12 +64,23 @@ pub struct Config {
     /// Target Queue Depth. When the queue for a token id is less than this in
     /// depth, the worker attempts to make a split Tx to produce more TxOuts
     /// for the queue.
-    #[clap(long, default_value = "20", env = "MC_TARGET_QUEUE_DEPTH")]
+    #[clap(long, default_value = "500", env = "MC_TARGET_QUEUE_DEPTH")]
     pub target_queue_depth: usize,
 
     /// Worker poll period in milliseconds.
     #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
     pub worker_poll_period_ms: u64,
+
+    /// Validator nodes to connect to during a slam run.
+    /// This provides a default that can also be overrided in the
+    /// JsonSlamRequest.
+    ///
+    /// Sample usages:
+    ///     --peer mc://foo:123 --peer mc://bar:456
+    ///     --peer mc://foo:123,mc://bar:456
+    ///     env MC_PEER=mc://foo:123,mc://bar:456
+    #[clap(long = "peer", env = "MC_PEER", use_value_delimiter = true)]
+    pub peers: Option<Vec<ConsensusClientUri>>,
 }
 
 /// Connection to the mobilecoind client, and other state tracked by the running
@@ -85,6 +103,11 @@ pub struct State {
     pub faucet_payout_amounts: HashMap<TokenId, u64>,
     /// Handle to worker thread, which pre-splits TxOut's in the background
     pub worker: Worker,
+    /// Handle to slam state, which tracks progress of a slam (if any is in
+    /// progress)
+    pub slam_state: Arc<SlamState>,
+    /// List of consensus uri's to submit to during slam operation
+    pub consensus_uris: Option<Vec<ConsensusClientUri>>,
     /// Logger
     pub logger: Logger,
 }
@@ -99,7 +122,7 @@ impl State {
         // Set up the gRPC connection to the mobilecoind client
         // Note: choice of 2 completion queues here is not very deliberate
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().cq_count(2).build());
-        let ch = ChannelBuilder::new(grpc_env)
+        let ch = ChannelBuilder::new(grpc_env.clone())
             .max_receive_message_len(std::i32::MAX)
             .max_send_message_len(std::i32::MAX)
             .connect_to_uri(&config.mobilecoind_uri, logger);
@@ -132,6 +155,8 @@ impl State {
             logger,
         );
 
+        let slam_state = SlamState::new(grpc_env);
+
         State {
             mobilecoind_api_client,
             account_key,
@@ -139,6 +164,8 @@ impl State {
             monitor_b58_address,
             faucet_payout_amounts,
             worker,
+            slam_state,
+            consensus_uris: config.peers.clone(),
             logger: logger.clone(),
         }
     }
@@ -234,7 +261,7 @@ impl State {
 
         let token_id = TokenId::from(req.token_id.as_ref());
 
-        let utxo_record = self.worker.get_utxo(token_id)?;
+        let utxo_record = self.worker.get_utxo(token_id).map_err(|x| x.to_string())?;
         log::trace!(
             self.logger,
             "Got a UTXO: key_image = {:?}, value = {}",
@@ -309,6 +336,8 @@ impl State {
 
         let queue_depths = self.worker.get_queue_depths();
 
+        let slam_status = self.slam_state.get_status();
+
         Ok(FaucetStatus {
             b58_address: self.monitor_b58_address.clone(),
             faucet_payout_amounts: self.faucet_payout_amounts.clone(),
@@ -317,6 +346,89 @@ impl State {
                 .into_iter()
                 .map(|(token_id, depth)| (token_id, depth as u64))
                 .collect(),
+            slam_status,
         })
+    }
+
+    /// Handle a "post /slam" request.
+    ///
+    /// Arguments:
+    /// * Json slam request parameters
+    /// * A generic future indicating that it was requested to stop the slam.
+    ///   This can be e.g. rocket::Shutdown.
+    ///
+    /// Blocks until the slam completes or ends in error, or the shutdown future
+    /// resolves. Returns either a slam response structure for sucessful
+    /// slam, or an error string.
+    pub async fn handle_slam(
+        &self,
+        req: &JsonSlamRequest,
+        stop_requested: impl Future<Output = ()>,
+    ) -> Result<SlamResponse, String> {
+        let mut params = SlamParams::try_from(req)?;
+        if params.consensus_client_uris.is_empty() {
+            if let Some(uris) = self.consensus_uris.as_ref() {
+                params.consensus_client_uris = uris.clone();
+            } else {
+                return Err("No consensus uris specified".to_owned());
+            }
+        }
+
+        let logger = self.logger.new(o! {"task" => "slam"});
+
+        // Question: When we call start_slam, should we wrap this in a task?
+        // I think it's possible that rocket may decide to drop this future?
+        // (For instance, if the person gets tired of waiting and does ctrl-c
+        // from their curl terminal.)
+        // If it does, does the SlamStateGuard destructor still fire?
+        //
+        // If that destructor does not fire then the slam state will not be reset
+        // at the end and all future slams will be unable to start.
+        //
+        // If we wrap this call in a task then even if rocket drops the future,
+        // the slam job will still continue, and then the destructor should fire.
+        //
+        // I think that dropping a future implies calling destructors of all
+        // objects on the stack in the async call, to avoid memory leaks,
+        // So I think we don't need to wrap this in a task and the slam state
+        // guard dtor will still be called no matter what.
+        //
+        // One issue also is, if the future is dropped before the threads are joined,
+        // then they will be detached. However, I think they always finish eventually
+        // anyways, so we will not be leaking threads, at least not permanently.
+        let slam_state = self.slam_state.clone();
+
+        let report = {
+            let mut slam_fut = Box::pin(slam_state.start_slam(
+                &params,
+                &self.account_key,
+                &self.mobilecoind_api_client,
+                &self.worker,
+                &logger,
+            ));
+
+            // Block on either, the slam finishing, or shutdown being requested.
+            // If shutdown is requested, then ask slam to stop, then block on slam stopping
+            select! {
+                slam_result = &mut slam_fut => {
+                    slam_result
+                },
+                _ = stop_requested => {
+                    // This passes a signal to the slam worker threads to join
+                    self.slam_state.request_stop();
+                    // Now actually wait for the slam future to finish, so that the worker threads
+                    // are joined and we don't just leak them
+                    (&mut slam_fut).await
+                }
+            }?
+        };
+
+        Ok(SlamResponse { params, report })
+    }
+
+    /// Request any long-lived requests to stop
+    pub fn request_stop(&self) {
+        log::info!(self.logger, "Stop requested");
+        self.slam_state.request_stop();
     }
 }

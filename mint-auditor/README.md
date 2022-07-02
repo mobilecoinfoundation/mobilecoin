@@ -91,7 +91,7 @@ mobilecoind \
 Depositing to the safe is as simple as sending a standard Ethereum transaction that moves your desired token (`RinkUSDT` in this example) into the safe's address.
 
 Once the Gnosis transaction service notices the transaction and the auditor syncs it you should see a log message similar to this:
-`2022-06-21 20:40:42.785395662 UTC INFO Processing gnosis safe deposit: EthereumTransfer { from: EthAddr("0xdc079a637a1417020916FfB8a39fF5a2801A0F07"), to: EthAddr("0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe"), token_address: Some(EthAddr("0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B")), tx_hash: EthTxHash("0x744372bb82b2d0f0e7b2722d163ffef97656562b40cc7fad9a1809d14aaf626a"), tx_type: "ERC20_TRANSFER", value: JsonU64(10000000000000000000) }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:128`
+`2022-06-21 20:40:42.785395662 UTC INFO Processing gnosis safe deposit: EthereumTransfer { from: EthAddr("0xdc079a637a1417020916FfB8a39fF5a2801A0F07"), to: EthAddr("0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe"), token_addr: Some(EthAddr("0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B")), tx_hash: EthTxHash("0x744372bb82b2d0f0e7b2722d163ffef97656562b40cc7fad9a1809d14aaf626a"), tx_type: "ERC20_TRANSFER", value: JsonU64(10000000000000000000) }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:128`
 
 #### Withdrawing from the safe
 
@@ -121,5 +121,5 @@ The steps to do that are:
 12. Click `Add transaction`.
 13. Now that everything is ready, click `Create Batch` and then `Send Batch`. Once the transaction goes through your wallet should contain the deposit and you should see a log message from the mint-auditor:
     ```
-    2022-06-21 21:11:05.933236816 UTC INFO Processing withdrawal from multi-sig tx: GnosisSafeWithdrawal { id: None, eth_tx_hash: "0x0e781edb7739aa88ad2ffb6a69aab46ff9e32dbd0f0c87e4006a176838b075d2", eth_block_number: 10892902, safe_address: "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe", token_address: "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B", amount: 1000000000000000000, mc_tx_out_public_key_hex: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00" }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:170
+    2022-06-21 21:11:05.933236816 UTC INFO Processing withdrawal from multi-sig tx: GnosisSafeWithdrawal { id: None, eth_tx_hash: "0x0e781edb7739aa88ad2ffb6a69aab46ff9e32dbd0f0c87e4006a176838b075d2", eth_block_number: 10892902, safe_addr: "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe", token_address: "0xB0Dfaaa92e4F3667758F2A864D50F94E8aC7a56B", amount: 1000000000000000000, mc_tx_out_public_key_hex: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00" }, mc.app: mc-mint-auditor, mc.module: mc_mint_auditor::gnosis::sync, mc.src: mint-auditor/src/gnosis/sync.rs:170
     ```

@@ -117,7 +117,11 @@ impl MintAuditorDb {
 
             // Store mint config txs.
             for validated_mint_config_tx in &block_contents.validated_mint_config_txs {
-                MintConfigTx::insert(block_index, &validated_mint_config_tx.mint_config_tx, conn)?;
+                MintConfigTx::insert_from_core_mint_config_tx(
+                    block_index,
+                    &validated_mint_config_tx.mint_config_tx,
+                    conn,
+                )?;
             }
 
             // Get balance map for the previous block
@@ -165,7 +169,7 @@ impl MintAuditorDb {
                 }
 
                 // Store the mint tx.
-                MintTx::insert(
+                MintTx::insert_from_core_mint_tx(
                     block_index,
                     mint_config.and_then(|config| config.id()),
                     mint_tx,

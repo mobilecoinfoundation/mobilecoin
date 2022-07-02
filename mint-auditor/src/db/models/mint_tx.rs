@@ -3,7 +3,7 @@
 //! Model file for the mint_txs table.
 
 use crate::{
-    db::{schema::mint_txs, Conn},
+    db::{last_insert_rowid, schema::mint_txs, Conn},
     Error,
 };
 use diesel::prelude::*;
@@ -17,7 +17,9 @@ use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_txs` table.
 /// This stores audit data for a specific block index.
-#[derive(Debug, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 pub struct MintTx {
     /// Auto incrementing primary key.
     id: Option<i32>,
@@ -32,10 +34,10 @@ pub struct MintTx {
     amount: i64,
 
     /// The nonce, as hex-encoded bytes.
-    nonce: String,
+    nonce_hex: String,
 
     /// The recipient of the mint.
-    recipient_b58_address: String,
+    recipient_b58_addr: String,
 
     /// Tombstone block.
     tombstone_block: i64,
@@ -69,13 +71,13 @@ impl MintTx {
     }
 
     /// Get nonce.
-    pub fn nonce(&self) -> &str {
-        &self.nonce
+    pub fn nonce_hex(&self) -> &str {
+        &self.nonce_hex
     }
 
     /// Get recipient b58 address.
-    pub fn recipient_b58_address(&self) -> &str {
-        &self.recipient_b58_address
+    pub fn recipient_b58_addr(&self) -> &str {
+        &self.recipient_b58_addr
     }
 
     /// Get tombstone block.
@@ -93,35 +95,59 @@ impl MintTx {
         Ok(decode(&self.protobuf)?)
     }
 
-    /// Insert a new MintTx into the database.
-    pub fn insert(
+    /// Create an instance of this object from a
+    /// [mc_transaction_core::mint::MintTx] and some extra information.
+    pub fn from_core_mint_tx(
         block_index: BlockIndex,
         mint_config_id: Option<i32>,
         tx: &CoreMintTx,
-        conn: &Conn,
-    ) -> Result<(), Error> {
+    ) -> Result<Self, Error> {
         let recipient = PublicAddress::new(&tx.prefix.spend_public_key, &tx.prefix.view_public_key);
         let mut wrapper = PrintableWrapper::new();
         wrapper.set_public_address((&recipient).into());
-        let recipient_b58_address = wrapper.b58_encode()?;
+        let recipient_b58_addr = wrapper.b58_encode()?;
 
-        let obj = Self {
+        Ok(Self {
             id: None,
             block_index: block_index as i64,
             token_id: tx.prefix.token_id as i64,
             amount: tx.prefix.amount as i64,
-            nonce: tx.prefix.nonce.encode_hex(),
-            recipient_b58_address,
+            nonce_hex: tx.prefix.nonce.encode_hex(),
+            recipient_b58_addr,
             tombstone_block: tx.prefix.tombstone_block as i64,
             protobuf: encode(tx),
             mint_config_id,
-        };
+        })
+    }
 
+    /// Insert a new MintTx into the database.
+    pub fn insert(&mut self, conn: &Conn) -> Result<(), Error> {
+        if let Some(id) = self.id {
+            return Err(Error::AlreadyExists(format!(
+                "MintTx already has an id ({})",
+                id
+            )));
+        }
         diesel::insert_into(mint_txs::table)
-            .values(&obj)
+            .values(self.clone())
             .execute(conn)?;
 
+        self.id = Some(diesel::select(last_insert_rowid).get_result::<i32>(conn)?);
+
         Ok(())
+    }
+
+    /// Helper for inserting from a [mc_transaction_core::mint::MintTx] and some
+    /// extra information.
+    pub fn insert_from_core_mint_tx(
+        block_index: BlockIndex,
+        mint_config_id: Option<i32>,
+        tx: &CoreMintTx,
+        conn: &Conn,
+    ) -> Result<Self, Error> {
+        let mut mint_tx = Self::from_core_mint_tx(block_index, mint_config_id, tx)?;
+        mint_tx.insert(conn)?;
+        Ok(mint_tx)
     }
 }
 
@@ -146,9 +172,9 @@ mod tests {
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
 
         // Store a MintTx for the first time.
-        MintTx::insert(5, None, &mint_tx1, &conn).unwrap();
+        MintTx::insert_from_core_mint_tx(5, None, &mint_tx1, &conn).unwrap();
 
         // Trying again should fail.
-        assert!(MintTx::insert(5, None, &mint_tx1, &conn).is_err());
+        assert!(MintTx::insert_from_core_mint_tx(5, None, &mint_tx1, &conn).is_err());
     }
 }

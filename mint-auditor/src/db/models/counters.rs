@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 
 /// This stores a bunch of general purpose counters. There is only ever one row
 /// in this table.
-#[derive(Debug, Default, Deserialize, Eq, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
+)]
 #[table_name = "counters"]
 pub struct Counters {
     /// Id (required to keep Diesel happy).

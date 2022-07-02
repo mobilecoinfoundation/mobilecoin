@@ -5,7 +5,7 @@
 
 #![no_std]
 
-use rand_core::{CryptoRng, RngCore};
+pub use rand_core::{CryptoRng, RngCore};
 
 /// A trait which can construct an object from a cryptographically secure
 /// pseudo-random number generator.

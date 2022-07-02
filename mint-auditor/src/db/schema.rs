@@ -32,9 +32,10 @@ table! {
         id -> Nullable<Integer>,
         eth_tx_hash -> Text,
         eth_block_number -> BigInt,
-        safe_address -> Text,
-        token_address -> Text,
+        safe_addr -> Text,
+        token_addr -> Text,
         amount -> BigInt,
+        expected_mc_mint_tx_nonce_hex -> Text,
     }
 }
 
@@ -50,8 +51,8 @@ table! {
         id -> Nullable<Integer>,
         eth_tx_hash -> Text,
         eth_block_number -> BigInt,
-        safe_address -> Text,
-        token_address -> Text,
+        safe_addr -> Text,
+        token_addr -> Text,
         amount -> BigInt,
         mc_tx_out_public_key_hex -> Text,
     }
@@ -62,7 +63,7 @@ table! {
         id -> Nullable<Integer>,
         block_index -> BigInt,
         token_id -> BigInt,
-        nonce -> Text,
+        nonce_hex -> Text,
         total_mint_limit -> BigInt,
         tombstone_block -> BigInt,
         protobuf -> Binary,
@@ -84,8 +85,8 @@ table! {
         block_index -> BigInt,
         token_id -> BigInt,
         amount -> BigInt,
-        nonce -> Text,
-        recipient_b58_address -> Text,
+        nonce_hex -> Text,
+        recipient_b58_addr -> Text,
         tombstone_block -> BigInt,
         protobuf -> Binary,
         mint_config_id -> Nullable<Integer>,

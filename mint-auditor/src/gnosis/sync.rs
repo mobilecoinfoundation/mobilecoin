@@ -135,18 +135,14 @@ impl GnosisSync {
                 );
 
                 // Empty token address means ETH
-                let token_address = transfer
-                    .token_address
-                    .clone()
-                    .unwrap_or_default()
-                    .to_string();
+                let token_addr = transfer.token_addr.clone().unwrap_or_default();
 
-                let deposit = GnosisSafeDeposit::new(
+                let mut deposit = GnosisSafeDeposit::new(
                     None,
-                    transfer.tx_hash.to_string(),
+                    transfer.tx_hash,
                     tx.eth_block_number,
-                    transfer.to.to_string(),
-                    token_address,
+                    transfer.to.clone(),
+                    token_addr,
                     u64::from(transfer.value),
                 );
                 deposit.insert(conn)?;
@@ -185,7 +181,7 @@ impl GnosisSync {
         }
 
         match self.parse_withdrawal_with_pub_key_multi_sig_tx(multi_sig_tx) {
-            Ok(withdrawal) => {
+            Ok(mut withdrawal) => {
                 log::info!(
                     self.logger,
                     "Processing withdrawal from multi-sig tx: {:?}",
@@ -351,10 +347,10 @@ impl GnosisSync {
         // Parsed everything we need.
         Ok(GnosisSafeWithdrawal::new(
             None,
-            multi_sig_tx.tx_hash.to_string(),
+            multi_sig_tx.tx_hash,
             multi_sig_tx.eth_block_number,
-            multi_sig_tx.safe.to_string(),
-            transfer_data.to.to_string(),
+            multi_sig_tx.safe.clone(),
+            transfer_data.to.clone(),
             transfer_value,
             hex::encode(tx_out_pub_key),
         ))
@@ -367,9 +363,14 @@ mod test {
     use crate::{
         db::{
             schema::{gnosis_safe_deposits, gnosis_safe_withdrawals},
-            test_utils::TestDbContext,
+            test_utils::{
+                TestDbContext, AUX_BURN_CONTRACT_ADDR, AUX_BURN_FUNCTION_SIG,
+                ETH_TOKEN_CONTRACT_ADDR, SAFE_ADDR,
+            },
         },
-        gnosis::{api_data_types::AllTransactionsResponse, config::AuditedToken, EthAddr},
+        gnosis::{
+            api_data_types::AllTransactionsResponse, config::AuditedToken, EthAddr, EthTxHash,
+        },
     };
     use diesel::prelude::*;
     use mc_common::logger::{test_with_logger, Logger};
@@ -382,12 +383,6 @@ mod test {
     // This is a test safe that was created on the Rinkeby network and contains some
     // deposits and withdrawals.
     const ALL_TRANSACTIONS_JSON: &str = include_str!("../../data/test/all-transactions.json");
-
-    // Must match the contents of the test JSON file.
-    const SAFE_ADDRESS: &str = "0xeC018400FFe5Ad6E0B42Aa592Ee1CF6092972dEe";
-    const ETH_TOKEN_CONTRACT_ADDRESS: &str = "0xD92E713d051C37EbB2561803a3b5FBAbc4962431";
-    const AUX_BURN_CONTRACT_ADDRESS: &str = "0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40";
-    const AUX_BURN_FUNCTION_SIG: [u8; 4] = [0xc7, 0x6f, 0x06, 0x35];
 
     // Helper to parse ALL_TRANSACTIONS_JSON into a list of RawGnosisTransactions
     fn get_raw_transactions() -> Vec<RawGnosisTransaction> {
@@ -409,12 +404,12 @@ mod test {
 
         // Must match the contents of the test JSON file.
         let audited_safe_config = AuditedSafeConfig {
-            safe_addr: EthAddr::from_str(SAFE_ADDRESS).unwrap(),
+            safe_addr: EthAddr::from_str(SAFE_ADDR).unwrap(),
             api_url: Url::parse("http://unused:8545").unwrap(),
             tokens: vec![AuditedToken {
                 token_id: TokenId::from(1),
-                eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDR).unwrap(),
                 aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
             }],
         };
@@ -431,18 +426,24 @@ mod test {
         let expected_deposits = vec![
             GnosisSafeDeposit::new(
                 Some(2),
-                "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7".to_string(),
+                EthTxHash::from_str(
+                    "0xa202a4c37f0670557ceeb33f796fba0c187f699f5dd4d8add0eba1c3154b2fa7",
+                )
+                .unwrap(),
                 10824613,
-                SAFE_ADDRESS.to_string(),
-                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                EthAddr::from_str(SAFE_ADDR).unwrap(),
+                EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
                 1000000,
             ),
             GnosisSafeDeposit::new(
                 Some(1),
-                "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849".to_string(),
+                EthTxHash::from_str(
+                    "0x4f3124c61c48aa7c7892f8fe426e0c0d8afae100fc0a9aa8e290e530a7632849",
+                )
+                .unwrap(),
                 10824662,
-                SAFE_ADDRESS.to_string(),
-                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                EthAddr::from_str(SAFE_ADDR).unwrap(),
+                EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
                 10000000,
             ),
         ];
@@ -456,19 +457,25 @@ mod test {
         let expected_withdrawals = vec![
             GnosisSafeWithdrawal::new(
                 Some(2),
-                "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4".to_string(),
+                EthTxHash::from_str(
+                    "0x323b145662d2a64de0a55977089b7a89ed6003e341d5a68266a200dde83639d4",
+                )
+                .unwrap(),
                 10824635,
-                SAFE_ADDRESS.to_string(),
-                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                EthAddr::from_str(SAFE_ADDR).unwrap(),
+                EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
                 500000,
                 "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
             ),
             GnosisSafeWithdrawal::new(
                 Some(1),
-                "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28".to_string(),
+                EthTxHash::from_str(
+                    "0x2f55d7b7620876c1dfc25419937a7fd2538489c1dd3adf6b438396a958d88e28",
+                )
+                .unwrap(),
                 10824678,
-                SAFE_ADDRESS.to_string(),
-                ETH_TOKEN_CONTRACT_ADDRESS.to_string(),
+                EthAddr::from_str(SAFE_ADDR).unwrap(),
+                EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
                 2000000,
                 "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
             ),
@@ -490,8 +497,8 @@ mod test {
             api_url: Url::parse("http://unused:8545").unwrap(),
             tokens: vec![AuditedToken {
                 token_id: TokenId::from(1),
-                eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+                aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDR).unwrap(),
                 aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
             }],
         };
@@ -500,7 +507,7 @@ mod test {
         // (Except the fields we are purposefully altering to make sure they are
         // ignored)
         let unknown_token_audited_safe_config = AuditedSafeConfig {
-            safe_addr: EthAddr::from_str(SAFE_ADDRESS).unwrap(),
+            safe_addr: EthAddr::from_str(SAFE_ADDR).unwrap(),
             api_url: Url::parse("http://unused:8545").unwrap(),
             tokens: vec![
                 // Unknown token contract address
@@ -510,13 +517,13 @@ mod test {
                         "0x0000000000000000000000000000000000000000",
                     )
                     .unwrap(),
-                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDR).unwrap(),
                     aux_burn_function_sig: AUX_BURN_FUNCTION_SIG,
                 },
                 // Unknown aux burn contract address
                 AuditedToken {
                     token_id: TokenId::from(1),
-                    eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
+                    eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
                     aux_burn_contract_addr: EthAddr::from_str(
                         "0x0000000000000000000000000000000000000000",
                     )
@@ -526,8 +533,8 @@ mod test {
                 // Unknown aux burn function sig
                 AuditedToken {
                     token_id: TokenId::from(1),
-                    eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDRESS).unwrap(),
-                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDRESS).unwrap(),
+                    eth_token_contract_addr: EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+                    aux_burn_contract_addr: EthAddr::from_str(AUX_BURN_CONTRACT_ADDR).unwrap(),
                     aux_burn_function_sig: [0xc7, 0x6f, 0x06, 0xFF],
                 },
             ],
