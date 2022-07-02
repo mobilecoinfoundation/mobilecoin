@@ -69,15 +69,15 @@ overflow-checks = false
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55" }
+cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "7c1804bf4f95ef84a7a53be93552ddf1708135bb" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # Our patches for newer bindgen, no-std
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
 
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }

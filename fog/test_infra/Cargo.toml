@@ -18,10 +18,12 @@ path = "src/bin/add_test_block.rs"
 [dependencies]
 # from public
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys" }
-mc-ledger-db = { path = "../../ledger/db" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
@@ -38,7 +40,7 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"

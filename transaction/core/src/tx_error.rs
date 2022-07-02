@@ -2,7 +2,7 @@
 
 //! Errors that can occur when creating a new TxOut
 
-use crate::{AmountError, MemoError};
+use crate::{AmountError, BlockVersion, MemoError};
 use alloc::{format, string::String};
 use core::str::Utf8Error;
 use displaydoc::Display;
@@ -15,6 +15,8 @@ pub enum NewTxError {
     Amount(AmountError),
     /// Memo: {0}
     Memo(NewMemoError),
+    /// Token Id not allowed at block version: {0}
+    TokenIdNotAllowedAtBlockVersion(BlockVersion),
 }
 
 impl From<AmountError> for NewTxError {
@@ -84,6 +86,8 @@ pub enum NewMemoError {
     Creation(MemoError),
     /// Utf-8 did not properly decode
     Utf8Decoding,
+    /// Attempted value: {1} > Max Value: {0}
+    MaxFeeExceeded(u64, u64),
     /// Other: {0}
     Other(String),
 }
@@ -96,6 +100,9 @@ impl From<MemoError> for NewMemoError {
                 "Input of length: {} exceeded max byte length",
                 byte_len
             )),
+            MemoError::MaxFeeExceeded(max_fee, attempted_fee) => {
+                Self::MaxFeeExceeded(max_fee, attempted_fee)
+            }
         }
     }
 }

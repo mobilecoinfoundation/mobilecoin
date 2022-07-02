@@ -95,7 +95,8 @@ pub struct Config {
     #[clap(long, parse(try_from_str = load_css_file), env = "MC_FOG_INGEST_ENCLAVE_CSS")]
     pub fog_ingest_enclave_css: Option<Signature>,
 
-    /// Automatically migrate the ledger db into the most recent version.
+    /// Automatically migrate the ledger db (if it exists) into the most recent
+    /// version.
     #[clap(long, env = "MC_LEDGER_DB_MIGRATE")]
     pub ledger_db_migrate: bool,
 
@@ -131,6 +132,7 @@ pub enum ConfigError {
     DataMissing(String),
 
     /// Invalid header: {0}
+    #[cfg(feature = "ip-check")]
     InvalidHeader(InvalidHeaderValue),
 }
 
@@ -146,6 +148,7 @@ impl From<reqwest::Error> for ConfigError {
     }
 }
 
+#[cfg(feature = "ip-check")]
 impl From<InvalidHeaderValue> for ConfigError {
     fn from(e: InvalidHeaderValue) -> Self {
         Self::InvalidHeader(e)

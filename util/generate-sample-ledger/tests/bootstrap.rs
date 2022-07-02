@@ -30,12 +30,12 @@ fn test_exercise_bootstrap() {
     assert!(Command::new(bin.join("sample-keys"))
         .args(["--num", "5"])
         .status()
-        .unwrap()
+        .expect("sample-keys")
         .success());
 
     assert!(Command::new(bin.join("generate-sample-ledger"))
         .args(["--txs", "10"])
         .status()
-        .unwrap()
+        .expect("generate-sample-ledger")
         .success());
 }

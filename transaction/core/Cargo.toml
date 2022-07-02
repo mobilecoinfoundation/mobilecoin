@@ -3,6 +3,7 @@ name = "mc-transaction-core"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
+readme = "README.md"
 
 [dependencies]
 # External dependencies
@@ -23,14 +24,15 @@ zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
-mc-attest-verifier-types = { path = "../../attest/verifier/types", default-features = false }
 mc-common = { path = "../../common", default-features = false }
-mc-consensus-scp-core = { path = "../../consensus/scp/core" }
 mc-crypto-box = { path = "../../crypto/box" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
+mc-transaction-types = { path = "../types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
@@ -50,15 +52,13 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 
 [dev-dependencies]
 assert_matches = "1.5"
-# Only works for 0.9.1 or newer
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
-rand_hc = "0.3"
 tempdir = "0.3"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
-mc-crypto-rand = { path = "../../crypto/rand" }
-mc-ledger-db = { path = "../../ledger/db" }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", features = ["proptest"] }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-transaction-std = { path = "../../transaction/std", features = ["test-only"] }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }

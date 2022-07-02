@@ -1,0 +1,14 @@
+[package]
+name = "mc-blockchain-test-utils"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[dependencies]
+mc-blockchain-types = { path = "../types" }
+mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-test-helper = { path = "../../util/test-helper" }

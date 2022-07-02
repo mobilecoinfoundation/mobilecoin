@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{attest::McVerifier, common::*, keys::McPublicAddress, LibMcError};
-use core::convert::TryFrom;
 use libc::ssize_t;
 use mc_account_keys::PublicAddress;
 use mc_attest_verifier::Verifier;

@@ -12,6 +12,7 @@ use grpcio::{ChannelBuilder, Environment, Error as GrpcError};
 use mc_attest_api::attest_grpc::AttestedApiClient;
 use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::PeerSession;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time, NodeID, ResponderId,
@@ -32,14 +33,13 @@ use mc_consensus_api::{
     ConversionError,
 };
 use mc_consensus_enclave_api::{ConsensusEnclave, TxContext, WellFormedEncryptedTx};
-use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::{deserialize, serialize};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use protobuf::RepeatedField;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     hash::{Hash, Hasher},
     ops::Range,
     result::Result as StdResult,

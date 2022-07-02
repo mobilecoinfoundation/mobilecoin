@@ -10,7 +10,7 @@ use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::ring_signature::KeyImage;
 use prost::{Enumeration, Message};
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const PROCESSED_BLOCK_KEY_TO_PROCESSED_TX_OUTS_DB_NAME: &str =
@@ -261,7 +261,6 @@ mod test {
         onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
     };
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     const TEST_SUBADDRESS: u64 = 10;

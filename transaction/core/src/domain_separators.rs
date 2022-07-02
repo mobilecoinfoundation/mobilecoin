@@ -26,12 +26,6 @@ pub const AMOUNT_BLINDING_DOMAIN_TAG: &str = "mc_amount_blinding";
 /// Domain separator for Bulletproof transcript.
 pub const BULLETPROOF_DOMAIN_TAG: &str = "mc_bulletproof_transcript";
 
-/// Domain separator for onetime key "hash_to_point" function.
-pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_point";
-
-/// Domain separator for onetime key "hash_to_scalar" function.
-pub const HASH_TO_SCALAR_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_scalar";
-
 /// Domain separator for hashing a TxOut leaf node in a Merkle tree.
 pub const TXOUT_MERKLE_LEAF_DOMAIN_TAG: &str = "mc_tx_out_merkle_leaf";
 
@@ -40,9 +34,6 @@ pub const TXOUT_MERKLE_NODE_DOMAIN_TAG: &str = "mc_tx_out_merkle_node";
 
 /// Domain separator for hashing the "nil" value in a Merkle tree.
 pub const TXOUT_MERKLE_NIL_DOMAIN_TAG: &str = "mc_tx_out_merkle_nil";
-
-/// Domain separator for RingMLSAG's challenges.
-pub const RING_MLSAG_CHALLENGE_DOMAIN_TAG: &str = "mc_ring_mlsag_challenge";
 
 /// Domain separator for hashing the confirmation number
 pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";

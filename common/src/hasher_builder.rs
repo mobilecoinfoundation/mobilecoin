@@ -1,15 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A no_std-compatible [BuildHasher] object that is wired to take seeds
-//! from [McRng]. This hasher is used in [super::HashMap] in and out of
-//! the enclave.
+//! This file provides [HasherBuilder], used in `mc_common::HashMap`
+//! in and out of the enclave.
 
 use core::hash::BuildHasher;
 use mc_crypto_rand::McRng;
 use rand_core::RngCore;
 use siphasher::sip::SipHasher13;
 
-/// A no_std-compatible [BuildHasher] that is wired to take seeds from [McRng].
+/// A `no_std`-compatible [BuildHasher] using [McRng].
 #[derive(Clone)]
 pub struct HasherBuilder {
     k0: u64,

@@ -18,6 +18,7 @@ use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_common::ResponderId;
 use mc_crypto_keys::{
     Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
@@ -32,22 +33,20 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, Token, TokenId,
+    Amount, Token, TokenId,
 };
 use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
-use std::{
-    convert::TryFrom,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
+    pub verification_report: VerificationReport,
 }
 
 impl Default for ConsensusServiceMockEnclave {
@@ -56,11 +55,13 @@ impl Default for ConsensusServiceMockEnclave {
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let blockchain_config = Arc::new(Mutex::new(BlockchainConfig::default()));
+        let verification_report = VerificationReport::default();
 
         Self {
             signing_keypair,
             minting_trust_root_keypair,
             blockchain_config,
+            verification_report,
         }
     }
 }
@@ -97,7 +98,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
     }
 
     fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+        Ok(self.verification_report.clone())
     }
 }
 
@@ -293,7 +294,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
                         &mint_tx.prefix.spend_public_key,
                         &mint_tx.prefix.view_public_key,
                     );
-                    (recipient, mint_tx.prefix.amount)
+                    let amount = Amount::new(mint_tx.prefix.amount, mint_tx.prefix.token_id.into());
+                    (recipient, amount)
                 })
                 .collect::<Vec<_>>(),
             &mut rng,

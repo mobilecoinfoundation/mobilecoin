@@ -1,8 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::Tx.
 
-use crate::{convert::ConversionError, external};
-use mc_transaction_core::{ring_signature::SignatureRctBulletproofs, tx};
-use std::convert::TryFrom;
+use crate::{external, ConversionError};
+use mc_transaction_core::{ring_ct::SignatureRctBulletproofs, tx};
 
 /// Convert mc_transaction_core::tx::Tx --> external::Tx.
 impl From<&tx::Tx> for external::Tx {
@@ -29,12 +30,13 @@ impl TryFrom<&external::Tx> for tx::Tx {
 mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB, tokens::Mob, tx::Tx, Amount, BlockVersion, Token, TokenId,
     };
     use mc_transaction_std::{
-        test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
+        test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
         SignedContingentInputBuilder, TransactionBuilder,
     };
     use protobuf::Message;
@@ -76,7 +78,9 @@ mod tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // decode(encode(tx)) should be the identity function.
             {
@@ -152,7 +156,7 @@ mod tests {
                 )
                 .unwrap();
 
-            let mut sci = sci_builder.build(&mut rng).unwrap();
+            let mut sci = sci_builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // Alice adds proofs to the SCI
             sci.tx_in.proofs = proofs;
@@ -187,12 +191,14 @@ mod tests {
             transaction_builder
                 .add_change_output(
                     Amount::new(475 * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE, Mob::ID),
-                    &ReservedDestination::from(&alice),
+                    &ReservedSubaddresses::from(&alice),
                     &mut rng,
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // decode(encode(tx)) should be the identity function.
             {

@@ -1,17 +1,19 @@
-//// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A builder object for signed contingent inputs (see MCIP #31)
 //! This plays a similar role to the transaction builder.
 
 use crate::{
-    InputCredentials, MemoBuilder, ReservedDestination, SignedContingentInputBuilderError,
+    InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilderError,
     TxBuilderError,
 };
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
-    ring_signature::{GeneratorCache, OutputSecret, RingMLSAG, Scalar, SignableInputRing},
+    ring_ct::OutputSecret,
+    ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
     Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
     SignedContingentInput, TokenId, UnmaskedAmount,
@@ -143,18 +145,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_required_output_with_fog_hint_address(
             amount,
             recipient,
             recipient,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_output(amount, recipient, memo_ctxt)).transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -192,7 +187,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     pub fn add_required_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
-        change_destination: &ReservedDestination,
+        change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -202,19 +197,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_required_output_with_fog_hint_address(
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_change_output(amount, change_destination, memo_ctxt))
-                        .transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -245,7 +232,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         amount: Amount,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) =
@@ -297,6 +284,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(
         mut self,
+        ring_signer: &impl RingSigner,
         rng: &mut RNG,
     ) -> Result<SignedContingentInput, TxBuilderError> {
         if !self.block_version.signed_input_rules_are_supported()
@@ -349,20 +337,12 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         let pseudo_output_blinding = Scalar::random(rng);
 
-        let mut generator_cache = GeneratorCache::default();
-        let generator = generator_cache.get(ring.input_secret.amount.token_id);
-
-        let mlsag = RingMLSAG::sign(
+        let mlsag = ring_signer.sign(
             &tx_in
                 .signed_digest()
                 .expect("Tx in should contain rules, this is a logic error"),
-            &ring.members,
-            ring.real_input_index,
-            &ring.input_secret.onetime_private_key,
-            ring.input_secret.amount.value,
-            &ring.input_secret.blinding,
-            &pseudo_output_blinding,
-            generator,
+            &ring,
+            pseudo_output_blinding,
             rng,
         )?;
 
@@ -389,21 +369,21 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use maplit::btreemap;
-
     use crate::{
         test_utils::get_input_credentials, EmptyMemoBuilder, MemoType, TransactionBuilder,
     };
     use assert_matches::assert_matches;
-    use core::convert::TryFrom;
+    use maplit::btreemap;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
         fog_hint::FogHint,
         get_tx_out_shared_secret,
-        ring_signature::{Error as RingSignatureError, KeyImage},
+        ring_ct::Error as RingCtError,
+        ring_signature::KeyImage,
         subaddress_matches_tx_out,
         tokens::Mob,
         validation::{
@@ -448,7 +428,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -464,7 +444,7 @@ pub mod tests {
 
             builder.set_tombstone_block(2000);
 
-            let sci = builder.build(&mut rng).unwrap();
+            let sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -571,7 +551,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -587,7 +567,7 @@ pub mod tests {
 
             builder.set_tombstone_block(2000);
 
-            let sci = builder.build(&mut rng).unwrap();
+            let sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -682,7 +662,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -697,7 +677,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -729,7 +709,7 @@ pub mod tests {
             sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
 
             // Bob keeps the change from token id 2
             builder
@@ -745,7 +725,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -930,7 +910,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -945,7 +925,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -977,7 +957,7 @@ pub mod tests {
             sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
 
             // Bob keeps the change from token id 2
             builder
@@ -993,7 +973,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -1168,7 +1148,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1194,7 +1174,7 @@ pub mod tests {
             .unwrap();
 
             // Bob keeps the change from token id 2
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
             builder
                 .add_required_change_output(
                     Amount::new(200_000, token2),
@@ -1212,7 +1192,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let mut sci2 = builder.build(&mut rng).unwrap();
+            let mut sci2 = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci2.validate().unwrap();
@@ -1242,7 +1222,7 @@ pub mod tests {
             ));
 
             // Charlie keeps 333 as change, leaving 666 for Bob
-            let charlie_change_dest = ReservedDestination::from(&charlie);
+            let charlie_change_dest = ReservedSubaddresses::from(&charlie);
             builder
                 .add_change_output(Amount::new(333, token3), &charlie_change_dest, &mut rng)
                 .unwrap();
@@ -1258,7 +1238,7 @@ pub mod tests {
 
             builder.set_tombstone_block(8088);
 
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -1456,7 +1436,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1471,7 +1451,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1502,9 +1482,9 @@ pub mod tests {
 
             // The transaction is balanced, but it fails because all rings were presigned
             assert_matches!(
-                builder.build(&mut rng),
+                builder.build(&NoKeysRingSigner {}, &mut rng),
                 Err(TxBuilderError::RingSignatureFailed(
-                    RingSignatureError::AllRingsPresigned
+                    RingCtError::AllRingsPresigned
                 ))
             );
         }
@@ -1548,7 +1528,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1563,7 +1543,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1608,7 +1588,7 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -1659,7 +1639,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1674,7 +1654,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1715,7 +1695,7 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -1766,7 +1746,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1781,7 +1761,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1826,7 +1806,7 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -1876,7 +1856,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1891,7 +1871,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1951,7 +1931,7 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -2001,7 +1981,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -2016,7 +1996,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -2071,7 +2051,7 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -2121,7 +2101,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -2136,7 +2116,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -2181,7 +2161,7 @@ pub mod tests {
             builder.set_tombstone_block(2000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 2000);
 
@@ -2232,7 +2212,7 @@ pub mod tests {
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
             let proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -2247,7 +2227,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let mut sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -2306,7 +2286,7 @@ pub mod tests {
             builder.set_tombstone_block(2000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&mut rng).unwrap();
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 2000);
 

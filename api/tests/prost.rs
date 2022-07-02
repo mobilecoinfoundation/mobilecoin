@@ -1,36 +1,26 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Tests that prost-versions of structures round-trip with the versions
 //! generated from external.proto
 
-use maplit::btreemap;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use mc_api::external;
+use mc_api::{blockchain, external, quorum_set};
+use mc_blockchain_test_utils::{
+    get_blocks, make_block_metadata, make_quorum_set, make_verification_report,
+};
+use mc_blockchain_types::{
+    BlockData, BlockID, BlockMetadata, BlockVersion, QuorumSet, VerificationReport,
+};
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
-use mc_transaction_core::{Amount, BlockVersion, SignedContingentInput};
+use mc_transaction_core::{Amount, SignedContingentInput};
 use mc_transaction_std::{
-    test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
+    test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
     SignedContingentInputBuilder,
 };
 use mc_util_from_random::FromRandom;
+use mc_util_serial::round_trip_message;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
-use prost::Message as ProstMessage;
-use protobuf::Message as ProtobufMessage;
-
-// Take a prost type and try to roundtrip it through a protobuf type
-fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessage>(prost_val: &SRC) {
-    let prost_bytes = mc_util_serial::encode(prost_val);
-
-    let dest_val =
-        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
-
-    let protobuf_bytes = dest_val
-        .write_to_bytes()
-        .expect("Writing protobuf to bytes failed");
-
-    let final_val: SRC =
-        mc_util_serial::decode(&protobuf_bytes).expect("Parsing prost from protobuf bytes failed");
-
-    assert_eq!(*prost_val, final_val);
-}
 
 // Generate some example root identities
 fn root_identity_examples<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<RootIdentity> {
@@ -53,19 +43,18 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let sender = AccountKey::random(rng);
     let recipient = AccountKey::random(rng).default_subaddress();
     let recipient2 = AccountKey::random_with_fog(rng).default_subaddress();
-    let sender_change_dest = ReservedDestination::from(&sender);
+    let sender_change_dest = ReservedSubaddresses::from(&sender);
 
-    let fpr = MockFogResolver(btreemap! {
-                        recipient2
-                .fog_report_url()
-                .unwrap()
-                .to_string()
-        =>
+    let fpr = MockFogResolver(
+        [(
+            recipient2.fog_report_url().unwrap().to_string(),
             FullyValidatedFogPubkey {
                 pubkey: FromRandom::from_random(rng),
                 pubkey_expiry: 1000,
             },
-    });
+        )]
+        .into(),
+    );
 
     let input_credentials = get_input_credentials(
         block_version,
@@ -84,7 +73,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     let input_credentials = get_input_credentials(
         block_version,
@@ -106,7 +95,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_output(Amount::new(600, 2.into()), &recipient2, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     let input_credentials = get_input_credentials(
         block_version,
@@ -131,7 +120,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_change_output(Amount::new(100, 1.into()), &sender_change_dest, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     result
 }
@@ -179,5 +168,42 @@ fn signed_contingent_input_round_trip() {
                 );
             }
         }
+    })
+}
+
+#[test]
+fn block_metadata_round_trip() {
+    run_with_several_seeds(|mut rng| {
+        let block_id = BlockID(FromRandom::from_random(&mut rng));
+        let metadata = make_block_metadata(block_id, &mut rng);
+        round_trip_message::<BlockMetadata, blockchain::BlockMetadata>(&metadata)
+    })
+}
+
+#[test]
+fn quorum_set_round_trip() {
+    run_with_several_seeds(|mut rng| {
+        let qs = make_quorum_set(&mut rng);
+        round_trip_message::<QuorumSet, quorum_set::QuorumSet>(&qs)
+    })
+}
+
+#[test]
+fn verification_report_round_trip() {
+    run_with_several_seeds(|mut rng| {
+        let report = make_verification_report(&mut rng);
+        round_trip_message::<VerificationReport, external::VerificationReport>(&report)
+    })
+}
+
+#[test]
+fn block_data_round_trip() {
+    run_with_several_seeds(|mut rng| {
+        let block_data = get_blocks(BlockVersion::MAX, 1, 2, 3, 4, 5, None, &mut rng)
+            .pop()
+            .unwrap();
+        // This does not need to remain an invariant, as of this writing.
+        // It's a nice property, though.
+        round_trip_message::<BlockData, blockchain::ArchiveBlockV1>(&block_data);
     })
 }

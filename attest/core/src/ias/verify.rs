@@ -14,22 +14,14 @@ use crate::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
     },
-    VerificationReport,
+    VerificationReport, B64_CONFIG,
 };
 use alloc::{
     string::{String, ToString},
     vec,
     vec::Vec,
 };
-use binascii::{b64decode, b64encode, hex2bin};
-use core::{
-    convert::{TryFrom, TryInto},
-    f64::EPSILON,
-    fmt::Debug,
-    intrinsics::fabsf64,
-    result::Result,
-    str,
-};
+use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, result::Result, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use serde::{Deserialize, Serialize};
 
@@ -81,15 +73,11 @@ impl FromBase64 for EpidPseudonym {
 
     /// Parse a Base64-encoded string into a 128-byte EpidPseudonym
     fn from_base64(src: &str) -> Result<Self, EncodingError> {
-        let mut buffer = [0u8; EPID_PSEUDONYM_LEN + 4];
-        let buflen = {
-            let output = b64decode(src.as_bytes(), &mut buffer[..])?;
-            output.len()
-        };
-        if buflen != EPID_PSEUDONYM_LEN {
+        let buffer = base64::decode_config(src, B64_CONFIG)?;
+        if buffer.len() != EPID_PSEUDONYM_LEN {
             return Err(EncodingError::InvalidInputLength);
         }
-        let (left, right) = buffer.split_at(buflen / 2);
+        let (left, right) = buffer.split_at(buffer.len() / 2);
         Ok(Self {
             b: Vec::from(left),
             k: Vec::from(right),
@@ -105,10 +93,7 @@ impl ToBase64 for EpidPseudonym {
             let mut inbuf = Vec::with_capacity(self.b.len() + self.k.len());
             inbuf.extend_from_slice(&self.b);
             inbuf.extend_from_slice(&self.k);
-            match b64encode(&inbuf, dest) {
-                Ok(buffer) => Ok(buffer.len()),
-                Err(_e) => Err(EPID_PSEUDONYM_LEN + 4),
-            }
+            Ok(base64::encode_config_slice(&inbuf, B64_CONFIG, dest))
         }
     }
 }
@@ -405,14 +390,10 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
         let pse_manifest_hash = match data.remove("pseManifestHash") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                let mut result = Vec::with_capacity(value.len() * 3 / 4 + 4);
-                let result_len = {
-                    let result_slice = hex2bin(value.as_bytes(), &mut result)
-                        .map_err(|e| PseManifestHashError::Parse(e.into()))?;
-                    result_slice.len()
-                };
-                result.truncate(result_len);
-                Some(result)
+                Some(
+                    hex::decode(value.as_bytes())
+                        .map_err(|e| PseManifestHashError::Parse(e.into()))?,
+                )
             }
             None => None,
         };
@@ -454,18 +435,15 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
     use super::*;
-    use crate::VerificationSignature;
 
     const IAS_WITH_PIB: &str = include_str!("../../data/test/ias_with_pib.json");
 
     #[test]
     fn test_verification_report_with_pib() {
         let report = VerificationReport {
-            sig: VerificationSignature::default(),
-            chain: Vec::default(),
+            sig: Default::default(),
+            chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB.trim()),
         };
 
@@ -482,8 +460,8 @@ mod test {
     )]
     fn test_parse_timestamp_with_invalid_timestamp() {
         let report = VerificationReport {
-            sig: VerificationSignature::default(),
-            chain: Vec::default(),
+            sig: Default::default(),
+            chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB),
         };
 

@@ -9,7 +9,6 @@ use aligned_cmov::{
     A8Bytes, CMov,
 };
 use alloc::boxed::Box;
-use core::convert::TryInto;
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
 use mc_fog_ledger_enclave_api::AddRecordsError;

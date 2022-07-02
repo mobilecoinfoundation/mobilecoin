@@ -10,45 +10,31 @@ lazy_static! {
     // Read SGX_MODE environment variable --set in Docker or makefile
     // Expects values SW and HW
     pub static ref SGX_MODE_SIM: bool = {
-        let sgx_mode = env::var("SGX_MODE").expect("Could not read SGX_MODE! Should be HW or SW");
         println!("cargo:rerun-if-env-changed=SGX_MODE");
-        if sgx_mode == "SW" {
-            println!(
-                "cargo:warning=Compiling {} for SGX simulation mode",
-                std::env::var("CARGO_PKG_NAME")
-                    .expect("Could not get package name from environment")
-            );
-            true
-        } else if sgx_mode == "HW" {
-            false
-        } else {
-            panic!("SGX_MODE should be SW or HW, found {}", sgx_mode);
+        let sgx_mode = env::var("SGX_MODE").expect("Could not read SGX_MODE! Should be HW or SW");
+        match sgx_mode.as_str() {
+            "SW" => true,
+            "HW" => false,
+            _ => panic!("SGX_MODE should be SW or HW, found {}", sgx_mode)
         }
     };
 
     // Read IAS_MODE environment variable --set in Docker or makefile
     // Expects values DEV and PROD
     pub static ref IAS_MODE_DEV: bool = {
-        let ias_mode = env::var("IAS_MODE").expect("Could not read IAS_MODE! Should be PROD or DEV");
         println!("cargo:rerun-if-env-changed=IAS_MODE");
-        if ias_mode == "DEV" {
-            println!(
-                "cargo:warning=Compiling {} for IAS dev mode",
-                std::env::var("CARGO_PKG_NAME")
-                    .expect("Could not get package name from environment")
-            );
-            true
-        } else if ias_mode == "PROD" {
-            false
-        } else {
-            panic!("IAS_MODE should be DEV or PROD, found {}", ias_mode);
+        let ias_mode = env::var("IAS_MODE").expect("Could not read IAS_MODE! Should be PROD or DEV");
+        match ias_mode.as_str() {
+            "DEV" => true,
+            "PROD" => false,
+            _ => panic!("IAS_MODE should be DEV or PROD, found {}", ias_mode)
         }
     };
 
     // Intel SDK installation dir
     pub static ref SDK_DIR: PathBuf = {
         println!("cargo:rerun-if-env-changed=SGX_SDK");
-        PathBuf::from(env::var("SGX_SDK").unwrap_or_else(|_| "/opt/intel/sgxsdk".to_owned()))
+        env::var("SGX_SDK").unwrap_or_else(|_| "/opt/intel/sgxsdk".to_owned()).into()
     };
 
     // Intel SDK lib dir
@@ -58,7 +44,7 @@ lazy_static! {
             "lib64"
         } else if cfg!(target_arch = "x86") {
             "lib"
-    } else {
+        } else {
             panic!("Unsupported architecture for sgx")
         };
         SDK_DIR.join(arch_dir)
@@ -82,15 +68,15 @@ lazy_static! {
 
     // Cargo variables
     pub static ref OUT_DIR: PathBuf = {
-        PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR was not set"))
+        PathBuf::from(env::var("OUT_DIR").expect("Missing env.OUT_DIR"))
     };
 
     pub static ref MANIFEST_DIR: PathBuf = {
-        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR was not set"))
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("Missing env.CARGO_MANIFEST_DIR"))
     };
 
     pub static ref RELEASE: bool = {
-        env::var("PROFILE").expect("PROFILE was not set") == "release"
+        env::var("PROFILE").expect("Missing env.PROFILE") == "release"
     };
 
     // Other

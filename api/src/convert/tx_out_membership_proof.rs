@@ -1,12 +1,11 @@
 //! Convert to/from external::TxOutMembershipProof
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{
     membership_proofs::Range,
     tx::{TxOutMembershipElement, TxOutMembershipProof},
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
 /// Convert TxOutMembershipProof -> external::MembershipProof.
 impl From<&TxOutMembershipProof> for external::TxOutMembershipProof {

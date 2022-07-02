@@ -17,10 +17,11 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_blockchain_types::BlockIndex;
 use mc_common::HashMap;
 use mc_transaction_core::{
     mint::{MintConfig, MintConfigTx, MintTx, ValidatedMintConfigTx},
-    BlockIndex, TokenId,
+    TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
 
@@ -434,9 +435,7 @@ pub mod tests {
         mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
-    use std::iter::FromIterator;
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     pub fn init_mint_config_store() -> (MintConfigStore, Environment) {
         let env = get_env();

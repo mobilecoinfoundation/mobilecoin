@@ -2,8 +2,8 @@
 
 //! Tracks the state of peers' ledgers.
 
+use mc_blockchain_types::BlockIndex;
 use mc_common::ResponderId;
-use mc_transaction_core::BlockIndex;
 use std::collections::HashSet;
 
 /// An interface for an object that keeps track of the network's status,

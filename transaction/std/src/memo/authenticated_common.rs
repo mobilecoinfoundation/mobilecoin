@@ -9,7 +9,6 @@ use hmac::{Hmac, Mac};
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate};
 use sha2::Sha512;
-use std::convert::TryInto;
 use subtle::{Choice, ConstantTimeEq};
 
 type HmacSha512 = Hmac<Sha512>;

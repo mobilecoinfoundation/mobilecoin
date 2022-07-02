@@ -7,13 +7,12 @@ extern crate lazy_static;
 
 pub mod known_accounts;
 
-pub use rand_core::{CryptoRng, RngCore, SeedableRng};
+pub use rand::{seq::SliceRandom, CryptoRng, Rng, RngCore, SeedableRng};
 // re-export AccountKey and PublicAddress to save an import elsewhere
 pub use mc_account_keys::{AccountKey, PublicAddress};
 
 const NUM_TRIALS: usize = 3;
 
-// Sometimes you need to have the type in scope to call trait functions
 use rand_hc::Hc128Rng;
 pub type RngType = Hc128Rng;
 type Seed = <RngType as SeedableRng>::Seed;
@@ -48,9 +47,16 @@ pub fn get_seeded_rng() -> RngType {
     RngType::from_seed([7u8; 32])
 }
 
-pub fn random_str(rng: &mut RngType, len: usize) -> String {
-    use rand::{distributions::Alphanumeric, Rng};
-    rng.sample_iter(&Alphanumeric)
+pub fn random_bytes_vec(num_bytes: usize, csprng: &mut (impl CryptoRng + RngCore)) -> Vec<u8> {
+    let mut result = Vec::with_capacity(num_bytes);
+    csprng.fill_bytes(&mut result);
+    result
+}
+
+pub fn random_str(len: usize, csprng: &mut (impl CryptoRng + RngCore)) -> String {
+    use rand::distributions::Alphanumeric;
+    csprng
+        .sample_iter(&Alphanumeric)
         .take(len)
         .map(char::from)
         .collect()

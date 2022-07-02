@@ -20,7 +20,6 @@ use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
-    convert::TryFrom,
     marker::PhantomData,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -367,12 +366,12 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_attest_core::VerificationSignature;
+    use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
-    use mc_transaction_core::BlockSignature;
     use serial_test::serial;
-    use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
+    use std::{str::FromStr, sync::Mutex, thread::sleep};
 
     // A contraption that allows us to return a specific VerificationReport for a
     // given ConsensusClientUri while also allowing the tests to control it.
@@ -513,7 +512,7 @@ mod tests {
         // Add a block signature for signer1, this should get the background thread to
         // get the VerificationReport from node1 and put it into the database.
         let signed_block_a1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a1, filename.clone())
             .unwrap();
@@ -541,7 +540,7 @@ mod tests {
         // Add a block signature for signer2, while the returned report is still
         // signer1.
         let signed_block_a2 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[1].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a2, filename.clone())
             .unwrap();
@@ -588,7 +587,7 @@ mod tests {
         );
 
         let signed_block_a3 =
-            BlockSignature::from_block_and_keypair(&blocks[2].0, &updated_signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[2].block(), &updated_signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 3, signed_block_a3, filename.clone())
             .unwrap();
@@ -621,13 +620,13 @@ mod tests {
         // Add two more blocks, one for node2 (that we can reach) and one for node3
         // (that we can't reach)
         let signed_block_b1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url2, 1, signed_block_b1, filename.clone())
             .unwrap();
 
         let signed_block_c1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer3).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer3).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename)
             .unwrap();

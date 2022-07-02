@@ -2,8 +2,9 @@
 
 //! Attestation Verification Report type.
 
-use alloc::{string::String, vec, vec::Vec};
-use binascii::b64decode;
+use alloc::{string::String, vec::Vec};
+use core::fmt::{Debug, Display};
+use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
 use mc_util_encodings::{Error as EncodingError, FromHex};
 use prost::{
@@ -41,12 +42,34 @@ pub struct VerificationReport {
     pub http_body: String,
 }
 
+impl Display for VerificationReport {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("VerificationReport")
+            .field("sig", &HexFmt(&self.sig))
+            .field("chain", &HexList(&self.chain))
+            .field("http_body", &self.http_body)
+            .finish()
+    }
+}
+
 /// A type containing the bytes of the VerificationReport signature
 #[derive(
-    Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[repr(transparent)]
 pub struct VerificationSignature(#[digestible(never_omit)] Vec<u8>);
+
+impl Debug for VerificationSignature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "VerificationSignature({})", HexFmt(&self))
+    }
+}
+
+impl Display for VerificationSignature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", HexFmt(&self))
+    }
+}
 
 impl AsRef<[u8]> for VerificationSignature {
     fn as_ref(&self) -> &[u8] {
@@ -76,14 +99,8 @@ impl FromHex for VerificationSignature {
     type Error = EncodingError;
 
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        // base64 strlength = 4 * (bytelen / 3) + padding
-        let mut data = vec![0u8; 3 * ((s.len() + 4) / 4)];
-        let buflen = {
-            let buffer = b64decode(s.as_bytes(), data.as_mut_slice())?;
-            buffer.len()
-        };
-        data.truncate(buflen);
-        Ok(VerificationSignature::from(data))
+        // 2 hex chars per byte
+        Ok(hex::decode(s)?.into())
     }
 }
 
@@ -122,5 +139,30 @@ impl Message for VerificationSignature {
 
     fn clear(&mut self) {
         self.0.clear()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::{format, vec};
+
+    #[test]
+    fn test_signature_debug() {
+        let sig = VerificationSignature(vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE]);
+        assert_eq!(format!("{:?}", &sig), "VerificationSignature(deadbeefcafe)");
+    }
+
+    #[test]
+    fn test_report_display() {
+        let report = VerificationReport {
+            sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
+            chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
+            http_body: "some_body".into(),
+        };
+        assert_eq!(
+            format!("{}", &report),
+            "VerificationReport { sig: deadbeefcafe, chain: [abcd, cdef, 1234], http_body: \"some_body\" }"
+        );
     }
 }

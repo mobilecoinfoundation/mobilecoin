@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Input Materials is a helper struct for the transaction builder.
 //! The transaction builder can get inputs either from input credentials,
@@ -11,7 +11,7 @@
 
 use crate::InputCredentials;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_transaction_core::{ring_signature::InputRing, tx::TxIn, Amount, SignedContingentInput};
+use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput};
 
 /// Material that can be used by the transaction builder to create an input to
 /// a transaction.

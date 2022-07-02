@@ -2,7 +2,11 @@
 
 use super::{FfiTryFrom, TryFromFfi};
 use crate::LibMcError;
-use core::{convert::TryFrom, marker, ops, slice};
+use core::{
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+    slice,
+};
 use libc::{size_t, ssize_t};
 use mc_util_ffi::{FfiMutPtr, FfiRefPtr};
 
@@ -25,7 +29,7 @@ use mc_util_ffi::{FfiMutPtr, FfiRefPtr};
 pub struct McBuffer<'a> {
     buffer: FfiRefPtr<'a, u8>,
     len: size_t,
-    _phantom: marker::PhantomData<&'a [u8]>,
+    _phantom: PhantomData<&'a [u8]>,
 }
 
 impl<'a> McBuffer<'a> {
@@ -66,7 +70,7 @@ impl<'a> McBuffer<'a> {
     }
 }
 
-impl<'a> ops::Deref for McBuffer<'a> {
+impl<'a> Deref for McBuffer<'a> {
     type Target = [u8];
 
     #[inline]
@@ -86,7 +90,7 @@ impl AsRef<[u8]> for McBuffer<'_> {
 pub struct McMutableBuffer<'a> {
     buffer: FfiMutPtr<'a, u8>,
     len: size_t,
-    _phantom: marker::PhantomData<&'a [u8]>,
+    _phantom: PhantomData<&'a [u8]>,
 }
 
 impl<'a> McMutableBuffer<'a> {
@@ -148,7 +152,7 @@ impl<'a> McMutableBuffer<'a> {
     }
 }
 
-impl<'a> ops::Deref for McMutableBuffer<'a> {
+impl<'a> Deref for McMutableBuffer<'a> {
     type Target = [u8];
 
     #[inline]
@@ -157,7 +161,7 @@ impl<'a> ops::Deref for McMutableBuffer<'a> {
     }
 }
 
-impl<'a> ops::DerefMut for McMutableBuffer<'a> {
+impl<'a> DerefMut for McMutableBuffer<'a> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_slice_mut()

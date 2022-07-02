@@ -16,7 +16,6 @@ use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
 use std::{
     collections::HashMap,
-    convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,

@@ -15,7 +15,7 @@ use mc_common::{
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::RistrettoPublic;
 use mc_util_serial::Message;
-use std::{convert::TryFrom, ops::Range, sync::Arc};
+use std::{ops::Range, sync::Arc};
 
 // LMDB Database Names
 pub const MONITOR_ID_TO_MONITOR_DATA_DB_NAME: &str =

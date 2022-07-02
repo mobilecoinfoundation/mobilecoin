@@ -2,24 +2,24 @@
 
 //! Mint auditor error data type.
 
+use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
+use diesel::result::{DatabaseErrorKind, Error as DieselError};
+use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
+use mc_api::display::Error as ApiDisplayError;
+use mc_blockchain_types::BlockIndex;
 use mc_ledger_db::Error as LedgerDbError;
-use mc_transaction_core::BlockIndex;
-use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::DecodeError;
 use std::io::Error as IoError;
 
 /// Mint auditor error data type.
 #[derive(Debug, Display)]
 pub enum Error {
-    /// LMDB: {0}
-    Lmdb(lmdb::Error),
-
     /// Not found
     NotFound,
 
-    /// Metadata store: {0}
-    MetadataStore(MetadataStoreError),
+    /// Already exists: {0}
+    AlreadyExists(String),
 
     /// IO: {0}
     Io(IoError),
@@ -32,21 +32,24 @@ pub enum Error {
 
     /// Unexpected block index {0} (was expecting {1})
     UnexpectedBlockIndex(BlockIndex, BlockIndex),
-}
 
-impl From<lmdb::Error> for Error {
-    fn from(err: lmdb::Error) -> Self {
-        match err {
-            lmdb::Error::NotFound => Self::NotFound,
-            err => Self::Lmdb(err),
-        }
-    }
-}
+    /// Diesel: {0}
+    Diesel(DieselError),
 
-impl From<MetadataStoreError> for Error {
-    fn from(err: MetadataStoreError) -> Self {
-        Self::MetadataStore(err)
-    }
+    /// Diesel migrations: {0}
+    DieselMigrations(RunMigrationsError),
+
+    /// R2d2 pool: {0}
+    R2d2Pool(diesel::r2d2::PoolError),
+
+    /// Gnosis: {0}
+    Gnosis(GnosisError),
+
+    /// Api display: {0}
+    ApiDisplay(ApiDisplayError),
+
+    /// Other: {0}
+    Other(String),
 }
 
 impl From<IoError> for Error {
@@ -66,3 +69,55 @@ impl From<DecodeError> for Error {
         Self::Decode(err)
     }
 }
+
+impl From<DieselError> for Error {
+    fn from(err: DieselError) -> Self {
+        match err {
+            DieselError::NotFound => Self::NotFound,
+            DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, info) => {
+                Self::AlreadyExists(info.message().to_string())
+            }
+            err => Self::Diesel(err),
+        }
+    }
+}
+
+impl From<RunMigrationsError> for Error {
+    fn from(err: RunMigrationsError) -> Self {
+        Self::DieselMigrations(err)
+    }
+}
+
+impl From<diesel::r2d2::PoolError> for Error {
+    fn from(err: diesel::r2d2::PoolError) -> Self {
+        Self::R2d2Pool(err)
+    }
+}
+
+impl From<GnosisError> for Error {
+    fn from(err: GnosisError) -> Self {
+        Self::Gnosis(err)
+    }
+}
+
+impl From<ApiDisplayError> for Error {
+    fn from(err: ApiDisplayError) -> Self {
+        Self::ApiDisplay(err)
+    }
+}
+
+impl TransactionRetriableError for Error {
+    fn should_retry(&self) -> bool {
+        match self {
+            Self::Diesel(DieselError::NotFound) => false,
+            Self::Diesel(DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _)) => {
+                false
+            }
+            Self::R2d2Pool(_) => true,
+            _ => false,
+        }
+    }
+}
+
+// Make clap happy.
+impl std::error::Error for Error {}

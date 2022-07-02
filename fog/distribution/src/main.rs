@@ -19,7 +19,7 @@
 
 #![deny(missing_docs)]
 
-use core::{cell::RefCell, cmp::max, convert::TryFrom};
+use core::{cell::RefCell, cmp::max};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -32,6 +32,7 @@ use mc_connection::{
     RetryableBlockchainConnection, RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
 use mc_fog_report_validation::FogResolver;
@@ -53,7 +54,6 @@ use rayon::prelude::*;
 use retry::{delay, retry, OperationResult};
 use std::{
     collections::BTreeMap,
-    convert::TryInto,
     iter::empty,
     path::Path,
     str::FromStr,
@@ -122,12 +122,12 @@ fn main() {
     let config = Config::parse();
 
     // Read account keys from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config.sample_data_dir.join(Path::new("keys")),
     )
     .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
@@ -825,7 +825,9 @@ fn build_tx(
     tx_builder.set_tombstone_block(tombstone_block);
 
     // Build and return tx.
-    tx_builder.build(&mut rng).expect("failed building tx")
+    tx_builder
+        .build(&NoKeysRingSigner {}, &mut rng)
+        .expect("failed building tx")
 }
 
 /// Get merkle proofs of membership from the ledger for several utxos

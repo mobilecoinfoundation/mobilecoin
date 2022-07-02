@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{common::*, LibMcError};
-use core::convert::TryFrom;
 use libc::ssize_t;
 use mc_crypto_box::{generic_array::typenum::Unsigned, CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic};

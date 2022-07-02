@@ -14,4 +14,4 @@ mc-test-vectors-definitions = { path = "../definitions" }
 mc-util-test-vector = { path = "../../util/test-vector" }
 
 hex = "0.4"
-tiny-bip39 = "0.8"
+tiny-bip39 = "1.0"

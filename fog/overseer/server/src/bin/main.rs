@@ -20,12 +20,19 @@ async fn main() -> Result<(), rocket::Error> {
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
 
     // Open the database.
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing");
     let recovery_db = SqlRecoveryDb::new_from_url(
-        &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        &database_url,
         config.postgres_config.clone(),
         logger.clone(),
     )
-    .expect("Failed connecting to database");
+    .unwrap_or_else(|err| {
+        panic!(
+            "fog-overseer cannot connect to database '{}': {:?}",
+            database_url, err
+        )
+    });
 
     let mut overseer_service =
         OverseerService::new(config.ingest_cluster_uris, recovery_db, logger.clone());

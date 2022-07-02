@@ -6,11 +6,9 @@
 extern crate alloc;
 extern crate proc_macro;
 
-use quote::{format_ident, quote};
-
-use core::convert::TryFrom;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use quote::{format_ident, quote};
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, FieldsNamed, FieldsUnnamed,
     Generics, Ident, Lit, Meta, NestedMeta,

@@ -67,7 +67,7 @@ pub struct ETxOutStore<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>
     last_ciphertext_size_byte: u8,
 
     /// The logger object
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 

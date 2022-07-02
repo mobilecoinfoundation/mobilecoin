@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use core::{
-    convert::TryFrom,
     fmt::{Debug, Display},
     hash::Hash,
     result::Result as StdResult,

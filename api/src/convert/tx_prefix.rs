@@ -1,8 +1,7 @@
 //! Convert to/from external::TxPrefix.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::tx;
-use std::convert::TryFrom;
 
 /// Convert tx::TxPrefix --> external::TxPrefix.
 impl From<&tx::TxPrefix> for external::TxPrefix {

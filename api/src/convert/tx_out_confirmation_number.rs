@@ -1,8 +1,7 @@
 //! Convert to/from external::TxOutConfirmationNumber
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::tx;
-use std::convert::TryFrom;
 
 /// Convert tx::TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
 impl From<&tx::TxOutConfirmationNumber> for external::TxOutConfirmationNumber {

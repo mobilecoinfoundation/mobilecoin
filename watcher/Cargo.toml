@@ -16,14 +16,13 @@ path = "src/bin/db-dump.rs"
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
+mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
-mc-transaction-core = { path = "../transaction/core" }
-mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }
@@ -34,7 +33,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "api" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.10.2"
@@ -49,11 +48,12 @@ url = "2.2"
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }
+mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 
 lazy_static = "1.4"
 rand_core = "0.6"
 rand_hc = "0.3"
-serial_test = "0.6"
+serial_test = "0.7"
 tempdir = "0.3"

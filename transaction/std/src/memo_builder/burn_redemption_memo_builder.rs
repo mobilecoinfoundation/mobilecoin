@@ -8,7 +8,7 @@ use super::{
     memo::{BurnRedemptionMemo, DestinationMemo, DestinationMemoError, UnusedMemo},
     MemoBuilder,
 };
-use crate::ReservedDestination;
+use crate::ReservedSubaddresses;
 use mc_account_keys::{burn_address, PublicAddress, ShortAddressHash};
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 
@@ -107,7 +107,7 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         change_amount: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &ReservedSubaddresses,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {

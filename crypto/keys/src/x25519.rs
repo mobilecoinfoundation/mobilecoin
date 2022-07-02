@@ -2,18 +2,12 @@
 
 //! dalek-cryptography based keys implementations
 
-// Badly-named Macros
-use alloc::vec;
-
-// Dependencies
-use crate::traits::*;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
+use crate::{
+    Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG,
 };
-use binascii::b64encode;
+use alloc::{string::ToString, vec, vec::Vec};
 use core::{
-    convert::{AsRef, TryFrom},
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
     str::from_utf8,
 };
@@ -56,17 +50,13 @@ impl Debug for X25519Secret {
         let mut hasher = Sha256::new();
         hasher.update(self.as_ref());
         let hash_results = hasher.finalize();
-        let mut hash_strbuf: Vec<u8> = Vec::with_capacity(hash_results.len() * 2);
-        let hash_len = {
-            let hash_strslice =
-                binascii::bin2hex(&hash_results, &mut hash_strbuf).map_err(|_e| FmtError)?;
-            hash_strslice.len()
-        };
-        hash_strbuf.truncate(hash_len);
+
+        let output = hex::decode(&hash_results).map_err(|_e| FmtError)?;
+
         write!(
             f,
             "X25519Secret SHA-256: {}",
-            from_utf8(&hash_strbuf).map_err(|_e| FmtError)?
+            from_utf8(&output).map_err(|_e| FmtError)?
         )
     }
 }
@@ -162,7 +152,6 @@ impl AsRef<[u8]> for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::*;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -176,7 +165,6 @@ impl AsRef<[u8]> for X25519Public {
     /// use mc_crypto_keys::*;
     /// use mc_crypto_digestible::Digestible;
     /// use sha2::{Digest, Sha256};
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -218,7 +206,6 @@ impl Clone for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Public;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey1 = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -250,29 +237,11 @@ impl Debug for X25519Public {
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let der = self.to_der();
-        let mut b64_output = vec![0u8; der.len() * 4 / 3 + 4];
-        let final_len = loop {
-            match b64encode(&der, &mut b64_output) {
-                Ok(val) => break val.len(),
-                Err(e) => match e {
-                    binascii::ConvertError::InvalidOutputLength => {
-                        let target_len = b64_output.len() * 2;
-                        b64_output.resize(target_len, 0u8);
-                    }
-                    binascii::ConvertError::InvalidInputLength => {
-                        return Err(FmtError);
-                    }
-                    binascii::ConvertError::InvalidInput => {
-                        return Err(FmtError);
-                    }
-                },
-            }
-        };
-        b64_output.truncate(final_len);
+        let encoded = base64::encode_config(&der, B64_CONFIG);
         write!(
             f,
             "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            String::from_utf8(b64_output).map_err(|_e| FmtError)?
+            encoded
         )
     }
 }
@@ -305,7 +274,6 @@ impl AsRef<[u8; X25519_LEN]> for X25519Public {
 }
 
 derive_core_cmp_from_as_ref!(X25519Public, [u8; X25519_LEN]);
-impl Eq for X25519Public {}
 
 impl Serialize for X25519Public {
     /// Public keys are serialized as simple DER-encoded byte streams
@@ -473,7 +441,6 @@ impl Clone for X25519Private {
     /// # Examples
     ///
     /// ```
-    /// use core::convert::TryFrom;
     /// use mc_crypto_keys::*;
     ///
     /// let key = [0x55u8; 32];
@@ -530,7 +497,6 @@ impl<'de> Deserialize<'de> for X25519Private {
 ///
 /// ```
 /// use mc_crypto_keys::*;
-/// use std::convert::TryFrom;
 ///
 /// let mut key = [0x55u8; 32];
 /// key[0] = 0x50u8; // scalar values are clamped by dalek
@@ -563,7 +529,6 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Private;
-    /// use std::convert::TryFrom;
     ///
     /// let mut key = [0x55u8; 32];
     /// key[0] = 0x50u8; // scalar values are clamped by dalek
@@ -595,6 +560,7 @@ impl Kex for X25519 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{ReprBytes, Unsigned};
     use mc_util_serial::{deserialize, serialize};
 
     #[test]

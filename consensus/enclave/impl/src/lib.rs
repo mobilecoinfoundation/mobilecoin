@@ -29,7 +29,7 @@ use alloc::{
 };
 use constant_time_division::ct_u64_divide;
 use constant_time_token_map::CtTokenMap;
-use core::{cmp::min, convert::TryFrom};
+use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -40,6 +40,7 @@ use mc_attest_enclave_api::{
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
 use mc_attest_trusted::SealAlgo;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -66,7 +67,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, BlockVersion, Token, TokenId,
+    Amount, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -989,6 +990,13 @@ fn mint_output<T: Digestible>(
     amount: Amount,
     counter: usize,
 ) -> Result<TxOut> {
+    // Check if the token id makes sense right now
+    if !block_version.masked_token_id_feature_is_supported() && amount.token_id != 0 {
+        return Err(Error::BlockVersion(
+            "Cannot mint outputs for non-MOB tokens at this block version".to_string(),
+        ));
+    }
+
     // Create a determinstic private key based on the block contents.
     let tx_private_key = {
         let mut hash_value = [0u8; 32];
@@ -1010,36 +1018,28 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let mut output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
-        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
-
-    // The output must conform to block version rules
-    if !block_version.e_memo_feature_is_supported() {
-        output.e_memo = None;
-    }
-
-    if !block_version.masked_token_id_feature_is_supported() {
-        output.masked_amount.masked_token_id.clear();
-        if amount.token_id != 0 {
-            return Err(Error::FormBlock(
-                "Cannot mint outputs for non-MOB tokens until they are supported".to_string(),
-            ));
-        }
-    }
-
-    Ok(output)
+    TxOut::new(
+        block_version,
+        amount,
+        recipient,
+        &tx_private_key,
+        Default::default(),
+    )
+    .map_err(|e| Error::FormBlock(format!("NewTxError: {}", e)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::vec;
-    use core::iter::FromIterator;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{add_txos_to_ledger, create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{
         tokens::Mob,
         tx::TxOutMembershipHash,
@@ -1047,8 +1047,7 @@ mod tests {
         BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
-        create_transaction, initialize_ledger, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
@@ -1517,7 +1516,7 @@ mod tests {
             let recipient = AccountKey::random(&mut rng);
 
             let mut ledger = create_ledger();
-            let n_blocks = 1;
+            let n_blocks = 2;
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Spend outputs from the origin block. These are token_id=0.
@@ -1543,30 +1542,21 @@ mod tests {
             for token_id in [token_id1, token_id2] {
                 for _ in 0..5 {
                     let spendable_output = TxOut::new(
-                        Amount {
-                            value: 10_000_000_000,
-                            token_id,
-                        },
+                        block_version,
+                        Amount::new(10_000_000_000, token_id),
                         &sender.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
                     )
                     .unwrap();
 
-                    // Append this output to the ledger.
-                    let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-                    let block_contents = BlockContents {
-                        outputs: vec![spendable_output.clone()],
-                        key_images: vec![KeyImage::from(rng.next_u64())],
-                        ..Default::default()
-                    };
-                    let block = Block::new_with_parent(
+                    add_txos_to_ledger(
+                        &mut ledger,
                         block_version,
-                        &parent_block,
-                        &Default::default(),
-                        &block_contents,
-                    );
-                    ledger.append_block(&block, &block_contents, None).unwrap();
+                        &[spendable_output.clone()],
+                        &mut rng,
+                    )
+                    .unwrap();
 
                     let tx = create_transaction(
                         block_version,

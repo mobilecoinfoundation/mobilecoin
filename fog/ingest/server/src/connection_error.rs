@@ -114,4 +114,12 @@ impl From<EnclaveError> for PeerAttestationError {
     }
 }
 
-impl AttestationError for PeerAttestationError {}
+impl AttestationError for PeerAttestationError {
+    fn should_reattest(&self) -> bool {
+        true
+    }
+
+    fn should_retry(&self) -> bool {
+        true
+    }
+}

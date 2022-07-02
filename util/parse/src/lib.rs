@@ -5,7 +5,7 @@
 
 use core::fmt::Display;
 use itertools::Itertools;
-use std::{convert::TryFrom, fs, str::FromStr, time::Duration};
+use std::{fs, str::FromStr, time::Duration};
 
 pub use mc_sgx_css::Signature as CssSignature;
 

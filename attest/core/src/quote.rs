@@ -12,16 +12,15 @@ use crate::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
         report_body::ReportBody, report_data::ReportDataMask,
     },
-    ProductId, SecurityVersion,
+    ProductId, SecurityVersion, B64_CONFIG,
 };
 use alloc::vec::Vec;
-use binascii::{b64decode, b64encode};
 use core::{
     cmp::{max, min},
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     ops::Range,
 };
+use hex_fmt::HexFmt;
 use mc_sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
 use mc_util_encodings::{
     base64_buffer_size, Error as EncodingError, FromBase64, IntelLayout, ToBase64, ToX64,
@@ -347,9 +346,10 @@ impl Debug for Quote {
         write!(
             f,
             "Quote: {{ version: {}, sign_type: {}, epid_group_id: {}, qe_svn: {}, pce_svn: {}, xeid: {}, basename: {:?}, report_body: {:?}, signature_len: {}, signature: {:?} }}",
-            self.version()?, self.sign_type()?, self.epid_group_id()?, self.qe_security_version()?,
-            self.pce_security_version()?, self.xeid()?, self.basename()?, self.report_body()?,
-            self.signature_len()?, self. signature()
+            self.version()?, self.sign_type()?, self.epid_group_id()?,
+            self.qe_security_version()?, self.pce_security_version()?,
+            self.xeid()?, self.basename()?, self.report_body()?,
+            self.signature_len()?, self.signature().map(HexFmt)
         )
     }
 }
@@ -386,9 +386,8 @@ impl FromBase64 for Quote {
 
         // Create an output buffer of at least MINSIZE bytes
         let mut retval = Quote::with_capacity(expected_len)?;
-        match b64decode(s.as_bytes(), retval.0.as_mut_slice()) {
-            Ok(buffer) => {
-                let bufferlen = buffer.len();
+        match base64::decode_config_slice(s.as_bytes(), B64_CONFIG, retval.0.as_mut_slice()) {
+            Ok(bufferlen) => {
                 if bufferlen != QUOTE_IAS_SIZE && bufferlen != retval.intel_size() {
                     // The size of the decoded bytes does not match the size embedded in the bytes,
                     // and we're not handling an IAS/no-signature quote
@@ -422,10 +421,7 @@ impl ToBase64 for Quote {
         if dest.len() < required_len {
             Err(required_len)
         } else {
-            match b64encode(&self.0[..], dest) {
-                Ok(buffer) => Ok(buffer.len()),
-                Err(_e) => Err(required_len),
-            }
+            Ok(base64::encode_config_slice(&self.0[..], B64_CONFIG, dest))
         }
     }
 }

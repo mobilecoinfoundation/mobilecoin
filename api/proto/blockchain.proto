@@ -71,7 +71,7 @@ message BlockSignature {
     uint64 signed_at = 3;
 }
 
-message BlockMetadata {
+message BlockMetadataContents {
     /// The Block ID.
     BlockID block_id = 1;
 
@@ -82,9 +82,9 @@ message BlockMetadata {
     external.VerificationReport verification_report = 3;
 }
 
-message SignedBlockMetadata {
+message BlockMetadata {
     /// Metadata signed by the consensus node.
-    BlockMetadata contents = 1;
+    BlockMetadataContents contents = 1;
 
     /// Message signing key (signer).
     external.Ed25519Public node_key = 2;
@@ -106,7 +106,7 @@ message ArchiveBlockV1 {
     BlockSignature signature = 3;
 
     /// Additional signed metadata about this block.
-    SignedBlockMetadata metadata = 4;
+    BlockMetadata metadata = 4;
 }
 
 // An archived block.

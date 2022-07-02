@@ -31,7 +31,7 @@ use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
-use std::{collections::HashSet, iter::FromIterator, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
@@ -248,7 +248,7 @@ pub mod well_formed_tests {
                 // This is expected.
                 assert_eq!(
                     e,
-                    TransactionValidationError::Ledger("CapacityExceeded".to_string())
+                    TransactionValidationError::Ledger(LedgerError::CapacityExceeded.to_string())
                 );
             }
         }
@@ -491,6 +491,7 @@ mod is_valid_tests {
 mod combine_tests {
     use super::*;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
@@ -503,7 +504,6 @@ mod combine_tests {
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::convert::TryFrom;
 
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);
@@ -537,6 +537,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
@@ -591,7 +592,9 @@ mod combine_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
             let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
             // "Combining" a singleton set should return a vec containing the single
@@ -621,6 +624,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
+                        block_version,
                         Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
@@ -677,7 +681,9 @@ mod combine_tests {
                         )
                         .unwrap();
 
-                    let tx = transaction_builder.build(&mut rng).unwrap();
+                    let tx = transaction_builder
+                        .build(&NoKeysRingSigner {}, &mut rng)
+                        .unwrap();
                     WellFormedTxContext::from_tx(&tx, 0)
                 };
                 transaction_set.push(client_tx);
@@ -703,6 +709,7 @@ mod combine_tests {
 
             // Create a TxOut that was sent to Alice.
             let tx_out = TxOut::new(
+                block_version,
                 Amount {
                     value: 123,
                     token_id: Mob::ID,
@@ -757,7 +764,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -799,7 +808,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -811,6 +822,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
@@ -864,7 +876,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -891,6 +905,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -899,6 +914,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -956,7 +972,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -999,7 +1017,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let mut tx = transaction_builder.build(&mut rng).unwrap();
+                let mut tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -1012,6 +1032,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
@@ -1065,7 +1086,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 

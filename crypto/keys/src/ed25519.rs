@@ -3,22 +3,16 @@
 //! This module implements the common keys traits for the Ed25519 digital
 //! signature scheme.
 
-pub use ed25519::signature::Error as SignatureError;
-
-use alloc::vec;
-
-use crate::traits::*;
-use alloc::vec::Vec;
-use core::{
-    cmp::Ordering,
-    convert::TryFrom,
-    hash::{Hash, Hasher},
+use crate::{
+    DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
+    Signature as SignatureTrait, SignatureError, Signer, Verifier,
 };
-use digest::generic_array::typenum::{U32, U64};
-use ed25519::{
-    signature::{DigestSigner, DigestVerifier, Signature as SignatureTrait, Signer, Verifier},
-    Signature,
+use alloc::{vec, vec::Vec};
+use digest::{
+    generic_array::typenum::{U32, U64},
+    Digest,
 };
+use ed25519::Signature;
 use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
@@ -26,8 +20,9 @@ use ed25519_dalek::{
 use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -102,12 +97,18 @@ impl DistinguishedEncoding for Ed25519Signature {
 }
 
 /// An Ed25519 public key.
-#[derive(Copy, Clone, Debug, Default, Deserialize, Eq, Serialize, Digestible)]
+#[derive(Copy, Clone, Default, Deserialize, Serialize, Digestible)]
 pub struct Ed25519Public(DalekPublicKey);
 
 impl AsRef<[u8]> for Ed25519Public {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
+    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
+        self.0.as_bytes()
     }
 }
 
@@ -121,16 +122,18 @@ impl TryFrom<&[u8]> for Ed25519Public {
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
-derive_into_vec_from_repr_bytes!(Ed25519Public);
+impl TryFrom<Vec<u8>> for Ed25519Public {
+    type Error = KeyError;
 
-impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
-    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
-        self.0.as_bytes()
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
     }
 }
 
-derive_core_cmp_from_as_ref! { Ed25519Public, [u8; PUBLIC_KEY_LENGTH] }
+derive_core_cmp_from_as_ref!(Ed25519Public, [u8; PUBLIC_KEY_LENGTH]);
+derive_debug_and_display_hex_from_as_ref!(Ed25519Public);
+derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
+derive_into_vec_from_repr_bytes!(Ed25519Public);
 derive_prost_message_from_repr_bytes!(Ed25519Public);
 
 // ASN.1 DER SubjectPublicKeyInfo Bytes -- this is a set of nested TLVs
@@ -209,12 +212,22 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
 }
 
 /// An Ed25519 private key
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Ed25519Private(SecretKey);
 
 impl AsRef<[u8]> for Ed25519Private {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl core::fmt::Debug for Ed25519Private {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "Ed25519Private for pubkey: {:?}",
+            Ed25519Public::from(self)
+        )
     }
 }
 
@@ -282,6 +295,14 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
         Ok(Self(
             SecretKey::from_bytes(src).map_err(|_e| SignatureError::new())?,
         ))
+    }
+}
+
+impl TryFrom<Vec<u8>> for Ed25519Private {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
     }
 }
 
@@ -354,6 +375,14 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
     }
 }
 
+impl TryFrom<Vec<u8>> for Ed25519Pair {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
+    }
+}
+
 impl Verifier<Ed25519Signature> for Ed25519Pair {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
@@ -366,7 +395,7 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 }
 
 /// An Ed25519 signature.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct Ed25519Signature(Signature);
 
 impl Ed25519Signature {
@@ -391,34 +420,6 @@ impl Digestible for Ed25519Signature {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"ed25519-sig", &self);
-    }
-}
-
-// Deriving doesn't work, ed25519 crate says:
-// derive `PartialEq` after const generics are available
-impl Eq for Ed25519Signature {}
-
-impl PartialEq for Ed25519Signature {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl PartialOrd for Ed25519Signature {
-    fn partial_cmp(&self, other: &Ed25519Signature) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
-    }
-}
-
-impl Ord for Ed25519Signature {
-    fn cmp(&self, other: &Ed25519Signature) -> Ordering {
-        self.to_bytes().cmp(&other.to_bytes())
-    }
-}
-
-impl Hash for Ed25519Signature {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_bytes().hash(state)
     }
 }
 
@@ -449,18 +450,37 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
     }
 }
 
+impl TryFrom<Vec<u8>> for Ed25519Signature {
+    type Error = SignatureError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        src.as_slice().try_into()
+    }
+}
+
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
 derive_prost_message_from_repr_bytes!(Ed25519Signature);
+derive_core_cmp_from_as_ref!(Ed25519Signature);
+derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {
+    extern crate std;
+
     use super::*;
-    use digest::generic_array::typenum::Unsigned;
+    use crate::{ReprBytes, Unsigned};
     use mc_crypto_digestible::Digestible;
     use mc_crypto_hashes::PseudoMerlin;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use semver::{Version, VersionReq};
     use sha2::Sha512;
+    use std::{
+        eprintln,
+        process::Command,
+        string::{String, ToString},
+    };
+    use tempdir::TempDir;
 
     #[derive(Digestible)]
     struct YoloStruct {
@@ -543,15 +563,6 @@ mod ed25519_tests {
     //
     // So we're skipping validation of ED25519_SIG_DER_PREFIX, but we're validating
     // the others
-
-    extern crate std;
-    use semver::{Version, VersionReq};
-    use std::{
-        eprintln,
-        process::Command,
-        string::{String, ToString},
-    };
-    use tempdir::TempDir;
 
     // Run and log a command, panic if it fails
     // It is sad that std::process::Command doesn't have a flag like `bash -x`

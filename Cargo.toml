@@ -15,6 +15,8 @@ members = [
     "attest/untrusted",
     "attest/verifier",
     "attest/verifier/types",
+    "blockchain/types",
+    "blockchain/validators",
     "common",
     "connection",
     "connection/test-utils",
@@ -27,8 +29,8 @@ members = [
     "consensus/enclave/mock",
     "consensus/mint-client",
     "consensus/scp",
-    "consensus/scp/core",
     "consensus/scp/play",
+    "consensus/scp/types",
     "consensus/service",
     "consensus/service/config",
     "crypto/box",
@@ -41,6 +43,8 @@ members = [
     "crypto/multisig",
     "crypto/noise",
     "crypto/rand",
+    "crypto/ring-signature",
+    "crypto/ring-signature/signer",
     "crypto/x509/test-vectors",
     "crypto/x509/utils",
     "enclave-boundary",
@@ -107,6 +111,7 @@ members = [
     "mint-auditor",
     "mint-auditor/api",
     "mobilecoind",
+    "mobilecoind-dev-faucet",
     "mobilecoind-json",
     "mobilecoind/api",
     "peers",
@@ -126,6 +131,7 @@ members = [
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
+    "transaction/types",
     "util/b58-decoder",
     "util/build/enclave",
     "util/build/grpc",
@@ -191,6 +197,14 @@ codegen-units = 1
 [profile.test]
 rpath = true
 
+[profile.ci]
+# Build config.
+inherits = "test"
+# Enable some compiler optimizations.
+opt-level = 2
+# LLVM's Link-Time Optimization: Some, relatively quick to generate.
+lto = "thin"
+
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
@@ -203,8 +217,8 @@ curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-d
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
@@ -219,3 +233,6 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }
+
+# Override diesel dependency with our fork, to statically link SQLite.
+diesel = { git = "https://github.com/mobilecoinofficial/diesel", rev = "026f6379715d27c8be48396e5ca9059f4a263198" }

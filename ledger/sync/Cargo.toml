@@ -12,6 +12,8 @@ path = "src/test_app/main.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-verifier = { path = "../../attest/verifier" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
@@ -40,4 +42,6 @@ mc-connection-test-utils = { path = "../../connection/test-utils" }
 mc-consensus-scp = { path = "../../consensus/scp", features = ["test_utils"] }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers-test-utils = { path = "../../peers/test-utils" }
+mc-util-test-helper = { path = "../../util/test-helper" }
+
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

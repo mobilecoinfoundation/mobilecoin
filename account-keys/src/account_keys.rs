@@ -478,7 +478,6 @@ impl AccountKey {
 #[cfg(test)]
 mod account_key_tests {
     use super::*;
-    use core::convert::TryFrom;
     use mc_crypto_keys::RistrettoSignature;
     use mc_test_vectors_account_keys::{
         DefaultSubaddrKeysFromAcctPrivKeys, SubaddrKeysFromAcctPrivKeys,

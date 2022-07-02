@@ -12,7 +12,7 @@ mod input_credentials;
 mod input_materials;
 mod memo;
 mod memo_builder;
-mod reserved_destination;
+mod reserved_subaddresses;
 mod signed_contingent_input_builder;
 mod transaction_builder;
 
@@ -31,7 +31,7 @@ pub use memo_builder::{
     BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
     GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
 };
-pub use reserved_destination::ReservedDestination;
+pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 

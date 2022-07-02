@@ -3,9 +3,8 @@
 //! Convert between Rust and proto representations of NodeID.
 
 use crate::{quorum_set::Node as NodeProto, ConversionError};
-use core::convert::TryFrom;
 use mc_common::{NodeID, ResponderId};
-use std::{convert::TryInto, str::FromStr};
+use std::str::FromStr;
 
 impl From<&NodeID> for NodeProto {
     fn from(node: &NodeID) -> NodeProto {

@@ -7,15 +7,17 @@ use crate::{
     error::{Error, Result},
     BlockInfo, MemoHandlerError, TransactionStatus,
 };
-use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
+use core::{result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
 };
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
     FogBlockGrpcClient, FogKeyImageGrpcClient, FogMerkleProofGrpcClient,
@@ -26,13 +28,11 @@ use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
+    Amount, SignedContingentInput, TokenId,
 };
 use mc_transaction_std::{
-    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedDestination,
+    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, SignedContingentInputBuilder, TransactionBuilder,
 };
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
@@ -345,6 +345,8 @@ impl Client {
             .fetch_fog_reports(fog_uris.into_iter())?;
         let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
 
+        let ring_signer = LocalRingSigner::from(&self.account_key);
+
         build_transaction_helper(
             block_version,
             inputs,
@@ -354,6 +356,7 @@ impl Client {
             target_address,
             tombstone_block,
             fog_resolver,
+            &ring_signer,
             rng,
             &self.logger,
             fee,
@@ -435,7 +438,7 @@ impl Client {
             .add_required_output(requested, &self.account_key.default_subaddress(), rng)
             .map_err(Error::AddOutput)?;
 
-        let change_destination = ReservedDestination::from(&self.account_key);
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
 
         sci_builder
             .add_required_change_output(change, &change_destination, rng)
@@ -446,7 +449,8 @@ impl Client {
 
         sci_builder.set_tombstone_block(tombstone_block);
 
-        Ok(sci_builder.build(rng)?)
+        let ring_signer = LocalRingSigner::from(&self.account_key);
+        Ok(sci_builder.build(&ring_signer, rng)?)
     }
 
     /// Builds a transaction that fulfills a swap request, sending all excess
@@ -589,7 +593,7 @@ impl Client {
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
-        let change_destination = ReservedDestination::from(&self.account_key);
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
 
         // Make transaction builder
         // TODO: Use RTH memos
@@ -635,7 +639,8 @@ impl Client {
             )?;
         }
 
-        Ok(tx_builder.build(rng)?)
+        let ring_signer = LocalRingSigner::from(&self.account_key);
+        Ok(tx_builder.build(&ring_signer, rng)?)
     }
 
     /// Helper: Get merkle proofs corresponding to a given set of our inputs
@@ -856,7 +861,7 @@ impl Client {
 /// * `tombstone_block` - The block index after which this transaction is no
 ///   longer valid.
 /// * `rng` -
-fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
+fn build_transaction_helper<T: RngCore + CryptoRng>(
     block_version: BlockVersion,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
@@ -864,7 +869,8 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     source_account_key: &AccountKey,
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
-    fog_resolver: FPR,
+    fog_resolver: impl FogPubkeyResolver,
+    ring_signer: &impl RingSigner,
     rng: &mut T,
     logger: &Logger,
     fee: u64,
@@ -913,7 +919,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         .map_err(Error::AddOutput)?;
 
     // Add change output
-    let change_destination = ReservedDestination::from(source_account_key);
+    let change_destination = ReservedSubaddresses::from(source_account_key);
     tx_builder
         .add_change_output(
             Amount::new(change, amount.token_id),
@@ -928,7 +934,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     // Finalize
     tx_builder.set_tombstone_block(tombstone_block);
 
-    Ok(tx_builder.build(rng)?)
+    Ok(tx_builder.build(ring_signer, rng)?)
 }
 
 fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
@@ -1006,21 +1012,12 @@ fn input_credentials_helper(
         "Each ring element must have a corresponding membership proof."
     );
 
-    let onetime_private_key = recover_onetime_private_key(
-        &RistrettoPublic::try_from(&input_txo.tx_out.public_key)?,
-        source_account_key.view_private_key(),
-        &source_account_key.subaddress_spend_private(input_txo.subaddress_index),
-    );
-
-    let key_image = KeyImage::from(&onetime_private_key);
-    assert_eq!(key_image, input_txo.key_image);
-
     let ring_len = ring.len();
     InputCredentials::new(
         ring,
         membership_proofs,
         real_key_index,
-        onetime_private_key,
+        OneTimeKeyDeriveData::SubaddressIndex(input_txo.subaddress_index),
         *source_account_key.view_private_key(),
     )
     .or(Err(Error::BrokenRing(ring_len, real_key_index)))
@@ -1032,18 +1029,15 @@ mod test_build_transaction_helper {
     use core::result::Result as StdResult;
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_crypto_keys::RistrettoPublic;
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
-        constants::MILLIMOB_TO_PICOMOB,
-        onetime_keys::recover_public_subaddress_spend_key,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipProof},
-        Amount, Token,
+        constants::MILLIMOB_TO_PICOMOB, onetime_keys::recover_public_subaddress_spend_key,
+        tokens::Mob, tx::TxOut, Amount, Token,
     };
     use mc_transaction_core_test_utils::get_outputs;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator};
+    use mc_util_test_helper::get_seeded_rng;
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}
@@ -1060,27 +1054,23 @@ mod test_build_transaction_helper {
     // that do not appear in `inputs`.
     #[test_with_logger]
     fn test_build_transaction_helper_rings_disjoint_from_inputs(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         for block_version in BlockVersion::iterator() {
             let sender_account_key = AccountKey::random(&mut rng);
             let sender_public_address = sender_account_key.default_subaddress();
 
             // Amount per input.
-            let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
-            let amount_to_send = Amount {
-                value: 457 * MILLIMOB_TO_PICOMOB,
-                token_id: Mob::ID,
-            };
+            let initial_amount = Amount::new(300 * MILLIMOB_TO_PICOMOB, Mob::ID);
+            let amount_to_send = Amount::new(457 * MILLIMOB_TO_PICOMOB, Mob::ID);
             let num_inputs = 3;
             let ring_size = 1;
 
             // Create inputs.
             let inputs = {
-                let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-                for _i in 0..num_inputs {
-                    recipient_and_amount.push((sender_public_address.clone(), initial_amount));
-                }
+                let recipient_and_amount = (0..num_inputs)
+                    .map(|_| (sender_public_address.clone(), initial_amount))
+                    .collect::<Vec<_>>();
                 let outputs = get_outputs(block_version, &recipient_and_amount, &mut rng);
 
                 let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
@@ -1121,10 +1111,9 @@ mod test_build_transaction_helper {
             let mut rings: Vec<Vec<TxOut>> = Vec::new();
             for _i in 0..num_inputs {
                 let ring: Vec<TxOut> = {
-                    let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-                    for _i in 0..ring_size {
-                        recipient_and_amount.push((sender_public_address.clone(), 33));
-                    }
+                    let recipient_and_amount = (0..ring_size)
+                        .map(|_| (sender_public_address.clone(), Amount::new(33, Mob::ID)))
+                        .collect::<Vec<_>>();
                     get_outputs(block_version, &recipient_and_amount, &mut rng)
                 };
                 assert_eq!(ring.len(), ring_size);
@@ -1158,6 +1147,7 @@ mod test_build_transaction_helper {
                 &recipient_account_key.default_subaddress(),
                 super::BlockIndex::max_value(),
                 fake_acct_resolver,
+                &LocalRingSigner::from(&sender_account_key),
                 &mut rng,
                 &logger,
                 Mob::MINIMUM_FEE,

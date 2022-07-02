@@ -2,15 +2,9 @@
 
 //! Abstract traits used by Structs which implement key management
 
-pub use digest::Digest;
-pub use ed25519::signature::{DigestSigner, DigestVerifier, Signature, Signer, Verifier};
-pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
-
-// Macros with names that overlap a module name...
-use alloc::vec;
-
+use crate::{Digest, LengthMismatch, ReprBytes, Unsigned};
 use alloc::{string::String, vec::Vec};
-use core::{convert::TryFrom, fmt::Debug, hash::Hash};
+use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
@@ -72,26 +66,26 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
         let hash = D::digest(&self.to_der());
         // Get the hex string of the hash as bytes
         let output_size = D::OutputSize::to_usize();
-        let mut hash_strbuf: Vec<u8> = vec![0u8; output_size * 2];
-        let hash_len = hash_strbuf.len();
-        let hash_len = {
-            let hash_slice = binascii::bin2hex(&hash, &mut hash_strbuf)
-                .map_err(|_e| KeyError::LengthMismatch(hash_len, output_size * 2))?;
-            hash_slice.len()
-        };
-        hash_strbuf.truncate(hash_len);
+
+        let hex_out = hex::encode(&hash);
 
         // Add byte separators (i.e. make it "50:55:55:55..."
-        let mut retval = String::with_capacity(output_size * 3 + 1);
-        retval.push_str(
-            core::str::from_utf8(&hash_strbuf[..2]).map_err(|_e| KeyError::InvalidPublicKey)?,
+        let mut return_val = String::with_capacity(output_size * 3 + 1);
+        return_val.push_str(
+            core::str::from_utf8(&hex_out.as_bytes()[..2])
+                .map_err(|_e| KeyError::InvalidPublicKey)?,
         );
-        for ch in hash_strbuf[2..].chunks(2) {
-            retval.push(':');
-            retval.push_str(core::str::from_utf8(ch).map_err(|_e| KeyError::InvalidPublicKey)?);
+        for ch in hex_out.as_bytes()[2..].chunks(2) {
+            return_val.push(':');
+            // We should never run into an error here in practice so long
+            // as hex::encode_upper() produces normal valid hexadecimal,
+            // because every character should be english alphanumeric,
+            // which means every character fits in ASCII, which means
+            // every character fits in one byte.
+            return_val.push_str(core::str::from_utf8(ch).map_err(|_e| KeyError::InvalidPublicKey)?);
         }
 
-        Ok(retval)
+        Ok(return_val)
     }
 }
 

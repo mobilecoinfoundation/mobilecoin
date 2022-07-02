@@ -31,9 +31,15 @@ IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 
 FOG_SQL_DATABASE_NAME = 'fog_local'
+# Use env.DATABASE_URL if it exists, else use postgres://$PGHOST/fog_local,
+# falling back to postgres://localhost/fog_local.
+DATABASE_URL_ENV = 'DATABASE_URL=${DATABASE_URL:-postgres://${PGHOST:-localhost}/%s}' % FOG_SQL_DATABASE_NAME
+
 
 def target_dir(release):
-    return os.path.join(PROJECT_DIR, 'target', 'release' if release else 'debug')
+    default_target_dir = os.path.join(PROJECT_DIR, 'target')
+    base_target_dir = os.path.abspath(os.getenv('CARGO_TARGET_DIR', default_target_dir))
+    return os.path.join(base_target_dir, 'release' if release else 'debug')
 
 # Log a command and then call subprocess.run
 def log_and_run_shell(cmd, **kwargs):
@@ -43,7 +49,11 @@ def log_and_run_shell(cmd, **kwargs):
 # Log a command and then call subprocess.Popen
 def log_and_popen_shell(cmd, **kwargs):
     print(cmd)
-    return subprocess.Popen(cmd, shell=True, **kwargs)
+    process = subprocess.Popen(cmd, shell=True, **kwargs)
+    ret = process.poll()
+    if ret is not None:
+        raise Exception(f'popen {cmd} returned {ret}')
+    return process
 
 def start_admin_http_gateway(gateway_port, admin_port, target_dir):
     cmd = ' '.join([
@@ -99,7 +109,7 @@ class FogIngest:
         print(f'Starting fog ingest {self.name}')
         cmd = ' '.join([
             'MC_LOG=trace',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_ingest_server',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
@@ -185,7 +195,7 @@ class FogView:
 
         print(f'Starting fog view {self.name}')
         cmd = ' '.join([
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_view_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
@@ -234,7 +244,7 @@ class FogReport:
 
         print(f'Starting fog report {self.name}')
         cmd = ' '.join([
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/report_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',

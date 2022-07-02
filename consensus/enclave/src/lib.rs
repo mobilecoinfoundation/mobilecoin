@@ -16,6 +16,7 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_attest_verifier::DEBUG_ENCLAVE;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
@@ -24,7 +25,7 @@ use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature, TokenId,
+    TokenId,
 };
 use std::{path, result::Result as StdResult, sync::Arc};
 

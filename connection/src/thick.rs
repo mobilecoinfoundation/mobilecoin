@@ -24,6 +24,7 @@ use mc_attest_ake::{
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
 use mc_attest_core::VerificationReport;
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -37,7 +38,7 @@ use mc_consensus_api::{
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::Tx;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
@@ -45,7 +46,6 @@ use secrecy::{ExposeSecret, SecretVec};
 use sha2::Sha512;
 use std::{
     cmp::Ordering,
-    convert::{From, TryFrom},
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     ops::Range,
@@ -114,7 +114,20 @@ impl AuthenticationError for ThickClientAttestationError {
     }
 }
 
-impl AttestationError for ThickClientAttestationError {}
+impl AttestationError for ThickClientAttestationError {
+    fn should_reattest(&self) -> bool {
+        matches!(self, Self::Grpc(_) | Self::Ake(_) | Self::Cipher(_))
+    }
+
+    fn should_retry(&self) -> bool {
+        match self {
+            Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
+            Self::Ake(AkeError::ReportVerification(_)) => false,
+            Self::Ake(_) => true,
+            Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
+        }
+    }
+}
 
 /// A connection from a client to a consensus enclave.
 pub struct ThickClient<CP: CredentialsProvider> {
@@ -182,7 +195,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         // Make the actual RPC call.
         let result = func(self, self.call_option()?);
         if let Err(err) = &result {
-            self.reset_if_unauthenticated(err);
+            self.handle_rpc_error(err);
         }
 
         // Block on the call, and update cookies before passing on the response.
@@ -205,7 +218,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             })
             .map_err(|err| {
                 let err = ThickClientAttestationError::from(err);
-                self.reset_if_unauthenticated(&err);
+                self.handle_rpc_error(&err);
                 err
             })
     }
@@ -242,11 +255,17 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         Ok(CallOption::default().headers(metadata_builder.build()))
     }
 
-    fn reset_if_unauthenticated(&mut self, err: &impl AuthenticationError) {
+    fn handle_rpc_error(&mut self, err: &(impl AuthenticationError + AttestationError)) {
         // If the call failed due to authentication (credentials) error, reset creds so
         // that it gets re-created on the next call.
         if err.is_unauthenticated() {
             self.credentials_provider.clear();
+        }
+
+        // If the call failed due to attestation error, reset attestation so that we
+        // re-attest on the next call.
+        if err.should_reattest() {
+            self.deattest();
         }
     }
 }
@@ -357,7 +376,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
     }
 
     fn fetch_block_info(&mut self) -> Result<BlockInfo> {
-        trace_time!(self.logger, "ThickClient::fetch_block_height");
+        trace_time!(self.logger, "ThickClient::fetch_block_info");
 
         let block_info = self.authenticated_attested_call(|this, call_option| {
             this.blockchain_api_client

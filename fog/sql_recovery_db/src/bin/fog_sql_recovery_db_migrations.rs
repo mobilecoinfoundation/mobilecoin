@@ -15,9 +15,10 @@ embed_migrations!("migrations/");
 fn main() {
     let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
 
-    let conn = PgConnection::establish(&database_url).expect("Cannot connect to database");
+    let conn = PgConnection::establish(&database_url)
+        .expect("fog-sql-recovery-db-migrations cannot connect to PG database");
 
     embedded_migrations::run(&conn).expect("Failed running migrations");
 
-    println!("Done!");
+    println!("Done migrating Fog recovery DB!");
 }

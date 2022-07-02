@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [dependencies]
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }

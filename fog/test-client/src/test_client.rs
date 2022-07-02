@@ -10,14 +10,13 @@ use crate::{counters, error::TestClientError};
 use hex_fmt::HexList;
 use maplit::hashmap;
 use mc_account_keys::ShortAddressHash;
+use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
-use mc_transaction_core::{
-    constants::RING_SIZE, tokens::Mob, Amount, BlockIndex, BlockVersion, Token,
-};
+use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, Amount, Token};
 use mc_transaction_std::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
@@ -30,7 +29,6 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use std::{
     collections::HashMap,
-    convert::TryFrom,
     ops::Sub,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -460,7 +458,7 @@ impl TestClient {
         client: &mut Client,
         transaction: &Tx,
     ) -> Result<(), TestClientError> {
-        log::info!(self.logger, "Now attempting spent key image test");
+        log::info!(self.logger, "Now attempting double spend test");
         // NOTE: without the wait, the call to send_transaction would succeed.
         //       This test is a little ambiguous because it is testing that
         //       the transaction cannot even be sent, not just that it fails to
@@ -470,12 +468,16 @@ impl TestClient {
             Ok(_) => {
                 log::error!(
                     self.logger,
-                    "Double spend succeeded. Check whether the ledger is up-to-date"
+                    "Double spend transaction went through. This is bad! Check whether the ledger is up-to-date"
                 );
                 Err(TestClientError::DoubleSpend)
             }
             Err(e) => {
-                log::info!(self.logger, "Double spend failed with {:?}", e);
+                log::info!(
+                    self.logger,
+                    "Double spend successfully rejected with {:?}",
+                    e
+                );
                 Ok(())
             }
         }

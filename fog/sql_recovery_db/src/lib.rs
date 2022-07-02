@@ -5,9 +5,10 @@
 
 #[macro_use]
 extern crate diesel;
-
 #[macro_use]
 extern crate diesel_migrations;
+
+pub use error::Error;
 
 pub mod test_utils;
 
@@ -25,6 +26,7 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 use mc_attest_core::VerificationReport;
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -41,15 +43,12 @@ use mc_fog_types::{
     view::{TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
-use mc_transaction_core::Block;
 use mc_util_parse::parse_duration_in_seconds;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
 use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
 use std::{cmp::max, time::Duration};
-
-pub use error::Error;
 
 /// Maximum number of parameters PostgreSQL allows in a single query.
 /// The actual limit is 65535. This value is more conservative, resulting on
@@ -1477,12 +1476,14 @@ fn unpack_retry_error(src: RetryError<Error>) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_common::logger::{log, test_with_logger, Logger};
+    use mc_common::{
+        logger::{log, test_with_logger, Logger},
+        HashSet,
+    };
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashSet, iter::FromIterator};
 
     #[test_with_logger]
     fn test_new_ingest_invocation(logger: Logger) {

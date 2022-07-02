@@ -1,9 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for Stellar Consensus Protocol tests.
-pub use mc_consensus_scp_core::test_utils::*;
 
-use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
+
+pub use mc_consensus_scp_types::test_utils::{
+    fig_2_network, test_node_id, test_node_id_and_signer, three_node_cycle, three_node_dense_graph,
+};
+
+use crate::{slot::Slot, QuorumSet, SlotIndex, Value};
 use mc_common::{logger::Logger, NodeID};
 use std::{fmt, sync::Arc};
 
@@ -30,7 +37,7 @@ pub fn trivial_combine_fn<V: Value>(values: &[V]) -> Result<Vec<V>, TransactionV
 }
 
 /// Returns at most the first `n` values.
-#[allow(unused)]
+
 pub fn get_bounded_combine_fn<V: Value>(
     max_elements: usize,
 ) -> impl Fn(&[V]) -> Result<Vec<V>, TransactionValidationError> {

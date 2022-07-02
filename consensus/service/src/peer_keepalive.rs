@@ -16,7 +16,6 @@ use mc_connection::ConnectionManager;
 use mc_peers::{ConsensusConnection, RetryableConsensusConnection};
 use retry::Error as RetryError;
 use std::{
-    convert::TryInto,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,

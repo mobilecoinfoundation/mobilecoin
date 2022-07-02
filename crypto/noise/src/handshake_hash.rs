@@ -110,8 +110,6 @@ impl<DigestAlgo: Digest> From<HandshakeHash<DigestAlgo>> for Vec<u8> {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
     use super::*;
     use crate::{patterns::HandshakeIX, protocol_name::ProtocolName};
     use aes_gcm::Aes256Gcm;

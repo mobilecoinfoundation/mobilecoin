@@ -17,6 +17,7 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
@@ -27,7 +28,7 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 grpcio = "0.10.2"
 lazy_static = "1.4"

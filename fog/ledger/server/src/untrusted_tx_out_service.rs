@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use core::convert::TryFrom;
-
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;

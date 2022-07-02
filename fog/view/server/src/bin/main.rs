@@ -2,7 +2,6 @@
 #![deny(missing_docs)]
 
 //! MobileCoin Fog View target
-use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
@@ -19,12 +18,18 @@ fn main() {
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     let config = MobileAcctViewConfig::parse();
 
+    let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
     let recovery_db = SqlRecoveryDb::new_from_url(
-        &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        &database_url,
         config.postgres_config.clone(),
         logger.clone(),
     )
-    .expect("Failed connecting to database");
+    .unwrap_or_else(|err| {
+        panic!(
+            "fog-view cannot connect to database '{}': {:?}",
+            database_url, err
+        )
+    });
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         env!("CARGO_PKG_NAME"),
@@ -63,11 +68,8 @@ fn main() {
     );
     server.start();
 
-    let config2 = config.clone();
-    let get_config_json = Arc::new(move || {
-        serde_json::to_string(&config2)
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err)))
-    });
+    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
+    let get_config_json = Arc::new(move || Ok(config_json.clone()));
     let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         AdminServer::start(
             None,
@@ -77,7 +79,7 @@ fn main() {
             Some(get_config_json),
             logger,
         )
-        .expect("Failed starting admin server")
+        .expect("Failed starting fog-view admin server")
     });
 
     loop {
