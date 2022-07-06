@@ -239,7 +239,7 @@ impl MintAuditorDb {
             Counters::inc_num_blocks_synced(conn)?;
 
             let block_audit = BlockAuditData::new(block_index);
-            log::trace!(self.logger, "Storing block audit data: {:?}", block_audit,);
+            log::trace!(self.logger, "Storing block audit data: {:?}", block_audit);
             block_audit.set(conn)?;
 
             BlockBalance::set_balances_for_block(conn, block_index, &balance_map)?;
