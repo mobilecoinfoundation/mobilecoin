@@ -8,7 +8,8 @@ use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
     db::{
-        transaction, AuditedMint, BlockAuditData, BlockBalance, Conn, MintAuditorDb, SyncBlockData,
+        transaction, AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, Conn, MintAuditorDb,
+        SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
     Error, MintAuditorService,
@@ -318,6 +319,7 @@ fn audit_block_data(
     conn: &Conn,
     logger: &Logger,
 ) -> Result<(), Error> {
+    // Audit mints.
     for mint_tx in &sync_block_data.mint_txs {
         match AuditedMint::try_match_mint_with_deposit(mint_tx, config, conn) {
             Ok(deposit) => {
@@ -340,6 +342,31 @@ fn audit_block_data(
                 );
             }
         };
+    }
+
+    // Audit burns.
+    for burn_tx_out in &sync_block_data.burn_tx_outs {
+        match AuditedBurn::attempt_match_burn_with_withdrawal(burn_tx_out, config, conn) {
+            Ok(withdrawal) => {
+                log::info!(
+                    logger,
+                    "BurnTxOut pub_key={} matched Gnosis withdrawal eth_tx_hash={}",
+                    burn_tx_out.public_key_hex(),
+                    withdrawal.eth_tx_hash(),
+                )
+            }
+            Err(Error::NotFound) => {
+                log::debug!(logger, "BurnTxOut with pub_key={} does not currently have matching Gnosis withdrawal, this could be fine if the safe data is not fully synced.", burn_tx_out.public_key_hex());
+            }
+            Err(err) => {
+                log::error!(
+                    logger,
+                    "BurnTxOut pub_key={} failed matching Gnosis withdrawal: {}",
+                    burn_tx_out.public_key_hex(),
+                    err
+                );
+            }
+        }
     }
 
     Ok(())

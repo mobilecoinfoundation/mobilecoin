@@ -15,8 +15,8 @@ pub mod schema;
 pub use self::{
     conn::{Conn, ConnectionOptions},
     models::{
-        AuditedMint, BlockAuditData, BlockBalance, BurnTxOut, Counters, GnosisSafeDeposit,
-        GnosisSafeTx, GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
+        AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, BurnTxOut, Counters,
+        GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
     transaction::{transaction, TransactionRetriableError},
 };

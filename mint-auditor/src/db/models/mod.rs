@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+mod audited_burn;
 mod audited_mint;
 mod block_audit_data;
 mod block_balance;
@@ -14,6 +15,7 @@ mod mint_tx;
 mod sql_types;
 
 pub use self::{
+    audited_burn::AuditedBurn,
     audited_mint::AuditedMint,
     block_audit_data::BlockAuditData,
     block_balance::BlockBalance,

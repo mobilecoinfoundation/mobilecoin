@@ -9,7 +9,10 @@
 
 use crate::{
     counters,
-    db::{AuditedMint, Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb},
+    db::{
+        AuditedBurn, AuditedMint, Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal,
+        MintAuditorDb,
+    },
     error::Error,
     gnosis::{
         api_data_types::{
@@ -212,6 +215,33 @@ impl GnosisSync {
                 );
 
                 withdrawal.insert(conn)?;
+
+                // Attempt to match the withdrawal with an existing BurnTxOut.
+                match AuditedBurn::attempt_match_withdrawal_with_burn(
+                    &withdrawal,
+                    &self.audited_safe,
+                    conn,
+                ) {
+                    Ok(burn_tx_out) => {
+                        log::info!(
+                            self.logger,
+                            "Gnosis deposit eth_tx_hash={} matched BurnTxOut pub_key={}",
+                            withdrawal.eth_tx_hash(),
+                            burn_tx_out.public_key_hex(),
+                        )
+                    }
+                    Err(Error::NotFound) => {
+                        log::debug!(self.logger, "Gnosis withdrawal eth_tx_hash={} does not currently have matching BurnTxOut, this could be fine if the ledger is not fully synced.", withdrawal.eth_tx_hash());
+                    }
+                    Err(err) => {
+                        log::error!(
+                            self.logger,
+                            "Gnosis withdrawal eth_tx_hash={} failed matching to a BurnTxOut: {}",
+                            withdrawal.eth_tx_hash(),
+                            err
+                        );
+                    }
+                };
             }
 
             Err(err) => {

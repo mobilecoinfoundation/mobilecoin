@@ -155,6 +155,22 @@ CREATE TABLE audited_mints (
 CREATE INDEX idx__audited_mints__mint_tx_id ON audited_mints(mint_tx_id);
 CREATE INDEX idx__audited_mints__gnosis_safe_deposit_id ON audited_mints(gnosis_safe_deposit_id);
 
+-- Mapping between BurnTxOuts and GnosisSafeWithdrawals that match eachother.
+-- This essentially is the audit log that shows which burns/withdrawals were a match.
+-- A match means that the TxOut public key matched a Gnosis safe withdrawal, and that the token information
+-- (MC token_id and Ethereum contract address) as well as the amount all matched.
+-- It is possible for a burn to not be referenced by this table if the burn is not actually associated
+-- with a withdrawal. This is possible since anyone can issue burn transactions. However, a Gnosis withdrawal
+-- is expected to be matched with a burn.
+CREATE TABLE audited_burns (
+   id INTEGER PRIMARY KEY,
+    burn_tx_out_id INTEGER NOT NULL,
+    gnosis_safe_withdrawal_id INTEGER NOT NULL,
+    -- Constraints
+    FOREIGN KEY (burn_tx_out_id) REFERENCES burn_tx_outs(id),
+    FOREIGN KEY (gnosis_safe_withdrawal_id) REFERENCES gnosis_safe_withdrawals(id)
+);
+
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
     -- Not nullable because we only have a single row in this table and the code that inserts to it hard-codes the id to 0.

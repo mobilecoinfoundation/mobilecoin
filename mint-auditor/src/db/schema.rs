@@ -3,6 +3,14 @@
 #![allow(missing_docs)]
 
 table! {
+    audited_burns (id) {
+        id -> Nullable<Integer>,
+        burn_tx_out_id -> Integer,
+        gnosis_safe_withdrawal_id -> Integer,
+    }
+}
+
+table! {
     audited_mints (id) {
         id -> Nullable<Integer>,
         mint_tx_id -> Integer,
@@ -117,6 +125,8 @@ table! {
     }
 }
 
+joinable!(audited_burns -> burn_tx_outs (burn_tx_out_id));
+joinable!(audited_burns -> gnosis_safe_withdrawals (gnosis_safe_withdrawal_id));
 joinable!(audited_mints -> gnosis_safe_deposits (gnosis_safe_deposit_id));
 joinable!(audited_mints -> mint_txs (mint_tx_id));
 joinable!(gnosis_safe_deposits -> gnosis_safe_txs (eth_tx_hash));
@@ -125,6 +135,7 @@ joinable!(mint_configs -> mint_config_txs (mint_config_tx_id));
 joinable!(mint_txs -> mint_configs (mint_config_id));
 
 allow_tables_to_appear_in_same_query!(
+    audited_burns,
     audited_mints,
     block_audit_data,
     block_balance,
