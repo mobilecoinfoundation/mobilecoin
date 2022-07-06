@@ -308,7 +308,6 @@ mod tests {
             response,
             GrpcCounters {
                 num_blocks_synced: 3,
-                num_mint_txs_without_matching_mint_config: 0,
                 ..Default::default()
             }
         );
