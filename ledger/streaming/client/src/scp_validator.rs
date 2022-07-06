@@ -199,11 +199,9 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                             // If we've counted a # of nodes above the threshold
                             // check for quorum
                             if nodes_counted >= threshold {
-                                for key in ballot_map.keys() {
-                                    if let Some(votes_for_key) = ballot_map.get(key) {
-                                        if votes_for_key.len() >= threshold as usize {
-                                            return Some(*key);
-                                        }
+                                for (key, votes_for_key) in &ballot_map {
+                                    if votes_for_key.len() >= threshold as usize {
+                                        return Some(*key);
                                     }
                                 }
                             }
@@ -215,11 +213,9 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                             ballot_map.entry(block_id).or_default().push(inner_set);
                             nodes_counted += 1;
                             if nodes_counted >= threshold {
-                                for key in ballot_map.keys() {
-                                    if let Some(votes_for_key) = ballot_map.get(key) {
-                                        if votes_for_key.len() >= threshold as usize {
-                                            return Some(*key);
-                                        }
+                                for (key, votes_for_key) in &ballot_map {
+                                    if votes_for_key.len() >= threshold as usize {
+                                        return Some(*key);
                                     }
                                 }
                             }
