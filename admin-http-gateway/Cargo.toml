@@ -10,7 +10,7 @@ mc-util-grpc = { path = "../util/grpc" }
 mc-util-uri = { path = "../util/uri" }
 
 clap = { version = "3.2", features = ["derive", "env"] }
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"

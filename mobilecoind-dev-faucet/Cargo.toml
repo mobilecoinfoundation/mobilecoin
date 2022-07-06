@@ -29,7 +29,7 @@ mc-util-uri = { path = "../util/uri" }
 async-channel = { version = "1" }
 clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = "0.2"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 rand = "0.8"
 rocket = { version = "0.5.0-rc.2", features = ["json"] }

@@ -13,7 +13,7 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.3"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 protobuf = "2.27.1"
 
 [dev-dependencies]
