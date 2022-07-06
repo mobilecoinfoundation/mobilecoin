@@ -11,11 +11,7 @@ pub mod archive_sink;
 pub mod grpc;
 pub mod proto_writer;
 
-pub use crate::{
-    archive_sink::{ArchiveBlockSink, DEFAULT_MERGED_BLOCKS_BUCKET_SIZES},
-    grpc::GrpcServerSink,
-    proto_writer::ProtoWriter,
-};
+pub use crate::{archive_sink::ArchiveBlockSink, grpc::GrpcServerSink, proto_writer::ProtoWriter};
 
 #[cfg(feature = "s3")]
 pub mod s3;
