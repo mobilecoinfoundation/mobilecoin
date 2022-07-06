@@ -46,8 +46,8 @@ pub struct Counters {
     num_unexpected_errors_matching_mints_to_deposits: i64,
 }
 
-// A helper macro for DRYING up get/inc methods for each counter.
-// Unfortunately we need to pass both the member name (which ends being the
+// A helper macro for DRYing up get/inc methods for each counter.
+// Unfortunately we need to pass both the member name (which is also the
 // getter method name) and the increment method name, since Rust macros do not
 // currently support identifier concatenation.
 macro_rules! impl_get_and_inc {
