@@ -224,73 +224,52 @@ fn start_sink_thread(
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_ledger_streaming_api::test_utils::{make_blocks, MockStream};
 
-    #[test_with_logger]
-    fn test_sink_from_start_block(logger: Logger) {
-        let blocks = make_blocks(420);
-        let upstream = MockStream::from_blocks(blocks);
-        let dest_ledger = get_mock_ledger(0);
+    fn exercise_sink(
+        num_stream_blocks: usize,
+        num_ledger_blocks: usize,
+        starting_height: u64,
+        expected_final_height: u64,
+        logger: Logger,
+    ) {
+        let upstream = MockStream::from_blocks(make_blocks(num_stream_blocks));
+        let dest_ledger = get_mock_ledger(num_ledger_blocks);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
-        let mut go_stream = bs.get_stream(0).unwrap();
+        let mut stream = bs.get_stream(starting_height).unwrap();
 
         futures::executor::block_on(async move {
-            let mut count = 0;
-            while let Some(block_data) = go_stream.next().await {
-                assert_eq!(block_data.unwrap().block().index, count);
-                count += 1;
+            let mut height = starting_height;
+            while let Some(block_data) = stream.next().await {
+                assert_eq!(block_data.unwrap().block().index, height);
+                height += 1;
             }
 
-            assert_eq!(count, 420);
+            assert_eq!(height, expected_final_height);
         });
+    }
+
+    #[test_with_logger]
+    fn test_sink_from_start_block(logger: Logger) {
+        exercise_sink(20, 0, 0, 20, logger)
     }
 
     #[test_with_logger]
     fn test_blocks_lower_than_stored_pass_through(logger: Logger) {
-        let blocks = make_blocks(420);
-        let upstream = MockStream::from_blocks(blocks);
-        let dest_ledger = get_mock_ledger(42);
-        let bs = DbStream::new(upstream, dest_ledger, true, logger);
-        let mut stream = bs.get_stream(20).unwrap();
-
-        futures::executor::block_on(async move {
-            let mut count = 20;
-            while let Some(block_data) = stream.next().await {
-                assert_eq!(block_data.unwrap().block().index, count);
-                count += 1;
-            }
-
-            assert_eq!(count, 420);
-        });
+        exercise_sink(40, 30, 20, 40, logger)
     }
 
     #[test_with_logger]
     fn test_can_start_at_arbitrary_valid_height(logger: Logger) {
-        let blocks = make_blocks(420);
-        let upstream = MockStream::from_blocks(blocks);
-        let dest_ledger = get_mock_ledger(42);
-        let bs = DbStream::new(upstream, dest_ledger, true, logger);
-        let mut stream = bs.get_stream(42).unwrap();
-
-        futures::executor::block_on(async move {
-            let mut count = 42;
-            while let Some(block_data) = stream.next().await {
-                assert_eq!(block_data.unwrap().block().index, count);
-                count += 1;
-            }
-
-            assert_eq!(count, 420);
-        });
+        exercise_sink(40, 20, 20, 40, logger)
     }
 
     #[test_with_logger]
     fn test_stream_creation_fails_if_requesting_blocks_above_ledger_height(logger: Logger) {
-        let blocks = make_blocks(3);
-        let upstream = MockStream::from_blocks(blocks);
+        let upstream = MockStream::from_blocks(make_blocks(3));
         let dest_ledger = get_mock_ledger(1);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let stream = bs.get_stream(2);
