@@ -33,7 +33,7 @@ use url::Url;
 /// LMDB parameter: max file size.
 const MAX_LMDB_FILE_SIZE: usize = 1 << 40; // 1 TB
 /// LMDB parameter: max number of databases.
-const MAX_DATABASES: u32 = 11;
+const MAX_DATABASES: u32 = 10;
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
