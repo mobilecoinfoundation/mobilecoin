@@ -937,7 +937,7 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                let counters = Counters::get(&conn).unwrap();
+                let counters = Counters::get(conn).unwrap();
                 assert_eq!(counters.num_blocks_synced(), block.index + 1);
                 assert_eq!(counters.num_burns_exceeding_balance(), 0);
                 assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
@@ -985,7 +985,7 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                let counters = Counters::get(&conn).unwrap();
+                let counters = Counters::get(conn).unwrap();
                 assert_eq!(counters.num_blocks_synced(), block.index + 1);
                 assert_eq!(counters.num_burns_exceeding_balance(), 0);
                 assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);

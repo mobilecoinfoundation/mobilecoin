@@ -601,7 +601,6 @@ mod tests {
         let token_id1 = config.safes[0].tokens[0].token_id;
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        // TODO create helper method to create sql mint tx from token id and amount
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let mint_tx = create_mint_tx(token_id1, &signers, 100, &mut rng);
         let sql_mint_tx = MintTx::from_core_mint_tx(0, None, &mint_tx).unwrap();

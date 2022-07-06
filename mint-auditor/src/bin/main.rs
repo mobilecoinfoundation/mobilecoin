@@ -319,7 +319,7 @@ fn audit_block_data(
     logger: &Logger,
 ) -> Result<(), Error> {
     for mint_tx in &sync_block_data.mint_txs {
-        match AuditedMint::attempt_match_mint_with_deposit(mint_tx, config, &conn) {
+        match AuditedMint::attempt_match_mint_with_deposit(mint_tx, config, conn) {
             Ok(deposit) => {
                 log::info!(
                     logger,
