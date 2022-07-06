@@ -34,6 +34,9 @@ pub enum Error {
     /// Deposit and mint mismatch: {0}
     DepositAndMintMismatch(String),
 
+    /// Withdrawal and burn mismatch: {0}
+    WithdrawalAndBurnMismatch(String),
+
     /// Ethereum token {0} not audited in safe {1} (tx hash: {2})
     EthereumTokenNotAudited(EthAddr, EthAddr, EthTxHash),
 

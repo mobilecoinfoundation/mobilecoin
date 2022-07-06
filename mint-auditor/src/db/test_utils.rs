@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{Conn, GnosisSafeDeposit, GnosisSafeTx, MintAuditorDb, MintTx},
+    db::{Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb, MintTx},
     gnosis::{
         api_data_types::RawGnosisTransaction, AuditedSafeConfig, AuditedToken, EthAddr, EthTxHash,
         GnosisSafeConfig,
@@ -70,13 +70,22 @@ impl TestDbContext {
     }
 }
 
-/// Insert a mock GnosisSafeTx that has a specific tx hash
+/// Insert a GnosisSafeDeposit into the database.
 pub fn insert_gnosis_deposit(deposit: &mut GnosisSafeDeposit, conn: &Conn) {
     let raw_tx = RawGnosisTransaction::from(json!({
         "txHash": deposit.eth_tx_hash(),
     }));
     GnosisSafeTx::insert(&raw_tx, conn).unwrap();
     deposit.insert(conn).unwrap();
+}
+
+/// Insert a GnosisSafeWithdrawal into the database.
+pub fn insert_gnosis_withdrawal(withdrawal: &mut GnosisSafeWithdrawal, conn: &Conn) {
+    let raw_tx = RawGnosisTransaction::from(json!({
+        "txHash": withdrawal.eth_tx_hash(),
+    }));
+    GnosisSafeTx::insert(&raw_tx, conn).unwrap();
+    withdrawal.insert(conn).unwrap();
 }
 
 /// Create a GnosisSafeDeposit used for testing.
@@ -135,4 +144,23 @@ pub fn create_burn_tx_out(
         .unwrap();
 
     burn_output
+}
+
+/// Create a GnosisSafeWithdrawalused for testing.
+pub fn create_gnosis_safe_withdrawal(
+    amount: u64,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> GnosisSafeWithdrawal {
+    let mut public_key = [0u8; 32];
+    rng.fill_bytes(&mut public_key);
+
+    GnosisSafeWithdrawal::new(
+        None,
+        EthTxHash::from_random(rng),
+        1,
+        EthAddr::from_str(SAFE_ADDR).unwrap(),
+        EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+        amount,
+        hex::encode(&public_key),
+    )
 }

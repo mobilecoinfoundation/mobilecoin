@@ -27,13 +27,12 @@ use diesel::{
     SqliteConnection,
 };
 use diesel_migrations::embed_migrations;
-use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_transaction_core::{tx::TxOut, TokenId};
+use mc_transaction_core::TokenId;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 

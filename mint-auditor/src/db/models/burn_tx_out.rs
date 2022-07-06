@@ -1,9 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Model file for the burn_tx_outs table.
+//! Mo&del file for the burn_tx_outs table.
 
 use crate::{
-    db::{last_insert_rowid, schema::burn_tx_outs, Conn},
+    db::{
+        last_insert_rowid,
+        schema::{audited_burns, burn_tx_outs},
+        Conn,
+    },
     Error,
 };
 use diesel::{
@@ -11,11 +15,10 @@ use diesel::{
     prelude::*,
 };
 use hex::ToHex;
-use mc_account_keys::{burn_address_view_private, PublicAddress};
-use mc_api::printable::PrintableWrapper;
+use mc_account_keys::{burn_address_view_private};
 use mc_blockchain_types::BlockIndex;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::{get_tx_out_shared_secret, tx::TxOut, Amount, TokenId};
+use mc_transaction_core::{get_tx_out_shared_secret, tx::TxOut, TokenId};
 use mc_transaction_std::{BurnRedemptionMemo, MemoType};
 use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
@@ -134,45 +137,53 @@ impl BurnTxOut {
             Err(Error::InvalidMemoType)
         }
     }
-    /*
 
-     /// Attempt to find all [BurnTxOut]s that do not have a matching entry in the
-     /// `audited_mints` table.
-     pub fn find_unaudited_burn_tx_outs(conn: &Conn) -> Result<Vec<Self>, Error> {
-         Ok(burn_tx_outs::table
-             .filter(not(exists(
-                 audited_mints::table
-                     .select(audited_mints::burn_tx_out_id)
-                     .filter(audited_mints::burn_tx_out_id.nullable().eq(burn_tx_outs::id)),
-             )))
-             .load(conn)?)
-     }
+    /// Attempt to find all [BurnTxOut]s that do not have a matching entry in
+    /// the `audited_burn` table.
+    pub fn find_unaudited_burn_tx_outs(conn: &Conn) -> Result<Vec<Self>, Error> {
+        Ok(burn_tx_outs::table
+            .filter(not(exists(
+                audited_burns::table
+                    .select(audited_burns::burn_tx_out_id)
+                    .filter(
+                        audited_burns::burn_tx_out_id
+                            .nullable()
+                            .eq(burn_tx_outs::id),
+                    ),
+            )))
+            .load(conn)?)
+    }
 
-     /// Attempt to find a [BurnTxOut] that has a given nonce and no matching entry
-     /// in the `audited_mints` table.
-     pub fn find_unaudited_burn_tx_out_by_nonce(
-         nonce_hex: &str,
-         conn: &Conn,
-     ) -> Result<Option<Self>, Error> {
-         Ok(burn_tx_outs::table
-             .filter(burn_tx_outs::nonce_hex.eq(nonce_hex))
-             .filter(not(exists(
-                 audited_mints::table
-                     .select(audited_mints::burn_tx_out_id)
-                     .filter(audited_mints::burn_tx_out_id.nullable().eq(burn_tx_outs::id)),
-             )))
-             .first(conn)
-             .optional()?)
-    }*/
+    /// Attempt to find a [BurnTxOut] that has a given public key and no
+    /// matching entry in the `audited_burns` table.
+    pub fn find_unaudited_burn_tx_out_by_public_key(
+        public_key_hex: &str,
+        conn: &Conn,
+    ) -> Result<Option<Self>, Error> {
+        Ok(burn_tx_outs::table
+            .filter(burn_tx_outs::public_key_hex.eq(public_key_hex))
+            .filter(not(exists(
+                audited_burns::table
+                    .select(audited_burns::burn_tx_out_id)
+                    .filter(
+                        audited_burns::burn_tx_out_id
+                            .nullable()
+                            .eq(burn_tx_outs::id),
+                    ),
+            )))
+            .first(conn)
+            .optional()?)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::{
-        models::AuditedMint,
+        models::AuditedBurn,
         test_utils::{
-            create_burn_tx_out, create_gnosis_safe_deposit, insert_gnosis_deposit, TestDbContext,
+            create_burn_tx_out, create_gnosis_safe_withdrawal, insert_gnosis_withdrawal,
+            TestDbContext,
         },
     };
     use mc_common::logger::{test_with_logger, Logger};
@@ -210,127 +221,139 @@ mod tests {
         );
     }
 
-    /*
     #[test_with_logger]
-    fn test_find_unaudited_burn_tx_out_by_nonce(logger: Logger) {
+    fn test_find_unaudited_burn_tx_out_by_public_key(logger: Logger) {
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let token_id1 = TokenId::from(1);
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        // Create gnosis deposits.
-        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
-        let mut deposit2 = create_gnosis_safe_deposit(200, &mut rng);
+        // Create gnosis withdrawals.
+        let mut withdrawal1 = create_gnosis_safe_withdrawal(100, &mut rng);
+        let mut withdrawal2 = create_gnosis_safe_withdrawal(200, &mut rng);
 
         // Create two BurnTxOuts.
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let mut burn_tx_out1 = create_burn_tx_out(token_id1, &signers1, 100, &mut rng);
-        let mut burn_tx_out2 = create_burn_tx_out(token_id1, &signers1, 100, &mut rng);
+        let mut burn_tx_out1 = BurnTxOut::from_core_tx_out(
+            0,
+            &create_burn_tx_out(token_id1, withdrawal1.amount(), &mut rng),
+        )
+        .unwrap();
+        let mut burn_tx_out2 = BurnTxOut::from_core_tx_out(
+            0,
+            &create_burn_tx_out(token_id1, withdrawal2.amount(), &mut rng),
+        )
+        .unwrap();
 
-        burn_tx_out1.prefix.nonce = hex::decode(&deposit1.expected_mc_burn_tx_out_nonce_hex()).unwrap();
-        burn_tx_out2.prefix.nonce = hex::decode(&deposit2.expected_mc_burn_tx_out_nonce_hex()).unwrap();
+        burn_tx_out1.public_key_hex = withdrawal1.mc_tx_out_public_key_hex().to_string();
+        burn_tx_out2.public_key_hex = withdrawal2.mc_tx_out_public_key_hex().to_string();
 
         // Since they haven't been inserted yet, they should not be found.
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out1.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            burn_tx_out1.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
 
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out2.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            burn_tx_out2.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
 
         // Insert the first BurnTxOut, it should now be found.
-        let sql_burn_tx_out1 = BurnTxOut::insert_from_core_burn_tx_out(5, None, &burn_tx_out1, &conn).unwrap();
+        burn_tx_out1.insert(&conn).unwrap();
 
         assert_eq!(
-            BurnTxOut::find_unaudited_burn_tx_out_by_nonce(&hex::encode(&burn_tx_out1.prefix.nonce), &conn)
-                .unwrap()
-                .unwrap(),
-            sql_burn_tx_out1
+            BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            burn_tx_out1
         );
 
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out2.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            &burn_tx_out2.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
 
         // Insert the second BurnTxOut, they should both be found.
-        let sql_burn_tx_out2 = BurnTxOut::insert_from_core_burn_tx_out(5, None, &burn_tx_out2, &conn).unwrap();
+        burn_tx_out2.insert(&conn).unwrap();
 
         assert_eq!(
-            BurnTxOut::find_unaudited_burn_tx_out_by_nonce(&hex::encode(&burn_tx_out1.prefix.nonce), &conn)
-                .unwrap()
-                .unwrap(),
-            sql_burn_tx_out1
+            BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            burn_tx_out1
         );
 
         assert_eq!(
-            BurnTxOut::find_unaudited_burn_tx_out_by_nonce(&hex::encode(&burn_tx_out2.prefix.nonce), &conn)
-                .unwrap()
-                .unwrap(),
-            sql_burn_tx_out2
+            BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            burn_tx_out2
         );
 
-        // Insert a row to the `audited_mints` table marking the first BurnTxOut as
+        // Insert a row to the `audited_burns` table marking the first BurnTxOut as
         // audited. We should no longer be able to find it.
-        insert_gnosis_deposit(&mut deposit1, &conn);
-        let audited_mint = AuditedMint {
-            id: None,
-            burn_tx_out_id: sql_burn_tx_out1.id().unwrap(),
-            gnosis_safe_deposit_id: deposit1.id().unwrap(),
-        };
-        diesel::insert_into(audited_mints::table)
-            .values(audited_mint)
-            .execute(&conn)
-            .unwrap();
+        insert_gnosis_withdrawal(&mut withdrawal1, &conn);
+        AuditedBurn::associate_withdrawal_with_burn(
+            withdrawal1.id().unwrap(),
+            burn_tx_out1.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
 
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out1.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            burn_tx_out1.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
 
         assert_eq!(
-            BurnTxOut::find_unaudited_burn_tx_out_by_nonce(&hex::encode(&burn_tx_out2.prefix.nonce), &conn)
-                .unwrap()
-                .unwrap(),
-            sql_burn_tx_out2
+            BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            burn_tx_out2
         );
 
-        // Mark the second mint as audited. We should no longer be able to find it.
-        insert_gnosis_deposit(&mut deposit2, &conn);
-        let audited_mint = AuditedMint {
-            id: None,
-            burn_tx_out_id: sql_burn_tx_out2.id().unwrap(),
-            gnosis_safe_deposit_id: deposit2.id().unwrap(),
-        };
-        diesel::insert_into(audited_mints::table)
-            .values(audited_mint)
-            .execute(&conn)
-            .unwrap();
+        // Mark the second burn as audited. We should no longer be able to find it.
+        insert_gnosis_withdrawal(&mut withdrawal2, &conn);
+        AuditedBurn::associate_withdrawal_with_burn(
+            withdrawal2.id().unwrap(),
+            burn_tx_out2.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
 
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out1.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            burn_tx_out1.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
 
-        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_nonce(
-            &hex::encode(&burn_tx_out2.prefix.nonce),
+        assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+            burn_tx_out2.public_key_hex(),
             &conn
         )
         .unwrap()
         .is_none());
-    }*/
+    }
 }
