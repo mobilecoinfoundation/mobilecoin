@@ -23,7 +23,7 @@ use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_txs` table.
-/// This stores audit data for a specific block index.
+/// This stores data about a single MintTx.
 #[derive(
     Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
 )]
