@@ -8,8 +8,7 @@ use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
     db::{
-        transaction, AuditedMint, BlockAuditData, BlockBalance, Conn, Counters, MintAuditorDb,
-        SyncBlockData,
+        transaction, AuditedMint, BlockAuditData, BlockBalance, Conn, MintAuditorDb, SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
     Error, MintAuditorService,
@@ -305,7 +304,6 @@ fn sync_loop(
 
                     Ok(())
                 })?;
-                Counters::get(&conn)?.update_prometheus();
             }
         };
     }
@@ -333,17 +331,6 @@ fn audit_block_data(
             Err(Error::NotFound) => {
                 log::debug!(logger, "MintTx with nonce={} does not currently have matching Gnosis deposit, this could be fine if the safe data is not fully synced.", mint_tx.nonce_hex());
             }
-            Err(Error::GnosisSafeNotAudited(_)) => {
-                Counters::inc_num_mints_to_unknown_safe(conn)?;
-            }
-
-            Err(Error::DepositAndMintMismatch(_)) => {
-                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
-            }
-
-            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
-                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
-            }
             Err(err) => {
                 log::error!(
                     logger,
@@ -351,8 +338,6 @@ fn audit_block_data(
                     mint_tx.nonce_hex(),
                     err
                 );
-
-                // TODO update counter
             }
         };
     }

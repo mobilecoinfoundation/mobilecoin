@@ -71,7 +71,11 @@ macro_rules! impl_get_and_inc {
                             "$var_name: unexpected number of rows ({})",
                             num_rows
                         ))),
-                    }
+                    }?;
+
+                    Self::get(&conn)?.update_prometheus();
+
+                    Ok(())
                 }
             )+
         }

@@ -94,6 +94,8 @@ impl AuditedMint {
         // Count certain errors. This needs to happen outside of the transaction because
         // errors result in the transaction getting rolled back.
         match result {
+            Ok(_) => {}
+
             Err(Error::DepositAndMintMismatch(_)) => {
                 Counters::inc_num_mismatching_mints_and_deposits(conn)?;
             }
@@ -102,7 +104,9 @@ impl AuditedMint {
                 Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
             }
 
-            _ => {}
+            Err(_) => {
+                Counters::inc_num_unexpected_errors_matching_deposits_to_mints(conn)?;
+            }
         }
 
         result
@@ -121,7 +125,7 @@ impl AuditedMint {
         // We only operate on objects that were saved to the database.
         let mint_tx_id = mint_tx.id().ok_or(Error::ObjectNotSaved)?;
 
-        transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
+        let result = transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
             // Currently we only support 1:1 mapping between deposits and mints, so ensure
             // that there isn't already a match for this mint.
             let existing_match = audited_mints::table
@@ -163,7 +167,31 @@ impl AuditedMint {
                 .execute(conn)?;
 
             Ok(deposit)
-        })
+        });
+
+        // Count certain errors. This needs to happen outside of the transaction because
+        // errors result in the transaction getting rolled back.
+        match result {
+            Ok(_) => {}
+
+            Err(Error::GnosisSafeNotAudited(_)) => {
+                Counters::inc_num_mints_to_unknown_safe(conn)?;
+            }
+
+            Err(Error::DepositAndMintMismatch(_)) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
+
+            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
+
+            Err(_) => {
+                Counters::inc_num_unexpected_errors_matching_mints_to_deposits(conn)?;
+            }
+        }
+
+        result
     }
 
     /// Verify that the details of a MintTx match the details of a
