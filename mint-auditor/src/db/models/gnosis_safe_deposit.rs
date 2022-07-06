@@ -252,7 +252,7 @@ mod tests {
             deposit2,
         );
 
-        // Insert a row to the `audited_mints` table marking the first desosit as
+        // Insert a row to the `audited_mints` table marking the first deposit as
         // audited. We should no longer be able to find it.
         let audited_mint = AuditedMint {
             id: None,
