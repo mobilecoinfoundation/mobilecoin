@@ -96,7 +96,7 @@ CREATE TABLE burn_tx_outs (
     -- The amount that was burned.
     amount BIGINT NOT NULL,
     -- The tx out public key
-    public_key_hex VARCHAR(64) NOT NULL,
+    public_key_hex VARCHAR(64) NOT NULL UNIQUE,
     -- The protobuf-serialized TxOut.
     protobuf BLOB NOT NULL
 );

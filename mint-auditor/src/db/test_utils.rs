@@ -7,9 +7,13 @@ use crate::{
         GnosisSafeConfig,
     },
 };
+use mc_account_keys::burn_address;
 use mc_common::logger::Logger;
-use mc_transaction_core::TokenId;
-use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
+use mc_transaction_core::{tx::TxOut, Amount, BlockVersion, TokenId};
+use mc_transaction_core_test_utils::{
+    create_mint_config_tx_and_signers, create_mint_tx, MockFogResolver,
+};
+use mc_transaction_std::{BurnRedemptionMemoBuilder, TransactionBuilder};
 use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
 use serde_json::json;
 use std::str::FromStr;
@@ -103,4 +107,32 @@ pub fn insert_mint_tx_from_deposit(
     let mut mint_tx = create_mint_tx(token_id, &signers, deposit.amount(), rng);
     mint_tx.prefix.nonce = hex::decode(&deposit.expected_mc_mint_tx_nonce_hex()).unwrap();
     MintTx::insert_from_core_mint_tx(0, None, &mint_tx, conn).unwrap()
+}
+
+/// Create a burn TxOut.
+pub fn create_burn_tx_out(
+    token_id: TokenId,
+    amount: u64,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> TxOut {
+    let fog_resolver = MockFogResolver::default();
+
+    let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+    memo_builder.enable_destination_memo();
+
+    let mut transaction_builder = TransactionBuilder::new(
+        BlockVersion::MAX,
+        Amount::new(10, token_id),
+        fog_resolver.clone(),
+        memo_builder,
+    )
+    .unwrap();
+
+    transaction_builder.set_fee(3).unwrap();
+
+    let (burn_output, _confirmation) = transaction_builder
+        .add_output(Amount::new(amount, token_id), &burn_address(), rng)
+        .unwrap();
+
+    burn_output
 }

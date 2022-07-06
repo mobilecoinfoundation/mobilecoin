@@ -3,6 +3,7 @@
 mod audited_mint;
 mod block_audit_data;
 mod block_balance;
+mod burn_tx_out;
 mod counters;
 mod gnosis_safe_deposit;
 mod gnosis_safe_tx;
@@ -16,6 +17,7 @@ pub use self::{
     audited_mint::AuditedMint,
     block_audit_data::BlockAuditData,
     block_balance::BlockBalance,
+    burn_tx_out::BurnTxOut,
     counters::Counters,
     gnosis_safe_deposit::GnosisSafeDeposit,
     gnosis_safe_tx::GnosisSafeTx,

@@ -15,8 +15,8 @@ pub mod schema;
 pub use self::{
     conn::{Conn, ConnectionOptions},
     models::{
-        AuditedMint, BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
-        GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
+        AuditedMint, BlockAuditData, BlockBalance, BurnTxOut, Counters, GnosisSafeDeposit,
+        GnosisSafeTx, GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
     transaction::{transaction, TransactionRetriableError},
 };
@@ -58,7 +58,7 @@ pub struct SyncBlockData {
     pub mint_txs: Vec<MintTx>,
 
     /// Burn TxOuts in the block.
-    pub burn_tx_outs: Vec<TxOut>,
+    pub burn_tx_outs: Vec<BurnTxOut>,
 }
 
 /// Mint Auditor Database.
@@ -196,44 +196,45 @@ impl MintAuditorDb {
                 )?);
             }
 
-            // Count burns.
+            // Process burns.
             log::trace!(self.logger, "Processing burns");
-            let (burn_tx_outs, burn_amounts): (Vec<_>, Vec<_>) = block_contents
+
+            let mut burn_tx_outs: Vec<_> = block_contents
                 .outputs
                 .par_iter()
-                .filter_map(|tx_out| {
-                    tx_out
-                        .view_key_match(&burn_address_view_private())
-                        .ok()
-                        .map(|(amount, _shared_secret)| (tx_out.clone(), amount))
-                })
-                .unzip();
+                .filter_map(|tx_out| BurnTxOut::from_core_tx_out(block_index, tx_out).ok())
+                .collect();
 
-            for amount in burn_amounts {
-                let burn_balance = balance_map.entry(amount.token_id).or_default();
+            for burn_tx_out in burn_tx_outs.iter_mut() {
+                // Balance accounting.
+                let (amount, token_id) = (burn_tx_out.amount(), burn_tx_out.token_id());
+                let burn_balance = balance_map.entry(token_id).or_default();
 
-                if amount.value > *burn_balance {
+                if amount > *burn_balance {
                     log::crit!(
                         self.logger,
                         "Block {}: Burned {} of token id {} but only had {}. Setting balance to 0",
                         block_index,
-                        amount.value,
-                        amount.token_id,
+                        amount,
+                        token_id,
                         burn_balance
                     );
                     *burn_balance = 0;
                     Counters::inc_num_burns_exceeding_balance(conn)?;
                 } else {
-                    *burn_balance -= amount.value;
+                    *burn_balance -= amount;
                     log::info!(
                         self.logger,
                         "Block {}: Burned {} of token id {}, balance is now {}",
                         block_index,
-                        amount.value,
-                        amount.token_id,
+                        amount,
+                        token_id,
                         burn_balance,
                     );
                 }
+
+                // Store the BurnTxOut.
+                burn_tx_out.insert(conn)?;
             }
 
             Counters::inc_num_blocks_synced(conn)?;
