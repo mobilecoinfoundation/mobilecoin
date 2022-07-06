@@ -86,6 +86,22 @@ CREATE TABLE mint_txs (
 CREATE INDEX idx_mint_txs__block_index ON mint_txs(block_index);
 CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
 
+-- Burn TxOuts
+CREATE TABLE burn_tx_outs (
+    id INTEGER PRIMARY KEY,
+    -- The block index at which this TxOut appeared.
+    block_index BIGINT NOT NULL,
+     -- The token id this tx out is for.
+    token_id BIGINT NOT NULL,
+    -- The amount that was burned.
+    amount BIGINT NOT NULL,
+    -- The tx out public key
+    public_key_hex VARCHAR(64) NOT NULL,
+    -- The protobuf-serialized TxOut.
+    protobuf BLOB NOT NULL
+);
+CREATE INDEX idx__burn_tx_outs__public_key_hex ON burn_tx_outs(public_key_hex);
+
 -- Processed gnosis safe transactions
 CREATE TABLE gnosis_safe_txs (
     eth_tx_hash VARCHAR(66) NOT NULL UNIQUE PRIMARY KEY,

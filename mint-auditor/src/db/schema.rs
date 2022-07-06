@@ -27,6 +27,17 @@ table! {
 }
 
 table! {
+    burn_tx_outs (id) {
+        id -> Nullable<Integer>,
+        block_index -> BigInt,
+        token_id -> BigInt,
+        amount -> BigInt,
+        public_key_hex -> Text,
+        protobuf -> Binary,
+    }
+}
+
+table! {
     counters (id) {
         id -> Integer,
         num_blocks_synced -> BigInt,
@@ -117,6 +128,7 @@ allow_tables_to_appear_in_same_query!(
     audited_mints,
     block_audit_data,
     block_balance,
+    burn_tx_outs,
     counters,
     gnosis_safe_deposits,
     gnosis_safe_txs,
