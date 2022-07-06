@@ -486,8 +486,8 @@ mod test {
 
         // Initially, none are audited.
         assert_eq!(
-            HashSet::<MintTx>::from_iter(vec![mint_tx1, mint_tx2, mint_tx3.clone()]),
-            HashSet::from_iter(MintTx::find_unaudited_mint_txs(&conn).unwrap())
+            HashSet::from_iter(MintTx::find_unaudited_mint_txs(&conn).unwrap()),
+            [mint_tx1, mint_tx2, mint_tx3.clone()].into(),
         );
 
         // Perform a gnosis sync.
