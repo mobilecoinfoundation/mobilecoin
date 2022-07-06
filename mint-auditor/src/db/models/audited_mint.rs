@@ -245,7 +245,8 @@ impl AuditedMint {
         Ok(())
     }
 
-    fn associate_deposit_with_mint(
+    // This is pub(crate) since its used in tests.
+    pub(crate) fn associate_deposit_with_mint(
         gnosis_safe_deposit_id: i32,
         mint_tx_id: i32,
         conn: &Conn,

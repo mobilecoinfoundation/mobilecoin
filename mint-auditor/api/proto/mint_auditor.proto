@@ -62,19 +62,19 @@ message GnosisSafeWithdrawal {
     string eth_tx_hash = 2;
 
     /// Ethereum block number.
-    uint64 eth_block_number = 4;
+    uint64 eth_block_number = 3;
 
     /// Safe address
-    string safe_addr = 5;
+    string safe_addr = 4;
 
     /// Token address.
-    string token_addr = 6;
+    string token_addr = 5;
 
     /// The amount being transferred.
-    uint64 amount = 7;
+    uint64 amount = 6;
 
     /// Associated MobileCoin TxOut public key.
-    external.CompressedRistretto mc_tx_out_pub_key = 8;
+    external.CompressedRistretto mc_tx_out_pub_key = 7;
 }
 
 /// Audit data for a single mint transaction.
