@@ -5060,6 +5060,7 @@ dependencies = [
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-scp",
+ "mc-consensus-scp-types",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-ledger-db",
