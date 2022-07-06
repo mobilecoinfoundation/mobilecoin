@@ -76,17 +76,13 @@ impl AuditedMint {
             Self::verify_mint_tx_matches_deposit(&mint_tx, deposit, config)?;
 
             // Associate the deposit with the mint.
-            // TODO break into helper method and use in tests.
-            let audited_mint = Self {
-                id: None,
-                mint_tx_id: mint_tx
+            Self::associate_deposit_with_mint(
+                deposit_id,
+                mint_tx
                     .id()
                     .expect("got a MintTx without id but database auto-populates that field"),
-                gnosis_safe_deposit_id: deposit_id,
-            };
-            diesel::insert_into(audited_mints::table)
-                .values(&audited_mint)
-                .execute(conn)?;
+                conn,
+            )?;
 
             Ok(mint_tx)
         });
@@ -154,17 +150,13 @@ impl AuditedMint {
             Self::verify_mint_tx_matches_deposit(mint_tx, &deposit, &audited_safe_config)?;
 
             // Associate the mint with the deposit.
-            // TODO break into helper method and use in tests.
-            let audited_mint = Self {
-                id: None,
-                mint_tx_id,
-                gnosis_safe_deposit_id: deposit.id().expect(
+            Self::associate_deposit_with_mint(
+                deposit.id().expect(
                     "got a GnosisSafeDeposit without id but database auto-populates that field",
                 ),
-            };
-            diesel::insert_into(audited_mints::table)
-                .values(&audited_mint)
-                .execute(conn)?;
+                mint_tx_id,
+                conn,
+            )?;
 
             Ok(deposit)
         });
@@ -249,6 +241,23 @@ impl AuditedMint {
                 deposit.expected_mc_mint_tx_nonce_hex(),
             )));
         }
+
+        Ok(())
+    }
+
+    fn associate_deposit_with_mint(
+        gnosis_safe_deposit_id: i32,
+        mint_tx_id: i32,
+        conn: &Conn,
+    ) -> Result<(), Error> {
+        let audited_mint = Self {
+            id: None,
+            mint_tx_id,
+            gnosis_safe_deposit_id,
+        };
+        let _ = diesel::insert_into(audited_mints::table)
+            .values(&audited_mint)
+            .execute(conn)?;
 
         Ok(())
     }
