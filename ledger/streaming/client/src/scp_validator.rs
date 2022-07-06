@@ -125,10 +125,11 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     pub fn attempt_externalize_block(&mut self) -> Option<BlockData> {
         // Set our target index one block above the highest block externalized
         // unless we're recording the genesis block
-        let mut index = self.highest_slot_index + 1;
-        if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
-            index = 0;
-        }
+        let index = if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
+            0
+        } else {
+            self.highest_slot_index + 1
+        };
 
         // If blocks received so far are less than a possible quorum, don't proceed
         if let Some(ballots) = self.slots_to_externalized_blocks.get(&index) {
