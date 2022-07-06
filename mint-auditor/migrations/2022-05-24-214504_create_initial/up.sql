@@ -123,7 +123,7 @@ CREATE TABLE gnosis_safe_withdrawals (
 CREATE INDEX idx__gnosis_safe_withdrawals__eth_block_number ON gnosis_safe_withdrawals(eth_block_number);
 CREATE INDEX idx__gnosis_safe_withdrawals__mc_tx_out_public_key_hex ON gnosis_safe_withdrawals(mc_tx_out_public_key_hex);
 
--- Mapping between MintTxs and GnosisSafeDeposits that match eachother.
+-- Mapping between MintTxs and GnosisSafeDeposits that match each other.
 -- This essentially is the audit log that shows which mints/deposits were a match.
 -- A match means that the nonce, token information (MC token_id and Ethereum contract address) and the amount all matched.
 -- If a mint or deposit are not referenced by this table that means something questionable happened.
