@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [Fetcher] that downloads [ArchiveBlocks] from the given URI.
+//! A [Fetcher] that downloads [ArchiveBlock]s from HTTP URLs with a configured
+//! base URL.
 
 use crate::BlockchainUrl;
 use displaydoc::Display;
@@ -36,7 +37,10 @@ pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
 
-/// A [Fetcher] that downloads [BlockData] from the given URI.
+/**
+ * A [Fetcher] that downloads [ArchiveBlock]s from HTTP URLs with a
+ * configured base URL.
+ */
 #[derive(Debug, Display)]
 pub struct HttpBlockFetcher {
     /// The blockchain URL.
