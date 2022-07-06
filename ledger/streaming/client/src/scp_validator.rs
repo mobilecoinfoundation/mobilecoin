@@ -187,13 +187,13 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                 // Go through our slice and determine what nodes sent blocks AND
                 // what block they externalized
                 match member {
-                    Some(QuorumSetMember::Node(node_id)) => {
+                    Some(node @ QuorumSetMember::Node(node_id)) => {
                         if let Some(block_data) = tracked_blocks.get(node_id) {
                             // Record a vote for the block externalized
                             ballot_map
                                 .entry(&block_data.block().id)
                                 .or_default()
-                                .push(member.unwrap());
+                                .push(node);
                             nodes_counted += 1;
 
                             // If we've counted a # of nodes above the threshold
@@ -209,13 +209,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                             }
                         }
                     }
-                    Some(QuorumSetMember::InnerSet(qs)) => {
+                    Some(inner_set @ QuorumSetMember::InnerSet(qs)) => {
                         // If internal slice reached quorum, record the block voted for
                         if let Some(block_id) = self.find_quorum(qs, index) {
-                            ballot_map
-                                .entry(block_id)
-                                .or_default()
-                                .push(member.unwrap());
+                            ballot_map.entry(block_id).or_default().push(inner_set);
                             nodes_counted += 1;
                             if nodes_counted >= threshold {
                                 for key in ballot_map.keys() {
