@@ -303,7 +303,8 @@ mod tests {
 
         let response = client.get_counters(&Empty::default()).unwrap();
 
-        // This depends on what database [get_test_db] generates.
+        // The number of blocks synced depends on the database that [get_test_db]
+        // generates.
         assert_eq!(
             response,
             GrpcCounters {
