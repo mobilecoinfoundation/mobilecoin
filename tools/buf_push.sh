@@ -19,7 +19,8 @@ DIRS=(
 
 for dir in ${DIRS[@]}
 do
-    pushd $dir
+    echo "Pushing $dir..."
+    pushd $dir > /dev/null
     buf mod update && buf build && buf push
     popd > /dev/null
 done
