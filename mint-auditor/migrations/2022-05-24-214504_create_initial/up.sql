@@ -189,6 +189,9 @@ CREATE TABLE counters (
     -- Number of mismatched mints and Gnosis deposits.
     num_mismatching_mints_and_deposits BIGINT NOT NULL,
 
+    -- Number of mismatched burns and Gnosis withdrawals.
+    num_mismatching_burns_and_withdrawals BIGINT NOT NULL,
+
     -- Number of times we encountered deposits to an unaudited Ethereum token contract address.
     num_unknown_ethereum_token_deposits BIGINT NOT NULL,
 
@@ -199,6 +202,12 @@ CREATE TABLE counters (
     num_unexpected_errors_matching_deposits_to_mints BIGINT NOT NULL,
 
     -- Number of unexpected errors attempting to match mints to deposits.
-    num_unexpected_errors_matching_mints_to_deposits BIGINT NOT NULL
+    num_unexpected_errors_matching_mints_to_deposits BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match withdrawals to burns.
+    num_unexpected_errors_matching_withdrawals_to_burns BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match burns to withdrawals.
+    num_unexpected_errors_matching_burns_to_withdrawals BIGINT NOT NULL
 );
 

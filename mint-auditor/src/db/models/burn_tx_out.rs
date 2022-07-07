@@ -15,7 +15,7 @@ use diesel::{
     prelude::*,
 };
 use hex::ToHex;
-use mc_account_keys::{burn_address_view_private};
+use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::BlockIndex;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::{get_tx_out_shared_secret, tx::TxOut, TokenId};
@@ -182,7 +182,8 @@ mod tests {
     use crate::db::{
         models::AuditedBurn,
         test_utils::{
-            create_burn_tx_out, create_gnosis_safe_withdrawal, insert_gnosis_withdrawal,
+            create_and_insert_burn_tx_out, create_burn_tx_out, create_gnosis_safe_withdrawal,
+            create_gnosis_safe_withdrawal_from_burn_tx_out, insert_gnosis_withdrawal,
             TestDbContext,
         },
     };
@@ -198,13 +199,13 @@ mod tests {
 
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        let burn_tx_out1 = create_burn_tx_out(token_id1, 100, &mut rng);
+        let mut burn_tx_out = create_burn_tx_out(token_id1, 100, &mut rng);
 
         // Store a BurnTxOut for the first time.
-        BurnTxOut::insert_from_core_tx_out(5, &burn_tx_out1, &conn).unwrap();
+        burn_tx_out.insert(&conn).unwrap();
 
         // Trying again should fail.
-        assert!(BurnTxOut::insert_from_core_tx_out(5, &burn_tx_out1, &conn).is_err());
+        assert!(burn_tx_out.insert(&conn).is_err());
     }
 
     #[test]
@@ -212,8 +213,7 @@ mod tests {
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
 
-        let burn_tx_out = create_burn_tx_out(token_id1, 100, &mut rng);
-        let sql_burn_tx_out = BurnTxOut::from_core_tx_out(0, &burn_tx_out).unwrap();
+        let sql_burn_tx_out = create_burn_tx_out(token_id1, 100, &mut rng);
 
         assert_eq!(
             sql_burn_tx_out.burn_redemption_memo().unwrap(),
@@ -229,24 +229,15 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let conn = mint_auditor_db.get_conn().unwrap();
 
-        // Create gnosis withdrawals.
-        let mut withdrawal1 = create_gnosis_safe_withdrawal(100, &mut rng);
-        let mut withdrawal2 = create_gnosis_safe_withdrawal(200, &mut rng);
-
         // Create two BurnTxOuts.
-        let mut burn_tx_out1 = BurnTxOut::from_core_tx_out(
-            0,
-            &create_burn_tx_out(token_id1, withdrawal1.amount(), &mut rng),
-        )
-        .unwrap();
-        let mut burn_tx_out2 = BurnTxOut::from_core_tx_out(
-            0,
-            &create_burn_tx_out(token_id1, withdrawal2.amount(), &mut rng),
-        )
-        .unwrap();
+        let mut burn_tx_out1 = create_burn_tx_out(token_id1, 100, &mut rng);
+        let mut burn_tx_out2 = create_burn_tx_out(token_id1, 200, &mut rng);
 
-        burn_tx_out1.public_key_hex = withdrawal1.mc_tx_out_public_key_hex().to_string();
-        burn_tx_out2.public_key_hex = withdrawal2.mc_tx_out_public_key_hex().to_string();
+        // Create matching gnosis withdrawals.
+        let mut withdrawal1 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out1, &mut rng);
+        let mut withdrawal2 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out2, &mut rng);
 
         // Since they haven't been inserted yet, they should not be found.
         assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(

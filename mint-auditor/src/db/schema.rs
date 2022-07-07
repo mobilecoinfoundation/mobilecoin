@@ -52,10 +52,13 @@ table! {
         num_burns_exceeding_balance -> BigInt,
         num_mint_txs_without_matching_mint_config -> BigInt,
         num_mismatching_mints_and_deposits -> BigInt,
+        num_mismatching_burns_and_withdrawals -> BigInt,
         num_unknown_ethereum_token_deposits -> BigInt,
         num_mints_to_unknown_safe -> BigInt,
         num_unexpected_errors_matching_deposits_to_mints -> BigInt,
         num_unexpected_errors_matching_mints_to_deposits -> BigInt,
+        num_unexpected_errors_matching_withdrawals_to_burns -> BigInt,
+        num_unexpected_errors_matching_burns_to_withdrawals -> BigInt,
     }
 }
 

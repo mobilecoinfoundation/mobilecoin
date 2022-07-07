@@ -91,7 +91,23 @@ impl AuditedBurn {
             Ok(burn_tx_out)
         });
 
-        // TODO counters
+        // Count certain errors. This needs to happen outside of the transaction because
+        // errors result in the transaction getting rolled back.
+        match result {
+            Ok(_) => {}
+
+            Err(Error::WithdrawalAndBurnMismatch(_)) => {
+                Counters::inc_num_mismatching_burns_and_withdrawals(conn)?;
+            }
+
+            Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
+
+            Err(_) => {
+                Counters::inc_num_unexpected_errors_matching_burns_to_withdrawals(conn)?;
+            }
+        }
 
         result
     }
@@ -185,4 +201,443 @@ impl AuditedBurn {
 
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        db::test_utils::{
+            create_and_insert_burn_tx_out, create_burn_tx_out, create_gnosis_safe_withdrawal,
+            create_gnosis_safe_withdrawal_from_burn_tx_out, insert_gnosis_withdrawal,
+            test_gnosis_config, TestDbContext, ETH_TOKEN_CONTRACT_ADDR, SAFE_ADDR,
+        },
+        gnosis::{EthAddr, EthTxHash},
+    };
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core::TokenId;
+    use mc_util_from_random::FromRandom;
+    use std::str::FromStr;
+
+    fn assert_audited_burns_table_is_empty(conn: &Conn) {
+        let num_rows: i64 = audited_burns::table
+            .select(diesel::dsl::count(audited_burns::id))
+            .first(conn)
+            .unwrap();
+        assert_eq!(num_rows, 0);
+    }
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_happy_flow(logger: Logger) {
+        let config = &test_gnosis_config().safes[0];
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+        let token_id = config.tokens[0].token_id;
+
+        // Create burn tx outs.
+        let mut burn_tx_out1 = create_burn_tx_out(token_id, 100, &mut rng);
+        let mut burn_tx_out2 = create_burn_tx_out(token_id, 200, &mut rng);
+
+        // Create gnosis withdrawals.
+        let mut withdrawal1 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out1, &mut rng);
+        let mut withdrawal2 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out2, &mut rng);
+
+        insert_gnosis_withdrawal(&mut withdrawal1, &conn);
+        insert_gnosis_withdrawal(&mut withdrawal2, &conn);
+
+        // Initially the database is empty.
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Insert the first BurnTx to the database, we should get a match now.
+        burn_tx_out1.insert(&conn).unwrap();
+        assert_eq!(
+            burn_tx_out1,
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn).unwrap()
+        );
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn),
+            Err(Error::NotFound)
+        ));
+
+        // Insert the second BurnTx to the database, we should get a match on both.
+        burn_tx_out2.insert(&conn).unwrap();
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+        assert_eq!(
+            burn_tx_out2,
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn).unwrap()
+        );
+
+        // Trying again should return AlreadyExists
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+
+        // No mismatching pairs were found.
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            0
+        );
+    }
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_amount_mismatch(logger: Logger) {
+        let config = &test_gnosis_config().safes[0];
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id = config.tokens[0].token_id;
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        // Create burn tx out.
+        let burn_tx_out = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+
+        // Create gnosis withdrawal and make the amount msimatch.
+        let mut withdrawal = GnosisSafeWithdrawal::new(
+            None,
+            EthTxHash::from_random(&mut rng),
+            1,
+            EthAddr::from_str(SAFE_ADDR).unwrap(),
+            EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+            burn_tx_out.amount() + 1,
+            burn_tx_out.public_key_hex().to_string(),
+        );
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+
+        // Insert the BurnTx to the database, and check that the mismatch is
+        // detected.
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, config, &conn),
+            Err(Error::WithdrawalAndBurnMismatch(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            1
+        );
+    }
+
+    /*
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_unsaved_object(logger: Logger) {
+        let config = &test_gnosis_config().safes[0];
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, config, &conn),
+            Err(Error::ObjectNotSaved)
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_mismatched_safe_addr(logger: Logger) {
+        let mut config = test_gnosis_config().safes[0].clone();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.safe_addr = EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            Err(Error::Other(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_mismatched_token_id(logger: Logger) {
+        let mut config = test_gnosis_config().safes[0].clone();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.tokens[0].token_id = TokenId::from(123);
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            Err(Error::WithdrawalAndBurnMismatch(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            1
+        );
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_withdrawal_with_burn_mismatched_token_addr(logger: Logger) {
+        let mut config = test_gnosis_config().safes[0].clone();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.tokens[0].eth_token_contract_addr =
+            EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            Err(Error::EthereumTokenNotAudited(_, _, _))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_happy_flow(logger: Logger) {
+        let config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        // Create gnosis withdrawals (that are not yet in the database).
+        let mut withdrawal1 = create_gnosis_safe_withdrawal(100, &mut rng);
+        let mut withdrawal2 = create_gnosis_safe_withdrawal(200, &mut rng);
+
+        // Create BurnTxs.
+        let sql_burn_tx_out1 = insert_burn_tx_out_from_withdrawal(&withdrawal1, &conn, &mut rng);
+        let sql_burn_tx_out2 = insert_burn_tx_out_from_withdrawal(&withdrawal2, &conn, &mut rng);
+
+        // Initially the database is empty.
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out1, &config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out2, &config, &conn),
+            Err(Error::NotFound)
+        ));
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Insert the first withdrawal to the database, we should get a match now.
+        insert_gnosis_withdrawal(&mut withdrawal1, &conn);
+
+        assert_eq!(
+            withdrawal1,
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out1, &config, &conn).unwrap()
+        );
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out2, &config, &conn),
+            Err(Error::NotFound)
+        ));
+
+        // Insert the second withdrawal to the database, we should get a match on both.
+        insert_gnosis_withdrawal(&mut withdrawal2, &conn);
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out1, &config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+        assert_eq!(
+            withdrawal2,
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out2, &config, &conn).unwrap()
+        );
+
+        // Trying again should return AlreadyExists
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out2, &config, &conn),
+            Err(Error::AlreadyExists(_))
+        ));
+
+        // No mismatching pairs were found.
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            0
+        );
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_amount_mismatch(logger: Logger) {
+        let config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = config.safes[0].tokens[0].token_id;
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        // Create gnosis withdrawal.
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+
+        // Create  BurnTxs with a mismatching amount.
+        let (_burn_config_tx, signers) = create_burn_config_tx_and_signers(token_id1, &mut rng);
+        let mut burn_tx_out = create_burn_tx_out(token_id1, &signers, withdrawal.amount() + 1, &mut rng);
+
+        burn_tx_out.prefix.nonce = hex::decode(&withdrawal.expected_mc_burn_tx_out_nonce_hex()).unwrap();
+
+        let sql_burn_tx_out = BurnTx::insert_from_core_burn_tx_out(0, None, &burn_tx_out, &conn).unwrap();
+
+        // Check that the mismatch is detected.
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out, &config, &conn),
+            Err(Error::WithdrawalAndBurnMismatch(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            1
+        );
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_unsaved_object(logger: Logger) {
+        let config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = config.safes[0].tokens[0].token_id;
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let (_burn_config_tx, signers) = create_burn_config_tx_and_signers(token_id1, &mut rng);
+        let burn_tx_out = create_burn_tx_out(token_id1, &signers, 100, &mut rng);
+        let sql_burn_tx_out = BurnTx::from_core_burn_tx_out(0, None, &burn_tx_out).unwrap();
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out, &config, &conn),
+            Err(Error::ObjectNotSaved)
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_mismatched_safe_addr(logger: Logger) {
+        let mut config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+
+        let burn_tx_out = insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.safes[0].safe_addr =
+            EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            Err(Error::GnosisSafeNotAudited(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_mismatched_token_id(logger: Logger) {
+        let mut config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+        let sql_burn_tx_out = insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.safes[0].tokens[0].token_id = TokenId::from(123);
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out, &config, &conn),
+            Err(Error::WithdrawalAndBurnMismatch(_))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+
+        // Mismatch counter was incremented
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_mismatching_burns_and_withdrawals(),
+            1
+        );
+    }
+
+    #[test_with_logger]
+    fn test_attempt_match_burn_with_withdrawal_mismatched_token_addr(logger: Logger) {
+        let mut config = test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+
+        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        insert_gnosis_withdrawal(&mut withdrawal, &conn);
+        let sql_burn_tx_out = insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
+        config.safes[0].tokens[0].eth_token_contract_addr =
+            EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
+
+        assert!(matches!(
+            AuditedBurn::attempt_match_burn_with_withdrawal(&sql_burn_tx_out, &config, &conn),
+            Err(Error::EthereumTokenNotAudited(_, _, _))
+        ));
+
+        // Check that nothing was written to the `audited_burns` table
+        assert_audited_burns_table_is_empty(&conn);
+    }*/
 }

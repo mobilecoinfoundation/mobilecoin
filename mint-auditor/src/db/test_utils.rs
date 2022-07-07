@@ -1,7 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb, MintTx},
+    db::{
+        BurnTxOut, Conn, GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintAuditorDb,
+        MintTx,
+    },
     gnosis::{
         api_data_types::RawGnosisTransaction, AuditedSafeConfig, AuditedToken, EthAddr, EthTxHash,
         GnosisSafeConfig,
@@ -9,7 +12,7 @@ use crate::{
 };
 use mc_account_keys::burn_address;
 use mc_common::logger::Logger;
-use mc_transaction_core::{tx::TxOut, Amount, BlockVersion, TokenId};
+use mc_transaction_core::{Amount, BlockVersion, TokenId};
 use mc_transaction_core_test_utils::{
     create_mint_config_tx_and_signers, create_mint_tx, MockFogResolver,
 };
@@ -118,12 +121,12 @@ pub fn insert_mint_tx_from_deposit(
     MintTx::insert_from_core_mint_tx(0, None, &mint_tx, conn).unwrap()
 }
 
-/// Create a burn TxOut.
+/// Create a [BurnTxOut].
 pub fn create_burn_tx_out(
     token_id: TokenId,
     amount: u64,
     rng: &mut (impl CryptoRng + RngCore),
-) -> TxOut {
+) -> BurnTxOut {
     let fog_resolver = MockFogResolver::default();
 
     let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
@@ -143,10 +146,22 @@ pub fn create_burn_tx_out(
         .add_output(Amount::new(amount, token_id), &burn_address(), rng)
         .unwrap();
 
-    burn_output
+    BurnTxOut::from_core_tx_out(0, &burn_output).unwrap()
 }
 
-/// Create a GnosisSafeWithdrawalused for testing.
+/// Create and insert a [BurnTxOut].
+pub fn create_and_insert_burn_tx_out(
+    token_id: TokenId,
+    amount: u64,
+    conn: &Conn,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> BurnTxOut {
+    let mut burn_tx_out = create_burn_tx_out(token_id, amount, rng);
+    burn_tx_out.insert(conn).unwrap();
+    burn_tx_out
+}
+
+/// Create a [GnosisSafeWithdrawal] used for testing.
 pub fn create_gnosis_safe_withdrawal(
     amount: u64,
     rng: &mut (impl CryptoRng + RngCore),
@@ -162,5 +177,21 @@ pub fn create_gnosis_safe_withdrawal(
         EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
         amount,
         hex::encode(&public_key),
+    )
+}
+
+/// Create a [GnosisSafeWithdrawal] that matches an existing [BurnTxOut].
+pub fn create_gnosis_safe_withdrawal_from_burn_tx_out(
+    burn_tx_out: &BurnTxOut,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> GnosisSafeWithdrawal {
+    GnosisSafeWithdrawal::new(
+        None,
+        EthTxHash::from_random(rng),
+        1,
+        EthAddr::from_str(SAFE_ADDR).unwrap(),
+        EthAddr::from_str(ETH_TOKEN_CONTRACT_ADDR).unwrap(),
+        burn_tx_out.amount(),
+        burn_tx_out.public_key_hex().to_string(),
     )
 }

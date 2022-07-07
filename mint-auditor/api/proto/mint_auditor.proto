@@ -109,18 +109,27 @@ message Counters {
     // Number of mismatching MintTxs and Gnosis deposits.
     uint64 num_mismatching_mints_and_deposits = 4;
 
+    // Number of mismatching BurnTxOuts and Gnosis withdrawals.
+    uint64 num_mismatching_burns_and_withdrawals = 5;
+
     // Number of times we encountered deposits to an unknown Ethereum token
     // contract address.
-    uint64 num_unknown_ethereum_token_deposits = 5;
+    uint64 num_unknown_ethereum_token_deposits = 6;
 
     // Number of times we encountered a mint that is associated with an unaudited safe.
-    uint64 num_mints_to_unknown_safe = 6;
+    uint64 num_mints_to_unknown_safe = 7;
 
     // Number of unexpected errors attempting to match deposits to mints.
-    uint64 num_unexpected_errors_matching_deposits_to_mints = 7;
+    uint64 num_unexpected_errors_matching_deposits_to_mints = 8;
 
     // Number of unexpected errors attempting to match mints to deposits.
-    uint64 num_unexpected_errors_matching_mints_to_deposits = 8;
+    uint64 num_unexpected_errors_matching_mints_to_deposits = 9;
+
+    // Number of unexpected errors attempting to match withdrawals to burns.
+    uint64 num_unexpected_errors_matching_withdrawals_to_burns = 10;
+
+    // Number of unexpected errors attempting to match burns to withdrawals.
+    uint64 num_unexpected_errors_matching_burns_to_withdrawals = 11;
 }
 
 message GetBlockAuditDataRequest {
