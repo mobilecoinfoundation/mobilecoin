@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Configuration for the key range validator.
+//! Configuration for the messaging signing key verifier.
 
 use crate::ParseError;
 use hex::ToHex;
@@ -16,17 +16,17 @@ use std::{
 };
 
 /// Container for keys with a range of block indexes that are valid per key.
-pub type KeyValidityMap = HashMap<Ed25519Public, Vec<RangeInclusive<BlockIndex>>>;
+pub type MessageSigningKeyValidityMap = HashMap<Ed25519Public, Vec<RangeInclusive<BlockIndex>>>;
 
 const PUBLIC_KEY_TAG: &str = "PUBLIC KEY";
 
-/// Container for key validity configs.
+/// Container for configs for the message signing key verifier.
 /// Supports parsing a `metadata-signers.toml` as specified in [MCIP #43](https://github.com/mobilecoinfoundation/mcips/pull/43).
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Config {
-    /// The key validity ranges.
+    /// The range of block indexes that each key is valid for.
     #[serde(alias = "node")] // alias for parsing
-    pub configs: Vec<KeyValidity>,
+    pub configs: Vec<MessageSigningKeyValidityRecord>,
 
     /// Optional base path for parsing relative PEM file paths.
     #[serde(skip)]
@@ -47,9 +47,9 @@ impl Config {
         Ok(config)
     }
 
-    /// Get a [KeyValidityMap] from this config.
-    pub fn to_validity_map(&self) -> Result<KeyValidityMap, ParseError> {
-        let mut map = KeyValidityMap::new();
+    /// Get a [MessageSigningKeyValidityMap] from this config.
+    pub fn to_validity_map(&self) -> Result<MessageSigningKeyValidityMap, ParseError> {
+        let mut map = MessageSigningKeyValidityMap::new();
         for config in &self.configs {
             let key = parse_pem_or_hex(&config.pub_key, self.base_path.clone())?;
             map.entry(key).or_default().push(config.to_range());
@@ -61,7 +61,7 @@ impl Config {
 /// A declaration that a public key is valid for a specified range of block
 /// indexes.
 #[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
-pub struct KeyValidity {
+pub struct MessageSigningKeyValidityRecord {
     /// The pub key, as a PEM file path or 64 hexadecimal characters.
     /// File paths are parsed relative to the config file.
     #[serde(alias = "message_signing_pub_key")] // alias for parsing
@@ -72,7 +72,7 @@ pub struct KeyValidity {
     pub last_block_index: Option<BlockIndex>,
 }
 
-impl KeyValidity {
+impl MessageSigningKeyValidityRecord {
     /// Instantiate an instance with the given serialized value and index range.
     pub fn new(
         pub_key: String,
@@ -103,14 +103,14 @@ impl KeyValidity {
     }
 }
 
-impl PartialEq for KeyValidity {
+impl PartialEq for MessageSigningKeyValidityRecord {
     fn eq(&self, other: &Self) -> bool {
         self.first_block_index == other.first_block_index
             && self.last_block_index == other.last_block_index
             && self.pub_key.trim() == other.pub_key.trim()
     }
 }
-impl Eq for KeyValidity {}
+impl Eq for MessageSigningKeyValidityRecord {}
 
 /// A helper method for deserializing an Ed25519Public from a PEM string, PEM
 /// file path, or hexadecimal string.
@@ -143,7 +143,7 @@ fn parse_pem_or_hex(
     } else if value.len() == 64 {
         Ed25519Public::try_from(hex::decode(value)?)?
     } else {
-        Err(ParseError::InvalidPubKeyValue(value.to_owned()))?
+        Err(ParseError::InvalidMessageSigningKeyValue(value.to_owned()))?
     })
 }
 
@@ -233,10 +233,10 @@ mod tests {
             cfg,
             Config {
                 configs: vec![
-                    KeyValidity::with_key(key_a, 0, None),
-                    KeyValidity::with_key(key_b, 0, 10),
-                    KeyValidity::with_key(key_c, 0, 10),
-                    KeyValidity::with_key(key_c, 20, None),
+                    MessageSigningKeyValidityRecord::with_key(key_a, 0, None),
+                    MessageSigningKeyValidityRecord::with_key(key_b, 0, 10),
+                    MessageSigningKeyValidityRecord::with_key(key_c, 0, 10),
+                    MessageSigningKeyValidityRecord::with_key(key_c, 20, None),
                 ],
                 base_path: path.parent().map(Into::into),
             }
@@ -270,10 +270,10 @@ mod tests {
             cfg,
             Config {
                 configs: vec![
-                    KeyValidity::with_key(key_a, 0, None),
-                    KeyValidity::with_key(key_b, 0, 10),
-                    KeyValidity::with_key(key_c, 0, 10),
-                    KeyValidity::with_key(key_c, 20, None),
+                    MessageSigningKeyValidityRecord::with_key(key_a, 0, None),
+                    MessageSigningKeyValidityRecord::with_key(key_b, 0, 10),
+                    MessageSigningKeyValidityRecord::with_key(key_c, 0, 10),
+                    MessageSigningKeyValidityRecord::with_key(key_c, 20, None),
                 ],
                 base_path: path.parent().map(Into::into),
             }
@@ -336,9 +336,9 @@ mod tests {
             config,
             Config {
                 configs: vec![
-                    KeyValidity::new(abs_path.display().to_string(), 0, None),
-                    KeyValidity::new(rel_path.to_string(), 0, 10),
-                    KeyValidity::new(KEY_C_PEM.to_string(), 20, None),
+                    MessageSigningKeyValidityRecord::new(abs_path.display().to_string(), 0, None),
+                    MessageSigningKeyValidityRecord::new(rel_path.to_string(), 0, 10),
+                    MessageSigningKeyValidityRecord::new(KEY_C_PEM.to_string(), 20, None),
                 ],
                 base_path: config_path.parent().map(Into::into),
             }
@@ -400,9 +400,9 @@ mod tests {
             config,
             Config {
                 configs: vec![
-                    KeyValidity::new(abs_path.display().to_string(), 0, None),
-                    KeyValidity::new(rel_path.to_string(), 0, 10),
-                    KeyValidity::new(KEY_C_PEM.to_string(), 20, None),
+                    MessageSigningKeyValidityRecord::new(abs_path.display().to_string(), 0, None),
+                    MessageSigningKeyValidityRecord::new(rel_path.to_string(), 0, 10),
+                    MessageSigningKeyValidityRecord::new(KEY_C_PEM.to_string(), 20, None),
                 ],
                 base_path: config_path.parent().map(Into::into),
             }

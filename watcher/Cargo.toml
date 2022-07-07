@@ -12,11 +12,16 @@ path = "src/bin/main.rs"
 name = "mc-watcher-db-dump"
 path = "src/bin/db-dump.rs"
 
+[[bin]]
+name = "mc-watcher-avr-export"
+path = "src/bin/avr_export.rs"
+
 [dependencies]
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
 mc-blockchain-types = { path = "../blockchain/types" }
+mc-blockchain-verifiers = { path = "../blockchain/verifiers" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
@@ -45,6 +50,7 @@ lmdb-rkv = "0.14.0"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 rayon = "1.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_json = "1.0"
 toml = "0.5"
 url = "2.2"
 
