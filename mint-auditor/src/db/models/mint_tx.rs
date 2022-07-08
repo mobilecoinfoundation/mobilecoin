@@ -185,6 +185,17 @@ impl MintTx {
             .first(conn)
             .optional()?)
     }
+
+    /// Get [MintTx]s for a given block index.
+    pub fn get_mint_txs_by_block_index(
+        block_index: BlockIndex,
+        conn: &Conn,
+    ) -> Result<Vec<Self>, Error> {
+        Ok(mint_txs::table
+            .filter(mint_txs::block_index.eq(block_index as i64))
+            .order_by(mint_txs::id)
+            .load(conn)?)
+    }
 }
 
 #[cfg(test)]

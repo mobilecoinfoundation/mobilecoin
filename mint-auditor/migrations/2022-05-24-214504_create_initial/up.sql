@@ -83,6 +83,7 @@ CREATE TABLE mint_txs (
     -- Constraints
     FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
 );
+CREATE INDEX idx_mint_txs__block_index ON mint_txs(block_index);
 CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
 
 -- Processed gnosis safe transactions

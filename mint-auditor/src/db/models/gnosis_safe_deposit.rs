@@ -184,71 +184,62 @@ mod tests {
         let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
         let mut deposit2 = create_gnosis_safe_deposit(200, &mut rng);
 
+        let nonce1 = deposit1.expected_mc_mint_tx_nonce_hex().to_string();
+        let nonce2 = deposit2.expected_mc_mint_tx_nonce_hex().to_string();
+
         // Create two MintTxs.
         let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let mut mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
         let mut mint_tx2 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
 
-        mint_tx1.prefix.nonce = hex::decode(&deposit1.expected_mc_mint_tx_nonce_hex()).unwrap();
-        mint_tx2.prefix.nonce = hex::decode(&deposit2.expected_mc_mint_tx_nonce_hex()).unwrap();
+        mint_tx1.prefix.nonce = hex::decode(&nonce1).unwrap();
+        mint_tx2.prefix.nonce = hex::decode(&nonce2).unwrap();
 
         let sql_mint_tx1 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx1, &conn).unwrap();
         let sql_mint_tx2 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx2, &conn).unwrap();
 
         // Since they haven't been inserted yet, they should not be found.
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx1.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
+                .unwrap()
+                .is_none()
+        );
 
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx2.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .is_none()
+        );
 
         // Insert the first deposit, it should now be found.
         insert_gnosis_deposit(&mut deposit1, &conn);
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-                &hex::encode(&mint_tx1.prefix.nonce),
-                &conn
-            )
-            .unwrap()
-            .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
+                .unwrap()
+                .unwrap(),
             deposit1
         );
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx2.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .is_none()
+        );
 
         // Insert the second deposit, they should both be found.
         insert_gnosis_deposit(&mut deposit2, &conn);
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-                &hex::encode(&mint_tx1.prefix.nonce),
-                &conn
-            )
-            .unwrap()
-            .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
+                .unwrap()
+                .unwrap(),
             deposit1,
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-                &hex::encode(&mint_tx2.prefix.nonce),
-                &conn
-            )
-            .unwrap()
-            .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .unwrap(),
             deposit2,
         );
 
@@ -264,20 +255,16 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx1.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
+                .unwrap()
+                .is_none()
+        );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-                &hex::encode(&mint_tx2.prefix.nonce),
-                &conn
-            )
-            .unwrap()
-            .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .unwrap(),
             deposit2,
         );
 
@@ -292,18 +279,16 @@ mod tests {
             .execute(&conn)
             .unwrap();
 
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx1.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
+                .unwrap()
+                .is_none()
+        );
 
-        assert!(GnosisSafeDeposit::find_unaudited_deposit_by_nonce(
-            &hex::encode(&mint_tx2.prefix.nonce),
-            &conn
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .is_none()
+        );
     }
 }
