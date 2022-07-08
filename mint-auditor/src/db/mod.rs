@@ -500,14 +500,25 @@ mod tests {
             .append_block(&block, &block_contents, None)
             .unwrap();
 
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
                 block_audit: BlockAuditData::new(block.index),
                 balance_map: HashMap::from_iter([(token_id1, 41), (token_id2, 2)]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                ],
             }
         );
 
@@ -554,7 +565,15 @@ mod tests {
             .append_block(&block, &block_contents, None)
             .unwrap();
 
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
@@ -565,7 +584,10 @@ mod tests {
                     (token_id3, 20000)
                 ]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                ],
             }
         );
 
@@ -809,14 +831,25 @@ mod tests {
             .append_block(&block, &block_contents, None)
             .unwrap();
 
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
                 block_audit: BlockAuditData::new(block.index),
                 balance_map: HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                ],
             }
         );
 

@@ -5,13 +5,16 @@ use crate::{
     db::{
         last_insert_rowid,
         models::{SqlEthAddr, SqlEthTxHash},
-        schema::gnosis_safe_withdrawals,
+        schema::{audited_burns, gnosis_safe_withdrawals},
         Conn,
     },
     error::Error,
     gnosis::{EthAddr, EthTxHash},
 };
-use diesel::prelude::*;
+use diesel::{
+    dsl::{exists, not},
+    prelude::*,
+};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use serde::{Deserialize, Serialize};
 
@@ -122,5 +125,27 @@ impl GnosisSafeWithdrawal {
         self.id = Some(diesel::select(last_insert_rowid).get_result::<i32>(conn)?);
 
         Ok(())
+    }
+
+    // TODO tests for this (copy from GnosisSafeWithdrawal)
+    /// Attempt to find a [GnosisSafeWithdrawal] that has a given nonce and no
+    /// matching entry in the `audited_burns` table.
+    pub fn find_unaudited_withdrawal_by_public_key(
+        public_key_hex: &str,
+        conn: &Conn,
+    ) -> Result<Option<Self>, Error> {
+        Ok(gnosis_safe_withdrawals::table
+            .filter(gnosis_safe_withdrawals::mc_tx_out_public_key_hex.eq(public_key_hex))
+            .filter(not(exists(
+                audited_burns::table
+                    .select(audited_burns::gnosis_safe_withdrawal_id)
+                    .filter(
+                        audited_burns::gnosis_safe_withdrawal_id
+                            .nullable()
+                            .eq(gnosis_safe_withdrawals::id),
+                    ),
+            )))
+            .first(conn)
+            .optional()?)
     }
 }

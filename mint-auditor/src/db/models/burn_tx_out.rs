@@ -174,6 +174,15 @@ impl BurnTxOut {
             .first(conn)
             .optional()?)
     }
+
+    /// A helper method to get a copy of this object with the id field set to
+    /// None, used in tests.
+    #[allow(dead_code)]
+    pub(crate) fn without_id(&self) -> Self {
+        let mut copy = self.clone();
+        copy.id = None;
+        copy
+    }
 }
 
 #[cfg(test)]
