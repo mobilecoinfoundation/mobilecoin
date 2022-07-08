@@ -3,10 +3,17 @@
 //! Model file for the mint_txs table.
 
 use crate::{
-    db::{last_insert_rowid, schema::mint_txs, Conn},
+    db::{
+        last_insert_rowid,
+        schema::{audited_mints, mint_txs},
+        Conn,
+    },
     Error,
 };
-use diesel::prelude::*;
+use diesel::{
+    dsl::{exists, not},
+    prelude::*,
+};
 use hex::ToHex;
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
@@ -16,7 +23,7 @@ use mc_util_serial::{decode, encode};
 use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `mint_txs` table.
-/// This stores audit data for a specific block index.
+/// This stores data about a single MintTx.
 #[derive(
     Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
 )]
@@ -149,12 +156,55 @@ impl MintTx {
         mint_tx.insert(conn)?;
         Ok(mint_tx)
     }
+
+    /// Attempt to find all [MintTx]s that do not have a matching entry in the
+    /// `audited_mints` table.
+    pub fn find_unaudited_mint_txs(conn: &Conn) -> Result<Vec<Self>, Error> {
+        Ok(mint_txs::table
+            .filter(not(exists(
+                audited_mints::table
+                    .select(audited_mints::mint_tx_id)
+                    .filter(audited_mints::mint_tx_id.nullable().eq(mint_txs::id)),
+            )))
+            .load(conn)?)
+    }
+
+    /// Attempt to find a [MintTx] that has a given nonce and no matching entry
+    /// in the `audited_mints` table.
+    pub fn find_unaudited_mint_tx_by_nonce(
+        nonce_hex: &str,
+        conn: &Conn,
+    ) -> Result<Option<Self>, Error> {
+        Ok(mint_txs::table
+            .filter(mint_txs::nonce_hex.eq(nonce_hex))
+            .filter(not(exists(
+                audited_mints::table
+                    .select(audited_mints::mint_tx_id)
+                    .filter(audited_mints::mint_tx_id.nullable().eq(mint_txs::id)),
+            )))
+            .first(conn)
+            .optional()?)
+    }
+
+    /// Get [MintTx]s for a given block index.
+    pub fn get_mint_txs_by_block_index(
+        block_index: BlockIndex,
+        conn: &Conn,
+    ) -> Result<Vec<Self>, Error> {
+        Ok(mint_txs::table
+            .filter(mint_txs::block_index.eq(block_index as i64))
+            .order_by(mint_txs::id)
+            .load(conn)?)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::MintTx;
-    use crate::db::test_utils::TestDbContext;
+    use super::*;
+    use crate::db::{
+        models::AuditedMint,
+        test_utils::{create_gnosis_safe_deposit, insert_gnosis_deposit, TestDbContext},
+    };
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
@@ -176,5 +226,122 @@ mod tests {
 
         // Trying again should fail.
         assert!(MintTx::insert_from_core_mint_tx(5, None, &mint_tx1, &conn).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_find_unaudited_mint_tx_by_nonce(logger: Logger) {
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id1 = TokenId::from(1);
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        // Create gnosis deposits.
+        let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
+        let mut deposit2 = create_gnosis_safe_deposit(200, &mut rng);
+
+        // Create two MintTxs.
+        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mut mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+        let mut mint_tx2 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+
+        mint_tx1.prefix.nonce = hex::decode(&deposit1.expected_mc_mint_tx_nonce_hex()).unwrap();
+        mint_tx2.prefix.nonce = hex::decode(&deposit2.expected_mc_mint_tx_nonce_hex()).unwrap();
+
+        // Since they haven't been inserted yet, they should not be found.
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx1.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
+
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx2.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
+
+        // Insert the first MintTx, it should now be found.
+        let sql_mint_tx1 = MintTx::insert_from_core_mint_tx(5, None, &mint_tx1, &conn).unwrap();
+
+        assert_eq!(
+            MintTx::find_unaudited_mint_tx_by_nonce(&hex::encode(&mint_tx1.prefix.nonce), &conn)
+                .unwrap()
+                .unwrap(),
+            sql_mint_tx1
+        );
+
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx2.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
+
+        // Insert the second MintTx, they should both be found.
+        let sql_mint_tx2 = MintTx::insert_from_core_mint_tx(5, None, &mint_tx2, &conn).unwrap();
+
+        assert_eq!(
+            MintTx::find_unaudited_mint_tx_by_nonce(&hex::encode(&mint_tx1.prefix.nonce), &conn)
+                .unwrap()
+                .unwrap(),
+            sql_mint_tx1
+        );
+
+        assert_eq!(
+            MintTx::find_unaudited_mint_tx_by_nonce(&hex::encode(&mint_tx2.prefix.nonce), &conn)
+                .unwrap()
+                .unwrap(),
+            sql_mint_tx2
+        );
+
+        // Insert a row to the `audited_mints` table marking the first MintTx as
+        // audited. We should no longer be able to find it.
+        insert_gnosis_deposit(&mut deposit1, &conn);
+        AuditedMint::associate_deposit_with_mint(
+            deposit1.id().unwrap(),
+            sql_mint_tx1.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx1.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
+
+        assert_eq!(
+            MintTx::find_unaudited_mint_tx_by_nonce(&hex::encode(&mint_tx2.prefix.nonce), &conn)
+                .unwrap()
+                .unwrap(),
+            sql_mint_tx2
+        );
+
+        // Mark the second mint as audited. We should no longer be able to find it.
+        insert_gnosis_deposit(&mut deposit2, &conn);
+        AuditedMint::associate_deposit_with_mint(
+            deposit2.id().unwrap(),
+            sql_mint_tx2.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx1.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
+
+        assert!(MintTx::find_unaudited_mint_tx_by_nonce(
+            &hex::encode(&mint_tx2.prefix.nonce),
+            &conn
+        )
+        .unwrap()
+        .is_none());
     }
 }
