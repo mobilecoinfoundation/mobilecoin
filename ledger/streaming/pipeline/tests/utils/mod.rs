@@ -6,7 +6,6 @@
 use async_channel::{Receiver, Sender};
 use futures::Stream;
 use mc_common::{logger::Logger, NodeID};
-use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{test_utils::MockStream, BlockData, Error, Result};
 use mc_ledger_streaming_pipeline::LedgerToArchiveBlocksAndGrpc;
 #[cfg(feature = "publisher_local")]
@@ -15,13 +14,9 @@ use mc_ledger_streaming_publisher::ProtoWriter;
 #[cfg(feature = "publisher_s3")]
 use mc_ledger_streaming_publisher::{S3ClientProtoWriter, S3Region};
 use mc_util_uri::ConsensusPeerUri;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tempdir::TempDir;
 
-#[derive(Debug)]
 pub struct ConsensusNode<W: ProtoWriter> {
     pub id: NodeID,
     pub pipeline: LedgerToArchiveBlocksAndGrpc<MockStream<Receiver<Result<BlockData>>>, W>,
@@ -31,18 +26,14 @@ pub struct ConsensusNode<W: ProtoWriter> {
 }
 
 impl<W: ProtoWriter> ConsensusNode<W> {
-    pub fn make_node(
-        id: NodeID,
-        ledger_path: impl AsRef<Path>,
-        archive_proto_writer: W,
-        logger: Logger,
-    ) -> Self {
+    pub fn make_node(id: NodeID, archive_proto_writer: W, logger: Logger) -> Self {
         let (sender, receiver) = async_channel::bounded(3);
         let upstream = MockStream::new(receiver);
 
+        let ledger_dir = TempDir::new(&format!("consensus_node_{}", id)).unwrap();
         let pipeline = LedgerToArchiveBlocksAndGrpc::new(
             upstream,
-            ledger_path,
+            ledger_dir.path(),
             archive_proto_writer,
             logger.clone(),
         )
@@ -66,24 +57,18 @@ impl<W: ProtoWriter> ConsensusNode<W> {
 
     pub fn make_nodes(
         ids: impl IntoIterator<Item = NodeID>,
-        num_blocks: usize,
         archive_proto_writer: W,
         logger: Logger,
     ) -> Vec<Self> {
         ids.into_iter()
-            .map(|id| Self::make_node(id, num_blocks, archive_proto_writer.clone(), logger.clone()))
+            .map(|id| Self::make_node(id, archive_proto_writer.clone(), logger.clone()))
             .collect()
     }
 
-    pub fn connect(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + '_> {
-        self.pipeline.connect(starting_height)
-    }
-
-    pub fn append_block(&mut self, block_data: &BlockData) {
+    pub fn run(&self, starting_height: u64) -> impl Stream<Item = Result<()>> + '_ {
         self.pipeline
-            .source
-            .ledger_mut()
-            .append_block_data(block_data)
+            .run(starting_height)
+            .expect("failed to start consensus node pipeline")
     }
 
     pub fn externalize_block(&self, block_data: BlockData) {
@@ -101,32 +86,16 @@ impl<W: ProtoWriter> ConsensusNode<W> {
 
 #[cfg(feature = "publisher_local")]
 impl ConsensusNode<LocalFileProtoWriter> {
-    pub fn make_local(
-        id: NodeID,
-        num_blocks: usize,
-        local_path: impl Into<PathBuf>,
-        logger: Logger,
-    ) -> Self {
-        Self::make_node(
-            id,
-            num_blocks,
-            LocalFileProtoWriter::new(local_path.into()),
-            logger,
-        )
+    pub fn make_local(id: NodeID, local_path: impl Into<PathBuf>, logger: Logger) -> Self {
+        Self::make_node(id, LocalFileProtoWriter::new(local_path.into()), logger)
     }
 
     pub fn make_local_nodes(
         ids: impl IntoIterator<Item = NodeID>,
-        num_blocks: usize,
         local_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Vec<Self> {
-        Self::make_nodes(
-            ids,
-            num_blocks,
-            LocalFileProtoWriter::new(local_path.into()),
-            logger,
-        )
+        Self::make_nodes(ids, LocalFileProtoWriter::new(local_path.into()), logger)
     }
 }
 
@@ -134,30 +103,22 @@ impl ConsensusNode<LocalFileProtoWriter> {
 impl ConsensusNode<S3ClientProtoWriter> {
     pub fn make_s3(
         id: NodeID,
-        num_blocks: usize,
         region: S3Region,
-        s3_path: PathBuf,
+        s3_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Self {
-        Self::make_node(
-            id,
-            num_blocks,
-            S3ClientProtoWriter::new(region, s3_path),
-            logger,
-        )
+        Self::make_node(id, S3ClientProtoWriter::new(region, s3_path.into()), logger)
     }
 
     pub fn make_s3_nodes(
         ids: impl IntoIterator<Item = NodeID>,
-        num_blocks: usize,
         region: S3Region,
-        s3_path: PathBuf,
+        s3_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Vec<Self> {
         Self::make_nodes(
             ids,
-            num_blocks,
-            S3ClientProtoWriter::new(region, s3_path),
+            S3ClientProtoWriter::new(region, s3_path.into()),
             logger,
         )
     }

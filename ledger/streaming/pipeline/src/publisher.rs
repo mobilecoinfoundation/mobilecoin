@@ -16,7 +16,10 @@ use mc_ledger_streaming_publisher::{ArchiveBlockSink, GrpcServerSink, ProtoWrite
 #[cfg(feature = "publisher_s3")]
 use mc_ledger_streaming_publisher::{S3ClientProtoWriter, S3Region};
 use mc_util_uri::ConnectionUri;
-use std::{path::Path, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub struct LedgerToArchiveBlocksAndGrpc<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
 {
@@ -34,6 +37,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
         archive_proto_writer: W,
         logger: Logger,
     ) -> Result<Self> {
+        let _ = LedgerDB::create(ledger_path.as_ref());
         let ledger = LedgerDB::open(ledger_path.as_ref())?;
         let source = DbStream::new(upstream, ledger.clone(), true, logger.clone());
         let archive_block_sink = ArchiveBlockSink::new(
@@ -50,14 +54,14 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
         })
     }
 
-    pub fn connect(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + '_> {
+    pub fn run(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + '_> {
         let stream = self.source.get_stream(starting_height)?;
-        // Write ArchiveBlock(s), and if that succeeds, publish them to gRPC.
-        Ok(stream.then(move |result| async move {
+        Ok(Box::pin(stream.then(move |result| async move {
+            // Write ArchiveBlock, and if that succeeds, publish them to gRPC.
             let block_data = result?;
-            self.archive_block_sink.write(&block_data).await?;
-            self.grpc_sink.write(&block_data).await
-        }))
+            let archive_block = self.archive_block_sink.write(&block_data).await?;
+            self.grpc_sink.publish(archive_block).await
+        })))
     }
 }
 
@@ -68,13 +72,13 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>>
     pub fn new_local(
         upstream: US,
         ledger_path: impl AsRef<Path>,
-        block_path_base: impl AsRef<Path>,
+        block_path_base: impl Into<PathBuf>,
         logger: Logger,
     ) -> Result<Self> {
         Self::new(
             upstream,
             ledger_path,
-            LocalFileProtoWriter::new(block_path_base.as_ref().into()),
+            LocalFileProtoWriter::new(block_path_base.into()),
             logger,
         )
     }
@@ -88,13 +92,13 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>>
         upstream: US,
         ledger_path: impl AsRef<Path>,
         region: S3Region,
-        s3_path: impl AsRef<Path>,
+        s3_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Result<Self> {
         Self::new(
             upstream,
             ledger_path,
-            S3ClientProtoWriter::new(region, s3_path.as_ref().into()),
+            S3ClientProtoWriter::new(region, s3_path.into()),
             logger,
         )
     }
