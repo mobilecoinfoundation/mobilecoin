@@ -338,7 +338,6 @@ mod tests {
         );
     }
 
-    /*
     #[test_with_logger]
     fn test_attempt_match_withdrawal_with_burn_unsaved_object(logger: Logger) {
         let config = &test_gnosis_config().safes[0];
@@ -365,10 +364,11 @@ mod tests {
         let test_db_context = TestDbContext::default();
         let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = burn_auditor_db.get_conn().unwrap();
+        let token_id = config.tokens[0].token_id;
 
-        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        let burn_tx_out = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+        let mut withdrawal = create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out, &mut rng);
         insert_gnosis_withdrawal(&mut withdrawal, &conn);
-        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
 
         config.safe_addr = EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
         assert!(matches!(
@@ -387,10 +387,11 @@ mod tests {
         let test_db_context = TestDbContext::default();
         let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = burn_auditor_db.get_conn().unwrap();
+        let token_id = config.tokens[0].token_id;
 
-        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        let burn_tx_out = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+        let mut withdrawal = create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out, &mut rng);
         insert_gnosis_withdrawal(&mut withdrawal, &conn);
-        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
 
         config.tokens[0].token_id = TokenId::from(123);
 
@@ -418,10 +419,12 @@ mod tests {
         let test_db_context = TestDbContext::default();
         let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
         let conn = burn_auditor_db.get_conn().unwrap();
+        let token_id = config.tokens[0].token_id;
 
-        let mut withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
+        let burn_tx_out = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+        let mut withdrawal = create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out, &mut rng);
         insert_gnosis_withdrawal(&mut withdrawal, &conn);
-        insert_burn_tx_out_from_withdrawal(&withdrawal, &conn, &mut rng);
+
 
         config.tokens[0].eth_token_contract_addr =
             EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
@@ -500,6 +503,7 @@ mod tests {
             0
         );
     }
+    /*
 
     #[test_with_logger]
     fn test_attempt_match_burn_with_withdrawal_amount_mismatch(logger: Logger) {

@@ -182,7 +182,7 @@ mod tests {
     use crate::db::{
         models::AuditedBurn,
         test_utils::{
-            create_and_insert_burn_tx_out, create_burn_tx_out, create_gnosis_safe_withdrawal,
+            create_burn_tx_out,
             create_gnosis_safe_withdrawal_from_burn_tx_out, insert_gnosis_withdrawal,
             TestDbContext,
         },
