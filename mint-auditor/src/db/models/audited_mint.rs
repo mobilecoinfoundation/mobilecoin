@@ -498,6 +498,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unknown_ethereum_token_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
