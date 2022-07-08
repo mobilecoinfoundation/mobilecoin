@@ -33,55 +33,60 @@ impl AuditedMint {
         config: &AuditedSafeConfig,
         conn: &Conn,
     ) -> Result<MintTx, Error> {
-        // We only operate on objects that were saved to the database.
-        let deposit_id = deposit.id().ok_or(Error::ObjectNotSaved)?;
+        // Wrapped in a closure to allow using the ? operator without returning from the
+        // function.
+        let result = || -> Result<MintTx, Error> {
+            // We only operate on objects that were saved to the database.
+            let deposit_id = deposit.id().ok_or(Error::ObjectNotSaved)?;
 
-        // The deposit safe needs to match the audited safe configuration.
-        // This shouldn't happen and indicates misuse of this function.
-        if deposit.safe_addr() != &config.safe_addr {
-            return Err(Error::Other(format!(
-                "Gnosis safe deposit addr {} does not match audited safe addr {}",
-                deposit.safe_addr(),
-                config.safe_addr
-            )));
-        }
-
-        let result = transaction(conn, |conn| {
-            // Currently we only support 1:1 mapping between deposits and mints, so ensure
-            // that there isn't already a match for this deposit.
-            let existing_match = audited_mints::table
-                .filter(audited_mints::gnosis_safe_deposit_id.eq(deposit_id))
-                .first::<AuditedMint>(conn)
-                .optional()?;
-            if let Some(existing_match) = existing_match {
-                return Err(Error::AlreadyExists(format!(
-                    "GnosisSafeDeposit id={} already matched with mint_tx_id={}",
-                    existing_match.gnosis_safe_deposit_id, existing_match.mint_tx_id
+            // The deposit safe needs to match the audited safe configuration.
+            // This shouldn't happen and indicates misuse of this function.
+            if deposit.safe_addr() != &config.safe_addr {
+                return Err(Error::Other(format!(
+                    "Gnosis safe deposit addr {} does not match audited safe addr {}",
+                    deposit.safe_addr(),
+                    config.safe_addr
                 )));
             }
 
-            // See if we can find a MintTx that matches the expected nonce and has not been
-            // associated with a deposit.
-            let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce(
-                deposit.expected_mc_mint_tx_nonce_hex(),
-                conn,
-            )?
-            .ok_or(Error::NotFound)?;
+            transaction(conn, |conn| {
+                // Currently we only support 1:1 mapping between deposits and mints, so ensure
+                // that there isn't already a match for this deposit.
+                let existing_match = audited_mints::table
+                    .filter(audited_mints::gnosis_safe_deposit_id.eq(deposit_id))
+                    .first::<AuditedMint>(conn)
+                    .optional()?;
+                if let Some(existing_match) = existing_match {
+                    Counters::inc_num_unexpected_errors_matching_deposits_to_mints(conn)?;
+                    return Err(Error::AlreadyExists(format!(
+                        "GnosisSafeDeposit id={} already matched with mint_tx_id={}",
+                        existing_match.gnosis_safe_deposit_id, existing_match.mint_tx_id
+                    )));
+                }
 
-            // Check that the mint and deposit details match.
-            Self::verify_mint_tx_matches_deposit(&mint_tx, deposit, config)?;
+                // See if we can find a MintTx that matches the expected nonce and has not been
+                // associated with a deposit.
+                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce(
+                    deposit.expected_mc_mint_tx_nonce_hex(),
+                    conn,
+                )?
+                .ok_or(Error::NotFound)?;
 
-            // Associate the deposit with the mint.
-            Self::associate_deposit_with_mint(
-                deposit_id,
-                mint_tx
-                    .id()
-                    .expect("got a MintTx without id but database auto-populates that field"),
-                conn,
-            )?;
+                // Check that the mint and deposit details match.
+                Self::verify_mint_tx_matches_deposit(&mint_tx, deposit, config)?;
 
-            Ok(mint_tx)
-        });
+                // Associate the deposit with the mint.
+                Self::associate_deposit_with_mint(
+                    deposit_id,
+                    mint_tx
+                        .id()
+                        .expect("got a MintTx without id but database auto-populates that field"),
+                    conn,
+                )?;
+
+                Ok(mint_tx)
+            })
+        }();
 
         // Count certain errors. This needs to happen outside of the transaction because
         // errors result in the transaction getting rolled back.
@@ -114,48 +119,52 @@ impl AuditedMint {
         config: &GnosisSafeConfig,
         conn: &Conn,
     ) -> Result<GnosisSafeDeposit, Error> {
-        // We only operate on objects that were saved to the database.
-        let mint_tx_id = mint_tx.id().ok_or(Error::ObjectNotSaved)?;
+        // Wrapped in a closure to allow using the ? operator without returning from the
+        // function.
+        let result = || -> Result<GnosisSafeDeposit, Error> {
+            // We only operate on objects that were saved to the database.
+            let mint_tx_id = mint_tx.id().ok_or(Error::ObjectNotSaved)?;
 
-        let result = transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
-            // Currently we only support 1:1 mapping between deposits and mints, so ensure
-            // that there isn't already a match for this mint.
-            let existing_match = audited_mints::table
-                .filter(audited_mints::mint_tx_id.eq(mint_tx_id))
-                .first::<AuditedMint>(conn)
-                .optional()?;
-            if let Some(existing_match) = existing_match {
-                return Err(Error::AlreadyExists(format!(
-                    "MintTx id={} already matched with gnosis_safe_deposit_id={}",
-                    existing_match.mint_tx_id, existing_match.gnosis_safe_deposit_id,
-                )));
-            }
+            transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
+                // Currently we only support 1:1 mapping between deposits and mints, so ensure
+                // that there isn't already a match for this mint.
+                let existing_match = audited_mints::table
+                    .filter(audited_mints::mint_tx_id.eq(mint_tx_id))
+                    .first::<AuditedMint>(conn)
+                    .optional()?;
+                if let Some(existing_match) = existing_match {
+                    return Err(Error::AlreadyExists(format!(
+                        "MintTx id={} already matched with gnosis_safe_deposit_id={}",
+                        existing_match.mint_tx_id, existing_match.gnosis_safe_deposit_id,
+                    )));
+                }
 
-            // See if we can find a GnosisSafeDeposit that matches the nonce and has not
-            // been associated with a mint.
-            let deposit =
-                GnosisSafeDeposit::find_unaudited_deposit_by_nonce(mint_tx.nonce_hex(), conn)?
-                    .ok_or(Error::NotFound)?;
+                // See if we can find a GnosisSafeDeposit that matches the nonce and has not
+                // been associated with a mint.
+                let deposit =
+                    GnosisSafeDeposit::find_unaudited_deposit_by_nonce(mint_tx.nonce_hex(), conn)?
+                        .ok_or(Error::NotFound)?;
 
-            // See if the deposit we found is for a safe we are auditing.
-            let audited_safe_config = config
-                .get_audited_safe_config_by_safe_addr(deposit.safe_addr())
-                .ok_or_else(|| Error::GnosisSafeNotAudited(deposit.safe_addr().clone()))?;
+                // See if the deposit we found is for a safe we are auditing.
+                let audited_safe_config = config
+                    .get_audited_safe_config_by_safe_addr(deposit.safe_addr())
+                    .ok_or_else(|| Error::GnosisSafeNotAudited(deposit.safe_addr().clone()))?;
 
-            // See if they match.
-            Self::verify_mint_tx_matches_deposit(mint_tx, &deposit, &audited_safe_config)?;
+                // See if they match.
+                Self::verify_mint_tx_matches_deposit(mint_tx, &deposit, &audited_safe_config)?;
 
-            // Associate the mint with the deposit.
-            Self::associate_deposit_with_mint(
-                deposit.id().expect(
-                    "got a GnosisSafeDeposit without id but database auto-populates that field",
-                ),
-                mint_tx_id,
-                conn,
-            )?;
+                // Associate the mint with the deposit.
+                Self::associate_deposit_with_mint(
+                    deposit.id().expect(
+                        "got a GnosisSafeDeposit without id but database auto-populates that field",
+                    ),
+                    mint_tx_id,
+                    conn,
+                )?;
 
-            Ok(deposit)
-        });
+                Ok(deposit)
+            })
+        }();
 
         // Count certain errors. This needs to happen outside of the transaction because
         // errors result in the transaction getting rolled back.
