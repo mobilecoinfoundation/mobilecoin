@@ -87,6 +87,12 @@ pub enum ViewEnclaveRequest {
     /// Takes an encrypted fog_types::view::QueryRequest and returns a list of
     /// fog_types::view::QueryRequest.
     CreateMultiViewStoreQuery(EnclaveMessage<ClientSession>),
+    /// Begin a client connection to a Fog View Store discovered after
+    /// initialization.
+    ViewStoreInit(ResponderId),
+    /// Complete the client connection to a Fog View store that accepted our
+    /// client auth request. This is meant to be called after [ViewStoreInit].
+    ViewStoreConnect(ResponderId, ClientAuthResponse),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -125,6 +131,19 @@ pub trait ViewEnclaveApi: ReportableEnclave {
 
     /// Destroy a peer association
     fn client_close(&self, channel_id: ClientSession) -> Result<()>;
+
+    /// Begin a connection to a Fog View Store. The enclave calling this method
+    /// will act as a client to the Fog View Store.
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest>;
+
+    /// Complete the connection to a Fog View Store that has accepted our
+    /// ClientAuthRequest. This is meant to be called after the enclave has
+    /// initialized and discovers a new Fog View Store.
+    fn view_store_connect(
+        &self,
+        view_store_id: ResponderId,
+        view_store_auth_response: ClientAuthResponse,
+    ) -> Result<()>;
 
     /// Service a user's encrypted QueryRequest
     fn query(
