@@ -100,6 +100,7 @@ CREATE TABLE burn_tx_outs (
     -- The protobuf-serialized TxOut.
     protobuf BLOB NOT NULL
 );
+CREATE INDEX idx__burn_tx_outs__block_index ON burn_tx_outs(block_index);
 CREATE INDEX idx__burn_tx_outs__public_key_hex ON burn_tx_outs(public_key_hex);
 
 -- Processed gnosis safe transactions
@@ -170,6 +171,8 @@ CREATE TABLE audited_burns (
     FOREIGN KEY (burn_tx_out_id) REFERENCES burn_tx_outs(id),
     FOREIGN KEY (gnosis_safe_withdrawal_id) REFERENCES gnosis_safe_withdrawals(id)
 );
+CREATE INDEX idx__audited_burns__burn_tx_out_id ON audited_burns(burn_tx_out_id);
+CREATE INDEX idx__audited_burns__gnosis_safe_withdrawal_id ON audited_burns(gnosis_safe_withdrawal_id);
 
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
@@ -195,8 +198,14 @@ CREATE TABLE counters (
     -- Number of times we encountered deposits to an unaudited Ethereum token contract address.
     num_unknown_ethereum_token_deposits BIGINT NOT NULL,
 
+    -- Number of times we encountered withdrawals from an unaudited Ethereum token contract address.
+    num_unknown_ethereum_token_withdrawals BIGINT NOT NULL,
+
     -- Number of times we encountered a mint that is associated with an unaudited safe.
     num_mints_to_unknown_safe BIGINT NOT NULL,
+
+    -- Number of times we encountered a burn that is associated with an unaudited safe.
+    num_burns_from_unknown_safe BIGINT NOT NULL,
 
     -- Number of unexpected errors attempting to match deposits to mints.
     num_unexpected_errors_matching_deposits_to_mints BIGINT NOT NULL,

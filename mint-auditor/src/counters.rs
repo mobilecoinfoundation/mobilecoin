@@ -26,8 +26,14 @@ lazy_static::lazy_static! {
     /// Number of deposits to an unaudited Ethereum token contract address.
     pub static ref NUM_UNKNOWN_ETHEREUM_TOKEN_DEPOSITS: IntGauge = OP_COUNTERS.gauge("num_unknown_ethereum_token_deposits");
 
+    /// Number of withdrawals to an unaudited Ethereum token contract address.
+    pub static ref NUM_UNKNOWN_ETHEREUM_TOKEN_WITHDRAWALS: IntGauge = OP_COUNTERS.gauge("num_unknown_ethereum_token_withdrawals");
+
     /// Number of times we encountered a mint that is associated with an unaudited safe.
     pub static ref NUM_MINTS_TO_UNKNOWN_SAFE: IntGauge = OP_COUNTERS.gauge("num_mints_to_unknown_safe");
+
+    /// Number of times we encountered a burn that is associated with an unaudited safe.
+    pub static ref NUM_BURNS_FROM_UNKNOWN_SAFE: IntGauge = OP_COUNTERS.gauge("num_burns_from_unknown_safe");
 
     /// Number of unexpected errors attempting to match deposits to mints.
     pub static ref NUM_UNEXPECTED_ERRORS_MATCHING_DEPOSITS_TO_MINTS: IntGauge = OP_COUNTERS.gauge("num_unexpected_errors_matching_deposits_to_mints");

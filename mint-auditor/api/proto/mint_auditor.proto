@@ -116,20 +116,27 @@ message Counters {
     // contract address.
     uint64 num_unknown_ethereum_token_deposits = 6;
 
+    // Number of times we encountered withdrawals from an unknown Ethereum token
+    // contract address.
+    uint64 num_unknown_ethereum_token_withdrawals = 7;
+
     // Number of times we encountered a mint that is associated with an unaudited safe.
-    uint64 num_mints_to_unknown_safe = 7;
+    uint64 num_mints_to_unknown_safe = 8;
+
+    // Number of times we encountered a burn that is associated with an unaudited safe.
+    uint64 num_burns_from_unknown_safe = 9;
 
     // Number of unexpected errors attempting to match deposits to mints.
-    uint64 num_unexpected_errors_matching_deposits_to_mints = 8;
+    uint64 num_unexpected_errors_matching_deposits_to_mints = 10;
 
     // Number of unexpected errors attempting to match mints to deposits.
-    uint64 num_unexpected_errors_matching_mints_to_deposits = 9;
+    uint64 num_unexpected_errors_matching_mints_to_deposits = 11;
 
     // Number of unexpected errors attempting to match withdrawals to burns.
-    uint64 num_unexpected_errors_matching_withdrawals_to_burns = 10;
+    uint64 num_unexpected_errors_matching_withdrawals_to_burns = 12;
 
     // Number of unexpected errors attempting to match burns to withdrawals.
-    uint64 num_unexpected_errors_matching_burns_to_withdrawals = 11;
+    uint64 num_unexpected_errors_matching_burns_to_withdrawals = 13;
 }
 
 message GetBlockAuditDataRequest {

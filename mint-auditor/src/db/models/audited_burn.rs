@@ -53,15 +53,20 @@ impl AuditedBurn {
         let result = transaction(conn, |conn| {
             // Currently we only support 1:1 mapping between deposits and mints, so ensure
             // that there isn't already a match for this deposit.
-            let existing_match = audited_burns::table
+            let existing_match: Option<(String, String)> = audited_burns::table
+                .inner_join(burn_tx_outs::table)
+                .inner_join(gnosis_safe_withdrawals::table)
+                .select((
+                    burn_tx_outs::public_key_hex,
+                    gnosis_safe_withdrawals::eth_tx_hash,
+                ))
                 .filter(audited_burns::gnosis_safe_withdrawal_id.eq(withdrawal_id))
-                .first::<AuditedBurn>(conn)
+                .first(conn)
                 .optional()?;
-            if let Some(existing_match) = existing_match {
+            if let Some((public_key_hex, eth_tx_hash)) = existing_match {
                 return Err(Error::AlreadyExists(format!(
-                    // TODO fix to show nonce/tx hash
-                    "GnosisSafeWithdrawal id={} already matched with burn_tx_out_id={}",
-                    existing_match.gnosis_safe_withdrawal_id, existing_match.burn_tx_out_id
+                    "GnosisSafeWithdrawal eth_tx_hash={} already matched with BurnTxOut pub_key={}",
+                    eth_tx_hash, public_key_hex,
                 )));
             }
 
@@ -105,8 +110,7 @@ impl AuditedBurn {
             }
 
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
-                // TODO Counters::
-                // inc_num_unknown_ethereum_token_withdrawals(conn)?;
+                Counters::inc_num_unknown_ethereum_token_withdrawals(conn)?;
             }
 
             Err(_) => {
@@ -192,7 +196,7 @@ impl AuditedBurn {
             Ok(_) => {}
 
             Err(Error::GnosisSafeNotAudited(_)) => {
-                // TODO Counters::inc_num_burns_from_unknown_safe(conn)?;
+                Counters::inc_num_burns_from_unknown_safe(conn)?;
             }
 
             Err(Error::WithdrawalAndBurnMismatch(_)) => {
@@ -200,8 +204,7 @@ impl AuditedBurn {
             }
 
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
-                // TODO Counters::
-                // inc_num_unknown_ethereum_token_withdrawals(conn)?;
+                Counters::inc_num_unknown_ethereum_token_withdrawals(conn)?;
             }
 
             Err(_) => {

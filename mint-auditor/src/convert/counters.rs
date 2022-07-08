@@ -16,7 +16,11 @@ impl From<&Counters> for mc_mint_auditor_api::Counters {
         dst.set_num_mismatching_mints_and_deposits(src.num_mismatching_mints_and_deposits());
         dst.set_num_mismatching_burns_and_withdrawals(src.num_mismatching_burns_and_withdrawals());
         dst.set_num_unknown_ethereum_token_deposits(src.num_unknown_ethereum_token_deposits());
+        dst.set_num_unknown_ethereum_token_withdrawals(
+            src.num_unknown_ethereum_token_withdrawals(),
+        );
         dst.set_num_mints_to_unknown_safe(src.num_mints_to_unknown_safe());
+        dst.set_num_burns_from_unknown_safe(src.num_burns_from_unknown_safe());
         dst.set_num_unexpected_errors_matching_deposits_to_mints(
             src.num_unexpected_errors_matching_deposits_to_mints(),
         );
