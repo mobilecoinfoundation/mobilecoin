@@ -182,9 +182,8 @@ mod tests {
     use crate::db::{
         models::AuditedBurn,
         test_utils::{
-            create_burn_tx_out,
-            create_gnosis_safe_withdrawal_from_burn_tx_out, insert_gnosis_withdrawal,
-            TestDbContext,
+            create_burn_tx_out, create_gnosis_safe_withdrawal_from_burn_tx_out,
+            insert_gnosis_withdrawal, TestDbContext,
         },
     };
     use mc_common::logger::{test_with_logger, Logger};
