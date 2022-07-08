@@ -8,7 +8,7 @@ use alloc::{string::ToString, vec::Vec};
 use digest::Digest;
 use mc_attest_ake::{
     AuthPending, AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientAuthRequestInput,
-    NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
+    ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
     IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
@@ -36,8 +36,14 @@ const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 /// Max number of peer sessions.
 const MAX_PEER_SESSIONS: usize = 64;
 
+/// Max number of backends that this enclave can connect to as a client.
+const MAX_BACKEND_CONNECTIONS: usize = 10000;
+
 /// Max number of client sessions.
 const MAX_CLIENT_SESSIONS: usize = 10000;
+
+/// Max number of auth requests for enclave backends.
+const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10000;
 
 /// Any additional "identities" (e.g. key material) for a given enclave that
 /// needs to become a part of the report. We provide some simple identities, and
@@ -75,6 +81,10 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
 
+    /// A map of responder-ID to incomplete, outbound AKE state for connections
+    /// to enclaves that serve as backends to the current enclave.
+    backend_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
+
     /// A map of channel ID outbound connection state.
     peer_outbound: Mutex<LruCache<PeerSession, Ready<Aes256Gcm>>>,
 
@@ -83,6 +93,10 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
 
     /// A map of channel ID to connection state
     clients: Mutex<LruCache<ClientSession, Ready<Aes256Gcm>>>,
+
+    /// A map of ResponderIds for each enclave that serves as a backend to the
+    /// current enclave.
+    backends: Mutex<LruCache<ResponderId, Ready<Aes256Gcm>>>,
 }
 
 impl<EI: EnclaveIdentity + Default> Default for AkeEnclaveState<EI> {
@@ -103,9 +117,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ias_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             current_ias_report: Mutex::new(None),
             initiator_auth_pending: Mutex::new(LruCache::new(MAX_AUTH_PENDING_REQUESTS)),
+            backend_auth_pending: Mutex::new(LruCache::new(MAX_BACKEND_AUTH_PENDING_REQUESTS)),
             peer_outbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             peer_inbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             clients: Mutex::new(LruCache::new(MAX_CLIENT_SESSIONS)),
+            backends: Mutex::new(LruCache::new(MAX_BACKEND_CONNECTIONS)),
         }
     }
 
@@ -163,6 +179,53 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         } else {
             Err(Error::AlreadyInit)
         }
+    }
+
+    /// Constructs a ClientAuthRequest to be sent to an enclave backend.
+    ///
+    /// Differs from peer_init in that this enclave does not establish a peer
+    /// connection to the enclave described by `backend_id`. Rather, this
+    /// enclave serves as a client to this other backend enclave.
+    pub fn backend_init(&self, backend_id: ResponderId) -> Result<ClientAuthRequest> {
+        let mut csprng = McRng::default();
+
+        let initiator = Start::new(backend_id.to_string());
+
+        let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
+        let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
+        self.backend_auth_pending.lock()?.put(backend_id, initiator);
+        let client_auth_request_data: Vec<u8> = auth_request_output.into();
+        Ok(client_auth_request_data.into())
+    }
+
+    /// Connect to an enclave backend as a client.
+    ///
+    /// This establishes the client to backend enclave connection, see
+    /// `backend_init` for more details on how this differs from a peer
+    /// connection.
+    pub fn backend_connect(
+        &self,
+        backend_id: ResponderId,
+        backend_auth_response: ClientAuthResponse,
+    ) -> Result<()> {
+        let initiator = self
+            .backend_auth_pending
+            .lock()?
+            .pop(&backend_id)
+            .ok_or(Error::NotFound)?;
+
+        let mut csprng = McRng::default();
+
+        let auth_response_output_bytes: Vec<u8> = backend_auth_response.into();
+        let auth_response_event =
+            AuthResponseInput::new(auth_response_output_bytes.into(), self.get_verifier()?);
+        let (initiator, _verification_report) =
+            initiator.try_next(&mut csprng, auth_response_event)?;
+
+        let mut backends = self.backends.lock()?;
+        backends.put(backend_id, initiator);
+
+        Ok(())
     }
 
     /// Accept a client connection
@@ -372,6 +435,36 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             channel_id: session_id.clone(),
             data,
         })
+    }
+
+    /// Transforms an incoming client message, i.e. a message sent from a client
+    /// to the current enclave, into a list of outbound  messages for
+    /// other enclaves that serve as backends to the current enclave.
+    ///
+    ///                               / --> Backend Enclave 1
+    ///   Client -> Current Enclave ---> Backend Enclave 2
+    ///                              \ --> Backend Enclave N
+    pub fn reencrypt_client_message_for_backends(
+        &self,
+        incoming_client_message: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+        let client_query_bytes: Vec<u8> = self.client_decrypt(incoming_client_message.clone())?;
+        let mut backends = self.backends.lock()?;
+        let backend_messages = backends
+            .iter_mut()
+            .map(|(_, encryptor)| {
+                let aad = incoming_client_message.aad.clone();
+                let data = encryptor.encrypt(&aad, &client_query_bytes)?;
+                let channel_id = incoming_client_message.channel_id.clone();
+                Ok(EnclaveMessage {
+                    aad,
+                    channel_id,
+                    data,
+                })
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(backend_messages)
     }
 
     //

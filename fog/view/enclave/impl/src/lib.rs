@@ -9,13 +9,13 @@ extern crate alloc;
 mod e_tx_out_store;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
-use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
-use core::ops::DerefMut;
-use mc_attest_ake::Ready;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
-use mc_common::logger::{log, Logger};
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
@@ -42,13 +42,6 @@ where
 
     /// Logger object
     logger: Logger,
-
-    /// Encrypts a QueryRequest for each individual Fog View Store.
-    /// TODO: Use a BTreeMap<FogViewShardLoadBalancerID,
-    /// BTreeMap<FogViewStoreId, Ready<...>>>  when implement the cursoring
-    /// optimization. For right now, it's fine to leave as a Vec because a
-    /// follow up PR will implement cursoring.
-    store_encryptors: Mutex<Vec<Ready<Aes256Gcm>>>,
 }
 
 impl<OSC> ViewEnclave<OSC>
@@ -58,7 +51,6 @@ where
     pub fn new(logger: Logger) -> Self {
         Self {
             e_tx_out_store: Mutex::new(None),
-            store_encryptors: Mutex::new(Vec::new()),
             ake: Default::default(),
             logger,
         }
@@ -203,21 +195,22 @@ where
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        let client_query_bytes = self.ake.client_decrypt(client_query.clone())?;
+        Ok(self
+            .ake
+            .reencrypt_client_message_for_backends(client_query)?)
+    }
 
-        let mut encryptors = self.store_encryptors.lock()?;
-        let mut results = Vec::with_capacity(encryptors.len());
-        for store_encryptor in encryptors.deref_mut() {
-            let aad = client_query.aad.clone();
-            let data = store_encryptor.encrypt(&aad, &client_query_bytes)?;
-            let channel_id = client_query.channel_id.clone();
-            results.push(EnclaveMessage {
-                aad,
-                channel_id,
-                data,
-            });
-        }
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
+        Ok(self.ake.backend_init(view_store_id)?)
+    }
 
-        Ok(results)
+    fn view_store_connect(
+        &self,
+        view_store_id: ResponderId,
+        view_store_auth_response: ClientAuthResponse,
+    ) -> Result<()> {
+        Ok(self
+            .ake
+            .backend_connect(view_store_id, view_store_auth_response)?)
     }
 }
