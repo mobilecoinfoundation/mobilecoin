@@ -111,7 +111,7 @@ impl AuditedMint {
     /// Attempt to find a matching [GnosisSafeDeposit] for a given [MintTx], and
     /// if successful return the [GnosisSafeDeposit] and record the match in the
     /// database. Note that each [GnosisSafeDeposit] can be matched to at
-    /// most one [MintTx], so calling this repeatedly over the same deposit
+    /// most one [MintTx], so calling this repeatedly over the same [MintTx]
     /// will fail.
     pub fn attempt_match_mint_with_deposit(
         mint_tx: &MintTx,
