@@ -311,7 +311,7 @@ mod tests {
             Err(Error::NotFound)
         ));
         assert!(matches!(
-            AuditedMint::attempt_match_deposit_with_mint(&deposit1, config, &conn),
+            AuditedMint::attempt_match_deposit_with_mint(&deposit2, config, &conn),
             Err(Error::NotFound)
         ));
         assert_audited_mints_table_is_empty(&conn);
