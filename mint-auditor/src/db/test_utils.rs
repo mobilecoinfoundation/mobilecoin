@@ -135,7 +135,7 @@ pub fn create_burn_tx_out(
     let mut transaction_builder = TransactionBuilder::new(
         BlockVersion::MAX,
         Amount::new(10, token_id),
-        fog_resolver.clone(),
+        fog_resolver,
         memo_builder,
     )
     .unwrap();

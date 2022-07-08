@@ -276,7 +276,7 @@ mod tests {
         );
 
         assert!(BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
-            &burn_tx_out2.public_key_hex(),
+            burn_tx_out2.public_key_hex(),
             &conn
         )
         .unwrap()
