@@ -148,11 +148,7 @@ impl GnosisSync {
                 deposit.insert(conn)?;
 
                 // Attempt to match the deposit with an existing MintTx.
-                match AuditedMint::attempt_match_deposit_with_mint(
-                    &deposit,
-                    &self.audited_safe,
-                    conn,
-                ) {
+                match AuditedMint::try_match_deposit_with_mint(&deposit, &self.audited_safe, conn) {
                     Ok(mint_tx) => {
                         log::info!(
                             self.logger,

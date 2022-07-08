@@ -1,4 +1,5 @@
 DROP TABLE counters;
+DROP TABLE audited_mints;
 DROP TABLE gnosis_safe_withdrawals;
 DROP TABLE gnosis_safe_deposits;
 DROP TABLE gnosis_safe_txs;
