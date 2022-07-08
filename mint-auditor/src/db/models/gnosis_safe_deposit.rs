@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
     Clone, Debug, Default, Deserialize, Eq, Hash, Insertable, PartialEq, Queryable, Serialize,
 )]
 pub struct GnosisSafeDeposit {
-    /// Id (required to keep Diesel happy).
+    /// Auto incrementing primary key.
     id: Option<i32>,
 
     /// Ethereum transaction hash.

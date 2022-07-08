@@ -135,6 +135,8 @@ CREATE TABLE audited_mints (
     FOREIGN KEY (mint_tx_id) REFERENCES mint_txs(id),
     FOREIGN KEY (gnosis_safe_deposit_id) REFERENCES gnosis_safe_deposits(id)
 );
+CREATE INDEX idx__audited_mints__mint_tx_id ON audited_mints(mint_tx_id);
+CREATE INDEX idx__audited_mints__gnosis_safe_deposit_id ON audited_mints(gnosis_safe_deposit_id);
 
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (

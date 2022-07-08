@@ -1,7 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    db::{schema::audited_mints, transaction, Conn, Counters, GnosisSafeDeposit, MintTx},
+    db::{
+        schema::{audited_mints, gnosis_safe_deposits, mint_txs},
+        transaction, Conn, Counters, GnosisSafeDeposit, MintTx,
+    },
     gnosis::{AuditedSafeConfig, GnosisSafeConfig},
     Error,
 };
@@ -52,15 +55,18 @@ impl AuditedMint {
             transaction(conn, |conn| {
                 // Currently we only support 1:1 mapping between deposits and mints, so ensure
                 // that there isn't already a match for this deposit.
-                let existing_match = audited_mints::table
+                let existing_match: Option<(String, String)> = audited_mints::table
+                    .inner_join(mint_txs::table)
+                    .inner_join(gnosis_safe_deposits::table)
+                    .select((mint_txs::nonce_hex, gnosis_safe_deposits::eth_tx_hash))
                     .filter(audited_mints::gnosis_safe_deposit_id.eq(deposit_id))
-                    .first::<AuditedMint>(conn)
+                    .first(conn)
                     .optional()?;
-                if let Some(existing_match) = existing_match {
+                if let Some((nonce_hex, eth_tx_hash)) = existing_match {
                     Counters::inc_num_unexpected_errors_matching_deposits_to_mints(conn)?;
                     return Err(Error::AlreadyExists(format!(
-                        "GnosisSafeDeposit id={} already matched with mint_tx_id={}",
-                        existing_match.gnosis_safe_deposit_id, existing_match.mint_tx_id
+                        "GnosisSafeDeposit eth_tx_hash={} already matched with mint_tx nonce={}",
+                        eth_tx_hash, nonce_hex,
                     )));
                 }
 
