@@ -31,10 +31,9 @@ impl TryFrom<&ProtoGnosisSafeDeposit> for DbGnosisSafeDeposit {
 
     fn try_from(src: &ProtoGnosisSafeDeposit) -> Result<Self, Self::Error> {
         Ok(Self::new(
-            if src.get_id() == 0 {
-                None
-            } else {
-                Some(src.get_id())
+            match src.get_id() {
+                0 => None,
+                id => Some(id),
             },
             EthTxHash::from_str(src.get_eth_tx_hash())?,
             src.get_eth_block_number(),
