@@ -648,6 +648,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_mints_to_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -672,6 +679,8 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 1);
     }
 
     #[test_with_logger]

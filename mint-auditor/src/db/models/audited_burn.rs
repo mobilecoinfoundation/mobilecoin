@@ -37,68 +37,65 @@ impl AuditedBurn {
         config: &AuditedSafeConfig,
         conn: &Conn,
     ) -> Result<BurnTxOut, Error> {
-        // We only operate on objects that were saved to the database.
-        let withdrawal_id = withdrawal.id().ok_or(Error::ObjectNotSaved)?;
+        // Wrapped in a closure to allow using the ? operator without returning from the
+        // function.
+        let result = || -> Result<BurnTxOut, Error> {
+            // We only operate on objects that were saved to the database.
+            let withdrawal_id = withdrawal.id().ok_or(Error::ObjectNotSaved)?;
 
-        // The withdrawal safe needs to match the audited safe configuration.
-        // This shouldn't happen and indicates misuse of this function.
-        if withdrawal.safe_addr() != &config.safe_addr {
-            return Err(Error::Other(format!(
-                "Gnosis safe withdrawal addr {} does not match audited safe addr {}",
-                withdrawal.safe_addr(),
-                config.safe_addr
-            )));
-        }
-
-        let result = transaction(conn, |conn| {
-            // Currently we only support 1:1 mapping between deposits and mints, so ensure
-            // that there isn't already a match for this deposit.
-            let existing_match: Option<(String, String)> = audited_burns::table
-                .inner_join(burn_tx_outs::table)
-                .inner_join(gnosis_safe_withdrawals::table)
-                .select((
-                    burn_tx_outs::public_key_hex,
-                    gnosis_safe_withdrawals::eth_tx_hash,
-                ))
-                .filter(audited_burns::gnosis_safe_withdrawal_id.eq(withdrawal_id))
-                .first(conn)
-                .optional()?;
-            if let Some((public_key_hex, eth_tx_hash)) = existing_match {
-                return Err(Error::AlreadyExists(format!(
-                    "GnosisSafeWithdrawal eth_tx_hash={} already matched with BurnTxOut pub_key={}",
-                    eth_tx_hash, public_key_hex,
+            // The withdrawal safe needs to match the audited safe configuration.
+            // This shouldn't happen and indicates misuse of this function.
+            if withdrawal.safe_addr() != &config.safe_addr {
+                return Err(Error::Other(format!(
+                    "Gnosis safe withdrawal addr {} does not match audited safe addr {}",
+                    withdrawal.safe_addr(),
+                    config.safe_addr
                 )));
             }
 
-            // See if we can find a BurnTxOut that matches the txout public key and has not
-            // been associated with a deposit.
-            let burn_tx_out = BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
-                withdrawal.mc_tx_out_public_key_hex(),
-                conn,
-            )?
-            .ok_or(Error::NotFound)?;
+            transaction(conn, |conn| {
+                // Currently we only support 1:1 mapping between deposits and mints, so ensure
+                // that there isn't already a match for this deposit.
+                let existing_match: Option<(String, String)> = audited_burns::table
+                    .inner_join(burn_tx_outs::table)
+                    .inner_join(gnosis_safe_withdrawals::table)
+                    .select((
+                        burn_tx_outs::public_key_hex,
+                        gnosis_safe_withdrawals::eth_tx_hash,
+                    ))
+                    .filter(audited_burns::gnosis_safe_withdrawal_id.eq(withdrawal_id))
+                    .first(conn)
+                    .optional()?;
+                if let Some((public_key_hex, eth_tx_hash)) = existing_match {
+                    return Err(Error::AlreadyExists(format!(
+                    "GnosisSafeWithdrawal eth_tx_hash={} already matched with BurnTxOut pub_key={}",
+                    eth_tx_hash, public_key_hex,
+                )));
+                }
 
-            // Sanity - find_audited_burn_tx_out_by_public_key is broken if it returns a
-            // BurnTxOut with a mismatching public key.
-            assert_eq!(
-                burn_tx_out.public_key_hex(),
-                withdrawal.mc_tx_out_public_key_hex()
-            );
+                // See if we can find a BurnTxOut that matches the txout public key and has not
+                // been associated with a deposit.
+                let burn_tx_out = BurnTxOut::find_unaudited_burn_tx_out_by_public_key(
+                    withdrawal.mc_tx_out_public_key_hex(),
+                    conn,
+                )?
+                .ok_or(Error::NotFound)?;
 
-            // Check that the burn and withdrawal details match.
-            Self::verify_burn_tx_out_matches_withdrawal(&burn_tx_out, withdrawal, config)?;
+                // Check that the burn and withdrawal details match.
+                Self::verify_burn_tx_out_matches_withdrawal(&burn_tx_out, withdrawal, config)?;
 
-            // Associate the withdrawal with the burn.
-            Self::associate_withdrawal_with_burn(
-                withdrawal_id,
-                burn_tx_out
-                    .id()
-                    .expect("got a BurnTxOut without id but database auto-populates that field"),
-                conn,
-            )?;
+                // Associate the withdrawal with the burn.
+                Self::associate_withdrawal_with_burn(
+                    withdrawal_id,
+                    burn_tx_out.id().expect(
+                        "got a BurnTxOut without id but database auto-populates that field",
+                    ),
+                    conn,
+                )?;
 
-            Ok(burn_tx_out)
-        });
+                Ok(burn_tx_out)
+            })
+        }();
 
         // Count certain errors. This needs to happen outside of the transaction because
         // errors result in the transaction getting rolled back.
@@ -114,7 +111,7 @@ impl AuditedBurn {
             }
 
             Err(_) => {
-                Counters::inc_num_unexpected_errors_matching_burns_to_withdrawals(conn)?;
+                Counters::inc_num_unexpected_errors_matching_withdrawals_to_burns(conn)?;
             }
         }
 
@@ -445,6 +442,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_withdrawals_to_burns(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -468,6 +472,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_withdrawals_to_burns(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -525,6 +536,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unknown_ethereum_token_withdrawals(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -656,6 +674,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_burns_to_withdrawals(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -680,6 +705,11 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_from_unknown_safe(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -737,5 +767,12 @@ mod tests {
 
         // Check that nothing was written to the `audited_burns` table
         assert_audited_burns_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unknown_ethereum_token_withdrawals(),
+            1
+        );
     }
 }
