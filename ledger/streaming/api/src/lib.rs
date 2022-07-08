@@ -38,4 +38,4 @@ pub use mc_blockchain_types::{BlockData, BlockIndex};
 /// Notes:
 /// - This should match the defaults in `mc-ledger-distribution`.
 /// - This must be sorted in descending order.
-pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
+pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[usize] = &[10000, 1000, 100];

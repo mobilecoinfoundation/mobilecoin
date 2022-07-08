@@ -33,7 +33,7 @@ impl BlockchainUrl {
     /// Get a URL for the given merged block parameters.
     pub fn merged_block_url(
         &self,
-        bucket_size: u64,
+        bucket_size: usize,
         first_index: BlockIndex,
     ) -> Result<Url, url::ParseError> {
         let filename = merged_block_num_to_s3block_path(bucket_size, first_index)

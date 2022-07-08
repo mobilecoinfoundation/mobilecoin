@@ -188,7 +188,7 @@ impl BlockHandler for S3BlockWriter {
         let archive_blocks = blockchain::ArchiveBlocks::from(blocks_data);
 
         let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
-            blocks_data.len() as u64,
+            blocks_data.len(),
             first_block_index,
         ));
 
@@ -275,7 +275,7 @@ impl BlockHandler for LocalBlockWriter {
             .expect("failed to serialize ArchiveBlock");
 
         let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
-            blocks_data.len() as u64,
+            blocks_data.len(),
             first_block_index,
         ));
         let dir = dest.as_path().parent().expect("failed getting parent");

@@ -72,7 +72,7 @@ pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
 /// together to speed up ledger syncing.
 /// `bucket_size` specifies how many blocks are expected to be joined together.
 pub fn merged_block_num_to_s3block_path(
-    bucket_size: u64,
+    bucket_size: usize,
     first_block_index: BlockIndex,
 ) -> PathBuf {
     let base_dir = format!("merged-{}", bucket_size);

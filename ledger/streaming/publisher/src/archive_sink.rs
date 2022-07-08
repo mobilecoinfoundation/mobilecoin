@@ -24,7 +24,7 @@ use std::{collections::VecDeque, convert::TryFrom};
 pub struct ArchiveBlockSink<W: ProtoWriter, L: Ledger> {
     writer: W,
     ledger: L,
-    merged_blocks_bucket_sizes: Vec<u64>,
+    merged_blocks_bucket_sizes: Vec<usize>,
     logger: Logger,
 }
 
@@ -72,7 +72,12 @@ impl<L: Ledger> ArchiveBlockSink<LocalFileProtoWriter, L> {
 
 impl<W: ProtoWriter, L: Ledger> ArchiveBlockSink<W, L> {
     /// Instantiate a sink with the given config.
-    pub fn new(writer: W, ledger: L, merged_blocks_bucket_sizes: Vec<u64>, logger: Logger) -> Self {
+    pub fn new(
+        writer: W,
+        ledger: L,
+        merged_blocks_bucket_sizes: Vec<usize>,
+        logger: Logger,
+    ) -> Self {
         log::debug!(
             logger,
             "Creating ArchiveBlockSink with writer={:#?}",
@@ -125,32 +130,32 @@ impl<W: ProtoWriter, L: Ledger> ArchiveBlockSink<W, L> {
     }
 }
 
-async fn maybe_write_merged_blocks<'s, W: ProtoWriter, L: Ledger>(
+async fn maybe_write_merged_blocks<'s>(
     last_index: u64,
-    merged_blocks_bucket_sizes: &'s [u64],
-    ledger: &'s L,
-    writer: &'s mut W,
+    merged_blocks_bucket_sizes: &'s [usize],
+    ledger: &'s impl Ledger,
+    writer: &'s impl ProtoWriter,
     logger: &'s Logger,
 ) -> Result<()> {
     let mut cache = VecDeque::new();
-    for bucket in merged_blocks_bucket_sizes {
+    for bucket in merged_blocks_bucket_sizes.iter().rev() {
         let bucket = *bucket;
-        let bucket_usize = usize::try_from(bucket).unwrap();
+        let bucket_u64 = bucket as u64;
         debug_assert!(
             bucket % 10 == 0,
             "Expected bucket to be a multiple of 10, got {}",
             bucket
         );
 
-        if last_index == 0 || last_index % bucket != 0 {
+        if last_index == 0 || last_index % bucket_u64 != 0 {
             continue;
         }
 
         log::debug!(logger, "Writing merged block of size {}", bucket);
 
         // Get the last N blocks.
-        cache.reserve(bucket_usize);
-        while cache.len() < bucket_usize {
+        cache.reserve(bucket);
+        while cache.len() < bucket {
             let index = last_index - (cache.len() as u64);
             // TODO: Switch this blocking call to an async method, or use `spawn_blocking`.
             let block = ledger.get_block_data(index).map_err(|e| {
@@ -167,19 +172,19 @@ async fn maybe_write_merged_blocks<'s, W: ProtoWriter, L: Ledger>(
     Ok(())
 }
 
-async fn write_single_block<W: ProtoWriter>(block_data: &BlockData, writer: &mut W) -> Result<()> {
+async fn write_single_block(block_data: &BlockData, writer: &mut impl ProtoWriter) -> Result<()> {
     let index = block_data.block().index;
     let proto = ArchiveBlock::from(block_data);
     let dest = block_num_to_s3block_path(index);
     writer.upload(&proto, &dest).await
 }
 
-async fn write_merged_block<W: ProtoWriter>(
+async fn write_merged_block(
     items: &[BlockData],
-    bucket_size: u64,
-    writer: &mut W,
+    bucket_size: usize,
+    writer: &mut impl ProtoWriter,
 ) -> Result<()> {
-    assert_eq!(items.len() as u64, bucket_size);
+    assert_eq!(items.len(), bucket_size);
     let indexes = items
         .iter()
         .map(|block_data| block_data.block().index)
@@ -265,7 +270,9 @@ mod tests {
 
         let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
-        let result_future = result_stream.for_each(async move |res| res.expect("unexpected error"));
+        let result_future = result_stream.for_each(async move |res| {
+            res.expect("unexpected error");
+        });
         block_on(result_future);
 
         let calls = writer_calls.lock().unwrap();

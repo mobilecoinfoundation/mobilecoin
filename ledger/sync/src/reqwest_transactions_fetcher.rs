@@ -30,7 +30,7 @@ use url::Url;
 /// Notes:
 /// - This should match the defaults in `mc-ledger-distribution`.
 /// - This must be sorted in descending order.
-pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
+pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[usize] = &[10000, 1000, 100];
 
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
@@ -83,7 +83,7 @@ pub struct ReqwestTransactionsFetcher {
     blocks_cache: Arc<Mutex<LruCache<BlockIndex, BlockData>>>,
 
     /// Merged blocks bucket sizes to attempt fetching.
-    merged_blocks_bucket_sizes: Vec<u64>,
+    merged_blocks_bucket_sizes: Vec<usize>,
 
     /// Number of successful cache hits when attempting ot get block data.
     /// Used for debugging purposes.
@@ -135,7 +135,7 @@ impl ReqwestTransactionsFetcher {
         })
     }
 
-    pub fn set_merged_blocks_bucket_sizes(&mut self, bucket_sizes: &[u64]) {
+    pub fn set_merged_blocks_bucket_sizes(&mut self, bucket_sizes: &[usize]) {
         self.merged_blocks_bucket_sizes = bucket_sizes.to_vec();
     }
 
@@ -268,7 +268,7 @@ impl ReqwestTransactionsFetcher {
 
         // Try and fetch a merged block if we stand a chance of finding one.
         for bucket in self.merged_blocks_bucket_sizes.iter() {
-            if block_index % bucket == 0 {
+            if block_index % (*bucket as u64) == 0 {
                 log::debug!(
                     self.logger,
                     "Attempting to fetch a merged block for #{} (bucket size {})",

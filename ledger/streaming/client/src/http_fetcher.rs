@@ -43,7 +43,7 @@ pub struct HttpBlockFetcher {
     client: Client,
 
     /// Merged blocks bucket sizes to attempt fetching.
-    merged_blocks_bucket_sizes: Vec<u64>,
+    merged_blocks_bucket_sizes: Vec<usize>,
 
     /// Cache mapping a [BlockIndex] to [BlockData], filled by
     /// merged blocks when possible.
@@ -89,12 +89,11 @@ impl HttpBlockFetcher {
     }
 
     /// Set the `merged_blocks_bucket_sizes`.
-    pub fn set_merged_blocks_bucket_sizes(&mut self, bucket_sizes: &[u64]) {
-        const MAX: u64 = MAX_PREFETCHED_BLOCKS as u64;
-        assert!(
-            bucket_sizes.iter().all(|n| *n < MAX),
+    pub fn set_merged_blocks_bucket_sizes(&mut self, bucket_sizes: &[usize]) {
+        debug_assert!(
+            bucket_sizes.iter().all(|n| *n < MAX_PREFETCHED_BLOCKS),
             "max bucket size is {}",
-            MAX
+            MAX_PREFETCHED_BLOCKS
         );
         self.merged_blocks_bucket_sizes = bucket_sizes.to_vec();
     }
@@ -113,7 +112,7 @@ impl HttpBlockFetcher {
 
         // Try and fetch a merged block if we stand a chance of finding one.
         for bucket in &self.merged_blocks_bucket_sizes {
-            if block_index % bucket == 0 {
+            if block_index % (*bucket as u64) == 0 {
                 if let Ok(num_merged) = self.get_merged(*bucket, block_index).await {
                     log::debug!(
                         self.logger,
@@ -257,7 +256,7 @@ impl HttpBlockFetcher {
         }
     }
 
-    async fn get_merged(&self, bucket_size: u64, first_index: BlockIndex) -> Result<usize> {
+    async fn get_merged(&self, bucket_size: usize, first_index: BlockIndex) -> Result<usize> {
         log::debug!(
             self.logger,
             "Attempting to fetch a merged block for #{} (bucket size {})",
@@ -265,7 +264,7 @@ impl HttpBlockFetcher {
             bucket_size
         );
         debug_assert!(
-            first_index % bucket_size == 0,
+            first_index % (bucket_size as u64) == 0,
             "block index {} is not divisible by bucket size {}",
             first_index,
             bucket_size
@@ -299,10 +298,11 @@ impl HttpBlockFetcher {
     ) -> impl Stream<Item = Result<BlockData>> + '_ {
         let n = indexes.end - indexes.start - 1;
         for bucket in &self.merged_blocks_bucket_sizes {
-            if *bucket < n {
+            let bucket_u64 = *bucket as u64;
+            if bucket_u64 < n {
                 continue;
             }
-            let block_start = indexes.start - indexes.start % *bucket;
+            let block_start = indexes.start - indexes.start % bucket_u64;
             if let Ok(num_merged) = self.get_merged(*bucket, block_start).await {
                 if num_merged > 0 {
                     break;
