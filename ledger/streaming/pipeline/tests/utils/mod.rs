@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use async_channel::{Receiver, Sender};
-use futures::Stream;
+use futures::StreamExt;
 use mc_common::{logger::Logger, NodeID};
 use mc_ledger_streaming_api::{test_utils::MockStream, BlockData, Error, Result};
 use mc_ledger_streaming_pipeline::LedgerToArchiveBlocksAndGrpc;
@@ -14,10 +14,11 @@ use mc_ledger_streaming_publisher::ProtoWriter;
 #[cfg(feature = "publisher_s3")]
 use mc_ledger_streaming_publisher::{S3ClientProtoWriter, S3Region};
 use mc_util_uri::ConsensusPeerUri;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use tempdir::TempDir;
+use tokio::runtime::Handle;
 
-pub struct ConsensusNode<W: ProtoWriter> {
+pub struct ConsensusNode<W: ProtoWriter + 'static> {
     pub id: NodeID,
     pub pipeline: LedgerToArchiveBlocksAndGrpc<MockStream<Receiver<Result<BlockData>>>, W>,
     pub sender: Sender<Result<BlockData>>,
@@ -25,9 +26,9 @@ pub struct ConsensusNode<W: ProtoWriter> {
     pub uri: ConsensusPeerUri,
 }
 
-impl<W: ProtoWriter> ConsensusNode<W> {
-    pub fn make_node(id: NodeID, archive_proto_writer: W, logger: Logger) -> Self {
-        let (sender, receiver) = async_channel::bounded(3);
+impl<W: ProtoWriter + 'static> ConsensusNode<W> {
+    pub fn make_node(id: NodeID, archive_proto_writer: W, logger: Logger) -> Arc<Self> {
+        let (sender, receiver) = async_channel::unbounded();
         let upstream = MockStream::new(receiver);
 
         let ledger_dir = TempDir::new(&format!("consensus_node_{}", id)).unwrap();
@@ -53,22 +54,38 @@ impl<W: ProtoWriter> ConsensusNode<W> {
             server,
             uri,
         }
+        .into()
     }
 
     pub fn make_nodes(
         ids: impl IntoIterator<Item = NodeID>,
         archive_proto_writer: W,
         logger: Logger,
-    ) -> Vec<Self> {
+    ) -> Vec<Arc<Self>> {
         ids.into_iter()
             .map(|id| Self::make_node(id, archive_proto_writer.clone(), logger.clone()))
             .collect()
     }
 
-    pub fn run(&self, starting_height: u64) -> impl Stream<Item = Result<()>> + '_ {
-        self.pipeline
-            .run(starting_height)
-            .expect("failed to start consensus node pipeline")
+    pub fn drive(
+        self: &Arc<Self>,
+        runtime: &Handle,
+        starting_height: u64,
+        blocks: impl IntoIterator<Item = Result<BlockData>>,
+    ) {
+        let this = Arc::clone(self);
+        runtime.spawn(async move {
+            let mut stream = this
+                .pipeline
+                .run(starting_height)
+                .expect("failed to start consensus node pipeline");
+            while let Some(result) = stream.next().await {
+                result.expect("unexpected error in server pipeline")
+            }
+        });
+        for result in blocks {
+            self.sender.try_send(result).expect("failed to send block")
+        }
     }
 
     pub fn externalize_block(&self, block_data: BlockData) {
@@ -86,7 +103,7 @@ impl<W: ProtoWriter> ConsensusNode<W> {
 
 #[cfg(feature = "publisher_local")]
 impl ConsensusNode<LocalFileProtoWriter> {
-    pub fn make_local(id: NodeID, local_path: impl Into<PathBuf>, logger: Logger) -> Self {
+    pub fn make_local(id: NodeID, local_path: impl Into<PathBuf>, logger: Logger) -> Arc<Self> {
         Self::make_node(id, LocalFileProtoWriter::new(local_path.into()), logger)
     }
 
@@ -94,7 +111,7 @@ impl ConsensusNode<LocalFileProtoWriter> {
         ids: impl IntoIterator<Item = NodeID>,
         local_path: impl Into<PathBuf>,
         logger: Logger,
-    ) -> Vec<Self> {
+    ) -> Vec<Arc<Self>> {
         Self::make_nodes(ids, LocalFileProtoWriter::new(local_path.into()), logger)
     }
 }
@@ -106,7 +123,7 @@ impl ConsensusNode<S3ClientProtoWriter> {
         region: S3Region,
         s3_path: impl Into<PathBuf>,
         logger: Logger,
-    ) -> Self {
+    ) -> Arc<Self> {
         Self::make_node(id, S3ClientProtoWriter::new(region, s3_path.into()), logger)
     }
 
@@ -115,7 +132,7 @@ impl ConsensusNode<S3ClientProtoWriter> {
         region: S3Region,
         s3_path: impl Into<PathBuf>,
         logger: Logger,
-    ) -> Vec<Self> {
+    ) -> Vec<Arc<Self>> {
         Self::make_nodes(
             ids,
             S3ClientProtoWriter::new(region, s3_path.into()),
@@ -124,11 +141,6 @@ impl ConsensusNode<S3ClientProtoWriter> {
     }
 }
 
-pub fn get_uris_by_node_id<W: ProtoWriter>(
-    nodes: &[ConsensusNode<W>],
-) -> HashMap<NodeID, ConsensusPeerUri> {
-    nodes
-        .iter()
-        .map(|node| (node.id.clone(), node.uri.clone()))
-        .collect()
-}
+// TODO: Is this accurate?
+unsafe impl<W: ProtoWriter + 'static> Send for ConsensusNode<W> {}
+unsafe impl<W: ProtoWriter + 'static> Sync for ConsensusNode<W> {}

@@ -8,12 +8,12 @@ use protobuf::Message;
 use std::{fmt::Debug, path::Path};
 
 /// Trait that abstracts the functionality of writing a protobuf.
-pub trait ProtoWriter: Clone + Debug {
+pub trait ProtoWriter: Clone + Debug + Send + Sync {
     /// Upload the given [Message] to the given path.
     fn upload<'up, M: Message>(&'up self, proto: &'up M, dest: &'up Path) -> Self::Future<'up>;
 
     /// Type alias for the [Future] returned by `upload()`.
-    type Future<'u>: Future<Output = Result<()>> + 'u
+    type Future<'u>: Future<Output = Result<()>> + Send + 'u
     where
         Self: 'u;
 }

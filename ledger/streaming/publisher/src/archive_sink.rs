@@ -137,7 +137,15 @@ async fn maybe_write_merged_blocks<'s>(
     writer: &'s impl ProtoWriter,
     logger: &'s Logger,
 ) -> Result<()> {
+    if last_index == 0 {
+        return Ok(());
+    }
     let mut cache = VecDeque::new();
+    debug_assert!(
+        merged_blocks_bucket_sizes.windows(2).all(|w| w[0] > w[1]),
+        "merged_blocks_bucket_sizes must be in descending order"
+    );
+    // Iterate in order of ascending bucket sizes.
     for bucket in merged_blocks_bucket_sizes.iter().rev() {
         let bucket = *bucket;
         let bucket_u64 = bucket as u64;
@@ -147,7 +155,7 @@ async fn maybe_write_merged_blocks<'s>(
             bucket
         );
 
-        if last_index == 0 || last_index % bucket_u64 != 0 {
+        if last_index % bucket_u64 != 0 {
             continue;
         }
 

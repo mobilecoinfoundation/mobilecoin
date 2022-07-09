@@ -9,8 +9,7 @@ use futures::{
     Stream, StreamExt,
 };
 
-/// Mock implementation of [Streamer<Result<BlockData>>], backed by pre-defined
-/// data.
+/// Mock [Streamer<Result<BlockData>>], backed by pre-defined data.
 #[derive(Clone, Debug)]
 pub struct MockStream<S: Stream + Clone> {
     stream: S,

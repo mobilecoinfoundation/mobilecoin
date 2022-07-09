@@ -6,6 +6,7 @@ use futures::stream::{Stream, StreamExt};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
+use std::fmt;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A block sink that takes blocks from a passed stream and puts them into
@@ -99,8 +100,11 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
                 if let Some(result) = stream.next().await {
                     log::info!(
                         state.logger,
-                        "Got result {:?} with state {:?}",
-                        result,
+                        "DbStream got result {:?} with state {:?}",
+                        result.as_ref().map(|block_data| format!(
+                            "block with index {}",
+                            block_data.block().index
+                        )),
                         state
                     );
                     if let Ok(block_data) = result {
@@ -151,7 +155,6 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
 }
 
 /// Object to manage the state of the ledger sink process
-#[derive(Debug)]
 struct SinkState {
     /// Channel to send blocks ledger sink thread to be synced
     sender: Sender<BlockData>,
@@ -200,6 +203,16 @@ impl SinkState {
     /// Determine if we're able to begin syncing blocks to the ledger
     fn can_start_sync(&self) -> bool {
         self.last_block_received >= self.sync_start_height
+    }
+}
+
+impl fmt::Debug for SinkState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SinkState")
+            .field("last_block_received", &self.last_block_received)
+            .field("last_block_synced", &self.last_block_synced)
+            .field("sync_start_height", &self.sync_start_height)
+            .finish_non_exhaustive()
     }
 }
 

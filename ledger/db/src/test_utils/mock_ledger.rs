@@ -88,7 +88,11 @@ impl Ledger for MockLedger {
         signature: Option<&'b BlockSignature>,
         metadata: Option<&'b BlockMetadata>,
     ) -> Result<(), Error> {
-        assert_eq!(block.index, self.num_blocks().unwrap());
+        assert_eq!(
+            block.index,
+            self.num_blocks().unwrap(),
+            "Block indexes must be consecutive"
+        );
         self.set_block_data(BlockData::new(
             block.clone(),
             block_contents.clone(),

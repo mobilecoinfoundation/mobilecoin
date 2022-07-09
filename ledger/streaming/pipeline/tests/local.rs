@@ -11,11 +11,13 @@ use mc_common::{
 };
 use mc_ledger_db::test_utils::{get_test_ledger_blocks, MockLedger};
 use mc_ledger_streaming_api::{test_utils::test_node_id, Streamer};
-use mc_ledger_streaming_client::{LocalBlockFetcher, QuorumSet};
+use mc_ledger_streaming_client::{
+    BackfillingStream, GrpcBlockSource, LocalBlockFetcher, QuorumSet,
+};
 use mc_ledger_streaming_pipeline::consensus_client;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tempdir::TempDir;
-use utils::{get_uris_by_node_id, ConsensusNode};
+use utils::ConsensusNode;
 
 // Simulate 3 consensus servers, and a consensus client requiring a quorum of 2
 // nodes.
@@ -26,25 +28,32 @@ fn local_chain(logger: Logger) {
     let node_ids: Vec<NodeID> = (0..3).map(test_node_id).collect();
     let consensus_nodes = ConsensusNode::make_local_nodes(node_ids, dir.path(), logger.clone());
 
-    // Client pipeline.
-    let grpc_uris = get_uris_by_node_id(&consensus_nodes[..]);
-    let quorum_set = QuorumSet::new_with_node_ids(2, grpc_uris.keys().cloned().collect());
     // Build gRPC env for initiating peer connections
     let client_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("ledger_streaming_client".to_string())
             .build(),
     );
-    let fetcher = LocalBlockFetcher::new(dir.path());
-    let client_pipeline = consensus_client(
-        grpc_uris,
-        quorum_set,
-        client_env,
-        fetcher,
-        MockLedger::default(),
-        logger.clone(),
-    );
 
+    // Client pipeline.
+    let upstreams: HashMap<NodeID, _> = consensus_nodes
+        .iter()
+        .map(|node| {
+            (
+                node.id.clone(),
+                BackfillingStream::new(
+                    GrpcBlockSource::new(&node.uri, client_env.clone(), logger.clone()),
+                    LocalBlockFetcher::new(node.pipeline.archive_block_writer.base_path()),
+                    logger.clone(),
+                ),
+            )
+        })
+        .collect();
+    let quorum_set = QuorumSet::new_with_node_ids(2, upstreams.keys().cloned().collect());
+    let client_pipeline =
+        consensus_client(upstreams, quorum_set, MockLedger::default(), logger.clone());
+
+    // Instantiate tokio runtime.
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -52,15 +61,11 @@ fn local_chain(logger: Logger) {
 
     // Connect and drive server pipelines.
     for node in consensus_nodes {
-        let mut stream = node.run(0);
-        runtime.spawn(async move {
-            while let Some(result) = stream.next().await {
-                result.expect("unexpected error in server pipeline")
-            }
-        });
-        for block_data in get_test_ledger_blocks(100) {
-            node.externalize_block(block_data)
-        }
+        node.drive(
+            runtime.handle(),
+            0,
+            get_test_ledger_blocks(100).into_iter().map(Ok),
+        );
     }
 
     // Drive client pipeline.

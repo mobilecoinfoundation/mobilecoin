@@ -74,6 +74,14 @@ fn backfill_stream<
         // intermediate stream.
         move |result| -> Pin<Box<dyn Stream<Item = Result<BlockData>>>> {
             let next_index = prev_index.map_or_else(|| starting_height, |prev| prev + 1);
+            log::info!(
+                &logger,
+                "BackfillingStream got result {:?}",
+                result
+                    .as_ref()
+                    .map(|block_data| format!("block with index {}", block_data.block().index)),
+            );
+
             match result {
                 Ok(block_data) => {
                     let index = block_data.block().index;

@@ -25,6 +25,7 @@ pub struct LedgerToArchiveBlocksAndGrpc<US: Streamer<Result<BlockData>, BlockInd
 {
     pub source: DbStream<US, LedgerDB>,
     pub archive_block_sink: ArchiveBlockSink<W, LedgerDB>,
+    pub archive_block_writer: W,
     pub grpc_sink: GrpcServerSink,
 }
 
@@ -34,14 +35,14 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
     pub fn new(
         upstream: US,
         ledger_path: impl AsRef<Path>,
-        archive_proto_writer: W,
+        archive_block_writer: W,
         logger: Logger,
     ) -> Result<Self> {
         let _ = LedgerDB::create(ledger_path.as_ref());
         let ledger = LedgerDB::open(ledger_path.as_ref())?;
         let source = DbStream::new(upstream, ledger.clone(), true, logger.clone());
         let archive_block_sink = ArchiveBlockSink::new(
-            archive_proto_writer,
+            archive_block_writer.clone(),
             ledger,
             DEFAULT_MERGED_BLOCKS_BUCKET_SIZES.to_vec(),
             logger.clone(),
@@ -50,17 +51,18 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
         Ok(Self {
             source,
             archive_block_sink,
+            archive_block_writer,
             grpc_sink,
         })
     }
 
     pub fn run(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + '_> {
         let stream = self.source.get_stream(starting_height)?;
+        // Write ArchiveBlock(s), and if that succeeds, publish them to gRPC.
         Ok(Box::pin(stream.then(move |result| async move {
-            // Write ArchiveBlock, and if that succeeds, publish them to gRPC.
             let block_data = result?;
-            let archive_block = self.archive_block_sink.write(&block_data).await?;
-            self.grpc_sink.publish(archive_block).await
+            self.archive_block_sink.write(&block_data).await?;
+            self.grpc_sink.write(&block_data).await
         })))
     }
 }
@@ -102,6 +104,11 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>>
             logger,
         )
     }
+}
+
+unsafe impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter> Send
+    for LedgerToArchiveBlocksAndGrpc<US, W>
+{
 }
 
 /// A pipeline that subscribes to the given URI, and repeats any

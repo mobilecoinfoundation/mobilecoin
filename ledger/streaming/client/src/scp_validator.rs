@@ -296,7 +296,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + 
 mod tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_ledger_streaming_api::test_utils::{test_node_id,make_blocks, MockStream};
+    use mc_ledger_streaming_api::test_utils::{make_blocks, test_node_id, MockStream};
 
     #[test_with_logger]
     fn scp_validates_nodes_in_quorum(logger: Logger) {
