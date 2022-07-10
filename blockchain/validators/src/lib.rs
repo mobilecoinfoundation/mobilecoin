@@ -3,6 +3,7 @@
 //! Blockchain validators.
 
 #![deny(missing_docs)]
+#![feature(type_ascription)]
 
 pub mod error;
 pub mod metadata;
