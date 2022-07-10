@@ -2,10 +2,7 @@
 
 //! Configuration for the avr history bootstrap file.
 
-use crate::{
-    error::ParseError,
-};
-
+use crate::error::ParseError;
 
 use mc_blockchain_types::{BlockIndex, VerificationReport};
 use mc_common::ResponderId;
@@ -46,20 +43,17 @@ impl AvrHistoryConfig {
     /// * `path` - Path to the configuration file containing
     /// the history of AVRs generated MobileCoin consensus node
     /// enclaves
-    pub fn try_from_file(path: impl AsRef<Path>) -> Result <AvrHistoryConfig, ParseError>{
+    pub fn try_from_file(path: impl AsRef<Path>) -> Result<AvrHistoryConfig, ParseError> {
         let data = fs::read_to_string(path)?;
 
-        if let Ok(mut config ) = serde_json::from_str(&data) : Result<AvrHistoryConfig, _>{
+        if let Ok(mut config) = serde_json::from_str(&data): Result<AvrHistoryConfig, _> {
             config.node.sort();
             Ok(config)
-        }else if let Ok(mut config ) = toml::from_str(&data) : Result<AvrHistoryConfig, _>{
+        } else if let Ok(mut config) = toml::from_str(&data): Result<AvrHistoryConfig, _> {
             config.node.sort();
             Ok(config)
-        }
-        else{
+        } else {
             Err(ParseError::UnsuportedFileFormat)
         }
     }
 }
-
-

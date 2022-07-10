@@ -2586,6 +2586,7 @@ dependencies = [
  "hex",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
+ "mc-common",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",

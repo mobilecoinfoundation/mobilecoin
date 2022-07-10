@@ -2,7 +2,4 @@
 
 pub mod config;
 
-
-pub use self::{
-    config::{AvrHistoryConfig, AvrHistoryRecord},
-};
+pub use self::config::{AvrHistoryConfig, AvrHistoryRecord};

@@ -2,8 +2,8 @@
 
 //! A [BlockMetadata] validator.
 
-pub mod key_range;
 pub mod avr;
+pub mod key_range;
 
 use crate::{ParseError, ValidationError};
 use key_range::KeyRangeValidator;
