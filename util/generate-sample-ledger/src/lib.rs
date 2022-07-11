@@ -99,7 +99,12 @@ pub fn bootstrap_ledger(
                         token_id: token_id.into(),
                     };
                     outputs.push(create_output(
-                        recipient, amount, &mut rng, hint_text, &logger,
+                        recipient,
+                        amount,
+                        block_version,
+                        &mut rng,
+                        hint_text,
+                        &logger,
                     ));
                 }
             }
@@ -150,6 +155,7 @@ pub fn bootstrap_ledger(
 fn create_output(
     recipient: &PublicAddress,
     amount: Amount,
+    block_version: BlockVersion,
     rng: &mut FixedRng,
     hint_slice: Option<&str>,
     logger: &Logger,
@@ -169,7 +175,7 @@ fn create_output(
         EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    let output = TxOut::new(BLOCK_VERSION, amount, recipient, &tx_private_key, hint).unwrap();
+    let output = TxOut::new(block_version, amount, recipient, &tx_private_key, hint).unwrap();
     log::debug!(logger, "Creating output: {:?}", output);
     output
 }
@@ -199,6 +205,7 @@ mod tests {
         let output = create_output(
             &account_key.subaddress(0),
             amount,
+            BLOCK_VERSION,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -212,6 +219,7 @@ mod tests {
         let output = create_output(
             &account_key.subaddress(0),
             amount,
+            BLOCK_VERSION,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -226,6 +234,7 @@ mod tests {
         let output = create_output(
             &account_key.subaddress(0),
             amount,
+            BLOCK_VERSION,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
