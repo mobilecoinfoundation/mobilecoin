@@ -28,7 +28,7 @@ pub struct AvrHistoryRecord {
     pub first_block_index: BlockIndex,
 
     /// Final block the AVR Report for the signing key is valid
-    pub last_block_index: BlockIndex,
+    pub last_block_index: Option<BlockIndex>,
 
     /// AVR Report (or lack thereof) for the node & block ranges
     //#[serde(default, with = "mc_attest_core::serial")]
