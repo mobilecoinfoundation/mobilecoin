@@ -6,21 +6,21 @@ mod utils;
 
 use futures::StreamExt;
 use mc_common::{
-    logger::{test_with_logger, Logger},
+    logger::{o, test_with_logger, Logger},
     NodeID,
 };
-use mc_ledger_db::test_utils::{get_test_ledger_blocks, MockLedger};
+use mc_ledger_db::{create_ledger_in, test_utils::get_test_ledger_blocks};
 use mc_ledger_streaming_api::{test_utils::test_node_id, Streamer};
 use mc_ledger_streaming_client::{
     BackfillingStream, GrpcBlockSource, LocalBlockFetcher, QuorumSet,
 };
 use mc_ledger_streaming_pipeline::consensus_client;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tempdir::TempDir;
 use utils::ConsensusNode;
 
-// Simulate 3 consensus servers, and a consensus client requiring a quorum of 2
-// nodes.
+// Simulate 3 consensus servers, and a consensus client requiring a quorum of
+// two nodes.
 #[test_with_logger]
 fn local_chain(logger: Logger) {
     // Server pipelines.
@@ -36,22 +36,29 @@ fn local_chain(logger: Logger) {
     );
 
     // Client pipeline.
-    let upstreams: HashMap<NodeID, _> = consensus_nodes
+    let upstreams = consensus_nodes
         .iter()
         .map(|node| {
             (
                 node.id.clone(),
                 BackfillingStream::new(
-                    GrpcBlockSource::new(&node.uri, client_env.clone(), logger.clone()),
+                    GrpcBlockSource::new(&node.uri, client_env.clone(), node.logger.clone()),
                     LocalBlockFetcher::new(node.pipeline.archive_block_writer.base_path()),
-                    logger.clone(),
+                    node.logger.clone(),
                 ),
             )
         })
-        .collect();
-    let quorum_set = QuorumSet::new_with_node_ids(2, upstreams.keys().cloned().collect());
-    let client_pipeline =
-        consensus_client(upstreams, quorum_set, MockLedger::default(), logger.clone());
+        .collect::<HashMap<_, _>>();
+    // HACK: Try with 1
+    let quorum_set = QuorumSet::new_with_node_ids(1, upstreams.keys().cloned().collect());
+    let client_dir = TempDir::new_in("client", dir.path().to_str().unwrap()).unwrap();
+    let ledger = create_ledger_in(client_dir.as_ref());
+    let client_pipeline = consensus_client(
+        upstreams,
+        quorum_set,
+        ledger,
+        logger.new(o!("node" => "client")),
+    );
 
     // Instantiate tokio runtime.
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -61,7 +68,7 @@ fn local_chain(logger: Logger) {
 
     // Connect and drive server pipelines.
     for node in consensus_nodes {
-        node.drive(
+        node.add_many(
             runtime.handle(),
             0,
             get_test_ledger_blocks(100).into_iter().map(Ok),
@@ -70,6 +77,7 @@ fn local_chain(logger: Logger) {
 
     // Drive client pipeline.
     runtime.block_on(async move {
+        tokio::time::sleep(Duration::from_secs(1)).await;
         let mut client_stream = client_pipeline.get_stream(0).unwrap();
         let mut client_height = 0;
         while let Some(result) = client_stream.next().await {

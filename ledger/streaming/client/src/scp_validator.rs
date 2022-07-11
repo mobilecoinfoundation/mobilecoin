@@ -11,7 +11,7 @@ use mc_common::{
     NodeID,
 };
 use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
-use std::future;
+use std::{fmt, future};
 
 const MAX_BLOCK_DEFICIT: u64 = 50;
 
@@ -45,7 +45,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + 
 }
 
 /// State of SCP validation
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
     /// The quorum set of the node we are tracking state for.
     local_quorum_set: QuorumSet<ID>,
@@ -81,7 +81,7 @@ impl<ID: GenericNodeId + Send> SCPValidationState<ID> {
         let index = block_data.block().index;
 
         // If we've already externalized a block at this index, ignore it
-        if index <= self.highest_slot_index && self.highest_slot_index > 0 {
+        if index < self.highest_slot_index && self.highest_slot_index > 0 {
             return;
         }
 
@@ -224,6 +224,38 @@ impl<ID: GenericNodeId + Send> SCPValidationState<ID> {
     }
 }
 
+impl<ID: GenericNodeId + Send> fmt::Debug for SCPValidationState<ID> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SCPValidationState")
+            .field("highest_slot_index", &self.highest_slot_index)
+            .field("num_blocks_externalized", &self.num_blocks_externalized)
+            .field(
+                "slots_to_externalized_blocks",
+                &self
+                    .slots_to_externalized_blocks
+                    .iter()
+                    .map(|(slot_id, blocks)| {
+                        (
+                            slot_id,
+                            blocks
+                                .iter()
+                                .map(|(node_id, block_data)| {
+                                    (
+                                        node_id.to_string(),
+                                        format!("block with index {}", block_data.block().index),
+                                    )
+                                })
+                                .collect::<HashMap<_, _>>(),
+                        )
+                    })
+                    .collect::<HashMap<_, _>>(),
+            )
+            .field("local_quorum_set", &self.local_quorum_set)
+            .field("logger", &self.logger)
+            .finish()
+    }
+}
+
 /// Enum to allow monadic results other than Some & None for
 /// stream types were None would terminate the stream. Useful for
 /// stream combinations like Scan --> Filter_Map
@@ -258,8 +290,17 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + 
             validation_state.set_highest_externalized_slot(starting_height - 1);
         }
 
+        let logger = self.logger.clone();
         Ok(merged_streams
-            .scan(validation_state, |scp_state, (node_id, result)| {
+            .scan(validation_state, move |scp_state, (node_id, result)| {
+                log::info!(
+                    &logger,
+                    "SCPValidator got {:?} with state {:?}",
+                    result
+                        .as_ref()
+                        .map(|block_data| format!("block with index {}", block_data.block().index)),
+                    scp_state
+                );
                 if let Ok(block_data) = result {
                     // Put block into underlying state
                     scp_state.update_slot(node_id, block_data);
@@ -332,7 +373,7 @@ mod tests {
         let s = MockStream::from_blocks(blocks);
         let mut upstreams = HashMap::new();
         for i in 0..9 {
-            upstreams.insert(nodes.get(i).unwrap().clone(), s.clone());
+            upstreams.insert(nodes[i].clone(), s.clone());
         }
         let validator = SCPValidator::new(upstreams, quorum_set, logger);
 

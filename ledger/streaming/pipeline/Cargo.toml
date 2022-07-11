@@ -38,6 +38,8 @@ url = "2.2"
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../db", features = ["test_utils"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
+mc-ledger-streaming-client = { path = "../client", features = ["test_utils"] }
+mc-ledger-streaming-publisher = { path = "../publisher", features = ["test_utils"] }
 mc-util-from-random = { path = "../../../util/from-random" }
 
 async-channel = "1.6"

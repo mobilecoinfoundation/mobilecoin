@@ -5,7 +5,10 @@
 
 use async_channel::{Receiver, Sender};
 use futures::StreamExt;
-use mc_common::{logger::Logger, NodeID};
+use mc_common::{
+    logger::{o, Logger},
+    NodeID,
+};
 use mc_ledger_streaming_api::{test_utils::MockStream, BlockData, Error, Result};
 use mc_ledger_streaming_pipeline::LedgerToArchiveBlocksAndGrpc;
 #[cfg(feature = "publisher_local")]
@@ -24,14 +27,18 @@ pub struct ConsensusNode<W: ProtoWriter + 'static> {
     pub sender: Sender<Result<BlockData>>,
     pub server: grpcio::Server,
     pub uri: ConsensusPeerUri,
+    pub logger: Logger,
 }
 
 impl<W: ProtoWriter + 'static> ConsensusNode<W> {
     pub fn make_node(id: NodeID, archive_proto_writer: W, logger: Logger) -> Arc<Self> {
+        let responder_id_str = id.responder_id.to_string();
+        let ledger_dir = TempDir::new(&format!("consensus_node_{}", &responder_id_str)).unwrap();
+        let logger = logger.new(o!("responder_id" => responder_id_str));
+
         let (sender, receiver) = async_channel::unbounded();
         let upstream = MockStream::new(receiver);
 
-        let ledger_dir = TempDir::new(&format!("consensus_node_{}", id)).unwrap();
         let pipeline = LedgerToArchiveBlocksAndGrpc::new(
             upstream,
             ledger_dir.path(),
@@ -53,6 +60,7 @@ impl<W: ProtoWriter + 'static> ConsensusNode<W> {
             sender,
             server,
             uri,
+            logger,
         }
         .into()
     }
@@ -67,7 +75,7 @@ impl<W: ProtoWriter + 'static> ConsensusNode<W> {
             .collect()
     }
 
-    pub fn drive(
+    pub fn add_many(
         self: &Arc<Self>,
         runtime: &Handle,
         starting_height: u64,
@@ -103,7 +111,11 @@ impl<W: ProtoWriter + 'static> ConsensusNode<W> {
 
 #[cfg(feature = "publisher_local")]
 impl ConsensusNode<LocalFileProtoWriter> {
-    pub fn make_local(id: NodeID, local_path: impl Into<PathBuf>, logger: Logger) -> Arc<Self> {
+    pub fn make_local_node(
+        id: NodeID,
+        local_path: impl Into<PathBuf>,
+        logger: Logger,
+    ) -> Arc<Self> {
         Self::make_node(id, LocalFileProtoWriter::new(local_path.into()), logger)
     }
 
@@ -118,7 +130,7 @@ impl ConsensusNode<LocalFileProtoWriter> {
 
 #[cfg(feature = "publisher_s3")]
 impl ConsensusNode<S3ClientProtoWriter> {
-    pub fn make_s3(
+    pub fn make_s3_node(
         id: NodeID,
         region: S3Region,
         s3_path: impl Into<PathBuf>,

@@ -229,15 +229,15 @@ fn start_sink_thread(
         while let Some(block_data) = rcv_in.blocking_recv() {
             log::info!(
                 &logger,
-                "Sync thread got block {}",
-                block_data.block().index + 1
+                "Sync thread got block with index {}",
+                block_data.block().index
             );
 
             // If there's an error syncing the blocks, end thread
             if let Err(err) = ledger.append_block_data(&block_data) {
                 log::error!(
                     logger,
-                    "Error during attempt to write block {}: {}",
+                    "Error during attempt to write block with index {}: {}",
                     block_data.block().index,
                     err,
                 );
