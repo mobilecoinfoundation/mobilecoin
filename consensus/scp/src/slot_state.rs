@@ -5,9 +5,10 @@
 //! might embed a `SlotIndex` directly inside a `Slot`.
 
 use crate::{
-    core_types::{Ballot, SlotIndex, Value},
+    ballot::Ballot,
     msg::*,
     slot::{Phase, Slot},
+    SlotIndex, Value,
 };
 use mc_common::{HashSet, NodeID};
 use serde::{Deserialize, Serialize};

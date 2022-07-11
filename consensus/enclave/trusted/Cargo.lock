@@ -98,12 +98,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
-name = "binascii"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "383d29d513d8764dcdc42ea295d979eb99c3c9f00607b3692cf68a431f7dca72"
-
-[[package]]
 name = "bindgen"
 version = "0.58.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -286,8 +280,8 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.1"
-source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55#9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55"
+version = "0.2.2"
+source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=7c1804bf4f95ef84a7a53be93552ddf1708135bb#7c1804bf4f95ef84a7a53be93552ddf1708135bb"
 dependencies = [
  "libc",
 ]
@@ -615,7 +609,7 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 [[package]]
 name = "mbedtls"
 version = "0.8.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=49a293a5f4b1ef571c71174e3fa1f301925f3915#49a293a5f4b1ef571c71174e3fa1f301925f3915"
+source = "git+https://github.com/mobilecoinfoundation/rust-mbedtls.git?rev=ac6ee17a31e37311ce7f4fa0649c340e5d85258d#ac6ee17a31e37311ce7f4fa0649c340e5d85258d"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -627,14 +621,14 @@ dependencies = [
  "rs-libc",
  "serde",
  "serde_derive",
- "spin 0.4.10",
+ "spin 0.9.3",
  "yasna",
 ]
 
 [[package]]
 name = "mbedtls-sys-auto"
 version = "2.26.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=49a293a5f4b1ef571c71174e3fa1f301925f3915#49a293a5f4b1ef571c71174e3fa1f301925f3915"
+source = "git+https://github.com/mobilecoinfoundation/rust-mbedtls.git?rev=ac6ee17a31e37311ce7f4fa0649c340e5d85258d#ac6ee17a31e37311ce7f4fa0649c340e5d85258d"
 dependencies = [
  "bindgen",
  "cc",
@@ -690,12 +684,13 @@ dependencies = [
 name = "mc-attest-core"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64",
  "bitflags",
  "cargo-emit",
  "chrono",
  "digest",
  "displaydoc",
+ "hex",
  "hex_fmt",
  "mc-attest-verifier-types",
  "mc-common",
@@ -706,6 +701,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
+ "mc-util-repr-bytes",
  "prost",
  "rjson",
  "serde",
@@ -746,6 +742,7 @@ dependencies = [
  "chrono",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -765,8 +762,8 @@ dependencies = [
 name = "mc-attest-verifier-types"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
  "displaydoc",
+ "hex",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-util-encodings",
@@ -775,18 +772,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-blockchain-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "prost",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
  "cfg-if 1.0.0",
  "displaydoc",
  "hashbrown",
+ "hex",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-util-serial",
+ "prost",
  "rand_core",
  "serde",
  "sha3",
@@ -803,6 +824,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -834,6 +856,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
@@ -886,13 +909,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-consensus-scp-core"
+name = "mc-consensus-scp-types"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-util-from-random",
+ "prost",
  "serde",
 ]
 
@@ -974,12 +998,13 @@ dependencies = [
 name = "mc-crypto-keys"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64",
  "curve25519-dalek",
  "digest",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
+ "hex",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
@@ -1048,6 +1073,48 @@ dependencies = [
  "rand",
  "rand_core",
  "rand_hc",
+]
+
+[[package]]
+name = "mc-crypto-ring-signature"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "prost",
+ "rand_core",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-ring-signature-signer"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-serial",
+ "prost",
+ "rand_core",
+ "serde",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -1203,14 +1270,15 @@ dependencies = [
  "hkdf",
  "lazy_static",
  "mc-account-keys",
- "mc-attest-verifier-types",
  "mc-common",
- "mc-consensus-scp-core",
  "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-multisig",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -1220,6 +1288,17 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-crypto-digestible",
+ "serde",
  "subtle",
  "zeroize",
 ]
@@ -1251,7 +1330,6 @@ name = "mc-util-encodings"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "binascii",
  "displaydoc",
  "hex",
  "mc-util-repr-bytes",
@@ -1270,6 +1348,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array",
+ "hex_fmt",
  "prost",
  "serde",
 ]
@@ -1350,9 +1429,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.10.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
+checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
 name = "opaque-debug"
@@ -1426,9 +1505,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc03e116981ff7d8da8e5c220e374587b98d294af7ba7dd7fda761158f00086f"
+checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -1654,21 +1733,21 @@ checksum = "8347046d4ebd943127157b94d63abb990fcf729dc4e9978927fdf4ac3c998d06"
 
 [[package]]
 name = "smallvec"
-version = "1.2.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
-
-[[package]]
-name = "spin"
-version = "0.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceac490aa12c567115b40b7b7fceca03a6c9d53d5defea066123debc83c5dc1f"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
 
 [[package]]
 name = "strsim"

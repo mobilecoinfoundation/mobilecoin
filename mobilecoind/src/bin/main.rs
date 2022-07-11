@@ -28,16 +28,8 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    // Telemetry is disabled if MC_TELEMETRY is set to "0"
-    let telemetry_enabled = !std::env::var("MC_TELEMETRY")
-        .map(|val| val == "0")
-        .unwrap_or(false);
-
-    let _tracer = if telemetry_enabled {
-        Some(setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer"))
-    } else {
-        None
-    };
+    let _tracer =
+        setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer");
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
@@ -171,8 +163,8 @@ fn create_or_open_ledger_db(
 ) -> LedgerDB {
     let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
 
-    // Attempt to run migrations, if requested.
-    if config.ledger_db_migrate {
+    // Attempt to run migrations, if requested and ledger is available.
+    if config.ledger_db_migrate && ledger_db_file.exists() {
         mc_ledger_migration::migrate(&config.ledger_db, logger);
     }
 
@@ -246,12 +238,8 @@ fn create_or_open_ledger_db(
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db = LedgerDB::open(&config.ledger_db).expect("Could not open ledger_db");
-            db.append_block(
-                block_data.block(),
-                block_data.contents(),
-                block_data.signature().clone(),
-            )
-            .expect("Failed to appened initial transactions");
+            db.append_block_data(&block_data)
+                .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

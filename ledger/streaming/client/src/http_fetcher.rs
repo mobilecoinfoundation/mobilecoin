@@ -1,16 +1,20 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [Fetcher] that downloads [BlockData] from the given URI.
+//! A [Fetcher] that downloads [ArchiveBlock]s from HTTP URLs with a configured
+//! base URL.
 
 use crate::BlockchainUrl;
 use displaydoc::Display;
 use futures::{lock::Mutex, Future, FutureExt, Stream, StreamExt};
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, o, Logger},
     LruCache,
 };
-use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, Error, Fetcher, Result};
-use mc_transaction_core::{Block, BlockData, BlockIndex};
+use mc_ledger_streaming_api::{
+    ArchiveBlock, ArchiveBlocks, BlockData, BlockIndex, Error, Fetcher, Result,
+    DEFAULT_MERGED_BLOCKS_BUCKET_SIZES,
+};
 use protobuf::Message;
 use reqwest::Client;
 use std::{
@@ -23,18 +27,13 @@ use std::{
 };
 use url::Url;
 
-/// Default merged blocks bucket sizes. Merged blocks are objects that contain
-/// multiple consecutive blocks that have been bundled together in order to
-/// reduce the amount of requests needed to get the block data.
-/// Notes:
-/// - This should match the defaults in `mc-ledger-distribution`.
-/// - This must be sorted in descending order.
-pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
-
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
 
-/// A [Fetcher] that downloads [BlockData] from the given URI.
+/**
+ * A [Fetcher] that downloads [ArchiveBlock]s from HTTP URLs with a
+ * configured base URL.
+ */
 #[derive(Debug, Display)]
 pub struct HttpBlockFetcher {
     /// The blockchain URL.

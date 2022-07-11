@@ -11,11 +11,9 @@ use mc_common::{
     NodeID,
 };
 use mc_consensus_scp::{
-    core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
-    node::{Node, ScpNode},
-    quorum_set::QuorumSet,
-    test_utils,
+    slot::{CombineFn, ValidityFn},
+    test_utils, Node, QuorumSet, ScpNode, SlotIndex,
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
@@ -517,7 +515,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     let mut rng = mc_util_test_helper::get_seeded_rng();
     let mut values = Vec::<String>::with_capacity(test_options.values_to_submit);
     for _i in 0..test_options.values_to_submit {
-        let value = mc_util_test_helper::random_str(&mut rng, CHARACTERS_PER_VALUE);
+        let value = mc_util_test_helper::random_str(CHARACTERS_PER_VALUE, &mut rng);
         values.push(value);
     }
 

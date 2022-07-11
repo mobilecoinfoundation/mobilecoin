@@ -34,11 +34,7 @@ use mc_util_grpc::{
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
-use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{str::FromStr, sync::Arc};
 
 // Callback method for returning the latest SCP message issued by the local
 // node, used to implement the `fetch_latest_msg` RPC call.
@@ -397,19 +393,14 @@ impl ConsensusPeerApi for PeerApiService {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        api::peer_api_service::PeerApiService, background_work_queue::BackgroundWorkQueueError,
-        consensus_service::IncomingConsensusMsg, tx_manager::MockTxManager,
-    };
+    use super::*;
+    use crate::{background_work_queue::BackgroundWorkQueueError, tx_manager::MockTxManager};
     use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        NodeID, ResponderId,
-    };
+    use mc_blockchain_types::Block;
+    use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_api::{
         consensus_peer::{ConsensusMsg, ConsensusMsgResult},
-        consensus_peer_grpc,
-        consensus_peer_grpc::ConsensusPeerApiClient,
+        consensus_peer_grpc::{create_consensus_peer_api, ConsensusPeerApiClient},
     };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_consensus_scp::{
@@ -418,11 +409,9 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
-    use mc_peers::{self, ConsensusValue};
-    use mc_transaction_core::Block;
+    use mc_peers::ConsensusValue;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::sync::Arc;
 
     // Get sensibly-initialized mocks.
     fn get_mocks() -> (MockConsensusEnclave, MockLedger, MockTxManager) {
@@ -461,7 +450,7 @@ mod tests {
     }
 
     fn get_client_server(instance: PeerApiService) -> (ConsensusPeerApiClient, Server) {
-        let service = consensus_peer_grpc::create_consensus_peer_api(instance);
+        let service = create_consensus_peer_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)

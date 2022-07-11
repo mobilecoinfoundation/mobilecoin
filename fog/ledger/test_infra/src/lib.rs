@@ -4,6 +4,9 @@
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
+};
 use mc_common::{HashMap, ResponderId};
 use mc_crypto_keys::{CompressedRistrettoPublic, X25519Public};
 use mc_fog_ledger_enclave::{
@@ -16,7 +19,7 @@ use mc_transaction_core::{
     mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
+    TokenId,
 };
 
 #[derive(Default, Clone)]
@@ -93,11 +96,12 @@ pub struct MockLedger {
 }
 
 impl Ledger for MockLedger {
-    fn append_block(
+    fn append_block<'b>(
         &mut self,
-        _block: &Block,
-        _transactions: &BlockContents,
-        _signature: Option<BlockSignature>,
+        _block: &'b Block,
+        _block_contents: &'b BlockContents,
+        _signature: Option<&'b BlockSignature>,
+        _metadata: Option<&'b BlockMetadata>,
     ) -> Result<(), Error> {
         unimplemented!()
     }
@@ -115,6 +119,10 @@ impl Ledger for MockLedger {
     }
 
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
+        unimplemented!()
+    }
+
+    fn get_block_metadata(&self, _block_number: u64) -> Result<BlockMetadata, Error> {
         unimplemented!()
     }
 

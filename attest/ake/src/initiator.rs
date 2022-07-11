@@ -3,13 +3,10 @@
 //! Initiator-specific transition functions
 
 use crate::{
-    error::Error,
-    event::{AuthRequestOutput, AuthResponseInput, ClientInitiate, NodeInitiate},
-    mealy::Transition,
-    state::{AuthPending, Ready, Start},
+    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
+    Start, Transition,
 };
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use mc_attest_core::{ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{

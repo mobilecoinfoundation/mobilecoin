@@ -7,10 +7,8 @@ trap 'pkill -P $$' SIGINT SIGTERM
 
 if [ "$MOB_RELEASE" = "0" ]; then
     CARGO_FLAGS=""
-    TARGET_DIR="target/debug"
 else
     CARGO_FLAGS="--release"
-    TARGET_DIR="target/release"
 fi
 
 if [[ -z "$MC_LOG" ]]; then

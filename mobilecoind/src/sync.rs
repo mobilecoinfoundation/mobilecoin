@@ -40,7 +40,6 @@ use mc_transaction_core::{
     tx::TxOut,
 };
 use std::{
-    convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -416,7 +415,7 @@ mod test {
     use crate::{
         monitor_store::MonitorData,
         test_utils::{
-            self, add_block_to_ledger_db, get_test_databases, BlockVersion,
+            self, add_block_to_ledger, get_test_databases, BlockVersion,
             DEFAULT_PER_RECIPIENT_AMOUNT,
         },
     };
@@ -424,7 +423,6 @@ mod test {
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     #[test_with_logger]
     fn test_sync_monitor(logger: Logger) {
@@ -583,17 +581,15 @@ mod test {
         // Add a block that spends our first utxo and sync it.
         let first_utxo = utxos[0].clone();
 
-        add_block_to_ledger_db(
-            BlockVersion::MAX,
+        add_block_to_ledger(
             &mut ledger_db,
+            BlockVersion::MAX,
             &[recipients[1].clone()],
-            Amount {
-                value: DEFAULT_PER_RECIPIENT_AMOUNT,
-                token_id: Mob::ID,
-            },
+            Amount::new(DEFAULT_PER_RECIPIENT_AMOUNT, Mob::ID),
             &[utxos[0].key_image],
             &mut rng,
-        );
+        )
+        .unwrap();
 
         let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
@@ -654,17 +650,15 @@ mod test {
         assert_ne!(utxos[0].value, 0);
 
         // Add a block with 0-value txout that spends our first utxo and sync it.
-        add_block_to_ledger_db(
-            BlockVersion::MAX,
+        add_block_to_ledger(
             &mut ledger_db,
+            BlockVersion::MAX,
             &[recipients[0].clone()],
-            Amount {
-                value: 0,
-                token_id: Mob::ID,
-            },
+            Amount::new(0, Mob::ID),
             &[utxos[0].key_image],
             &mut rng,
-        );
+        )
+        .unwrap();
 
         let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);

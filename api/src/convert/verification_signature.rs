@@ -8,7 +8,6 @@ use mc_attest_verifier_types::VerificationSignature;
 impl From<&VerificationSignature> for external::VerificationSignature {
     fn from(src: &VerificationSignature) -> Self {
         let mut dst = external::VerificationSignature::new();
-
         dst.set_contents(src.clone().into());
         dst
     }
@@ -16,7 +15,7 @@ impl From<&VerificationSignature> for external::VerificationSignature {
 
 impl From<&external::VerificationSignature> for VerificationSignature {
     fn from(src: &external::VerificationSignature) -> Self {
-        VerificationSignature::from(src.get_contents())
+        src.get_contents().into()
     }
 }
 

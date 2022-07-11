@@ -9,7 +9,6 @@ use mc_common::{
 };
 use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
-use mc_transaction_core::{ring_signature::KeyImage, BlockID};
 
 /// Create stream factory for validating individual blocks within a stream.
 /// Valid blocks will passed on, blocks that don't pass will pass an error.
@@ -48,9 +47,9 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
         let prev_block_id = if self.ledger.is_some() && starting_height > 0 {
             ledger.as_ref().unwrap().get_block(starting_height - 1)?.id
         } else {
-            BlockID::default()
+            Default::default()
         };
-        let additional_key_images: HashSet<KeyImage> = HashSet::default();
+        let additional_key_images = HashSet::default();
 
         log::info!(self.logger, "Creating block validation stream");
         let stream = self.upstream.get_stream(starting_height)?;
@@ -172,13 +171,7 @@ mod tests {
         let mut mock_ledger = get_mock_ledger(0);
         let blocks = make_blocks(20);
         for block_data in blocks.iter().take(2) {
-            mock_ledger
-                .append_block(
-                    block_data.block(),
-                    block_data.contents(),
-                    block_data.signature().clone(),
-                )
-                .unwrap();
+            mock_ledger.append_block_data(block_data).unwrap();
         }
         let upstream = MockStream::from_blocks(blocks);
         let block_validator = BlockValidator::new(upstream, Some(mock_ledger), logger);

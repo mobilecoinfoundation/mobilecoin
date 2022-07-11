@@ -2,10 +2,8 @@
 
 //! SigRL Type
 
-use alloc::vec;
-
+use crate::B64_CONFIG;
 use alloc::{borrow::ToOwned, vec::Vec};
-use binascii::b64decode;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Deref,
@@ -70,14 +68,8 @@ impl FromBase64 for SigRL {
     type Error = EncodingError;
 
     fn from_base64(s: &str) -> Result<Self, EncodingError> {
-        let mut data;
-        if s.is_empty() {
-            // Ensure size of data remains 0 if empty string
-            data = vec![];
-        } else {
-            data = vec![0u8; 4 * (s.len() / 3) + 4];
-            b64decode(s.as_bytes(), data.as_mut_slice())?;
-        }
-        Ok(SigRL { data })
+        Ok(SigRL {
+            data: base64::decode_config(s.as_bytes(), B64_CONFIG)?,
+        })
     }
 }

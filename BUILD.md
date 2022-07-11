@@ -26,6 +26,39 @@ If you have SGX-enabled hardware (activated in BIOS, and with SGX kernel module 
 you can use `./mob prompt --hw` to get SGX in the container. Then you can both build and
 run the tests in `SGX_MODE=HW`. (See below for an explanation.)
 
+##### IDE Support using the docker environment
+
+You can use `./mob prompt --cmd <command>` to run `<command>` from within
+the docker environment. For IDE support, this can be used to run `cargo check`.
+
+An example workspace configuration for Rust Analyzer is provided below:
+
+```json
+"rust-analyzer.checkOnSave.overrideCommand": [
+    "./mob",
+    "prompt",
+    "--cmd",
+    "cargo",
+    "check",
+    "--workspace",
+    "--message-format=json",
+    "--all-targets"
+],
+"rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "./mob",
+    "prompt",
+    "--cmd",
+    "cargo",
+    "check",
+    "--workspace",
+    "--message-format=json",
+    "--all-targets"
+],
+"rust-analyzer.cargo.buildScripts.useRustcWrapper": false,
+"rust-analyzer.cargo.buildScripts.enable": false,
+"rust-analyzer.procMacro.enable": false,
+```
+
 #### No-docker build
 
 A docker-less build also works fine for development:

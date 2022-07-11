@@ -7,7 +7,6 @@ use displaydoc::Display;
 use std::{
     borrow::ToOwned,
     collections::{hash_map::Iter as HashMapIter, hash_set::Iter as HashSetIter, HashMap, HashSet},
-    convert::TryFrom,
     env::{split_paths, var, var_os, vars, VarError},
     num::ParseIntError,
     path::{Path, PathBuf},

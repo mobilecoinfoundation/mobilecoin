@@ -26,26 +26,21 @@
 //! is returned.
 
 use clap::Parser;
-use core::convert::TryFrom;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
+use mc_blockchain_types::BlockVersion;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
-use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_ledger_db::{test_utils::add_txos_and_key_images_to_ledger, Ledger, LedgerDB};
 use mc_transaction_core::{
-    fog_hint::FogHint,
-    membership_proofs::Range,
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
-    tokens::Mob,
-    tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BlockVersion, Token,
+    fog_hint::FogHint, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
+    tokens::Mob, tx::TxOut, Amount, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, str::FromStr, time::SystemTime};
+use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
 /// The command-line arguments
@@ -123,8 +118,7 @@ fn main() {
     // Read seed, expand to 32 bytes and create an Rng
     let mut hasher = Blake2b256::new();
     hasher.update(config.seed.to_le_bytes());
-    let seed = <[u8; 32]>::from(hasher.finalize());
-    let mut rng: Hc128Rng = SeedableRng::from_seed(seed);
+    let mut rng: Hc128Rng = SeedableRng::from_seed(hasher.finalize().into());
 
     // Parse stdin, collecting "credits" and "key images"
     let input: ParsedBlockContents = serde_json::from_reader(std::io::stdin().lock()).unwrap();
@@ -166,6 +160,7 @@ fn main() {
 
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let tx_out = TxOut::new(
+            BlockVersion::MAX,
             Amount {
                 value: credit.amount,
                 token_id,
@@ -187,60 +182,39 @@ fn main() {
         new_key_images.push(new_key_image);
     }
 
+    // Use the same block version as the previous block
+    let last_block = ledger.get_latest_block().unwrap();
+    let block_version = BlockVersion::try_from(last_block.version).unwrap();
+
     // Make the new block and append to database
-    {
-        let last_block = ledger
-            .get_block(num_blocks - 1)
-            .expect("Could not get last block");
+    let block_data = add_txos_and_key_images_to_ledger(
+        &mut ledger,
+        block_version,
+        tx_outs,
+        key_images_to_burn,
+        &mut rng,
+    )
+    .unwrap();
 
-        let block_contents = BlockContents {
-            key_images: key_images_to_burn,
-            outputs: tx_outs,
-            ..Default::default()
-        };
+    // Add to WatcherDB, too
+    watcher
+        .add_block_data(&tx_source_url, &block_data)
+        .expect("Could not add block data to watcher");
 
-        // Fake proofs
-        let root_element = TxOutMembershipElement {
-            range: Range::new(0, num_blocks as u64).unwrap(),
-            hash: TxOutMembershipHash::from([0u8; 32]),
-        };
-
-        // Use the same block version as the previous block
-        let block_version = BlockVersion::try_from(last_block.version).unwrap();
-
-        let block =
-            Block::new_with_parent(block_version, &last_block, &root_element, &block_contents);
-
-        let signer = Ed25519Pair::from_random(&mut rng);
-
-        let mut block_sig = BlockSignature::from_block_and_keypair(&block, &signer).unwrap();
-        block_sig.set_signed_at(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
-
-        ledger
-            .append_block(&block, &block_contents, None)
-            .expect("Could not append block");
-
-        let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
-
-        watcher
-            .add_block_data(&tx_source_url, &block_data)
-            .expect("Could not add block data to watcher");
-
-        watcher
-            .add_block_signature(&tx_source_url, num_blocks, block_sig, "archive".to_string())
-            .expect("Could not add block signature to watcher");
-    }
+    watcher
+        .add_block_signature(
+            &tx_source_url,
+            num_blocks,
+            block_data.signature().cloned().unwrap(),
+            "archive".to_string(),
+        )
+        .expect("Could not add block signature to watcher");
 
     // Print hex-encoded key images of new tx outs, in correct order, on stdout.
     let output = JsonOutput {
         key_images: new_key_images
             .iter()
-            .map(|key_image| hex::encode(AsRef::<[u8]>::as_ref(key_image)))
+            .map(|key_image| hex::encode(key_image.as_bytes()))
             .collect(),
     };
     print!("{}", serde_json::to_string(&output).unwrap());

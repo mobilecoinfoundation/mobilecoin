@@ -67,10 +67,12 @@
 //!  * `extern "C" fn ffi_func_name(param: FfiRefPtr<'_, ForeignType>)`
 //!  * `extern "C" fn ffi_func_name<'a>(param: FfiRefPtr<'a, ForeignType>)`
 
-pub use ffi_owned_ptr::*;
-pub use ffi_ref_ptr::*;
-pub use ffi_str::*;
-
 mod ffi_owned_ptr;
 mod ffi_ref_ptr;
 mod ffi_str;
+
+pub use crate::{
+    ffi_owned_ptr::{FfiOptOwnedPtr, FfiOwnedPtr},
+    ffi_ref_ptr::{FfiMutPtr, FfiOptMutPtr, FfiOptRefPtr, FfiRefPtr},
+    ffi_str::{FfiOptOwnedStr, FfiOptStr, FfiOwnedStr, FfiStr},
+};

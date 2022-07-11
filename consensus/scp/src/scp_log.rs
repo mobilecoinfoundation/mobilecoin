@@ -2,7 +2,7 @@
 
 //! This crate provides a logging framework for recording and replaying SCP
 //! messages.
-use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
+use crate::{msg::Msg, slot::SlotMetrics, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::{
     logger::{log, Logger},
     NodeID,

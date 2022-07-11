@@ -8,9 +8,8 @@ mod config;
 use clap::Parser;
 use config::LedgerFromArchiveConfig;
 use mc_common::logger::{create_app_logger, log, o};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{create_ledger_in, Ledger};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use std::fs;
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -22,11 +21,12 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::info!(logger, "Creating local ledger at {:?}", config.ledger_db);
-    // Open LedgerDB
-    let _ = fs::create_dir_all(&config.ledger_db);
-    LedgerDB::create(&config.ledger_db).expect("Could not create ledger_db");
-    let mut local_ledger = LedgerDB::open(&config.ledger_db).expect("Failed creating LedgerDB");
+    log::info!(
+        logger,
+        "Creating local ledger at {}",
+        config.ledger_db.display()
+    );
+    let mut local_ledger = create_ledger_in(&config.ledger_db);
 
     // Sync Origin Block
     log::info!(logger, "Getting origin block");
@@ -34,11 +34,7 @@ fn main() {
         .get_origin_block_and_transactions()
         .expect("Could not retrieve origin block");
     local_ledger
-        .append_block(
-            block_data.block(),
-            block_data.contents(),
-            block_data.signature().clone(),
-        )
+        .append_block_data(&block_data)
         .expect("Could not append origin block to ledger");
 
     // Sync all blocks
@@ -61,11 +57,7 @@ fn main() {
             Ok(block_data) => {
                 // Append new data to the ledger
                 local_ledger
-                    .append_block(
-                        block_data.block(),
-                        block_data.contents(),
-                        block_data.signature().clone(),
-                    )
+                    .append_block_data(&block_data)
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }
             Err(err) => {

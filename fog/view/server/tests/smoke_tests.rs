@@ -10,6 +10,7 @@
 
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_blockchain_types::{Block, BlockID, BlockVersion};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     time::SystemTimeProvider,
@@ -33,7 +34,6 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
-use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};

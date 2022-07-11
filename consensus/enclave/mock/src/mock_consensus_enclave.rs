@@ -6,6 +6,7 @@
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::*;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, FeePublicKey, FormBlockInputs, LocallyEncryptedTx,
@@ -16,7 +17,7 @@ use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature, TokenId,
+    TokenId,
 };
 
 use mockall::*;
@@ -102,7 +103,6 @@ mod mock_consensus_enclave_tests {
     use super::MockConsensusEnclave;
     use mc_consensus_enclave_api::ConsensusEnclave;
     use mc_crypto_keys::X25519Public;
-    use std::convert::TryFrom;
 
     #[test]
     // Calling methods on the mock should return the specified values.

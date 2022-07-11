@@ -15,7 +15,6 @@ use rand_core::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -112,8 +111,8 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PublicAddres
     Ok(result)
 }
 
-/// Read default keyfiles
-pub fn read_default_keyfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Error> {
+/// Get default keyfile paths
+pub fn get_default_keyfile_paths<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Error> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
@@ -127,7 +126,7 @@ pub fn read_default_keyfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Er
 
 /// Read default mnemonic keyfiles
 pub fn read_default_mnemonics<P: AsRef<Path>>(path: P) -> Result<Vec<AccountKey>, Error> {
-    read_default_keyfiles(path)?
+    get_default_keyfile_paths(path)?
         .into_iter()
         .map(read_keyfile)
         .collect()
@@ -136,9 +135,17 @@ pub fn read_default_mnemonics<P: AsRef<Path>>(path: P) -> Result<Vec<AccountKey>
 /// Read default root entropies
 #[deprecated]
 pub fn read_default_root_entropies<P: AsRef<Path>>(path: P) -> Result<Vec<RootIdentity>, Error> {
-    read_default_keyfiles(path)?
+    get_default_keyfile_paths(path)?
         .into_iter()
         .map(read_root_entropy_keyfile)
+        .collect()
+}
+
+/// Read default key files in either format
+pub fn read_default_keyfiles<P: AsRef<Path>>(path: P) -> Result<Vec<AccountKey>, Error> {
+    get_default_keyfile_paths(path)?
+        .into_iter()
+        .map(read_keyfile)
         .collect()
 }
 
@@ -158,7 +165,6 @@ fn compare_keyfile_names(a: &Path, b: &Path) -> Ordering {
 mod test {
     use super::*;
     use crate::mnemonic_acct::UncheckedMnemonicAccount;
-    use std::convert::TryFrom;
 
     /// A default seed for [write_default_keyfiles()] calls.
     const DEFAULT_SEED: [u8; 32] = [1u8; 32];
@@ -273,12 +279,8 @@ mod test {
         write_default_keyfiles(&dir1, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write example keyfiles");
 
-        let mut actual = read_default_keyfiles(&dir1)
-            .expect("Could not read default keyfiles dir")
-            .into_iter()
-            .map(read_keyfile)
-            .collect::<Result<Vec<_>, Error>>()
-            .expect("Could not read keyfiles just written");
+        let mut actual =
+            read_default_keyfiles(&dir1).expect("Could not read keyfiles just written");
         actual.sort();
 
         assert_eq!(expected, actual);

@@ -9,43 +9,20 @@ use crate::{
     },
     ConversionError,
 };
-use mc_common::NodeID;
-use mc_consensus_scp_core::{QuorumSet, QuorumSetMember};
-use std::convert::{Into, TryFrom, TryInto};
+use mc_blockchain_types::{NodeID, QuorumSet, QuorumSetMember, QuorumSetMemberWrapper};
 
-// mc_consensus_scp::QuorumSet
-impl From<&QuorumSetMember<NodeID>> for QuorumSetMemberProto {
-    fn from(member: &QuorumSetMember<NodeID>) -> QuorumSetMemberProto {
-        use QuorumSetMember::*;
-        let mut proto = QuorumSetMemberProto::new();
-        match member {
-            Node(id) => proto.set_node(id.into()),
-            InnerSet(qs) => proto.set_inner_set(qs.into()),
-        }
-        proto
-    }
-}
-
+// QuorumSet
 impl From<&QuorumSet> for QuorumSetProto {
-    fn from(qs: &QuorumSet) -> QuorumSetProto {
+    fn from(qs: &QuorumSet) -> Self {
         let mut proto = QuorumSetProto::new();
+        let members = qs
+            .members
+            .iter()
+            .filter_map(|m| (*m).as_ref().map(Into::into))
+            .collect();
         proto.threshold = qs.threshold;
-        proto.set_members(qs.members.iter().map(Into::into).collect());
+        proto.set_members(members);
         proto
-    }
-}
-
-impl TryFrom<&QuorumSetMemberProto> for QuorumSetMember<NodeID> {
-    type Error = ConversionError;
-
-    fn try_from(proto: &QuorumSetMemberProto) -> Result<Self, Self::Error> {
-        use QuorumSetMember::*;
-        use QuorumSetMember_oneof_member::*;
-        match proto.member.as_ref() {
-            Some(node(id)) => Ok(Node(id.try_into()?)),
-            Some(inner_set(qs)) => Ok(InnerSet(qs.try_into()?)),
-            None => Err(ConversionError::ObjectMissing),
-        }
     }
 }
 
@@ -56,28 +33,48 @@ impl TryFrom<&QuorumSetProto> for QuorumSet {
         let members = proto
             .members
             .iter()
-            .map(TryFrom::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self {
+            .map(|m| {
+                Ok(QuorumSetMemberWrapper {
+                    member: Some(m.try_into()?),
+                })
+            })
+            .collect::<Result<Vec<_>, ConversionError>>()?;
+        let set = Self {
             threshold: proto.threshold,
             members,
-        })
+        };
+        if set.is_valid() {
+            Ok(set)
+        } else {
+            Err(ConversionError::ArrayCastError)
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use mc_consensus_scp_core::test_utils::three_node_dense_graph;
+// QuorumSetMember
+impl From<&QuorumSetMember<NodeID>> for QuorumSetMemberProto {
+    fn from(member: &QuorumSetMember<NodeID>) -> QuorumSetMemberProto {
+        let mut proto = QuorumSetMemberProto::new();
+        match member {
+            QuorumSetMember::Node(id) => proto.set_node(id.into()),
+            QuorumSetMember::InnerSet(qs) => proto.set_inner_set(qs.into()),
+        }
+        proto
+    }
+}
 
-    #[test]
-    fn test_roundtrip() {
-        let set = three_node_dense_graph().0 .1;
-        assert!(set.is_valid());
+impl TryFrom<&QuorumSetMemberProto> for QuorumSetMember<NodeID> {
+    type Error = ConversionError;
 
-        let proto = QuorumSetProto::from(&set);
-        let set2 = QuorumSet::try_from(&proto).expect("scp::QuorumSet from proto");
-        assert_eq!(set, set2);
-        assert!(set2.is_valid());
+    fn try_from(proto: &QuorumSetMemberProto) -> Result<Self, Self::Error> {
+        match proto.member.as_ref() {
+            Some(QuorumSetMember_oneof_member::node(id)) => {
+                Ok(QuorumSetMember::Node(id.try_into()?))
+            }
+            Some(QuorumSetMember_oneof_member::inner_set(qs)) => {
+                Ok(QuorumSetMember::InnerSet(qs.try_into()?))
+            }
+            None => Err(ConversionError::ObjectMissing),
+        }
     }
 }

@@ -5,7 +5,7 @@
 //! gRPC and Protobuf provide a reduced selection of types, and so there are
 //! some differences between values stored in the ledger and values transmitted
 //! over the API. This module provides conversions between "equivalent" types,
-//! such as `mc_api::blockchain::Block` and `mc_transaction_core::Block`.
+//! such as `mc_api::blockchain::Block` and `mc_blockchain_types::Block`.
 
 // blockchain
 mod archive_block;
@@ -48,14 +48,16 @@ mod watcher;
 // printable
 mod tx_out_gift_code;
 
+// error
 mod error;
-pub use self::error::ConversionError;
+pub use error::ConversionError;
 
+use mc_blockchain_types::BlockIndex;
 use std::path::PathBuf;
 
 /// Helper method for getting the suggested path/filename for a given block
 /// index.
-pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
+pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
     let filename = format!("{:016x}.pb", block_index);
     let mut path = PathBuf::new();
     for i in 0..7 {
@@ -71,7 +73,7 @@ pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -
 /// `bucket_size` specifies how many blocks are expected to be joined together.
 pub fn merged_block_num_to_s3block_path(
     bucket_size: u64,
-    first_block_index: mc_transaction_core::BlockIndex,
+    first_block_index: BlockIndex,
 ) -> PathBuf {
     let base_dir = format!("merged-{}", bucket_size);
     let mut path = PathBuf::new();
@@ -83,7 +85,6 @@ pub fn merged_block_num_to_s3block_path(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::From;
 
     #[test]
     fn test_block_num_to_s3block_path() {
@@ -93,30 +94,8 @@ mod tests {
         );
 
         assert_eq!(
-            block_num_to_s3block_path(1_000_000_000_000_000),
-            PathBuf::from("00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
-        );
-
-        assert_eq!(
             block_num_to_s3block_path(0x1a2b_3c4e_5a6b_7c8d),
             PathBuf::from("1a/2b/3c/4e/5a/6b/7c/1a2b3c4e5a6b7c8d.pb"),
-        );
-    }
-
-    #[test]
-    fn test_merged_block_num_to_s3block_path() {
-        assert_eq!(
-            merged_block_num_to_s3block_path(10, 0),
-            PathBuf::from("merged-10/00/00/00/00/00/00/00/0000000000000000.pb"),
-        );
-
-        assert_eq!(
-            merged_block_num_to_s3block_path(10, 1_000_000_000_000_000),
-            PathBuf::from("merged-10/00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
-        );
-        assert_eq!(
-            merged_block_num_to_s3block_path(1000, 1_000_000_000_000_000),
-            PathBuf::from("merged-1000/00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
         );
     }
 }

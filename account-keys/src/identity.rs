@@ -14,25 +14,22 @@
 
 use crate::AccountKey;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
-use core::{
-    convert::{From, TryFrom},
-    hash::Hash,
-};
+use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::SimpleHkdf;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
-    LengthMismatch,
+    derive_debug_and_display_hex_from_as_ref, derive_prost_message_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from, typenum::U32, LengthMismatch,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
 /// A secret value used as input key material to derive private keys.
-#[derive(Clone, Default, Debug, PartialEq, Eq, Hash, Zeroize)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Zeroize)]
 #[zeroize(drop)]
 pub struct RootEntropy {
     /// 32 bytes of input key material.
@@ -79,6 +76,7 @@ impl FromRandom for RootEntropy {
 
 derive_repr_bytes_from_as_ref_and_try_from!(RootEntropy, U32);
 derive_prost_message_from_repr_bytes!(RootEntropy);
+derive_debug_and_display_hex_from_as_ref!(RootEntropy);
 
 /// A RootIdentity contains 32 bytes of root entropy (for deriving private keys
 /// using a KDF), together with any fog data for the account.

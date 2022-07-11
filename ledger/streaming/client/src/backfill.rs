@@ -5,8 +5,7 @@
 use displaydoc::Display;
 use futures::{FutureExt, Stream, StreamExt};
 use mc_common::logger::{log, Logger};
-use mc_ledger_streaming_api::{BlockData, Fetcher, Result, Streamer};
-use mc_transaction_core::BlockIndex;
+use mc_ledger_streaming_api::{BlockData, BlockIndex, Fetcher, Result, Streamer};
 use std::{ops::Range, pin::Pin};
 
 /// A [Streamer] that backfills another [Streamer] using a [Fetcher].

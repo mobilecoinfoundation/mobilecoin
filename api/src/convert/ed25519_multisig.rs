@@ -2,10 +2,9 @@
 
 //! Convert to/from external::Ed25519SignerSet/Ed25519MultiSig.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use std::convert::TryFrom;
 
 /// Convert MultiSig<Ed25519Signature> --> external::Ed25519MultiSig.
 impl From<&MultiSig<Ed25519Signature>> for external::Ed25519MultiSig {

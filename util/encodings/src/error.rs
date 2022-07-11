@@ -4,7 +4,6 @@
 
 use alloc::string::FromUtf8Error;
 use base64::DecodeError;
-use binascii::ConvertError;
 use core::{array::TryFromSliceError, fmt::Error as FmtError, str::Utf8Error};
 use displaydoc::Display;
 use hex::FromHexError;
@@ -24,16 +23,6 @@ pub enum Error {
     InvalidOutputLength,
     /// The input data contained invalid characters
     InvalidInput,
-}
-
-impl From<ConvertError> for Error {
-    fn from(src: ConvertError) -> Self {
-        match src {
-            ConvertError::InvalidInputLength => Error::InvalidInputLength,
-            ConvertError::InvalidOutputLength => Error::InvalidOutputLength,
-            ConvertError::InvalidInput => Error::InvalidInput,
-        }
-    }
 }
 
 impl From<DecodeError> for Error {

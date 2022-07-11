@@ -10,12 +10,13 @@ path = "src/main.rs"
 
 [dependencies]
 mc-api = { path = "../../api" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 dirs = "4.0"
 displaydoc = "0.2"
 protobuf = "2.27.1"

@@ -9,6 +9,7 @@ license = "GPL-3.0"
 # mobilecoin
 mc-api = { path = "../../../api" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }

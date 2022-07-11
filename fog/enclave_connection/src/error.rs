@@ -23,13 +23,20 @@ pub enum Error {
     ProtoDecode(DecodeError),
 }
 
-impl Error {
-    pub fn should_retry(&self) -> bool {
-        matches!(self, Error::Rpc(_) | Error::Ake(_))
+impl AttestationError for Error {
+    fn should_reattest(&self) -> bool {
+        matches!(self, Self::Rpc(_) | Self::Ake(_) | Self::Cipher(_))
+    }
+
+    fn should_retry(&self) -> bool {
+        match self {
+            Error::Rpc(_) | Error::Cipher(_) | Error::ProtoDecode(_) => true,
+            Error::Ake(AkeError::ReportVerification(_)) => false,
+            Error::Ake(_) => true,
+            Error::InvalidUri(_) => false,
+        }
     }
 }
-
-impl AttestationError for Error {}
 
 impl From<grpcio::Error> for Error {
     fn from(err: grpcio::Error) -> Self {

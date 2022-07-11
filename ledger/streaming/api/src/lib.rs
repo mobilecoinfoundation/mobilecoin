@@ -26,4 +26,16 @@ pub use crate::{
 };
 
 pub use mc_api::blockchain::{ArchiveBlock, ArchiveBlocks};
-pub use mc_transaction_core::{BlockData, BlockIndex};
+pub use mc_blockchain_types::{BlockData, BlockIndex};
+
+/// Default merged blocks bucket sizes.
+///
+/// Merged blocks are objects that contain multiple consecutive blocks that have
+/// been bundled together in order to reduce the amount of requests needed to
+/// get the block data, by uploading and downloading one [ArchiveBlocks] proto
+/// instead of many [ArchiveBlock]s.
+///
+/// Notes:
+/// - This should match the defaults in `mc-ledger-distribution`.
+/// - This must be sorted in descending order.
+pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];

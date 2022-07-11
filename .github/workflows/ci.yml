@@ -1,0 +1,489 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  MC_TELEMETRY: 0
+
+permissions:
+  checks: write
+
+jobs:
+  build-dev:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Cargo build (SW/IAS dev)
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          # This build dies with linker OOM, so limit the number of concurrent jobs.
+          args: --locked -j 4
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  build-prod:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Cargo build (HW/IAS prod)
+        env:
+          SGX_MODE: HW
+          IAS_MODE: PROD
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  build-macos:
+    runs-on: macos-latest
+
+    env:
+      OPENSSL_BIN: /usr/local/opt/openssl/bin/openssl
+      RUSTFLAGS: -D warnings -C target-cpu=penryn
+      SCCACHE_CACHE_SIZE: 450M
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          sccache: false
+          sgx_sdk: false
+      - name: Setup XCode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '12'
+      - name: Update Homebrew
+        run: |
+            brew --version
+            brew update --preinstall
+            brew --version
+      - name: Install Homebrew dependencies
+        run: brew bundle
+      - name: Cargo build libmobilecoin (SW/IAS dev)
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked -p libmobilecoin
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  lint-rust:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          components: rustfmt, clippy
+      - name: Run lint script
+        run: ./tools/lint.sh
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+
+  lint-go:
+    runs-on: [self-hosted, Linux, small]
+    container: golang:latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            /home/runner/.cache/go-build
+            /home/runner/Library/Caches/go-build
+            /home/runner/go/pkg/mod
+          key: v1-go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            v1-go-${{ runner.os }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+      - name: Lint Go code
+        working-directory: go-grpc-gateway
+        run: ./lint.sh
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  cbindgen:
+    runs-on: [self-hosted, Linux, small]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          sccache: false
+      - run: make cbindgen
+        working-directory: libmobilecoin
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  docs:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Generate docs
+        run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
+      - name: Store docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: doc.tgz
+          path: /tmp/doc.tgz
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+  mc-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [1, 2]
+      # Run each shard to completion.
+      fail-fast: false
+    env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: List packages to test
+        run: |
+          cargo metadata --no-deps | jq -r '.packages[].name' | \
+            grep -v -e mc-fog -e mc-consensus | \
+            awk "{ print \"-p \" \$1 }" | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+            tee /tmp/mc-test-packages
+          # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
+          # TODO: Replace with artifact deps when that does not require
+          # additional cargo flags.
+          grep -q generate-sample-ledger /tmp/mc-test-packages && \
+            echo '-p mc-util-keyfile' >> /tmp/mc-test-packages || true
+      - name: Run tests
+        uses: ./.github/actions/run-mc-tests
+        with:
+          args: $(cat /tmp/mc-test-packages)
+          junit_xml_filename: junit-mc-tests-${{matrix.runner_index}}.xml
+
+
+  consensus-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [1, 2]
+      # Run each shard to completion.
+      fail-fast: false
+    env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: List packages to test
+        run: |
+          cargo metadata --no-deps | jq -r '.packages[].name' | \
+            awk "/mc-consensus/ { print \"-p \" \$1 }" | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+            tee /tmp/consensus-test-packages
+      - name: Run tests
+        uses: ./.github/actions/run-mc-tests
+        with:
+          args: $(cat /tmp/consensus-test-packages)
+          junit_xml_filename: junit-consensus-tests-${{matrix.runner_index}}.xml
+
+
+  fog-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [1, 2]
+      # Run each shard to completion.
+      fail-fast: false
+    env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: List packages to test
+        run: |
+          cargo metadata --no-deps | jq -r '.packages[].name' | \
+            awk "/mc-fog/ { print \"-p \" \$1 }" | \
+            grep -v mc-fog-ingest | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+            tee /tmp/fog-test-packages
+          # Hack: mc-fog-distribution needs bins from
+          # mc-util-{keyfile,generate-sample-ledger}.
+          # TODO: Replace with artifact deps when that does not require
+          # additional cargo flags.
+          grep -q fog-distribution /tmp/fog-test-packages && \
+            echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages || true
+      - name: Start postgres
+        run: service postgresql start
+      - name: Run tests
+        uses: ./.github/actions/run-mc-tests
+        with:
+          # The fog-overseer tests are large and sometimes fail to build;
+          # limiting the number of build-jobs helps with that.
+          args: $(cat /tmp/fog-test-packages) --build-jobs 4
+          junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
+
+
+  fog-ingest-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Start postgres
+        run: service postgresql start
+      - name: Run tests
+        uses: ./.github/actions/run-mc-tests
+        with:
+          # These tests time out without release mode.
+          args: -p 'mc-fog-ingest-*' --release
+          junit_xml_filename: junit-fog-ingest-tests.xml
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
+
+
+  fog-conformance-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          # FIXME: This fails with Python 3.10: "AttributeError: module
+          # 'importlib' has no attribute 'abc'. Did you mean: '_abc'?"
+          python-version: '3.9'
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Set up environment
+        working-directory: tools/fog-local-network
+        run: |
+          python3 -m venv env
+          . ./env/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          ./build.sh
+
+          service postgresql start
+      - name: fog_conformance_tests.py
+        working-directory: tools/fog-local-network
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
+        run: |
+          . ./env/bin/activate
+          python3 fog_conformance_tests.py --release
+      - name: Upload core dumps
+        uses: ./.github/actions/upload-core-dumps
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+
+  fog-local-network-tests:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3'
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Build and generate sample data
+        run: |
+          # Generate enclave signing key
+          openssl genrsa -out Enclave_private.pem -3 3072
+          export CONSENSUS_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+          export INGEST_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+          export LEDGER_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+          export VIEW_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+          export MC_LOG=debug
+
+          # Build binaries
+          cargo build \
+              -p mc-admin-http-gateway \
+              -p mc-consensus-mint-client \
+              -p mc-consensus-service \
+              -p mc-crypto-x509-test-vectors \
+              -p mc-fog-distribution \
+              -p mc-fog-ingest-client \
+              -p mc-fog-ingest-server \
+              -p mc-fog-ledger-server \
+              -p mc-fog-report-server \
+              -p mc-fog-sql-recovery-db \
+              -p mc-fog-test-client \
+              -p mc-fog-view-server \
+              -p mc-ledger-distribution \
+              -p mc-mobilecoind \
+              -p mc-util-generate-sample-ledger \
+              -p mc-util-grpc-admin-tool \
+              -p mc-util-keyfile \
+              -p mc-util-seeded-ed25519-key-gen \
+              --release
+
+          BIN_DIR="$PWD/target/release"
+
+          # Run in temp dir to appease check-dirty-git.
+          mkdir -p /tmp/fog-local-network
+          cd /tmp/fog-local-network
+
+          # Generate sample keys and ledger.
+          FOG_AUTHORITY_ROOT=$("$BIN_DIR/mc-crypto-x509-test-vectors" --type=chain --test-name=ok_rsa_head)
+          "$BIN_DIR/sample-keys" --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          "$BIN_DIR/generate-sample-ledger" --txs 100
+
+          # Generate sample Fog keys.
+          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
+
+          service postgresql start
+      - name: Run local network
+        env:
+          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+          # create and drop PG databases.
+          TEST_DATABASE_URL: postgres://localhost
+        run: |
+          BIN_DIR="$PWD/target/release"
+          SCRIPT_DIR="$PWD/tools/fog-local-network"
+
+          cd /tmp/fog-local-network
+
+          # Run local network in background.
+          MC_LOG="debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
+          LEDGER_BASE="$PWD/ledger" \
+          python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
+          # Give it time to spin up
+          sleep 20
+
+          # Run fog-distribution client to exercise Fog
+          "$BIN_DIR/fog-distribution" \
+              --sample-data-dir . \
+              --max-threads 1 \
+              --peer insecure-mc://localhost:3200/ \
+              --peer insecure-mc://localhost:3201/ \
+              --peer insecure-mc://localhost:3202/ \
+              --peer insecure-mc://localhost:3203/ \
+              --peer insecure-mc://localhost:3204/ \
+              --num-tx-to-send 10
+          # Give it time to spin up
+          sleep 20
+
+          # Run test-client
+          "$BIN_DIR/test_client" \
+              --consensus insecure-mc://localhost:3200/ \
+              --consensus insecure-mc://localhost:3201/ \
+              --consensus insecure-mc://localhost:3202/ \
+              --consensus insecure-mc://localhost:3203/ \
+              --consensus insecure-mc://localhost:3204/ \
+              --num-clients 4 \
+              --num-transactions 200 \
+              --consensus-wait 300 \
+              --transfer-amount 20 \
+              --fog-view insecure-fog-view://localhost:8200 \
+              --fog-ledger insecure-fog-ledger://localhost:8200 \
+              --key-dir "$PWD/fog_keys"
+
+      - name: Upload core dumps
+        uses: ./.github/actions/upload-core-dumps
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
+
+
+  publish-test-results:
+    runs-on: [self-hosted, Linux, small]
+    if: success() || failure()
+    needs:
+      - mc-tests
+      - consensus-tests
+      - fog-tests
+      - fog-ingest-tests
+    steps:
+    - name: Download XML reports
+      if: success() || failure()
+      uses: actions/download-artifact@v3
+      with:
+        name: junit-xml
+    - name: Publish Test Report
+      if: success() || failure()
+      uses: mikepenz/action-junit-report@v3
+      with:
+        check_name: Test Report
+        report_paths: '**/*.xml'
+
+# via https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-cancel-in-progress-jobs-or-runs-for-the-current-workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true

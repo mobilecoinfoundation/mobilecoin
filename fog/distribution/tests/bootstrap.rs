@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use std::{
     env::{args, set_current_dir},
     path::PathBuf,
@@ -27,19 +29,19 @@ fn test_find_spendable_tx_outs() {
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         ])
         .status()
-        .unwrap()
+        .expect("sample-keys")
         .success());
 
     assert!(Command::new(bin.join("generate-sample-ledger"))
-        .args(["--txs", "10", "--max-token-id", "1"])
+        .args(["--txs", "10"])
         .status()
-        .unwrap()
+        .expect("generate-sample-ledger")
         .success());
 
     assert!(Command::new(bin.join("sample-keys"))
         .args(["--num", "5", "--output-dir", "./fog_keys"])
         .status()
-        .unwrap()
+        .expect("sample-fog-keys")
         .success());
 
     assert!(Command::new(bin.join("fog-distribution"))
@@ -55,6 +57,6 @@ fn test_find_spendable_tx_outs() {
             "--dry-run"
         ])
         .status()
-        .unwrap()
+        .expect("fog-distribution")
         .success());
 }

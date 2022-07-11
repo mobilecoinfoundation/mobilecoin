@@ -2,11 +2,11 @@
 
 use crate::{controller::IngestController, error::IngestServiceError};
 use mc_attest_net::RaClient;
+use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
-use mc_transaction_core::BlockIndex;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };

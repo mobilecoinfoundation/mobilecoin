@@ -33,7 +33,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Run mobilecoind, connecting to one or multiple Consensus Validator Nodes:
 
     ```
-    ./target/release/mobilecoind \
+    ${CARGO_TARGET_DIR:-./target}/release/mobilecoind \
         --ledger-db /path/to/ledger-db \
         --mobilecoind-db /path/to/mobilecoind-db \
         --poll-interval 10 \
@@ -47,7 +47,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Run mobilecoind-json
 
     ```
-    ./target/release/mobilecoind-json
+    ${CARGO_TARGET_DIR:-./target}/release/mobilecoind-json
     ```
 
 1. Issue curl commands to mobilecoind-json, listening on 9090, or send protobuf requests to mobilecoind, listening on localhost:4444.

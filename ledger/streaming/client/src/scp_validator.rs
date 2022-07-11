@@ -5,13 +5,13 @@
 
 use futures::{stream, Stream, StreamExt};
 use hashbrown::HashMap;
+use mc_blockchain_types::BlockID;
 use mc_common::{
     logger::{log, Logger},
     NodeID,
 };
-use mc_consensus_scp::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
+use mc_consensus_scp_types::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
 use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
-use mc_transaction_core::BlockID;
 use std::future;
 
 const MAX_BLOCK_DEFICIT: u64 = 50;
@@ -105,8 +105,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         }
 
         // Otherwise associate it with the node it was received from
-        let node_map = self.slots_to_externalized_blocks.entry(index).or_default();
-        node_map.insert(node_id, block_data);
+        self.slots_to_externalized_blocks
+            .entry(index)
+            .or_default()
+            .insert(node_id, block_data);
     }
 
     /// After block is externalized, remove records at previous slot
@@ -123,10 +125,11 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     pub fn attempt_externalize_block(&mut self) -> Option<BlockData> {
         // Set our target index one block above the highest block externalized
         // unless we're recording the genesis block
-        let mut index = self.highest_slot_index + 1;
-        if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
-            index = 0;
-        }
+        let index = if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
+            0
+        } else {
+            self.highest_slot_index + 1
+        };
 
         // If blocks received so far are less than a possible quorum, don't proceed
         if let Some(ballots) = self.slots_to_externalized_blocks.get(&index) {
@@ -180,51 +183,46 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 
         // Determine if the blocks we've collected so far are a quorum slice
         if let Some(tracked_blocks) = self.slots_to_externalized_blocks.get(&index) {
-            for member in quorum_set.members.iter() {
+            for member in &quorum_set.members {
+                let member = member.as_ref();
                 // Go through our slice and determine what nodes sent blocks AND
                 // what block they externalized
                 match member {
-                    QuorumSetMember::Node(node_id) => {
+                    Some(node @ QuorumSetMember::Node(node_id)) => {
                         if let Some(block_data) = tracked_blocks.get(node_id) {
                             // Record a vote for the block externalized
                             ballot_map
                                 .entry(&block_data.block().id)
-                                .and_modify(|vec| vec.push(member))
-                                .or_insert_with(|| vec![member]);
+                                .or_default()
+                                .push(node);
                             nodes_counted += 1;
 
                             // If we've counted a # of nodes above the threshold
                             // check for quorum
                             if nodes_counted >= threshold {
-                                for key in ballot_map.keys() {
-                                    if let Some(votes_for_key) = ballot_map.get(key) {
-                                        if votes_for_key.len() >= threshold as usize {
-                                            return Some(*key);
-                                        }
+                                for (key, votes_for_key) in &ballot_map {
+                                    if votes_for_key.len() >= threshold as usize {
+                                        return Some(*key);
                                     }
                                 }
                             }
                         }
                     }
-                    QuorumSetMember::InnerSet(qs) => {
+                    Some(inner_set @ QuorumSetMember::InnerSet(qs)) => {
                         // If internal slice reached quorum, record the block voted for
                         if let Some(block_id) = self.find_quorum(qs, index) {
-                            ballot_map
-                                .entry(block_id)
-                                .and_modify(|vec| vec.push(member))
-                                .or_insert_with(|| vec![member]);
+                            ballot_map.entry(block_id).or_default().push(inner_set);
                             nodes_counted += 1;
                             if nodes_counted >= threshold {
-                                for key in ballot_map.keys() {
-                                    if let Some(votes_for_key) = ballot_map.get(key) {
-                                        if votes_for_key.len() >= threshold as usize {
-                                            return Some(*key);
-                                        }
+                                for (key, votes_for_key) in &ballot_map {
+                                    if votes_for_key.len() >= threshold as usize {
+                                        return Some(*key);
                                     }
                                 }
                             }
                         }
                     }
+                    None => {}
                 }
             }
         }
@@ -306,10 +304,12 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_blockchain_test_utils::test_node_id;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_consensus_scp::test_utils::test_node_id;
-    use mc_ledger_streaming_api::test_utils::{make_blocks, MockStream};
-    use mc_transaction_core::BlockIndex;
+    use mc_ledger_streaming_api::{
+        test_utils::{make_blocks, MockStream},
+        BlockIndex,
+    };
 
     #[test_with_logger]
     fn scp_validates_nodes_in_quorum(logger: Logger) {

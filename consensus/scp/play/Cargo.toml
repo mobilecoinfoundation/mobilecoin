@@ -14,5 +14,5 @@ mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] 
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-uri = { path = "../../../util/uri" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 serde_json = "1.0"

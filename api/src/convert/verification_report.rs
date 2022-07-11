@@ -3,14 +3,14 @@
 //! Convert to/from external::VerificationReport
 
 use crate::external;
-use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
+use mc_attest_verifier_types::VerificationReport;
 
 impl From<&VerificationReport> for external::VerificationReport {
     fn from(src: &VerificationReport) -> Self {
         let mut dst = external::VerificationReport::new();
 
         dst.set_sig((&src.sig).into());
-        dst.set_chain((&src.chain[..]).into());
+        dst.set_chain(src.chain.as_slice().into());
         dst.set_http_body(src.http_body.clone());
         dst
     }
@@ -19,7 +19,7 @@ impl From<&VerificationReport> for external::VerificationReport {
 impl From<&external::VerificationReport> for VerificationReport {
     fn from(src: &external::VerificationReport) -> Self {
         VerificationReport {
-            sig: VerificationSignature::from(src.get_sig()),
+            sig: src.get_sig().into(),
             chain: src.get_chain().to_vec(),
             http_body: src.get_http_body().to_owned(),
         }
@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn prost_to_proto_roundtrip() {
         let report = VerificationReport {
-            sig: VerificationSignature::from(&b"this is a fake signature"[..]),
+            sig: b"this is a fake signature".as_slice().into(),
             chain: pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
                 .expect("Could not parse PEM input")
                 .into_iter()

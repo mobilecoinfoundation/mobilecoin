@@ -109,7 +109,7 @@ fn test_ingest_polling_integration(base_port: u16, mut rng: RngType, logger: Log
 }
 
 // Function for generating the random number of txs to put in a block
-fn gen_num_tx_for_block<T: RngCore>(rng: &mut T) -> usize {
+fn gen_num_tx_for_block(rng: &mut impl RngCore) -> usize {
     loop {
         let n = (rng.next_u64() % NUM_TX_PER_BLOCK as u64) as usize;
         if n != 0 {

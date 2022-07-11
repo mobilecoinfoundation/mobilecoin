@@ -14,4 +14,4 @@ pub mod transaction;
 
 mod error;
 
-pub use error::*;
+pub use error::LibMcError;

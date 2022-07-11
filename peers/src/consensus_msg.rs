@@ -3,18 +3,18 @@
 //! Messages used in Consensus by Peers
 
 use displaydoc::Display;
+use mc_blockchain_types::BlockID;
 use mc_common::{NodeID, ResponderId};
-use mc_consensus_scp::Msg;
+use mc_consensus_scp::msg::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, SignatureError, Signer, Verifier};
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     mint::{MintConfigTx, MintTx},
     tx::TxHash,
-    BlockID,
 };
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
+use std::{hash::Hash, result::Result as StdResult};
 
 /// A single value in a consensus round.
 #[derive(
@@ -150,15 +150,13 @@ impl ConsensusMsg {
             return Err(ConsensusMsgError::ZeroSlot);
         }
 
-        let prev_block = ledger.get_block(scp_msg.slot_index - 1)?;
+        let prev_block_id = ledger.get_block(scp_msg.slot_index - 1)?.id;
 
         let mut contents_hash = [0u8; 32];
         {
             let mut transcript = MerlinTranscript::new(b"peer-message");
             scp_msg.append_to_transcript(b"scp_msg", &mut transcript);
-            prev_block
-                .id
-                .append_to_transcript(b"prev_block_id", &mut transcript);
+            prev_block_id.append_to_transcript(b"prev_block_id", &mut transcript);
             transcript.extract_digest(&mut contents_hash);
         }
 
@@ -166,7 +164,7 @@ impl ConsensusMsg {
 
         Ok(Self {
             scp_msg,
-            prev_block_id: prev_block.id,
+            prev_block_id,
             signature,
         })
     }
@@ -203,10 +201,9 @@ impl ConsensusMsg {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, QuorumSet, SlotIndex};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers_test_utils::test_node_id_and_signer;
-    use std::convert::TryFrom;
 
     // Create a minimal ConsensusMsg for testing
     fn create_msg_node_a() -> ConsensusMsg {

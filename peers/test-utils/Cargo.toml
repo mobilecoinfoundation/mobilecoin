@@ -5,11 +5,12 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [dependencies]
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-connection = { path = "../../connection" }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
-mc-consensus-scp = { path = "../../consensus/scp" }
+mc-consensus-scp = { path = "../../consensus/scp", features = ["test_utils"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers = { path = "../../peers" }

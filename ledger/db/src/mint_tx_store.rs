@@ -9,7 +9,8 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error, MintConfigStore};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_transaction_core::{mint::MintTx, BlockIndex};
+use mc_blockchain_types::BlockIndex;
+use mc_transaction_core::mint::MintTx;
 use mc_util_serial::{decode, encode, Message};
 
 // LMDB Database names.

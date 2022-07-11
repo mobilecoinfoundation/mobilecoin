@@ -21,7 +21,6 @@ use mc_transaction_core::{
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
 use std::{
-    convert::TryFrom,
     fs,
     path::{Path, PathBuf},
 };
@@ -359,7 +358,7 @@ pub enum Commands {
             long = "signing-key",
             required_unless_present = "signatures",
             parse(try_from_str = load_key_from_pem),
-            env = "MC_MINTING_SIGNING_KEY"
+            env = "MC_MINTING_SIGNING_KEYS"
         )]
         signing_keys: Vec<Ed25519Private>,
 

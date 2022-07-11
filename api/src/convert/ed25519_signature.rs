@@ -1,8 +1,7 @@
 //! Convert to/from external::Ed25519Signature
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use std::convert::TryFrom;
 
 /// Convert Ed25519Signature --> external::Ed25519Signature.
 impl From<&Ed25519Signature> for external::Ed25519Signature {

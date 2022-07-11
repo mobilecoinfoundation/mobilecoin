@@ -3,12 +3,12 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedDestination,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedSubaddresses,
     TransactionBuilder, TxBuilderError,
 };
-use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     onetime_keys::*,
@@ -45,11 +45,7 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         amount,
         recipient,
         hint,
-        |_| {
-            Ok(block_version
-                .e_memo_feature_is_supported()
-                .then(MemoPayload::default))
-        },
+        |_| Ok(MemoPayload::default()),
         rng,
     )
 }
@@ -132,6 +128,7 @@ pub fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         account.view_private_key(),
         &account.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
     );
+    let onetime_key_derive_data = OneTimeKeyDeriveData::OneTimeKey(onetime_private_key);
 
     let membership_proofs: Vec<TxOutMembershipProof> = ring
         .iter()
@@ -146,7 +143,7 @@ pub fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         ring,
         membership_proofs,
         real_index,
-        onetime_private_key,
+        onetime_key_derive_data,
         *account.view_private_key(),
     )
     .unwrap()
@@ -203,14 +200,7 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
     transaction_builder.set_fee(fee).unwrap();
 
-    transaction_builder.build(rng)
-}
-
-/// Build simulated change memo with zero amount
-pub fn build_zero_value_change_memo(
-    builder: &mut impl MemoBuilder,
-) -> Result<MemoPayload, NewMemoError> {
-    build_change_memo_with_amount(builder, Amount::new(0, 0.into()))
+    transaction_builder.build(&NoKeysRingSigner {}, rng)
 }
 
 /// Build simulated change memo with amount
@@ -221,7 +211,7 @@ pub fn build_change_memo_with_amount(
     // Create simulated context
     let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
     let alice = AccountKey::random_with_fog(&mut rng);
-    let alice_address_book = ReservedDestination::from(&alice);
+    let alice_address_book = ReservedSubaddresses::from(&alice);
     let change_tx_pubkey = RistrettoPublic::from_random(&mut rng);
     let memo_context = MemoContext {
         tx_public_key: &change_tx_pubkey,

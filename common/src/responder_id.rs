@@ -12,6 +12,10 @@ use core::{
 };
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
+use prost::{
+    bytes::{Buf, BufMut},
+    encoding, Message,
+};
 use serde::{Deserialize, Serialize};
 
 /// Potential parse errors
@@ -56,5 +60,38 @@ impl FromStr for ResponderId {
 impl AsRef<ResponderId> for ResponderId {
     fn as_ref(&self) -> &Self {
         self
+    }
+}
+
+// Encode ResponderId as a proto string
+impl Message for ResponderId {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        String::encode_raw(&self.0, buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: encoding::WireType,
+        buf: &mut B,
+        ctx: encoding::DecodeContext,
+    ) -> Result<(), prost::DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        String::merge_field(&mut self.0, tag, wire_type, buf, ctx)
+    }
+
+    fn encoded_len(&self) -> usize {
+        String::encoded_len(&self.0)
+    }
+
+    fn clear(&mut self) {
+        self.0.clear()
     }
 }

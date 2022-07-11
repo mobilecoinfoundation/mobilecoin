@@ -1,12 +1,12 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::SignatureRctBulletproofs
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{
-    ring_signature::{RingMLSAG, SignatureRctBulletproofs},
-    CompressedCommitment,
+    ring_ct::SignatureRctBulletproofs, ring_signature::RingMLSAG, CompressedCommitment,
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
 impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
     fn from(source: &SignatureRctBulletproofs) -> Self {

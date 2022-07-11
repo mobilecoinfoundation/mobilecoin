@@ -1,8 +1,7 @@
 //! Convert to/from external::TxIn.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules};
-use std::convert::TryFrom;
 
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {

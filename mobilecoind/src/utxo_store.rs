@@ -15,7 +15,7 @@ use mc_common::{
 };
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut};
 use mc_util_serial::Message;
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const SUBADDRESS_ID_TO_UTXO_ID_DB_NAME: &str =
@@ -433,7 +433,6 @@ mod test {
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     fn setup_test_utxo_store(

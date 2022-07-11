@@ -4,7 +4,6 @@
 //! signatures.
 
 use alloc::collections::BTreeMap;
-use core::{convert::TryFrom, iter::FromIterator};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::Ed25519Public;

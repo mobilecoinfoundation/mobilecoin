@@ -1,11 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// Implement LocalCipher trait around an AesGcm object that does rekeying
-use alloc::vec;
-use alloc::vec::Vec;
-use core::convert::TryInto;
-
 use aes_gcm::aead::{AeadInPlace, NewAead};
+use alloc::{vec, vec::Vec};
 use generic_array::{typenum, ArrayLength, GenericArray};
 use rand_core::{CryptoRng, RngCore};
 use subtle::Choice;
@@ -13,6 +9,7 @@ use typenum::Unsigned;
 
 use crate::{CipherError, MessageCipher};
 
+/// Implement [MessageCipher] trait around an `AesGcm` object that does rekeying
 pub struct AeadMessageCipher<C: NewAead + AeadInPlace> {
     // ciphers is a list of ciphers, and the keys we used to make them
     ciphers: Vec<(C, GenericArray<u8, C::KeySize>)>,

@@ -7,38 +7,10 @@ use mc_api::external::{
     PublicAddress, RingMLSAG, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement,
     TxOutMembershipHash, TxOutMembershipProof, TxPrefix,
 };
+use mc_mobilecoind_api as api;
+use mc_util_serial::JsonU64;
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
-use std::convert::TryFrom;
-
-// Represents u64 using string, when serializing to Json
-// Javascript integers are not 64 bit, and so it is not really proper json.
-// Using string avoids issues with some json parsers not handling large numbers
-// well.
-//
-// This does not rely on the serde-json arbitrary precision feature, which
-// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
-
-impl From<&u64> for JsonU64 {
-    fn from(src: &u64) -> Self {
-        Self(*src)
-    }
-}
-
-impl From<&JsonU64> for u64 {
-    fn from(src: &JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl From<JsonU64> for u64 {
-    fn from(src: JsonU64) -> u64 {
-        src.0
-    }
-}
 
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonPasswordRequest {
@@ -65,8 +37,8 @@ pub struct JsonRootEntropyResponse {
     pub entropy: String,
 }
 
-impl From<&mc_mobilecoind_api::GenerateRootEntropyResponse> for JsonRootEntropyResponse {
-    fn from(src: &mc_mobilecoind_api::GenerateRootEntropyResponse) -> Self {
+impl From<&api::GenerateRootEntropyResponse> for JsonRootEntropyResponse {
+    fn from(src: &api::GenerateRootEntropyResponse) -> Self {
         Self {
             entropy: hex::encode(&src.root_entropy),
         }
@@ -78,8 +50,8 @@ pub struct JsonMnemonicResponse {
     pub mnemonic: String,
 }
 
-impl From<&mc_mobilecoind_api::GenerateMnemonicResponse> for JsonMnemonicResponse {
-    fn from(src: &mc_mobilecoind_api::GenerateMnemonicResponse) -> Self {
+impl From<&api::GenerateMnemonicResponse> for JsonMnemonicResponse {
+    fn from(src: &api::GenerateMnemonicResponse) -> Self {
         Self {
             mnemonic: src.mnemonic.clone(),
         }
@@ -92,8 +64,8 @@ pub struct JsonAccountKeyResponse {
     pub spend_private_key: String,
 }
 
-impl From<&mc_mobilecoind_api::GetAccountKeyResponse> for JsonAccountKeyResponse {
-    fn from(src: &mc_mobilecoind_api::GetAccountKeyResponse) -> Self {
+impl From<&api::GetAccountKeyResponse> for JsonAccountKeyResponse {
+    fn from(src: &api::GetAccountKeyResponse) -> Self {
         Self {
             view_private_key: hex::encode(&src.get_account_key().get_view_private_key().get_data()),
             spend_private_key: hex::encode(
@@ -116,8 +88,8 @@ pub struct JsonMonitorResponse {
     pub is_new: bool,
 }
 
-impl From<&mc_mobilecoind_api::AddMonitorResponse> for JsonMonitorResponse {
-    fn from(src: &mc_mobilecoind_api::AddMonitorResponse) -> Self {
+impl From<&api::AddMonitorResponse> for JsonMonitorResponse {
+    fn from(src: &api::AddMonitorResponse) -> Self {
         Self {
             monitor_id: hex::encode(&src.monitor_id),
             is_new: src.is_new,
@@ -130,8 +102,8 @@ pub struct JsonMonitorListResponse {
     pub monitor_ids: Vec<String>,
 }
 
-impl From<&mc_mobilecoind_api::GetMonitorListResponse> for JsonMonitorListResponse {
-    fn from(src: &mc_mobilecoind_api::GetMonitorListResponse) -> Self {
+impl From<&api::GetMonitorListResponse> for JsonMonitorListResponse {
+    fn from(src: &api::GetMonitorListResponse) -> Self {
         Self {
             monitor_ids: src.get_monitor_id_list().iter().map(hex::encode).collect(),
         }
@@ -146,8 +118,8 @@ pub struct JsonMonitorStatusResponse {
     pub next_block: u64,
 }
 
-impl From<&mc_mobilecoind_api::GetMonitorStatusResponse> for JsonMonitorStatusResponse {
-    fn from(src: &mc_mobilecoind_api::GetMonitorStatusResponse) -> Self {
+impl From<&api::GetMonitorStatusResponse> for JsonMonitorStatusResponse {
+    fn from(src: &api::GetMonitorStatusResponse) -> Self {
         let status = src.get_status();
 
         Self {
@@ -164,8 +136,8 @@ pub struct JsonBalanceResponse {
     pub balance: String,
 }
 
-impl From<&mc_mobilecoind_api::GetBalanceResponse> for JsonBalanceResponse {
-    fn from(src: &mc_mobilecoind_api::GetBalanceResponse) -> Self {
+impl From<&api::GetBalanceResponse> for JsonBalanceResponse {
+    fn from(src: &api::GetBalanceResponse) -> Self {
         Self {
             balance: src.balance.to_string(),
         }
@@ -183,8 +155,8 @@ pub struct JsonUnspentTxOut {
     pub monitor_id: String,
 }
 
-impl From<&mc_mobilecoind_api::UnspentTxOut> for JsonUnspentTxOut {
-    fn from(src: &mc_mobilecoind_api::UnspentTxOut) -> Self {
+impl From<&api::UnspentTxOut> for JsonUnspentTxOut {
+    fn from(src: &api::UnspentTxOut) -> Self {
         Self {
             tx_out: src.get_tx_out().into(),
             subaddress_index: src.get_subaddress_index(),
@@ -198,10 +170,10 @@ impl From<&mc_mobilecoind_api::UnspentTxOut> for JsonUnspentTxOut {
 }
 
 // Helper conversion between json and protobuf
-impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
+impl TryFrom<&JsonUnspentTxOut> for api::UnspentTxOut {
     type Error = String;
 
-    fn try_from(src: &JsonUnspentTxOut) -> Result<mc_mobilecoind_api::UnspentTxOut, String> {
+    fn try_from(src: &JsonUnspentTxOut) -> Result<api::UnspentTxOut, String> {
         let mut key_image = KeyImage::new();
         key_image.set_data(
             hex::decode(&src.key_image)
@@ -209,7 +181,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
         );
 
         // Reconstruct the public address as a protobuf
-        let mut utxo = mc_mobilecoind_api::UnspentTxOut::new();
+        let mut utxo = api::UnspentTxOut::new();
         utxo.set_tx_out(
             mc_api::external::TxOut::try_from(&src.tx_out)
                 .map_err(|err| format!("Failed to get TxOut: {}", err))?,
@@ -233,8 +205,8 @@ pub struct JsonUtxosResponse {
     pub output_list: Vec<JsonUnspentTxOut>,
 }
 
-impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosResponse {
-    fn from(src: &mc_mobilecoind_api::GetUnspentTxOutListResponse) -> Self {
+impl From<&api::GetUnspentTxOutListResponse> for JsonUtxosResponse {
+    fn from(src: &api::GetUnspentTxOutListResponse) -> Self {
         Self {
             output_list: src
                 .get_output_list()
@@ -257,8 +229,8 @@ pub struct JsonCreateRequestCodeResponse {
     pub b58_request_code: String,
 }
 
-impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::CreateRequestCodeResponse) -> Self {
+impl From<&api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
+    fn from(src: &api::CreateRequestCodeResponse) -> Self {
         Self {
             b58_request_code: String::from(src.get_b58_code()),
         }
@@ -316,8 +288,8 @@ pub struct JsonPublicAddressResponse {
     pub b58_address_code: String,
 }
 
-impl From<&mc_mobilecoind_api::GetPublicAddressResponse> for JsonPublicAddressResponse {
-    fn from(src: &mc_mobilecoind_api::GetPublicAddressResponse) -> Self {
+impl From<&api::GetPublicAddressResponse> for JsonPublicAddressResponse {
+    fn from(src: &api::GetPublicAddressResponse) -> Self {
         let public_address = src.get_public_address();
         Self {
             view_public_key: hex::encode(&public_address.get_view_public_key().get_data()),
@@ -369,8 +341,8 @@ pub struct JsonParseRequestCodeResponse {
     pub memo: String,
 }
 
-impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::ParseRequestCodeResponse) -> Self {
+impl From<&api::ParseRequestCodeResponse> for JsonParseRequestCodeResponse {
+    fn from(src: &api::ParseRequestCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
             value: JsonU64(src.get_value()),
@@ -389,8 +361,8 @@ pub struct JsonCreateAddressCodeResponse {
     pub b58_code: String,
 }
 
-impl From<&mc_mobilecoind_api::CreateAddressCodeResponse> for JsonCreateAddressCodeResponse {
-    fn from(src: &mc_mobilecoind_api::CreateAddressCodeResponse) -> Self {
+impl From<&api::CreateAddressCodeResponse> for JsonCreateAddressCodeResponse {
+    fn from(src: &api::CreateAddressCodeResponse) -> Self {
         Self {
             b58_code: String::from(src.get_b58_code()),
         }
@@ -402,8 +374,8 @@ pub struct JsonParseAddressCodeResponse {
     pub receiver: JsonPublicAddress,
 }
 
-impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCodeResponse {
-    fn from(src: &mc_mobilecoind_api::ParseAddressCodeResponse) -> Self {
+impl From<&api::ParseAddressCodeResponse> for JsonParseAddressCodeResponse {
+    fn from(src: &api::ParseAddressCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
         }
@@ -416,8 +388,8 @@ pub struct JsonSenderTxReceipt {
     pub tombstone: u64,
 }
 
-impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
-    fn from(src: &mc_mobilecoind_api::SenderTxReceipt) -> Self {
+impl From<&api::SenderTxReceipt> for JsonSenderTxReceipt {
+    fn from(src: &api::SenderTxReceipt) -> Self {
         Self {
             key_images: src
                 .get_key_image_list()
@@ -438,8 +410,8 @@ pub struct JsonReceiverTxReceipt {
     pub confirmation_number: String,
 }
 
-impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
-    fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
+impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
+    fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_recipient()),
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
@@ -463,8 +435,8 @@ pub struct JsonSendPaymentResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse {
-    fn from(src: &mc_mobilecoind_api::SendPaymentResponse) -> Self {
+impl From<&api::SendPaymentResponse> for JsonSendPaymentResponse {
+    fn from(src: &api::SendPaymentResponse) -> Self {
         Self {
             sender_tx_receipt: JsonSenderTxReceipt::from(src.get_sender_tx_receipt()),
             receiver_tx_receipt_list: src
@@ -490,8 +462,8 @@ pub struct JsonOutlay {
     pub receiver: JsonPublicAddress,
 }
 
-impl From<&mc_mobilecoind_api::Outlay> for JsonOutlay {
-    fn from(src: &mc_mobilecoind_api::Outlay) -> Self {
+impl From<&api::Outlay> for JsonOutlay {
+    fn from(src: &api::Outlay) -> Self {
         Self {
             value: JsonU64(src.get_value()),
             receiver: src.get_receiver().into(),
@@ -499,11 +471,11 @@ impl From<&mc_mobilecoind_api::Outlay> for JsonOutlay {
     }
 }
 
-impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
+impl TryFrom<&JsonOutlay> for api::Outlay {
     type Error = String;
 
-    fn try_from(src: &JsonOutlay) -> Result<mc_mobilecoind_api::Outlay, String> {
-        let mut outlay = mc_mobilecoind_api::Outlay::new();
+    fn try_from(src: &JsonOutlay) -> Result<api::Outlay, String> {
+        let mut outlay = api::Outlay::new();
         outlay.set_value(src.value.into());
         outlay.set_receiver(
             PublicAddress::try_from(&src.receiver)
@@ -1027,8 +999,8 @@ pub struct JsonTxProposal {
     pub outlay_confirmation_numbers: Vec<Vec<u8>>,
 }
 
-impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
-    fn from(src: &mc_mobilecoind_api::TxProposal) -> Self {
+impl From<&api::TxProposal> for JsonTxProposal {
+    fn from(src: &api::TxProposal) -> Self {
         let outlay_map: Vec<(usize, usize)> = src
             .get_outlay_index_to_tx_out_index()
             .iter()
@@ -1050,26 +1022,26 @@ impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
 }
 
 // Helper conversion between json and protobuf
-impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
+impl TryFrom<&JsonTxProposal> for api::TxProposal {
     type Error = String;
 
-    fn try_from(src: &JsonTxProposal) -> Result<mc_mobilecoind_api::TxProposal, String> {
-        let mut inputs: Vec<mc_mobilecoind_api::UnspentTxOut> = Vec::new();
+    fn try_from(src: &JsonTxProposal) -> Result<api::TxProposal, String> {
+        let mut inputs: Vec<api::UnspentTxOut> = Vec::new();
         for input in src.input_list.iter() {
-            let utxo = mc_mobilecoind_api::UnspentTxOut::try_from(input)
+            let utxo = api::UnspentTxOut::try_from(input)
                 .map_err(|err| format!("Failed to convert input: {}", err))?;
             inputs.push(utxo);
         }
 
-        let mut outlays: Vec<mc_mobilecoind_api::Outlay> = Vec::new();
+        let mut outlays: Vec<api::Outlay> = Vec::new();
         for outlay in src.outlay_list.iter() {
-            let out = mc_mobilecoind_api::Outlay::try_from(outlay)
+            let out = api::Outlay::try_from(outlay)
                 .map_err(|err| format!("Failed to convert outlay: {}", err))?;
             outlays.push(out);
         }
 
         // Reconstruct the public address as a protobuf
-        let mut proposal = mc_mobilecoind_api::TxProposal::new();
+        let mut proposal = api::TxProposal::new();
         proposal.set_input_list(RepeatedField::from_vec(inputs));
         proposal.set_outlay_list(RepeatedField::from_vec(outlays));
         proposal
@@ -1100,8 +1072,8 @@ pub struct JsonCreateTxProposalResponse {
     pub tx_proposal: JsonTxProposal,
 }
 
-impl From<&mc_mobilecoind_api::GenerateTxResponse> for JsonCreateTxProposalResponse {
-    fn from(src: &mc_mobilecoind_api::GenerateTxResponse) -> Self {
+impl From<&api::GenerateTxResponse> for JsonCreateTxProposalResponse {
+    fn from(src: &api::GenerateTxResponse) -> Self {
         Self {
             tx_proposal: src.get_tx_proposal().into(),
         }
@@ -1119,8 +1091,8 @@ pub struct JsonSubmitTxResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
-    fn from(src: &mc_mobilecoind_api::SubmitTxResponse) -> Self {
+impl From<&api::SubmitTxResponse> for JsonSubmitTxResponse {
+    fn from(src: &api::SubmitTxResponse) -> Self {
         Self {
             sender_tx_receipt: src.get_sender_tx_receipt().into(),
             receiver_tx_receipt_list: src
@@ -1132,11 +1104,11 @@ impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
     }
 }
 
-impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
+impl TryFrom<&JsonSubmitTxResponse> for api::SubmitTxResponse {
     type Error = String;
 
     fn try_from(src: &JsonSubmitTxResponse) -> Result<Self, String> {
-        let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+        let mut sender_receipt = api::SenderTxReceipt::new();
 
         let key_images: Vec<KeyImage> = src
             .sender_tx_receipt
@@ -1157,7 +1129,7 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
 
         let mut receiver_receipts = Vec::new();
         for r in src.receiver_tx_receipt_list.iter() {
-            let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            let mut receiver_receipt = api::ReceiverTxReceipt::new();
             receiver_receipt.set_recipient(
                 PublicAddress::try_from(&r.recipient)
                     .map_err(|err| format!("Failed to convert recipient: {}", err))?,
@@ -1181,7 +1153,7 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             receiver_receipts.push(receiver_receipt);
         }
 
-        let mut resp = mc_mobilecoind_api::SubmitTxResponse::new();
+        let mut resp = api::SubmitTxResponse::new();
         resp.set_sender_tx_receipt(sender_receipt);
         resp.set_receiver_tx_receipt_list(RepeatedField::from_vec(receiver_receipts));
 
@@ -1194,20 +1166,18 @@ pub struct JsonStatusResponse {
     pub status: String,
 }
 
-impl From<&mc_mobilecoind_api::GetTxStatusAsSenderResponse> for JsonStatusResponse {
-    fn from(src: &mc_mobilecoind_api::GetTxStatusAsSenderResponse) -> Self {
+impl From<&api::GetTxStatusAsSenderResponse> for JsonStatusResponse {
+    fn from(src: &api::GetTxStatusAsSenderResponse) -> Self {
         let status_str = match src.get_status() {
-            mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-            mc_mobilecoind_api::TxStatus::Verified => "verified",
-            mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-            mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
-                "public_keys_in_different_blocks"
-            }
-            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+            api::TxStatus::Unknown => "unknown",
+            api::TxStatus::Verified => "verified",
+            api::TxStatus::TombstoneBlockExceeded => "failed",
+            api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            api::TxStatus::PublicKeysInDifferentBlocks => "public_keys_in_different_blocks",
+            api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
                 "transaction_failure_key_image_block_mismatch"
             }
-            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+            api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
                 "transaction_failure_key_image_already_spent"
             }
         };
@@ -1218,20 +1188,18 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsSenderResponse> for JsonStatusRespon
     }
 }
 
-impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResponse {
-    fn from(src: &mc_mobilecoind_api::GetTxStatusAsReceiverResponse) -> Self {
+impl From<&api::GetTxStatusAsReceiverResponse> for JsonStatusResponse {
+    fn from(src: &api::GetTxStatusAsReceiverResponse) -> Self {
         let status_str = match src.get_status() {
-            mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-            mc_mobilecoind_api::TxStatus::Verified => "verified",
-            mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-            mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
-                "public_keys_in_different_blocks"
-            }
-            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+            api::TxStatus::Unknown => "unknown",
+            api::TxStatus::Verified => "verified",
+            api::TxStatus::TombstoneBlockExceeded => "failed",
+            api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            api::TxStatus::PublicKeysInDifferentBlocks => "public_keys_in_different_blocks",
+            api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
                 "transaction_failure_key_image_block_mismatch"
             }
-            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+            api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
                 "transaction_failure_key_image_already_spent"
             }
         };
@@ -1248,8 +1216,8 @@ pub struct JsonLedgerInfoResponse {
     pub txo_count: JsonU64,
 }
 
-impl From<&mc_mobilecoind_api::GetLedgerInfoResponse> for JsonLedgerInfoResponse {
-    fn from(src: &mc_mobilecoind_api::GetLedgerInfoResponse) -> Self {
+impl From<&api::GetLedgerInfoResponse> for JsonLedgerInfoResponse {
+    fn from(src: &api::GetLedgerInfoResponse) -> Self {
         Self {
             block_count: JsonU64(src.block_count),
             txo_count: JsonU64(src.txo_count),
@@ -1263,8 +1231,8 @@ pub struct JsonBlockInfoResponse {
     pub txo_count: JsonU64,
 }
 
-impl From<&mc_mobilecoind_api::GetBlockInfoResponse> for JsonBlockInfoResponse {
-    fn from(src: &mc_mobilecoind_api::GetBlockInfoResponse) -> Self {
+impl From<&api::GetBlockInfoResponse> for JsonBlockInfoResponse {
+    fn from(src: &api::GetBlockInfoResponse) -> Self {
         Self {
             key_image_count: JsonU64(src.key_image_count),
             txo_count: JsonU64(src.txo_count),
@@ -1284,8 +1252,8 @@ pub struct JsonBlockDetailsResponse {
     pub txos: Vec<JsonTxOut>,
 }
 
-impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
-    fn from(src: &mc_mobilecoind_api::GetBlockResponse) -> Self {
+impl From<&api::GetBlockResponse> for JsonBlockDetailsResponse {
+    fn from(src: &api::GetBlockResponse) -> Self {
         let block = src.get_block();
 
         Self {
@@ -1315,12 +1283,12 @@ pub struct JsonProcessedTxOut {
     pub direction: String,
 }
 
-impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
-    fn from(src: &mc_mobilecoind_api::ProcessedTxOut) -> Self {
+impl From<&api::ProcessedTxOut> for JsonProcessedTxOut {
+    fn from(src: &api::ProcessedTxOut) -> Self {
         let direction_str = match src.direction {
-            mc_mobilecoind_api::ProcessedTxOutDirection::Invalid => "invalid",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Received => "received",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Spent => "spent",
+            api::ProcessedTxOutDirection::Invalid => "invalid",
+            api::ProcessedTxOutDirection::Received => "received",
+            api::ProcessedTxOutDirection::Spent => "spent",
         };
 
         Self {
@@ -1339,8 +1307,8 @@ pub struct JsonProcessedBlockResponse {
     pub tx_outs: Vec<JsonProcessedTxOut>,
 }
 
-impl From<&mc_mobilecoind_api::GetProcessedBlockResponse> for JsonProcessedBlockResponse {
-    fn from(src: &mc_mobilecoind_api::GetProcessedBlockResponse) -> Self {
+impl From<&api::GetProcessedBlockResponse> for JsonProcessedBlockResponse {
+    fn from(src: &api::GetProcessedBlockResponse) -> Self {
         Self {
             tx_outs: src
                 .get_tx_outs()
@@ -1356,12 +1324,23 @@ pub struct JsonBlockIndexByTxPubKeyResponse {
     pub block_index: String,
 }
 
-impl From<&mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse>
-    for JsonBlockIndexByTxPubKeyResponse
-{
-    fn from(src: &mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse) -> Self {
+impl From<&api::GetBlockIndexByTxPubKeyResponse> for JsonBlockIndexByTxPubKeyResponse {
+    fn from(src: &api::GetBlockIndexByTxPubKeyResponse) -> Self {
         Self {
             block_index: src.block.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Default, Debug)]
+pub struct JsonMobilecoindVersionResponse {
+    pub version: String,
+}
+
+impl From<&api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
+    fn from(src: &api::MobilecoindVersionResponse) -> Self {
+        Self {
+            version: src.get_version().to_string(),
         }
     }
 }
@@ -1370,17 +1349,18 @@ impl From<&mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse>
 mod test {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, BlockVersion,
         MaskedAmount, Token,
     };
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
-    };
+    use mc_transaction_core_test_utils::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator};
+    use std::collections::HashMap;
 
     /// Test conversion of TxProposal
     #[test]
@@ -1429,7 +1409,7 @@ mod test {
             let attempted_spend_tombstone = 1234;
 
             // make proto UnspentTxOut
-            let mut unspent = mc_mobilecoind_api::UnspentTxOut::new();
+            let mut unspent = api::UnspentTxOut::new();
             unspent.set_tx_out(mc_api::external::TxOut::from(&tx_out));
             unspent.set_subaddress_index(subaddress_index);
             unspent.set_key_image(mc_api::external::KeyImage::from(&key_image));
@@ -1440,7 +1420,7 @@ mod test {
         };
 
         // Make proto outlay
-        let mut outlay = mc_mobilecoind_api::Outlay::new();
+        let mut outlay = api::Outlay::new();
         let public_addr = AccountKey::random(&mut rng).default_subaddress();
         outlay.set_receiver(mc_api::external::PublicAddress::from(&public_addr));
         outlay.set_value(1234);
@@ -1452,7 +1432,7 @@ mod test {
             )];
 
         // Make proto TxProposal
-        let mut proto_proposal = mc_mobilecoind_api::TxProposal::new();
+        let mut proto_proposal = api::TxProposal::new();
         proto_proposal.set_input_list(RepeatedField::from_vec(vec![utxo]));
         proto_proposal.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
         proto_proposal.set_tx(mc_api::external::Tx::from(&tx));
@@ -1468,7 +1448,7 @@ mod test {
         let json_proposal = JsonTxProposal::from(&proto_proposal);
 
         // Json -> Proto
-        let proto2 = mc_mobilecoind_api::TxProposal::try_from(&json_proposal).unwrap();
+        let proto2 = api::TxProposal::try_from(&json_proposal).unwrap();
 
         // Assert each field, then the whole thing
         assert_eq!(proto_proposal.input_list, proto2.input_list);

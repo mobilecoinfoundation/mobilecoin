@@ -4,7 +4,6 @@
 
 use crate::{external, printable, ConversionError};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use std::convert::TryFrom;
 
 /// Convert mc_transaction_core::TxOutGiftCode --> printable::TxOutGiftCode.
 impl From<&mc_transaction_core::TxOutGiftCode> for printable::TxOutGiftCode {

@@ -4,14 +4,13 @@
 
 use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
-use mc_attest_core::VerificationReport;
+use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature, VerificationReport};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
-use mc_transaction_core::{BlockData, BlockIndex, BlockSignature};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
@@ -23,16 +22,17 @@ use lmdb::{
 };
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
-    convert::{TryFrom, TryInto},
     path::Path,
-    str::FromStr,
+    str,
     sync::Arc,
     time::{Duration, Instant},
 };
 use url::Url;
 
-/// LMDB Constant.
-const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
+/// LMDB parameter: max file size.
+const MAX_LMDB_FILE_SIZE: usize = 1 << 40; // 1 TB
+/// LMDB parameter: max number of databases.
+const MAX_DATABASES: u32 = 11;
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
@@ -163,7 +163,7 @@ impl WatcherDB {
     pub fn open_ro(path: &Path, logger: Logger) -> Result<Self, WatcherDBError> {
         let env = Arc::new(
             Environment::new()
-                .set_max_dbs(10)
+                .set_max_dbs(MAX_DATABASES)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 // TODO - needed because currently our test cloud machines have slow disks.
                 .set_flags(EnvironmentFlags::NO_SYNC)
@@ -221,7 +221,7 @@ impl WatcherDB {
     pub fn create(path: &Path) -> Result<(), WatcherDBError> {
         let env = Arc::new(
             Environment::new()
-                .set_max_dbs(10)
+                .set_max_dbs(MAX_DATABASES)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path)?,
         );
@@ -385,23 +385,20 @@ impl WatcherDB {
         cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
-                result
-                    .map_err(WatcherDBError::from)
-                    .and_then(|(key_bytes2, value_bytes)| {
-                        // Sanity check.
-                        assert_eq!(key_bytes, key_bytes2);
+                let (key_bytes2, value_bytes) = result?;
+                // Sanity check.
+                assert_eq!(key_bytes, key_bytes2);
 
-                        let signature_data: BlockSignatureData = decode(value_bytes)?;
-                        log::trace!(
-                            self.logger,
-                            "Got block signatures for {:?} ({:?})",
-                            block_index,
-                            signature_data,
-                        );
-                        Ok(signature_data)
-                    })
+                let signature_data: BlockSignatureData = decode(value_bytes)?;
+                log::trace!(
+                    self.logger,
+                    "Got block signatures for {:?} ({:?})",
+                    block_index,
+                    signature_data,
+                );
+                Ok(signature_data)
             })
-            .collect::<Result<Vec<_>, WatcherDBError>>()
+            .collect()
     }
 
     /// Get the earliest timestamp for a given block.
@@ -533,15 +530,16 @@ impl WatcherDB {
 
         let last_synced_map = self.get_url_to_last_synced(&db_txn)?;
 
-        let last_synced: Vec<u64> = last_synced_map
+        let last_synced = last_synced_map
             .values()
             .map(|opt_block_index| {
                 // If this URL has never added a signature, it is at 0
                 opt_block_index.unwrap_or(0)
             })
-            .collect();
+            .min()
+            .unwrap_or(0);
 
-        Ok(*last_synced.iter().min().unwrap_or(&0))
+        Ok(last_synced)
     }
 
     /// Store the current configuration into the database.
@@ -552,7 +550,7 @@ impl WatcherDB {
 
         match db_txn.del(self.config, &CONFIG_DB_KEY_TX_SOURCE_URLS, None) {
             Ok(_) | Err(lmdb::Error::NotFound) => {}
-            Err(err) => return Err(WatcherDBError::LmdbError(err)),
+            Err(err) => Err(err)?,
         };
         for url in tx_source_urls.iter() {
             db_txn.put(
@@ -575,17 +573,11 @@ impl WatcherDB {
     ) -> Result<Vec<Url>, WatcherDBError> {
         let mut cursor = db_txn.open_ro_cursor(self.config)?;
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&CONFIG_DB_KEY_TX_SOURCE_URLS)
             .filter_map(|r| r.ok())
-            .map(|(_db_key, db_value)| {
-                Url::from_str(
-                    &String::from_utf8(db_value.to_vec())
-                        .expect("from_utf8 failed: corrupted config db?"),
-                )
-                .expect("Url::from_str failed: corrupted config db?")
-            })
-            .collect())
+            .map(|(_db_key, db_value)| bytes_to_url(db_value))
+            .collect()
     }
 
     // Helper method to get a map of Url -> Last Synced Block
@@ -614,9 +606,7 @@ impl WatcherDB {
                 Err(lmdb::Error::NotFound) => {
                     results.insert(src_url.clone(), None);
                 }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                Err(err) => Err(err)?,
             };
         }
         Ok(results)
@@ -789,11 +779,11 @@ impl WatcherDB {
         hash: &[u8],
     ) -> Result<Option<VerificationReport>, WatcherDBError> {
         let value_bytes = db_txn.get(self.verification_reports_by_hash, &hash)?;
-        if value_bytes.is_empty() {
-            Ok(None)
+        Ok(if value_bytes.is_empty() {
+            None
         } else {
-            Ok(Some(mc_util_serial::decode(value_bytes)?))
-        }
+            Some(mc_util_serial::decode(value_bytes)?)
+        })
     }
 
     /// Get a verification report for a given block signer.
@@ -838,7 +828,7 @@ impl WatcherDB {
             }
 
             let tx_source_url_bytes = &key_bytes[signer_key_bytes.len()..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = bytes_to_url(tx_source_url_bytes)?;
 
             // Resolve the hash into the actual report.
             let verification_report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
@@ -896,7 +886,7 @@ impl WatcherDB {
         match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
             Ok(_value_bytes) => Ok(true),
             Err(lmdb::Error::NotFound) => Ok(false),
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -953,7 +943,7 @@ impl WatcherDB {
                 );
                 Ok(())
             }
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -967,8 +957,7 @@ impl WatcherDB {
 
         let mut results = HashMap::default();
         for (key_bytes, value_bytes) in cursor.iter_start().filter_map(Result::ok) {
-            let url_str = String::from_utf8(key_bytes.to_vec())?;
-            let url = Url::from_str(&url_str)?;
+            let url = bytes_to_url(key_bytes)?;
 
             let block_signer = Ed25519Public::try_from(value_bytes)?;
 
@@ -995,9 +984,8 @@ impl WatcherDB {
             &key_bytes,
             Some(&value_bytes),
         ) {
-            Ok(()) => Ok(()),
-            Err(lmdb::Error::NotFound) => Ok(()),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::NotFound) => Ok(()),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -1034,11 +1022,8 @@ impl WatcherDB {
 
         // Remove last synced.
         match db_txn.del(self.last_synced, &src_url.as_str().as_bytes(), None) {
-            Ok(()) => {}
-            Err(lmdb::Error::NotFound) => {}
-            Err(err) => {
-                return Err(err.into());
-            }
+            Ok(()) | Err(lmdb::Error::NotFound) => {}
+            Err(err) => Err(err)?,
         };
 
         // Remove verification reports.
@@ -1051,7 +1036,7 @@ impl WatcherDB {
             }
 
             let tx_source_url_bytes = &key_bytes[signer_key_size..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = bytes_to_url(tx_source_url_bytes)?;
             if &tx_source_url == src_url {
                 cursor.del(WriteFlags::empty())?;
             }
@@ -1096,45 +1081,39 @@ pub fn create_or_open_rw_watcher_db(
     WatcherDB::open_rw(watcher_db_path, src_urls, logger)
 }
 
+fn bytes_to_url(bytes: &[u8]) -> Result<Url, WatcherDBError> {
+    Ok(Url::parse(str::from_utf8(bytes)?)?)
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use mc_account_keys::AccountKey;
-    use mc_attest_core::VerificationSignature;
+    use mc_blockchain_test_utils::get_blocks;
+    use mc_blockchain_types::BlockVersion;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{Block, BlockContents, BlockVersion};
-    use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::run_with_one_seed;
+    use mc_util_test_helper::{get_seeded_rng, run_with_one_seed};
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        WatcherDB::create(db_tmp.path()).unwrap();
+        WatcherDB::create(db_tmp.path()).expect("Failed to create WatcherDB");
         WatcherDB::open_rw(db_tmp.path(), src_urls, logger).unwrap()
     }
 
-    pub fn setup_blocks() -> Vec<(Block, BlockContents)> {
-        let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
-        let origin = Block::new_origin_block(&[]);
-
-        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-        let recipient_pub_keys = accounts
-            .iter()
-            .map(|account| account.default_subaddress())
-            .collect::<Vec<_>>();
+    pub fn setup_blocks() -> Vec<BlockData> {
         get_blocks(
             BlockVersion::ZERO,
-            &recipient_pub_keys,
             10,
+            20,
             1,
             10,
-            &origin,
-            &mut rng,
+            1 << 20,
+            None,
+            &mut get_seeded_rng(),
         )
     }
 
@@ -1144,7 +1123,7 @@ pub mod tests {
         let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
         let url1 = Url::parse("http://www.my_url1.com").unwrap();
         let url2 = Url::parse("http://www.my_url2.com").unwrap();
-        let urls = vec![url1, url2];
+        let urls = [url1, url2];
         let watcher_db = setup_watcher_db(&urls, logger.clone());
 
         let blocks = setup_blocks();
@@ -1155,13 +1134,13 @@ pub mod tests {
         let filename = String::from("00/00");
 
         let signed_block_a1 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_a).unwrap();
         watcher_db
             .add_block_signature(&urls[0], 1, signed_block_a1, filename.clone())
             .unwrap();
 
         let signed_block_b1 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_b).unwrap();
         watcher_db
             .add_block_signature(&urls[1], 1, signed_block_b1, filename)
             .unwrap();
@@ -1176,7 +1155,7 @@ pub mod tests {
         run_with_one_seed(|mut rng| {
             let url1 = Url::parse("http://www.my_url1.com").unwrap();
             let url2 = Url::parse("http://www.my_url2.com").unwrap();
-            let urls = vec![url1, url2];
+            let urls = [url1, url2];
             let watcher_db = setup_watcher_db(&urls, logger.clone());
 
             let blocks = setup_blocks();
@@ -1187,13 +1166,13 @@ pub mod tests {
             let filename1 = String::from("00/01");
 
             let signed_block_a1 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_a).unwrap();
             watcher_db
                 .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
                 .unwrap();
 
             let signed_block_b1 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_b).unwrap();
             watcher_db
                 .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
                 .unwrap();
@@ -1203,7 +1182,7 @@ pub mod tests {
             let filename2 = String::from("00/02");
 
             let signed_block_a2 =
-                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_a).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[2].block(), &signing_key_a).unwrap();
             watcher_db
                 .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
                 .unwrap();
@@ -1211,7 +1190,7 @@ pub mod tests {
             assert_eq!(watcher_db.highest_common_block().unwrap(), 1);
 
             let signed_block_b2 =
-                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[2].block(), &signing_key_b).unwrap();
             watcher_db
                 .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
                 .unwrap();
@@ -1273,7 +1252,7 @@ pub mod tests {
         run_with_one_seed(|mut rng| {
             let url1 = Url::parse("http://www.my_url1.com").unwrap();
             let url2 = Url::parse("http://www.my_url2.com").unwrap();
-            let urls = vec![url1, url2];
+            let urls = [url1, url2];
             let watcher_db = setup_watcher_db(&urls, logger.clone());
 
             let blocks = setup_blocks();
@@ -1284,14 +1263,14 @@ pub mod tests {
             let filename1 = String::from("00/01");
 
             let mut signed_block_a1 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_a).unwrap();
             signed_block_a1.set_signed_at(1594679718);
             watcher_db
                 .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
                 .unwrap();
 
             let mut signed_block_b1 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_b).unwrap();
             signed_block_b1.set_signed_at(1594679727);
             watcher_db
                 .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
@@ -1341,7 +1320,7 @@ pub mod tests {
             let url1 = Url::parse("http://www.my_url1.com").unwrap();
             let url2 = Url::parse("http://www.my_url2.com").unwrap();
             let url3 = Url::parse("http://www.my_url3.com").unwrap();
-            let urls = vec![url1.clone(), url2.clone()];
+            let urls = [url1.clone(), url2.clone()];
 
             let signing_key_a = Ed25519Pair::from_random(&mut rng).public_key();
             let signing_key_b = Ed25519Pair::from_random(&mut rng).public_key();
@@ -1349,13 +1328,13 @@ pub mod tests {
             let signing_key_d = Ed25519Pair::from_random(&mut rng).public_key();
 
             let verification_report_a = VerificationReport {
-                sig: VerificationSignature::from(vec![1; 32]),
+                sig: vec![1u8; 32].into(),
                 chain: vec![vec![2; 16], vec![3; 32]],
                 http_body: "test body a".to_owned(),
             };
 
             let verification_report_b = VerificationReport {
-                sig: VerificationSignature::from(vec![10; 32]),
+                sig: vec![10u8; 32].into(),
                 chain: vec![vec![20; 16], vec![30; 32]],
                 http_body: "test body b".to_owned(),
             };
@@ -1381,7 +1360,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_a)
                             .unwrap(),
-                        HashMap::from_iter(vec![(
+                        HashMap::from_iter([(
                             url1.clone(),
                             vec![Some(verification_report_a.clone())]
                         )])
@@ -1391,49 +1370,49 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_b)
                             .unwrap(),
-                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                        HashMap::from_iter([(url1.clone(), vec![None])])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_c)
                             .unwrap(),
-                        HashMap::from_iter(vec![])
+                        HashMap::from_iter([])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
                             .unwrap(),
-                        vec![Some(verification_report_a.clone())],
+                        [Some(verification_report_a.clone())],
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
                             .unwrap(),
-                        vec![],
+                        [],
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
                             .unwrap(),
-                        vec![None],
+                        [None],
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_b, &url2)
                             .unwrap(),
-                        vec![],
+                        [],
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
                             .unwrap(),
-                        vec![],
+                        [],
                     );
                 }
 
@@ -1453,7 +1432,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_a)
                             .unwrap(),
-                        HashMap::from_iter(vec![(
+                        HashMap::from_iter([(
                             url1.clone(),
                             vec![
                                 Some(verification_report_a.clone()),
@@ -1466,21 +1445,21 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_b)
                             .unwrap(),
-                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                        HashMap::from_iter([(url1.clone(), vec![None])])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_c)
                             .unwrap(),
-                        HashMap::from_iter(vec![])
+                        HashMap::from_iter([])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
                             .unwrap(),
-                        vec![
+                        [
                             Some(verification_report_a.clone()),
                             Some(verification_report_b.clone())
                         ]
@@ -1490,21 +1469,21 @@ pub mod tests {
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
                             .unwrap(),
-                        vec![None]
+                        [None]
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
                             .unwrap(),
-                        vec![]
+                        []
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_c, &url2)
                             .unwrap(),
-                        vec![]
+                        []
                     );
                 }
             }
@@ -1540,7 +1519,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_a)
                             .unwrap(),
-                        HashMap::from_iter(vec![
+                        HashMap::from_iter([
                             (url1.clone(), vec![Some(verification_report_a.clone())]),
                             (url2.clone(), vec![Some(verification_report_a.clone())]),
                         ])
@@ -1550,7 +1529,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_b)
                             .unwrap(),
-                        HashMap::from_iter(vec![
+                        HashMap::from_iter([
                             (url1.clone(), vec![None]),
                             (url2.clone(), vec![None])
                         ])
@@ -1560,28 +1539,28 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_c)
                             .unwrap(),
-                        HashMap::from_iter(vec![])
+                        HashMap::from_iter([])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
                             .unwrap(),
-                        vec![Some(verification_report_a.clone())]
+                        [Some(verification_report_a.clone())]
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
                             .unwrap(),
-                        vec![Some(verification_report_a.clone())]
+                        [Some(verification_report_a.clone())]
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_report_for_signer_and_url(&signing_key_a, &url3)
                             .unwrap(),
-                        vec![]
+                        []
                     );
                 }
             }
@@ -1616,7 +1595,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_a)
                             .unwrap(),
-                        HashMap::from_iter(vec![(
+                        HashMap::from_iter([(
                             url1.clone(),
                             vec![Some(verification_report_a.clone())]
                         ),])
@@ -1626,7 +1605,7 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_b)
                             .unwrap(),
-                        HashMap::from_iter(vec![(
+                        HashMap::from_iter([(
                             url1.clone(),
                             vec![Some(verification_report_b.clone()), None]
                         ),])
@@ -1636,14 +1615,14 @@ pub mod tests {
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_c)
                             .unwrap(),
-                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                        HashMap::from_iter([(url1.clone(), vec![None])])
                     );
 
                     assert_eq!(
                         watcher_db
                             .get_verification_reports_for_signer(&signing_key_d)
                             .unwrap(),
-                        HashMap::from_iter(vec![])
+                        HashMap::from_iter([])
                     );
                 }
             }
@@ -1660,7 +1639,7 @@ pub mod tests {
             let urls = vec![url1.clone(), url2.clone(), url3.clone()];
 
             let verification_report_a = VerificationReport {
-                sig: VerificationSignature::from(vec![1; 32]),
+                sig: vec![1; 32].into(),
                 chain: vec![vec![2; 16], vec![3; 32]],
                 http_body: "test body a".to_owned(),
             };
@@ -1681,7 +1660,7 @@ pub mod tests {
 
             // Add a block signature, the signing key should make it into the queue.
             let signed_block_a1 =
-                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_a).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[0].block(), &signing_key_a).unwrap();
             watcher_db
                 .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
                 .unwrap();
@@ -1690,13 +1669,13 @@ pub mod tests {
             for _ in 0..5 {
                 assert_eq!(
                     watcher_db.get_verification_report_poll_queue().unwrap(),
-                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                    HashMap::from_iter([(url1.clone(), vec![signing_key_a.public_key()])])
                 );
             }
 
             // Adding another block with the same signing key should not affect the queue.
             let signed_block_a2 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_a).unwrap();
             watcher_db
                 .add_block_signature(&url1, 2, signed_block_a2, filename.clone())
                 .unwrap();
@@ -1704,13 +1683,13 @@ pub mod tests {
             for _ in 0..5 {
                 assert_eq!(
                     watcher_db.get_verification_report_poll_queue().unwrap(),
-                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                    HashMap::from_iter([(url1.clone(), vec![signing_key_a.public_key()])])
                 );
             }
 
             // Adding a block with a different key should show up in the queue.
             let signed_block_b1 =
-                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_b).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[0].block(), &signing_key_b).unwrap();
             watcher_db
                 .add_block_signature(&url1, 1, signed_block_b1.clone(), filename.clone())
                 .unwrap();
@@ -1718,7 +1697,7 @@ pub mod tests {
             for _ in 0..5 {
                 assert_eq!(
                     watcher_db.get_verification_report_poll_queue().unwrap(),
-                    HashMap::from_iter(vec![(
+                    HashMap::from_iter([(
                         url1.clone(),
                         vec![signing_key_b.public_key(), signing_key_a.public_key()]
                     )])
@@ -1734,7 +1713,7 @@ pub mod tests {
             for _ in 0..5 {
                 assert_eq!(
                     watcher_db.get_verification_report_poll_queue().unwrap(),
-                    HashMap::from_iter(vec![
+                    HashMap::from_iter([
                         (
                             url1.clone(),
                             vec![signing_key_b.public_key(), signing_key_a.public_key()]
@@ -1757,7 +1736,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![
+                HashMap::from_iter([
                     (
                         url1.clone(),
                         vec![signing_key_b.public_key(), signing_key_a.public_key()]
@@ -1779,7 +1758,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![(
+                HashMap::from_iter([(
                     url1.clone(),
                     vec![signing_key_b.public_key(), signing_key_a.public_key()]
                 ),])
@@ -1788,14 +1767,14 @@ pub mod tests {
             // Adding a block signature for a key that already has a verification report
             // should not affect the queue.
             let signed_block_b2 =
-                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+                BlockSignature::from_block_and_keypair(blocks[1].block(), &signing_key_b).unwrap();
             watcher_db
                 .add_block_signature(&url2, 2, signed_block_b2.clone(), filename.clone())
                 .unwrap();
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![(
+                HashMap::from_iter([(
                     url1.clone(),
                     vec![signing_key_b.public_key(), signing_key_a.public_key()]
                 ),])
@@ -1808,7 +1787,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![
+                HashMap::from_iter([
                     (
                         url1.clone(),
                         vec![signing_key_b.public_key(), signing_key_a.public_key()]
@@ -1830,7 +1809,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![
+                HashMap::from_iter([
                     (
                         url1.clone(),
                         vec![signing_key_b.public_key(), signing_key_a.public_key()]
@@ -1850,7 +1829,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![(url3, vec![signing_key_b.public_key()]),])
+                HashMap::from_iter([(url3, vec![signing_key_b.public_key()]),])
             );
         })
     }
@@ -1858,171 +1837,152 @@ pub mod tests {
     // Verification report polling queue should behave as expected.
     #[test_with_logger]
     fn test_remove_all_for_source_url(logger: Logger) {
-        run_with_one_seed(|mut rng| {
-            let url1 = Url::parse("http://www.my_url1.com").unwrap();
-            let url2 = Url::parse("http://www.my_url2.com").unwrap();
-            let urls = vec![url1.clone(), url2.clone()];
+        let url1 = Url::parse("http://www.my_url1.com").unwrap();
+        let url2 = Url::parse("http://www.my_url2.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone()];
 
-            let verification_report_a = VerificationReport {
-                sig: VerificationSignature::from(vec![1; 32]),
-                chain: vec![vec![2; 16], vec![3; 32]],
-                http_body: "test body a".to_owned(),
-            };
+        let verification_report_a = VerificationReport {
+            sig: vec![1; 32].into(),
+            chain: vec![vec![2; 16], vec![3; 32]],
+            http_body: "test body a".to_owned(),
+        };
 
-            let blocks = setup_blocks();
-            let filename = String::from("00/00");
+        let blocks_data = setup_blocks();
 
-            let block_datas = blocks
-                .iter()
-                .map(|(block, contents)| {
-                    BlockData::new(
-                        block.clone(),
-                        contents.clone(),
-                        Some(
-                            BlockSignature::from_block_and_keypair(
-                                block,
-                                &Ed25519Pair::from_random(&mut rng),
-                            )
-                            .unwrap(),
-                        ),
-                    )
-                })
-                .collect::<Vec<_>>();
+        let watcher_db = setup_watcher_db(&urls, logger.clone());
 
-            let watcher_db = setup_watcher_db(&urls, logger.clone());
+        // Removing a URL that has no data should work.
+        watcher_db.remove_all_for_source_url(&url1).unwrap();
 
-            // Removing a URL that has no data should work.
-            watcher_db.remove_all_for_source_url(&url1).unwrap();
+        // Add data for url1 and url2.
+        let filename = String::from("00/00");
 
-            // Add data for url1 and url2.
-            for block_data in block_datas.iter() {
-                watcher_db.add_block_data(&url1, block_data).unwrap();
-                watcher_db
-                    .add_block_signature(
-                        &url1,
-                        block_data.block().index,
-                        block_data.signature().clone().unwrap(),
-                        filename.clone(),
-                    )
-                    .unwrap();
+        // Add data for url1 and url2.
+        for block_data in blocks_data.iter() {
+            watcher_db.add_block_data(&url1, block_data).unwrap();
+            watcher_db
+                .add_block_signature(
+                    &url1,
+                    block_data.block().index,
+                    block_data.signature().cloned().unwrap(),
+                    filename.clone(),
+                )
+                .unwrap();
 
-                watcher_db.add_block_data(&url2, block_data).unwrap();
-                watcher_db
-                    .add_block_signature(
-                        &url2,
-                        block_data.block().index,
-                        block_data.signature().clone().unwrap(),
-                        filename.clone(),
-                    )
-                    .unwrap();
+            watcher_db.add_block_data(&url2, block_data).unwrap();
+            watcher_db
+                .add_block_signature(
+                    &url2,
+                    block_data.block().index,
+                    block_data.signature().cloned().unwrap(),
+                    filename.clone(),
+                )
+                .unwrap();
 
-                watcher_db
-                    .add_verification_report(
-                        &url1,
-                        block_data.signature().clone().unwrap().signer(),
-                        &verification_report_a,
-                        &[],
-                    )
-                    .unwrap();
+            watcher_db
+                .add_verification_report(
+                    &url1,
+                    block_data.signature().unwrap().signer(),
+                    &verification_report_a,
+                    &[],
+                )
+                .unwrap();
 
-                watcher_db
-                    .add_verification_report(
-                        &url2,
-                        block_data.signature().clone().unwrap().signer(),
-                        &verification_report_a,
-                        &[],
-                    )
-                    .unwrap();
-            }
+            watcher_db
+                .add_verification_report(
+                    &url2,
+                    block_data.signature().unwrap().signer(),
+                    &verification_report_a,
+                    &[],
+                )
+                .unwrap();
+        }
 
-            // Both should be in the database.
-            for block_data in block_datas.iter() {
-                let block_sigs = watcher_db
-                    .get_block_signatures(block_data.block().index)
-                    .unwrap();
-                assert_eq!(
-                    block_sigs,
-                    vec![
-                        BlockSignatureData {
-                            src_url: url1.as_str().to_string(),
-                            archive_filename: filename.clone(),
-                            block_signature: block_data.signature().clone().unwrap(),
-                        },
-                        BlockSignatureData {
-                            src_url: url2.as_str().to_string(),
-                            archive_filename: filename.clone(),
-                            block_signature: block_data.signature().clone().unwrap(),
-                        }
-                    ]
-                );
+        // Both should be in the database.
+        for block_data in blocks_data.iter() {
+            let block_sigs = watcher_db
+                .get_block_signatures(block_data.block().index)
+                .unwrap();
+            let block_signature = block_data.signature().cloned().unwrap();
 
-                let verification_reports = watcher_db
-                    .get_verification_reports_for_signer(
-                        block_data.signature().clone().unwrap().signer(),
-                    )
-                    .unwrap();
-                assert_eq!(
-                    verification_reports,
-                    HashMap::from_iter(vec![
-                        (url1.clone(), vec![Some(verification_report_a.clone())]),
-                        (url2.clone(), vec![Some(verification_report_a.clone())]),
-                    ])
-                );
-            }
-
-            let last_synced = watcher_db.last_synced_blocks().unwrap();
             assert_eq!(
-                last_synced,
-                HashMap::from_iter(vec![
-                    (
-                        url1.clone(),
-                        Some(block_datas.last().unwrap().block().index)
-                    ),
-                    (
-                        url2.clone(),
-                        Some(block_datas.last().unwrap().block().index)
-                    ),
-                ])
-            );
-
-            // Remove url1 and ensure only url2 remains in the database.
-            watcher_db.remove_all_for_source_url(&url1).unwrap();
-
-            for block_data in block_datas.iter() {
-                let block_sigs = watcher_db
-                    .get_block_signatures(block_data.block().index)
-                    .unwrap();
-                assert_eq!(
-                    block_sigs,
-                    vec![BlockSignatureData {
+                block_sigs,
+                vec![
+                    BlockSignatureData {
+                        src_url: url1.as_str().to_string(),
+                        archive_filename: filename.clone(),
+                        block_signature: block_signature.clone(),
+                    },
+                    BlockSignatureData {
                         src_url: url2.as_str().to_string(),
                         archive_filename: filename.clone(),
-                        block_signature: block_data.signature().clone().unwrap(),
-                    }]
-                );
+                        block_signature: block_signature.clone(),
+                    }
+                ]
+            );
 
-                let verification_reports = watcher_db
-                    .get_verification_reports_for_signer(
-                        block_data.signature().clone().unwrap().signer(),
-                    )
-                    .unwrap();
-                assert_eq!(
-                    verification_reports,
-                    HashMap::from_iter(vec![(
-                        url2.clone(),
-                        vec![Some(verification_report_a.clone())]
-                    ),])
-                );
-            }
-
-            let last_synced = watcher_db.last_synced_blocks().unwrap();
+            let verification_reports = watcher_db
+                .get_verification_reports_for_signer(block_signature.signer())
+                .unwrap();
             assert_eq!(
-                last_synced,
+                verification_reports,
                 HashMap::from_iter(vec![
-                    (url1, None),
-                    (url2, Some(block_datas.last().unwrap().block().index)),
+                    (url1.clone(), vec![Some(verification_report_a.clone())]),
+                    (url2.clone(), vec![Some(verification_report_a.clone())]),
                 ])
             );
-        })
+        }
+
+        let last_synced = watcher_db.last_synced_blocks().unwrap();
+        assert_eq!(
+            last_synced,
+            HashMap::from_iter(vec![
+                (
+                    url1.clone(),
+                    Some(blocks_data.last().unwrap().block().index)
+                ),
+                (
+                    url2.clone(),
+                    Some(blocks_data.last().unwrap().block().index)
+                ),
+            ])
+        );
+
+        // Remove url1 and ensure only url2 remains in the database.
+        watcher_db.remove_all_for_source_url(&url1).unwrap();
+
+        for block_data in blocks_data.iter() {
+            let block_sigs = watcher_db
+                .get_block_signatures(block_data.block().index)
+                .unwrap();
+            assert_eq!(
+                block_sigs,
+                vec![BlockSignatureData {
+                    src_url: url2.as_str().to_string(),
+                    archive_filename: filename.clone(),
+                    block_signature: block_data.signature().cloned().unwrap(),
+                }]
+            );
+
+            let verification_reports = watcher_db
+                .get_verification_reports_for_signer(block_data.signature().unwrap().signer())
+                .unwrap();
+            assert_eq!(
+                verification_reports,
+                HashMap::from_iter(vec![(
+                    url2.clone(),
+                    vec![Some(verification_report_a.clone())]
+                ),])
+            );
+        }
+
+        let last_synced = watcher_db.last_synced_blocks().unwrap();
+        assert_eq!(
+            last_synced,
+            HashMap::from_iter(vec![
+                (url1, None),
+                (url2, Some(blocks_data.last().unwrap().block().index)),
+            ])
+        );
     }
 }

@@ -155,7 +155,7 @@ class MintAuditorTest:
 
             # Get the network block height and wait for the mint auditor to catch up
             response = self.wait_for_mint_auditor_to_sync()
-            previous_minted_amount = dict(response.block_audit_data.balance_map).get(token_id) or 0
+            previous_minted_amount = dict(response.block_audit_data.balances).get(token_id) or 0
 
             # Mint tokens that go into the new wallet we generated
             logging.info(f"Minting {mint_amount} tokens of token_id {token_id}")
@@ -175,7 +175,7 @@ class MintAuditorTest:
 
             response = self.wait_for_mint_auditor_to_sync()
 
-            current_minted_amount = dict(response.block_audit_data.balance_map).get(token_id)
+            current_minted_amount = dict(response.block_audit_data.balances).get(token_id)
             assert current_minted_amount == previous_minted_amount + mint_amount, (current_minted_amount, previous_minted_amount, mint_amount)
 
             # Burn 300 tokens
@@ -200,13 +200,13 @@ class MintAuditorTest:
             response = self.wait_for_mint_auditor_to_sync()
 
             previous_minted_amount = current_minted_amount
-            current_minted_amount = dict(response.block_audit_data.balance_map).get(token_id)
+            current_minted_amount = dict(response.block_audit_data.balances).get(token_id)
             assert current_minted_amount == previous_minted_amount - burn_amount, (current_minted_amount, previous_minted_amount, burn_amount)
 
             # Sanity check the counters
             logging.info("Checking counters")
             counters = self.mint_auditor_client.get_counters()
-            assert counters.num_blocks_synced == response.block_index + 1, (counters.num_blocks_synced, response.block_index)
+            assert counters.num_blocks_synced == response.block_audit_data.block_index + 1, (counters.num_blocks_synced, response.block_audit_data.block_index)
             assert counters.num_burns_exceeding_balance == 0, counters.num_burns_exceeding_balance
             assert counters.num_mint_txs_without_matching_mint_config == 0, counters.num_mint_txs_without_matching_mint_config
 
@@ -238,12 +238,12 @@ class MintAuditorTest:
         network_block_index = self.mobilecoind_client.get_network_block_index()
         for _ in range(20):
             response = self.mint_auditor_client.get_last_block_audit_data()
-            if response.block_index == network_block_index:
+            if response.block_audit_data.block_index == network_block_index:
                 break
 
             time.sleep(1)
 
-        assert response.block_index == network_block_index, f'block index mismatch: {response.block_index} != {network_block_index}'
+        assert response.block_audit_data.block_index == network_block_index, f'block index mismatch: {response.block_audit_data.block_index} != {network_block_index}'
         logging.info(f"Last block audit data: {response}")
         return response
 

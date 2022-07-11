@@ -9,10 +9,7 @@
 //! from the mc-oblivious repo, which is optimized for x86-64.
 
 use alloc::vec::Vec;
-use core::{
-    iter::{FromIterator, IntoIterator},
-    ops::Add,
-};
+use core::ops::Add;
 use mc_transaction_core::TokenId;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 

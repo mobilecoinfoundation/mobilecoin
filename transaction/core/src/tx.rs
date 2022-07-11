@@ -2,27 +2,15 @@
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
-use crate::{
-    amount::{Amount, AmountError, MaskedAmount},
-    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
-    encrypted_fog_hint::EncryptedFogHint,
-    input_rules::InputRules,
-    membership_proofs::Range,
-    memo::{EncryptedMemo, MemoPayload},
-    onetime_keys::{
-        create_shared_secret, create_tx_out_public_key, create_tx_out_target_key,
-        recover_public_subaddress_spend_key,
-    },
-    ring_signature::{KeyImage, SignatureRctBulletproofs, SignedInputRing},
-    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
-};
+use crate::BlockVersion;
 use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
-use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
@@ -30,43 +18,21 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+use crate::{
+    amount::MaskedAmount,
+    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
+    encrypted_fog_hint::EncryptedFogHint,
+    get_tx_out_shared_secret,
+    input_rules::InputRules,
+    membership_proofs::Range,
+    memo::{EncryptedMemo, MemoPayload},
+    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
+    ring_ct::{SignatureRctBulletproofs, SignedInputRing},
+    Amount, CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+};
+
 /// Transaction hash length, in bytes.
 pub const TX_HASH_LEN: usize = 32;
-
-/// Get the shared secret for a transaction output.
-///
-/// # Arguments
-/// * `view_key` - The recipient's private View key.
-/// * `tx_public_key` - The public key of the transaction.
-pub fn get_tx_out_shared_secret(
-    view_key: &RistrettoPrivate,
-    tx_public_key: &RistrettoPublic,
-) -> RistrettoPublic {
-    create_shared_secret(tx_public_key, view_key)
-}
-
-/// Helper which checks if a particular subaddress of an account key matches a
-/// TxOut
-///
-/// This is not the most efficient way to check when you have many subaddresses,
-/// for that you should create a table and use
-/// recover_public_subaddress_spend_key directly.
-///
-/// However some clients are only using one or two subaddresses.
-/// Validating that a TxOut is owned by the change subaddress is a frequently
-/// needed operation.
-pub fn subaddress_matches_tx_out(
-    acct: &AccountKey,
-    subaddress_index: u64,
-    output: &TxOut,
-) -> Result<bool, KeyError> {
-    let sub_addr_spend = recover_public_subaddress_spend_key(
-        acct.view_private_key(),
-        &RistrettoPublic::try_from(&output.target_key)?,
-        &RistrettoPublic::try_from(&output.public_key)?,
-    );
-    Ok(sub_addr_spend == RistrettoPublic::from(&acct.subaddress_spend_private(subaddress_index)))
-}
 
 #[derive(
     Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
@@ -311,11 +277,7 @@ impl TxIn {
 impl From<&TxIn> for SignedInputRing {
     fn from(src: &TxIn) -> SignedInputRing {
         SignedInputRing {
-            members: src
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect(),
+            members: src.ring.iter().map(Into::into).collect(),
             signed_digest: src.signed_digest(),
         }
     }
@@ -372,24 +334,26 @@ impl TxOut {
     /// This uses a defaulted (all zeroes) MemoPayload.
     ///
     /// # Arguments
+    /// * `block_version` - Structural rules to target
     /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
     /// * `hint` - Encrypted Fog hint for this output.
     pub fn new(
+        block_version: BlockVersion,
         amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-    ) -> Result<Self, AmountError> {
-        TxOut::new_with_memo(amount, recipient, tx_private_key, hint, |_| {
-            Ok(Some(MemoPayload::default()))
-        })
-        .map_err(|err| match err {
-            NewTxError::Amount(err) => err,
-            // Memo error is unreachable because the memo_fn we passed is infallible
-            NewTxError::Memo(_) => unreachable!(),
-        })
+    ) -> Result<Self, NewTxError> {
+        TxOut::new_with_memo(
+            block_version,
+            amount,
+            recipient,
+            tx_private_key,
+            hint,
+            |_| Ok(MemoPayload::default()),
+        )
     }
 
     /// Creates a TxOut that sends `value` to `recipient`, with a custom memo
@@ -397,6 +361,7 @@ impl TxOut {
     /// passed the value and tx_public_key.
     ///
     /// # Arguments
+    /// * `block_version` - Structural rules to target
     /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
@@ -404,24 +369,38 @@ impl TxOut {
     /// * `memo_fn` - A callback taking MemoContext, which produces a
     ///   MemoPayload, or a NewMemo error
     pub fn new_with_memo(
+        block_version: BlockVersion,
         amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     ) -> Result<Self, NewTxError> {
         let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
         let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let masked_amount = MaskedAmount::new(amount, &shared_secret)?;
+        let mut masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
-        let memo_ctxt = MemoContext {
-            tx_public_key: &public_key,
+        // Only build a memo if memos are supported
+        let e_memo = if block_version.e_memo_feature_is_supported() {
+            let memo_ctxt = MemoContext {
+                tx_public_key: &public_key,
+            };
+            let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
+            Some(memo.encrypt(&shared_secret))
+        } else {
+            None
         };
-        let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
-        let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
+
+        // Conform to block version rules
+        if !block_version.masked_token_id_feature_is_supported() {
+            masked_amount.masked_token_id.clear();
+            if amount.token_id != 0 {
+                return Err(NewTxError::TokenIdNotAllowedAtBlockVersion(block_version));
+            }
+        }
 
         Ok(TxOut {
             masked_amount,
@@ -480,6 +459,16 @@ impl TxOut {
             e_memo.decrypt(tx_out_shared_secret)
         } else {
             MemoPayload::default()
+        }
+    }
+}
+
+impl From<&TxOut> for ReducedTxOut {
+    fn from(src: &TxOut) -> Self {
+        Self {
+            public_key: src.public_key,
+            target_key: src.target_key,
+            commitment: src.masked_amount.commitment,
         }
     }
 }
@@ -687,24 +676,24 @@ mod tests {
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
-        ring_signature::SignatureRctBulletproofs,
+        ring_ct::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, MaskedAmount, Token,
+        Amount, BlockVersion, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::get_seeded_rng;
     use prost::Message;
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_no_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -768,7 +757,7 @@ mod tests {
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_with_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -832,7 +821,7 @@ mod tests {
     // round trip memos from `TxOut` constructors through `decrypt_memo()`
     #[test]
     fn test_decrypt_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let bob = AccountKey::new(
             &RistrettoPrivate::from_random(&mut rng),
@@ -845,6 +834,7 @@ mod tests {
 
             // A tx out with an empty memo
             let mut tx_out = TxOut::new(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -887,6 +877,7 @@ mod tests {
             let memo_val = MemoPayload::new([2u8; 2], [4u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -894,7 +885,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val)),
+                |_| Ok(memo_val),
             )
             .unwrap();
 
@@ -923,6 +914,7 @@ mod tests {
             let memo_val = MemoPayload::new([4u8; 2], [9u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -930,7 +922,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val)),
+                |_| Ok(memo_val),
             )
             .unwrap();
 

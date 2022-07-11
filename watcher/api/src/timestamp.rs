@@ -2,7 +2,6 @@
 
 //! Types for processing timestamps in the watcher API.
 
-use core::convert::TryFrom;
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 

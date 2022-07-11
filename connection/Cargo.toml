@@ -9,6 +9,7 @@ mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
+mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common" }
 mc-consensus-api = { path = "../consensus/api" }
 mc-crypto-keys = { path = "../crypto/keys" }

@@ -2,9 +2,10 @@
 #![deny(missing_docs)]
 
 //! Utility to read .pub files.
+//! Optionally, can transcribe them to the b58 format
 
 use clap::Parser;
-use mc_util_keyfile::read_pubfile;
+use mc_util_keyfile::{read_pubfile, write_b58pubfile};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -12,6 +13,11 @@ struct Config {
     /// Path to pubfile
     #[clap(long, env = "MC_PUBFILE")]
     pub pubfile: PathBuf,
+
+    /// Optionally, a path at which to output b58 encoding of this public
+    /// address
+    #[clap(long, env = "MC_OUT_B58")]
+    pub out_b58: Option<PathBuf>,
 }
 
 fn main() {
@@ -43,4 +49,8 @@ fn main() {
         "Spend Public Bytes (hex): {:?}",
         hex::encode(pubaddress.spend_public_key().to_bytes())
     );
+
+    if let Some(out) = config.out_b58.as_ref() {
+        write_b58pubfile(out, &pubaddress).expect("Could not write out-b58 file");
+    }
 }

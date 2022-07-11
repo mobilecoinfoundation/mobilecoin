@@ -44,6 +44,10 @@ pub struct PathConfig {
 // Conditionally apply sgx-sim feature to current crate based on SGX_MODE
 pub fn handle_sgx_sim_feature() {
     if *conf::SGX_MODE_SIM {
+        println!(
+            "cargo:warning=Compiling {} for SGX simulation mode",
+            std::env::var("CARGO_PKG_NAME").expect("Could not get package name from environment")
+        );
         println!("cargo:rustc-cfg=feature=\"sgx-sim\"");
     } else if std::env::var("CARGO_FEATURE_SGX_SIM").is_ok() {
         panic!("sgx-sim feature is set by cargo, but SGX_MODE is HW");
@@ -53,6 +57,10 @@ pub fn handle_sgx_sim_feature() {
 // Conditionally apply ias-dev feature to current crate based on IAS_MODE
 pub fn handle_ias_dev_feature() {
     if *conf::IAS_MODE_DEV {
+        println!(
+            "cargo:warning=Compiling {} for IAS dev mode",
+            std::env::var("CARGO_PKG_NAME").expect("Could not get package name from environment")
+        );
         println!("cargo:rustc-cfg=feature=\"ias-dev\"");
     } else if std::env::var("CARGO_FEATURE_IAS_DEV").is_ok() {
         panic!("ias-dev feature is set by cargo, but IAS_MODE is PROD");

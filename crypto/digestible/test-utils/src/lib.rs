@@ -1,10 +1,15 @@
-use mc_crypto_digestible::{DigestTranscript, Digestible};
-
-mod mock_merlin;
-pub use mock_merlin::MockMerlin;
-
 mod inspect_ast;
-pub use inspect_ast::*;
+mod mock_merlin;
+
+pub use crate::{
+    inspect_ast::{
+        calculate_digest_ast, ASTAggregate, ASTNode, ASTNone, ASTPrimitive, ASTSequence,
+        ASTVariant, InspectAST,
+    },
+    mock_merlin::MockMerlin,
+};
+
+use mc_crypto_digestible::{DigestTranscript, Digestible};
 
 pub fn digestible_test_case<D: Digestible>(
     context: &'static str,

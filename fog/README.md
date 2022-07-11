@@ -182,7 +182,7 @@ Fog consists of four services:
 
 For troubleshooting help and other questions, please visit our [community forum](https://community.mobilecoin.foundation/).
 
-You may also open a technical support ticket via [email](mailto://support@mobilecoin.foundation).
+You may also open a technical support ticket via [email](mailto:support@mobilecoin.foundation).
 
 #### Trademarks
 

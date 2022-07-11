@@ -8,6 +8,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
+import "consensus_common.proto";
 
 package mobilecoind_api;
 
@@ -67,6 +68,9 @@ service MobilecoindAPI {
     // Database encryption
     rpc SetDbPassword (SetDbPasswordRequest) returns (google.protobuf.Empty) {}
     rpc UnlockDb (UnlockDbRequest) returns (google.protobuf.Empty) {}
+
+    // Versioning
+    rpc GetVersion(google.protobuf.Empty) returns (MobilecoindVersionResponse) {}
 }
 
 //*********************************
@@ -825,6 +829,9 @@ message GetNetworkStatusResponse {
 
     // Whether we are behind.
     bool is_behind = 4;
+
+    // The latest block info reported by a consensus node
+    consensus_common.LastBlockInfoResponse last_block_info = 5;
 }
 
 //
@@ -839,4 +846,10 @@ message SetDbPasswordRequest {
 // Unlock a currently password-protected database.
 message UnlockDbRequest {
     bytes password = 1;
+}
+
+// Get the mobilecoind version
+// empty request
+message MobilecoindVersionResponse {
+    string version = 1;
 }
