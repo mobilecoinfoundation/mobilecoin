@@ -29,7 +29,7 @@ clap = { version = "3.2", features = ["derive", "env"] }
 diesel = { version = "1.4", features = ["sqlite-bundled", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 displaydoc = "0.2"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 hostname = "0.3.1"
 lazy_static = "1.4"

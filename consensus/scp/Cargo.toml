@@ -33,7 +33,7 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
-serial_test = "0.7"
+serial_test = "0.8"
 tempdir = "0.3"
 
 [[test]]

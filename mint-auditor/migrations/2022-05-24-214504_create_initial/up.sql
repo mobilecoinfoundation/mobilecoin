@@ -83,6 +83,7 @@ CREATE TABLE mint_txs (
     -- Constraints
     FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
 );
+CREATE INDEX idx_mint_txs__block_index ON mint_txs(block_index);
 CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
 
 -- Processed gnosis safe transactions
@@ -123,6 +124,21 @@ CREATE TABLE gnosis_safe_withdrawals (
 CREATE INDEX idx__gnosis_safe_withdrawals__eth_block_number ON gnosis_safe_withdrawals(eth_block_number);
 CREATE INDEX idx__gnosis_safe_withdrawals__mc_tx_out_public_key_hex ON gnosis_safe_withdrawals(mc_tx_out_public_key_hex);
 
+-- Mapping between MintTxs and GnosisSafeDeposits that match each other.
+-- This essentially is the audit log that shows which mints/deposits were a match.
+-- A match means that the nonce, token information (MC token_id and Ethereum contract address) and the amount all matched.
+-- If a mint or deposit are not referenced by this table that means something questionable happened.
+CREATE TABLE audited_mints (
+    id INTEGER PRIMARY KEY,
+    mint_tx_id INTEGER NOT NULL,
+    gnosis_safe_deposit_id INTEGER NOT NULL,
+    -- Constraints
+    FOREIGN KEY (mint_tx_id) REFERENCES mint_txs(id),
+    FOREIGN KEY (gnosis_safe_deposit_id) REFERENCES gnosis_safe_deposits(id)
+);
+CREATE INDEX idx__audited_mints__mint_tx_id ON audited_mints(mint_tx_id);
+CREATE INDEX idx__audited_mints__gnosis_safe_deposit_id ON audited_mints(gnosis_safe_deposit_id);
+
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
     -- Not nullable because we only have a single row in this table and the code that inserts to it hard-codes the id to 0.
@@ -136,6 +152,21 @@ CREATE TABLE counters (
     num_burns_exceeding_balance BIGINT NOT NULL,
 
     -- Number of `MintTx`s that did not match an active mint config.
-    num_mint_txs_without_matching_mint_config BIGINT NOT NULL
+    num_mint_txs_without_matching_mint_config BIGINT NOT NULL,
+
+    -- Number of mismatched mints and Gnosis deposits.
+    num_mismatching_mints_and_deposits BIGINT NOT NULL,
+
+    -- Number of times we encountered deposits to an unaudited Ethereum token contract address.
+    num_unknown_ethereum_token_deposits BIGINT NOT NULL,
+
+    -- Number of times we encountered a mint that is associated with an unaudited safe.
+    num_mints_to_unknown_safe BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match deposits to mints.
+    num_unexpected_errors_matching_deposits_to_mints BIGINT NOT NULL,
+
+    -- Number of unexpected errors attempting to match mints to deposits.
+    num_unexpected_errors_matching_mints_to_deposits BIGINT NOT NULL
 );
 

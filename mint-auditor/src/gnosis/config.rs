@@ -77,6 +77,17 @@ impl GnosisSafeConfig {
 
         Ok(config)
     }
+
+    /// Get an [AuditedSafeConfig] by its safe address.
+    pub fn get_audited_safe_config_by_safe_addr(
+        &self,
+        safe_addr: &EthAddr,
+    ) -> Option<AuditedSafeConfig> {
+        self.safes
+            .iter()
+            .find(|safe| safe.safe_addr == *safe_addr)
+            .cloned()
+    }
 }
 
 #[cfg(test)]

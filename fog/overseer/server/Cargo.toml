@@ -13,7 +13,7 @@ path = "src/bin/main.rs"
 # third-party
 clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 lazy_static = "1.4"
 prometheus = "0.13.1"
 retry = "1.3"

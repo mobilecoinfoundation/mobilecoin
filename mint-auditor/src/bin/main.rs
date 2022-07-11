@@ -7,8 +7,9 @@ use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
-    counters,
-    db::{transaction, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
+    db::{
+        transaction, AuditedMint, BlockAuditData, BlockBalance, Conn, MintAuditorDb, SyncBlockData,
+    },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
     Error, MintAuditorService,
 };
@@ -178,7 +179,7 @@ fn cmd_scan_ledger(
         .expect("Failed starting admin grpc server")
     });
 
-    let _gnosis_safe_fetcher_threads = gnosis_safe_config.map(|gnosis_safe_config| {
+    let _gnosis_safe_fetcher_threads = gnosis_safe_config.as_ref().map(|gnosis_safe_config| {
         gnosis_safe_config
             .safes
             .iter()
@@ -195,7 +196,13 @@ fn cmd_scan_ledger(
     });
 
     loop {
-        sync_loop(&mint_auditor_db, &ledger_db, &logger).expect("sync_loop failed");
+        sync_loop(
+            &mint_auditor_db,
+            gnosis_safe_config.as_ref(),
+            &ledger_db,
+            &logger,
+        )
+        .expect("sync_loop failed");
         sleep(poll_interval);
     }
 }
@@ -253,6 +260,7 @@ fn cmd_get_block_audit_data(
 /// Will run until all blocks in the ledger database have been synced.
 fn sync_loop(
     mint_auditor_db: &MintAuditorDb,
+    gnosis_safe_config: Option<&GnosisSafeConfig>,
     ledger_db: &LedgerDB,
     logger: &Logger,
 ) -> Result<(), Error> {
@@ -281,14 +289,21 @@ fn sync_loop(
 
                 // SQLite3 does not like concurrent writes. Since we are going to be writing to
                 // the database, ensure we are the only writers.
-                conn.exclusive_transaction(|| {
-                    mint_auditor_db.sync_block_with_conn(
+                conn.exclusive_transaction(|| -> Result<(), Error> {
+                    let sync_block_data = mint_auditor_db.sync_block_with_conn(
                         &conn,
                         block_data.block(),
                         block_data.contents(),
-                    )
+                    )?;
+
+                    // If we were configured to audit Gnosis safes, attempt to do that with
+                    // information we found in the block.
+                    if let Some(config) = gnosis_safe_config {
+                        audit_block_data(&sync_block_data, config, &conn, logger)?;
+                    }
+
+                    Ok(())
                 })?;
-                update_counters(&Counters::get(&conn)?);
             }
         };
     }
@@ -296,12 +311,38 @@ fn sync_loop(
     Ok(())
 }
 
-/// Update prometheus counters.
-fn update_counters(counters: &Counters) {
-    counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
-    counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
-    counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
-        .set(counters.num_mint_txs_without_matching_mint_config as i64);
+/// Perform gnosis auditing of any data found in the block.
+fn audit_block_data(
+    sync_block_data: &SyncBlockData,
+    config: &GnosisSafeConfig,
+    conn: &Conn,
+    logger: &Logger,
+) -> Result<(), Error> {
+    for mint_tx in &sync_block_data.mint_txs {
+        match AuditedMint::try_match_mint_with_deposit(mint_tx, config, conn) {
+            Ok(deposit) => {
+                log::info!(
+                    logger,
+                    "MintTx nonce={} matched Gnosis deposit eth_tx_hash={}",
+                    mint_tx.nonce_hex(),
+                    deposit.eth_tx_hash(),
+                )
+            }
+            Err(Error::NotFound) => {
+                log::debug!(logger, "MintTx with nonce={} does not currently have matching Gnosis deposit, this could be fine if the safe data is not fully synced.", mint_tx.nonce_hex());
+            }
+            Err(err) => {
+                log::error!(
+                    logger,
+                    "MintTx nonce={} failed matching Gnosis deposit: {}",
+                    mint_tx.nonce_hex(),
+                    err
+                );
+            }
+        };
+    }
+
+    Ok(())
 }
 
 /// Load a gnosis safe config file.
