@@ -2,10 +2,6 @@
 version: v1
 deps:
   - remote: buf.build
-    owner: googleapis
-    repository: googleapis
-    commit: 0173a713ae734ba4ad55a7f32f63326d
-  - remote: buf.build
     owner: mobilecoin
     repository: api
     commit: 5ff3b96236904f4eaa5929dc1e1af1a5
@@ -16,4 +12,4 @@ deps:
   - remote: buf.build
     owner: mobilecoin
     repository: consensus-api
-    commit: 962a5b584b4f4640aef5e8b893ea1ee5
+    commit: 2e5c07b0dc554583a5ddab296fd4ae0a
