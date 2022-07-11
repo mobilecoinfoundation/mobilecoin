@@ -21,6 +21,7 @@ for dir in ${DIRS[@]}
 do
     echo "Pushing $dir..."
     pushd $dir > /dev/null
-    buf mod update && buf build && buf push
+    # Propagate script args to buf push
+    buf mod update && buf build && buf push "$@"
     popd > /dev/null
 done
