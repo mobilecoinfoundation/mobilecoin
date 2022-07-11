@@ -164,7 +164,7 @@ CREATE INDEX idx__audited_mints__gnosis_safe_deposit_id ON audited_mints(gnosis_
 -- with a withdrawal. This is possible since anyone can issue burn transactions. However, a Gnosis withdrawal
 -- is expected to be matched with a burn.
 CREATE TABLE audited_burns (
-   id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     burn_tx_out_id INTEGER NOT NULL,
     gnosis_safe_withdrawal_id INTEGER NOT NULL,
     -- Constraints
