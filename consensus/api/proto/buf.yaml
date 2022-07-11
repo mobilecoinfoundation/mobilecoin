@@ -3,9 +3,6 @@ name: buf.build/mobilecoin/consensus-api
 deps:
   - buf.build/mobilecoin/attest-api
   - buf.build/mobilecoin/api
-lint:
-  use:
-    - DEFAULT
 breaking:
   use:
     - FILE

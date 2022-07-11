@@ -1,8 +1,5 @@
 version: v1
 name: buf.build/mobilecoin/attest-api
-lint:
-  use:
-    - DEFAULT
 breaking:
   use:
     - FILE
