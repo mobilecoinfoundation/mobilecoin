@@ -9,6 +9,7 @@ extern crate alloc;
 mod e_tx_out_store;
 mod oblivious_utils;
 
+use alloc::collections::BTreeMap;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
 use alloc::vec::Vec;
@@ -22,7 +23,7 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    view::{QueryRequest, QueryResponse},
+    view::{QueryRequest, QueryResponse, TxOutSearchResult},
     ETxOutRecord,
 };
 use mc_fog_view_enclave_api::{
@@ -214,5 +215,107 @@ where
         Ok(self
             .ake
             .backend_connect(view_store_id, view_store_auth_response)?)
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        if shard_query_responses.is_empty() {
+            return Ok(EnclaveMessage::default());
+        }
+        let channel_id = client_query.channel_id.clone();
+        let client_query_plaintext = self.ake.client_decrypt(client_query.clone())?;
+        let client_query_request: QueryRequest = mc_util_serial::decode(&client_query_plaintext)
+            .map_err(|e| {
+                log::error!(self.logger, "Could not decode client query request: {}", e);
+                Error::ProstDecode
+            })?;
+
+        let client_query_response =
+            self.create_client_query_response(client_query_request, shard_query_responses)?;
+        let response_plaintext_bytes = mc_util_serial::encode(&client_query_response);
+        let response = self
+            .ake
+            .client_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
+
+        let result = EnclaveMessage {
+            aad: client_query.aad,
+            channel_id: client_query.channel_id,
+            data: response.data,
+        };
+
+        Ok(result)
+    }
+}
+
+impl<OSC> ViewEnclave<OSC>
+where
+    OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>,
+{
+    fn create_client_query_response(
+        &self,
+        client_query_request: QueryRequest,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<QueryResponse> {
+        let encrypted_shard_query_responses: Vec<EnclaveMessage<ClientSession>> =
+            shard_query_responses.values().cloned().collect();
+        let encrypted_shard_query_response = encrypted_shard_query_responses
+            .get(0)
+            .expect("Shard query responses must have at least one response.")
+            .clone();
+        let shard_query_response_plaintext = self
+            .ake
+            .client_decrypt(encrypted_shard_query_response)?;
+        let shard_query_response: QueryResponse =
+            mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
+                log::error!(self.logger, "Could not decode shard query response: {}", e);
+                Error::ProstDecode
+            })?;
+
+        let mut client_query_response = QueryResponse {
+            highest_processed_block_count: shard_query_response.highest_processed_block_count,
+            highest_processed_block_signature_timestamp: shard_query_response
+                .highest_processed_block_signature_timestamp,
+            next_start_from_user_event_id: shard_query_response.next_start_from_user_event_id,
+            missed_block_ranges: shard_query_response.missed_block_ranges,
+            rng_records: shard_query_response.rng_records,
+            decommissioned_ingest_invocations: shard_query_response
+                .decommissioned_ingest_invocations,
+            tx_out_search_results: Default::default(),
+            last_known_block_count: shard_query_response.last_known_block_count,
+            last_known_block_cumulative_txo_count: shard_query_response
+                .last_known_block_cumulative_txo_count,
+        };
+        client_query_response.tx_out_search_results =
+            self.get_collated_tx_out_search_results(client_query_request, shard_query_responses)?;
+
+        Ok(client_query_response)
+    }
+
+    fn get_collated_tx_out_search_results(
+        &self,
+        client_query_request: QueryRequest,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<Vec<TxOutSearchResult>> {
+        let plaintext_shard_tx_out_search_results: Vec<TxOutSearchResult> = shard_query_responses
+            .into_iter()
+            .map(|(responder_id, enclave_message)| {
+                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?;
+                let plaintext_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
+
+                Ok(plaintext_response.tx_out_search_results)
+            })
+            .collect::<Result<Vec<Vec<TxOutSearchResult>>>>()?
+            .iter()
+            .flat_map(|array| array.iter())
+            .cloned()
+            .collect();
+
+        oblivious_utils::collate_shard_tx_out_search_results(
+            client_query_request.get_txos,
+            plaintext_shard_tx_out_search_results,
+        )
     }
 }
