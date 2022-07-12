@@ -2126,6 +2126,7 @@ mod test {
         burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
         DEFAULT_SUBADDRESS_INDEX,
     };
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
@@ -4149,8 +4150,10 @@ mod test {
                 &Default::default(),
                 &block_contents,
             );
+
+            let metadata = make_block_metadata(new_block.id.clone(), &mut rng);
             ledger_db
-                .append_block(&new_block, &block_contents, None)
+                .append_block(&new_block, &block_contents, None, Some(&metadata))
                 .unwrap();
 
             // Use bip39 entropy to construct AccountKey.

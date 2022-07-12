@@ -8,61 +8,61 @@ use mc_util_lmdb::MetadataStoreError;
 /// A Ledger error kind.
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Error {
-    /// NotFound
+    /// Record not found
     NotFound,
 
-    /// Serialization
+    /// Failed to serialize
     Serialization,
 
-    /// Deserialization
+    /// Failed to deserialize
     Deserialization,
 
-    /// NoTransactions
+    /// No transactions
     NoTransactions,
 
-    /// InvalidBlockVersion: {0}
+    /// Invalid block version: {0}
     InvalidBlockVersion(u32),
 
-    /// NoKeyImages
+    /// No key images were found
     NoKeyImages,
 
-    /// InvalidBlockIndex: {0}
+    /// Invalid block index: {0}
     InvalidBlockIndex(BlockIndex),
 
-    /// KeyImageAlreadySpent
+    /// Key image has already been spent
     KeyImageAlreadySpent,
 
-    /// DuplicateOutputPublicKey
+    /// Duplicate output public key
     DuplicateOutputPublicKey,
 
-    /// InvalidBlockContents
+    /// Invalid block contents
     InvalidBlockContents,
 
-    /// InvalidBlockID: {0}
+    /// Invalid block ID: {0}
     InvalidBlockID(BlockID),
 
-    /// InvalidParentBlockID: {0}
+    /// Invalid parent block ID: {0}
     InvalidParentBlockID(BlockID),
 
-    /// NoOutputs
+    /// No outputs
     NoOutputs,
 
-    /// TooFewOutputs
+    /// Too few outputs
     TooFewOutputs,
 
     /// LMDB error, may mean database is opened multiple times in a process.
     BadRslot,
 
-    /// CapacityExceeded
+    /// Capacity exceeded
     CapacityExceeded,
 
-    /// IndexOutOfBounds: {0}
+    /// Index out of bounds: {0}
     IndexOutOfBounds(u64),
 
-    /// Lmdb: {0}
+    /// LMDB: {0}
     Lmdb(lmdb::Error),
 
-    /// Range
+    /// Invalid Range
     Range,
 
     /// Metadata store: {0}
@@ -79,11 +79,14 @@ pub enum Error {
     /// Total minted amount cannot decrease: {0} < {1}
     TotalMintedAmountCannotDecrease(u64, u64),
 
-    /// DuplicateMintTx
+    /// Duplicate MintTx
     DuplicateMintTx,
 
-    /// DuplicateMintConfigTx
+    /// Duplicate MintConfigTx
     DuplicateMintConfigTx,
+
+    /// Block metadata is required at this block version
+    BlockMetadataRequired,
 }
 
 impl From<lmdb::Error> for Error {

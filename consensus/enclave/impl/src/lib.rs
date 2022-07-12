@@ -1032,6 +1032,7 @@ fn mint_output<T: Digestible>(
 mod tests {
     use super::*;
     use alloc::vec;
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
@@ -1564,7 +1565,11 @@ mod tests {
                         &Default::default(),
                         &block_contents,
                     );
-                    ledger.append_block(&block, &block_contents, None).unwrap();
+                    let metadata = make_block_metadata(block.id.clone(), &mut rng);
+
+                    ledger
+                        .append_block(&block, &block_contents, None, Some(&metadata))
+                        .unwrap();
 
                     let tx = create_transaction(
                         block_version,

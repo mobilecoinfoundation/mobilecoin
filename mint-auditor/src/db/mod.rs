@@ -331,7 +331,7 @@ impl MintAuditorDb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::test_utils::TestDbContext;
+    use crate::db::test_utils::{append_and_sync, TestDbContext};
     use mc_account_keys::{burn_address, AccountKey};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::RistrettoPrivate;
@@ -353,8 +353,8 @@ mod tests {
         let token_id3 = TokenId::from(3);
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
-        let conn = mint_audit_db.get_conn().unwrap();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -371,7 +371,7 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            let sync_block_data = mint_audit_db
+            let sync_block_data = mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
 
@@ -401,25 +401,13 @@ mod tests {
             ..Default::default()
         };
 
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
+        let (sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: Default::default(),
                 mint_txs: vec![],
                 burn_tx_outs: vec![],
@@ -439,20 +427,15 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
+        let (sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 101), (token_id2, 2)]),
-                mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
                 burn_tx_outs: vec![],
             }
         );
@@ -493,14 +476,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let (mut sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
@@ -512,12 +489,12 @@ mod tests {
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 41), (token_id2, 2)]),
-                mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
                 burn_tx_outs: vec![
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
                 ],
             }
         );
@@ -559,13 +536,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let (mut sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
@@ -577,23 +549,23 @@ mod tests {
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([
                     (token_id1, 141),
                     (token_id2, 1002),
                     (token_id3, 20000)
                 ]),
-                mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
                 burn_tx_outs: vec![
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
                 ],
             }
         );
 
         // Sanity check counters.
         let counters = Counters::get(&conn).unwrap();
-        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
         assert_eq!(counters.num_burns_exceeding_balance(), 0);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
@@ -604,7 +576,7 @@ mod tests {
         let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
@@ -618,14 +590,14 @@ mod tests {
 
         // Sync the first block, this should succeed.
         let block_data = ledger_db.get_block_data(0).unwrap();
-        mint_audit_db
+        mint_auditor_db
             .sync_block(block_data.block(), block_data.contents())
             .unwrap();
 
         // Syncing the third block should fail since we haven't synced the second block.
         let block_data = ledger_db.get_block_data(2).unwrap();
         assert!(matches!(
-            mint_audit_db.sync_block(block_data.block(), block_data.contents()),
+            mint_auditor_db.sync_block(block_data.block(), block_data.contents()),
             Err(Error::UnexpectedBlockIndex(2, 1))
         ));
     }
@@ -636,7 +608,7 @@ mod tests {
         let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
@@ -650,13 +622,13 @@ mod tests {
 
         // Sync the first block, this should succeed.
         let block_data = ledger_db.get_block_data(0).unwrap();
-        mint_audit_db
+        mint_auditor_db
             .sync_block(block_data.block(), block_data.contents())
             .unwrap();
 
         // Syncing it again should fail.
         assert!(matches!(
-            mint_audit_db.sync_block(block_data.block(), block_data.contents()),
+            mint_auditor_db.sync_block(block_data.block(), block_data.contents()),
             Err(Error::UnexpectedBlockIndex(0, 1))
         ));
     }
@@ -667,7 +639,7 @@ mod tests {
         let mut rng = mc_util_test_helper::get_seeded_rng();
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -683,14 +655,14 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            mint_audit_db
+            mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
         // Syncing the first block should fail since we already synced it.
         let block_data = ledger_db.get_block_data(0).unwrap();
         assert!(matches!(
-            mint_audit_db.sync_block(block_data.block(), block_data.contents()),
+            mint_auditor_db.sync_block(block_data.block(), block_data.contents()),
             Err(Error::UnexpectedBlockIndex(0, 3))
         ));
     }
@@ -704,8 +676,8 @@ mod tests {
         let token_id2 = TokenId::from(22);
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
-        let conn = mint_audit_db.get_conn().unwrap();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -722,7 +694,7 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            mint_audit_db
+            mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
@@ -738,19 +710,8 @@ mod tests {
             ],
             ..Default::default()
         };
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
@@ -764,20 +725,14 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let (sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 101), (token_id2, 2)]),
-                mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
                 burn_tx_outs: vec![],
             }
         );
@@ -824,15 +779,9 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let mut sync_block_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
-
+        let (mut sync_block_data, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        //
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
             .burn_tx_outs
@@ -843,12 +792,12 @@ mod tests {
         assert_eq!(
             sync_block_data,
             SyncBlockData {
-                block_audit: BlockAuditData::new(block.index),
+                block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),
-                mint_txs: MintTx::get_mint_txs_by_block_index(block.index, &conn).unwrap(),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
                 burn_tx_outs: vec![
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out1).unwrap(),
-                    BurnTxOut::from_core_tx_out(block.index, &tx_out2).unwrap()
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
                 ],
             }
         );
@@ -886,13 +835,7 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         assert_eq!(
             Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
@@ -908,8 +851,8 @@ mod tests {
         let token_id2 = TokenId::from(22);
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
-        let conn = mint_audit_db.get_conn().unwrap();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -926,7 +869,7 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            mint_audit_db
+            mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
@@ -944,20 +887,7 @@ mod tests {
             ..Default::default()
         };
 
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a mint transaction with incorrect signers.
         // Normally we would append the block to the ledger and test as usual, but since
@@ -977,11 +907,16 @@ mod tests {
                 ..Default::default()
             };
 
-            let block =
-                Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
+            let parent_block = ledger_db.get_latest_block().unwrap();
+            let block = Block::new_with_parent(
+                BLOCK_VERSION,
+                &parent_block,
+                &Default::default(),
+                &block_contents,
+            );
 
             let _ = transaction(&conn, |conn| -> Result<(), Error> {
-                mint_audit_db
+                mint_auditor_db
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
@@ -1004,13 +939,7 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a mint transaction with signers that refer to a no
         // longer valid mint config.
@@ -1025,11 +954,16 @@ mod tests {
                 ..Default::default()
             };
 
-            let block =
-                Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
+            let parent_block = ledger_db.get_latest_block().unwrap();
+            let block = Block::new_with_parent(
+                BLOCK_VERSION,
+                &parent_block,
+                &Default::default(),
+                &block_contents,
+            );
 
             let _ = transaction(&conn, |conn| -> Result<(), Error> {
-                mint_audit_db
+                mint_auditor_db
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
@@ -1055,16 +989,11 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let (_, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let counters = Counters::get(&conn).unwrap();
-        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
         assert_eq!(counters.num_burns_exceeding_balance(), 0);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
@@ -1076,8 +1005,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
-        let conn = mint_audit_db.get_conn().unwrap();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -1094,7 +1023,7 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            mint_audit_db
+            mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
@@ -1114,20 +1043,7 @@ mod tests {
             ..Default::default()
         };
 
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that mints the total mint limit.
         let mint_tx1 = create_mint_tx(
@@ -1145,17 +1061,11 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let (_, block_index) =
+            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let counters = Counters::get(&conn).unwrap();
-        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
         assert_eq!(counters.num_burns_exceeding_balance(), 0);
         assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
 
@@ -1170,10 +1080,16 @@ mod tests {
             ..Default::default()
         };
 
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
+        let parent_block = ledger_db.get_latest_block().unwrap();
 
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        let block = Block::new_with_parent(
+            BLOCK_VERSION,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_auditor_db.sync_block(&block, &block_contents).unwrap();
 
         let counters = Counters::get(&conn).unwrap();
         assert_eq!(counters.num_blocks_synced(), block.index + 1);

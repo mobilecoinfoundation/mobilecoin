@@ -10,6 +10,7 @@ use crate::{
 };
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents};
 use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
@@ -190,8 +191,10 @@ pub fn add_block_to_ledger_db(
         Block::new_origin_block(&outputs)
     };
 
+    let metadata = make_block_metadata(new_block.id.clone(), rng);
+
     ledger_db
-        .append_block(&new_block, &block_contents, None)
+        .append_block(&new_block, &block_contents, None, Some(&metadata))
         .expect("failed writing initial transactions");
 
     ledger_db.num_blocks().expect("failed to get block height")
@@ -225,9 +228,10 @@ pub fn add_txos_to_ledger_db(
     } else {
         Block::new_origin_block(outputs)
     };
+    let metadata = make_block_metadata(new_block.id.clone(), rng);
 
     ledger_db
-        .append_block(&new_block, &block_contents, None)
+        .append_block(&new_block, &block_contents, None, Some(&metadata))
         .expect("failed writing initial transactions");
 
     ledger_db.num_blocks().expect("failed to get block height")

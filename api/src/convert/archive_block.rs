@@ -108,7 +108,7 @@ mod tests {
     use mc_blockchain_types::{
         Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
     };
-    use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
+    use mc_crypto_keys::{Ed25519Pair, RistrettoPublic};
     use mc_transaction_core::{
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
         membership_proofs::Range,
@@ -143,7 +143,7 @@ mod tests {
 
             let parent_block_id = last_block
                 .map(|block| block.id)
-                .unwrap_or_else(|| BlockID::try_from(&[1u8; 32][..]).unwrap());
+                .unwrap_or_else(|| BlockID([1u8; 32]));
 
             let block_contents = BlockContents {
                 key_images: vec![key_image],
@@ -164,9 +164,9 @@ mod tests {
 
             last_block = Some(block.clone());
 
-            let signer = Ed25519Private::from_random(&mut rng);
-            let signature =
-                BlockSignature::from_block_and_keypair(&block, &(signer.into())).unwrap();
+            let signer = Ed25519Pair::from_random(&mut rng);
+            let signature = BlockSignature::from_block_and_keypair(&block, &signer)
+                .expect("BlockSignature::from_block_and_keypair");
 
             let metadata = make_block_metadata(block.id.clone(), &mut rng);
             let block_data = BlockData::new(block, block_contents, signature, metadata);

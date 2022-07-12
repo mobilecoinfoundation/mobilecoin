@@ -7,6 +7,7 @@ use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -845,9 +846,10 @@ fn add_block_to_ledger_db(
     } else {
         Block::new_origin_block(&outputs)
     };
+    let metadata = make_block_metadata(new_block.id.clone(), rng);
 
     ledger_db
-        .append_block(&new_block, &block_contents, None)
+        .append_block(&new_block, &block_contents, None, Some(&metadata))
         .expect("failed writing initial transactions");
 
     ledger_db.num_blocks().expect("failed to get block height")

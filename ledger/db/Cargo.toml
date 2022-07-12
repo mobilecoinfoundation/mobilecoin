@@ -30,6 +30,7 @@ rand = { version = "0.8", optional = true }
 rand_core = "0.6"
 
 [dev-dependencies]
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-crypto-rand = { path = "../../crypto/rand" }

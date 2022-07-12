@@ -5,7 +5,9 @@
 
 use crate::error::WatcherDBError;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
+};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -19,42 +21,47 @@ use url::Url;
 /// Block datas database name.
 pub const BLOCK_DATAS_BY_INDEX_DB_NAME: &str = "watcher_db:block_data:blocks_datas_by_index";
 
-/// Blocks by hash database name.
+/// [Block]s by hash database name.
 pub const BLOCKS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:blocks_by_hash";
 
-/// BlockContents by hash database name.
+/// [BlockContents] by hash database name.
 pub const BLOCK_CONTENTS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_contents_by_hash";
 
 /// An internal object for representing BlockData that doesn't hold the actual
 /// Block and BlockContents since those might be shared with other blocks.
 #[derive(Clone, Message)]
 pub struct StoredBlockData {
-    /// 32 bytes hash of Block.
-    #[prost(bytes, required, tag = "1")]
+    /// 32 bytes hash of [Block].
+    #[prost(bytes, required, tag = 1)]
     pub block_hash: Vec<u8>,
 
-    /// 32 bytes hash of BlockContent.
-    #[prost(bytes, required, tag = "2")]
+    /// 32 bytes hash of [BlockContents].
+    #[prost(bytes, required, tag = 2)]
     pub block_contents_hash: Vec<u8>,
 
     /// Block signature (optional).
     // The signature is unique (we do not expect to encounter duplicate signatures)
     // so we store it inside here.
-    #[prost(message, tag = "3")]
+    #[prost(message, tag = 3)]
     pub signature: Option<BlockSignature>,
+
+    /// Block metadata (optional).
+    // The metadata is expected to be as unique as the signature, so we store it inline.
+    #[prost(message, optional, tag = 4)]
+    pub metadata: Option<BlockMetadata>,
 }
 
 /// Object for managing the storage of BlockDatas.
 #[derive(Clone)]
 pub struct BlockDataStore {
     /// Blocks data database. Indexed by (block index, tx_src_url) and maps into
-    /// a StoredBlockData object
+    /// a [StoredBlockData] object.
     block_datas_by_index: Database,
 
-    /// Block hash -> Block.
+    /// Block hash -> [Block].
     blocks_by_hash: Database,
 
-    /// BlockContents hash -> BlockContents
+    /// BlockContents hash -> [BlockContents].
     block_contents_by_hash: Database,
 
     /// Logger.
@@ -67,6 +74,7 @@ impl BlockDataStore {
         let block_datas_by_index = env.open_db(Some(BLOCK_DATAS_BY_INDEX_DB_NAME))?;
         let blocks_by_hash = env.open_db(Some(BLOCKS_BY_HASH_DB_NAME))?;
         let block_contents_by_hash = env.open_db(Some(BLOCK_CONTENTS_BY_HASH_DB_NAME))?;
+
         Ok(Self {
             block_datas_by_index,
             blocks_by_hash,
@@ -97,10 +105,12 @@ impl BlockDataStore {
         let stored_block_data = StoredBlockData {
             block_hash,
             block_contents_hash,
+            metadata: block_data.metadata().cloned(),
             signature: block_data.signature().cloned(),
         };
 
-        let mut key_bytes = block_data.block().index.to_be_bytes().to_vec();
+        let block_index = block_data.block().index;
+        let mut key_bytes = block_index.to_be_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
         let value_bytes = encode(&stored_block_data);
@@ -108,7 +118,7 @@ impl BlockDataStore {
         log::debug!(
             self.logger,
             "Storing block data for {}@{}: {} bytes",
-            block_data.block().index,
+            block_index,
             src_url,
             value_bytes.len()
         );
@@ -144,7 +154,7 @@ impl BlockDataStore {
             block,
             block_contents,
             stored_block_data.signature,
-            None,
+            stored_block_data.metadata,
         ))
     }
 
@@ -181,10 +191,14 @@ impl BlockDataStore {
             let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
             let block_contents =
                 self.get_block_contents_by_hash(db_txn, &stored_block_data.block_contents_hash)?;
-
             results.insert(
                 tx_source_url,
-                BlockData::new(block, block_contents, stored_block_data.signature, None),
+                BlockData::new(
+                    block,
+                    block_contents,
+                    stored_block_data.signature,
+                    stored_block_data.metadata,
+                ),
             );
         }
 

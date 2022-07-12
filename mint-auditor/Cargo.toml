@@ -45,6 +45,7 @@ toml = "0.5"
 url = "2.2"
 
 [dev-dependencies]
+mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-test-helper = { path = "../util/test-helper" }
