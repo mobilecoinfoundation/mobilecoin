@@ -10,6 +10,7 @@ import grpc
 from google.protobuf import empty_pb2
 from .external_pb2 import *
 from .blockchain_pb2 import *
+from .quorum_set_pb2 import *
 from .mobilecoind_api_pb2 import *
 from .mobilecoind_api_pb2_grpc import *
 
