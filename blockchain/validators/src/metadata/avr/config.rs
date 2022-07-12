@@ -4,9 +4,10 @@
 
 use crate::error::ParseError;
 
-use mc_blockchain_types::{BlockIndex, VerificationReport};
+use mc_blockchain_types::{BlockIndex, VerificationReport, VerificationSignature};
 use mc_common::ResponderId;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, hex};
 use std::{fs, path::Path};
 
 /// Struct for reading historical Intel Attestation Verification Report
@@ -57,3 +58,23 @@ impl AvrHistoryConfig {
         }
     }
 }
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "VerificationReport")]
+/// Struct to shadow the mc_blockchain_types's VerificationReport for serialization purposes
+pub struct VerificationReportShadow {
+    /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
+    #[serde_as(as = "hex::Hex")]
+    pub sig: VerificationSignature,
+
+    /// Attestation Report Signing Certificate Chain, as an array of
+    /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
+    /// header.
+    #[serde_as(as = "Vec<hex::Hex>")]
+    pub chain: Vec<Vec<u8>>,
+
+    /// The raw report body JSON, as a byte sequence
+    pub http_body: String,
+}
+
