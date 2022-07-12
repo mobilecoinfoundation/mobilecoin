@@ -72,24 +72,27 @@ message BlockSignature {
 }
 
 message BlockMetadataContents {
-    /// The Block ID.
+    // The Block ID.
     BlockID block_id = 1;
 
-    /// Quorum set configuration at the time of externalization.
+    // Quorum set configuration at the time of externalization.
     quorum_set.QuorumSet quorum_set = 2;
 
-    /// IAS report for the enclave which generated the signature.
+    // IAS report for the enclave which generated the signature.
     external.VerificationReport verification_report = 3;
+
+    // Responder ID of the consensus node that externalized this block.
+    string responder_id = 4;
 }
 
 message BlockMetadata {
-    /// Metadata signed by the consensus node.
+    // Metadata signed by the consensus node.
     BlockMetadataContents contents = 1;
 
-    /// Message signing key (signer).
+    // Message signing key (signer).
     external.Ed25519Public node_key = 2;
 
-    /// Signature using `node_key` over the Digestible encoding of `contents`.
+    // Signature using `node_key` over the Digestible encoding of `contents`.
     external.Ed25519Signature signature = 3;
 }
 
@@ -105,7 +108,7 @@ message ArchiveBlockV1 {
     // Block signature, when available.
     BlockSignature signature = 3;
 
-    /// Additional signed metadata about this block.
+    // Additional signed metadata about this block.
     BlockMetadata metadata = 4;
 }
 

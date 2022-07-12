@@ -149,10 +149,10 @@ impl MintAuditorApi for MintAuditorService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::test_utils::TestDbContext;
+    use crate::db::test_utils::{append_and_sync, TestDbContext};
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_account_keys::AccountKey;
-    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+    use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::Ledger;
     use mc_mint_auditor_api::mint_auditor_grpc::MintAuditorApiClient;
@@ -190,7 +190,7 @@ mod tests {
         let token_id2 = TokenId::from(22);
 
         let test_db_context = TestDbContext::default();
-        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -206,7 +206,7 @@ mod tests {
         for block_index in 0..num_initial_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            mint_audit_db
+            mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
         }
@@ -223,20 +223,8 @@ mod tests {
             ..Default::default()
         };
 
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
@@ -250,24 +238,15 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
-        (mint_audit_db, test_db_context)
+        (mint_auditor_db, test_db_context)
     }
 
     #[test_with_logger]
     fn test_get_block_audit_data(logger: Logger) {
-        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
-        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+        let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_auditor_db, &logger);
 
         let request = GetBlockAuditDataRequest {
             block_index: 2,
@@ -285,8 +264,8 @@ mod tests {
 
     #[test_with_logger]
     fn test_get_last_block_audit_data(logger: Logger) {
-        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
-        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+        let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_auditor_db, &logger);
 
         let response = client.get_last_block_audit_data(&Empty::default()).unwrap();
         assert_eq!(response.get_block_audit_data().block_index, 2,);
@@ -298,8 +277,8 @@ mod tests {
 
     #[test_with_logger]
     fn test_get_counters(logger: Logger) {
-        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
-        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+        let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_auditor_db, &logger);
 
         let response = client.get_counters(&Empty::default()).unwrap();
 

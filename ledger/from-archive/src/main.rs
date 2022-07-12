@@ -34,11 +34,7 @@ fn main() {
         .get_origin_block_and_transactions()
         .expect("Could not retrieve origin block");
     local_ledger
-        .append_block(
-            block_data.block(),
-            block_data.contents(),
-            block_data.signature().cloned(),
-        )
+        .append_block_data(&block_data)
         .expect("Could not append origin block to ledger");
 
     // Sync all blocks
@@ -61,11 +57,7 @@ fn main() {
             Ok(block_data) => {
                 // Append new data to the ledger
                 local_ledger
-                    .append_block(
-                        block_data.block(),
-                        block_data.contents(),
-                        block_data.signature().cloned(),
-                    )
+                    .append_block_data(&block_data)
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }
             Err(err) => {

@@ -3,7 +3,9 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-pub use mc_blockchain_types::{Block, BlockContents, BlockID, BlockIndex, BlockVersion};
+pub use mc_blockchain_types::{
+    Block, BlockContents, BlockID, BlockIndex, BlockMetadata, BlockSignature, BlockVersion,
+};
 pub use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
@@ -21,7 +23,8 @@ pub use mint::{
 };
 
 use core::convert::TryFrom;
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_blockchain_test_utils::make_block_metadata;
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPrivate, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range};
 use mc_transaction_std::{
@@ -292,6 +295,8 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
     let value: u64 = INITIALIZE_LEDGER_AMOUNT;
     let token_id = Mob::ID;
 
+    let signer = Ed25519Pair::from_random(rng);
+
     // TxOut from the previous block
     let mut to_spend: Option<TxOut> = None;
     let mut parent: Option<Block> = None;
@@ -355,14 +360,15 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
             }
         };
 
+        let signature = BlockSignature::from_block_and_keypair(&block, &signer).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), rng);
         ledger
-            .append_block(&block, &block_contents, None)
+            .append_block(&block, &block_contents, Some(&signature), Some(&metadata))
             .expect("failed writing initial transactions");
 
         blocks.push(block.clone());
         parent = Some(block);
-        let tx_out = block_contents.outputs[0].clone();
-        to_spend = Some(tx_out);
+        to_spend = Some(block_contents.outputs[0].clone());
     }
 
     // Verify that db now contains n transactions.
@@ -372,6 +378,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 }
 
 /// Generate a list of blocks, each with a random number of transactions.
+// FIXME: Change to return Vec<BlockData> with metadata.
 pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     block_version: BlockVersion,
     recipients: &[PublicAddress],

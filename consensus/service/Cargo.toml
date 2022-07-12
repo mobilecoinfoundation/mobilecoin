@@ -63,11 +63,13 @@ mc-sgx-build = { path = "../../sgx/build" }
 
 [dev-dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers-test-utils = { path = "../../peers/test-utils" }
+mc-sgx-report-cache-api = { path = "../../sgx/report-cache/api" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-logger-macros = { path = "../../util/logger-macros" }

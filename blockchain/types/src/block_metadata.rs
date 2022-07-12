@@ -5,6 +5,7 @@ use crate::{
     BlockID, QuorumSet, VerificationReport,
 };
 use displaydoc::Display;
+use mc_common::ResponderId;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureError};
 use prost::Message;
@@ -24,6 +25,10 @@ pub struct BlockMetadataContents {
     /// IAS report for the enclave which generated the signature.
     #[prost(message, required, tag = 3)]
     verification_report: VerificationReport,
+
+    /// Responder ID of the consensus node that externalized this block.
+    #[prost(message, required, tag = 4)]
+    responder_id: ResponderId,
 }
 
 impl BlockMetadataContents {
@@ -32,11 +37,13 @@ impl BlockMetadataContents {
         block_id: BlockID,
         quorum_set: QuorumSet,
         verification_report: VerificationReport,
+        responder_id: ResponderId,
     ) -> Self {
         Self {
             block_id,
             quorum_set,
             verification_report,
+            responder_id,
         }
     }
 
@@ -53,6 +60,11 @@ impl BlockMetadataContents {
     /// Get the Attested [VerificationReport].
     pub fn verification_report(&self) -> &VerificationReport {
         &self.verification_report
+    }
+
+    /// Get the [ResponderId].
+    pub fn responder_id(&self) -> &ResponderId {
+        &self.responder_id
     }
 }
 

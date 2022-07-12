@@ -234,6 +234,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 #[cfg(test)]
 mod mint_config_tx_tests {
     use super::*;
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents};
     use mc_common::logger::test_with_logger;
     use mc_crypto_multisig::SignerSet;
@@ -377,7 +378,10 @@ mod mint_config_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Try again, we should fail.
         assert_eq!(
@@ -431,7 +435,10 @@ mod mint_config_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Try again, we should fail.
         assert_eq!(
@@ -620,6 +627,7 @@ mod mint_config_tx_tests {
 #[cfg(test)]
 mod mint_tx_tests {
     use super::*;
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents};
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
@@ -663,7 +671,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -719,7 +730,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
@@ -795,7 +809,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
@@ -889,7 +906,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -941,7 +961,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create a MintTx that exceeds the mint limit
         let mint_tx = create_mint_tx(
@@ -1000,7 +1023,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -1052,7 +1078,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create a MintTx that exceeds the mint limit
         let mint_tx = create_mint_tx(
@@ -1109,7 +1138,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -1181,7 +1213,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -1212,7 +1247,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Try again, we should fail.
         assert_eq!(
@@ -1252,7 +1290,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
@@ -1289,7 +1330,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Try again, we should fail.
         assert_eq!(
@@ -1330,7 +1374,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Test txs, each one using a different mint configuration (determined by the
         // signers)
@@ -1422,7 +1469,10 @@ mod mint_tx_tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Test txs that have overlapping minting configurations
         let mint_txs = vec![

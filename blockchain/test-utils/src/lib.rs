@@ -8,9 +8,11 @@ pub use mc_consensus_scp_types::test_utils::test_node_id;
 use mc_blockchain_types::{
     BlockID, BlockMetadata, BlockMetadataContents, QuorumSet, VerificationReport,
 };
+use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Pair;
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{random_bytes_vec, CryptoRng, Rng, RngCore};
+use std::str::FromStr;
 
 /// Generate a [BlockID] from random bytes.
 pub fn make_block_id(rng: &mut (impl RngCore + CryptoRng)) -> BlockID {
@@ -57,6 +59,7 @@ pub fn make_block_metadata_contents(
         block_id,
         make_quorum_set(rng),
         make_verification_report(rng),
+        ResponderId::from_str("test.mobilecoin.com:443").unwrap(),
     )
 }
 
