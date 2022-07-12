@@ -14,3 +14,4 @@ hex = { version = "0.4", default-features = false, features = ["alloc"] }
 hex_fmt = "0.3"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_with = { version = "1.14", features = ["hex"] }

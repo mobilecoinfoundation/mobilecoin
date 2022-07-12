@@ -13,6 +13,7 @@ use prost::{
     DecodeError, Message,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as};
 
 /// Container for holding the quote verification sent back from IAS.
 ///
@@ -25,6 +26,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[serde_as]
 pub struct VerificationReport {
     /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
     #[prost(message, required, tag = 1)]
@@ -34,6 +36,7 @@ pub struct VerificationReport {
     /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
     /// header.
     #[prost(bytes, repeated, tag = 2)]
+    #[serde_as(as = "Vec<serde_with::hex::Hex>")]
     pub chain: Vec<Vec<u8>>,
 
     /// The raw report body JSON, as a byte sequence
@@ -57,7 +60,8 @@ impl Display for VerificationReport {
     Clone, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[repr(transparent)]
-pub struct VerificationSignature(#[digestible(never_omit)] Vec<u8>);
+#[serde_as]
+pub struct VerificationSignature(#[digestible(never_omit)] #[serde_as(as = "serde_with::hex::Hex")] Vec<u8>);
 
 impl Debug for VerificationSignature {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
