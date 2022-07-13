@@ -346,7 +346,7 @@ fn audit_block_data(
 
     // Audit burns.
     for burn_tx_out in &sync_block_data.burn_tx_outs {
-        match AuditedBurn::attempt_match_burn_with_withdrawal(burn_tx_out, config, conn) {
+        match AuditedBurn::try_match_burn_with_withdrawal(burn_tx_out, config, conn) {
             Ok(withdrawal) => {
                 log::info!(
                     logger,

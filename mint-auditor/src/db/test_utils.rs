@@ -13,7 +13,7 @@ use crate::{
 use mc_account_keys::burn_address;
 use mc_blockchain_types::{BlockContents, BlockIndex, BlockVersion};
 use mc_common::logger::Logger;
-use mc_ledger_db::{test_utils::add_block_contents_to_ledger,  LedgerDB};
+use mc_ledger_db::{test_utils::add_block_contents_to_ledger, LedgerDB};
 use mc_transaction_core::{Amount, TokenId};
 use mc_transaction_core_test_utils::{
     create_mint_config_tx_and_signers, create_mint_tx, MockFogResolver,

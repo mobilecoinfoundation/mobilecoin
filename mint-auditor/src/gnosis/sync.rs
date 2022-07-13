@@ -217,7 +217,7 @@ impl GnosisSync {
                 withdrawal.insert(conn)?;
 
                 // Attempt to match the withdrawal with an existing BurnTxOut.
-                match AuditedBurn::attempt_match_withdrawal_with_burn(
+                match AuditedBurn::try_match_withdrawal_with_burn(
                     &withdrawal,
                     &self.audited_safe,
                     conn,

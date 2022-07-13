@@ -32,7 +32,7 @@ impl AuditedBurn {
     /// record the match in the database. Note that each [BurnTxOut] can be
     /// matched to at most one [GnosisSafeWithdrawal], so calling this
     /// repeatedly over the same withdrawal will fail.
-    pub fn attempt_match_withdrawal_with_burn(
+    pub fn try_match_withdrawal_with_burn(
         withdrawal: &GnosisSafeWithdrawal,
         config: &AuditedSafeConfig,
         conn: &Conn,
@@ -123,7 +123,7 @@ impl AuditedBurn {
     /// record the match in the database. Note that each
     /// [GnosisSafeWithdrawal] can be matched to at most one [BurnTxOut], so
     /// calling this repeatedly over the same tx out will fail.
-    pub fn attempt_match_burn_with_withdrawal(
+    pub fn try_match_burn_with_withdrawal(
         burn_tx_out: &BurnTxOut,
         config: &GnosisSafeConfig,
         conn: &Conn,
@@ -314,7 +314,7 @@ mod tests {
         assert_eq!(num_rows, 0);
     }
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_happy_flow(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_happy_flow(logger: Logger) {
         let config = &test_gnosis_config().safes[0];
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -337,11 +337,11 @@ mod tests {
 
         // Initially the database is empty.
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal1, config, &conn),
             Err(Error::NotFound)
         ));
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal1, config, &conn),
             Err(Error::NotFound)
         ));
         assert_audited_burns_table_is_empty(&conn);
@@ -350,27 +350,27 @@ mod tests {
         burn_tx_out1.insert(&conn).unwrap();
         assert_eq!(
             burn_tx_out1,
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn).unwrap()
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal1, config, &conn).unwrap()
         );
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal2, config, &conn),
             Err(Error::NotFound)
         ));
 
         // Insert the second BurnTx to the database, we should get a match on both.
         burn_tx_out2.insert(&conn).unwrap();
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal1, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal1, config, &conn),
             Err(Error::AlreadyExists(_))
         ));
         assert_eq!(
             burn_tx_out2,
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn).unwrap()
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal2, config, &conn).unwrap()
         );
 
         // Trying again should return AlreadyExists
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal2, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal2, config, &conn),
             Err(Error::AlreadyExists(_))
         ));
 
@@ -383,7 +383,7 @@ mod tests {
         );
     }
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_amount_mismatch(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_amount_mismatch(logger: Logger) {
         let config = &test_gnosis_config().safes[0];
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -409,7 +409,7 @@ mod tests {
         // Insert the BurnTx to the database, and check that the mismatch is
         // detected.
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, config, &conn),
             Err(Error::WithdrawalAndBurnMismatch(_))
         ));
 
@@ -426,7 +426,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_unsaved_object(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_unsaved_object(logger: Logger) {
         let config = &test_gnosis_config().safes[0];
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -436,7 +436,7 @@ mod tests {
         let withdrawal = create_gnosis_safe_withdrawal(100, &mut rng);
 
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, config, &conn),
             Err(Error::ObjectNotSaved)
         ));
 
@@ -452,7 +452,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_mismatched_safe_addr(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_mismatched_safe_addr(logger: Logger) {
         let mut config = test_gnosis_config().safes[0].clone();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -466,7 +466,7 @@ mod tests {
 
         config.safe_addr = EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, &config, &conn),
             Err(Error::Other(_))
         ));
 
@@ -482,7 +482,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_mismatched_token_id(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_mismatched_token_id(logger: Logger) {
         let mut config = test_gnosis_config().safes[0].clone();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -497,7 +497,7 @@ mod tests {
         config.tokens[0].token_id = TokenId::from(123);
 
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, &config, &conn),
             Err(Error::WithdrawalAndBurnMismatch(_))
         ));
 
@@ -514,7 +514,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_withdrawal_with_burn_mismatched_token_addr(logger: Logger) {
+    fn test_try_match_withdrawal_with_burn_mismatched_token_addr(logger: Logger) {
         let mut config = test_gnosis_config().safes[0].clone();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -530,7 +530,7 @@ mod tests {
             EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
 
         assert!(matches!(
-            AuditedBurn::attempt_match_withdrawal_with_burn(&withdrawal, &config, &conn),
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, &config, &conn),
             Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_happy_flow(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_happy_flow(logger: Logger) {
         let config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -566,11 +566,11 @@ mod tests {
 
         // Initially the database is empty.
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn),
             Err(Error::NotFound)
         ));
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
             Err(Error::NotFound)
         ));
         assert_audited_burns_table_is_empty(&conn);
@@ -580,10 +580,10 @@ mod tests {
 
         assert_eq!(
             withdrawal1,
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn).unwrap()
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn).unwrap()
         );
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
             Err(Error::NotFound)
         ));
 
@@ -591,17 +591,17 @@ mod tests {
         insert_gnosis_withdrawal(&mut withdrawal2, &conn);
 
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out1, &config, &conn),
             Err(Error::AlreadyExists(_))
         ));
         assert_eq!(
             withdrawal2,
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn).unwrap()
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn).unwrap()
         );
 
         // Trying again should return AlreadyExists
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out2, &config, &conn),
             Err(Error::AlreadyExists(_))
         ));
 
@@ -615,7 +615,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_amount_mismatch(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_amount_mismatch(logger: Logger) {
         let config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -640,7 +640,7 @@ mod tests {
 
         // Check that the mismatch is detected.
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
             Err(Error::WithdrawalAndBurnMismatch(_))
         ));
 
@@ -657,7 +657,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_unsaved_object(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_unsaved_object(logger: Logger) {
         let config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -668,7 +668,7 @@ mod tests {
         let burn_tx_out = create_burn_tx_out(token_id, 100, &mut rng);
 
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
             Err(Error::ObjectNotSaved)
         ));
 
@@ -684,7 +684,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_mismatched_safe_addr(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_mismatched_safe_addr(logger: Logger) {
         let mut config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -699,7 +699,7 @@ mod tests {
         config.safes[0].safe_addr =
             EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
             Err(Error::GnosisSafeNotAudited(_))
         ));
 
@@ -713,7 +713,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_mismatched_token_id(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_mismatched_token_id(logger: Logger) {
         let mut config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -728,7 +728,7 @@ mod tests {
         config.safes[0].tokens[0].token_id = TokenId::from(123);
 
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
             Err(Error::WithdrawalAndBurnMismatch(_))
         ));
 
@@ -745,7 +745,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_attempt_match_burn_with_withdrawal_mismatched_token_addr(logger: Logger) {
+    fn test_try_match_burn_with_withdrawal_mismatched_token_addr(logger: Logger) {
         let mut config = test_gnosis_config();
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
@@ -761,7 +761,7 @@ mod tests {
             EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap();
 
         assert!(matches!(
-            AuditedBurn::attempt_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
+            AuditedBurn::try_match_burn_with_withdrawal(&burn_tx_out, &config, &conn),
             Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
