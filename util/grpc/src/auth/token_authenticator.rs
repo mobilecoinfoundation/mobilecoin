@@ -206,7 +206,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Unauthenticated")]
     fn missing_creds_fails_authentication() {
         let shared_secret = [3; 32];
         let authenticator = TokenAuthenticator::new(
@@ -215,14 +214,13 @@ mod tests {
             SystemTimeProvider::default(),
         );
 
-        // We expect this to panic.
-        let _ = authenticator.authenticate(None).unwrap();
+        assert_eq!(
+            authenticator.authenticate(None),
+            Err(AuthenticatorError::Unauthenticated)
+        );
     }
 
     #[test]
-    #[should_panic(
-        expected = "called `Result::unwrap()` on an `Err` value: InvalidAuthorizationToken"
-    )]
     fn invalid_token_fails_authentication() {
         let shared_secret = [3; 32];
         const TEST_USERNAME: &str = "test user";
@@ -236,8 +234,10 @@ mod tests {
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
 
-        // We expect this to panic.
-        let _ = authenticator.authenticate(Some(creds)).unwrap();
+        assert_eq!(
+            authenticator.authenticate(Some(creds)),
+            Err(AuthenticatorError::InvalidAuthorizationToken)
+        );
     }
 
     #[test]
