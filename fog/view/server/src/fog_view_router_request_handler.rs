@@ -108,7 +108,7 @@ where
     let mut shard_clients = shard_clients.clone();
     // TODO: use retry crate?
     for _ in 0..RETRY_COUNT {
-        let multi_view_store_query_request: MultiViewStoreQueryRequest = enclave
+        let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(query.clone().into())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
@@ -118,7 +118,7 @@ where
                 )
             })?
             .into();
-        let clients_and_responses: Vec<(Arc<FogViewApiClient>, MultiViewStoreQueryResponse)> =
+        let clients_and_responses =
             route_query(&multi_view_store_query_request, shard_clients.clone())
                 .await
                 .map_err(|err| {
@@ -182,7 +182,7 @@ async fn query_shard(
 }
 
 /// Authenticates Fog View Stores that have previously not been authenticated.
-pub async fn authenticate_view_stores<E: ViewEnclaveProxy>(
+async fn authenticate_view_stores<E: ViewEnclaveProxy>(
     enclave: E,
     view_store_uris: Vec<FogViewUri>,
     logger: Logger,
@@ -201,7 +201,7 @@ pub async fn authenticate_view_stores<E: ViewEnclaveProxy>(
 }
 
 /// Authenticates a Fog View Store that has previously not been authenticated.
-pub async fn authenticate_view_store<E: ViewEnclaveProxy>(
+async fn authenticate_view_store<E: ViewEnclaveProxy>(
     enclave: E,
     view_store_url: FogViewUri,
     logger: Logger,
