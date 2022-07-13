@@ -17,7 +17,7 @@ use grpcio::{
 use std::str;
 
 /// Error values for authentication.
-#[derive(Display, Debug)]
+#[derive(Display, Debug, PartialEq)]
 pub enum AuthenticatorError {
     /// Unauthenticated
     Unauthenticated,
@@ -95,7 +95,7 @@ pub struct BasicCredentials {
 }
 
 /// Errors that can occur when parsing an authorization header
-#[derive(Display, Debug)]
+#[derive(Display, Debug, PartialEq)]
 pub enum AuthorizationHeaderError {
     /// Unsupported authorization method
     UnsupportedAuthorizationMethod,
