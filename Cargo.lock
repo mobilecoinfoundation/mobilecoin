@@ -4476,6 +4476,7 @@ dependencies = [
  "mc-fog-kex-rng",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
+ "mc-fog-test-infra",
  "mc-fog-types",
  "mc-fog-uri",
  "mc-fog-view-connection",

@@ -16,7 +16,8 @@ impl From<Vec<mc_attest_enclave_api::EnclaveMessage<mc_attest_enclave_api::Clien
         enclave_messages
             .into_iter()
             .map(|enclave_message| enclave_message.into())
-            .collect::<Vec<attest::Message>>().into()
+            .collect::<Vec<attest::Message>>()
+            .into()
     }
 }
 

@@ -15,7 +15,8 @@ pub struct ProcessedShardResponseData {
     pub shard_clients_for_retry: Vec<Arc<FogViewApiClient>>,
 
     /// Uris for *individual* Fog View Stores that need to be authenticated with
-    /// by the Fog Router. It should only have entries if `shard_clients_for_retry` has entries.
+    /// by the Fog Router. It should only have entries if
+    /// `shard_clients_for_retry` has entries.
     pub view_store_uris_for_authentication: Vec<FogViewUri>,
 
     /// New, successfully processed query responses.
@@ -102,8 +103,7 @@ mod tests {
         );
 
         let grpc_client = FogViewApiClient::new(
-            ChannelBuilder::default_channel_builder(grpc_env.clone())
-                .connect_to_uri(&view_uri, &logger),
+            ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_uri, &logger),
         );
 
         Arc::new(grpc_client)

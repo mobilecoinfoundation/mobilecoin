@@ -69,6 +69,7 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
+mc-fog-test-infra = { path = "../../test_infra" }
 mc-fog-types = { path = "../../types" }
 mc-fog-view-connection = { path = "../connection" }
 mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }

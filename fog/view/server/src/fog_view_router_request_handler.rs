@@ -63,9 +63,9 @@ where
     E: ViewEnclaveProxy,
 {
     if request.has_auth() {
-        return handle_auth_request(enclave, request.take_auth(), logger);
+        handle_auth_request(enclave, request.take_auth(), logger)
     } else if request.has_query() {
-        return handle_query_request(request.take_query(), enclave, shard_clients, logger).await;
+        handle_query_request(request.take_query(), enclave, shard_clients, logger).await
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid FogViewRouterRequest request",
@@ -166,7 +166,7 @@ async fn route_query(
 ) -> Result<Vec<(Arc<FogViewApiClient>, MultiViewStoreQueryResponse)>, RouterServerError> {
     let responses = shard_clients
         .into_iter()
-        .map(|shard_client| query_shard(request, shard_client.clone()));
+        .map(|shard_client| query_shard(request, shard_client));
     try_join_all(responses).await
 }
 
