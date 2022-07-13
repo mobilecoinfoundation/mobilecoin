@@ -47,6 +47,7 @@ url = "2.2"
 [dev-dependencies]
 mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-keys = { path = "../crypto/keys" }
+mc-ledger-db = { path = "../ledger/db", features = ["test_utils"] }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-test-helper = { path = "../util/test-helper" }
 

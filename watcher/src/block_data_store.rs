@@ -297,40 +297,17 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_crypto_keys::Ed25519Pair;
-    use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
 
     #[test_with_logger]
     fn block_data_store_happy_path(logger: Logger) {
-        let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
         let tx_src_url1 = Url::parse("http://www.my_url1.com").unwrap();
         let tx_src_url2 = Url::parse("http://www.my_url2.com").unwrap();
         let tx_src_urls = vec![tx_src_url1.clone(), tx_src_url2.clone()];
         let watcher_db = setup_watcher_db(&tx_src_urls, logger);
-        let blocks = setup_blocks();
-
-        let block_datas = blocks
-            .iter()
-            .map(|(block, contents)| {
-                BlockData::new(
-                    block.clone(),
-                    contents.clone(),
-                    Some(
-                        BlockSignature::from_block_and_keypair(
-                            block,
-                            &Ed25519Pair::from_random(&mut rng),
-                        )
-                        .unwrap(),
-                    ),
-                    None,
-                )
-            })
-            .collect::<Vec<_>>();
+        let blocks_data = setup_blocks();
 
         // Initially, there is no data.
-        for block_data in block_datas.iter() {
+        for block_data in &blocks_data {
             assert_eq!(
                 watcher_db
                     .get_block_data_map(block_data.block().index)
@@ -341,67 +318,67 @@ mod tests {
 
         // Add a block to tx_src_url1 and see that we can get it.
         watcher_db
-            .add_block_data(&tx_src_url1, &block_datas[0])
+            .add_block_data(&tx_src_url1, &blocks_data[0])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![(tx_src_url1.clone(), block_datas[0].clone()),])
+            HashMap::from_iter([(tx_src_url1.clone(), blocks_data[0].clone()),])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
 
         // Add the same block but for a different URL.
         watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[0])
+            .add_block_data(&tx_src_url2, &blocks_data[0])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![
-                (tx_src_url1.clone(), block_datas[0].clone()),
-                (tx_src_url2.clone(), block_datas[0].clone()),
+            HashMap::from_iter([
+                (tx_src_url1.clone(), blocks_data[0].clone()),
+                (tx_src_url2.clone(), blocks_data[0].clone()),
             ])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
 
         // Add the same block again (should error).
         assert!(watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[0])
+            .add_block_data(&tx_src_url2, &blocks_data[0])
             .is_err());
 
         // Add another block.
         watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[1])
+            .add_block_data(&tx_src_url2, &blocks_data[1])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![
-                (tx_src_url1, block_datas[0].clone()),
-                (tx_src_url2.clone(), block_datas[0].clone()),
+            HashMap::from_iter([
+                (tx_src_url1, blocks_data[0].clone()),
+                (tx_src_url2.clone(), blocks_data[0].clone()),
             ])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![(tx_src_url2, block_datas[1].clone()),])
+            HashMap::from_iter([(tx_src_url2, blocks_data[1].clone()),])
         );
     }
 }

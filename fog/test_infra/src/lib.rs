@@ -9,12 +9,11 @@ pub mod db_tests;
 pub mod mock_client;
 pub mod mock_users;
 
-use mc_blockchain_test_utils::make_block_metadata;
-use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
+use mc_blockchain_types::{Block, BlockSignature, BlockVersion};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::add_txos_and_key_images_to_ledger, LedgerDB};
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -29,9 +28,8 @@ use std::{env, path::PathBuf};
 /// sense for our infrastructure.
 pub fn get_enclave_path(filename: &str) -> PathBuf {
     // First try searching right next to the target, this is for circle-ci
-    let maybe_result = env::current_exe()
-        .expect("Could not get current exe")
-        .with_file_name(filename);
+    let current_exe = env::current_exe().expect("Could not get current exe");
+    let maybe_result = current_exe.with_file_name(filename);
     // Try statting the file
     if std::fs::metadata(maybe_result.clone()).is_ok() {
         return maybe_result;
@@ -40,7 +38,7 @@ pub fn get_enclave_path(filename: &str) -> PathBuf {
     // During cargo test, the enclave.so won't be there, so we search in target
     // instead as a fallback
     let project_root = {
-        let mut result = env::current_exe().expect("Could not get current exe");
+        let mut result = current_exe;
         while result.file_name().expect("No Filename for result") != "target" {
             result = result.parent().expect("No parent for result").to_path_buf();
         }
@@ -142,34 +140,13 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
 
     // Make them into a block, and ingest it. This is done by appending a block to
     // the ledger and having it be polled by ingest.
-    let (block, block_contents) = if block_index == 0 {
-        let block_contents = BlockContents {
-            outputs: txos.clone(),
-            ..Default::default()
-        };
-        let block = Block::new_origin_block(&txos);
-        (block, block_contents)
+    let key_images = if block_index == 0 {
+        vec![]
     } else {
-        let block_contents = BlockContents {
-            key_images: vec![KeyImage::from(block_index)],
-            outputs: txos,
-            ..Default::default()
-        };
-        let parent_block = ledger_db
-            .get_block(block_index - 1)
-            .unwrap_or_else(|err| panic!("Failed getting block {}: {:?}", block_index - 1, err));
-        let block = Block::new_with_parent(
-            BlockVersion::ZERO,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-        (block, block_contents)
+        vec![KeyImage::from(block_index)]
     };
-    let metadata = make_block_metadata(block.id.clone(), rng);
-    ledger_db
-        .append_block(&block, &block_contents, None, Some(&metadata))
-        .unwrap_or_else(|err| panic!("failed appending block {:?}: {:?}", block, err));
+    add_txos_and_key_images_to_ledger(ledger_db, BlockVersion::ZERO, txos, key_images, rng)
+        .unwrap();
 
     // Make the users poll for transactions, until their num blocks matches
     // ledger_db, or we time out

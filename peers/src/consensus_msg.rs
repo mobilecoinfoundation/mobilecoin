@@ -150,15 +150,13 @@ impl ConsensusMsg {
             return Err(ConsensusMsgError::ZeroSlot);
         }
 
-        let prev_block = ledger.get_block(scp_msg.slot_index - 1)?;
+        let prev_block_id = ledger.get_block(scp_msg.slot_index - 1)?.id;
 
         let mut contents_hash = [0u8; 32];
         {
             let mut transcript = MerlinTranscript::new(b"peer-message");
             scp_msg.append_to_transcript(b"scp_msg", &mut transcript);
-            prev_block
-                .id
-                .append_to_transcript(b"prev_block_id", &mut transcript);
+            prev_block_id.append_to_transcript(b"prev_block_id", &mut transcript);
             transcript.extract_digest(&mut contents_hash);
         }
 
@@ -166,7 +164,7 @@ impl ConsensusMsg {
 
         Ok(Self {
             scp_msg,
-            prev_block_id: prev_block.id,
+            prev_block_id,
             signature,
         })
     }

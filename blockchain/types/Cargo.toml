@@ -29,7 +29,6 @@ zeroize = { version = "1", default-features = false }
 [dev-dependencies]
 mc-blockchain-test-utils = { path = "../test-utils" }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 rand = "0.8"

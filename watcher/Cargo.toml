@@ -23,8 +23,6 @@ mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
-mc-transaction-core = { path = "../transaction/core" }
-mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }
@@ -50,6 +48,7 @@ url = "2.2"
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }
+mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 

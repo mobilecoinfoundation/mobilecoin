@@ -1,10 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_blockchain_test_utils::make_block_metadata;
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
+use mc_blockchain_test_utils::get_blocks;
 use mc_common::logger::{log, o, Logger};
-use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_ingest_server::{
     server::{IngestServer, IngestServerConfig},
     state_file::StateFile,
@@ -13,13 +12,9 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::add_txos_and_key_images_to_ledger, Ledger, LedgerDB};
 use mc_transaction_core::{
-    encrypted_fog_hint::EncryptedFogHint,
-    membership_proofs::Range,
-    ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    MaskedAmount,
+    encrypted_fog_hint::EncryptedFogHint, tx::TxOut, BlockVersion, MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -32,7 +27,7 @@ use std::{
     str::FromStr,
     sync::Arc,
     thread::sleep,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use tempdir::TempDir;
 use url::Url;
@@ -172,17 +167,19 @@ impl IngestServerTestHelper {
         }
     }
 
-    /// Add an origin block with 2 random outputs to the local [LedgerDB].
+    /// Add an origin block and random output to the local [LedgerDB].
     pub fn add_origin_block(&mut self) {
-        let outputs = vec![self.random_output(), self.random_output()];
-        let origin_block = Block::new_origin_block(&outputs);
-        let origin_contents = BlockContents {
+        let rng = &mut self.rng;
+        let key_images = vec![];
+        let outputs = vec![random_output(rng)];
+        add_txos_and_key_images_to_ledger(
+            &mut self.ledger,
+            BlockVersion::ZERO,
             outputs,
-            ..Default::default()
-        };
-        self.ledger
-            .append_block(&origin_block, &origin_contents, None, None)
-            .expect("failed writing initial block");
+            key_images,
+            rng,
+        )
+        .expect("Could not append block");
     }
 
     /// Helper to create and start several nodes.
@@ -350,52 +347,16 @@ pub fn get_ingress_keys(nodes: &[TestIngestNode]) -> Vec<CompressedRistrettoPubl
 }
 
 /// Add an arbitrary block to ledger and a timestamp for it
-pub fn add_test_block<T: RngCore + CryptoRng>(
+pub fn add_test_block(
     ledger: &mut LedgerDB,
     watcher: &WatcherDB,
-    rng: &mut T,
+    rng: &mut (impl RngCore + CryptoRng),
 ) {
     // Make the new block and append to database
-    let num_blocks = ledger.num_blocks().expect("Could not compute num_blocks");
-    assert_ne!(0, num_blocks);
-
-    let last_block = ledger
-        .get_block(num_blocks - 1)
-        .expect("Could not get last block");
-
-    let key_images = vec![KeyImage::from(rng.next_u64())];
-
-    let block_contents = BlockContents {
-        key_images,
-        outputs: vec![random_output(rng)],
-        ..Default::default()
-    };
-
-    // Fake proofs
-    let root_element = TxOutMembershipElement {
-        range: Range::new(0, num_blocks as u64).unwrap(),
-        hash: TxOutMembershipHash::from([0u8; 32]),
-    };
-
-    let block = Block::new_with_parent(
-        BlockVersion::ZERO,
-        &last_block,
-        &root_element,
-        &block_contents,
-    );
-
-    let signer = Ed25519Pair::from_random(rng);
-
-    let mut block_sig = BlockSignature::from_block_and_keypair(&block, &signer).unwrap();
-    block_sig.set_signed_at(
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    );
-
-    let metadata = make_block_metadata(block.id.clone(), rng);
-    let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
+    let prev_block = ledger.get_latest_block().expect("Could not get last block");
+    let block_data = get_blocks(BlockVersion::MAX, 1, 2, 1, 2, 42, prev_block, rng)
+        .pop()
+        .unwrap();
 
     ledger
         .append_block_data(&block_data)
@@ -407,12 +368,17 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
         .expect("Could not add block data to watcher");
 
     watcher
-        .add_block_signature(&tx_source_url, num_blocks, block_sig, "archive".to_string())
+        .add_block_signature(
+            &tx_source_url,
+            block_data.block().index,
+            block_data.signature().cloned().unwrap(),
+            "archive".to_string(),
+        )
         .expect("Could not add block signature to watcher");
 }
 
 /// Make a random output for a block
-pub fn random_output<T: RngCore + CryptoRng>(rng: &mut T) -> TxOut {
+pub fn random_output(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
     TxOut {
         masked_amount: MaskedAmount::default(),
         target_key: RistrettoPublic::from_random(rng).into(),

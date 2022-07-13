@@ -335,11 +335,14 @@ mod tests {
     use mc_account_keys::{burn_address, AccountKey};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{tx::TxOut, Amount, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger, mint_config_tx_to_validated as to_validated, KeyImage,
+        create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
+        mint_config_tx_to_validated as to_validated, KeyImage,
     };
     use mc_util_from_random::FromRandom;
 
@@ -402,7 +405,7 @@ mod tests {
         };
 
         let (sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         assert_eq!(
             sync_block_data,
@@ -428,7 +431,7 @@ mod tests {
         };
 
         let (sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         assert_eq!(
             sync_block_data,
@@ -446,10 +449,7 @@ mod tests {
 
         let tx_out1 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 50,
-                token_id: token_id1,
-            },
+            Amount::new(50, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -458,10 +458,7 @@ mod tests {
 
         let tx_out2 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 10,
-                token_id: token_id1,
-            },
+            Amount::new(10, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -477,7 +474,7 @@ mod tests {
         };
 
         let (mut sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
@@ -506,10 +503,7 @@ mod tests {
 
         let tx_out1 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 900,
-                token_id: token_id1,
-            },
+            Amount::new(900, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -518,10 +512,7 @@ mod tests {
 
         let tx_out2 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 1000,
-                token_id: token_id2,
-            },
+            Amount::new(1000, token_id2),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -537,7 +528,7 @@ mod tests {
         };
 
         let (mut sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
@@ -711,7 +702,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
@@ -726,7 +717,7 @@ mod tests {
         };
 
         let (sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
         assert_eq!(
             sync_block_data,
             SyncBlockData {
@@ -749,10 +740,7 @@ mod tests {
 
         let tx_out1 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 50000,
-                token_id: token_id1,
-            },
+            Amount::new(50000, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -761,10 +749,7 @@ mod tests {
 
         let tx_out2 = TxOut::new(
             BLOCK_VERSION,
-            Amount {
-                value: 2,
-                token_id: token_id2,
-            },
+            Amount::new(2, token_id2),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -780,7 +765,7 @@ mod tests {
         };
 
         let (mut sync_block_data, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
         //
         // Strip out ids to make comparison easier.
         sync_block_data.burn_tx_outs = sync_block_data
@@ -835,7 +820,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         assert_eq!(
             Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
@@ -887,7 +872,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a mint transaction with incorrect signers.
         // Normally we would append the block to the ledger and test as usual, but since
@@ -939,7 +924,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a mint transaction with signers that refer to a no
         // longer valid mint config.
@@ -990,7 +975,7 @@ mod tests {
         };
 
         let (_, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let counters = Counters::get(&conn).unwrap();
         assert_eq!(counters.num_blocks_synced(), block_index + 1);
@@ -1043,7 +1028,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that mints the total mint limit.
         let mint_tx1 = create_mint_tx(
@@ -1062,7 +1047,7 @@ mod tests {
         };
 
         let (_, block_index) =
-            append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+            append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         let counters = Counters::get(&conn).unwrap();
         assert_eq!(counters.num_blocks_synced(), block_index + 1);

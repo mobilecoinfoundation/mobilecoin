@@ -1,4 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
+
 #![deny(missing_docs)]
 
 //! This load test creates an ingest server, adds users to it, and adds blocks,
@@ -15,7 +16,8 @@
 use clap::Parser;
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
-use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
+use mc_blockchain_test_utils::get_blocks;
+use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_rand::McRng;
@@ -24,17 +26,17 @@ use mc_fog_load_testing::get_bin_path;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
-use rand::thread_rng;
 use retry::{delay, retry, OperationResult};
 use std::{
     path::Path,
     str::FromStr,
     sync::Arc,
+    thread::sleep,
     time::{Duration, Instant},
 };
 use tempdir::TempDir;
@@ -157,7 +159,10 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         ..Default::default()
     };
 
-    let signer = Ed25519Pair::from_random(&mut thread_rng());
+    let mut csprng = McRng {};
+    let rng = &mut csprng;
+
+    let signer = Ed25519Pair::from_random(rng);
 
     {
         // First make grpcio env
@@ -206,12 +211,12 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
 
         let block_version = BlockVersion::ZERO;
 
-        mc_transaction_core_test_utils::initialize_ledger(
+        initialize_ledger(
             block_version,
             &mut ledger_db,
             1u64,
-            &AccountKey::random(&mut McRng {}),
-            &mut McRng {},
+            &AccountKey::random(rng),
+            rng,
         );
 
         // Dir for state file
@@ -283,7 +288,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
             ingest_client
                 .activate()
                 .expect("Could not activate ingest server");
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            sleep(Duration::from_millis(10));
             ingest_server.assert_not_stopped();
         }
 
@@ -302,55 +307,48 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 ledger_db.num_txos().unwrap()
             );
 
-            let accounts: Vec<AccountKey> = (0..20)
-                .map(|_i| AccountKey::random(&mut McRng {}))
-                .collect();
-            let recipient_pub_keys = accounts
-                .iter()
-                .map(|account| account.default_subaddress())
-                .collect::<Vec<_>>();
-
-            let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            let results = get_blocks(
                 block_version,
-                &recipient_pub_keys[..],
                 REPETITIONS,
                 CHUNK_SIZE,
+                1,
                 CHUNK_SIZE,
-                &last_block,
-                &mut McRng {},
+                1 << 20,
+                last_block,
+                rng,
             );
 
             log::info!(
                 logger,
-                "Adding blocks with {} Txos ({} reptitions)",
+                "Adding blocks with {} Txos ({} repetitions)",
                 CHUNK_SIZE,
                 REPETITIONS
             );
             let mut timings = Vec::<Duration>::with_capacity(REPETITIONS);
-            for (block, block_contents) in results.iter() {
+            for block_data in results {
                 let initial_highest_known_block_index = recovery_db
                     .get_highest_known_block_index()
                     .expect("Getting num blocks failed");
 
                 let start = Instant::now();
-                // FIXME: Add metadata, too.
                 ledger_db
-                    .append_block(block, block_contents, None, None)
+                    .append_block_data(&block_data)
                     .expect("Adding block failed");
 
+                let block = block_data.block();
                 // Add the timestamp information to watcher for this block index - note watcher
                 // does not allow signatures for block 0.
                 if block.index > 0 {
+                    let mut block_signature =
+                        BlockSignature::from_block_and_keypair(block, &signer)
+                            .expect("Could not create block signature from keypair");
+                    block_signature.set_signed_at(block.index);
                     for src_url in watcher.get_config_urls().unwrap().iter() {
-                        let mut block_signature =
-                            BlockSignature::from_block_and_keypair(block, &signer)
-                                .expect("Could not create block signature from keypair");
-                        block_signature.set_signed_at(block.index);
                         watcher
                             .add_block_signature(
                                 src_url,
                                 block.index,
-                                block_signature,
+                                block_signature.clone(),
                                 format!("00/{}", block.index),
                             )
                             .expect("Could not add block signature");
@@ -373,7 +371,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                     {
                         break;
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    sleep(Duration::from_millis(10));
                     if start.elapsed() >= std::time::Duration::from_secs(60) {
                         panic!("Time exceeded 30 seconds");
                     }
@@ -401,7 +399,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
     // in the meantime we can just sleep after grpcio env and all related
     // objects have been destroyed, and hope that those 6 threads see the
     // shutdown requests within 1 second.
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
 
     test_results
 }

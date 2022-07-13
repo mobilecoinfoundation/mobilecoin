@@ -27,26 +27,20 @@
 
 use clap::Parser;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
-use mc_blockchain_test_utils::make_block_metadata;
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
+use mc_blockchain_types::BlockVersion;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
-use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_ledger_db::{test_utils::add_txos_and_key_images_to_ledger, Ledger, LedgerDB};
 use mc_transaction_core::{
-    fog_hint::FogHint,
-    membership_proofs::Range,
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
-    tokens::Mob,
-    tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Token,
+    fog_hint::FogHint, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
+    tokens::Mob, tx::TxOut, Amount, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, str::FromStr, time::SystemTime};
+use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
 /// The command-line arguments
@@ -188,55 +182,33 @@ fn main() {
         new_key_images.push(new_key_image);
     }
 
+    // Use the same block version as the previous block
+    let last_block = ledger.get_latest_block().unwrap();
+    let block_version = BlockVersion::try_from(last_block.version).unwrap();
+
     // Make the new block and append to database
-    {
-        let last_block = ledger
-            .get_block(num_blocks - 1)
-            .expect("Could not get last block");
+    let block_data = add_txos_and_key_images_to_ledger(
+        &mut ledger,
+        block_version,
+        tx_outs,
+        key_images_to_burn,
+        &mut rng,
+    )
+    .unwrap();
 
-        let block_contents = BlockContents {
-            key_images: key_images_to_burn,
-            outputs: tx_outs,
-            ..Default::default()
-        };
+    // Add to WatcherDB, too
+    watcher
+        .add_block_data(&tx_source_url, &block_data)
+        .expect("Could not add block data to watcher");
 
-        // Fake proofs
-        let root_element = TxOutMembershipElement {
-            range: Range::new(0, num_blocks as u64).unwrap(),
-            hash: TxOutMembershipHash::from([0u8; 32]),
-        };
-
-        // Use the same block version as the previous block
-        let block_version = BlockVersion::try_from(last_block.version).unwrap();
-
-        let block =
-            Block::new_with_parent(block_version, &last_block, &root_element, &block_contents);
-
-        let signer = Ed25519Pair::from_random(&mut rng);
-
-        let mut block_sig = BlockSignature::from_block_and_keypair(&block, &signer).unwrap();
-        block_sig.set_signed_at(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
-
-        let metadata = make_block_metadata(block.id.clone(), &mut rng);
-        let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
-
-        ledger
-            .append_block_data(&block_data)
-            .expect("Could not append block");
-
-        watcher
-            .add_block_data(&tx_source_url, &block_data)
-            .expect("Could not add block data to watcher");
-
-        watcher
-            .add_block_signature(&tx_source_url, num_blocks, block_sig, "archive".to_string())
-            .expect("Could not add block signature to watcher");
-    }
+    watcher
+        .add_block_signature(
+            &tx_source_url,
+            num_blocks,
+            block_data.signature().cloned().unwrap(),
+            "archive".to_string(),
+        )
+        .expect("Could not add block signature to watcher");
 
     // Print hex-encoded key images of new tx outs, in correct order, on stdout.
     let output = JsonOutput {

@@ -11,10 +11,9 @@ use crate::{
     },
 };
 use mc_account_keys::burn_address;
-use mc_blockchain_test_utils::make_block_metadata;
-use mc_blockchain_types::{Block, BlockContents, BlockIndex, BlockVersion};
+use mc_blockchain_types::{BlockContents, BlockIndex, BlockVersion};
 use mc_common::logger::Logger;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::add_block_contents_to_ledger,  LedgerDB};
 use mc_transaction_core::{Amount, TokenId};
 use mc_transaction_core_test_utils::{
     create_mint_config_tx_and_signers, create_mint_tx, MockFogResolver,
@@ -77,24 +76,17 @@ impl TestDbContext {
 }
 
 pub fn append_and_sync(
-    block_contents: &BlockContents,
+    block_contents: BlockContents,
     ledger_db: &mut LedgerDB,
     mint_auditor_db: &MintAuditorDb,
     rng: &mut (impl RngCore + CryptoRng),
 ) -> Result<(SyncBlockData, BlockIndex), Error> {
-    let parent_block = ledger_db.get_latest_block()?;
-    let block = Block::new_with_parent(
-        BlockVersion::MAX,
-        &parent_block,
-        &Default::default(),
-        block_contents,
-    );
+    let block_data =
+        add_block_contents_to_ledger(ledger_db, BlockVersion::MAX, block_contents, rng)?;
 
-    let metadata = make_block_metadata(block.id.clone(), rng);
-    ledger_db.append_block(&block, block_contents, None, Some(&metadata))?;
-
+    let block = block_data.block();
     mint_auditor_db
-        .sync_block(&block, block_contents)
+        .sync_block(block, block_data.contents())
         .map(|sync_block_data| (sync_block_data, block.index))
 }
 
