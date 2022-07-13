@@ -135,6 +135,7 @@ members = [
     "util/build/script",
     "util/build/sgx",
     "util/cli",
+    "util/dump-ledger",
     "util/encodings",
     "util/ffi",
     "util/from-random",
