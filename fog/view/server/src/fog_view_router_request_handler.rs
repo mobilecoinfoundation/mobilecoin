@@ -63,7 +63,7 @@ where
     E: ViewEnclaveProxy,
 {
     if request.has_auth() {
-        return handle_auth_request(enclave, request.take_auth(), logger).await;
+        return handle_auth_request(enclave, request.take_auth(), logger);
     } else if request.has_query() {
         return handle_query_request(request.take_query(), enclave, shard_clients, logger).await;
     } else {
@@ -77,7 +77,7 @@ where
 }
 
 /// Handles a client's authentication request.
-async fn handle_auth_request<E>(
+fn handle_auth_request<E>(
     enclave: E,
     auth_message: attest::AuthMessage,
     logger: Logger,

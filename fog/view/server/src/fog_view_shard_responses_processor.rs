@@ -15,7 +15,7 @@ pub struct ProcessedShardResponseData {
     pub shard_clients_for_retry: Vec<Arc<FogViewApiClient>>,
 
     /// Uris for *individual* Fog View Stores that need to be authenticated with
-    /// by the Fog Router.
+    /// by the Fog Router. It should only have entries if `shard_clients_for_retry` has entries.
     pub view_store_uris_for_authentication: Vec<FogViewUri>,
 
     /// New, successfully processed query responses.
@@ -74,7 +74,7 @@ mod tests {
 
     fn create_successful_mvq_response() -> MultiViewStoreQueryResponse {
         let mut successful_response = MultiViewStoreQueryResponse::new();
-        let client_auth_request = vec![].into();
+        let client_auth_request = Vec::new();
         successful_response
             .mut_query_response()
             .set_data(client_auth_request);
@@ -153,7 +153,7 @@ mod tests {
 
     #[test_with_logger]
     fn one_failed_response_one_pending_shard_client(logger: Logger) {
-        let client_index: usize = 0;
+        let client_index = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
         let failed_mvq_response = create_failed_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];

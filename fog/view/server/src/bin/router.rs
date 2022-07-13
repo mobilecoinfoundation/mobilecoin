@@ -37,7 +37,7 @@ fn main() {
     );
 
     // TODO: Remove and get from a config.
-    let mut fog_view_grpc_clients: Vec<FogViewApiClient> = Vec::new();
+    let mut fog_view_grpc_clients= Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())

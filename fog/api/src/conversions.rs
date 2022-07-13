@@ -13,14 +13,10 @@ impl From<Vec<mc_attest_enclave_api::EnclaveMessage<mc_attest_enclave_api::Clien
     for MultiViewStoreQueryRequest
 {
     fn from(enclave_messages: Vec<EnclaveMessage<ClientSession>>) -> MultiViewStoreQueryRequest {
-        let attested_query_messages: Vec<attest::Message> = enclave_messages
+        enclave_messages
             .into_iter()
             .map(|enclave_message| enclave_message.into())
-            .collect();
-        let mut multi_view_store_query_request = MultiViewStoreQueryRequest::new();
-        multi_view_store_query_request.set_queries(attested_query_messages.into());
-
-        multi_view_store_query_request
+            .collect::<Vec<attest::Message>>().into()
     }
 }
 
