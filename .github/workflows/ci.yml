@@ -188,7 +188,7 @@ jobs:
         uses: ./.github/actions/setup-rust
       - name: List packages to test
         run: |
-          cargo metadata --no-deps | jq -r '.packages[].name' | \
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
             grep -v -e mc-fog -e mc-consensus | \
             awk "{ print \"-p \" \$1 }" | \
             sort > /tmp/test-packages
@@ -227,7 +227,7 @@ jobs:
         uses: ./.github/actions/setup-rust
       - name: List packages to test
         run: |
-          cargo metadata --no-deps | jq -r '.packages[].name' | \
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
             awk "/mc-consensus/ { print \"-p \" \$1 }" | \
             sort > /tmp/test-packages
           split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
@@ -260,7 +260,7 @@ jobs:
         uses: ./.github/actions/setup-rust
       - name: List packages to test
         run: |
-          cargo metadata --no-deps | jq -r '.packages[].name' | \
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
             awk "/mc-fog/ { print \"-p \" \$1 }" | \
             grep -v mc-fog-ingest | \
             sort > /tmp/test-packages
