@@ -6,10 +6,12 @@
 //! peers.
 
 mod ledger_sync_state;
+mod metadata_provider;
 mod pending_values;
 mod task_message;
 mod worker;
 
+use self::metadata_provider::ConsensusMetadataProvider;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
@@ -111,7 +113,7 @@ impl ByzantineLedger {
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
         MTXM: MintTxManager + Send + Sync + 'static,
-        E: ConsensusEnclave + Send + Sync + 'static,
+        E: ConsensusEnclave + Clone + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
@@ -135,7 +137,7 @@ impl ByzantineLedger {
             let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
-                quorum_set,
+                quorum_set.clone(),
                 // Validation callback
                 Arc::new(move |scp_value| match scp_value {
                     ConsensusValue::TxHash(tx_hash) => tx_manager_validate
@@ -211,10 +213,17 @@ impl ByzantineLedger {
 
         // Start worker thread
         let worker_handle = {
-            let ledger_sync_service = LedgerSyncService::new(
+            let ledger_sync_service = LedgerSyncService::with_metadata_provider(
+                // Always generate metadata with this node's quorum set and AVR.
+                ConsensusMetadataProvider::new(
+                    node_id.responder_id.clone(),
+                    quorum_set,
+                    enclave.clone(),
+                    msg_signer_key.clone(),
+                ),
                 ledger.clone(),
                 peer_manager.clone(),
-                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(), /* Unwrap? */
+                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(),
                 logger.clone(),
             );
 
@@ -492,6 +501,7 @@ mod tests {
 
         // Local node.
         let (local_node_id, _, local_signer_key) = get_local_node_config(11);
+        let responder_id = local_node_id.responder_id.clone();
 
         // Local node's quorum set.
         let local_quorum_set =
@@ -534,8 +544,8 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
-        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
+        let enclave = ConsensusServiceMockEnclave::new(BLOCK_VERSION, &mut rng);
+        let verification_report = enclave.verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -805,7 +815,7 @@ mod tests {
                 &ledger,
                 Msg::new(
                     local_node_id,
-                    local_quorum_set,
+                    local_quorum_set.clone(),
                     slot_index,
                     Topic::Externalize(ExternalizePayload {
                         C: Ballot::new(55, &[hash_tx_zero, hash_tx_one, hash_tx_two,]),
@@ -822,11 +832,21 @@ mod tests {
         assert_eq!(num_blocks + 1, num_blocks_after);
 
         // The block should have a valid signature.
-        let block = ledger.get_block(num_blocks).unwrap();
-        let signature = ledger.get_block_signature(num_blocks).unwrap();
+        let block_data = ledger.get_block_data(num_blocks).unwrap();
+        let signature = block_data.signature().unwrap();
+        signature.verify(block_data.block()).unwrap();
 
-        let signature_verification_result = signature.verify(&block);
-        assert!(signature_verification_result.is_ok());
+        // The block should have valid metadata with this node's quorum set and AVR.
+        let metadata = block_data.metadata().unwrap();
+        metadata.verify().unwrap();
+        assert_eq!(metadata.node_key(), &local_signer_key.public_key());
+        assert_eq!(metadata.contents().responder_id(), &responder_id);
+        assert_eq!(metadata.contents().block_id(), &block_data.block().id);
+        assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
+        assert_eq!(
+            metadata.contents().verification_report(),
+            &verification_report
+        );
     }
 
     #[test]
@@ -852,6 +872,7 @@ mod tests {
 
         // Local node.
         let (local_node_id, _, local_signer_key) = get_local_node_config(11);
+        let responder_id = local_node_id.responder_id.clone();
 
         // Local node's quorum set.
         let local_quorum_set =
@@ -905,8 +926,8 @@ mod tests {
             logger.clone(),
         )));
 
-        let enclave = ConsensusServiceMockEnclave::default();
-        enclave.blockchain_config.lock().unwrap().block_version = BlockVersion::MAX;
+        let enclave = ConsensusServiceMockEnclave::new(BlockVersion::MAX, &mut rng);
+        let verification_report = enclave.verification_report.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -1111,7 +1132,7 @@ mod tests {
                 &ledger,
                 Msg::new(
                     local_node_id,
-                    local_quorum_set,
+                    local_quorum_set.clone(),
                     slot_index,
                     Topic::Externalize(ExternalizePayload {
                         C: Ballot::new(
@@ -1135,10 +1156,20 @@ mod tests {
         assert_eq!(num_blocks + 1, num_blocks_after);
 
         // The block should have a valid signature.
-        let block = ledger.get_block(num_blocks).unwrap();
-        let signature = ledger.get_block_signature(num_blocks).unwrap();
+        let block_data = ledger.get_block_data(num_blocks).unwrap();
+        let signature = block_data.signature().unwrap();
+        signature.verify(block_data.block()).unwrap();
 
-        let signature_verification_result = signature.verify(&block);
-        assert!(signature_verification_result.is_ok());
+        // The block should have valid metadata with this node's quorum set and AVR.
+        let metadata = block_data.metadata().unwrap();
+        metadata.verify().unwrap();
+        assert_eq!(metadata.node_key(), &local_signer_key.public_key());
+        assert_eq!(metadata.contents().responder_id(), &responder_id);
+        assert_eq!(metadata.contents().block_id(), &block_data.block().id);
+        assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
+        assert_eq!(
+            metadata.contents().verification_report(),
+            &verification_report
+        );
     }
 }

@@ -4,13 +4,12 @@
 
 mod mock_consensus_enclave;
 
-pub use mock_consensus_enclave::MockConsensusEnclave;
-
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey,
     FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
 };
+pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -18,13 +17,11 @@ use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
-use mc_blockchain_types::{Block, BlockContents, BlockSignature};
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
-use mc_crypto_keys::{
-    Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
-};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
 use mc_crypto_multisig::SignerSet;
-use mc_crypto_rand::McRng;
+use mc_crypto_rand::{McRng, RngCore};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
@@ -37,8 +34,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
-use rand_core::SeedableRng;
-use rand_hc::Hc128Rng;
+use mc_util_test_helper::{CryptoRng, RngType as FixedRng, SeedableRng};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -46,24 +42,36 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
+    pub verification_report: VerificationReport,
+    pub identity: X25519Private,
 }
 
 impl Default for ConsensusServiceMockEnclave {
     fn default() -> Self {
-        let mut csprng = Hc128Rng::seed_from_u64(0);
-        let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
-        let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
-        let blockchain_config = Arc::new(Mutex::new(BlockchainConfig::default()));
+        Self::new(BlockVersion::MAX, &mut FixedRng::seed_from_u64(0))
+    }
+}
+
+impl ConsensusServiceMockEnclave {
+    pub fn new(block_version: BlockVersion, csprng: &mut (impl RngCore + CryptoRng)) -> Self {
+        let signing_keypair = Arc::new(Ed25519Pair::from_random(csprng));
+        let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(csprng));
+        let blockchain_config = Arc::new(Mutex::new(BlockchainConfig {
+            block_version,
+            ..Default::default()
+        }));
+        let verification_report = mc_blockchain_test_utils::make_verification_report(csprng);
+        let identity = X25519Private::from_random(csprng);
 
         Self {
             signing_keypair,
             minting_trust_root_keypair,
             blockchain_config,
+            verification_report,
+            identity,
         }
     }
-}
 
-impl ConsensusServiceMockEnclave {
     pub fn tx_to_tx_context(tx: &Tx) -> TxContext {
         let locally_encrypted_tx = LocallyEncryptedTx(mc_util_serial::encode(tx));
         let tx_hash = tx.tx_hash();
@@ -95,7 +103,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
     }
 
     fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+        Ok(self.verification_report.clone())
     }
 }
 
@@ -122,9 +130,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
-        let mut csprng = Hc128Rng::seed_from_u64(0);
-        let privkey = X25519EphemeralPrivate::from_random(&mut csprng);
-        Ok((&privkey).into())
+        Ok((&self.identity).into())
     }
 
     fn get_signer(&self) -> Result<Ed25519Public> {

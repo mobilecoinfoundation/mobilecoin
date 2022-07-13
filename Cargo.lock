@@ -2809,6 +2809,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
@@ -2820,9 +2821,8 @@ dependencies = [
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-serial",
+ "mc-util-test-helper",
  "mockall",
- "rand_core 0.6.3",
- "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -3552,7 +3552,6 @@ dependencies = [
  "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
- "mc-transaction-core-test-utils",
  "mc-util-build-info",
  "mc-util-cli",
  "mc-util-from-random",
@@ -4598,6 +4597,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-telemetry",
+ "mc-util-test-helper",
  "mc-util-uri",
  "mockall",
  "protobuf",
