@@ -10,6 +10,7 @@ use mc_common::{
     NodeID,
 };
 use mc_ledger_streaming_api::{test_utils::MockStream, BlockData, Error, Result};
+use mc_ledger_streaming_client::GrpcBlockSource;
 use mc_ledger_streaming_pipeline::LedgerToArchiveBlocksAndGrpc;
 #[cfg(feature = "publisher_local")]
 use mc_ledger_streaming_publisher::LocalFileProtoWriter;
@@ -19,7 +20,6 @@ use mc_ledger_streaming_publisher::{S3ClientProtoWriter, S3Region};
 use mc_util_uri::ConsensusPeerUri;
 use std::{path::PathBuf, sync::Arc};
 use tempdir::TempDir;
-use tokio::runtime::Handle;
 
 pub struct ConsensusNode<W: ProtoWriter + 'static> {
     pub id: NodeID,
@@ -65,34 +65,14 @@ impl<W: ProtoWriter + 'static> ConsensusNode<W> {
         .into()
     }
 
-    pub fn make_nodes(
-        ids: impl IntoIterator<Item = NodeID>,
-        archive_proto_writer: W,
-        logger: Logger,
-    ) -> Vec<Arc<Self>> {
-        ids.into_iter()
-            .map(|id| Self::make_node(id, archive_proto_writer.clone(), logger.clone()))
-            .collect()
-    }
-
-    pub fn add_many(
-        self: &Arc<Self>,
-        runtime: &Handle,
-        starting_height: u64,
-        blocks: impl IntoIterator<Item = Result<BlockData>>,
-    ) {
-        let this = Arc::clone(self);
-        runtime.spawn(async move {
-            let mut stream = this
-                .pipeline
+    pub async fn connect(self: Arc<Self>, starting_height: u64) {
+        let mut stream = Box::pin(
+            self.pipeline
                 .run(starting_height)
-                .expect("failed to start consensus node pipeline");
-            while let Some(result) = stream.next().await {
-                result.expect("unexpected error in server pipeline")
-            }
-        });
-        for result in blocks {
-            self.sender.try_send(result).expect("failed to send block")
+                .expect("failed to start consensus node pipeline"),
+        );
+        while let Some(result) = stream.next().await {
+            result.expect("unexpected error in server pipeline")
         }
     }
 
@@ -106,6 +86,16 @@ impl<W: ProtoWriter + 'static> ConsensusNode<W> {
         self.sender
             .try_send(Err(err))
             .expect("failed to send error")
+    }
+
+    pub async fn externalize_many(&self, blocks: impl IntoIterator<Item = Result<BlockData>>) {
+        for result in blocks {
+            self.sender.try_send(result).expect("failed to send block")
+        }
+    }
+
+    pub fn grpc_client(&self, env: Arc<grpcio::Environment>) -> GrpcBlockSource {
+        GrpcBlockSource::new(&self.uri, env, self.logger.clone())
     }
 }
 
@@ -124,7 +114,13 @@ impl ConsensusNode<LocalFileProtoWriter> {
         local_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Vec<Arc<Self>> {
-        Self::make_nodes(ids, LocalFileProtoWriter::new(local_path.into()), logger)
+        let local_path = local_path.into();
+        ids.into_iter()
+            .map(|id| {
+                let node_dir = local_path.join(id.responder_id.to_string());
+                Self::make_local_node(id, node_dir, logger.clone())
+            })
+            .collect()
     }
 }
 
@@ -145,14 +141,15 @@ impl ConsensusNode<S3ClientProtoWriter> {
         s3_path: impl Into<PathBuf>,
         logger: Logger,
     ) -> Vec<Arc<Self>> {
-        Self::make_nodes(
-            ids,
-            S3ClientProtoWriter::new(region, s3_path.into()),
-            logger,
-        )
+        let s3_path = s3_path.into();
+        ids.into_iter()
+            .map(|id| {
+                let node_dir = s3_path.join(id.responder_id.to_string());
+                Self::make_s3_node(id, region.clone(), node_dir, logger.clone())
+            })
+            .collect()
     }
 }
 
-// TODO: Is this accurate?
 unsafe impl<W: ProtoWriter + 'static> Send for ConsensusNode<W> {}
 unsafe impl<W: ProtoWriter + 'static> Sync for ConsensusNode<W> {}

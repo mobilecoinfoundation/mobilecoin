@@ -21,7 +21,10 @@ use std::{
     sync::Arc,
 };
 
-pub struct LedgerToArchiveBlocksAndGrpc<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
+pub struct LedgerToArchiveBlocksAndGrpc<US, W>
+where
+    US: Streamer<Result<BlockData>, BlockIndex> + Sync + 'static,
+    W: ProtoWriter + 'static,
 {
     pub source: DbStream<US, LedgerDB>,
     pub archive_block_sink: ArchiveBlockSink<W, LedgerDB>,
@@ -29,8 +32,10 @@ pub struct LedgerToArchiveBlocksAndGrpc<US: Streamer<Result<BlockData>, BlockInd
     pub grpc_sink: GrpcServerSink,
 }
 
-impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
-    LedgerToArchiveBlocksAndGrpc<US, W>
+impl<US, W> LedgerToArchiveBlocksAndGrpc<US, W>
+where
+    US: Streamer<Result<BlockData>, BlockIndex> + Sync + 'static,
+    W: ProtoWriter + 'static,
 {
     pub fn new(
         upstream: US,
@@ -56,20 +61,22 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter>
         })
     }
 
-    pub fn run(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + '_> {
+    pub fn run(&self, starting_height: u64) -> Result<impl Stream<Item = Result<()>> + Send + '_> {
         let stream = self.source.get_stream(starting_height)?;
         // Write ArchiveBlock(s), and if that succeeds, publish them to gRPC.
-        Ok(Box::pin(stream.then(move |result| async move {
+        Ok(stream.then(move |result| async move {
             let block_data = result?;
-            self.archive_block_sink.write(&block_data).await?;
-            self.grpc_sink.write(&block_data).await
-        })))
+            let archive_block = self.archive_block_sink.write(&block_data).await?;
+            self.grpc_sink.publish(archive_block).await;
+            Ok(())
+        }))
     }
 }
 
 #[cfg(feature = "publisher_local")]
-impl<US: Streamer<Result<BlockData>, BlockIndex>>
-    LedgerToArchiveBlocksAndGrpc<US, LocalFileProtoWriter>
+impl<US> LedgerToArchiveBlocksAndGrpc<US, LocalFileProtoWriter>
+where
+    US: Streamer<Result<BlockData>, BlockIndex> + Sync + 'static,
 {
     pub fn new_local(
         upstream: US,
@@ -87,8 +94,9 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>>
 }
 
 #[cfg(feature = "publisher_s3")]
-impl<US: Streamer<Result<BlockData>, BlockIndex>>
-    LedgerToArchiveBlocksAndGrpc<US, S3ClientProtoWriter>
+impl<US> LedgerToArchiveBlocksAndGrpc<US, S3ClientProtoWriter>
+where
+    US: Streamer<Result<BlockData>, BlockIndex> + Sync + 'static,
 {
     pub fn new_s3(
         upstream: US,
@@ -104,11 +112,6 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>>
             logger,
         )
     }
-}
-
-unsafe impl<US: Streamer<Result<BlockData>, BlockIndex>, W: ProtoWriter> Send
-    for LedgerToArchiveBlocksAndGrpc<US, W>
-{
 }
 
 /// A pipeline that subscribes to the given URI, and repeats any

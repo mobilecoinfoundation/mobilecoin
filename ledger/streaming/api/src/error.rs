@@ -4,7 +4,6 @@ use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
 use mc_consensus_scp_types::SlotIndex;
-use mc_crypto_keys::SignatureError;
 use mc_ledger_db::Error as LedgerDBError;
 use protobuf::ProtobufError;
 
@@ -19,9 +18,6 @@ pub enum Error {
 
     /// Protobuf de/serialization: {0}
     Protobuf(String),
-
-    /// Invalid signature: {0}
-    Signature(String),
 
     /// IO Error: {0}
     IO(String, std::io::ErrorKind),
@@ -51,12 +47,6 @@ impl From<GrpcError> for Error {
 impl From<ConversionError> for Error {
     fn from(src: ConversionError) -> Self {
         Self::Conversion(src)
-    }
-}
-
-impl From<SignatureError> for Error {
-    fn from(src: SignatureError) -> Self {
-        Self::Signature(src.to_string())
     }
 }
 

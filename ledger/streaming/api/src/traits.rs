@@ -4,9 +4,9 @@ use crate::Result;
 use futures::{Future, Stream};
 
 /// A source for streams of elements of the given type.
-pub trait Streamer<Element, Request> {
+pub trait Streamer<Element, Request>: Send {
     /// The specific type of stream.
-    type Stream<'s>: Stream<Item = Element> + 's
+    type Stream<'s>: Stream<Item = Element> + Send + 's
     where
         Self: 's,
         Request: 's;
@@ -18,14 +18,14 @@ pub trait Streamer<Element, Request> {
 }
 
 /// A helper that can fetch elements on demand.
-pub trait Fetcher<Element, SingleRequest, MultipleRequest> {
+pub trait Fetcher<Element, SingleRequest, MultipleRequest>: Send + Sync {
     /// Future for fetching single elements.
-    type Single<'s>: Future<Output = Element> + 's
+    type Single<'s>: Future<Output = Element> + Send + 's
     where
         Self: 's,
         SingleRequest: 's;
     /// Stream for fetching multiple elements.
-    type Multiple<'s>: Stream<Item = Element> + 's
+    type Multiple<'s>: Stream<Item = Element> + Send + 's
     where
         Self: 's,
         MultipleRequest: 's;

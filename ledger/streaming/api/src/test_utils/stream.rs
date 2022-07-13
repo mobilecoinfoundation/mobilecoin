@@ -11,11 +11,11 @@ use futures::{
 
 /// Mock [Streamer<Result<BlockData>>], backed by pre-defined data.
 #[derive(Clone, Debug)]
-pub struct MockStream<S: Stream + Clone> {
+pub struct MockStream<S: Stream + Clone + Send> {
     stream: S,
 }
 
-impl<S: Stream + Clone> MockStream<S> {
+impl<S: Stream + Clone + Send> MockStream<S> {
     /// Instantiate a MockStream with the given stream.
     pub fn new(stream: S) -> Self {
         Self { stream }
@@ -35,8 +35,8 @@ impl MockStream<Iter<BlockVecIntoIter>> {
     }
 }
 
-impl<S: Stream + Clone> Streamer<S::Item, BlockIndex> for MockStream<S> {
-    type Stream<'s> = impl Stream<Item = S::Item> + 's where Self: 's;
+impl<S: Stream + Clone + Send> Streamer<S::Item, BlockIndex> for MockStream<S> {
+    type Stream<'s> = impl Stream<Item = S::Item> + Send + 's where Self: 's;
 
     fn get_stream(&self, index: BlockIndex) -> Result<Self::Stream<'_>> {
         Ok(self.stream.clone().skip(index as usize))

@@ -12,7 +12,7 @@ use std::{ops::Range, pin::Pin};
 #[derive(Debug, Display)]
 pub struct BackfillingStream<
     S: Streamer<Result<BlockData>, BlockIndex>,
-    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> + Sync,
 > {
     upstream: S,
     fetcher: F,
@@ -21,7 +21,7 @@ pub struct BackfillingStream<
 
 impl<
         S: Streamer<Result<BlockData>, BlockIndex>,
-        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> + Sync,
     > BackfillingStream<S, F>
 {
     /// Instantiate a [BackfillingStream].
@@ -36,10 +36,10 @@ impl<
 
 impl<
         S: Streamer<Result<BlockData>, BlockIndex>,
-        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> + Sync,
     > Streamer<Result<BlockData>, BlockIndex> for BackfillingStream<S, F>
 {
-    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where Self: 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + Send + 's where Self: 's;
 
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         self.upstream.get_stream(starting_height).map(|upstream| {
@@ -55,14 +55,14 @@ impl<
 
 fn backfill_stream<
     's,
-    S: Stream<Item = Result<BlockData>> + 's,
-    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+    S: Stream<Item = Result<BlockData>> + Send + 's,
+    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> + Sync + 's,
 >(
     upstream: S,
     starting_height: u64,
     fetcher: &'s F,
     logger: Logger,
-) -> impl Stream<Item = Result<BlockData>> + 's {
+) -> impl Stream<Item = Result<BlockData>> + Send + 's {
     use futures::stream::{empty, once};
 
     // Track the index of the last received block, so we know whether to filter,
@@ -72,7 +72,7 @@ fn backfill_stream<
     upstream.flat_map(
         // The stream types are quite different across the different cases, so Box the
         // intermediate stream.
-        move |result| -> Pin<Box<dyn Stream<Item = Result<BlockData>>>> {
+        move |result| -> Pin<Box<dyn Stream<Item = Result<BlockData>> + Send>> {
             let next_index = prev_index.map_or_else(|| starting_height, |prev| prev + 1);
             log::info!(
                 &logger,

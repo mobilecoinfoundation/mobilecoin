@@ -10,7 +10,7 @@ use mc_common::logger::Logger;
 use mc_ledger_streaming_api::{
     streaming_blocks::SubscribeRequest,
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
-    ArchiveBlock, Result, BlockData,
+    ArchiveBlock, BlockData, Result,
 };
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;
@@ -37,21 +37,20 @@ impl GrpcServerSink {
 
     /// Publish an [ArchiveBlock] to all current subscribers.
     ///
-    /// The returned value is a [Future] where the `Output` type is
-    /// `Result<()>`; it is executed entirely for its side effects, while
-    /// propagating errors back to the caller.
-    pub async fn publish(&self, archive_block: ArchiveBlock) -> Result<()> {
+    /// The returned value is a [Future] with `Output = ()`; it is executed
+    /// entirely for its side effects, while propagating errors back to the
+    /// caller.
+    pub async fn publish(&self, archive_block: ArchiveBlock) {
         let mut publisher = self.publisher.lock().await;
         publisher.publish(archive_block).await;
-        Ok(())
     }
 
     /// Convert the given [BlockData] into an [ArchiveBlock] and publish it.
     ///
-    /// The returned value is a [Future] where the `Output` type is
-    /// `Result<()>`; it is executed entirely for its side effects, while
-    /// propagating errors back to the caller.
-    pub async fn write(&self, block_data: &BlockData) -> Result<()> {
+    /// The returned value is a [Future] with `Output = ()`; it is executed
+    /// entirely for its side effects, while propagating errors back to the
+    /// caller.
+    pub async fn write(&self, block_data: &BlockData) {
         self.publish(ArchiveBlock::from(block_data)).await
     }
 
@@ -120,6 +119,9 @@ impl GrpcServerSink {
         (server, uri)
     }
 }
+
+unsafe impl Send for GrpcServerSink {}
+unsafe impl Sync for GrpcServerSink {}
 
 #[derive(Clone)]
 struct PublishHelper {

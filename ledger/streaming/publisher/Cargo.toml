@@ -15,7 +15,6 @@ test_utils = []
 [dependencies]
 mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
-mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../db" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-util-grpc = { path = "../../../util/grpc" }

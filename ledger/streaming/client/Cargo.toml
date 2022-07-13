@@ -13,7 +13,6 @@ mc-api = { path = "../../../api" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp-types = { path = "../../../consensus/scp/types" }
-mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-util-grpc = { path = "../../../util/grpc" }
@@ -32,9 +31,6 @@ url = "2.2"
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../../ledger/db", features = ["test_utils"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
-mc-util-from-random = { path = "../../../util/from-random" }
 
 mockito = "0.31"
-rand_core = "0.6"
-rand_hc = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

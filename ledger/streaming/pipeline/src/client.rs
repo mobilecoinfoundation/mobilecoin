@@ -11,7 +11,7 @@ use mc_ledger_streaming_client::{
 use std::ops::Range;
 
 /// Construct a consensus client pipeline, collecting from multiple gRPC
-/// servers, running validation and SCP on those gRPC streams, and writing to
+/// sources, running validation and SCP on those gRPC streams, and writing to
 /// the Ledger.
 pub fn consensus_client<F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>>(
     upstreams: impl IntoIterator<Item = (NodeID, BackfillingStream<GrpcBlockSource, F>)>,

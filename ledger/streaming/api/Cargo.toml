@@ -16,8 +16,6 @@ mc-blockchain-test-utils = { path = "../../../blockchain/test-utils", optional =
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp-types = { path = "../../../consensus/scp/types" }
-mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["dalek", "derive"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 
 displaydoc = "0.2"

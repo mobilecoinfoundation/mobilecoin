@@ -82,6 +82,12 @@ impl<ID: GenericNodeId + Send> SCPValidationState<ID> {
 
         // If we've already externalized a block at this index, ignore it
         if index < self.highest_slot_index && self.highest_slot_index > 0 {
+            log::debug!(
+                &self.logger,
+                "ScpValidationState got duplicate index {}; state={:?}",
+                index,
+                self
+            );
             return;
         }
 
@@ -104,13 +110,7 @@ impl<ID: GenericNodeId + Send> SCPValidationState<ID> {
 
     /// Determine if we can externalize a block, if so return the block
     pub fn attempt_externalize_block(&mut self) -> Option<BlockData> {
-        // Set our target index one block above the highest block externalized
-        // unless we're recording the genesis block
-        let index = if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
-            0
-        } else {
-            self.highest_slot_index + 1
-        };
+        let index = self.highest_slot_index;
 
         // If blocks received so far are less than a possible quorum, don't proceed
         if let Some(ballots) = self.slots_to_externalized_blocks.get(&index) {
@@ -369,12 +369,10 @@ mod tests {
         );
         assert!(quorum_set.is_valid());
 
-        let blocks = make_blocks(100);
-        let s = MockStream::from_blocks(blocks);
-        let mut upstreams = HashMap::new();
-        for i in 0..9 {
-            upstreams.insert(nodes[i].clone(), s.clone());
-        }
+        let upstreams = nodes
+            .into_iter()
+            .map(|node| (node, MockStream::from_blocks(make_blocks(20))))
+            .collect();
         let validator = SCPValidator::new(upstreams, quorum_set, logger);
 
         futures::executor::block_on(async move {

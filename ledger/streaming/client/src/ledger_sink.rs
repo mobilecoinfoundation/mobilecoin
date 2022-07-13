@@ -14,7 +14,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 /// has already done block content, scp, and avr validation and thus is
 /// considered a trusted stream
 #[derive(Debug)]
-pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static> {
+pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone> {
     /// Upstream block stream combinator
     upstream: US,
 
@@ -28,7 +28,7 @@ pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clo
     logger: Logger,
 }
 
-impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static> DbStream<US, L> {
+impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone> DbStream<US, L> {
     /// Initialize a stream factory from an upstream source
     pub fn new(upstream: US, ledger: L, pass_through_synced_blocks: bool, logger: Logger) -> Self {
         Self {
@@ -50,10 +50,10 @@ impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static> D
     }
 }
 
-impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
+impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 'static>
     Streamer<Result<BlockData>, BlockIndex> for DbStream<US, L>
 {
-    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where US: 's, L: 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + Send + 's;
 
     /// Get block stream that performs block sinking
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
