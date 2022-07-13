@@ -75,7 +75,7 @@ mc-util-from-random = { path = "../util/from-random" }
 
 hex = "0.4"
 more-asserts = "0.3"
-pem = "1.0"
+pem = "1.1"
 portpicker = "0.1.1"
 rand_chacha = "0.3"
 rand_core = "0.6"
