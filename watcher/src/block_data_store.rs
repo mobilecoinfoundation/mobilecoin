@@ -6,8 +6,7 @@
 use crate::error::WatcherDBError;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_blockchain_types::{
-    crypto::metadata::block_metadata_context, Block, BlockContents, BlockData, BlockIndex,
-    BlockMetadata, BlockSignature,
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -28,9 +27,6 @@ pub const BLOCKS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:blocks_by_hash";
 /// [BlockContents] by hash database name.
 pub const BLOCK_CONTENTS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_contents_by_hash";
 
-/// [BlockMetadata] by hash database name.
-pub const BLOCK_METADATA_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_metadata_by_hash";
-
 /// An internal object for representing BlockData that doesn't hold the actual
 /// Block and BlockContents since those might be shared with other blocks.
 #[derive(Clone, Message)]
@@ -49,9 +45,10 @@ pub struct StoredBlockData {
     #[prost(message, tag = 3)]
     pub signature: Option<BlockSignature>,
 
-    /// Hash of [BlockMetadata].
-    #[prost(bytes, optional, tag = 4)]
-    pub block_metadata_hash: Option<Vec<u8>>,
+    /// Block metadata (optional).
+    // The metadata is expected to be as unique as the signature, so we store it inline.
+    #[prost(message, optional, tag = 4)]
+    pub metadata: Option<BlockMetadata>,
 }
 
 /// Object for managing the storage of BlockDatas.
@@ -67,9 +64,6 @@ pub struct BlockDataStore {
     /// BlockContents hash -> [BlockContents].
     block_contents_by_hash: Database,
 
-    /// Metadata hash -> [BlockMetadata].
-    block_metadata_by_hash: Database,
-
     /// Logger.
     logger: Logger,
 }
@@ -81,16 +75,10 @@ impl BlockDataStore {
         let blocks_by_hash = env.open_db(Some(BLOCKS_BY_HASH_DB_NAME))?;
         let block_contents_by_hash = env.open_db(Some(BLOCK_CONTENTS_BY_HASH_DB_NAME))?;
 
-        // Block metadata was added later, so we call create_db instead of open_db.
-        // If the Database exists, create_db returns it.
-        let block_metadata_by_hash =
-            env.create_db(Some(BLOCK_METADATA_BY_HASH_DB_NAME), DatabaseFlags::empty())?;
-
         Ok(Self {
             block_datas_by_index,
             blocks_by_hash,
             block_contents_by_hash,
-            block_metadata_by_hash,
             logger,
         })
     }
@@ -100,7 +88,6 @@ impl BlockDataStore {
         env.create_db(Some(BLOCK_DATAS_BY_INDEX_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_BY_HASH_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_CONTENTS_BY_HASH_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(BLOCK_METADATA_BY_HASH_DB_NAME), DatabaseFlags::empty())?;
         Ok(())
     }
 
@@ -114,12 +101,11 @@ impl BlockDataStore {
     ) -> Result<(), WatcherDBError> {
         let block_hash = self.store_block(db_txn, block_data.block())?;
         let block_contents_hash = self.store_block_contents(db_txn, block_data.contents())?;
-        let block_metadata_hash = self.store_block_metadata(db_txn, block_data.metadata())?;
 
         let stored_block_data = StoredBlockData {
             block_hash,
             block_contents_hash,
-            block_metadata_hash,
+            metadata: block_data.metadata().cloned(),
             signature: block_data.signature().cloned(),
         };
 
@@ -163,16 +149,12 @@ impl BlockDataStore {
         let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
         let block_contents =
             self.get_block_contents_by_hash(db_txn, &stored_block_data.block_contents_hash)?;
-        let block_metadata = self.get_block_metadata_by_hash(
-            db_txn,
-            &stored_block_data.block_metadata_hash.unwrap_or_default(),
-        )?;
 
         Ok(BlockData::new(
             block,
             block_contents,
             stored_block_data.signature,
-            block_metadata,
+            stored_block_data.metadata,
         ))
     }
 
@@ -209,18 +191,13 @@ impl BlockDataStore {
             let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
             let block_contents =
                 self.get_block_contents_by_hash(db_txn, &stored_block_data.block_contents_hash)?;
-            let block_metadata = self.get_block_metadata_by_hash(
-                db_txn,
-                &stored_block_data.block_metadata_hash.unwrap_or_default(),
-            )?;
-
             results.insert(
                 tx_source_url,
                 BlockData::new(
                     block,
                     block_contents,
                     stored_block_data.signature,
-                    block_metadata,
+                    stored_block_data.metadata,
                 ),
             );
         }
@@ -296,31 +273,6 @@ impl BlockDataStore {
         }
     }
 
-    fn store_block_metadata<'env>(
-        &self,
-        db_txn: &mut RwTransaction<'env>,
-        block_metadata: Option<&BlockMetadata>,
-    ) -> Result<Option<Vec<u8>>, WatcherDBError> {
-        block_metadata.map_or_else(
-            || Ok(None),
-            |block_metadata| {
-                let hash = block_metadata
-                    .digest32::<MerlinTranscript>(block_metadata_context())
-                    .to_vec();
-
-                match db_txn.put(
-                    self.block_metadata_by_hash,
-                    &hash,
-                    &encode(block_metadata),
-                    WriteFlags::NO_OVERWRITE,
-                ) {
-                    Ok(()) | Err(lmdb::Error::KeyExist) => Ok(Some(hash)),
-                    Err(err) => Err(err)?,
-                }
-            },
-        )
-    }
-
     fn get_block_by_hash(
         &self,
         db_txn: &impl Transaction,
@@ -337,22 +289,6 @@ impl BlockDataStore {
     ) -> Result<BlockContents, WatcherDBError> {
         let bytes = db_txn.get(self.block_contents_by_hash, &hash)?;
         Ok(decode(bytes)?)
-    }
-
-    fn get_block_metadata_by_hash(
-        &self,
-        db_txn: &impl Transaction,
-        hash: &[u8],
-    ) -> Result<Option<BlockMetadata>, WatcherDBError> {
-        if hash.is_empty() {
-            Ok(None)
-        } else {
-            db_txn
-                .get(self.block_metadata_by_hash, &hash)
-                .map_err(WatcherDBError::from)
-                .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
-                .map(Some)
-        }
     }
 }
 

@@ -18,7 +18,7 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-uri = { path = "../../util/uri" }
 
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 rand = "0.8"
 rand_hc = "0.3"

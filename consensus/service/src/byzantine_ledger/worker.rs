@@ -890,6 +890,7 @@ impl<
             block_id.clone(),
             self.scp_node.quorum_set(),
             verification_report,
+            self.scp_node.node_id().responder_id,
         );
 
         BlockMetadata::from_contents_and_keypair(contents, &self.msg_signer_key).unwrap_or_else(
@@ -1739,6 +1740,7 @@ mod tests {
         assert_eq!(&block.id, contents.block_id());
         assert_eq!(&quorum_set, contents.quorum_set());
         assert_eq!(&report, contents.verification_report());
+        assert_eq!(&local_node_id.responder_id, contents.responder_id());
     }
 
     // TODO: test process_consensus_msgs

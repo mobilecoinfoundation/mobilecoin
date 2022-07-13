@@ -15,7 +15,7 @@ pub mod schema;
 pub use self::{
     conn::{Conn, ConnectionOptions},
     models::{
-        BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
+        AuditedMint, BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
         GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
     transaction::{transaction, TransactionRetriableError},
@@ -33,7 +33,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{tx::TxOut, TokenId};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 
@@ -44,6 +44,22 @@ no_arg_sql_function!(
     diesel::sql_types::Integer,
     "Represents the SQLite last_insert_rowid() function"
 );
+
+/// Data returned from a sync_block call.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SyncBlockData {
+    /// Audit data for the block
+    pub block_audit: BlockAuditData,
+
+    /// Balance map after the block has been processed.
+    pub balance_map: HashMap<TokenId, u64>,
+
+    /// Mint transactions in the block.
+    pub mint_txs: Vec<MintTx>,
+
+    /// Burn TxOuts in the block.
+    pub burn_tx_outs: Vec<TxOut>,
+}
 
 /// Mint Auditor Database.
 #[derive(Clone)]
@@ -77,6 +93,10 @@ impl MintAuditorDb {
         let conn = pool.get()?;
         embedded_migrations::run_with_output(&conn, &mut std::io::stdout())?;
 
+        // Ensure we have a row in the counters table (this makes all the atomic updates
+        // in [Counters] work as expected).
+        Counters::ensure_exists(&conn)?;
+
         Ok(Self::new(pool, logger))
     }
 
@@ -90,7 +110,7 @@ impl MintAuditorDb {
         &self,
         block: &Block,
         block_contents: &BlockContents,
-    ) -> Result<(BlockAuditData, HashMap<TokenId, u64>), Error> {
+    ) -> Result<SyncBlockData, Error> {
         let conn = self.get_conn()?;
         self.sync_block_with_conn(&conn, block, block_contents)
     }
@@ -101,16 +121,14 @@ impl MintAuditorDb {
         conn: &Conn,
         block: &Block,
         block_contents: &BlockContents,
-    ) -> Result<(BlockAuditData, HashMap<TokenId, u64>), Error> {
+    ) -> Result<SyncBlockData, Error> {
         transaction(conn, |conn| {
             let block_index = block.index;
             log::info!(self.logger, "Syncing block {}", block_index);
 
-            let mut counters = Counters::get(conn)?;
-
             // Ensure that we are syncing the next block and haven't skipped any blocks (or
             // went backwards).
-            let next_block_index = counters.num_blocks_synced as BlockIndex;
+            let next_block_index = Counters::get(conn)?.num_blocks_synced();
             if block_index != next_block_index {
                 return Err(Error::UnexpectedBlockIndex(block_index, next_block_index));
             }
@@ -137,6 +155,7 @@ impl MintAuditorDb {
                 "Processing {} mints",
                 block_contents.mint_txs.len()
             );
+            let mut mint_txs = Vec::new();
             for mint_tx in &block_contents.mint_txs {
                 // Balance accounting.
                 let mint_balance = balance_map
@@ -165,30 +184,30 @@ impl MintAuditorDb {
                         mint_tx,
                     );
 
-                    counters.num_mint_txs_without_matching_mint_config += 1;
+                    Counters::inc_num_mint_txs_without_matching_mint_config(conn)?;
                 }
 
                 // Store the mint tx.
-                MintTx::insert_from_core_mint_tx(
+                mint_txs.push(MintTx::insert_from_core_mint_tx(
                     block_index,
                     mint_config.and_then(|config| config.id()),
                     mint_tx,
                     conn,
-                )?;
+                )?);
             }
 
             // Count burns.
             log::trace!(self.logger, "Processing burns");
-            let burn_amounts = block_contents
+            let (burn_tx_outs, burn_amounts): (Vec<_>, Vec<_>) = block_contents
                 .outputs
                 .par_iter()
                 .filter_map(|tx_out| {
                     tx_out
                         .view_key_match(&burn_address_view_private())
                         .ok()
-                        .map(|(amount, _shared_secret)| amount)
+                        .map(|(amount, _shared_secret)| (tx_out.clone(), amount))
                 })
-                .collect::<Vec<_>>();
+                .unzip();
 
             for amount in burn_amounts {
                 let burn_balance = balance_map.entry(amount.token_id).or_default();
@@ -203,7 +222,7 @@ impl MintAuditorDb {
                         burn_balance
                     );
                     *burn_balance = 0;
-                    counters.num_burns_exceeding_balance += 1;
+                    Counters::inc_num_burns_exceeding_balance(conn)?;
                 } else {
                     *burn_balance -= amount.value;
                     log::info!(
@@ -217,18 +236,11 @@ impl MintAuditorDb {
                 }
             }
 
-            // Update the database.
-            counters.num_blocks_synced += 1;
-            log::trace!(self.logger, "Updating counters: {:?}", counters);
-            counters.set(conn)?;
+            Counters::inc_num_blocks_synced(conn)?;
 
-            let block_audit_data = BlockAuditData::new(block_index);
-            log::trace!(
-                self.logger,
-                "Storing block audit data: {:?}",
-                block_audit_data
-            );
-            block_audit_data.set(conn)?;
+            let block_audit = BlockAuditData::new(block_index);
+            log::trace!(self.logger, "Storing block audit data: {:?}", block_audit);
+            block_audit.set(conn)?;
 
             BlockBalance::set_balances_for_block(conn, block_index, &balance_map)?;
 
@@ -237,10 +249,15 @@ impl MintAuditorDb {
                 self.logger,
                 "Done syncing block {}, block_audit_data={:?}, balance_map={:?}",
                 block_index,
-                block_audit_data,
+                block_audit,
                 balance_map
             );
-            Ok((block_audit_data, balance_map))
+            Ok(SyncBlockData {
+                block_audit,
+                balance_map,
+                mint_txs,
+                burn_tx_outs,
+            })
         })
     }
 
@@ -357,15 +374,19 @@ mod tests {
         for block_index in 0..initial_num_blocks {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
-            let (mint_audit_data, balance_map) = mint_auditor_db
+            let sync_block_data = mint_auditor_db
                 .sync_block(block_data.block(), block_data.contents())
                 .unwrap();
 
             assert_eq!(
-                mint_audit_data,
-                BlockAuditData::new(block_data.block().index),
+                sync_block_data,
+                SyncBlockData {
+                    block_audit: BlockAuditData::new(block_index),
+                    balance_map: Default::default(),
+                    mint_txs: vec![],
+                    burn_tx_outs: vec![],
+                }
             );
-            assert_eq!(balance_map, Default::default());
         }
 
         // Sync a block that contains MintConfigTxs so that we have valid
@@ -383,10 +404,18 @@ mod tests {
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
-        assert_eq!(balance_map, Default::default());
+
+        assert_eq!(
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: Default::default(),
+                mint_txs: vec![],
+                burn_tx_outs: vec![],
+            }
+        );
 
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
@@ -401,13 +430,17 @@ mod tests {
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
         assert_eq!(
-            balance_map,
-            HashMap::from_iter([(token_id1, 101), (token_id2, 2)])
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: HashMap::from_iter([(token_id1, 101), (token_id2, 2)]),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
+                burn_tx_outs: vec![],
+            }
         );
 
         // Sync a block with two burn transactions and some unrelated
@@ -435,18 +468,21 @@ mod tests {
         let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
-            outputs: vec![tx_out1, tx_out2, tx_out3],
+            outputs: vec![tx_out1.clone(), tx_out2.clone(), tx_out3],
             key_images: vec![KeyImage::from(1)],
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
-
         assert_eq!(
-            balance_map,
-            HashMap::from_iter([(token_id1, 41), (token_id2, 2)]),
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: HashMap::from_iter([(token_id1, 41), (token_id2, 2)]),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
+                burn_tx_outs: vec![tx_out1, tx_out2],
+            }
         );
 
         // Sync a block that mixes burning and minting.
@@ -475,30 +511,32 @@ mod tests {
         let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
-            outputs: vec![tx_out1, tx_out2, tx_out3],
+            outputs: vec![tx_out1.clone(), tx_out2.clone(), tx_out3],
             mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
-
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
         assert_eq!(
-            balance_map,
-            HashMap::from_iter([(token_id1, 141), (token_id2, 1002), (token_id3, 20000)]),
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: HashMap::from_iter([
+                    (token_id1, 141),
+                    (token_id2, 1002),
+                    (token_id3, 20000)
+                ]),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
+                burn_tx_outs: vec![tx_out1, tx_out2],
+            }
         );
 
         // Sanity check counters.
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block_index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
 
     // Attempting to skip a block when syncing should fail.
@@ -656,16 +694,23 @@ mod tests {
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
         assert_eq!(
-            balance_map,
-            HashMap::from_iter([(token_id1, 101), (token_id2, 2)])
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: HashMap::from_iter([(token_id1, 101), (token_id2, 2)]),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
+                burn_tx_outs: vec![],
+            }
         );
 
         // At this point nothing has been over-burned.
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 0);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            0
+        );
 
         // Sync a block with two burn transactions that results in one of them
         // over-burning.
@@ -692,21 +737,28 @@ mod tests {
         let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
-            outputs: vec![tx_out1, tx_out2, tx_out3],
+            outputs: vec![tx_out1.clone(), tx_out2.clone(), tx_out3],
             key_images: vec![KeyImage::from(1)],
             ..Default::default()
         };
 
-        let (mint_audit_data, balance_map, block_index) =
+        let (sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
-        assert_eq!(mint_audit_data, BlockAuditData::new(block_index));
         assert_eq!(
-            balance_map,
-            HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),
+            sync_block_data,
+            SyncBlockData {
+                block_audit: BlockAuditData::new(block_index),
+                balance_map: HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),
+                mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
+                burn_tx_outs: vec![tx_out1, tx_out2],
+            }
         );
 
         // Over-burn has been recorded.
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 1);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            1
+        );
 
         // Over burn once again, see that counter increases.
         let tx_out1 = TxOut::new(
@@ -737,7 +789,10 @@ mod tests {
 
         append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        assert_eq!(Counters::get(&conn).unwrap().num_burns_exceeding_balance, 3);
+        assert_eq!(
+            Counters::get(&conn).unwrap().num_burns_exceeding_balance(),
+            3
+        );
     }
 
     // MintTxs that do not match an active MintConfig get counted.
@@ -817,15 +872,10 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                assert_eq!(
-                    Counters::get(conn).unwrap(),
-                    Counters {
-                        id: 0,
-                        num_blocks_synced: block.index as i64 + 1,
-                        num_burns_exceeding_balance: 0,
-                        num_mint_txs_without_matching_mint_config: 1,
-                    }
-                );
+                let counters = Counters::get(conn).unwrap();
+                assert_eq!(counters.num_blocks_synced(), block.index + 1);
+                assert_eq!(counters.num_burns_exceeding_balance(), 0);
+                assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
 
                 // Chosen arbitrarily, we just need to return an error to ensure the transaction
                 // gets rolled back.
@@ -869,15 +919,10 @@ mod tests {
                     .sync_block_with_conn(conn, &block, &block_contents)
                     .unwrap();
 
-                assert_eq!(
-                    Counters::get(conn).unwrap(),
-                    Counters {
-                        id: 0,
-                        num_blocks_synced: block.index as i64 + 1,
-                        num_burns_exceeding_balance: 0,
-                        num_mint_txs_without_matching_mint_config: 1,
-                    }
-                );
+                let counters = Counters::get(conn).unwrap();
+                assert_eq!(counters.num_blocks_synced(), block.index + 1);
+                assert_eq!(counters.num_burns_exceeding_balance(), 0);
+                assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
 
                 // Chosen arbitrarily, we just need to return an error to ensure the transaction
                 // gets rolled back.
@@ -896,18 +941,13 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, _, block_index) =
+        let (_, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block_index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
     }
 
     // MintTxs that exceed the MintConfigTx limit get counted.
@@ -973,18 +1013,13 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, _, block_index) =
+        let (_, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block_index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 0,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block_index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 0);
 
         // Minting more should get flagged since we are exceeding the total mint limit.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
@@ -1008,14 +1043,9 @@ mod tests {
 
         mint_auditor_db.sync_block(&block, &block_contents).unwrap();
 
-        assert_eq!(
-            Counters::get(&conn).unwrap(),
-            Counters {
-                id: 0,
-                num_blocks_synced: block.index as i64 + 1,
-                num_burns_exceeding_balance: 0,
-                num_mint_txs_without_matching_mint_config: 1,
-            }
-        );
+        let counters = Counters::get(&conn).unwrap();
+        assert_eq!(counters.num_blocks_synced(), block.index + 1);
+        assert_eq!(counters.num_burns_exceeding_balance(), 0);
+        assert_eq!(counters.num_mint_txs_without_matching_mint_config(), 1);
     }
 }

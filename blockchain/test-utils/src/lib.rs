@@ -9,10 +9,12 @@ use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockID, BlockMetadata, BlockMetadataContents, BlockSignature,
     BlockVersion, QuorumSet, VerificationReport,
 };
+use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Pair;
 use mc_transaction_core_test_utils::{get_outputs, Amount, KeyImage};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{random_bytes_vec, AccountKey, CryptoRng, PublicAddress, Rng, RngCore};
+use std::str::FromStr;
 
 /// Get blocks with custom contents to simulate conditions seen in production.
 ///
@@ -170,6 +172,7 @@ pub fn make_block_metadata_contents(
         block_id,
         make_quorum_set(rng),
         make_verification_report(rng),
+        ResponderId::from_str("test.mobilecoin.com:443").unwrap(),
     )
 }
 

@@ -16,7 +16,7 @@ mc-util-grpc = { path = "../util/grpc" }
 mc-util-serial = { path = "../util/serial", features = ["std"] }
 
 clap = { version = "3.2", features = ["derive", "env"] }
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 protobuf = "2.27.1"
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
