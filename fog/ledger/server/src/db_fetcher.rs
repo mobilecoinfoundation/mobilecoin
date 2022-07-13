@@ -305,7 +305,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
 
         log::info!(
             self.logger,
-            "Added {} keyimage outs for {} into the enclave",
+            "Added {} keyimage outs for block with index {} into the enclave",
             num_records,
             block_index
         );

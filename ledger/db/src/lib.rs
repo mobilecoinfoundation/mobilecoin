@@ -20,7 +20,7 @@ pub mod tx_out_store;
 
 pub use crate::{
     error::Error,
-    ledger_db::{key_bytes_to_u64, u64_to_key_bytes, LedgerDB},
+    ledger_db::{create_ledger_in, key_bytes_to_u64, u64_to_key_bytes, LedgerDB},
     ledger_trait::{Ledger, MockLedger},
     metrics::LedgerMetrics,
     mint_config_store::{ActiveMintConfig, ActiveMintConfigs, MintConfigStore},

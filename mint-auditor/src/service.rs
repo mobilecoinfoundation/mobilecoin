@@ -154,12 +154,15 @@ mod tests {
     use mc_account_keys::AccountKey;
     use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, initialize_ledger},
+        Ledger,
+    };
     use mc_mint_auditor_api::mint_auditor_grpc::MintAuditorApiClient;
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger, mint_config_tx_to_validated as to_validated,
+        create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
+        mint_config_tx_to_validated as to_validated,
     };
     use std::sync::Arc;
 
@@ -223,7 +226,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
@@ -238,7 +241,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         (mint_auditor_db, test_db_context)
     }

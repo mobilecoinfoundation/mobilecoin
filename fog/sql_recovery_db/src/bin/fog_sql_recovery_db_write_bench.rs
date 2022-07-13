@@ -6,8 +6,7 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
 use mc_util_from_random::FromRandom;
-use rand::thread_rng;
-use rand_core::RngCore;
+use rand::{thread_rng, RngCore};
 use std::{
     env,
     time::{Duration, Instant},

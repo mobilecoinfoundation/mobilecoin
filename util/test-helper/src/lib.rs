@@ -7,7 +7,7 @@ extern crate lazy_static;
 
 pub mod known_accounts;
 
-pub use rand::{CryptoRng, Rng, RngCore, SeedableRng};
+pub use rand::{seq::SliceRandom, CryptoRng, Rng, RngCore, SeedableRng};
 // re-export AccountKey and PublicAddress to save an import elsewhere
 pub use mc_account_keys::{AccountKey, PublicAddress};
 

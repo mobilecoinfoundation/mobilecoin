@@ -12,6 +12,7 @@ path = "src/test_app/main.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-verifier = { path = "../../attest/verifier" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }

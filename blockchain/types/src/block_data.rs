@@ -7,15 +7,19 @@ use serde::{Deserialize, Serialize};
 /// An object that holds all data included in and associated with a block.
 #[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockData {
+    /// The block header.
     #[prost(message, required, tag = 1)]
     block: Block,
 
+    /// The block contents.
     #[prost(message, required, tag = 2)]
     contents: BlockContents,
 
+    /// A signature over the [Block].
     #[prost(message, optional, tag = 3)]
     signature: Option<BlockSignature>,
 
+    /// Block metadata.
     #[prost(message, optional, tag = 4)]
     metadata: Option<BlockMetadata>,
 }
@@ -63,5 +67,24 @@ impl BlockData {
     /// Get the metadata.
     pub fn metadata(&self) -> Option<&BlockMetadata> {
         self.metadata.as_ref()
+    }
+
+    /// Map this [BlockData] to another, after applying the given mutation.
+    pub fn mutate(
+        mut self,
+        mutate: impl FnOnce(
+            &mut Block,
+            &mut BlockContents,
+            &mut Option<BlockSignature>,
+            &mut Option<BlockMetadata>,
+        ),
+    ) -> Self {
+        mutate(
+            &mut self.block,
+            &mut self.contents,
+            &mut self.signature,
+            &mut self.metadata,
+        );
+        self
     }
 }

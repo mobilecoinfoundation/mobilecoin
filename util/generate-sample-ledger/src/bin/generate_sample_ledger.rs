@@ -27,15 +27,12 @@ struct Config {
     #[clap(long, short, parse(try_from_str = hex::FromHex::from_hex), env = "MC_SEED")]
     pub seed: Option<[u8; 32]>,
 
-    #[clap(long, short, env = "MC_HINT_TEXT")]
-    pub hint_text: Option<String>,
-
     /// Max token id. If set to 1, then this will double the number of tx's in
     /// the bootstrap. First will come all token id 0, then all token id 1.
     ///
     /// Historically this was not present, and is only added to support testing
     /// of confidential token ids.
-    #[clap(long, default_value = "0")]
+    #[clap(long, default_value = "0", env = "MC_MAX_TOKEN_ID")]
     pub max_token_id: u64,
 }
 
@@ -48,7 +45,7 @@ fn main() {
     // Read user public keys from disk
     let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
         .expect("Could not read default pubfiles from ./keys");
-    assert_ne!(0, pub_addrs.len());
+    assert!(!pub_addrs.is_empty());
 
     // Bootstrap the ledger db
     mc_util_generate_sample_ledger::bootstrap_ledger(
@@ -58,7 +55,6 @@ fn main() {
         config.blocks,
         config.key_images,
         config.seed,
-        config.hint_text.as_deref(),
         config.max_token_id,
         logger,
     );

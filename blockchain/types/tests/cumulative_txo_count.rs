@@ -1,37 +1,38 @@
-use mc_account_keys::AccountKey;
-use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+use mc_blockchain_test_utils::get_blocks;
+use mc_blockchain_types::{Block, BlockVersion};
+use mc_util_test_helper::run_with_several_seeds;
 
 #[test]
 fn test_cumulative_txo_counts() {
-    mc_util_test_helper::run_with_several_seeds(|mut rng| {
+    run_with_several_seeds(|mut rng| {
         for block_version in BlockVersion::iterator() {
             let origin = Block::new_origin_block(&[]);
-
-            let accounts: Vec<AccountKey> =
-                (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-            let recipient_pub_keys = accounts
-                .iter()
-                .map(|account| account.default_subaddress())
-                .collect::<Vec<_>>();
-
-            let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            let num_tokens = if block_version.mixed_transactions_are_supported() {
+                2
+            } else {
+                1
+            };
+            let results = get_blocks(
                 block_version,
-                &recipient_pub_keys[..],
-                1,
-                50,
-                50,
-                &origin,
+                5,
+                2,
+                num_tokens,
+                2,
+                42,
+                origin.clone(),
                 &mut rng,
             );
 
-            let mut prev = origin.clone();
-            for (block, block_contents) in &results {
+            let mut parent = origin;
+            for block_data in results {
+                let block = block_data.block();
+                let block_txo_count = block_data.contents().outputs.len() as u64;
                 assert_eq!(
                     block.cumulative_txo_count,
-                    prev.cumulative_txo_count + block_contents.outputs.len() as u64
+                    parent.cumulative_txo_count + block_txo_count
                 );
-                assert_eq!(block.parent_id, prev.id);
-                prev = block.clone();
+                assert_eq!(block.parent_id, parent.id);
+                parent = block.clone();
             }
         }
     })
