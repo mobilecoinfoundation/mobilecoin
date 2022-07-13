@@ -5273,6 +5273,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-dump-ledger"
+version = "1.3.0-pre0"
+dependencies = [
+ "clap 3.2.8",
+ "displaydoc",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-ledger-db",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "mc-util-encodings"
 version = "1.3.0-pre0"
 dependencies = [
