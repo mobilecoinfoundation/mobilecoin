@@ -6,9 +6,7 @@ use displaydoc::Display;
 use hex::FromHexError;
 use mc_crypto_keys::{KeyError, SignatureError};
 use pem::PemError;
-use serde_json::Error as JsonError;
 use std::io::Error as IoError;
-use toml::de::Error as FromTomlError;
 
 /// Validator errors.
 #[derive(Debug, Display, Eq, PartialEq)]

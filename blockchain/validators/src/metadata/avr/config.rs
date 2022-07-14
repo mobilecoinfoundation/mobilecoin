@@ -106,7 +106,7 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{get_ias_reports, sample_avr_history};
+    use crate::{test_utils, test_utils::sample_avr_history};
     use serde_json;
     use std::fs;
     use tempfile::TempDir;
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_bad_load_from_disk() {
         // Get an AVR (to use as unsupported AVR History format) and write it to disk
-        let (bad_history_config, _) = get_ias_reports();
+        let (bad_history_config, _) = test_utils::get_ias_reports();
         let json_str = serde_json::to_string_pretty(&bad_history_config).unwrap();
         let temp = TempDir::new().unwrap();
         let path_json = temp.path().join("bad_format.json");
