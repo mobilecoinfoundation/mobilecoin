@@ -56,7 +56,9 @@ impl AvrHistoryConfig {
             config.node.sort();
             Ok(config)
         } else {
-            Err(ParseError::UnsupportedFileFormat(path.to_string_lossy().into_owned()))
+            Err(ParseError::UnsupportedFileFormat(
+                path.to_string_lossy().into_owned(),
+            ))
         }
     }
 }
@@ -104,9 +106,7 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{
-        get_ias_reports, sample_avr_history,
-    };
+    use crate::test_utils::{get_ias_reports, sample_avr_history};
     use serde_json;
     use std::fs;
     use tempfile::TempDir;
@@ -148,7 +148,6 @@ mod tests {
         // Check that the avr histories loaded from disk are the same as the control
         assert_eq!(control_avr_history, avr_history_from_json);
         assert_eq!(control_avr_history, avr_history_from_toml);
-
     }
 
     #[test]
@@ -163,8 +162,9 @@ mod tests {
         // Attempt to read the incorrectly structured data
         let avr_history_from_json = AvrHistoryConfig::load(&path_json);
 
-        let expected_error = Err(ParseError::UnsupportedFileFormat(path_json.display().to_string()));
+        let expected_error = Err(ParseError::UnsupportedFileFormat(
+            path_json.display().to_string(),
+        ));
         assert_eq!(expected_error, avr_history_from_json);
     }
-
 }

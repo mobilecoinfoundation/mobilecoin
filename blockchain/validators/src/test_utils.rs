@@ -49,14 +49,13 @@ pub fn get_ias_reports() -> (VerificationReport, VerificationReport) {
     (report1, report2)
 }
 
-pub mod sample_avr_history{
-use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
-use mc_common::ResponderId;
-use std::str::FromStr;
+pub mod sample_avr_history {
+    use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
+    use mc_common::ResponderId;
+    use std::str::FromStr;
 
-
-/// TOML representation of the AVR history'
-   const SAMPLE_AVR_HISTORY_TOML: &str = r#"
+    /// TOML representation of the AVR history'
+    const SAMPLE_AVR_HISTORY_TOML: &str = r#"
 [[node]]
 responder_id = 'node1.prod.mobilecoinww.com::8443'
 first_block_index = 0
@@ -89,8 +88,8 @@ chain = [
 http_body = '{"nonce":"fe89bd7386cdc13787dbb50b27917030","id":"166196848040908016823295613654479498765","timestamp":"2021-06-24T18:57:44.075285","version":4,"epidPseudonym":"gKH0dexEpYfuyaGgaKKWmH4VJ8r0L3af1W//p6ya+WaN9BAlSW1Gj3NOWvrQIEAyLCof3fwS9pkLnZrYk3CXQC7VlPZs6EsMzqr40q2S7ObH6Qxq5SI6JNc18NIfOZ8+43l5j4yck2OD4g4J2fX5f2bnlaiWaRTcvtF7xnSCs/k=","advisoryURL":"https://security-center.intel.com","advisoryIDs":["INTEL-SA-00334"],"isvEnclaveQuoteStatus":"SW_HARDENING_NEEDED","isvEnclaveQuoteBody":"AgABABMMAAAMAAsAAAAAAL3lg34HPOkq5u/y0l94xuMAAAAAAAAAAAAAAAAAAAAAEREDBf+ABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAHAAAAAAAAAGUyKK/SsCpsKPHcOxCLHfpFfRcLMq6OwpePlBvRZVyDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsGlYcSrZMvAS/pEXN977Zsq1vawTTjTE382IrKf2zDgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwd71Ni3xBrMF22K0CWRUZPzdE9GwSDkFoiuhQcee9R/Qyoz4HOFMtNl1HY74q8e0fWOh7yxmlply0fZ2eREZj"}'
 "#;
 
-/// JSON representation of the AVR history
- const SAMPLE_AVR_HISTORY_JSON: &str = r#"
+    /// JSON representation of the AVR history
+    const SAMPLE_AVR_HISTORY_JSON: &str = r#"
 {
   "node": [
     {
@@ -129,41 +128,39 @@ http_body = '{"nonce":"fe89bd7386cdc13787dbb50b27917030","id":"16619684804090801
 }
 "#;
 
+    /// Get a control Avr History Config using historical AVR data so we both
+    /// verify serialization and verification works properly
+    pub fn as_config() -> AvrHistoryConfig {
+        let responder_id_1 = ResponderId::from_str("node1.prod.mobilecoinww.com::8443").unwrap();
+        let (avr1, avr2) = super::get_ias_reports();
+        let rec1 = AvrHistoryRecord {
+            responder_id: responder_id_1.clone(),
+            first_block_index: 0,
+            last_block_index: Some(480),
+            avr: None,
+        };
+        let rec2 = AvrHistoryRecord {
+            responder_id: responder_id_1.clone(),
+            first_block_index: 481,
+            last_block_index: Some(10399),
+            avr: Some(avr1),
+        };
+        let rec3 = AvrHistoryRecord {
+            responder_id: responder_id_1,
+            first_block_index: 10400,
+            last_block_index: Some(11021),
+            avr: Some(avr2),
+        };
+        AvrHistoryConfig {
+            node: Vec::from([rec1, rec2, rec3]),
+        }
+    }
 
-  /// Get a control Avr History Config using historical AVR data so we both
-/// verify serialization and verification works properly
-pub fn as_config() -> AvrHistoryConfig {
-  let responder_id_1 = ResponderId::from_str("node1.prod.mobilecoinww.com::8443").unwrap();
-  let (avr1, avr2) = super::get_ias_reports();
-  let rec1 = AvrHistoryRecord {
-      responder_id: responder_id_1.clone(),
-      first_block_index: 0,
-      last_block_index: Some(480),
-      avr: None,
-  };
-  let rec2 = AvrHistoryRecord {
-      responder_id: responder_id_1.clone(),
-      first_block_index: 481,
-      last_block_index: Some(10399),
-      avr: Some(avr1),
-  };
-  let rec3 = AvrHistoryRecord {
-      responder_id: responder_id_1,
-      first_block_index: 10400,
-      last_block_index: Some(11021),
-      avr: Some(avr2),
-  };
-  AvrHistoryConfig {
-      node: Vec::from([rec1, rec2, rec3]),
-  }
-}
+    pub fn as_json() -> &'static str {
+        SAMPLE_AVR_HISTORY_JSON
+    }
 
-pub fn as_json() -> &'static str{
-  SAMPLE_AVR_HISTORY_JSON
-}
-
-pub fn as_toml() -> &'static str{
-  SAMPLE_AVR_HISTORY_TOML
-}
-
+    pub fn as_toml() -> &'static str {
+        SAMPLE_AVR_HISTORY_TOML
+    }
 }
