@@ -105,7 +105,7 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 mod tests {
     use super::*;
     use crate::test_utils::{
-        get_avr_history_config, get_ias_reports, SAMPLE_AVR_HISTORY_JSON, SAMPLE_AVR_HISTORY_TOML,
+        get_ias_reports, sample_avr_history,
     };
     use serde_json;
     use std::fs;
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_avr_history_serialization_roundtrip_works() {
         // Get a manually constructed AVR history config to act as control data
-        let control_avr_history = get_avr_history_config();
+        let control_avr_history = sample_avr_history::as_config();
 
         // Serialize the config to JSON & TOML
         let toml_str = toml::to_string_pretty(&control_avr_history).unwrap();
@@ -132,14 +132,14 @@ mod tests {
     #[test]
     fn test_avr_history_load_from_disk() {
         // Get a manually constructed AVR history config to act as control data
-        let control_avr_history = get_avr_history_config();
+        let control_avr_history = sample_avr_history::as_config();
 
         // Write JSON and TOML to disk
         let temp = TempDir::new().unwrap();
         let path_json = temp.path().join("avr-history.json");
         let path_toml = temp.path().join("avr-history.toml");
-        fs::write(&path_json, SAMPLE_AVR_HISTORY_JSON).unwrap();
-        fs::write(&path_toml, SAMPLE_AVR_HISTORY_TOML).unwrap();
+        fs::write(&path_json, &sample_avr_history::as_json()).unwrap();
+        fs::write(&path_toml, &sample_avr_history::as_toml()).unwrap();
 
         // Load the config from disk
         let avr_history_from_json = AvrHistoryConfig::load(path_json).unwrap();

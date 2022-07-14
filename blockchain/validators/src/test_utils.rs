@@ -7,9 +7,6 @@ use mc_blockchain_types::{BlockMetadata, VerificationReport, VerificationSignatu
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{RngType as FixedRng, SeedableRng};
-use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
-use mc_common::ResponderId;
-use std::str::FromStr;
 
 pub fn make_key(seed: u64) -> Ed25519Public {
     *make_metadata(seed).node_key()
@@ -52,36 +49,14 @@ pub fn get_ias_reports() -> (VerificationReport, VerificationReport) {
     (report1, report2)
 }
 
-/// Get a control Avr History Config using historical AVR data so we both
-/// verify serialization and verification works properly
-pub fn get_avr_history_config() -> AvrHistoryConfig {
-    let responder_id_1 = ResponderId::from_str("node1.prod.mobilecoinww.com::8443").unwrap();
-    let (avr1, avr2) = get_ias_reports();
-    let rec1 = AvrHistoryRecord {
-        responder_id: responder_id_1.clone(),
-        first_block_index: 0,
-        last_block_index: Some(480),
-        avr: None,
-    };
-    let rec2 = AvrHistoryRecord {
-        responder_id: responder_id_1.clone(),
-        first_block_index: 481,
-        last_block_index: Some(10399),
-        avr: Some(avr1),
-    };
-    let rec3 = AvrHistoryRecord {
-        responder_id: responder_id_1,
-        first_block_index: 10400,
-        last_block_index: Some(11021),
-        avr: Some(avr2),
-    };
-    AvrHistoryConfig {
-        node: Vec::from([rec1, rec2, rec3]),
-    }
-}
+pub mod sample_avr_history{
+use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
+use mc_common::ResponderId;
+use std::str::FromStr;
 
-/// TOML representation of the AVR history
-pub const SAMPLE_AVR_HISTORY_TOML: &str = r#"
+
+/// TOML representation of the AVR history'
+   const SAMPLE_AVR_HISTORY_TOML: &str = r#"
 [[node]]
 responder_id = 'node1.prod.mobilecoinww.com::8443'
 first_block_index = 0
@@ -115,7 +90,7 @@ http_body = '{"nonce":"fe89bd7386cdc13787dbb50b27917030","id":"16619684804090801
 "#;
 
 /// JSON representation of the AVR history
-pub const SAMPLE_AVR_HISTORY_JSON: &str = r#"
+ const SAMPLE_AVR_HISTORY_JSON: &str = r#"
 {
   "node": [
     {
@@ -153,3 +128,42 @@ pub const SAMPLE_AVR_HISTORY_JSON: &str = r#"
   ]
 }
 "#;
+
+
+  /// Get a control Avr History Config using historical AVR data so we both
+/// verify serialization and verification works properly
+pub fn as_config() -> AvrHistoryConfig {
+  let responder_id_1 = ResponderId::from_str("node1.prod.mobilecoinww.com::8443").unwrap();
+  let (avr1, avr2) = super::get_ias_reports();
+  let rec1 = AvrHistoryRecord {
+      responder_id: responder_id_1.clone(),
+      first_block_index: 0,
+      last_block_index: Some(480),
+      avr: None,
+  };
+  let rec2 = AvrHistoryRecord {
+      responder_id: responder_id_1.clone(),
+      first_block_index: 481,
+      last_block_index: Some(10399),
+      avr: Some(avr1),
+  };
+  let rec3 = AvrHistoryRecord {
+      responder_id: responder_id_1,
+      first_block_index: 10400,
+      last_block_index: Some(11021),
+      avr: Some(avr2),
+  };
+  AvrHistoryConfig {
+      node: Vec::from([rec1, rec2, rec3]),
+  }
+}
+
+pub fn as_json() -> &'static str{
+  SAMPLE_AVR_HISTORY_JSON
+}
+
+pub fn as_toml() -> &'static str{
+  SAMPLE_AVR_HISTORY_TOML
+}
+
+}
