@@ -71,7 +71,7 @@ pub fn get_avr_history_config() -> AvrHistoryConfig {
         avr: Some(avr1),
     };
     let rec3 = AvrHistoryRecord {
-        responder_id: responder_id_1.clone(),
+        responder_id: responder_id_1,
         first_block_index: 10400,
         last_block_index: Some(11021),
         avr: Some(avr2),
