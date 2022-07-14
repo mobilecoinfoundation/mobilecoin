@@ -6,9 +6,9 @@ use crate::error::ParseError;
 
 use mc_blockchain_types::{BlockIndex, VerificationReport, VerificationSignature};
 use mc_common::ResponderId;
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, hex};
-use std::{fs, path::Path};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::{hex, serde_as, DeserializeAs, SerializeAs};
+use std::{fs, option::Option, path::Path};
 
 /// Struct for reading historical Intel Attestation Verification Report
 /// (AVR) data from a configuration file.
@@ -20,6 +20,7 @@ pub struct AvrHistoryConfig {
 
 /// Stores a historical AVR record (or lack thereof) for a given
 /// [ResponderId] and block range
+#[serde_as]
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct AvrHistoryRecord {
     /// Uri of the consensus node
@@ -32,7 +33,7 @@ pub struct AvrHistoryRecord {
     pub last_block_index: BlockIndex,
 
     /// AVR Report (or lack thereof) for the node & block ranges
-    //#[serde(default, with = "mc_attest_core::serial")]
+    #[serde_as(as = "Option<VerificationReportShadow>")]
     pub avr: Option<VerificationReport>,
 }
 
@@ -60,9 +61,10 @@ impl AvrHistoryConfig {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "VerificationReport")]
-/// Struct to shadow the mc_blockchain_types's VerificationReport for serialization purposes
+/// Struct to shadow the mc_blockchain_types's VerificationReport for
+/// serialization purposes
 pub struct VerificationReportShadow {
     /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
     #[serde_as(as = "hex::Hex")]
@@ -78,3 +80,26 @@ pub struct VerificationReportShadow {
     pub http_body: String,
 }
 
+// SerializeAs and Deserialize are needed to get VerificationReportShadow (serde
+// remote) to work with container types (ie. Option<VerificationReport> )
+impl SerializeAs<VerificationReport> for VerificationReportShadow {
+    fn serialize_as<S>(source: &VerificationReport, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        VerificationReportShadow::serialize(source, serializer)
+    }
+}
+
+impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
+    fn deserialize_as<D>(deserializer: D) -> Result<VerificationReport, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper(#[serde(with = "VerificationReportShadow")] VerificationReport);
+        let helper = Helper::deserialize(deserializer)?;
+        let Helper(v) = helper;
+        Ok(v)
+    }
+}
