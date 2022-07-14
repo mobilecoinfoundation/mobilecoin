@@ -422,4 +422,41 @@ mod tests {
             .into()
         );
     }
+
+    #[test]
+    fn error_handling() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+        let file = dir.join("un-deserializeable.json");
+        let abs_path = file.as_path().join("test_abs.pem");
+        let rel_path = "test_rel.pem";
+
+        let mut json = serde_json::json!({
+            "node": [
+                {
+                    "pub_key": abs_path.to_str(),
+                    "first_block_index": 0,
+                },
+                {
+                    "pub_key": rel_path,
+                    "first_block_index": 0,
+                    "last_block_index": 10,
+                },
+                {
+                    "message_signing_pub_key": KEY_C_PEM,
+                    "first_block_index": 20,
+                },
+            ]
+        })
+        .to_string();
+        json.push_str("{}");
+        fs::write(&file, json).unwrap();
+        // Parse the JSON.
+        let config = Config::load(&file);
+
+        let expected_error = Err(ParseError::UnsupportedFileFormat(
+            file.display().to_string(),
+        ));
+        assert_eq!(expected_error, config);
+    }
 }
