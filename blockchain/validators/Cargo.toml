@@ -15,8 +15,8 @@ displaydoc = "0.2"
 hex = "0.4"
 pem = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_with = { version = "1.14", features = ["hex"] }
 serde_json = "1.0"
+serde_with = { version = "1.14", features = ["hex"] }
 toml = "0.5"
 
 
