@@ -105,7 +105,7 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 mod tests {
     use super::*;
     use crate::test_utils::{
-        get_avr_history_config, SAMPLE_AVR_HISTORY_JSON, SAMPLE_AVR_HISTORY_TOML,
+        get_avr_history_config, get_ias_reports, SAMPLE_AVR_HISTORY_JSON, SAMPLE_AVR_HISTORY_TOML,
     };
     use serde_json;
     use std::fs;
@@ -148,5 +148,23 @@ mod tests {
         // Check that the avr histories loaded from disk are the same as the control
         assert_eq!(control_avr_history, avr_history_from_json);
         assert_eq!(control_avr_history, avr_history_from_toml);
+
     }
+
+    #[test]
+    fn test_bad_load_from_disk() {
+        // Get an AVR (to use as unsupported AVR History format) and write it to disk
+        let (bad_history_config, _) = get_ias_reports();
+        let json_str = serde_json::to_string_pretty(&bad_history_config).unwrap();
+        let temp = TempDir::new().unwrap();
+        let path_json = temp.path().join("bad_format.json");
+        fs::write(&path_json, json_str).unwrap();
+
+        // Attempt to read the incorrectly structured data
+        let avr_history_from_json = AvrHistoryConfig::load(&path_json);
+
+        let expected_error = Err(ParseError::UnsuportedFileFormat(path_json.display().to_string()));
+        assert_eq!(expected_error, avr_history_from_json);
+    }
+
 }
