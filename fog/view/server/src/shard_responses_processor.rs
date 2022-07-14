@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::error::RouterServerError;
-
 use mc_attest_api::attest;
 use mc_fog_api::{view::MultiViewStoreQueryResponse, view_grpc::FogViewApiClient};
 use mc_fog_uri::FogViewUri;
@@ -98,7 +97,7 @@ mod tests {
         let view_uri = FogViewUri::from_str(&view_uri_string).unwrap();
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("Main-RPC".to_string())
+                .name_prefix("processor-test".to_string())
                 .build(),
         );
 
@@ -198,8 +197,8 @@ mod tests {
 
     #[test_with_logger]
     fn mixed_failed_and_successful_responses_processes_correctly(logger: Logger) {
-        let number_of_failures: usize = 11;
-        let number_of_successes: usize = 8;
+        const number_of_failures: usize = 11;
+        const number_of_successes: usize = 8;
 
         let mut clients_and_responses = Vec::new();
         for i in 0..number_of_failures {

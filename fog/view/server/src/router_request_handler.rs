@@ -2,9 +2,8 @@
 
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
-    fog_view_shard_responses_processor,
+    shard_responses_processor,
 };
-
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
@@ -129,15 +128,16 @@ where
                     )
                 })?;
 
-        let mut processed_shard_response_data =
-            fog_view_shard_responses_processor::process_shard_responses(clients_and_responses)
-                .map_err(|err| {
-                    router_server_err_to_rpc_status(
-                        "Query: internal query response processing",
-                        err,
-                        logger.clone(),
-                    )
-                })?;
+        let mut processed_shard_response_data = shard_responses_processor::process_shard_responses(
+            clients_and_responses,
+        )
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: internal query response processing",
+                err,
+                logger.clone(),
+            )
+        })?;
 
         query_responses.append(&mut processed_shard_response_data.new_query_responses);
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
@@ -210,7 +210,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     let client_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
-            .name_prefix("Main-RPC".to_string())
+            .name_prefix("authenticate-view-store".to_string())
             .build(),
     );
     let view_store_client = FogViewApiClient::new(

@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::fog_view_router_request_handler;
+use crate::router_request_handler;
 
 use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
@@ -56,7 +56,7 @@ where
             let logger = logger.clone();
             // TODO: Confirm that we don't need to perform the authenticator logic. I think
             // we don't  because of streaming...
-            let future = fog_view_router_request_handler::handle_requests(
+            let future = router_request_handler::handle_requests(
                 self.shard_clients.clone(),
                 self.enclave.clone(),
                 requests,

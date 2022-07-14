@@ -12,5 +12,5 @@ pub mod server;
 mod block_tracker;
 mod counters;
 mod db_fetcher;
-mod fog_view_router_request_handler;
-mod fog_view_shard_responses_processor;
+mod router_request_handler;
+mod shard_responses_processor;

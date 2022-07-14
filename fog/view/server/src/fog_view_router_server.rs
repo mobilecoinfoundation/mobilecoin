@@ -33,7 +33,7 @@ impl FogViewRouterServer {
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("Main-RPC".to_string())
+                .name_prefix("Fog-view-router-server".to_string())
                 .build(),
         );
 
