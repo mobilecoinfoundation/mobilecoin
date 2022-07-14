@@ -27,12 +27,9 @@ pub fn make_metadata(seed: u64) -> BlockMetadata {
     .expect("BlockMetadata::from_contents_and_keypair")
 }
 
-use crate::{
-    metadata::avr::{AvrHistoryConfig, AvrHistoryRecord},
-};
+use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
 use mc_common::ResponderId;
 use std::str::FromStr;
-
 
 /// Get first two actual Intel Attestation Verification Reports for
 /// node1.prod.mobilecoinww.com in order to build control data
@@ -61,10 +58,27 @@ pub fn get_ias_reports() -> (VerificationReport, VerificationReport) {
 pub fn get_avr_history_config() -> AvrHistoryConfig {
     let responder_id_1 = ResponderId::from_str("node1.prod.mobilecoinww.com::8443").unwrap();
     let (avr1, avr2) = get_ias_reports();
-    let rec1 = AvrHistoryRecord{ responder_id: responder_id_1.clone(), first_block_index : 0, last_block_index : 480, avr: None};
-    let rec2 = AvrHistoryRecord{ responder_id: responder_id_1.clone(), first_block_index : 481, last_block_index : 10399, avr: Some(avr1)};
-    let rec3 = AvrHistoryRecord{ responder_id: responder_id_1.clone(), first_block_index : 10400, last_block_index : 11021, avr: Some(avr2)};
-    AvrHistoryConfig{ node: Vec::from([rec1, rec2, rec3])}
+    let rec1 = AvrHistoryRecord {
+        responder_id: responder_id_1.clone(),
+        first_block_index: 0,
+        last_block_index: Some(480),
+        avr: None,
+    };
+    let rec2 = AvrHistoryRecord {
+        responder_id: responder_id_1.clone(),
+        first_block_index: 481,
+        last_block_index: Some(10399),
+        avr: Some(avr1),
+    };
+    let rec3 = AvrHistoryRecord {
+        responder_id: responder_id_1.clone(),
+        first_block_index: 10400,
+        last_block_index: Some(11021),
+        avr: Some(avr2),
+    };
+    AvrHistoryConfig {
+        node: Vec::from([rec1, rec2, rec3]),
+    }
 }
 
 /// TOML representation of the AVR history
@@ -140,4 +154,3 @@ pub const SAMPLE_AVR_HISTORY_JSON: &str = r#"
   ]
 }
 "#;
-
