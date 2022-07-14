@@ -60,7 +60,7 @@ pub enum ParseError {
     Json(String),
 
     /// Failed to parse supported type
-    UnsuportedFileFormat,
+    UnsupportedFileFormat,
 }
 
 impl From<KeyError> for ParseError {
