@@ -77,7 +77,7 @@ pub struct VerificationReportShadow {
     #[serde_as(as = "Vec<hex::Hex>")]
     pub chain: Vec<Vec<u8>>,
 
-    /// The raw report body JSON, as a byte sequence
+    /// The raw report body JSON
     pub http_body: String,
 }
 
@@ -114,15 +114,14 @@ mod tests {
     #[test]
     fn test_avr_history_serialization_roundtrip_works() {
         // Get a manually constructed AVR history config to act as control data
-
         let control_avr_history = get_avr_history_config();
 
         // Serialize the config to JSON & TOML
         let toml_str = toml::to_string_pretty(&control_avr_history).unwrap();
         let json_str = serde_json::to_string_pretty(&control_avr_history).unwrap();
 
-        let history_from_toml: AvrHistoryConfig = toml::from_str(toml_str.as_str()).unwrap();
-        let history_from_json: AvrHistoryConfig = serde_json::from_str(json_str.as_str()).unwrap();
+        let history_from_toml: AvrHistoryConfig = toml::from_str(&toml_str).unwrap();
+        let history_from_json: AvrHistoryConfig = serde_json::from_str(&json_str).unwrap();
 
         // Assert that deserialization from JSON and TOML is the same as the original
         // config
