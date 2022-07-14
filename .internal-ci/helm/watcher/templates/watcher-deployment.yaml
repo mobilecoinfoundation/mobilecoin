@@ -20,7 +20,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{- toYaml .Values.watcher.podAnnotations | nindent 8 }}
+        {{- toYaml $.Values.watcher.podAnnotations | nindent 8 }}
       labels:
         app: watcher
         instance: {{ .watchername }}
@@ -34,7 +34,7 @@ spec:
       initContainers:
         - name: watcherdb-restore
           image: "amazon/aws-cli:2.0.19"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: [ "/bin/bash" ]
           env:
 {{- if .s3EndpointUrl }}
@@ -76,8 +76,8 @@ spec:
 {{- end}}
       containers:
         - name: watcher
-          image: mobilecoin/watcher:{{ $.Values.images.tag }}
-          imagePullPolicy: IfNotPresent
+          image: '{{ $.Values.image.org | default $.Values.image.org }}/{{ $.Values.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}'
+          imagePullPolicy: Always
           command: ["/usr/bin/mc-watcher", "--watcher-db", "/watcher", "--sources-path", "/config/sources.toml", "--store-block-data"]
           ports:
             - name: watcher-mgmt
@@ -95,7 +95,7 @@ spec:
 {{- if eq $.Values.watcher.backupEnabled true }}
         - name: watcherdb-backup
           image: "amazon/aws-cli:2.0.19"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: [ "/bin/bash" ]
           env:
 {{- if .s3EndpointUrl }}
