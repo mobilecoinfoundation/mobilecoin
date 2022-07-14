@@ -197,17 +197,17 @@ mod tests {
 
     #[test_with_logger]
     fn mixed_failed_and_successful_responses_processes_correctly(logger: Logger) {
-        const number_of_failures: usize = 11;
-        const number_of_successes: usize = 8;
+        const NUMBER_OF_FAILURES: usize = 11;
+        const NUMBER_OF_SUCCESSES: usize = 8;
 
         let mut clients_and_responses = Vec::new();
-        for i in 0..number_of_failures {
+        for i in 0..NUMBER_OF_FAILURES {
             let grpc_client = create_grpc_client(i, logger.clone());
             let failed_mvq_response = create_failed_mvq_response(i);
             clients_and_responses.push((grpc_client, failed_mvq_response));
         }
-        for i in 0..number_of_successes {
-            let client_index = i + number_of_failures;
+        for i in 0..NUMBER_OF_SUCCESSES {
+            let client_index = i + NUMBER_OF_FAILURES;
             let grpc_client = create_grpc_client(client_index, logger.clone());
             let successful_mvq_response = create_successful_mvq_response();
             clients_and_responses.push((grpc_client, successful_mvq_response));
@@ -219,17 +219,17 @@ mod tests {
 
         assert_eq!(
             processed_shard_response_data.shard_clients_for_retry.len(),
-            number_of_failures
+            NUMBER_OF_FAILURES
         );
         assert_eq!(
             processed_shard_response_data
                 .view_store_uris_for_authentication
                 .len(),
-            number_of_failures
+            NUMBER_OF_FAILURES
         );
         assert_eq!(
             processed_shard_response_data.new_query_responses.len(),
-            number_of_successes
+            NUMBER_OF_SUCCESSES
         );
     }
 }
