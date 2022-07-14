@@ -2,8 +2,9 @@
 
 use crate::error::RouterServerError;
 use mc_attest_api::attest;
-use mc_fog_api::{view::MultiViewStoreQueryResponse, view_grpc::FogViewStoreApiClient};
-use mc_fog_uri::FogViewStoreUri;
+use mc_common::ResponderId;
+use mc_fog_api::{view::MultiViewStoreQueryResponse, view_grpc::FogViewApiClient};
+use mc_fog_uri::FogViewUri;
 use std::{str::FromStr, sync::Arc};
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
@@ -19,14 +20,16 @@ pub struct ProcessedShardResponseData {
     pub view_store_uris_for_authentication: Vec<FogViewStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<attest::Message>,
+    pub new_query_responses: Vec<(ResponderId, attest::Message)>,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
         view_store_uris_for_authentication: Vec<FogViewStoreUri>,
-        new_query_responses: Vec<attest::Message>,
+        new_query_responses: Vec<(ResponderId, attest::Message)>,
+        shard_clients_for_retry: Vec<Arc<FogViewApiClient>>,
+        view_store_uris_for_authentication: Vec<FogViewUri>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
@@ -48,13 +51,13 @@ pub fn process_shard_responses(
         // We did not receive a query_response for this shard.Therefore, we need to:
         //  (a) retry the query
         //  (b) authenticate with the Fog View Store that returned the decryption_error
+        let store_uri = FogViewUri::from_str(response.get_fog_view_store_uri())?;
         if response.has_decryption_error() {
             shard_clients_for_retry.push(shard_client);
-            let store_uri =
-                FogViewStoreUri::from_str(&response.get_decryption_error().fog_view_store_uri)?;
             view_store_uris_for_authentication.push(store_uri);
         } else {
-            new_query_responses.push(response.take_query_response());
+            let store_responder_id = ResponderId::from_str(&store_uri.to_string())?;
+            new_query_responses.push((store_responder_id, response.take_query_response()));
         }
     }
 
@@ -89,7 +92,6 @@ mod tests {
             i
         );
         failed_response
-            .mut_decryption_error()
             .set_fog_view_store_uri(view_uri_string);
 
         failed_response

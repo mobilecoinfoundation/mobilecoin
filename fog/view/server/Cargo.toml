@@ -28,6 +28,7 @@ serde_json = "1.0"
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-net = { path = "../../../attest/net" }
+mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
