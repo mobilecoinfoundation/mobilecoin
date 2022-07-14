@@ -14,7 +14,7 @@ use std::{fs, option::Option, path::Path};
 /// (AVR) data from a configuration file.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AvrHistoryConfig {
-    // List of AvrHistoryRecord objects sorted by ResponderId and block range
+    /// List of AvrHistoryRecord objects sorted by ResponderId and block range
     pub node: Vec<AvrHistoryRecord>,
 }
 
@@ -103,13 +103,12 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-    use serde_json;
     use super::*;
     use crate::test_utils::{
-        get_avr_history_config, SAMPLE_AVR_HISTORY_JSON, get_ias_reports,
-        SAMPLE_AVR_HISTORY_TOML,
+        get_avr_history_config, get_ias_reports, SAMPLE_AVR_HISTORY_JSON, SAMPLE_AVR_HISTORY_TOML,
     };
+    use serde_json;
+    use std::fs;
     use tempfile::TempDir;
 
     #[test]
