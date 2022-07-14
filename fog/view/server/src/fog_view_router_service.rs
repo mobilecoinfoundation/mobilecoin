@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::router_request_handler;
-
 use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
 use mc_common::logger::{log, Logger};
