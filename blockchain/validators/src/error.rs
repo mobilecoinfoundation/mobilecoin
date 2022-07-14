@@ -77,15 +77,3 @@ impl From<PemError> for ParseError {
         Self::Pem(src)
     }
 }
-
-impl From<FromTomlError> for ParseError {
-    fn from(src: FromTomlError) -> Self {
-        Self::UnsupportedFileFormat(src.to_string())
-    }
-}
-
-impl From<JsonError> for ParseError {
-    fn from(src: JsonError) -> Self {
-        Self::UnsupportedFileFormat(src.to_string())
-    }
-}
