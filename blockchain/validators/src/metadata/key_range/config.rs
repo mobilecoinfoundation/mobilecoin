@@ -9,7 +9,6 @@ use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    ffi::OsStr,
     fs,
     ops::RangeInclusive,
     path::{Path, PathBuf},
@@ -38,13 +37,15 @@ impl Config {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
         let path = path.as_ref();
         let bytes = fs::read(path)?;
-        let mut config: Config = match path.extension().and_then(OsStr::to_str) {
-            Some("toml") => Ok(toml::from_slice(&bytes)?),
-            Some("json") => Ok(serde_json::from_slice(&bytes)?),
-            _ => Err(ParseError::UnrecognizedExtension(path.into())),
-        }?;
-        config.base_path = path.parent().map(Into::into);
-        Ok(config)
+        if let Ok(mut config) = serde_json::from_slice(&bytes): Result<Self, _> {
+            config.base_path = path.parent().map(Into::into);
+            Ok(config)
+        } else if let Ok(mut config) = toml::from_slice(&bytes): Result<Self, _> {
+            config.base_path = path.parent().map(Into::into);
+            Ok(config)
+        } else {
+            Err(ParseError::UnsuportedFileFormat(path.to_string_lossy().into_owned()))
+        }
     }
 
     /// Get a [KeyValidityMap] from this config.
@@ -418,25 +419,5 @@ mod tests {
             ]
             .into()
         );
-    }
-
-    #[test]
-    fn unsupported_extension() {
-        let tmp = TempDir::new().unwrap();
-        let file = tmp.path().join("metadata-signers.poml");
-        fs::write(&file, INPUT_TOML).unwrap();
-
-        let result = Config::load(&file);
-        assert_eq!(result, Err(ParseError::UnrecognizedExtension(file)));
-    }
-
-    #[test]
-    fn no_extension() {
-        let tmp = TempDir::new().unwrap();
-        let file = tmp.path().join("metadata-signers");
-        fs::write(&file, INPUT_TOML).unwrap();
-
-        let result = Config::load(&file);
-        assert_eq!(result, Err(ParseError::UnrecognizedExtension(file)));
     }
 }

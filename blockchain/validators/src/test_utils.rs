@@ -7,6 +7,9 @@ use mc_blockchain_types::{BlockMetadata, VerificationReport, VerificationSignatu
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{RngType as FixedRng, SeedableRng};
+use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
+use mc_common::ResponderId;
+use std::str::FromStr;
 
 pub fn make_key(seed: u64) -> Ed25519Public {
     *make_metadata(seed).node_key()
@@ -26,10 +29,6 @@ pub fn make_metadata(seed: u64) -> BlockMetadata {
     )
     .expect("BlockMetadata::from_contents_and_keypair")
 }
-
-use crate::metadata::avr::{AvrHistoryConfig, AvrHistoryRecord};
-use mc_common::ResponderId;
-use std::str::FromStr;
 
 /// Get first two actual Intel Attestation Verification Reports for
 /// node1.prod.mobilecoinww.com in order to build control data
