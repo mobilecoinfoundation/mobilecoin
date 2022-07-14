@@ -44,7 +44,7 @@ impl Config {
             config.base_path = path.parent().map(Into::into);
             Ok(config)
         } else {
-            Err(ParseError::UnsuportedFileFormat(path.to_string_lossy().into_owned()))
+            Err(ParseError::UnsupportedFileFormat(path.to_string_lossy().into_owned()))
         }
     }
 

@@ -56,7 +56,7 @@ impl AvrHistoryConfig {
             config.node.sort();
             Ok(config)
         } else {
-            Err(ParseError::UnsuportedFileFormat(path.to_string_lossy().into_owned()))
+            Err(ParseError::UnsupportedFileFormat(path.to_string_lossy().into_owned()))
         }
     }
 }
@@ -163,7 +163,7 @@ mod tests {
         // Attempt to read the incorrectly structured data
         let avr_history_from_json = AvrHistoryConfig::load(&path_json);
 
-        let expected_error = Err(ParseError::UnsuportedFileFormat(path_json.display().to_string()));
+        let expected_error = Err(ParseError::UnsupportedFileFormat(path_json.display().to_string()));
         assert_eq!(expected_error, avr_history_from_json);
     }
 

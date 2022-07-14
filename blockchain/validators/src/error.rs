@@ -51,7 +51,7 @@ pub enum ParseError {
     InvalidPemTag(String),
 
     /// Failed to parse a file: {0}
-    UnsuportedFileFormat(String),
+    UnsupportedFileFormat(String),
 }
 
 impl From<KeyError> for ParseError {
@@ -80,12 +80,12 @@ impl From<PemError> for ParseError {
 
 impl From<FromTomlError> for ParseError {
     fn from(src: FromTomlError) -> Self {
-        Self::UnsuportedFileFormat(src.to_string())
+        Self::UnsupportedFileFormat(src.to_string())
     }
 }
 
 impl From<JsonError> for ParseError {
     fn from(src: JsonError) -> Self {
-        Self::UnsuportedFileFormat(src.to_string())
+        Self::UnsupportedFileFormat(src.to_string())
     }
 }
