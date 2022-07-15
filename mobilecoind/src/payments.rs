@@ -25,8 +25,8 @@ use mc_transaction_core::{
     Amount, TokenId,
 };
 use mc_transaction_std::{
-    ChangeDestination, EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses,
-    TransactionBuilder, TxOutContext,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
+    TxOutContext,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -983,7 +983,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 confirmation,
                 ..
             } = tx_builder
-                .add_output(outlay.value, &outlay.receiver, rng)
+                .add_output(amount, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
