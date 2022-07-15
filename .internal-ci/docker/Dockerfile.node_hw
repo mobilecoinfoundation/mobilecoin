@@ -7,7 +7,7 @@
 ARG REPO_ORG=mobilecoin
 FROM ${REPO_ORG}/runtime-base:latest
 
-# Install logstash
+# Install logstash to ship logs when used as a standalone container.
 ARG LOGSTASH_VERSION=7.16.3
 ARG LOGSTASH_URL=https://artifacts.opensearch.org/logstash/logstash-oss-with-opensearch-output-plugin-${LOGSTASH_VERSION}-linux-x64.tar.gz
 
@@ -37,8 +37,9 @@ COPY ${ORIGIN_DATA_DIR}/ledger /var/lib/mobilecoin/origin_data
 
 # Supervisord
 COPY .internal-ci/docker/support/node_hw/supervisor/conf.d /etc/supervisor/conf.d
+
+# Logstash config
 COPY .internal-ci/docker/support/node_hw/logstash.conf /opt/logstash/config/
-#COPY .internal-ci/docker/support/node_hw/filebeat.yml /etc/filebeat/filebeat.yml
 
 # Wrapper scripts
 COPY .internal-ci/docker/support/node_hw/bin /usr/local/bin
