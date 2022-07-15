@@ -360,7 +360,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         amount: Amount,
         reserved_subaddresses: &ReservedSubaddresses,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
