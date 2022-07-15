@@ -8,41 +8,37 @@ use crate::{config::FogViewRouterConfig, fog_view_router_service::FogViewRouterS
 use futures::executor::block_on;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::view_grpc;
-use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
+use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 use std::sync::Arc;
 
-pub struct FogViewRouterServer<E>
-where
-    E: ViewEnclaveProxy,
-{
+pub struct FogViewRouterServer {
     server: grpcio::Server,
-    _enclave: E,
     logger: Logger,
 }
 
-impl<E> FogViewRouterServer<E>
-where
-    E: ViewEnclaveProxy,
-{
+impl FogViewRouterServer {
     /// Creates a new view router server instance
-    pub fn new(
+    pub fn new<E>(
         config: FogViewRouterConfig,
         enclave: E,
-        shards: Vec<FogViewStoreUri>,
+        shards: Vec<view_grpc::FogViewApiClient>,
         logger: Logger,
-    ) -> FogViewRouterServer<E> {
+    ) -> FogViewRouterServer
+    where
+        E: ViewEnclaveProxy,
+    {
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("Main-RPC".to_string())
+                .name_prefix("Fog-view-router-server".to_string())
                 .build(),
         );
 
         let fog_view_router_service = view_grpc::create_fog_view_router_api(
-            FogViewRouterService::new(enclave.clone(), shards, logger.clone()),
+            FogViewRouterService::new(enclave, shards, logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router GRPC Service");
 
@@ -64,11 +60,7 @@ where
 
         let server = server_builder.build().unwrap();
 
-        Self {
-            server,
-            _enclave: enclave,
-            logger,
-        }
+        Self { server, logger }
     }
 
     /// Starts the server
@@ -85,10 +77,7 @@ where
     }
 }
 
-impl<E> Drop for FogViewRouterServer<E>
-where
-    E: ViewEnclaveProxy,
-{
+impl Drop for FogViewRouterServer {
     fn drop(&mut self) {
         self.stop();
     }

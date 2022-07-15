@@ -15,6 +15,7 @@ protobuf = "2.27.1"
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
+mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-fog-enclave-connection = { path = "../enclave_connection" }
