@@ -41,7 +41,7 @@ mc-crypto-hashes = { path = "../hashes" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-pem = "1.0"
+pem = "1.1"
 rand_hc = "0.3"
 semver = "1.0"
 serde_json = "1.0"
