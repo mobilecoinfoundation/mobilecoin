@@ -115,8 +115,12 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         }
         ViewEnclaveRequest::GetIasReport => serialize(&ENCLAVE.get_ias_report()),
         ViewEnclaveRequest::ClientAccept(msg) => serialize(&ENCLAVE.client_accept(msg)),
-        ViewEnclaveRequest::ViewStoreInit(view_store_id) => serialize(&ENCLAVE.view_store_init(view_store_id)),
-        ViewEnclaveRequest::ViewStoreConnect(view_store_id, msg) => serialize(&ENCLAVE.view_store_connect(view_store_id, msg)),
+        ViewEnclaveRequest::ViewStoreInit(view_store_id) => {
+            serialize(&ENCLAVE.view_store_init(view_store_id))
+        }
+        ViewEnclaveRequest::ViewStoreConnect(view_store_id, msg) => {
+            serialize(&ENCLAVE.view_store_connect(view_store_id, msg))
+        }
         ViewEnclaveRequest::ClientClose(session) => serialize(&ENCLAVE.client_close(session)),
         ViewEnclaveRequest::Query(req, untrusted_query_response) => {
             serialize(&ENCLAVE.query(req, untrusted_query_response))

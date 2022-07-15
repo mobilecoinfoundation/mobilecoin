@@ -3213,6 +3213,7 @@ dependencies = [
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-enclave-api",
  "mc-consensus-api",
  "mc-crypto-keys",
  "mc-fog-enclave-connection",
