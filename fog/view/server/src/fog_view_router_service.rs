@@ -6,7 +6,7 @@ use grpcio::{DuplexSink, RequestStream, RpcContext};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
-    view_grpc::{FogViewApiClient, FogViewRouterApi},
+    view_grpc::{FogViewRouterApi, FogViewStoreApiClient},
 };
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::rpc_logger;
@@ -19,7 +19,7 @@ where
     E: ViewEnclaveProxy,
 {
     enclave: E,
-    shard_clients: Vec<Arc<FogViewApiClient>>,
+    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     logger: Logger,
 }
 
@@ -29,7 +29,7 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     ///
     /// TODO: Add a `view_store_clients` parameter of type FogApiClient, and
     /// perform view store authentication on each one.
-    pub fn new(enclave: E, shard_clients: Vec<FogViewApiClient>, logger: Logger) -> Self {
+    pub fn new(enclave: E, shard_clients: Vec<FogViewStoreApiClient>, logger: Logger) -> Self {
         let shard_clients = shard_clients.into_iter().map(Arc::new).collect();
         Self {
             enclave,

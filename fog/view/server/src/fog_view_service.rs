@@ -1,16 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::server::DbPollSharedState;
+use crate::{config::ClientListenUri, server::DbPollSharedState};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
-    view_grpc::FogViewApi,
+    view_grpc::{FogViewApi, FogViewStoreApi},
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
-use mc_fog_uri::{ConnectionUri, FogViewUri};
+use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
@@ -36,7 +36,7 @@ pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
     authenticator: Arc<dyn Authenticator + Send + Sync>,
 
     /// The FogViewUri for this FogViewService.
-    fog_view_uri: FogViewUri,
+    client_listen_uri: ClientListenUri,
 
     /// Slog logger object
     logger: Logger,
@@ -50,7 +50,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         db: Arc<DB>,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
-        fog_view_uri: FogViewUri,
+        client_listen_uri: ClientListenUri,
         logger: Logger,
     ) -> Self {
         Self {
@@ -58,8 +58,38 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             db,
             db_poll_shared_state,
             authenticator,
-            fog_view_uri,
+            client_listen_uri,
             logger,
+        }
+    }
+
+    fn auth_impl(
+        &mut self,
+        mut request: attest::AuthMessage,
+        logger: &Logger,
+    ) -> Result<attest::AuthMessage, RpcStatus> {
+        // TODO: Use the prost message directly, once available
+        match self.enclave.client_accept(request.take_data().into()) {
+            Ok((response, _)) => {
+                let mut result = attest::AuthMessage::new();
+                result.set_data(response.into());
+                Ok(result)
+            }
+            Err(client_error) => {
+                // This is debug because there's no requirement on the remote party to trigger
+                // it.
+                log::debug!(
+                    logger,
+                    "ViewEnclaveApi::client_accept failed: {}",
+                    client_error
+                );
+                let rpc_permissions_error = rpc_permissions_error(
+                    "client_auth",
+                    format!("Permission denied: {}", client_error),
+                    logger,
+                );
+                Err(rpc_permissions_error)
+            }
         }
     }
 
@@ -143,7 +173,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     fn auth(
         &mut self,
         ctx: RpcContext,
-        mut request: attest::AuthMessage,
+        request: attest::AuthMessage,
         sink: UnarySink<attest::AuthMessage>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
@@ -152,34 +182,8 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            // TODO: Use the prost message directly, once available
-            match self.enclave.client_accept(request.take_data().into()) {
-                Ok((response, _)) => {
-                    let mut result = attest::AuthMessage::new();
-                    result.set_data(response.into());
-                    send_result(ctx, sink, Ok(result), logger);
-                }
-                Err(client_error) => {
-                    // This is debug because there's no requirement on the remote party to trigger
-                    // it.
-                    log::debug!(
-                        logger,
-                        "ViewEnclaveApi::client_accept failed: {}",
-                        client_error
-                    );
-                    send_result(
-                        ctx,
-                        sink,
-                        Err(rpc_permissions_error(
-                            "client_auth",
-                            format!("Permission denied: {}", client_error),
-                            logger,
-                        )),
-                        logger,
-                    );
-                }
-            }
-        });
+            send_result(ctx, sink, self.auth_impl(request, logger), logger);
+        })
     }
 
     fn query(
@@ -197,6 +201,25 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
             send_result(ctx, sink, self.query_impl(request), logger)
         })
     }
+}
+
+/// Implement the FogViewStoreService gRPC trait.
+impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewStoreApi for FogViewService<E, DB> {
+    fn auth(
+        &mut self,
+        ctx: RpcContext,
+        request: attest::AuthMessage,
+        sink: UnarySink<attest::AuthMessage>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), logger);
+            }
+
+            send_result(ctx, sink, self.auth_impl(request, logger), logger);
+        })
+    }
 
     /// Fulfills the query if the MultiViewStoreQueryRequest contains an
     /// encrypted Query for the store. If it doesn't, then it responds with
@@ -211,22 +234,31 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
-            let mut response = MultiViewStoreQueryResponse::new();
-            for query in request.queries {
-                let result = self.query_impl(query);
-                if let Ok(attested_message) = result {
-                    response.set_query_response(attested_message);
-                    return send_result(ctx, sink, Ok(response), logger);
+            if let ClientListenUri::Store(fog_view_store_uri) = self.client_listen_uri.clone() {
+                let mut response = MultiViewStoreQueryResponse::new();
+                for query in request.queries {
+                    let result = self.query_impl(query);
+                    if let Ok(attested_message) = result {
+                        response.set_query_response(attested_message);
+                        return send_result(ctx, sink, Ok(response), logger);
+                    }
                 }
+
+                let decryption_error = response.mut_decryption_error();
+                decryption_error.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
+                decryption_error.set_error_message(
+                    "Could not decrypt a query embedded in the MultiViewStoreQuery".to_string(),
+                );
+                send_result(ctx, sink, Ok(response), logger)
+            } else {
+                let rpc_permissions_error = rpc_permissions_error(
+                    "multi_view_store_query",
+                    "Permission denied: the multi_view_store_query is not accessible to clients"
+                        .to_string(),
+                    logger,
+                );
+                send_result(ctx, sink, Err(rpc_permissions_error), logger)
             }
-
-            let decryption_error = response.mut_decryption_error();
-            decryption_error.set_fog_view_store_uri(self.fog_view_uri.url().to_string());
-            decryption_error.set_error_message(
-                "Could not decrypt a query embedded in the MultiViewStoreQuery".to_string(),
-            );
-
-            send_result(ctx, sink, Ok(response), logger)
         });
     }
 }

@@ -4,8 +4,8 @@
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
 use mc_common::logger::log;
-use mc_fog_api::view_grpc::FogViewApiClient;
-use mc_fog_uri::FogViewUri;
+use mc_fog_api::view_grpc::FogViewStoreApiClient;
+use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{
     config::FogViewRouterConfig, fog_view_router_server::FogViewRouterServer,
@@ -37,24 +37,27 @@ fn main() {
     );
 
     // TODO: Remove and get from a config.
-    let mut fog_view_grpc_clients = Vec::new();
+    let mut fog_view_store_grpc_clients = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())
             .build(),
     );
     for i in 0..50 {
-        let shard_uri_string = format!("insecure-fog-view://node{}.test.mobilecoin.com:3225", i);
-        let shard_uri = FogViewUri::from_str(&shard_uri_string).unwrap();
-        let fog_view_grpc_client = FogViewApiClient::new(
+        let shard_uri_string = format!(
+            "insecure-fog-view-store://node{}.test.mobilecoin.com:3225",
+            i
+        );
+        let shard_uri = FogViewStoreUri::from_str(&shard_uri_string).unwrap();
+        let fog_view_store_grpc_client = FogViewStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
         );
-        fog_view_grpc_clients.push(fog_view_grpc_client);
+        fog_view_store_grpc_clients.push(fog_view_store_grpc_client);
     }
 
     let mut router_server =
-        FogViewRouterServer::new(config, sgx_enclave, fog_view_grpc_clients, logger);
+        FogViewRouterServer::new(config, sgx_enclave, fog_view_store_grpc_clients, logger);
     router_server.start();
 
     loop {
