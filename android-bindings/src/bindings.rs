@@ -2094,15 +2094,16 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
                 token_id: tx_builder.get_fee_token_id(),
             };
 
-            let (tx_out, confirmation_number) =
+            let tx_out_context =
                 tx_builder.add_gift_code_output(amount, &reserved_subaddresses, &mut rng)?;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
-                if len as usize >= confirmation_number.to_vec().len() {
+                if len as usize >= tx_out_context.confirmation.to_vec().len() {
                     env.set_byte_array_region(
                         confirmation_number_out,
                         0,
-                        confirmation_number
+                        tx_out_context
+                            .confirmation
                             .to_vec()
                             .into_iter()
                             .map(|u| u as i8)
@@ -2112,7 +2113,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
+            let mbox = Box::new(Mutex::new(tx_out_context.tx_out));
             let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
