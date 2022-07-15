@@ -2827,7 +2827,7 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let (_burn_tx_out, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
@@ -3071,13 +3071,15 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (tx_out1, _confirmation) = transaction_builder
+            let tx_out_context1 = transaction_builder
                 .add_output(tx_out1_right_amount, &recipient_addr, &mut rng)
                 .unwrap();
+            let tx_out1 = tx_out_context1.tx_out;
 
-            let (tx_out2, _confirmation) = transaction_builder
+            let tx_out_context2 = transaction_builder
                 .add_output(amount2, &recipient_addr, &mut rng)
                 .unwrap();
+            let tx_out2 = tx_out_context2.tx_out;
 
             transaction_builder
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
@@ -3204,11 +3206,11 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (_tx_out1, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(tx_out1_amount, &recipient_addr, &mut rng)
                 .unwrap();
 
-            let (_tx_out2, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(amount2, &recipient_addr, &mut rng)
                 .unwrap();
 
