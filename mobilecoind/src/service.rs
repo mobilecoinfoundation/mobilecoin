@@ -2142,7 +2142,7 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder, TxOutContext};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -3051,8 +3051,12 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
+        let TxOutContext {
+            tx_out,
+            confirmation,
+            ..
+        } = transaction_builder
+            .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
@@ -3066,7 +3070,7 @@ mod test {
             receipt.set_tx_public_key(api::external::CompressedRistretto::from(&tx_out.public_key));
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(10);
-            receipt.set_confirmation_number(tx_confirmation.to_vec());
+            receipt.set_confirmation_number(confirmation.to_vec());
 
             let mut request = api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -5443,7 +5447,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
@@ -5556,7 +5560,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),

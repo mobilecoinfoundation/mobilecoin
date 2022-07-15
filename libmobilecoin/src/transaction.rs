@@ -482,6 +482,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
     recipient_address: FfiRefPtr<McPublicAddress>,
     rng_callback: FfiOptMutPtr<McRngCallback>,
     out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McData> {
     ffi_boundary_with_error(out_error, || {
@@ -504,11 +505,18 @@ pub extern "C" fn mc_transaction_builder_add_output(
             token_id: transaction_builder.get_fee_token_id(),
         };
 
-        let (tx_out, confirmation) =
+        let tx_out_context =
             transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
 
-        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
-        Ok(mc_util_serial::encode(&tx_out))
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
+
+        let out_tx_out_shared_secret = out_tx_out_shared_secret
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPublic::size())
+            .expect("out_tx_out_shared_secret length is insufficient");
+
+        out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+        Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
 
@@ -531,6 +539,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
     amount: u64,
     rng_callback: FfiOptMutPtr<McRngCallback>,
     out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McData> {
     ffi_boundary_with_error(out_error, || {
@@ -554,11 +563,18 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             token_id: transaction_builder.get_fee_token_id(),
         };
 
-        let (tx_out, confirmation) =
+        let tx_out_context =
             transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
 
-        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
-        Ok(mc_util_serial::encode(&tx_out))
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
+
+        let out_tx_out_shared_secret = out_tx_out_shared_secret
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPublic::size())
+            .expect("out_tx_out_shared_secret length is insufficient");
+
+        out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+        Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
 
