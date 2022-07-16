@@ -49,17 +49,16 @@ impl AvrHistoryConfig {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
         let path = path.as_ref();
         let data = fs::read_to_string(path)?;
-        if let Ok(mut config) = serde_json::from_str(&data): Result<AvrHistoryConfig, _> {
-            config.node.sort();
-            Ok(config)
-        } else if let Ok(mut config) = toml::from_str(&data): Result<AvrHistoryConfig, _> {
-            config.node.sort();
-            Ok(config)
-        } else {
-            Err(ParseError::UnsupportedFileFormat(
-                path.to_string_lossy().into_owned(),
-            ))
-        }
+
+        // If we can parse to json, do it. If not, try toml
+        let config_result: Result<Self, _> =
+            serde_json::from_str(&data).or_else(|_e| -> Result<Self, ParseError> {
+                toml::from_str(&data).map_err(|_e| -> ParseError {
+                    ParseError::UnsupportedFileFormat(path.to_string_lossy().into_owned())
+                })
+            });
+
+        config_result
     }
 }
 

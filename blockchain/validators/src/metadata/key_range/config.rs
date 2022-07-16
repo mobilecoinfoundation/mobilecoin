@@ -37,16 +37,19 @@ impl Config {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
         let path = path.as_ref();
         let bytes = fs::read(path)?;
-        if let Ok(mut config) = serde_json::from_slice(&bytes): Result<Self, _> {
-            config.base_path = path.parent().map(Into::into);
-            Ok(config)
-        } else if let Ok(mut config) = toml::from_slice(&bytes): Result<Self, _> {
-            config.base_path = path.parent().map(Into::into);
-            Ok(config)
-        } else {
-            Err(ParseError::UnsupportedFileFormat(
+
+        // If we can parse to json, do it. If not, try toml
+        let config_result: Result<Self, _> = serde_json::from_slice(&bytes)
+            .map_err(|_| -> Result<Self, toml::de::Error> { toml::from_slice(&bytes) });
+
+        match config_result {
+            Ok(mut config) => {
+                config.base_path = path.parent().map(Into::into);
+                Ok(config)
+            }
+            _ => Err(ParseError::UnsupportedFileFormat(
                 path.to_string_lossy().into_owned(),
-            ))
+            )),
         }
     }
 
