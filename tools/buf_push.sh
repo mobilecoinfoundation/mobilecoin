@@ -1,6 +1,17 @@
 #!/bin/bash
 
 # Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Publish protobuf definition updates to buf.build
+#
+# Not that tags cannot be overwritten, so tag only after a release is cut.
+#
+# Usage:
+#     # Push a revision for SDKs/clients.
+#     tools/buf_push.sh
+#
+#     # Tag a release after it is cut.
+#     tools/buf_push.sh --tag=1.2.3
 
 set -e  # exit on error
 
