@@ -52,8 +52,8 @@ impl AvrHistoryConfig {
 
         // If we can parse to json, do it. If not, try toml
         let config_result: Result<Self, _> =
-            serde_json::from_str(&data).or_else(|_e| -> Result<Self, ParseError> {
-                toml::from_str(&data).map_err(|_e| -> ParseError {
+            serde_json::from_str(&data).or_else(|_| -> Result<Self, ParseError> {
+                toml::from_str(&data).map_err(|_| -> ParseError {
                     ParseError::UnsupportedFileFormat(path.to_string_lossy().into_owned())
                 })
             });
