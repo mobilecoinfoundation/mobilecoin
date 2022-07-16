@@ -6,7 +6,9 @@ use displaydoc::Display;
 use hex::FromHexError;
 use mc_crypto_keys::{KeyError, SignatureError};
 use pem::PemError;
-use std::io::Error as IoError;
+use serde_json::Error as JsonError;
+use std::{io::Error as IoError, path::PathBuf};
+use toml::de::Error as FromTomlError;
 
 /// Validator errors.
 #[derive(Debug, Display, Eq, PartialEq)]
@@ -30,6 +32,9 @@ impl From<SignatureError> for ValidationError {
 /// Parsing errors
 #[derive(Debug, Display, PartialEq)]
 pub enum ParseError {
+    /// Unrecognized extension in '{0}'
+    UnrecognizedExtension(PathBuf),
+
     /// Invalid pub_key value: {0}
     InvalidPubKeyValue(String),
 
@@ -48,8 +53,11 @@ pub enum ParseError {
     /// Invalid PEM tag: {0}
     InvalidPemTag(String),
 
-    /// Failed to parse a file: {0}
-    UnsupportedFileFormat(String),
+    /// Failed to parse TOML: {0}
+    Toml(String),
+
+    /// Failed to parse JSON: {0}
+    Json(String),
 }
 
 impl From<KeyError> for ParseError {
@@ -73,5 +81,17 @@ impl From<FromHexError> for ParseError {
 impl From<PemError> for ParseError {
     fn from(src: PemError) -> Self {
         Self::Pem(src)
+    }
+}
+
+impl From<FromTomlError> for ParseError {
+    fn from(src: FromTomlError) -> Self {
+        Self::Toml(src.to_string())
+    }
+}
+
+impl From<JsonError> for ParseError {
+    fn from(src: JsonError) -> Self {
+        Self::Json(src.to_string())
     }
 }

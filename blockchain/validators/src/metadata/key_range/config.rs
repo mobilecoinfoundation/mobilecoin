@@ -9,6 +9,7 @@ use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    ffi::OsStr,
     fs,
     ops::RangeInclusive,
     path::{Path, PathBuf},
@@ -37,20 +38,13 @@ impl Config {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
         let path = path.as_ref();
         let bytes = fs::read(path)?;
-
-        // If we can parse to json, do it. If not, try toml
-        let config_result: Result<Self, _> = serde_json::from_slice(&bytes)
-            .map_err(|_| -> Result<Self, toml::de::Error> { toml::from_slice(&bytes) });
-
-        match config_result {
-            Ok(mut config) => {
-                config.base_path = path.parent().map(Into::into);
-                Ok(config)
-            }
-            _ => Err(ParseError::UnsupportedFileFormat(
-                path.to_string_lossy().into_owned(),
-            )),
-        }
+        let mut config: Config = match path.extension().and_then(OsStr::to_str) {
+            Some("toml") => Ok(toml::from_slice(&bytes)?),
+            Some("json") => Ok(serde_json::from_slice(&bytes)?),
+            _ => Err(ParseError::UnrecognizedExtension(path.into())),
+        }?;
+        config.base_path = path.parent().map(Into::into);
+        Ok(config)
     }
 
     /// Get a [KeyValidityMap] from this config.
@@ -427,39 +421,22 @@ mod tests {
     }
 
     #[test]
-    fn error_handling() {
+    fn unsupported_extension() {
         let tmp = TempDir::new().unwrap();
-        let dir = tmp.path();
-        let file = dir.join("un-deserializeable.json");
-        let abs_path = file.as_path().join("test_abs.pem");
-        let rel_path = "test_rel.pem";
+        let file = tmp.path().join("metadata-signers.poml");
+        fs::write(&file, INPUT_TOML).unwrap();
 
-        let mut json = serde_json::json!({
-            "node": [
-                {
-                    "pub_key": abs_path.to_str(),
-                    "first_block_index": 0,
-                },
-                {
-                    "pub_key": rel_path,
-                    "first_block_index": 0,
-                    "last_block_index": 10,
-                },
-                {
-                    "message_signing_pub_key": KEY_C_PEM,
-                    "first_block_index": 20,
-                },
-            ]
-        })
-        .to_string();
-        json.push_str("{}");
-        fs::write(&file, json).unwrap();
-        // Parse the JSON.
-        let config = Config::load(&file);
+        let result = Config::load(&file);
+        assert_eq!(result, Err(ParseError::UnrecognizedExtension(file)));
+    }
 
-        let expected_error = Err(ParseError::UnsupportedFileFormat(
-            file.display().to_string(),
-        ));
-        assert_eq!(expected_error, config);
+    #[test]
+    fn no_extension() {
+        let tmp = TempDir::new().unwrap();
+        let file = tmp.path().join("metadata-signers");
+        fs::write(&file, INPUT_TOML).unwrap();
+
+        let result = Config::load(&file);
+        assert_eq!(result, Err(ParseError::UnrecognizedExtension(file)));
     }
 }
