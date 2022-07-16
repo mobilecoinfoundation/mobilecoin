@@ -101,7 +101,7 @@ impl<'de> DeserializeAs<'de, VerificationReport> for VerificationReportShadow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::sample_avr_history;
+    use crate::{test_utils, test_utils::sample_avr_history};
     use serde_json;
     use std::fs;
     use tempfile::TempDir;
@@ -145,22 +145,41 @@ mod tests {
         assert_eq!(control_avr_history, avr_history_from_toml);
     }
 
-    //#[test]
-    //fn test_bad_load_from_disk() {
-    //    // Get an AVR (to use as unsupported AVR History format) and write it
-    // to disk    let (bad_history_config, _) =
-    // test_utils::get_ias_reports();    let json_str =
-    // serde_json::to_string_pretty(&bad_history_config).unwrap();
-    //    let temp = TempDir::new().unwrap();
-    //    let path_json = temp.path().join("bad_format.json");
-    //    fs::write(&path_json, json_str).unwrap();
-    //
-    //    // Attempt to read the incorrectly structured data
-    //    let avr_history_from_json = AvrHistoryConfig::load(&path_json);
-    //
-    //    let expected_error = Err(ParseError::UnsupportedFileFormat(
-    //        path_json.display().to_string(),
-    //    ));
-    //    assert_eq!(expected_error, avr_history_from_json);
-    //}
+    #[test]
+    fn test_bad_load_from_disk() {
+        // Get an AVR (to use as unsupported AVR History format) and write it to disk
+        let (bad_history_config, _) = test_utils::get_ias_reports();
+        let json_str = serde_json::to_string_pretty(&bad_history_config).unwrap();
+        let temp = TempDir::new().unwrap();
+        let path_json = temp.path().join("bad_format.json");
+        fs::write(&path_json, json_str).unwrap();
+
+        // Attempt to read the incorrectly structured data
+        let avr_history_from_json = AvrHistoryConfig::load(&path_json);
+
+        let expected_error = Err(ParseError::Json(
+            "missing field `node` at line 2815 column 1".to_string(),
+        ));
+        assert_eq!(expected_error, avr_history_from_json);
+    }
+
+    #[test]
+    fn unsupported_extension() {
+        let tmp = TempDir::new().unwrap();
+        let path_json = tmp.path().join("avrhistory.config");
+        fs::write(&path_json, &sample_avr_history::as_json()).unwrap();
+
+        let result = AvrHistoryConfig::load(&path_json);
+        assert_eq!(result, Err(ParseError::UnrecognizedExtension(path_json)));
+    }
+
+    #[test]
+    fn no_extension() {
+        let tmp = TempDir::new().unwrap();
+        let path_json = tmp.path().join("avrhistory");
+        fs::write(&path_json, &sample_avr_history::as_json()).unwrap();
+
+        let result = AvrHistoryConfig::load(&path_json);
+        assert_eq!(result, Err(ParseError::UnrecognizedExtension(path_json)));
+    }
 }
