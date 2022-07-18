@@ -12,7 +12,7 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
-    Error, MintAuditorService,
+    http_api, Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
@@ -20,6 +20,8 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde_json::json;
 use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
+#[macro_use]
+extern crate rocket;
 
 /// Maximum number of concurrent connections in the database pool.
 const DB_POOL_SIZE: u32 = 10;
@@ -72,6 +74,8 @@ pub enum Command {
         #[clap(long, env = "MC_JSON")]
         json: bool,
     },
+
+    StartHttpServer,
 }
 
 /// Configuration for the mint auditor.
@@ -85,7 +89,8 @@ pub struct Config {
     pub command: Command,
 }
 
-fn main() {
+#[rocket::main]
+async fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let config = Config::parse();
@@ -117,6 +122,10 @@ fn main() {
             json,
         } => {
             cmd_get_block_audit_data(mint_auditor_db, block_index, json, logger);
+        }
+
+        Command::StartHttpServer {} => {
+            cmd_start_http_server(logger).await;
         }
     }
 }
@@ -255,6 +264,19 @@ fn cmd_get_block_audit_data(
         Ok(())
     })
     .expect("db transaction failed");
+}
+
+// start the http server
+async fn cmd_start_http_server(_logger: Logger) {
+    if let Err(e) = rocket::build()
+        .mount("/", routes![http_api::routes::index, http_api::routes::cat])
+        .launch()
+        .await
+    {
+        println!("Whoops! Rocket didn't launch!");
+        // We drop the error to get a Rocket-formatted panic.
+        drop(e);
+    }
 }
 
 /// Synchronizes the mint auditor database with the ledger database.
