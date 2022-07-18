@@ -159,11 +159,11 @@ pub fn create_burn_tx_out(
 
     transaction_builder.set_fee(3).unwrap();
 
-    let (burn_output, _confirmation) = transaction_builder
+    let tx_out_context = transaction_builder
         .add_output(Amount::new(amount, token_id), &burn_address(), rng)
         .unwrap();
 
-    BurnTxOut::from_core_tx_out(0, &burn_output).unwrap()
+    BurnTxOut::from_core_tx_out(0, &tx_out_context.tx_out).unwrap()
 }
 
 /// Create and insert a [BurnTxOut].
