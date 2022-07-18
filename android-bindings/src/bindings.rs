@@ -54,7 +54,7 @@ use mc_transaction_std::{
     GiftCodeCancellationMemo, GiftCodeCancellationMemoBuilder, GiftCodeFundingMemo,
     GiftCodeFundingMemoBuilder, GiftCodeSenderMemo, GiftCodeSenderMemoBuilder, InputCredentials,
     MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses, SenderMemoCredential,
-    TransactionBuilder,
+    TransactionBuilder, TxOutContext,
 };
 
 use mc_util_from_random::FromRandom;
@@ -1634,6 +1634,65 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_decrypt_1memo_1payload(
 }
 
 /********************************************************************
+ * TxOutContext
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1tx_1out(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let tx_out = tx_out_context.tx_out.to_owned();
+            let mbox = Box::new(Mutex::new(tx_out));
+            let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1confirmation_1number(
+    env: JNIEnv,
+    obj: JObject,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let confirmation_number = &tx_out_context.confirmation;
+            let bytes = mc_util_serial::encode(confirmation_number);
+            Ok(env.byte_array_from_slice(&bytes)?)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1shared_1secret(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let shared_secret = tx_out_context.shared_secret.to_owned();
+            let mbox = Box::new(Mutex::new(shared_secret));
+            let ptr: *mut Mutex<RistrettoPublic> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+/********************************************************************
  * TxOutMembershipProof
  */
 
@@ -1928,8 +1987,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
-            let (tx_out, confirmation_number) =
-                tx_builder.add_output(amount, &recipient, &mut rng)?;
+            let tx_out_context = tx_builder.add_output(amount, &recipient, &mut rng)?;
+            let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1946,8 +2005,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
-            let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
+            let mbox = Box::new(Mutex::new(tx_out_context));
+            let ptr: *mut Mutex<TxOutContext> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
     )
@@ -1981,8 +2040,9 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 token_id: tx_builder.get_fee_token_id(),
             };
 
-            let (tx_out, confirmation_number) =
+            let tx_out_context =
                 tx_builder.add_change_output(amount, &change_destination, &mut rng)?;
+            let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1999,8 +2059,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
-            let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
+            let mbox = Box::new(Mutex::new(tx_out_context));
+            let ptr: *mut Mutex<TxOutContext> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
     )
@@ -2034,15 +2094,16 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
                 token_id: tx_builder.get_fee_token_id(),
             };
 
-            let (tx_out, confirmation_number) =
+            let tx_out_context =
                 tx_builder.add_gift_code_output(amount, &reserved_subaddresses, &mut rng)?;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
-                if len as usize >= confirmation_number.to_vec().len() {
+                if len as usize >= tx_out_context.confirmation.to_vec().len() {
                     env.set_byte_array_region(
                         confirmation_number_out,
                         0,
-                        confirmation_number
+                        tx_out_context
+                            .confirmation
                             .to_vec()
                             .into_iter()
                             .map(|u| u as i8)
@@ -2052,7 +2113,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
+            let mbox = Box::new(Mutex::new(tx_out_context.tx_out));
             let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
