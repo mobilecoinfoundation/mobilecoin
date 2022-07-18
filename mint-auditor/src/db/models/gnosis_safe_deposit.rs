@@ -245,15 +245,12 @@ mod tests {
 
         // Insert a row to the `audited_mints` table marking the first deposit as
         // audited. We should no longer be able to find it.
-        let audited_mint = AuditedMint {
-            id: None,
-            mint_tx_id: sql_mint_tx1.id().unwrap(),
-            gnosis_safe_deposit_id: deposit1.id().unwrap(),
-        };
-        diesel::insert_into(audited_mints::table)
-            .values(audited_mint)
-            .execute(&conn)
-            .unwrap();
+        AuditedMint::associate_deposit_with_mint(
+            deposit1.id().unwrap(),
+            sql_mint_tx1.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
 
         assert!(
             GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)
@@ -269,15 +266,12 @@ mod tests {
         );
 
         // Mark the second deposit as audited. We should no longer be able to find it.
-        let audited_mint = AuditedMint {
-            id: None,
-            mint_tx_id: sql_mint_tx2.id().unwrap(),
-            gnosis_safe_deposit_id: deposit2.id().unwrap(),
-        };
-        diesel::insert_into(audited_mints::table)
-            .values(audited_mint)
-            .execute(&conn)
-            .unwrap();
+        AuditedMint::associate_deposit_with_mint(
+            deposit2.id().unwrap(),
+            sql_mint_tx2.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
 
         assert!(
             GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce1, &conn)

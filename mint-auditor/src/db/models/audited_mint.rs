@@ -134,14 +134,17 @@ impl AuditedMint {
             transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
                 // Currently we only support 1:1 mapping between deposits and mints, so ensure
                 // that there isn't already a match for this mint.
-                let existing_match = audited_mints::table
+                let existing_match: Option<(String, String)> = audited_mints::table
+                    .inner_join(mint_txs::table)
+                    .inner_join(gnosis_safe_deposits::table)
+                    .select((mint_txs::nonce_hex, gnosis_safe_deposits::eth_tx_hash))
                     .filter(audited_mints::mint_tx_id.eq(mint_tx_id))
-                    .first::<AuditedMint>(conn)
+                    .first(conn)
                     .optional()?;
-                if let Some(existing_match) = existing_match {
+                if let Some((nonce_hex, eth_tx_hash)) = existing_match {
                     return Err(Error::AlreadyExists(format!(
-                        "MintTx id={} already matched with gnosis_safe_deposit_id={}",
-                        existing_match.mint_tx_id, existing_match.gnosis_safe_deposit_id,
+                        "MintTx nonce={} already matched with GnosisSafeDeposit eth_tx_hash={}",
+                        nonce_hex, eth_tx_hash,
                     )));
                 }
 
@@ -645,6 +648,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_mints_to_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -669,6 +679,8 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 1);
     }
 
     #[test_with_logger]
