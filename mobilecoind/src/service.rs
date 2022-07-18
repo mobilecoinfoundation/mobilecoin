@@ -3056,7 +3056,7 @@ mod test {
             confirmation,
             ..
         } = transaction_builder
-            .add_output(10, &receiver.subaddress(0), &mut rng)
+            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
