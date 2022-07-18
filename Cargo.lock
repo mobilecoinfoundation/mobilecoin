@@ -4628,6 +4628,7 @@ dependencies = [
  "mc-mint-auditor-api",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
+ "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",

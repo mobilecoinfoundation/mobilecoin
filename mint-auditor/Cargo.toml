@@ -17,6 +17,7 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-mint-auditor-api = { path = "api" }
 mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-std = { path = "../transaction/std" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-metrics = { path = "../util/metrics" }
