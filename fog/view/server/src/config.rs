@@ -2,7 +2,7 @@
 
 //! Configuration parameters for the MobileCoin Fog View Node
 #![deny(missing_docs)]
-
+use crate::sharding_strategy::EpochShardingStrategy;
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
@@ -67,6 +67,33 @@ pub struct MobileAcctViewConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// Determines which group of TxOuts the Fog View Store instance will
+    /// process.
+    #[clap(long, default_value = "default")]
+    pub sharding_strategy: ShardingStrategy,
+}
+
+/// Determines which group of TxOuts the Fog View Store instance will process.
+#[derive(Clone, Serialize)]
+pub enum ShardingStrategy {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    Epoch(EpochShardingStrategy),
+}
+
+impl FromStr for ShardingStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq("default") {
+            return Ok(ShardingStrategy::Epoch(EpochShardingStrategy::default()));
+        }
+        if let Ok(epoch_sharding_strategy) = EpochShardingStrategy::from_str(s) {
+            return Ok(ShardingStrategy::Epoch(epoch_sharding_strategy));
+        }
+
+        Err("Invalid sharding strategy config.".to_string())
+    }
 }
 
 /// A FogViewServer can either fulfill client requests directly or fulfill Fog

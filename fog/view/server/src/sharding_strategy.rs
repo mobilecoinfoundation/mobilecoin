@@ -7,6 +7,8 @@
 
 use mc_blockchain_types::BlockIndex;
 use mc_fog_types::common::BlockRange;
+use serde::Serialize;
+use std::str::FromStr;
 
 /// Tells a Fog View Store for which blocks it should process TxOuts.
 pub trait ShardingStrategy {
@@ -20,7 +22,7 @@ pub trait ShardingStrategy {
 ///
 /// In practice, the set of Fog View Shards will contain overlapping
 /// [epoch_block_ranges] in order to obfuscate which shard processed the TxOuts.
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct EpochShardingStrategy {
     /// If a block falls within this range, then the Fog View Store should
     /// process its TxOuts.
@@ -45,6 +47,18 @@ impl EpochShardingStrategy {
     #[allow(dead_code)]
     pub fn new(epoch_block_range: BlockRange) -> Self {
         Self { epoch_block_range }
+    }
+}
+
+impl FromStr for EpochShardingStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(block_range) = BlockRange::from_str(s) {
+            return Ok(Self::new(block_range));
+        }
+
+        Err("Invalid epoch sharding strategy.".to_string())
     }
 }
 
