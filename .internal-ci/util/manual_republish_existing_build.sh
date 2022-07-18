@@ -11,7 +11,7 @@ usage()
 {
 cat << USAGE
 Usage:
-${0} [--pull] [--images] [--charts] --source-tag v1.2.2-dev --target-tag v1.2.3-some-tag
+${0} [--pull] [--push] [--images|--image IMG] [--charts|--chart CHART] --source-tag v1.2.2-dev --target-tag v1.2.3-some-tag
     --pull - pull down binaries from source-tag images
     --images - build images
     --charts - build charts
