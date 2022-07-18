@@ -48,5 +48,4 @@ x509-signature = "0.5"
 [dev-dependencies]
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
-
 tempfile = "3.2"
