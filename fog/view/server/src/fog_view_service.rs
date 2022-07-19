@@ -7,7 +7,9 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError},
+    view::{
+        MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError,
+    },
     view_grpc::{FogViewApi, FogViewStoreApi},
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
@@ -262,21 +264,22 @@ where
                 return send_result(ctx, sink, err.into(), logger);
             }
             if let ClientListenUri::Store(fog_view_store_uri) = self.client_listen_uri.clone() {
-                {
-                    let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
-                    if !self
-                        .sharding_strategy
-                        .is_ready_to_serve_tx_outs(shared_state.processed_block_count.into())
-                    {
-                        // TODO: Return new type of error.
-                    }
-                }
                 let mut response = MultiViewStoreQueryResponse::new();
                 response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
                 for query in request.queries {
                     let result = self.query_impl(query);
                     if let Ok(attested_message) = result {
-                        response.set_query_response(attested_message);
+                        {
+                            let shared_state =
+                                self.db_poll_shared_state.lock().expect("mutex poisoned");
+                            if !self.sharding_strategy.is_ready_to_serve_tx_outs(
+                                shared_state.processed_block_count.into(),
+                            ) {
+                                response.set_error(MultiViewStoreQueryResponseError::NOT_READY);
+                            } else {
+                                response.set_query_response(attested_message);
+                            }
+                        }
                         return send_result(ctx, sink, Ok(response), logger);
                     }
                 }

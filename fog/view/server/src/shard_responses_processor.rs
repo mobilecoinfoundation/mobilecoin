@@ -3,7 +3,10 @@
 use crate::error::RouterServerError;
 use mc_attest_api::attest;
 use mc_common::ResponderId;
-use mc_fog_api::{view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError}, view_grpc::FogViewStoreApiClient};
+use mc_fog_api::{
+    view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError},
+    view_grpc::FogViewStoreApiClient,
+};
 use mc_fog_uri::FogViewStoreUri;
 use std::{str::FromStr, sync::Arc};
 
@@ -47,9 +50,10 @@ pub fn process_shard_responses(
 
     for (shard_client, mut response) in clients_and_responses {
         let store_uri = FogViewStoreUri::from_str(response.get_fog_view_store_uri())?;
-        // The shard was unable to produce a query response because the Fog View Store it contacted
-        // isn't authenticated with the Fog View Router. Therefore we need to (a) retry the query
-        // (b) authenticate with the Fog View Store.
+        // The shard was unable to produce a query response because the Fog View Store
+        // it contacted isn't authenticated with the Fog View Router. Therefore
+        // we need to (a) retry the query (b) authenticate with the Fog View
+        // Store.
         if response.get_error() == MultiViewStoreQueryResponseError::AUTHENTICATION {
             shard_clients_for_retry.push(shard_client);
             view_store_uris_for_authentication.push(store_uri);
