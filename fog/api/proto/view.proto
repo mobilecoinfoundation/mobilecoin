@@ -63,11 +63,18 @@ message MultiViewStoreQueryResponse {
     FogViewStoreDecryptionError decryption_error = 2;
 }
 
+/// Fulfills requests sent directly by a Fog client, e.g. a mobile phone using the SDK.
 service FogViewAPI {
     /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
     rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
     /// Input should be an encrypted QueryRequest, result is an encrypted QueryResponse
     rpc Query(attest.Message) returns (attest.Message) {}
+}
+
+/// Fulfills requests sent by the Fog View Router. This is not meant to fulfill requests sent directly by the client.
+service FogViewStoreAPI {
+    /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
     /// Input should be an encrypted MultiViewStoreQueryRequest, result is an encrypted QueryResponse.
     rpc MultiViewStoreQuery(MultiViewStoreQueryRequest) returns (MultiViewStoreQueryResponse) {}
 }

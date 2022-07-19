@@ -23,7 +23,7 @@ impl FogViewRouterServer {
     pub fn new<E>(
         config: FogViewRouterConfig,
         enclave: E,
-        shards: Vec<view_grpc::FogViewApiClient>,
+        shards: Vec<view_grpc::FogViewStoreApiClient>,
         logger: Logger,
     ) -> FogViewRouterServer
     where

@@ -7,11 +7,11 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
-use mc_fog_uri::{FogViewRouterUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 /// Configuration parameters for the MobileCoin Fog View Node
 #[derive(Clone, Parser, Serialize)]
@@ -38,7 +38,7 @@ pub struct MobileAcctViewConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: FogViewUri,
+    pub client_listen_uri: ClientListenUri,
 
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
@@ -71,6 +71,30 @@ pub struct MobileAcctViewConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+}
+
+/// A FogViewServer can either fulfill client requests directly or fulfill Fog
+/// View Router requests, and these types of servers use different URLs.
+#[derive(Clone, Serialize)]
+pub enum ClientListenUri {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    ClientFacing(FogViewUri),
+    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    Store(FogViewStoreUri),
+}
+
+impl FromStr for ClientListenUri {
+    type Err = String;
+    fn from_str(input: &str) -> Result<Self, String> {
+        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
+            return Ok(ClientListenUri::ClientFacing(fog_view_uri));
+        }
+        if let Ok(fog_view_store_uri) = FogViewStoreUri::from_str(input) {
+            return Ok(ClientListenUri::Store(fog_view_store_uri));
+        }
+
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
+    }
 }
 
 /// Configuration parameters for the Fog View Router.
