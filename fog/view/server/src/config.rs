@@ -89,7 +89,7 @@ impl FromStr for ClientListenUri {
             return Ok(ClientListenUri::Store(fog_view_store_uri));
         }
 
-        Err("Incorrect ClientListenUri.".to_string())
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
     }
 }
 

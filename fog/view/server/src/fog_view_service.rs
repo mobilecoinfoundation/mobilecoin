@@ -35,7 +35,7 @@ pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
     /// GRPC request authenticator.
     authenticator: Arc<dyn Authenticator + Send + Sync>,
 
-    /// The FogViewUri for this FogViewService.
+    /// The ClientListenUri for this FogViewService.
     client_listen_uri: ClientListenUri,
 
     /// Slog logger object
