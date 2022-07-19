@@ -282,7 +282,10 @@ async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
 
     if let Err(e) = rocket::build()
         .manage(routes::AuditorDb(mint_auditor_db))
-        .mount("/", routes![routes::index, routes::get_cat])
+        .mount(
+            "/",
+            routes![routes::index, routes::get_cat, routes::get_db_test],
+        )
         .launch()
         .await
     {

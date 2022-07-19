@@ -23,3 +23,15 @@ pub struct CatResponse {
 pub fn get_cat(db: &State<AuditorDb>) -> Json<CatResponse> {
     Json(MintAuditorHttpService::get_cat(&db.0).expect("woops"))
 }
+
+/// temp
+#[derive(Serialize)]
+pub struct TestResponse {
+    /// temp
+    pub num_mints: u64,
+}
+/// temp cat route
+#[get("/db-test")]
+pub fn get_db_test(db: &State<AuditorDb>) -> Json<TestResponse> {
+    Json(MintAuditorHttpService::get_db_test(&db.0).expect("woops"))
+}
