@@ -2647,3 +2647,14 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_next_1bytes(
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_finalize_1jni(
+    env: JNIEnv,
+    obj: JObject,
+) {
+    jni_ffi_call(&env, |env| {
+        let _: McRng = env.take_rust_field(obj, RUST_OBJ_FIELD)?;
+        Ok(())
+    })
+}

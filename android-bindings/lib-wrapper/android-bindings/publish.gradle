@@ -1,6 +1,6 @@
 apply plugin: 'maven-publish'
 
-version '1.2.3-pre3'
+version '1.2.3-pre0'
 group 'com.mobilecoin'
 
 Properties properties = new Properties()
