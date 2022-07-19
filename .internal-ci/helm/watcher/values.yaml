@@ -1,5 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-images:
+image:
+  org: mobilecoin
+  name: watcher
   tag: ""
 
 consensusPeers: []

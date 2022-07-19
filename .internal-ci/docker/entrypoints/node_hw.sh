@@ -124,8 +124,8 @@ then
         export ES_INDEX=${ES_INDEX:-"filebeat"}
         export MC_LOG_UDP_JSON=127.0.0.1:16666
 
-        # enable filebeat in supervisord
-        sed -i '' 's/numprocs=0/numprocs=1/g' /etc/supervisor/conf.d/filebeat.conf
+        # enable logstash in supervisord
+        sed -i -e 's/numprocs=0/numprocs=1/g' /etc/supervisor/conf.d/logstash.conf
     fi
 
     # Ledger

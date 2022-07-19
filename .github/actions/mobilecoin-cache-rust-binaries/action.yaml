@@ -10,10 +10,6 @@ inputs:
     required: false
     default: |
       rust_build_artifacts
-  # hash_files:
-  #   description: "list of files/globs to hash"
-  #   required: false
-  #   default: "'**/*.rs', '**/*.proto', '**/Cargo.toml'"
 
 outputs:
   cache-hit:
@@ -30,4 +26,4 @@ runs:
       path: ${{ inputs.path }}
       # Key is a hash of all the .rs, .proto and Cargo.toml files.
       # if code changes, invalidate cache and rebuild
-      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-rust-build-artifacts
+      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml', '**/*.edl', '.cargo/config') }}-rust-build-artifacts
