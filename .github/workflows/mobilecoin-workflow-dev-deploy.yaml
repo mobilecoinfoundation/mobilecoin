@@ -125,8 +125,33 @@ jobs:
       run: |
         .internal-ci/util/print_details.sh
 
+  # Reset consensus nodes between releases - if there's existing data, we'll
+  # restore from S3.
+  reset-releases:
+    runs-on: [self-hosted, Linux, small]
+    strategy:
+      matrix:
+        chart:
+        - consensus-node-1
+        - consensus-node-2
+        - consensus-node-3
+        - consensus-node-4
+        - consensus-node-5
+    steps:
+    - name: Delete release
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-release-delete
+        namespace: ${{ inputs.namespace }}
+        release_name: ${{ matrix.chart }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
   setup-environment:
     runs-on: [self-hosted, Linux, small]
+    needs:
+    - reset-releases
     steps:
     - name: Checkout
       uses: actions/checkout@v3
