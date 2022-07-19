@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-core"
-version = "1.2.2"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -42,12 +42,6 @@ bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
 
-[dev-dependencies.proptest]
-version = "1.0" # Only works for 0.9.1 or newer
-default-features = false
-# Enable all default features not known to break code coverage builds
-features = ["default-code-coverage"]
-
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
@@ -55,6 +49,7 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 rand = "0.8"
 rand_hc = "0.3"
 tempdir = "0.3"
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-crypto-rand = { path = "../../crypto/rand" }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-common"
-version = "1.2.2"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -72,9 +72,4 @@ slog-term = { version = "2.9", optional = true }
 
 [dev-dependencies]
 scoped_threadpool = "0.1.*"
-
-[dev-dependencies.proptest]
-version = "1.0" # Only works for 0.9.1 or newer
-default-features = false
-# Enable all default features not known to break code coverage builds
-features = ["default-code-coverage"]
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
