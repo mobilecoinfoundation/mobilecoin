@@ -27,7 +27,7 @@ spec:
         runAsGroup: 1000
       containers:
       - name: fog-test-client
-        image: "{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag }}"
+        image: '{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag | default .Chart.AppVersion }}'
         imagePullPolicy: Always
         securityContext:
           capabilities:
@@ -35,27 +35,27 @@ spec:
             - all
           readOnlyRootFilesystem: true
         env:
-        - name: FOG_VIEW
+        - name: MC_FOG_VIEW
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
               key: FOG_VIEW
-        - name: FOG_LEDGER
+        - name: MC_FOG_LEDGER
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
               key: FOG_LEDGER
-        - name: CONSENSUS_VALIDATORS
+        - name: MC_CONSENSUS_VALIDATORS
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
               key: CONSENSUS_VALIDATORS
-        - name: CONSENSUS_WAIT
+        - name: MC_CONSENSUS_WAIT
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
               key: CONSENSUS_WAIT
-        - name: TRANSFER_AMOUNT
+        - name: MC_TRANSFER_AMOUNT
           value: "100000000000"
         {{- if.Values.fogTestClientConfig.fogClientAuthTokenSecret.enabled }}
         - name: CLIENT_AUTH_TOKEN_SECRET

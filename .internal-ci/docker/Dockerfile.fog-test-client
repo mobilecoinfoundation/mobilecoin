@@ -29,23 +29,23 @@ COPY ${RUST_BIN_PATH}/mc-util-grpc-token-generator /usr/local/bin/
 COPY .internal-ci/docker/entrypoints/fog-test-client.sh /usr/local/bin/entrypoint.sh
 
 ENV KEY_DIR /keys
-ENV CONSENSUS_ENCLAVE_CSS /measurements/consensus-enclave.css
-ENV INGEST_ENCLAVE_CSS /measurements/ingest-enclave.css
-ENV LEDGER_ENCLAVE_CSS /measurements/ledger-enclave.css
-ENV VIEW_ENCLAVE_CSS /measurements/view-enclave.css
-ENV ADMIN_LISTEN_URI insecure-mca://0.0.0.0:8001/
-ENV TRANSFER_AMOUNT 100000000000
-ENV CONTINUOUS true
-ENV TRANSFER_PERIOD 60
-ENV CONSENSUS_WAIT 15
-ENV NUM_CLIENTS 4
-ENV NO_MEMOS true
+ENV MC_CONSENSUS_ENCLAVE_CSS /measurements/consensus-enclave.css
+ENV MC_INGEST_ENCLAVE_CSS /measurements/ingest-enclave.css
+ENV MC_LEDGER_ENCLAVE_CSS /measurements/ledger-enclave.css
+ENV MC_VIEW_ENCLAVE_CSS /measurements/view-enclave.css
+ENV MC_ADMIN_LISTEN_URI insecure-mca://0.0.0.0:8001/
+ENV MC_TRANSFER_AMOUNT 100000000000
+ENV MC_CONTINUOUS true
+ENV MC_TRANSFER_PERIOD 60
+ENV MC_CONSENSUS_WAIT 15
+ENV MC_NUM_CLIENTS 4
+ENV MC_NO_MEMOS true
 
 # Required Environment Variables
-# CONSENSUS_VALIDATORS - comma separated list of consensus urls.
-# FOG_VIEW - fog view url.
-# FOG_LEDGER - fog ledger url.
-# CLIENT_AUTH_TOKEN_SECRET - if running against a Signal fog instance.
+# MC_CONSENSUS_VALIDATORS - comma separated list of consensus urls.
+# MC_FOG_VIEW - fog view url.
+# MC_FOG_LEDGER - fog ledger url.
+# MC_CLIENT_AUTH_TOKEN_SECRET - if running against a Signal fog instance.
 
 # Share key files in /keys
 VOLUME /keys
