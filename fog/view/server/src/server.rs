@@ -81,7 +81,7 @@ where
             enclave.clone(),
             recovery_db.clone(),
             readiness_indicator.clone(),
-            sharding_strategy,
+            sharding_strategy.clone(),
             logger.clone(),
         );
 
@@ -108,6 +108,7 @@ where
             db_poll_thread.get_shared_state(),
             client_authenticator,
             config.client_listen_uri.clone(),
+            sharding_strategy,
             logger.clone(),
         ));
         log::debug!(logger, "Constructed View GRPC Service");
@@ -223,6 +224,9 @@ pub struct DbPollSharedState {
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// The number of blocks that have been processed.
+    pub processed_block_count: u64,
 }
 
 /// A thread that periodically pushes new tx data from db to enclave
@@ -628,6 +632,8 @@ where
                 // Track that this block was processed.
                 self.enclave_block_tracker
                     .block_processed(ingress_key, block_index);
+                let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
+                shared_state.processed_block_count += 1;
 
                 // Update metrics
                 counters::BLOCKS_ADDED_COUNT.inc();
