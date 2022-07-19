@@ -12,7 +12,8 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
-    http_api, Error, MintAuditorService,
+    http_api::routes,
+    Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
@@ -75,7 +76,11 @@ pub enum Command {
         json: bool,
     },
 
-    StartHttpServer,
+    StartHttpServer {
+        /// Path to mint auditor db.
+        #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
+        mint_auditor_db: PathBuf,
+    },
 }
 
 /// Configuration for the mint auditor.
@@ -124,8 +129,8 @@ async fn main() {
             cmd_get_block_audit_data(mint_auditor_db, block_index, json, logger);
         }
 
-        Command::StartHttpServer {} => {
-            cmd_start_http_server(logger).await;
+        Command::StartHttpServer { mint_auditor_db } => {
+            cmd_start_http_server(mint_auditor_db, logger).await;
         }
     }
 }
@@ -267,9 +272,17 @@ fn cmd_get_block_audit_data(
 }
 
 // start the http server
-async fn cmd_start_http_server(_logger: Logger) {
+async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
+    let mint_auditor_db = MintAuditorDb::new_from_path(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        DB_POOL_SIZE,
+        logger.clone(),
+    )
+    .expect("Could not open mint auditor DB");
+
     if let Err(e) = rocket::build()
-        .mount("/", routes![http_api::routes::index, http_api::routes::cat])
+        .manage(routes::AuditorDb(mint_auditor_db))
+        .mount("/", routes![routes::index, routes::get_cat])
         .launch()
         .await
     {

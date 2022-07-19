@@ -5,5 +5,5 @@
 /// routes for the http server
 pub mod routes;
 
-// service for handling http requests
+/// service for handling http requests
 pub mod service;
