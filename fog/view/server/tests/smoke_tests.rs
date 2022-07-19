@@ -33,7 +33,10 @@ use mc_fog_uri::{ConnectionUri, FogViewUri};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
-use mc_fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
+use mc_fog_view_server::{
+    config::{ClientListenUri::ClientFacing, MobileAcctViewConfig as ViewConfig},
+    server::ViewServer,
+};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};
@@ -61,7 +64,7 @@ fn get_test_environment(
     let server = {
         let config = ViewConfig {
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
-            client_listen_uri: uri.clone(),
+            client_listen_uri: ClientFacing(uri.clone()),
             client_auth_token_secret: None,
             omap_capacity: view_omap_capacity,
             ias_spid: Default::default(),

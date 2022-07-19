@@ -5,7 +5,10 @@
 //! stopping it
 
 use crate::{
-    block_tracker::BlockTracker, config::MobileAcctViewConfig, counters, db_fetcher::DbFetcher,
+    block_tracker::BlockTracker,
+    config::{ClientListenUri, MobileAcctViewConfig},
+    counters,
+    db_fetcher::DbFetcher,
     fog_view_service::FogViewService,
 };
 use futures::executor::block_on;
@@ -109,16 +112,28 @@ where
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
-        // Package service into grpc server
-        log::info!(
-            logger,
-            "Starting View server on {}",
-            config.client_listen_uri.addr(),
-        );
-        let server_builder = grpcio::ServerBuilder::new(env)
-            .register_service(fog_view_service)
-            .register_service(health_service)
-            .bind_using_uri(&config.client_listen_uri, logger.clone());
+        let server_builder = match config.client_listen_uri {
+            ClientListenUri::ClientFacing(ref fog_view_uri) => {
+                // Package service into grpc server
+                log::info!(logger, "Starting View server on {}", fog_view_uri.addr(),);
+                grpcio::ServerBuilder::new(env)
+                    .register_service(fog_view_service)
+                    .register_service(health_service)
+                    .bind_using_uri(fog_view_uri, logger.clone())
+            }
+            ClientListenUri::Store(ref fog_view_store_uri) => {
+                // Package service into grpc server
+                log::info!(
+                    logger,
+                    "Starting View Store server on {}",
+                    fog_view_store_uri.addr(),
+                );
+                grpcio::ServerBuilder::new(env)
+                    .register_service(fog_view_service)
+                    .register_service(health_service)
+                    .bind_using_uri(fog_view_store_uri, logger.clone())
+            }
+        };
 
         let server = server_builder.build().unwrap();
 
