@@ -7,7 +7,7 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
+    view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError},
     view_grpc::{FogViewApi, FogViewStoreApi},
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
@@ -281,10 +281,7 @@ where
                     }
                 }
 
-                let decryption_error = response.mut_decryption_error();
-                decryption_error.set_error_message(
-                    "Could not decrypt a query embedded in the MultiViewStoreQuery".to_string(),
-                );
+                response.set_error(MultiViewStoreQueryResponseError::AUTHENTICATION);
                 send_result(ctx, sink, Ok(response), logger)
             } else {
                 let rpc_permissions_error = rpc_permissions_error(
