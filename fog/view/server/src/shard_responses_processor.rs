@@ -4,7 +4,7 @@ use crate::error::RouterServerError;
 use mc_attest_api::attest;
 use mc_common::ResponderId;
 use mc_fog_api::{
-    view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseError},
+    view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus},
     view_grpc::FogViewStoreApiClient,
 };
 use mc_fog_uri::FogViewStoreUri;
@@ -50,16 +50,22 @@ pub fn process_shard_responses(
 
     for (shard_client, mut response) in clients_and_responses {
         let store_uri = FogViewStoreUri::from_str(response.get_fog_view_store_uri())?;
-        // The shard was unable to produce a query response because the Fog View Store
-        // it contacted isn't authenticated with the Fog View Router. Therefore
-        // we need to (a) retry the query (b) authenticate with the Fog View
-        // Store.
-        if response.get_error() == MultiViewStoreQueryResponseError::AUTHENTICATION {
-            shard_clients_for_retry.push(shard_client);
-            view_store_uris_for_authentication.push(store_uri);
-        } else {
-            let store_responder_id = ResponderId::from_str(&store_uri.to_string())?;
-            new_query_responses.push((store_responder_id, response.take_query_response()));
+        match response.get_status() {
+            MultiViewStoreQueryResponseStatus::SUCCESS => {
+                let store_responder_id = ResponderId::from_str(&store_uri.to_string())?;
+                new_query_responses.push((store_responder_id, response.take_query_response()));
+            }
+            // The shard was unable to produce a query response because the Fog View Store
+            // it contacted isn't authenticated with the Fog View Router. Therefore
+            // we need to (a) retry the query (b) authenticate with the Fog View
+            // Store.
+            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR => {
+                shard_clients_for_retry.push(shard_client);
+                view_store_uris_for_authentication.push(store_uri);
+            }
+            // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
+            // hasn't returned a new query response, and shouldn't be retried yet.
+            MultiViewStoreQueryResponseStatus::NOT_READY => (),
         }
     }
 
@@ -92,11 +98,15 @@ mod tests {
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         successful_response.set_fog_view_store_uri(view_uri_string);
+        successful_response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
 
         successful_response
     }
 
-    fn create_failed_mvq_response(client_index: usize) -> MultiViewStoreQueryResponse {
+    fn create_failed_mvq_response(
+        client_index: usize,
+        status: MultiViewStoreQueryResponseStatus,
+    ) -> MultiViewStoreQueryResponse {
         let mut failed_response = MultiViewStoreQueryResponse::new();
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
@@ -105,9 +115,7 @@ mod tests {
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         failed_response.set_fog_view_store_uri(view_uri_string);
-        failed_response
-            .mut_decryption_error()
-            .set_error_message("Could not decrypt shard response".to_string());
+        failed_response.set_status(status);
 
         failed_response
     }
@@ -179,10 +187,13 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn one_failed_response_one_pending_shard_client(logger: Logger) {
+    fn one_auth_error_response_one_pending_shard_client(logger: Logger) {
         let client_index = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response = create_failed_mvq_response(client_index);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -194,10 +205,13 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn one_failed_response_one_pending_authentications(logger: Logger) {
+    fn one_auth_error_response_one_pending_authentications(logger: Logger) {
         let client_index: usize = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response = create_failed_mvq_response(client_index);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -209,10 +223,13 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn one_failed_response_zero_new_query_responses(logger: Logger) {
+    fn one_auth_error_response_zero_new_query_responses(logger: Logger) {
         let client_index: usize = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response = create_failed_mvq_response(client_index);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -224,14 +241,65 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn mixed_failed_and_successful_responses_processes_correctly(logger: Logger) {
+    fn one_not_ready_response_zero_new_query_responses(logger: Logger) {
+        let client_index: usize = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let failed_mvq_response =
+            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+
+        let result = process_shard_responses(clients_and_responses);
+
+        assert!(result.is_ok());
+
+        let new_query_responses = result.unwrap().new_query_responses;
+        assert!(new_query_responses.is_empty());
+    }
+
+    #[test_with_logger]
+    fn one_not_ready_response_zero_pending_authentications(logger: Logger) {
+        let client_index: usize = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let failed_mvq_response =
+            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+
+        let result = process_shard_responses(clients_and_responses);
+
+        assert!(result.is_ok());
+
+        let view_store_uris_for_authentication = result.unwrap().view_store_uris_for_authentication;
+        assert_eq!(view_store_uris_for_authentication.len(), 0);
+    }
+
+    #[test_with_logger]
+    fn one_not_ready_response_zero_pending_shard_clients(logger: Logger) {
+        let client_index: usize = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let failed_mvq_response =
+            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+
+        let result = process_shard_responses(clients_and_responses);
+
+        assert!(result.is_ok());
+
+        let shard_clients_for_retry = result.unwrap().shard_clients_for_retry;
+        assert_eq!(shard_clients_for_retry.len(), 0);
+    }
+
+    #[test_with_logger]
+    fn mixed_auth_error_and_successful_responses_processes_correctly(logger: Logger) {
         const NUMBER_OF_FAILURES: usize = 11;
         const NUMBER_OF_SUCCESSES: usize = 8;
 
         let mut clients_and_responses = Vec::new();
         for i in 0..NUMBER_OF_FAILURES {
             let grpc_client = create_grpc_client(i, logger.clone());
-            let failed_mvq_response = create_failed_mvq_response(i);
+            let failed_mvq_response = create_failed_mvq_response(
+                i,
+                MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            );
             clients_and_responses.push((grpc_client, failed_mvq_response));
         }
         for i in 0..NUMBER_OF_SUCCESSES {
