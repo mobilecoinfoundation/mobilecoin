@@ -166,6 +166,30 @@ pub struct FogViewRouterConfig {
     pub admin_listen_uri: FogViewRouterAdminUri,
 }
 
+/// A FogViewServer can either fulfill client requests directly or fulfill Fog
+/// View Router requests, and these types of servers use different URLs.
+#[derive(Clone, Serialize)]
+pub enum ClientListenUri {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    ClientFacing(FogViewUri),
+    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    Store(FogViewStoreUri),
+}
+
+impl FromStr for ClientListenUri {
+    type Err = String;
+    fn from_str(input: &str) -> Result<Self, String> {
+        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
+            return Ok(ClientListenUri::ClientFacing(fog_view_uri));
+        }
+        if let Ok(fog_view_store_uri) = FogViewStoreUri::from_str(input) {
+            return Ok(ClientListenUri::Store(fog_view_store_uri));
+        }
+
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
+    }
+}
+
 /// Configuration parameters for the Fog View Router.
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
