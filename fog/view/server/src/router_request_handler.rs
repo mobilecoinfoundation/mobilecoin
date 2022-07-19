@@ -13,9 +13,9 @@ use mc_fog_api::{
         FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest,
         MultiViewStoreQueryResponse,
     },
-    view_grpc::FogViewApiClient,
+    view_grpc::FogViewStoreApiClient,
 };
-use mc_fog_uri::FogViewUri;
+use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use std::{str::FromStr, sync::Arc};
@@ -24,7 +24,7 @@ const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
 pub async fn handle_requests<E>(
-    shard_clients: Vec<Arc<FogViewApiClient>>,
+    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     enclave: E,
     mut requests: RequestStream<FogViewRouterRequest>,
     mut responses: DuplexSink<FogViewRouterResponse>,
@@ -54,7 +54,7 @@ where
 /// query.
 pub async fn handle_request<E>(
     mut request: FogViewRouterRequest,
-    shard_clients: Vec<Arc<FogViewApiClient>>,
+    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     enclave: E,
     logger: Logger,
 ) -> Result<FogViewRouterResponse, RpcStatus>
@@ -97,7 +97,7 @@ where
 async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
-    shard_clients: Vec<Arc<FogViewApiClient>>,
+    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     logger: Logger,
 ) -> Result<FogViewRouterResponse, RpcStatus>
 where
@@ -162,8 +162,8 @@ where
 /// Sends a client's query request to all of the Fog View shards.
 async fn route_query(
     request: &MultiViewStoreQueryRequest,
-    shard_clients: Vec<Arc<FogViewApiClient>>,
-) -> Result<Vec<(Arc<FogViewApiClient>, MultiViewStoreQueryResponse)>, RouterServerError> {
+    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+) -> Result<Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>, RouterServerError> {
     let responses = shard_clients
         .into_iter()
         .map(|shard_client| query_shard(request, shard_client));
@@ -173,8 +173,8 @@ async fn route_query(
 /// Sends a client's query request to one of the Fog View shards.
 async fn query_shard(
     request: &MultiViewStoreQueryRequest,
-    shard_client: Arc<FogViewApiClient>,
-) -> Result<(Arc<FogViewApiClient>, MultiViewStoreQueryResponse), RouterServerError> {
+    shard_client: Arc<FogViewStoreApiClient>,
+) -> Result<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse), RouterServerError> {
     let client_unary_receiver = shard_client.multi_view_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
@@ -184,7 +184,7 @@ async fn query_shard(
 /// Authenticates Fog View Stores that have previously not been authenticated.
 async fn authenticate_view_stores<E: ViewEnclaveProxy>(
     enclave: E,
-    view_store_uris: Vec<FogViewUri>,
+    view_store_uris: Vec<FogViewStoreUri>,
     logger: Logger,
 ) -> Result<Vec<()>, RpcStatus> {
     let pending_auth_requests = view_store_uris
@@ -203,7 +203,7 @@ async fn authenticate_view_stores<E: ViewEnclaveProxy>(
 /// Authenticates a Fog View Store that has previously not been authenticated.
 async fn authenticate_view_store<E: ViewEnclaveProxy>(
     enclave: E,
-    view_store_url: FogViewUri,
+    view_store_url: FogViewStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
     let view_store_id = ResponderId::from_str(&view_store_url.to_string())?;
@@ -213,7 +213,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
             .name_prefix("authenticate-view-store".to_string())
             .build(),
     );
-    let view_store_client = FogViewApiClient::new(
+    let view_store_client = FogViewStoreApiClient::new(
         ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_store_url, &logger),
     );
 
