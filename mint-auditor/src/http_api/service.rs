@@ -3,9 +3,10 @@
 //! Mint auditor service for handling http requests
 
 use crate::{
-    db::{Counters, MintAuditorDb, MintTx},
+    db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb, MintTx},
     http_api::routes::{CatResponse, TestResponse},
 };
+use ::std::collections::HashMap;
 use displaydoc::Display;
 use rocket::serde::Serialize;
 
@@ -47,6 +48,36 @@ impl MintAuditorHttpService {
         let counters = Counters::get(&conn).unwrap();
         Ok(counters)
     }
+
+    /// blah blah
+    pub fn get_block_audit_data(
+        block_index: u64,
+        mint_auditor_db: &MintAuditorDb,
+    ) -> Result<BlockAuditDataResponse, AuditorServiceError> {
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let block_audit_data = BlockAuditData::get(&conn, block_index).unwrap();
+        let balances =
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index()).unwrap();
+
+        Ok(BlockAuditDataResponse {
+            block_index: block_audit_data.block_index(),
+            balances: HashMap::from_iter(
+                balances
+                    .into_iter()
+                    .map(|(token_id, balance)| (*token_id, balance)),
+            ),
+        })
+    }
+}
+
+/// block audit data
+#[derive(Serialize)]
+#[allow(missing_docs)]
+pub struct BlockAuditDataResponse {
+    // message fields
+    pub block_index: u64,
+    pub balances: HashMap<u64, u64>,
 }
 
 /// counters

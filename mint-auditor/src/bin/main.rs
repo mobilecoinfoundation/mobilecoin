@@ -288,7 +288,8 @@ async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
                 routes::index,
                 routes::get_cat,
                 routes::get_db_test,
-                routes::get_counters
+                routes::get_counters,
+                routes::get_block_audit_data,
             ],
         )
         .launch()

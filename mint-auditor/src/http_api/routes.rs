@@ -1,6 +1,6 @@
 use crate::{
     db::MintAuditorDb,
-    http_api::service::{CountersResponse, MintAuditorHttpService},
+    http_api::service::{BlockAuditDataResponse, CountersResponse, MintAuditorHttpService},
 };
 use rocket::{get, State};
 
@@ -45,4 +45,13 @@ pub fn get_counters(db: &State<AuditorDb>) -> Json<CountersResponse> {
     Json(CountersResponse::from(
         &MintAuditorHttpService::get_counters(&db.0).expect("woops"),
     ))
+}
+
+/// get counters
+#[get("/block_audit_data?<block_index>")]
+pub fn get_block_audit_data(
+    block_index: u64,
+    db: &State<AuditorDb>,
+) -> Json<BlockAuditDataResponse> {
+    Json(MintAuditorHttpService::get_block_audit_data(block_index, &db.0).expect("woops"))
 }
