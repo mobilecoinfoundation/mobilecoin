@@ -1,0 +1,1 @@
+export { MCIcon } from "./MCIcon"
