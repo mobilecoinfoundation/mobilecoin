@@ -45,11 +45,11 @@ then
     pw=$(mc-util-grpc-token-generator --shared-secret "${CLIENT_AUTH_TOKEN_SECRET}" --username user1 | grep Password: | awk '{print $2}')
 
     echo "Re-exporting FOG_LEDGER with user/token"
-    parse_url "${FOG_LEDGER}"
+    parse_url "${MC_FOG_LEDGER}"
     export MC_FOG_LEDGER="${proto}${us}:${pw}@${host}:${port}/${path}"
 
     echo "Re-exporting FOG_VIEW with user/token"
-    parse_url "${FOG_VIEW}"
+    parse_url "${MC_FOG_VIEW}"
     export MC_FOG_VIEW="${proto}${us}:${pw}@${host}:${port}/${path}"
 fi
 
