@@ -1,4 +1,7 @@
-use crate::{db::MintAuditorDb, http_api::service::MintAuditorHttpService};
+use crate::{
+    db::MintAuditorDb,
+    http_api::service::{CountersResponse, MintAuditorHttpService},
+};
 use rocket::{get, State};
 
 use rocket::serde::{json::Json, Serialize};
@@ -34,4 +37,12 @@ pub struct TestResponse {
 #[get("/db-test")]
 pub fn get_db_test(db: &State<AuditorDb>) -> Json<TestResponse> {
     Json(MintAuditorHttpService::get_db_test(&db.0).expect("woops"))
+}
+
+/// get counters
+#[get("/counters")]
+pub fn get_counters(db: &State<AuditorDb>) -> Json<CountersResponse> {
+    Json(CountersResponse::from(
+        &MintAuditorHttpService::get_counters(&db.0).expect("woops"),
+    ))
 }

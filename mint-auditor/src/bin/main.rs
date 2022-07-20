@@ -284,7 +284,12 @@ async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
         .manage(routes::AuditorDb(mint_auditor_db))
         .mount(
             "/",
-            routes![routes::index, routes::get_cat, routes::get_db_test],
+            routes![
+                routes::index,
+                routes::get_cat,
+                routes::get_db_test,
+                routes::get_counters
+            ],
         )
         .launch()
         .await
