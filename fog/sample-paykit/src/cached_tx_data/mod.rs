@@ -9,7 +9,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_account_keys::{
-    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
 use mc_common::logger::{log, Logger};
@@ -73,8 +73,8 @@ const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 /// Adding this to the searched range means that they don't lose all this money,
 /// and also silences the warnings when they get TxOuts from fog on "unexpected"
 /// subaddresses.
-const HISTORICAL_CHANGE_SUBADDRESS=1;
-const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=HISTORICAL_SUBADDRESS_INDEX;
+const HISTORICAL_CHANGE_SUBADDRESS_INDEX: u64 = 1;
+const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=HISTORICAL_CHANGE_SUBADDRESS_INDEX;
 const SUBADDRESS_HIGH_RANGE: Range<u64> = CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX;
 
 /// This object keeps track of all TxOut's that are known to be ours, and which
