@@ -55,3 +55,9 @@ pub fn get_block_audit_data(
 ) -> Json<BlockAuditDataResponse> {
     Json(MintAuditorHttpService::get_block_audit_data(block_index, &db.0).expect("woops"))
 }
+
+/// get counters
+#[get("/last_block_audit_data")]
+pub fn get_last_block_audit_data(db: &State<AuditorDb>) -> Json<BlockAuditDataResponse> {
+    Json(MintAuditorHttpService::get_last_block_audit_data(&db.0).expect("woops"))
+}

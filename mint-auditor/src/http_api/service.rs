@@ -69,6 +69,28 @@ impl MintAuditorHttpService {
             ),
         })
     }
+
+    /// blah blah
+    pub fn get_last_block_audit_data(
+        mint_auditor_db: &MintAuditorDb,
+    ) -> Result<BlockAuditDataResponse, AuditorServiceError> {
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let block_audit_data = BlockAuditData::last_block_audit_data(&conn)
+            .unwrap()
+            .unwrap();
+        let balances =
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index()).unwrap();
+
+        Ok(BlockAuditDataResponse {
+            block_index: block_audit_data.block_index(),
+            balances: HashMap::from_iter(
+                balances
+                    .into_iter()
+                    .map(|(token_id, balance)| (*token_id, balance)),
+            ),
+        })
+    }
 }
 
 /// block audit data
