@@ -150,7 +150,7 @@ spec:
         args:
           - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
           - --reporter.type=grpc
-          - --agent.tags=cluster=undefined,container.name=fog-ingest,deployment.name={{ include "fogIngest.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+          - --agent.tags=cluster=undefined,container.name=fog-test-client,deployment.name={{ include "chart.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
       nodeSelector:
         {{- toYaml .Values.fogTestClient.nodeSelector | nindent 8 }}
       affinity:
