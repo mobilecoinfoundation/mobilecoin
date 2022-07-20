@@ -4381,6 +4381,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
  "aligned-cmov",
+ "itertools",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",

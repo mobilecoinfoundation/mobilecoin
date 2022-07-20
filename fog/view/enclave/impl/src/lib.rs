@@ -2,7 +2,7 @@
 
 //! View Enclave Implementation
 
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 
 extern crate alloc;
 

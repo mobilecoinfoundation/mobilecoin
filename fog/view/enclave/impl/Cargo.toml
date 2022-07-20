@@ -33,4 +33,5 @@ mc-fog-view-enclave-api = { path = "../api" }
 aes-gcm = "0.9.4"
 
 [dev-dependencies]
+itertools = "0.10.3"
 mc-common = { path = "../../../../common", features = ["loggers"] }

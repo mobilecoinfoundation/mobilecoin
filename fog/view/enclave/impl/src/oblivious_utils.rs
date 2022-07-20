@@ -18,9 +18,8 @@ use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
 ///            the [should_over_write_tx_out_search_result] method assumes that
 ///            the default code is NotFound.
 const DEFAULT_TX_OUT_SEARCH_RESULT_CODE: TxOutSearchResultCode = TxOutSearchResultCode::NotFound;
-/// The length of the ciphertext. If this changes because we add more fields to
-/// the ETxOutRecord struct, then this needs to be changed.
-const CIPHERTEXT_LENGTH: usize = 237;
+/// The length of the ciphertext returned to the client.
+const CLIENT_CIPHERTEXT_LENGTH: usize = 255;
 
 #[allow(dead_code)]
 pub fn collate_shard_tx_out_search_results(
@@ -32,7 +31,7 @@ pub fn collate_shard_tx_out_search_results(
         .map(|client_search_key| TxOutSearchResult {
             search_key: client_search_key.to_vec(),
             result_code: DEFAULT_TX_OUT_SEARCH_RESULT_CODE as u32,
-            ciphertext: vec![0u8; CIPHERTEXT_LENGTH],
+            ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH],
         })
         .collect();
 
@@ -57,12 +56,21 @@ fn maybe_overwrite_tx_out_search_result(
         shard_tx_out_search_result,
     );
     let shard_ciphertext_length = shard_tx_out_search_result.ciphertext.len();
-    assert_eq!(
-        shard_ciphertext_length, CIPHERTEXT_LENGTH,
-        "Shard ciphertext has unexpected length"
+
+    let shard_cipher_text_length_delta = (CLIENT_CIPHERTEXT_LENGTH - shard_ciphertext_length) as u8;
+    // Need to add a 1 because the first byte is reserved for the delta.
+    assert!(
+        shard_cipher_text_length_delta >= 1,
+        "Shard ciphertexthas unexpected length"
+    );
+    client_tx_out_search_result.ciphertext[0].conditional_assign(
+        &shard_cipher_text_length_delta,
+        should_overwrite_tx_out_search_result,
     );
     for idx in 0..shard_ciphertext_length {
-        client_tx_out_search_result.ciphertext[idx].conditional_assign(
+        // Offset the client ciphertext by 1 because the first byte is reserved for the
+        // length delta.
+        client_tx_out_search_result.ciphertext[idx + 1].conditional_assign(
             &shard_tx_out_search_result.ciphertext[idx],
             should_overwrite_tx_out_search_result,
         );
@@ -119,18 +127,23 @@ fn is_code_retryable_error(result_code: u32) -> Choice {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
+    use crate::oblivious_utils::CLIENT_CIPHERTEXT_LENGTH;
+    use itertools::Itertools;
     use std::collections::HashSet;
 
     fn create_test_tx_out_search_result(
         search_key: Vec<u8>,
         ciphertext_number: u8,
+        ciphertext_length: usize,
         result_code: TxOutSearchResultCode,
     ) -> TxOutSearchResult {
         TxOutSearchResult {
             search_key,
             result_code: result_code as u32,
-            ciphertext: vec![ciphertext_number; CIPHERTEXT_LENGTH],
+            ciphertext: vec![ciphertext_number; ciphertext_length],
         }
     }
 
@@ -140,10 +153,15 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
-        let shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::Found);
+        let shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
 
         let result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
@@ -160,10 +178,15 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
-        let shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::Found);
+        let shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
 
         let result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
@@ -181,10 +204,15 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
-        let shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::Found);
+        let shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
 
         let result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
@@ -202,10 +230,15 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
-        let shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::Found);
+        let shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
 
         let result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
@@ -220,12 +253,17 @@ mod tests {
     fn should_overwrite_tx_out_client_has_found_never_overwritten_returns_false_unless_shard_finds()
     {
         let search_key = vec![0u8; 10];
-        let client_tx_out_search_result =
-            create_test_tx_out_search_result(search_key.clone(), 0, TxOutSearchResultCode::Found);
+        let client_tx_out_search_result = create_test_tx_out_search_result(
+            search_key.clone(),
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -238,6 +276,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
         result = should_overwrite_tx_out_search_result(
@@ -250,6 +289,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         result = should_overwrite_tx_out_search_result(
@@ -262,6 +302,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -271,8 +312,12 @@ mod tests {
         .into();
         assert!(!result);
 
-        shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::Found);
+        shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::Found,
+        );
         result = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
@@ -288,12 +333,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -303,8 +350,12 @@ mod tests {
         .into();
         assert!(result);
 
-        shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::RateLimited);
+        shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::RateLimited,
+        );
         result = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
@@ -320,12 +371,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -335,8 +388,12 @@ mod tests {
         .into();
         assert!(!result);
 
-        shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::RateLimited);
+        shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::RateLimited,
+        );
         result = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
@@ -351,12 +408,14 @@ mod tests {
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -366,8 +425,12 @@ mod tests {
         .into();
         assert!(result);
 
-        client_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::RateLimited);
+        client_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::RateLimited,
+        );
         result = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
@@ -383,12 +446,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -398,8 +463,12 @@ mod tests {
         .into();
         assert!(!result);
 
-        shard_tx_out_search_result =
-            create_test_tx_out_search_result(search_key, 0, TxOutSearchResultCode::RateLimited);
+        shard_tx_out_search_result = create_test_tx_out_search_result(
+            search_key,
+            0,
+            CLIENT_CIPHERTEXT_LENGTH - 1,
+            TxOutSearchResultCode::RateLimited,
+        );
         result = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
@@ -417,6 +486,7 @@ mod tests {
                 create_test_tx_out_search_result(
                     search_key.clone(),
                     0,
+                    CLIENT_CIPHERTEXT_LENGTH - 1,
                     TxOutSearchResultCode::Found,
                 )
             })
@@ -455,7 +525,12 @@ mod tests {
                     0 => TxOutSearchResultCode::NotFound,
                     _ => TxOutSearchResultCode::Found,
                 };
-                create_test_tx_out_search_result(search_key.clone(), 0, result_code)
+                create_test_tx_out_search_result(
+                    search_key.clone(),
+                    0,
+                    CLIENT_CIPHERTEXT_LENGTH - 1,
+                    result_code,
+                )
             })
             .collect();
 
@@ -485,14 +560,14 @@ mod tests {
     }
 
     #[test]
-    fn collate_shard_query_responses_incorrect_ciphertext_length_panics() {
+    fn collate_shard_query_responses_ciphertext_is_client_ciphertext_length_panics() {
         let client_search_keys: Vec<Vec<u8>> = (0..10).map(|num| vec![num; 10]).collect();
         let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
             .iter()
             .map(|search_key| TxOutSearchResult {
                 search_key: search_key.clone(),
                 result_code: TxOutSearchResultCode::NotFound as u32,
-                ciphertext: vec![0u8; CIPHERTEXT_LENGTH - 5],
+                ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH],
             })
             .collect();
 
@@ -504,5 +579,52 @@ mod tests {
         });
 
         assert!(result.is_err());
+    }
+    #[test]
+    fn collate_shard_query_responses_different_ciphertext_lengths_returns_correct_client_ciphertexts(
+    ) {
+        let client_search_keys: Vec<Vec<u8>> = (0..3).map(|num| vec![num; 10]).collect();
+        let ciphertext_values = [28u8, 5u8, 128u8];
+        let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+            .iter()
+            .enumerate()
+            .map(|(idx, search_key)| TxOutSearchResult {
+                search_key: search_key.clone(),
+                result_code: TxOutSearchResultCode::Found as u32,
+                ciphertext: vec![ciphertext_values[idx]; idx + 1],
+            })
+            .collect();
+
+        let results: Vec<TxOutSearchResult> = collate_shard_tx_out_search_results(
+            client_search_keys.clone(),
+            shard_tx_out_search_results,
+        )
+        .unwrap()
+        .into_iter()
+        // Sort by ciphertext length (ascending) in order to know what each expected result
+        // should be.
+        .sorted_by(|a, b| Ord::cmp(&b.ciphertext[0], &a.ciphertext[0]))
+        .collect();
+
+        let mut expected_first_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let expected_first_result_delta = (CLIENT_CIPHERTEXT_LENGTH - 1) as u8;
+        expected_first_result[0] = expected_first_result_delta;
+        expected_first_result[1] = ciphertext_values[0];
+        assert_eq!(results[0].ciphertext, expected_first_result);
+
+        let mut expected_second_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let expected_second_result_delta = (CLIENT_CIPHERTEXT_LENGTH - 2) as u8;
+        expected_second_result[0] = expected_second_result_delta;
+        expected_second_result[1] = ciphertext_values[1];
+        expected_second_result[2] = ciphertext_values[1];
+        assert_eq!(results[1].ciphertext, expected_second_result);
+
+        let mut expected_third_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let expected_third_result_delta = (CLIENT_CIPHERTEXT_LENGTH - 3) as u8;
+        expected_third_result[0] = expected_third_result_delta;
+        expected_third_result[1] = ciphertext_values[2];
+        expected_third_result[2] = ciphertext_values[2];
+        expected_third_result[3] = ciphertext_values[2];
+        assert_eq!(results[2].ciphertext, expected_third_result);
     }
 }
