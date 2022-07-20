@@ -1,8 +1,8 @@
-import React from "react"
+import React from 'react'
 
 export const MCIcon = (color?: string, pxSize?: number) => {
   if (!color) {
-    color = "#027cfd"
+    color = '#027cfd'
   }
   if (!pxSize) {
     pxSize = 48

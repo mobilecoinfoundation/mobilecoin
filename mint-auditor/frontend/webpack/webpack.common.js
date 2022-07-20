@@ -22,8 +22,8 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: [['@babel/preset-typescript', {allowNamespaces: true}]]
-          }
+            presets: [['@babel/preset-typescript', { allowNamespaces: true }]],
+          },
         },
       },
       {

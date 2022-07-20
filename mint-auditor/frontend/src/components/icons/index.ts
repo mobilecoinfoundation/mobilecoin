@@ -1,1 +1,1 @@
-export { MCIcon } from "./MCIcon"
+export { MCIcon } from './MCIcon'
