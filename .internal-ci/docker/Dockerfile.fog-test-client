@@ -28,7 +28,7 @@ COPY ${RUST_BIN_PATH}/mc-util-grpc-token-generator /usr/local/bin/
 # Entrypoint
 COPY .internal-ci/docker/entrypoints/fog-test-client.sh /usr/local/bin/entrypoint.sh
 
-ENV KEY_DIR /keys
+ENV MC_KEY_DIR /keys
 ENV MC_CONSENSUS_ENCLAVE_CSS /measurements/consensus-enclave.css
 ENV MC_INGEST_ENCLAVE_CSS /measurements/ingest-enclave.css
 ENV MC_LEDGER_ENCLAVE_CSS /measurements/ledger-enclave.css
@@ -42,7 +42,7 @@ ENV MC_NUM_CLIENTS 4
 ENV MC_NO_MEMOS true
 
 # Required Environment Variables
-# MC_CONSENSUS_VALIDATORS - comma separated list of consensus urls.
+# MC_CONSENSUS - comma separated list of consensus urls.
 # MC_FOG_VIEW - fog view url.
 # MC_FOG_LEDGER - fog ledger url.
 # MC_CLIENT_AUTH_TOKEN_SECRET - if running against a Signal fog instance.

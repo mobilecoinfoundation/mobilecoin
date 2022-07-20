@@ -36,7 +36,7 @@ function is_set()
 
 is_set MC_FOG_LEDGER
 is_set MC_FOG_VIEW
-is_set MC_CONSENSUS_VALIDATORS
+is_set MC_CONSENSUS
 
 if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]
 then

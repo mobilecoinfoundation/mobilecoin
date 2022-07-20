@@ -45,7 +45,7 @@ spec:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
               key: FOG_LEDGER
-        - name: MC_CONSENSUS_VALIDATORS
+        - name: MC_CONSENSUS
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogTestClientConfig.configMap.name }}
