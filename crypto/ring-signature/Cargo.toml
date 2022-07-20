@@ -5,6 +5,10 @@ authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
 
+[features]
+alloc = [ "serde/alloc", "mc-crypto-digestible/alloc" ]
+default = [ "alloc" ]
+
 [dependencies]
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
@@ -13,13 +17,14 @@ hex_fmt = "0.3"
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"], optional = true }
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-account-keys = { path = "../../account-keys", default-features = false }
+mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-transaction-types = { path = "../../transaction/types" }

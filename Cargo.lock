@@ -1788,6 +1788,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
+name = "hybrid-array"
+version = "0.1.0"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
 name = "hyper"
 version = "0.14.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3056,6 +3063,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex_fmt",
+ "hybrid-array",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
  "mc-crypto-hashes",
@@ -3072,8 +3080,10 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "signature",
+ "static_assertions",
  "subtle",
  "tempdir",
+ "thiserror",
  "x25519-dalek",
  "zeroize",
 ]
