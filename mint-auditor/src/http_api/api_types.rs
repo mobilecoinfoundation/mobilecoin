@@ -1,10 +1,7 @@
-use crate::db::{BlockAuditData, Counters, MintAuditorDb};
+use crate::db::{BlockAuditData, Counters};
 use mc_common::HashMap;
 use mc_transaction_core::TokenId;
 use rocket::serde::Serialize;
-
-/// type for auditor db in Rocket state
-pub struct AuditorDb(pub MintAuditorDb);
 
 /// block audit data
 #[derive(Serialize)]
