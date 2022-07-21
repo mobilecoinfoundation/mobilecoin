@@ -12,7 +12,7 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
-    http_api::{api_types::AuditorDb, routes},
+    http_api::routes,
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -281,7 +281,7 @@ async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
     .expect("Could not open mint auditor DB");
 
     if let Err(e) = rocket::build()
-        .manage(AuditorDb(mint_auditor_db))
+        .manage(mint_auditor_db)
         .mount(
             "/",
             routes![

@@ -1,6 +1,9 @@
-use crate::http_api::{
-    api_types::{AuditorDb, BlockAuditDataResponse, CountersResponse},
-    service::MintAuditorHttpService,
+use crate::{
+    db::MintAuditorDb,
+    http_api::{
+        api_types::{BlockAuditDataResponse, CountersResponse},
+        service::MintAuditorHttpService,
+    },
 };
 use rocket::{get, serde::json::Json, State};
 
@@ -12,8 +15,8 @@ pub fn index() -> &'static str {
 
 /// get counters
 #[get("/counters")]
-pub fn get_counters(db: &State<AuditorDb>) -> Result<Json<CountersResponse>, String> {
-    match MintAuditorHttpService::get_counters(&db.0) {
+pub fn get_counters(db: &State<MintAuditorDb>) -> Result<Json<CountersResponse>, String> {
+    match MintAuditorHttpService::get_counters(&db) {
         Ok(counters) => Ok(Json(CountersResponse::from(&counters))),
         Err(e) => Err(e.to_string()),
     }
@@ -23,9 +26,9 @@ pub fn get_counters(db: &State<AuditorDb>) -> Result<Json<CountersResponse>, Str
 #[get("/block_audit_data?<block_index>")]
 pub fn get_block_audit_data(
     block_index: u64,
-    db: &State<AuditorDb>,
+    db: &State<MintAuditorDb>,
 ) -> Result<Json<BlockAuditDataResponse>, String> {
-    match MintAuditorHttpService::get_block_audit_data(block_index, &db.0) {
+    match MintAuditorHttpService::get_block_audit_data(block_index, &db) {
         Ok(block_audit_data) => Ok(Json(block_audit_data)),
         Err(e) => Err(e.to_string()),
     }
@@ -34,9 +37,9 @@ pub fn get_block_audit_data(
 /// Get the audit data for the last (most recent) synced block.
 #[get("/last_block_audit_data")]
 pub fn get_last_block_audit_data(
-    db: &State<AuditorDb>,
+    db: &State<MintAuditorDb>,
 ) -> Result<Json<BlockAuditDataResponse>, String> {
-    match MintAuditorHttpService::get_last_block_audit_data(&db.0) {
+    match MintAuditorHttpService::get_last_block_audit_data(&db) {
         Ok(block_audit_data) => Ok(Json(block_audit_data)),
         Err(e) => Err(e.to_string()),
     }
