@@ -1,63 +1,43 @@
-use crate::{
-    db::MintAuditorDb,
-    http_api::service::{BlockAuditDataResponse, CountersResponse, MintAuditorHttpService},
+use crate::http_api::{
+    api_types::{AuditorDb, BlockAuditDataResponse, CountersResponse},
+    service::MintAuditorHttpService,
 };
-use rocket::{get, State};
+use rocket::{get, serde::json::Json, State};
 
-use rocket::serde::{json::Json, Serialize};
-
-/// temp
-pub struct AuditorDb(pub MintAuditorDb);
-
-/// temp index route
+/// index route
 #[get("/")]
 pub fn index() -> &'static str {
-    "Hello, world!"
-}
-
-/// temp
-#[derive(Serialize)]
-pub struct CatResponse {
-    /// temp
-    pub cat: String,
-}
-/// temp cat route
-#[get("/cat")]
-pub fn get_cat(db: &State<AuditorDb>) -> Json<CatResponse> {
-    Json(MintAuditorHttpService::get_cat(&db.0).expect("woops"))
-}
-
-/// temp
-#[derive(Serialize)]
-pub struct TestResponse {
-    /// temp
-    pub num_mints: u64,
-}
-/// temp cat route
-#[get("/db-test")]
-pub fn get_db_test(db: &State<AuditorDb>) -> Json<TestResponse> {
-    Json(MintAuditorHttpService::get_db_test(&db.0).expect("woops"))
+    "Welcome to the mint auditor"
 }
 
 /// get counters
 #[get("/counters")]
-pub fn get_counters(db: &State<AuditorDb>) -> Json<CountersResponse> {
-    Json(CountersResponse::from(
-        &MintAuditorHttpService::get_counters(&db.0).expect("woops"),
-    ))
+pub fn get_counters(db: &State<AuditorDb>) -> Result<Json<CountersResponse>, String> {
+    match MintAuditorHttpService::get_counters(&db.0) {
+        Ok(counters) => Ok(Json(CountersResponse::from(&counters))),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
-/// get counters
+/// Get the audit data for a target block
 #[get("/block_audit_data?<block_index>")]
 pub fn get_block_audit_data(
     block_index: u64,
     db: &State<AuditorDb>,
-) -> Json<BlockAuditDataResponse> {
-    Json(MintAuditorHttpService::get_block_audit_data(block_index, &db.0).expect("woops"))
+) -> Result<Json<BlockAuditDataResponse>, String> {
+    match MintAuditorHttpService::get_block_audit_data(block_index, &db.0) {
+        Ok(block_audit_data) => Ok(Json(block_audit_data)),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
-/// get counters
+/// Get the audit data for the last (most recent) synced block.
 #[get("/last_block_audit_data")]
-pub fn get_last_block_audit_data(db: &State<AuditorDb>) -> Json<BlockAuditDataResponse> {
-    Json(MintAuditorHttpService::get_last_block_audit_data(&db.0).expect("woops"))
+pub fn get_last_block_audit_data(
+    db: &State<AuditorDb>,
+) -> Result<Json<BlockAuditDataResponse>, String> {
+    match MintAuditorHttpService::get_last_block_audit_data(&db.0) {
+        Ok(block_audit_data) => Ok(Json(block_audit_data)),
+        Err(e) => Err(e.to_string()),
+    }
 }

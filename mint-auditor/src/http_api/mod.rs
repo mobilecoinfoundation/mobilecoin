@@ -7,3 +7,6 @@ pub mod routes;
 
 /// service for handling http requests
 pub mod service;
+
+/// request and response types
+pub mod api_types;
