@@ -222,32 +222,16 @@ mobconf.read(".mobconf")
 verbose_chdir(top_level)
 
 # Get dockerfile-version data Find and parse dockerfile version file
-if 'dockerfile' in mobconf['image']:
-    docker_dir = os.path.dirname(mobconf['image']['dockerfile'])
-    docker_ver_file = os.path.join(docker_dir, 'Dockerfile-version')
-    with open(os.path.join(top_level, docker_ver_file), 'r') as file:
-        version_data = file.read().strip()
-elif 'Dockerfile-version' in mobconf['image']:
+if 'Dockerfile-version' in mobconf['image']:
     docker_dir = None
     version_data = mobconf['image']['Dockerfile-version']
 else:
     raise Exception("Neither 'dockerfile' nor 'Dockerfile-version' was found in .mobconf")
 
-# Parse what version data we found
-ver_segments = version_data.split('_')
-if len(ver_segments) != 2:
-    raise Exception("Expected form A_B for Dockerfile-version, found '" + version_data + "' which parsed as: " + str(ver_segments))
-major_ver = ver_segments[0]
-minor_ver = int(ver_segments[1])
-if minor_ver < 0:
-    raise Exception("Invalid minor ver: " + str(minor_ver))
-
 # Calculate default tag.
 repo = mobconf['image']['repository'] if 'repository' in mobconf['image'] else ""
-default_tag = os.path.join(repo, mobconf['image']['target'] + ':' + major_ver + "_" + str(minor_ver))
+default_tag = os.path.join(repo, mobconf['image']['target'] + ':' + version_data)
 parent_tag = None
-if minor_ver > 0:
-    parent_tag = os.path.join(repo, mobconf['image']['target'] + ':' + major_ver + "_" + str(minor_ver - 1))
 
 if args.action == "default-tag":
     print(default_tag, end='')
@@ -285,36 +269,6 @@ build_env = [
 
 # Don't build the image if we already have it, unless
 # image action was specified (user requested the image)
-#
-# Note: IMO it should be okay to always rebuild the image as long as the farm is
-# giving us a good cache source for it, but it seems that we always get a cache
-# miss at `COPY rust-toolchain .`, and I'm not sure why.
-# This `if` here is me giving up on trying to resolve those layer cache miss issues.
-# I think that it comes down to, in cloudbuild the permissions (user / group)
-# are slightly different from what they are locally, and I don't want to spend more time on it.
-# It would be nice if the docker image itself were actually reproducible, i.e. counts
-# as a cache hit for itself whether it were built locally or in farm... sigh
-if args.action == "image" or not have_tag(tag):
-    # Get an up-to-date image, even if repository is messed up
-    # Invoke docker from directory of dockerfile
-    # This seems to fix docker's layer caching when we are building the image variously
-    # from pwd = / and pwd = /public/.
-    # Please don't factor out the chdir without testing that this caching is still working
-    verbose_chdir(docker_dir)
-    docker_build = ["docker",
-                    "build",
-                    # build context is dir of Dockerfile
-                    ".",
-                    "--target", mobconf['image']['target'],
-                    "--tag", tag,
-                    "--cache-from", tag,
-                    "--cache-from", default_tag]
-    # N.B. --cache-from order on the line establishes priority:
-    # https://stackoverflow.com/questions/54574821/docker-build-not-using-cache-when-copying-gemfile-while-using-cache-from/56024061#56024061
-    if parent_tag is not None:
-        docker_build.extend(["--cache-from", parent_tag])
-
-    maybe_run(docker_build)
 
 if args.action == "image":
     sys.exit(0)
