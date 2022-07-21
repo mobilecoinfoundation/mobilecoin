@@ -39,7 +39,6 @@ impl MintAuditorHttpService {
     ) -> Result<BlockAuditDataResponse, Error> {
         let conn = mint_auditor_db.get_conn()?;
 
-        // let block_audit_data_option = BlockAuditData::last_block_audit_data(&conn)?;
         let block_audit_data =
             BlockAuditData::last_block_audit_data(&conn)?.ok_or(Error::NotFound)?;
 
