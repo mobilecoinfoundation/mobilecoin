@@ -133,8 +133,8 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
-    let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
-    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
+    let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0, None);
+    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0, None);
 
     let node_ids = vec![
         peer1.uri().host_and_port_responder_id().unwrap(),
