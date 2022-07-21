@@ -12,7 +12,7 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
-    http_api::routes,
+    http_api::launch_rocket::start_http_server,
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -21,8 +21,6 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde_json::json;
 use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
-#[macro_use]
-extern crate rocket;
 
 /// Maximum number of concurrent connections in the database pool.
 const DB_POOL_SIZE: u32 = 10;
@@ -75,11 +73,20 @@ pub enum Command {
         #[clap(long, env = "MC_JSON")]
         json: bool,
     },
-
     StartHttpServer {
         /// Path to mint auditor db.
         #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
         mint_auditor_db: PathBuf,
+
+        /// Oprtional HTTP listen URI, to be used when HTTP API access is
+        /// desired.
+        #[clap(long, env = "PORT")]
+        port: Option<u16>,
+
+        /// Oprtional HTTP listen URI, to be used when HTTP API access is
+        /// desired.
+        #[clap(long, env = "HOST")]
+        host: Option<String>,
     },
 }
 
@@ -118,7 +125,8 @@ async fn main() {
                 admin_listen_uri,
                 gnosis_safe_config,
                 logger,
-            );
+            )
+            .await;
         }
 
         Command::GetBlockAuditData {
@@ -129,14 +137,18 @@ async fn main() {
             cmd_get_block_audit_data(mint_auditor_db, block_index, json, logger);
         }
 
-        Command::StartHttpServer { mint_auditor_db } => {
-            cmd_start_http_server(mint_auditor_db, logger).await;
+        Command::StartHttpServer {
+            mint_auditor_db,
+            port,
+            host,
+        } => {
+            cmd_start_http_server(mint_auditor_db, port, host, logger).await;
         }
     }
 }
 
 /// Implementation of the ScanLedger CLI command.
-fn cmd_scan_ledger(
+async fn cmd_scan_ledger(
     ledger_db_path: PathBuf,
     mint_auditor_db_path: PathBuf,
     poll_interval: Duration,
@@ -271,8 +283,12 @@ fn cmd_get_block_audit_data(
     .expect("db transaction failed");
 }
 
-// start the http server
-async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
+async fn cmd_start_http_server(
+    mint_auditor_db_path: PathBuf,
+    port: Option<u16>,
+    host: Option<String>,
+    logger: Logger,
+) {
     let mint_auditor_db = MintAuditorDb::new_from_path(
         &mint_auditor_db_path.into_os_string().into_string().unwrap(),
         DB_POOL_SIZE,
@@ -280,24 +296,7 @@ async fn cmd_start_http_server(mint_auditor_db_path: PathBuf, logger: Logger) {
     )
     .expect("Could not open mint auditor DB");
 
-    if let Err(e) = rocket::build()
-        .manage(mint_auditor_db)
-        .mount(
-            "/",
-            routes![
-                routes::index,
-                routes::get_counters,
-                routes::get_block_audit_data,
-                routes::get_last_block_audit_data,
-            ],
-        )
-        .launch()
-        .await
-    {
-        println!("Whoops! Rocket didn't launch!");
-        // We drop the error to get a Rocket-formatted panic.
-        drop(e);
-    }
+    start_http_server(mint_auditor_db, port, host).await;
 }
 
 /// Synchronizes the mint auditor database with the ledger database.

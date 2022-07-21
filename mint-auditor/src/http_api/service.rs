@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Mint auditor service for handling http requests
+//! Mint auditor service for handling HTTP requests
 
 use crate::{
     db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb},
@@ -9,22 +9,27 @@ use crate::{
 };
 
 /// Service for handling auditor requests
-pub struct MintAuditorHttpService {}
+pub struct MintAuditorHttpService {
+    /// Mint auditor database.
+    mint_auditor_db: MintAuditorDb,
+}
 
 /// Service for handling auditor requests
 impl MintAuditorHttpService {
+    /// Create a new mint auditor HTTP service.
+    pub fn new(mint_auditor_db: MintAuditorDb) -> Self {
+        Self { mint_auditor_db }
+    }
+
     /// get counters
-    pub fn get_counters(mint_auditor_db: &MintAuditorDb) -> Result<Counters, Error> {
-        let conn = mint_auditor_db.get_conn()?;
+    pub fn get_counters(&self) -> Result<Counters, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
         Ok(Counters::get(&conn)?)
     }
 
     /// Get the audit data for a target block
-    pub fn get_block_audit_data(
-        block_index: u64,
-        mint_auditor_db: &MintAuditorDb,
-    ) -> Result<BlockAuditDataResponse, Error> {
-        let conn = mint_auditor_db.get_conn()?;
+    pub fn get_block_audit_data(&self, block_index: u64) -> Result<BlockAuditDataResponse, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
 
         let block_audit_data = BlockAuditData::get(&conn, block_index)?;
 
@@ -34,10 +39,8 @@ impl MintAuditorHttpService {
     }
 
     /// Get the audit data for the last synced block.
-    pub fn get_last_block_audit_data(
-        mint_auditor_db: &MintAuditorDb,
-    ) -> Result<BlockAuditDataResponse, Error> {
-        let conn = mint_auditor_db.get_conn()?;
+    pub fn get_last_block_audit_data(&self) -> Result<BlockAuditDataResponse, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
 
         let block_audit_data =
             BlockAuditData::last_block_audit_data(&conn)?.ok_or(Error::NotFound)?;

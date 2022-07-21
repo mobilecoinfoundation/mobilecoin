@@ -3,10 +3,13 @@
 //! HTTP server for mint auditor
 
 /// Routes for the HTTP server
-pub mod routes;
+mod routes;
 
 /// Service for handling HTTP requests
-pub mod service;
+mod service;
 
 /// Request and response types
-pub mod api_types;
+mod api_types;
+
+/// Start the HTTP server
+pub mod launch_rocket;
