@@ -50,7 +50,7 @@ impl<L: Ledger + Sync> MockBlockchainConnection<L> {
             ledger,
             latency_millis,
             proposed_txs: Vec::new(),
-            fee_map: fee_map.unwrap_or(FeeMap::default()),
+            fee_map: fee_map.unwrap_or_default(),
         }
     }
 }
