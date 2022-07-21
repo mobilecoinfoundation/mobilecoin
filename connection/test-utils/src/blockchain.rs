@@ -33,15 +33,24 @@ pub struct MockBlockchainConnection<L: Ledger + Sync> {
 
     /// Proposed transactions.
     pub proposed_txs: Vec<Tx>,
+
+    /// The fee map for this peer.
+    pub fee_map: FeeMap,
 }
 
 impl<L: Ledger + Sync> MockBlockchainConnection<L> {
-    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64) -> Self {
+    pub fn new(
+        uri: ConsensusClientUri,
+        ledger: L,
+        latency_millis: u64,
+        fee_map: Option<FeeMap>,
+    ) -> Self {
         Self {
             uri,
             ledger,
             latency_millis,
             proposed_txs: Vec::new(),
+            fee_map: fee_map.unwrap_or(FeeMap::default()),
         }
     }
 }
@@ -118,7 +127,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
-            minimum_fees: FeeMap::default_map(),
+            minimum_fees: self.fee_map.as_ref().clone(),
             network_block_version: *BlockVersion::MAX,
         })
     }
@@ -142,7 +151,8 @@ mod tests {
     fn fetch_blocks() {
         let mock_ledger = get_mock_ledger(25);
         assert_eq!(mock_ledger.num_blocks().unwrap(), 25);
-        let mut mock_peer = MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50);
+        let mut mock_peer =
+            MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50, None);
 
         {
             // Get a subset of the peer's blocks.
