@@ -61,7 +61,7 @@ fn maybe_overwrite_tx_out_search_result(
     // Need to add a 1 because the first byte is reserved for the delta.
     assert!(
         shard_cipher_text_length_delta >= 1,
-        "Shard ciphertexthas unexpected length"
+        "Shard ciphertext has unexpected length"
     );
     client_tx_out_search_result.ciphertext[0].conditional_assign(
         &shard_cipher_text_length_delta,
