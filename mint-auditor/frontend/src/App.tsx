@@ -16,7 +16,7 @@ export const App = () => {
       },
       secondary: {
         // mobilecoin grayscale
-        main: '#292929',
+        main: '#f0f0f0',
         light: '#fff',
         dark: '#000',
         contrastText: '#000',
@@ -27,7 +27,14 @@ export const App = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box height="100vh" display="flex" flexDirection="column">
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: 'secondary.main',
+        }}
+      >
         <Header />
         <AuditList />
       </Box>

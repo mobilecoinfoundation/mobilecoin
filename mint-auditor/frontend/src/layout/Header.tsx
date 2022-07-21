@@ -8,20 +8,25 @@ export const Header: FC = (): ReactElement => {
       <Box
         sx={{
           width: '100%',
-          height: 'auto',
-          backgroundColor: 'primary.main',
+          height: '100px',
+          // backgroundColor: 'primary.main',
+          background:
+            'linear-gradient(180deg, rgba(2,124,253,1) 0%, rgba(255,255,255,0) 100%)',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
         }}
       >
-        <Container maxWidth="xl">
+        <Container maxWidth={false}>
           <Toolbar disableGutters>
             {MCIcon('#000')}
             <Typography
-              variant="h6"
+              variant="h4"
               noWrap
               sx={{
                 mr: 2,
                 display: { xs: 'none', md: 'flex' },
-                color: 'primary.contrastText',
+                color: 'secondary.contrastText',
                 paddingLeft: 2,
               }}
             >
@@ -30,7 +35,14 @@ export const Header: FC = (): ReactElement => {
           </Toolbar>
         </Container>
       </Box>
-      <Box>{/* blue gradient below solid blue bar header */}</Box>
+      {/* <Box
+        sx={{
+          width: '100%',
+          height: 10,
+          background:
+            'linear-gradient(180deg, rgba(2,124,253,1) 0%, rgba(255,255,255,0) 100%)',
+        }}
+      ></Box> */}
     </>
   )
 }

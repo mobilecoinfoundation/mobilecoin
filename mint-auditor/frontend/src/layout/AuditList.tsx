@@ -1,9 +1,9 @@
 import React, { ReactElement, FC, useState, useEffect } from 'react'
-import { Box } from '@mui/material'
+import { Box, Grid, Typography } from '@mui/material'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import { MobUsdTransaction, RsvTransaction, TransactionPair } from '../types'
-import { TransactionItem } from '../components/TransactionItem'
 import { getNationData, Nation } from '../api/apiHandler'
+import { RowItem } from '../components/RowItem'
 
 export const AuditList: FC<any> = (): ReactElement => {
   const [mints, setMints] = useState<TransactionPair[]>([])
@@ -20,18 +20,24 @@ export const AuditList: FC<any> = (): ReactElement => {
   const fetchMints = async () => {
     const prevMints = mints
     const newTransactions = await getTestData()
-    const newMints = newTransactions.filter(
+    let newMints = newTransactions.filter(
       (transaction) => transaction.type === 'mint'
     )
+    while (newMints.length <= 50) {
+      newMints = newMints.concat(newMints)
+    }
     setMints(prevMints.concat(newMints))
   }
 
   const fetchBurns = async () => {
     const prevBurns = burns
     const newTransactions = await getTestData()
-    const newBurns = newTransactions.filter(
+    let newBurns = newTransactions.filter(
       (transaction) => transaction.type === 'burn'
     )
+    while (newBurns.length <= 50) {
+      newBurns = newBurns.concat(newBurns)
+    }
     setBurns(prevBurns.concat(newBurns))
   }
 
@@ -42,20 +48,21 @@ export const AuditList: FC<any> = (): ReactElement => {
       Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)
 
     if (type === 'mint') {
-      const first = {
+      const first = { rsvAmount: amount, rsvHash } as RsvTransaction
+      const second = {
         mobUsdAmount: amount,
         txoId: nation.idYear.toString(),
         memo: rsvHash,
       } as MobUsdTransaction
-      const second = { rsvAmount: -1 * amount, rsvHash } as RsvTransaction
       return { type, first, second, confirmed: true }
     } else {
-      const first = { rsvAmount: amount, rsvHash } as RsvTransaction
-      const second = {
+      // burn
+      const first = {
         mobUsdAmount: -1 * amount,
         txoId: nation.idYear.toString(),
         memo: rsvHash,
       } as MobUsdTransaction
+      const second = { rsvAmount: -1 * amount, rsvHash } as RsvTransaction
       return { type, first, second, confirmed: true } as TransactionPair
     }
   }
@@ -68,58 +75,99 @@ export const AuditList: FC<any> = (): ReactElement => {
     return transactions
   }
 
-  const style = {
-    border: '1px solid green',
-    margin: 6,
-    padding: 8,
-  }
-
   return (
     <Box
       sx={{
-        flexGrow: 1,
-        backgroundColor: 'whitesmoke',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignContent: 'center',
+        margin: '5vh auto',
       }}
     >
-      <div id="scrollableMints" style={{ maxHeight: 500, overflow: 'auto' }}>
-        <InfiniteScroll
-          dataLength={mints.length}
-          next={fetchMints}
-          hasMore={true}
-          loader={<h4>Loading...</h4>}
-          scrollableTarget="scrollableMints"
-        >
-          {mints.map((i, index) => (
-            <div style={style} key={index}>
-              <TransactionItem {...i.first} />
-              <TransactionItem {...i.second} />
-              {i.type}
-              {i.confirmed}
-            </div>
-          ))}
-        </InfiniteScroll>
-      </div>
-      <div id="scrollableBurns" style={{ maxHeight: 500, overflow: 'auto' }}>
-        <InfiniteScroll
-          dataLength={burns.length}
-          next={fetchBurns}
-          hasMore={true}
-          loader={<h4>Loading...</h4>}
-          scrollableTarget="scrollableBurns"
-        >
-          {burns.map((i, index) => (
-            <div style={style} key={index}>
-              <TransactionItem {...i.first} />
-              <TransactionItem {...i.second} />
-              {i.type}
-              {i.confirmed}
-            </div>
-          ))}
-        </InfiniteScroll>
-      </div>
+      <Grid
+        container
+        columnSpacing={1}
+        rowSpacing={1}
+        sx={{ maxWidth: '90vw' }}
+      >
+        <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Typography
+            variant="h5"
+            noWrap
+            sx={{
+              color: 'secondary.contrastText',
+              height: '30px',
+            }}
+          >
+            Mints and Deposits
+          </Typography>
+        </Grid>
+        <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Typography
+            variant="h5"
+            noWrap
+            sx={{
+              color: 'secondary.contrastText',
+              height: '30px',
+            }}
+          >
+            Burns and Withdrawals
+          </Typography>
+        </Grid>
+        <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <div
+            id="scrollableMints"
+            style={{
+              maxHeight: '75vh',
+              maxWidth: 'calc(36vw + 74px)',
+              overflow: 'auto',
+              backgroundColor: '#fff',
+              padding: 1,
+              borderRadius: '5px',
+              boxShadow: 'rgba(100, 100, 100, 0.5) 0px 8px 24px',
+            }}
+          >
+            <InfiniteScroll
+              dataLength={mints.length}
+              next={fetchMints}
+              hasMore={true}
+              loader={<h4>Loading...</h4>}
+              scrollableTarget="scrollableMints"
+            >
+              {mints.map((i, index) => (
+                <RowItem {...i} key={index} />
+              ))}
+            </InfiniteScroll>
+          </div>
+        </Grid>
+        <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <div
+            id="scrollableBurns"
+            style={{
+              maxHeight: '75vh',
+              maxWidth: 'calc(36vw + 74px)',
+              overflow: 'auto',
+              backgroundColor: '#fff',
+              padding: 1,
+              borderRadius: '5px',
+              boxShadow: 'rgba(100, 100, 100, 0.5) 0px 8px 24px',
+              // boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px',
+            }}
+          >
+            <InfiniteScroll
+              dataLength={burns.length}
+              next={fetchBurns}
+              hasMore={true}
+              loader={<h4>Loading...</h4>}
+              scrollableTarget="scrollableBurns"
+            >
+              {burns.map((i, index) => (
+                <RowItem {...i} key={index} />
+              ))}
+            </InfiniteScroll>
+          </div>
+        </Grid>
+      </Grid>
     </Box>
   )
 }
