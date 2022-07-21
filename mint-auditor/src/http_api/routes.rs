@@ -17,7 +17,7 @@ pub fn index() -> &'static str {
 #[get("/counters")]
 pub fn get_counters(db: &State<MintAuditorDb>) -> Result<Json<CountersResponse>, String> {
     match MintAuditorHttpService::get_counters(&db) {
-        Ok(counters) => Ok(Json(CountersResponse::from(&counters))),
+        Ok(counters) => Ok(Json(counters)),
         Err(e) => Err(e.to_string()),
     }
 }

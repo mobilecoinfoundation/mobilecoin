@@ -28,7 +28,7 @@ impl BlockAuditDataResponse {
 }
 
 /// counters
-#[derive(Serialize)]
+#[derive(Serialize, Default, Eq, PartialEq, Debug)]
 #[allow(missing_docs)]
 pub struct CountersResponse {
     pub num_blocks_synced: u64,
