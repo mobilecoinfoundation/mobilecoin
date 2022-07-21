@@ -12,7 +12,7 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
-    http_api::launch_rocket::start_http_server,
+    http_api::start_http_server,
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -78,13 +78,11 @@ pub enum Command {
         #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
         mint_auditor_db: PathBuf,
 
-        /// Oprtional HTTP listen URI, to be used when HTTP API access is
-        /// desired.
+        /// Oprtional port for HTTP server. Defualts to 8080
         #[clap(long, env = "PORT")]
         port: Option<u16>,
 
-        /// Oprtional HTTP listen URI, to be used when HTTP API access is
-        /// desired.
+        /// Oprtional host for HTTP server. defaults to 127.0.0.1
         #[clap(long, env = "HOST")]
         host: Option<String>,
     },
