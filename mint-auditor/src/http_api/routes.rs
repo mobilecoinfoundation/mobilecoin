@@ -23,7 +23,7 @@ pub fn get_counters(db: &State<MintAuditorDb>) -> Result<Json<CountersResponse>,
 }
 
 /// Get the audit data for a target block
-#[get("/block_audit_data?<block_index>")]
+#[get("/block_audit_data/<block_index>")]
 pub fn get_block_audit_data(
     block_index: u64,
     db: &State<MintAuditorDb>,
