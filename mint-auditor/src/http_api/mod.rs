@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! http server for mint auditor
+//! HTTP server for mint auditor
 
-/// routes for the http server
+/// Routes for the HTTP server
 pub mod routes;
 
-/// service for handling http requests
+/// Service for handling HTTP requests
 pub mod service;
 
-/// request and response types
+/// Request and response types
 pub mod api_types;

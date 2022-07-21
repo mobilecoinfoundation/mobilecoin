@@ -1,21 +1,22 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Routing for the http server
+
 use crate::{
-    db::MintAuditorDb,
-    http_api::{
-        api_types::{BlockAuditDataResponse, CountersResponse},
-        service::MintAuditorHttpService,
-    },
+    db::{Counters, MintAuditorDb},
+    http_api::{api_types::BlockAuditDataResponse, service::MintAuditorHttpService},
 };
 use rocket::{get, serde::json::Json, State};
 
-/// index route
+/// Index route
 #[get("/")]
 pub fn index() -> &'static str {
     "Welcome to the mint auditor"
 }
 
-/// get counters
+/// Get counters
 #[get("/counters")]
-pub fn get_counters(db: &State<MintAuditorDb>) -> Result<Json<CountersResponse>, String> {
+pub fn get_counters(db: &State<MintAuditorDb>) -> Result<Json<Counters>, String> {
     match MintAuditorHttpService::get_counters(&db) {
         Ok(counters) => Ok(Json(counters)),
         Err(e) => Err(e.to_string()),

@@ -4,7 +4,7 @@
 
 use crate::{
     db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb},
-    http_api::api_types::{BlockAuditDataResponse, CountersResponse},
+    http_api::api_types::BlockAuditDataResponse,
     Error,
 };
 
@@ -14,9 +14,9 @@ pub struct MintAuditorHttpService {}
 /// Service for handling auditor requests
 impl MintAuditorHttpService {
     /// get counters
-    pub fn get_counters(mint_auditor_db: &MintAuditorDb) -> Result<CountersResponse, Error> {
+    pub fn get_counters(mint_auditor_db: &MintAuditorDb) -> Result<Counters, Error> {
         let conn = mint_auditor_db.get_conn()?;
-        Ok(CountersResponse::from(&Counters::get(&conn)?))
+        Ok(Counters::get(&conn)?)
     }
 
     /// Get the audit data for a target block
@@ -69,6 +69,8 @@ mod tests {
     };
 
     /// Create a test database with some data in it.
+    /// Seeds a ledger DB with some txos and mint txos, then syncs the mint
+    /// auditor DB with the ledger.
     fn get_test_db(logger: &Logger) -> (MintAuditorDb, TestDbContext) {
         let mut rng = mc_util_test_helper::get_seeded_rng();
         let token_id1 = TokenId::from(1);
