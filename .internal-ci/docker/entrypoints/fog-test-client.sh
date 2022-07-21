@@ -34,9 +34,9 @@ function is_set()
     fi
 }
 
-is_set FOG_LEDGER
-is_set FOG_VIEW
-is_set CONSENSUS_VALIDATORS
+is_set MC_FOG_LEDGER
+is_set MC_FOG_VIEW
+is_set MC_CONSENSUS
 
 if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]
 then
@@ -45,12 +45,12 @@ then
     pw=$(mc-util-grpc-token-generator --shared-secret "${CLIENT_AUTH_TOKEN_SECRET}" --username user1 | grep Password: | awk '{print $2}')
 
     echo "Re-exporting FOG_LEDGER with user/token"
-    parse_url "${FOG_LEDGER}"
-    export FOG_LEDGER="${proto}${us}:${pw}@${host}:${port}/${path}"
+    parse_url "${MC_FOG_LEDGER}"
+    export MC_FOG_LEDGER="${proto}${us}:${pw}@${host}:${port}/${path}"
 
     echo "Re-exporting FOG_VIEW with user/token"
-    parse_url "${FOG_VIEW}"
-    export FOG_VIEW="${proto}${us}:${pw}@${host}:${port}/${path}"
+    parse_url "${MC_FOG_VIEW}"
+    export MC_FOG_VIEW="${proto}${us}:${pw}@${host}:${port}/${path}"
 fi
 
 exec "$@"
