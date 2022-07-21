@@ -9,7 +9,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_account_keys::{
-    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
 use mc_common::logger::{log, Logger};
@@ -66,7 +66,15 @@ const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 /// returned, and the client will not spend this TxOut, and the balance of this
 /// account will not reflect such TxOut's. This has to cover at least the
 /// default and change subaddress indexes.
-const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=DEFAULT_SUBADDRESS_INDEX;
+///
+/// Note: We also put the historical change subaddress of 1 in this range.
+/// This is because we ran the test client as a canary for several months using 1
+/// as the change subaddress, so those accounts now have many subaddress index 1 TxOuts.
+/// Adding this to the searched range means that they don't lose all this money,
+/// and also silences the warnings when they get TxOuts from fog on "unexpected"
+/// subaddresses.
+const HISTORICAL_CHANGE_SUBADDRESS_INDEX: u64 = 1;
+const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=HISTORICAL_CHANGE_SUBADDRESS_INDEX;
 const SUBADDRESS_HIGH_RANGE: Range<u64> = CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX;
 
 /// This object keeps track of all TxOut's that are known to be ours, and which
@@ -498,7 +506,7 @@ impl CachedTxData {
                 // Note: this could be caused by a griefing attack, but isn't normally expected
                 log::warn!(
                     self.logger,
-                    "View key scanning failed, fog gave us a TXO that wasn't ours: {}",
+                    "View key scanning failed, fog gave us a TXO that we couldn't establish ownership of: {}",
                     err
                 );
             }

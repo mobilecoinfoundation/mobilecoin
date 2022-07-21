@@ -63,10 +63,13 @@ mobileCoinNetwork:
   configMap:
     external: true
     name: mobilecoin-network
-  # test, prod, alpha... 
+  # test, prod, alpha...
   network: ""
   # mc, mcww, signal...
   partner: ""
 
 serviceMonitor:
   enabled: true
+
+jaegerTracing:
+  collector: 'dns:///jaeger-collector:14250'

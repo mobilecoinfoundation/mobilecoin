@@ -33,7 +33,7 @@ pub enum TxOutMatchingError {
     /// Error decompressing FogTxOut: {0}
     FogTxOut(FogTxOutError),
 
-    /// Subaddress not found
+    /// Subaddress not found, the TxOut belongs to an unsupported subaddress
     SubaddressNotFound,
 }
 
