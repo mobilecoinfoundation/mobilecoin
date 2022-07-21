@@ -116,18 +116,15 @@ async fn main() {
             listen_uri,
             admin_listen_uri,
             gnosis_safe_config,
-        } => {
-            cmd_scan_ledger(
-                ledger_db,
-                mint_auditor_db,
-                poll_interval,
-                listen_uri,
-                admin_listen_uri,
-                gnosis_safe_config,
-                logger,
-            )
-            .await;
-        }
+        } => cmd_scan_ledger(
+            ledger_db,
+            mint_auditor_db,
+            poll_interval,
+            listen_uri,
+            admin_listen_uri,
+            gnosis_safe_config,
+            logger,
+        ),
 
         Command::GetBlockAuditData {
             mint_auditor_db,
@@ -148,7 +145,7 @@ async fn main() {
 }
 
 /// Implementation of the ScanLedger CLI command.
-async fn cmd_scan_ledger(
+fn cmd_scan_ledger(
     ledger_db_path: PathBuf,
     mint_auditor_db_path: PathBuf,
     poll_interval: Duration,
