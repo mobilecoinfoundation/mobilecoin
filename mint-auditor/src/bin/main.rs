@@ -78,13 +78,13 @@ pub enum Command {
         #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
         mint_auditor_db: PathBuf,
 
-        /// Oprtional port for HTTP server. Defualts to 8080
-        #[clap(long, env = "PORT")]
-        port: Option<u16>,
+        /// Optional port for HTTP server. Defualts to 8080
+        #[clap(long, default_value = "8080", env = "PORT")]
+        port: u16,
 
-        /// Oprtional host for HTTP server. defaults to 127.0.0.1
-        #[clap(long, env = "HOST")]
-        host: Option<String>,
+        /// Optional host for HTTP server. defaults to 127.0.0.1
+        #[clap(long, default_value = "127.0.0.1", env = "HOST")]
+        host: String,
     },
 }
 
@@ -280,8 +280,8 @@ fn cmd_get_block_audit_data(
 
 async fn cmd_start_http_server(
     mint_auditor_db_path: PathBuf,
-    port: Option<u16>,
-    host: Option<String>,
+    port: u16,
+    host: String,
     logger: Logger,
 ) {
     let mint_auditor_db = MintAuditorDb::new_from_path(

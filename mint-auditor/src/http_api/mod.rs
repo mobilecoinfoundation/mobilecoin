@@ -11,11 +11,8 @@ use rocket::{custom, routes, Config};
 use std::{net::Ipv4Addr, str::FromStr};
 
 /// Start the http server
-pub async fn start_http_server(db: MintAuditorDb, port: Option<u16>, host: Option<String>) {
+pub async fn start_http_server(db: MintAuditorDb, port: u16, host: String) {
     let service = service::MintAuditorHttpService::new(db);
-
-    let port = port.unwrap_or(8080);
-    let host = host.unwrap_or("127.0.0.1".to_string());
 
     let config = Config {
         address: std::net::IpAddr::V4(Ipv4Addr::from_str(&host).unwrap()),
