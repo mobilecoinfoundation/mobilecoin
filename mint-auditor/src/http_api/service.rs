@@ -7,7 +7,6 @@ use crate::{
     http_api::api_types::BlockAuditDataResponse,
     Error,
 };
-use ::std::collections::HashMap;
 
 /// Service for handling auditor requests
 pub struct MintAuditorHttpService {}
@@ -31,14 +30,7 @@ impl MintAuditorHttpService {
 
         let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())?;
 
-        Ok(BlockAuditDataResponse {
-            block_index: block_audit_data.block_index(),
-            balances: HashMap::from_iter(
-                balances
-                    .into_iter()
-                    .map(|(token_id, balance)| (*token_id, balance)),
-            ),
-        })
+        Ok(BlockAuditDataResponse::new(block_audit_data, balances))
     }
 
     /// Get the audit data for the last synced block.
@@ -47,22 +39,12 @@ impl MintAuditorHttpService {
     ) -> Result<BlockAuditDataResponse, Error> {
         let conn = mint_auditor_db.get_conn()?;
 
-        let block_audit_data_option = BlockAuditData::last_block_audit_data(&conn)?;
+        // let block_audit_data_option = BlockAuditData::last_block_audit_data(&conn)?;
+        let block_audit_data =
+            BlockAuditData::last_block_audit_data(&conn)?.ok_or(Error::NotFound)?;
 
-        if let Some(block_audit_data) = block_audit_data_option {
-            let balances =
-                BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())?;
+        let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())?;
 
-            return Ok(BlockAuditDataResponse {
-                block_index: block_audit_data.block_index(),
-                balances: HashMap::from_iter(
-                    balances
-                        .into_iter()
-                        .map(|(token_id, balance)| (*token_id, balance)),
-                ),
-            });
-        }
-
-        Err(Error::NotFound)
+        Ok(BlockAuditDataResponse::new(block_audit_data, balances))
     }
 }
