@@ -24,7 +24,7 @@ impl MintAuditorHttpService {
     /// get counters
     pub fn get_counters(&self) -> Result<Counters, Error> {
         let conn = self.mint_auditor_db.get_conn()?;
-        Ok(Counters::get(&conn)?)
+        Counters::get(&conn)
     }
 
     /// Get the audit data for a target block
