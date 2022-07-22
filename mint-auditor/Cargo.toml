@@ -38,6 +38,7 @@ prost = { version = "0.10", default-features = false, features = ["prost-derive"
 protobuf = "2.27.1"
 rayon = "1.5"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip", "json"] }
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.13"
