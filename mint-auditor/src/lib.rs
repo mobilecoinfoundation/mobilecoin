@@ -8,6 +8,7 @@
 pub mod counters;
 pub mod db;
 pub mod gnosis;
+pub mod http_api;
 
 mod convert;
 mod error;

@@ -4640,6 +4640,7 @@ dependencies = [
  "protobuf",
  "rayon",
  "reqwest",
+ "rocket",
  "serde",
  "serde_json",
  "serde_with",

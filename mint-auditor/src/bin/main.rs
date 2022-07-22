@@ -12,6 +12,7 @@ use mc_mint_auditor::{
         SyncBlockData,
     },
     gnosis::{GnosisSafeConfig, GnosisSyncThread},
+    http_api::start_http_server,
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -72,6 +73,19 @@ pub enum Command {
         #[clap(long, env = "MC_JSON")]
         json: bool,
     },
+    StartHttpServer {
+        /// Path to mint auditor db.
+        #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
+        mint_auditor_db: PathBuf,
+
+        /// Optional port for HTTP server. Defualts to 8080
+        #[clap(long, default_value = "8080", env = "PORT")]
+        port: u16,
+
+        /// Optional host for HTTP server. defaults to 127.0.0.1
+        #[clap(long, default_value = "127.0.0.1", env = "HOST")]
+        host: String,
+    },
 }
 
 /// Configuration for the mint auditor.
@@ -85,7 +99,8 @@ pub struct Config {
     pub command: Command,
 }
 
-fn main() {
+#[rocket::main]
+async fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let config = Config::parse();
@@ -99,17 +114,15 @@ fn main() {
             listen_uri,
             admin_listen_uri,
             gnosis_safe_config,
-        } => {
-            cmd_scan_ledger(
-                ledger_db,
-                mint_auditor_db,
-                poll_interval,
-                listen_uri,
-                admin_listen_uri,
-                gnosis_safe_config,
-                logger,
-            );
-        }
+        } => cmd_scan_ledger(
+            ledger_db,
+            mint_auditor_db,
+            poll_interval,
+            listen_uri,
+            admin_listen_uri,
+            gnosis_safe_config,
+            logger,
+        ),
 
         Command::GetBlockAuditData {
             mint_auditor_db,
@@ -117,6 +130,14 @@ fn main() {
             json,
         } => {
             cmd_get_block_audit_data(mint_auditor_db, block_index, json, logger);
+        }
+
+        Command::StartHttpServer {
+            mint_auditor_db,
+            port,
+            host,
+        } => {
+            cmd_start_http_server(mint_auditor_db, port, host, logger).await;
         }
     }
 }
@@ -255,6 +276,22 @@ fn cmd_get_block_audit_data(
         Ok(())
     })
     .expect("db transaction failed");
+}
+
+async fn cmd_start_http_server(
+    mint_auditor_db_path: PathBuf,
+    port: u16,
+    host: String,
+    logger: Logger,
+) {
+    let mint_auditor_db = MintAuditorDb::new_from_path(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        DB_POOL_SIZE,
+        logger.clone(),
+    )
+    .expect("Could not open mint auditor DB");
+
+    start_http_server(mint_auditor_db, port, host).await;
 }
 
 /// Synchronizes the mint auditor database with the ledger database.
