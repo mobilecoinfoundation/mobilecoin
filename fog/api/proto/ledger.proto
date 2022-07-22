@@ -9,6 +9,33 @@ package fog_ledger;
 option go_package = "mobilecoin/api";
 
 ////
+// Ledger router API
+////
+
+service LedgerAPI {
+    rpc request(stream LedgerRequest) returns (stream LedgerResponse) {}
+}
+
+message LedgerRequest {
+    oneof request_data { 
+        attest.AuthMessage auth = 1;
+        attest.Message check_key_images = 2;
+        // TODO: Fill in block query service and merkele proof service.
+        // Potentially untrusted_tx_out_service? To be decided.     
+    }
+}
+
+message LedgerResponse {
+    oneof response_data { 
+        attest.AuthMessage auth = 1;
+        attest.Message check_key_image_response = 2;
+        // TODO: Fill in block query service and merkele proof service.
+        // Potentially untrusted_tx_out_service? To be decided.     
+    }
+}
+
+
+////
 // Merkle proofs
 ////
 

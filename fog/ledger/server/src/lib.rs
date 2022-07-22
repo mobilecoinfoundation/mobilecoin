@@ -5,6 +5,8 @@ mod config;
 mod counters;
 mod db_fetcher;
 mod key_image_service;
+mod ledger_router_server; 
+mod ledger_router_service; 
 mod merkle_proof_service;
 mod server;
 mod untrusted_tx_out_service;
