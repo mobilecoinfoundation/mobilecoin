@@ -136,8 +136,9 @@ mod tests {
     #[test_with_logger]
     fn test_get_block_audit_data(logger: Logger) {
         let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
+        let service = MintAuditorHttpService::new(mint_auditor_db);
 
-        let response = MintAuditorHttpService::get_block_audit_data(2, &mint_auditor_db).unwrap();
+        let response = service.get_block_audit_data(2).unwrap();
 
         assert_eq!(response.block_index, 2,);
         assert_eq!(response.balances, HashMap::from_iter([(1, 101), (22, 2)]));
@@ -146,8 +147,8 @@ mod tests {
     #[test_with_logger]
     fn test_get_last_block_audit_data(logger: Logger) {
         let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
-
-        let response = MintAuditorHttpService::get_last_block_audit_data(&mint_auditor_db).unwrap();
+        let service = MintAuditorHttpService::new(mint_auditor_db);
+        let response = service.get_last_block_audit_data().unwrap();
         assert_eq!(response.block_index, 2,);
         assert_eq!(response.balances, HashMap::from_iter([(1, 101), (22, 2)]));
     }
@@ -155,17 +156,12 @@ mod tests {
     #[test_with_logger]
     fn test_get_counters(logger: Logger) {
         let (mint_auditor_db, _test_db_context) = get_test_db(&logger);
+        let service = MintAuditorHttpService::new(mint_auditor_db);
 
-        let response = MintAuditorHttpService::get_counters(&mint_auditor_db).unwrap();
+        let response = service.get_counters().unwrap();
 
         // The number of blocks synced depends on the database that [get_test_db]
         // generates.
-        assert_eq!(
-            response,
-            CountersResponse {
-                num_blocks_synced: 3,
-                ..Default::default()
-            }
-        );
+        assert_eq!(response.num_blocks_synced(), 3,);
     }
 }
