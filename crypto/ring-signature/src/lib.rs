@@ -21,7 +21,7 @@ pub mod proptest_fixtures;
 
 pub use amount::{Commitment, CompressedCommitment};
 pub use ring_signature::{
-    generators, CryptoRngCore, CurveScalar, Error, GeneratorCache, KeyImage, PedersenGens,
+    generators, CryptoRngCore, CurveScalar, Error, KeyImage, PedersenGens,
     ReducedTxOut, RingMLSAG, Scalar,
 };
 

@@ -2,7 +2,7 @@
 
 //! A simple generator cache
 
-use super::{generators, PedersenGens};
+use mc_crypto_ring_signature::{generators, PedersenGens};
 use alloc::collections::BTreeMap;
 use mc_transaction_types::TokenId;
 

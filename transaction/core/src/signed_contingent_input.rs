@@ -3,14 +3,14 @@
 //! A signed contingent input as described in MCIP #31
 
 use crate::{
-    ring_ct::{OutputSecret, PresignedInputRing, SignedInputRing},
+    ring_ct::{OutputSecret, PresignedInputRing, SignedInputRing, GeneratorCache},
     tx::TxIn,
     Amount, TokenId,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_ring_signature::{
-    Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, GeneratorCache,
+    Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError,
     KeyImage, RingMLSAG,
 };
 use prost::Message;
