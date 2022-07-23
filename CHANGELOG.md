@@ -5,17 +5,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [1.2.3]
 
-## [1.2.2] - 2022-06-09
+### Fixed
 
-### Changed
+- Make fog sample paykit support (at least, scan) historical change subaddress ([#2281])
 
-- Update CI deployments to use zerossl instead of letsencrypt
+#### CI/CD
+- Cache improvements ([#2266])
+- Remove consensus-node releases between updates. ([#2266])
 
+#### Deployments
 
-## [1.2.1] - YANKED
+- fog-test-client transition to MC_ prefixed variables ([#2278])
+- Syntax fixes for watcher chart ([#2266])
+- Fix standalone node_hw container logging ([#2266])
 
-[This was never released]
+## [1.2.2] - UNRELEASED
+
+### Fixed
+
+- Make outbuf_retry_id an in,out parameter, fix init-twice crash. ([#2170])
+
+#### SDK/Clients
+
+- Use new TokenId class to create Amount ([#2092])
+
+#### CI/CD
+
+- use zerossl service for development deployments ([#2109])
+
+#### Deployments
+
+- Add k8s affinity and topology rules for fog/consensus ([#2155])
+- Fix OMAP settings and adjust probe timings. ([#2144])
+- pin aesm/epid packages ([#2144])
+
+## [1.2.1] - UNRELEASED
 
 ### Changed
 
@@ -27,10 +53,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
 
-
-## [1.2.0] - YANKED
-
-[This was never released]
+## [1.2.0] - UNRELEASED
 
 ### Added
 
