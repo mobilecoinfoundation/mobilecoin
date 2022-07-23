@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ake-enclave"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["MobileCoin"]
 edition = "2018"
 

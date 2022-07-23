@@ -1,5 +1,5 @@
 [package]
 name = "mc-util-ffi"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["MobileCoin"]
 edition = "2018"
