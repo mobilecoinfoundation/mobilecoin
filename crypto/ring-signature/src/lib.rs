@@ -21,8 +21,8 @@ pub mod proptest_fixtures;
 
 pub use amount::{Commitment, CompressedCommitment};
 pub use ring_signature::{
-    generators, CryptoRngCore, CurveScalar, Error, KeyImage, PedersenGens,
-    ReducedTxOut, RingMLSAG, Scalar,
+    generators, CryptoRngCore, CurveScalar, Error, KeyImage, PedersenGens, ReducedTxOut, RingMLSAG,
+    Scalar,
 };
 
 /// Get the shared secret for a transaction output.

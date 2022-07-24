@@ -2,8 +2,8 @@
 
 //! A simple generator cache
 
-use mc_crypto_ring_signature::{generators, PedersenGens};
 use alloc::collections::BTreeMap;
+use mc_crypto_ring_signature::{generators, PedersenGens};
 use mc_transaction_types::TokenId;
 
 /// GeneratorCache is a simple object which caches computations of
