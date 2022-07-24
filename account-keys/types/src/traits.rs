@@ -1,6 +1,6 @@
 use mc_crypto_keys::RistrettoPublic;
 
-/// An object which has represents a subaddress, and has RingCT-style
+/// An object which represents a subaddress, and has RingCT-style
 /// view and spend public keys.
 pub trait RingCtAddress {
     /// Get the subaddress' view public key
