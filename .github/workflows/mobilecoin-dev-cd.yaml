@@ -12,9 +12,10 @@ env:
 on:
   push:
     branches:
-    - release/v*
     - feature/*
-    - develop
+    - release/*
+    tags:
+      - v[0-9]+*
 
 # don't run more than one at a time for a branch/tag
 concurrency: mobilecoin-dev-cd-${{ github.ref }}
@@ -27,7 +28,6 @@ jobs:
     name: 👾 Environment Info 👾
     runs-on: [self-hosted, Linux, small]
     outputs:
-      branch: ${{ steps.meta.outputs.branch }}
       namespace: ${{ steps.meta.outputs.namespace }}
       tag: ${{ steps.meta.outputs.tag }}
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
@@ -330,8 +330,8 @@ jobs:
           REPO_ORG=${{ env.DOCKER_ORG }}
           RUST_BIN_PATH=rust_build_artifacts
           GO_BIN_PATH=go_build_artifacts
-        cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.branch }}
-        cache-to: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.branch }}
+        cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.namespace }}
+        cache-to: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.namespace }}
         context: .
         file: .internal-ci/docker/Dockerfile.${{ matrix.image }}
         labels: ${{ steps.docker_meta.outputs.labels }}
