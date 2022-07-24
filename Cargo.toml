@@ -4,6 +4,7 @@ cargo-features = ["named-profiles"]
 members = [
     "account-keys",
     "account-keys/slip10",
+    "account-keys/types",
     "admin-http-gateway",
     "android-bindings",
     "api",

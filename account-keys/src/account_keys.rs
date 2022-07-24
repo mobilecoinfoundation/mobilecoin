@@ -23,6 +23,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_account_keys_types::RingCtAddress;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
@@ -184,6 +185,16 @@ impl PublicAddress {
         } else {
             Some(&self.fog_report_id)
         }
+    }
+}
+
+impl RingCtAddress for PublicAddress {
+    fn view_public_key(&self) -> &RistrettoPublic {
+        &self.view_public_key
+    }
+
+    fn spend_public_key(&self) -> &RistrettoPublic {
+        &self.spend_public_key
     }
 }
 
