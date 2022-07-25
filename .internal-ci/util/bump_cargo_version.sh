@@ -102,7 +102,7 @@ do
                     sed -i -e "s/version = \"${current_tag}\"/version = \"${new_tag}\"/g" "${f}"
                 fi
             else
-                echo "!! File current version ${p_version} doesn't match --current-tag ${current_tag}"
+                echo "!! File current version ${p_version} doesn't match --current-tag ${current_tag} - skipping"
             fi
         else
             echo "!! File authors don't match --author value ${author} found ${authors} - skipping"
@@ -113,9 +113,45 @@ do
 done
 
 # bump gradle file
+echo "-- Update android-bindings/publish.gradle version"
 if [[ -n "${dry_run}" ]]
 then
-    echo "-- Update version in android-bindings/lib-wrapper/android-bindings/publish.gradle"
+    echo "Update version in android-bindings/lib-wrapper/android-bindings/publish.gradle"
 else
     sed -i -e "s/${current_tag}/${new_tag}/g" android-bindings/lib-wrapper/android-bindings/publish.gradle
+fi
+
+# update Cargo.locks with cargo check, use mob image for sane build env.
+mobconf="./.mobconf"
+mob_image_tag=$(cat ./docker/Dockerfile-version)
+mob_image_org=$(grep repository "${mobconf}" | awk '{print $3}')
+mob_image_repo=$(grep target "${mobconf}" | awk '{print $3}')
+mob_image="${mob_image_org}${mob_image_repo}:${mob_image_tag}"
+
+echo "-- Update Cargo.lock files with mob docker image - cargo check"
+if [[ -n "${dry_run}" ]]
+then
+    cat <<EOF
+docker run -it --rm
+    -e CARGO_HOME=/cargo
+    -e IAS_MODE=DEV
+    -e SGX_MODE=SW
+    -e RUST_BACKTRACE=full
+    -v "$(pwd):/tmp/mobilenode"
+    --workdir "/tmp/mobilenode"
+    "${mob_image}"
+    /bin/bash -c "cargo check"
+EOF
+
+else
+    docker run -it --rm \
+        -e CARGO_HOME=/cargo \
+        -e IAS_MODE=DEV \
+        -e SGX_MODE=SW \
+        -e RUST_BACKTRACE=full \
+        -v "$(pwd):/tmp/mobilenode" \
+        --workdir "/tmp/mobilenode" \
+        "${mob_image}" \
+        /bin/bash -c "cargo check"
+
 fi
