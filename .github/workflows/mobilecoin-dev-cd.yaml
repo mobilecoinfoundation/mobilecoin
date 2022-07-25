@@ -381,7 +381,7 @@ jobs:
 
     - name: Package and publish chart
       if: "! contains(github.event.head_commit.message, '[skip charts]')"
-      uses: mobilecoinofficial/gha-k8s-toolbox@a89efdf4305f3b926b1bb61a59f267532406e653
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-publish
         chart_repo_username: ${{ secrets.HARBOR_USERNAME }}
