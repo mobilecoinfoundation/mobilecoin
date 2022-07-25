@@ -62,11 +62,11 @@ impl MintAuditorHttpService {
         let query_result = AuditedMint::list_with_mint_and_deposit(offset, limit, &conn)?;
 
         let response = query_result
-            .iter()
+            .into_iter()
             .map(|(audited, mint, deposit)| AuditedMintResponse {
-                audited: audited.clone(),
-                mint: mint.clone(),
-                deposit: deposit.clone(),
+                audited: audited,
+                mint: mint,
+                deposit: deposit,
             })
             .collect();
 
