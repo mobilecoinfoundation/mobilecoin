@@ -288,11 +288,16 @@ impl AuditedMint {
             .inner_join(mint_txs::table)
             .inner_join(gnosis_safe_deposits::table);
 
-        if let (Some(o), Some(l)) = (offset, limit) {
-            query = query.offset(o as i64).limit(l as i64);
+        if let Some(o) = offset {
+            query = query.offset(o as i64);
+        }
+
+        if let Some(l) = limit {
+            query = query.limit(l as i64);
         }
 
         Ok(query
+            .order_by(audited_mints::id)
             .select((
                 audited_mints::all_columns,
                 mint_txs::all_columns,
