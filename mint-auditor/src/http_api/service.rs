@@ -3,8 +3,8 @@
 //! Mint auditor service for handling HTTP requests
 
 use crate::{
-    db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb},
-    http_api::api_types::BlockAuditDataResponse,
+    db::{AuditedMint, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
+    http_api::api_types::{AuditedMintResponse, BlockAuditDataResponse},
     Error,
 };
 
@@ -49,12 +49,41 @@ impl MintAuditorHttpService {
 
         Ok(BlockAuditDataResponse::new(block_audit_data, balances))
     }
+
+    /// Get a paginated list of audited mints, along with corresponding mint tx
+    /// and gnosis safe deposit
+    pub fn get_audited_mints(
+        &self,
+        offset: Option<u64>,
+        limit: Option<u64>,
+    ) -> Result<Vec<AuditedMintResponse>, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
+
+        let query_result = AuditedMint::list_with_mint_and_deposit(offset, limit, &conn)?;
+
+        let response = query_result
+            .into_iter()
+            .map(|(audited, mint, deposit)| AuditedMintResponse {
+                audited,
+                mint,
+                deposit,
+            })
+            .collect();
+
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::test_utils::{append_and_sync, TestDbContext};
+    use crate::db::{
+        test_utils::{
+            append_and_sync, create_gnosis_safe_deposit, insert_gnosis_deposit,
+            insert_mint_tx_from_deposit, test_gnosis_config, TestDbContext,
+        },
+        GnosisSafeDeposit, MintTx,
+    };
     use mc_account_keys::AccountKey;
     use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::{
@@ -163,5 +192,41 @@ mod tests {
         // The number of blocks synced depends on the database that [get_test_db]
         // generates.
         assert_eq!(response.num_blocks_synced(), 3,);
+    }
+
+    #[test_with_logger]
+    fn test_get_audited_mints_service(logger: Logger) {
+        let config = &test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+        let service = MintAuditorHttpService::new(mint_auditor_db);
+
+        let mut deposits: Vec<GnosisSafeDeposit> = vec![];
+        let mut mints: Vec<MintTx> = vec![];
+
+        for _ in 0..10 {
+            let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+            deposits.push(deposit.clone());
+            insert_gnosis_deposit(&mut deposit, &conn);
+            let mint = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+            mints.push(mint.clone());
+            AuditedMint::try_match_mint_with_deposit(&mint, config, &conn).unwrap();
+        }
+
+        let all_audited_mints = service.get_audited_mints(None, None).unwrap();
+        assert_eq!(all_audited_mints.len(), 10);
+
+        assert_eq!(all_audited_mints[0].mint, mints[0]);
+        assert_eq!(
+            all_audited_mints[0].deposit.eth_tx_hash(),
+            deposits[0].eth_tx_hash()
+        );
+
+        let paginated_mints = service.get_audited_mints(Some(4), Some(3)).unwrap();
+        assert_eq!(paginated_mints.len(), 3);
+        assert_eq!(paginated_mints[0].audited.id.unwrap(), 5);
+        assert_eq!(paginated_mints[2].audited.id.unwrap(), 7);
     }
 }
