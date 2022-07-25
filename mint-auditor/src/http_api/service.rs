@@ -3,8 +3,8 @@
 //! Mint auditor service for handling HTTP requests
 
 use crate::{
-    db::{BlockAuditData, BlockBalance, Counters, MintAuditorDb},
-    http_api::api_types::BlockAuditDataResponse,
+    db::{AuditedMint, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
+    http_api::api_types::{AuditedMintResponse, BlockAuditDataResponse},
     Error,
 };
 
@@ -48,6 +48,29 @@ impl MintAuditorHttpService {
         let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())?;
 
         Ok(BlockAuditDataResponse::new(block_audit_data, balances))
+    }
+
+    /// Get a paginated list of audited mints, along with corresponding mint tx
+    /// and gnosis safe deposit
+    pub fn get_audited_mints(
+        &self,
+        offset: Option<u64>,
+        limit: Option<u64>,
+    ) -> Result<Vec<AuditedMintResponse>, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
+
+        let query_result = AuditedMint::list_with_mint_and_deposit(offset, limit, &conn)?;
+
+        let response = query_result
+            .iter()
+            .map(|(audited, mint, deposit)| AuditedMintResponse {
+                audited: audited.clone(),
+                mint: mint.clone(),
+                deposit: deposit.clone(),
+            })
+            .collect();
+
+        Ok(response)
     }
 }
 

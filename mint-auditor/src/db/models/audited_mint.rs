@@ -276,6 +276,30 @@ impl AuditedMint {
 
         Ok(())
     }
+
+    /// Get paginated list of audited mints
+    pub fn list_with_mint_and_deposit(
+        offset: Option<u64>,
+        limit: Option<u64>,
+        conn: &Conn,
+    ) -> Result<Vec<(AuditedMint, MintTx, GnosisSafeDeposit)>, Error> {
+        let mut query = audited_mints::table
+            .into_boxed()
+            .inner_join(mint_txs::table)
+            .inner_join(gnosis_safe_deposits::table);
+
+        if let (Some(o), Some(l)) = (offset, limit) {
+            query = query.offset(o as i64).limit(l as i64);
+        }
+
+        Ok(query
+            .select((
+                audited_mints::all_columns,
+                mint_txs::all_columns,
+                gnosis_safe_deposits::all_columns,
+            ))
+            .load(conn)?)
+    }
 }
 
 #[cfg(test)]
@@ -743,5 +767,41 @@ mod tests {
                 .num_unknown_ethereum_token_deposits(),
             1
         );
+    }
+
+    #[test_with_logger]
+    fn test_list_audited_mints(logger: Logger) {
+        let config = &test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let mut deposits: Vec<GnosisSafeDeposit> = vec![];
+        let mut mints: Vec<MintTx> = vec![];
+
+        for _ in 0..10 {
+            let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+            deposits.push(deposit.clone());
+            insert_gnosis_deposit(&mut deposit, &conn);
+            let mint = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+            mints.push(mint.clone());
+            AuditedMint::try_match_mint_with_deposit(&mint, config, &conn).unwrap();
+        }
+
+        let all_audited_mints = AuditedMint::list_with_mint_and_deposit(None, None, &conn).unwrap();
+        assert_eq!(all_audited_mints.len(), 10);
+
+        let (_audited_mint, mint_tx, deposit) = &all_audited_mints[0];
+        assert_eq!(*mint_tx, mints[0]);
+        assert_eq!(deposit.eth_tx_hash(), deposits[0].eth_tx_hash());
+
+        let paginated_mints =
+            AuditedMint::list_with_mint_and_deposit(Some(4), Some(3), &conn).unwrap();
+        assert_eq!(paginated_mints.len(), 3);
+        let (audited_mint, _mint_tx, _deposit) = &paginated_mints[0];
+        assert_eq!(audited_mint.id.unwrap(), 5);
+        let (audited_mint, _mint_tx, _deposit) = &paginated_mints[2];
+        assert_eq!(audited_mint.id.unwrap(), 7);
     }
 }
