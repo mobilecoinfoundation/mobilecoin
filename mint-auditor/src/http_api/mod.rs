@@ -30,6 +30,7 @@ pub async fn start_http_server(db: MintAuditorDb, port: u16, host: String) {
                 routes::get_block_audit_data,
                 routes::get_last_block_audit_data,
                 routes::get_audited_mints,
+                routes::get_audited_burns,
             ],
         )
         .launch()
