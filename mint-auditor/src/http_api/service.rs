@@ -64,9 +64,9 @@ impl MintAuditorHttpService {
         let response = query_result
             .into_iter()
             .map(|(audited, mint, deposit)| AuditedMintResponse {
-                audited: audited,
-                mint: mint,
-                deposit: deposit,
+                audited,
+                mint,
+                deposit,
             })
             .collect();
 
