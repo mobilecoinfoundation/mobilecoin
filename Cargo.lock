@@ -4697,6 +4697,7 @@ dependencies = [
  "mc-connection",
  "mc-connection-test-utils",
  "mc-consensus-api",
+ "mc-consensus-enclave-api",
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-crypto-digestible",

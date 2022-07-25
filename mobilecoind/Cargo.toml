@@ -22,6 +22,7 @@ mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-consensus-api = { path = "../consensus/api" }
+mc-consensus-enclave-api = { path = "../consensus/enclave/api" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../consensus/scp" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }

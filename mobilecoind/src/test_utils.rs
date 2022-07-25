@@ -17,6 +17,7 @@ use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
+use mc_consensus_enclave_api::FeeMap;
 use mc_consensus_scp::QuorumSet;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
@@ -133,8 +134,10 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
-    let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
-    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
+    let peer1 =
+        MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0, FeeMap::default());
+    let peer2 =
+        MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0, FeeMap::default());
 
     let node_ids = vec![
         peer1.uri().host_and_port_responder_id().unwrap(),
