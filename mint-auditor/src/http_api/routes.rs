@@ -5,7 +5,7 @@
 use crate::{
     db::Counters,
     http_api::{
-        api_types::{AuditedMintResponse, BlockAuditDataResponse},
+        api_types::{AuditedBurnResponse, AuditedMintResponse, BlockAuditDataResponse},
         service::MintAuditorHttpService,
     },
 };
@@ -59,6 +59,20 @@ pub fn get_audited_mints(
 ) -> Result<Json<Vec<AuditedMintResponse>>, String> {
     match service.get_audited_mints(offset, limit) {
         Ok(audited_mints) => Ok(Json(audited_mints)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Get a paginated list of audited burns, along with corresponding burn tx and
+/// gnosis safe withdrawal
+#[get("/audited_burns?<offset>&<limit>")]
+pub fn get_audited_burns(
+    offset: Option<u64>,
+    limit: Option<u64>,
+    service: &State<MintAuditorHttpService>,
+) -> Result<Json<Vec<AuditedBurnResponse>>, String> {
+    match service.get_audited_burns(offset, limit) {
+        Ok(audited_burns) => Ok(Json(audited_burns)),
         Err(e) => Err(e.to_string()),
     }
 }
