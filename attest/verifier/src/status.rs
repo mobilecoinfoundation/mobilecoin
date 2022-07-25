@@ -559,7 +559,7 @@ mod test {
         let report = VerificationReport {
             sig: Default::default(),
             chain: vec![],
-            http_body: IAS_CONFIG_SW.trim().to_owned(),
+            http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -666,7 +666,8 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE but an unexpected advisory fails.
+    /// MRENCLAVE but an insufficient sw and config advisory allow-listing 
+    /// fails.
     #[test]
     fn mrenclave_multi_config_sw_fail_short() {
         let verifier = MrEnclaveVerifier {
@@ -678,7 +679,7 @@ mod test {
         let report = VerificationReport {
             sig: Default::default(),
             chain: vec![],
-            http_body: IAS_CONFIG_SW.trim().to_owned(),
+            http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -946,7 +947,7 @@ mod test {
         let report = VerificationReport {
             sig: Default::default(),
             chain: vec![],
-            http_body: IAS_CONFIG_SW.trim().to_owned(),
+            http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
