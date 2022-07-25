@@ -9,8 +9,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_account_keys::{
-    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX,
-    INVALID_SUBADDRESS_INDEX,
+    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
 };
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
@@ -68,11 +67,11 @@ const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 /// default and change subaddress indexes.
 ///
 /// Note: We also put the historical change subaddress of 1 in this range.
-/// This is because we ran the test client as a canary for several months using 1
-/// as the change subaddress, so those accounts now have many subaddress index 1 TxOuts.
-/// Adding this to the searched range means that they don't lose all this money,
-/// and also silences the warnings when they get TxOuts from fog on "unexpected"
-/// subaddresses.
+/// This is because we ran the test client as a canary for several months using
+/// 1 as the change subaddress, so those accounts now have many subaddress index
+/// 1 TxOuts. Adding this to the searched range means that they don't lose all
+/// this money, and also silences the warnings when they get TxOuts from fog on
+/// "unexpected" subaddresses.
 const HISTORICAL_CHANGE_SUBADDRESS_INDEX: u64 = 1;
 const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=HISTORICAL_CHANGE_SUBADDRESS_INDEX;
 const SUBADDRESS_HIGH_RANGE: Range<u64> = CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX;
