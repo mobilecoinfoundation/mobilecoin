@@ -110,6 +110,7 @@ jobs:
       run: |
         git config --global --add safe.directory '*'
         ./tools/lint.sh
+        rm -rf ./target/debug
 
     - name: Build rust hardware projects
       if: |
