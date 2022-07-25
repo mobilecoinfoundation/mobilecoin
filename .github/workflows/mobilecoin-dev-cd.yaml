@@ -95,6 +95,23 @@ jobs:
       with:
         cache_buster: ${{ secrets.CACHE_BUSTER }}
 
+    - name: Lint rust projects
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      env:
+        IAS_MODE: DEV
+        SGX_MODE: HW
+        RUST_BACKTRACE: full
+        MOB_RELEASE: 1
+        CONSENSUS_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        LEDGER_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+      run: |
+        git config --global --add safe.directory '*'
+        ./tools/lint.sh
+
     - name: Build rust hardware projects
       if: |
         steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
