@@ -65,10 +65,10 @@ use rand_chacha::ChaCha20Rng;
 use sha2::Sha512;
 use std::{
     collections::BTreeMap,
+    convert::TryInto,
     ops::DerefMut,
     str::FromStr,
     sync::{Mutex, MutexGuard},
-    convert::TryInto,
 };
 use zeroize::Zeroize;
 
