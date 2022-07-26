@@ -7,6 +7,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [2.0.0] - 2022-07-25
 
+### Fixed
+
+#### CI/CD
+
+- Fix metadata script for new release branch patterns. ([#2298])
+
 ### Security
 
 - Bump SGX to 2.17, mitigate INTEL-SA-00615
