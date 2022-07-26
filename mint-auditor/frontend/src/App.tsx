@@ -32,7 +32,8 @@ export const App = () => {
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'secondary.main',
+          // backgroundColor: 'secondary.dark',
+          backgroundColor: '#004e80',
         }}
       >
         <Header />

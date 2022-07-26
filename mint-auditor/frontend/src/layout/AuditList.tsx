@@ -26,6 +26,9 @@ export const AuditList: FC<any> = (): ReactElement => {
     while (newMints.length <= 50) {
       newMints = newMints.concat(newMints)
     }
+    if (prevMints.length === 0) {
+      newMints[0].second = undefined
+    }
     setMints(prevMints.concat(newMints))
   }
 
@@ -38,10 +41,15 @@ export const AuditList: FC<any> = (): ReactElement => {
     while (newBurns.length <= 50) {
       newBurns = newBurns.concat(newBurns)
     }
+    if (prevBurns.length === 0) {
+      newBurns[0].second = undefined
+    }
     setBurns(prevBurns.concat(newBurns))
   }
 
-  const generateTransactionFromNationData = (nation: Nation) => {
+  const generateTransactionFromNationData = (
+    nation: Nation
+  ): TransactionPair => {
     const type = Math.round(Math.random()) ? 'mint' : 'burn'
     const amount = nation.population
     const rsvHash =
@@ -58,11 +66,11 @@ export const AuditList: FC<any> = (): ReactElement => {
     } else {
       // burn
       const first = {
-        mobUsdAmount: -1 * amount,
+        mobUsdAmount: amount,
         txoId: nation.idYear.toString(),
         memo: rsvHash,
       } as MobUsdTransaction
-      const second = { rsvAmount: -1 * amount, rsvHash } as RsvTransaction
+      const second = { rsvAmount: amount, rsvHash } as RsvTransaction
       return { type, first, second, confirmed: true } as TransactionPair
     }
   }
@@ -95,11 +103,11 @@ export const AuditList: FC<any> = (): ReactElement => {
             variant="h5"
             noWrap
             sx={{
-              color: 'secondary.contrastText',
+              color: 'primary.contrastText',
               height: '30px',
             }}
           >
-            Mints and Deposits
+            Deposits
           </Typography>
         </Grid>
         <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -107,11 +115,11 @@ export const AuditList: FC<any> = (): ReactElement => {
             variant="h5"
             noWrap
             sx={{
-              color: 'secondary.contrastText',
+              color: 'primary.contrastText',
               height: '30px',
             }}
           >
-            Burns and Withdrawals
+            Redeems
           </Typography>
         </Grid>
         <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -124,7 +132,7 @@ export const AuditList: FC<any> = (): ReactElement => {
               backgroundColor: '#fff',
               padding: 1,
               borderRadius: '5px',
-              boxShadow: 'rgba(100, 100, 100, 0.5) 0px 8px 24px',
+              boxShadow: 'rgba(0, 0, 0, 1) 0px 5px 15px',
             }}
           >
             <InfiniteScroll
@@ -150,8 +158,7 @@ export const AuditList: FC<any> = (): ReactElement => {
               backgroundColor: '#fff',
               padding: 1,
               borderRadius: '5px',
-              boxShadow: 'rgba(100, 100, 100, 0.5) 0px 8px 24px',
-              // boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px',
+              boxShadow: 'rgba(0, 0, 0, 1) 0px 5px 15px',
             }}
           >
             <InfiniteScroll

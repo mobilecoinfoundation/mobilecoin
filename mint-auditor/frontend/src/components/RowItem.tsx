@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import { SettingsEthernet } from '@mui/icons-material'
+import { PriceCheck, LinkOff } from '@mui/icons-material'
 import React, { FC } from 'react'
 import { TransactionPair } from '../types'
 import { TransactionItem } from './TransactionItem'
@@ -7,6 +7,7 @@ import { TransactionItem } from './TransactionItem'
 export const RowItem: FC<TransactionPair> = (
   transactionPair: TransactionPair
 ) => {
+  const isValid = transactionPair.first && transactionPair.second
   return (
     <Box
       sx={{
@@ -17,7 +18,10 @@ export const RowItem: FC<TransactionPair> = (
         margin: '5px 5px 10px',
       }}
     >
-      <TransactionItem {...transactionPair.first} />
+      <TransactionItem
+        transaction={transactionPair.first}
+        type={transactionPair.type}
+      />
       <Box
         sx={{
           display: 'flex',
@@ -25,25 +29,48 @@ export const RowItem: FC<TransactionPair> = (
           justifyContent: 'center',
         }}
       >
-        <Box
-          sx={{
-            borderRadius: '50%',
-            height: 30,
-            width: 30,
-            backgroundColor: 'primary.main',
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          <SettingsEthernet
+        {isValid ? (
+          <Box
             sx={{
-              color: 'secondary.light',
-              margin: 'auto',
+              borderRadius: '50%',
+              height: 30,
+              width: 30,
+              backgroundColor: '#12a312',
+              display: 'flex',
+              justifyContent: 'center',
             }}
-          />
-        </Box>
+          >
+            <PriceCheck
+              sx={{
+                color: 'secondary.light',
+                margin: 'auto',
+              }}
+            />
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              borderRadius: '50%',
+              height: 30,
+              width: 30,
+              backgroundColor: 'secondary.main',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <LinkOff
+              sx={{
+                color: 'secondary.dark',
+                margin: 'auto',
+              }}
+            />
+          </Box>
+        )}
       </Box>
-      <TransactionItem {...transactionPair.second} />
+      <TransactionItem
+        transaction={transactionPair.second}
+        type={transactionPair.type}
+      />
     </Box>
   )
 }

@@ -1,13 +1,18 @@
-import Box from '@mui/material/Box'
+import { Box, Typography } from '@mui/material'
 import React, { FC } from 'react'
 import { MobUsdTransaction, RsvTransaction } from '../types'
-export const TransactionItem: FC<MobUsdTransaction | RsvTransaction> = (
-  transaction: MobUsdTransaction | RsvTransaction
-) => {
+
+type Props = {
+  transaction?: MobUsdTransaction | RsvTransaction
+  type: 'mint' | 'burn'
+}
+
+export const TransactionItem: FC<Props> = (props: {
+  transaction?: MobUsdTransaction | RsvTransaction
+  type: 'mint' | 'burn'
+}) => {
+  const { transaction, type } = props
   const style: React.CSSProperties = {
-    // border: 'solid',
-    // borderWidth: 1,
-    // borderColor: 'secondary.main',
     borderRadius: 1,
     padding: 1,
     margin: 1,
@@ -16,32 +21,55 @@ export const TransactionItem: FC<MobUsdTransaction | RsvTransaction> = (
     width: '18vw',
   }
 
-  const noWrapStyle: React.CSSProperties = {
+  const missingTransactionStyle: React.CSSProperties = {
+    backgroundColor: 'darkgrey',
+  }
+
+  const noWrapStyle = {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
+    '&:hover': { overflow: 'visible' },
     textOverflow: 'ellipsis',
+  }
+
+  if (!transaction) {
+    return (
+      <Box sx={[style, missingTransactionStyle]}>
+        <Typography sx={{ fontWeight: 'bold' }}>Pending Transaction</Typography>
+      </Box>
+    )
   }
 
   if ('rsvAmount' in transaction) {
     transaction as RsvTransaction
+
     return (
       <Box sx={style}>
-        RSV Transaction
-        <div>rsv transaction amount: {transaction.rsvAmount}</div>
-        <div style={noWrapStyle}>rsv hash: {transaction.rsvHash}</div>
+        <Typography sx={{ fontWeight: 'bold' }}>
+          Gnosis Safe {type === 'mint' ? 'Deposit' : 'Withdrawal'}
+        </Typography>
+        <Box>amount: {transaction.rsvAmount} RSV</Box>
+        <Box sx={noWrapStyle}>hash: {transaction.rsvHash}</Box>
       </Box>
     )
   } else if ('mobUsdAmount' in transaction) {
     transaction as MobUsdTransaction
     return (
       <Box sx={style}>
-        mobUSD Transaction
-        <div>mobUSD transaction amount: {transaction.mobUsdAmount}</div>
-        <div>mobUSD transaction hash: {transaction.txoId}</div>
-        <div style={noWrapStyle}>rsv hash: {transaction.memo}</div>
+        <Typography sx={{ fontWeight: 'bold' }}>
+          MobileCoin Ledger {type === 'mint' ? 'Mint' : 'Burn'}
+        </Typography>
+        <Box>amount: {transaction.mobUsdAmount} mobUSD</Box>
+        <Box sx={noWrapStyle}>hash: {transaction.txoId}</Box>
       </Box>
     )
   } else {
-    return <div>unidentified transaction</div>
+    return (
+      <Box sx={[style, missingTransactionStyle]}>
+        <Typography sx={{ fontWeight: 'bold' }}>
+          Unrecognized transaction
+        </Typography>
+      </Box>
+    )
   }
 }

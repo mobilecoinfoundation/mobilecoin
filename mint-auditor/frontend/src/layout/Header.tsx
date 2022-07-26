@@ -11,7 +11,8 @@ export const Header: FC = (): ReactElement => {
           height: '100px',
           // backgroundColor: 'primary.main',
           background:
-            'linear-gradient(180deg, rgba(2,124,253,1) 0%, rgba(255,255,255,0) 100%)',
+            // 'linear-gradient(180deg, rgba(2,124,253,1) 0%, rgba(255,255,255,0) 100%)',
+            'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(255,255,255,0) 100%)',
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
@@ -19,18 +20,18 @@ export const Header: FC = (): ReactElement => {
       >
         <Container maxWidth={false}>
           <Toolbar disableGutters>
-            {MCIcon('#000')}
+            {MCIcon('#fff')}
             <Typography
               variant="h4"
               noWrap
               sx={{
                 mr: 2,
                 display: { xs: 'none', md: 'flex' },
-                color: 'secondary.contrastText',
+                color: 'primary.contrastText',
                 paddingLeft: 2,
               }}
             >
-              MobileCoin Auditor
+              MobileCoin MobileUSD Auditor
             </Typography>
           </Toolbar>
         </Container>

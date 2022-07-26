@@ -9,8 +9,8 @@ export type RsvTransaction = {
 }
 
 export type TransactionPair = {
-  type: string
-  first: MobUsdTransaction | RsvTransaction
-  second: MobUsdTransaction | RsvTransaction
+  type: 'mint' | 'burn'
+  first?: MobUsdTransaction | RsvTransaction
+  second?: MobUsdTransaction | RsvTransaction
   confirmed: boolean
 }
