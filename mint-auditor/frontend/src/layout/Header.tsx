@@ -36,14 +36,6 @@ export const Header: FC = (): ReactElement => {
           </Toolbar>
         </Container>
       </Box>
-      {/* <Box
-        sx={{
-          width: '100%',
-          height: 10,
-          background:
-            'linear-gradient(180deg, rgba(2,124,253,1) 0%, rgba(255,255,255,0) 100%)',
-        }}
-      ></Box> */}
     </>
   )
 }

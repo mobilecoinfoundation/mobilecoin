@@ -1,13 +1,11 @@
+import { LinkOff, PriceCheck } from '@mui/icons-material'
 import { Box } from '@mui/material'
-import { PriceCheck, LinkOff } from '@mui/icons-material'
 import React, { FC } from 'react'
-import { TransactionPair } from '../types'
-import { TransactionItem } from './TransactionItem'
+import { TAuditedBurn } from '../types'
+import { Withdrawal } from './Withdrawal'
+import { Burn } from './Burn'
 
-export const RowItem: FC<TransactionPair> = (
-  transactionPair: TransactionPair
-) => {
-  const isValid = transactionPair.first && transactionPair.second
+export const AuditedBurn: FC<TAuditedBurn> = (auditedBurn: TAuditedBurn) => {
   return (
     <Box
       sx={{
@@ -18,10 +16,7 @@ export const RowItem: FC<TransactionPair> = (
         margin: '5px 5px 10px',
       }}
     >
-      <TransactionItem
-        transaction={transactionPair.first}
-        type={transactionPair.type}
-      />
+      <Withdrawal {...auditedBurn.withdrawal} />
       <Box
         sx={{
           display: 'flex',
@@ -29,7 +24,7 @@ export const RowItem: FC<TransactionPair> = (
           justifyContent: 'center',
         }}
       >
-        {isValid ? (
+        {true ? ( // how does this get validated?
           <Box
             sx={{
               borderRadius: '50%',
@@ -67,10 +62,7 @@ export const RowItem: FC<TransactionPair> = (
           </Box>
         )}
       </Box>
-      <TransactionItem
-        transaction={transactionPair.second}
-        type={transactionPair.type}
-      />
+      <Burn {...auditedBurn.burn} />
     </Box>
   )
 }

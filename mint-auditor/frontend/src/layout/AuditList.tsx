@@ -1,13 +1,16 @@
 import React, { ReactElement, FC, useState, useEffect } from 'react'
 import { Box, Grid, Typography } from '@mui/material'
 import InfiniteScroll from 'react-infinite-scroll-component'
-import { MobUsdTransaction, RsvTransaction, TransactionPair } from '../types'
-import { getNationData, Nation } from '../api/apiHandler'
-import { RowItem } from '../components/RowItem'
+import { TAuditedBurn, TAuditedMint } from '../types'
+import { getAuditedMints, getAuditedBurns } from '../api/apiHandler'
+import { AuditedMint } from '../components/AuditedMint'
+import { AuditedBurn } from '../components/AuditedBurn'
 
 export const AuditList: FC<any> = (): ReactElement => {
-  const [mints, setMints] = useState<TransactionPair[]>([])
-  const [burns, setBurns] = useState<TransactionPair[]>([])
+  const [mints, setMints] = useState<TAuditedMint[]>([])
+  const [burns, setBurns] = useState<TAuditedBurn[]>([])
+  const [mintPage, setMintPage] = useState<number>(0)
+  const [burnPage, setBurnPage] = useState<number>(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -17,70 +20,16 @@ export const AuditList: FC<any> = (): ReactElement => {
     fetchData()
   }, [])
 
-  const fetchMints = async () => {
-    const prevMints = mints
-    const newTransactions = await getTestData()
-    let newMints = newTransactions.filter(
-      (transaction) => transaction.type === 'mint'
-    )
-    while (newMints.length <= 50) {
-      newMints = newMints.concat(newMints)
-    }
-    if (prevMints.length === 0) {
-      newMints[0].second = undefined
-    }
-    setMints(prevMints.concat(newMints))
-  }
-
   const fetchBurns = async () => {
-    const prevBurns = burns
-    const newTransactions = await getTestData()
-    let newBurns = newTransactions.filter(
-      (transaction) => transaction.type === 'burn'
-    )
-    while (newBurns.length <= 50) {
-      newBurns = newBurns.concat(newBurns)
-    }
-    if (prevBurns.length === 0) {
-      newBurns[0].second = undefined
-    }
-    setBurns(prevBurns.concat(newBurns))
+    const newBurns = await getAuditedBurns(burnPage)
+    setBurns(burns.concat(newBurns))
+    setBurnPage(burnPage + 1)
   }
 
-  const generateTransactionFromNationData = (
-    nation: Nation
-  ): TransactionPair => {
-    const type = Math.round(Math.random()) ? 'mint' : 'burn'
-    const amount = nation.population
-    const rsvHash =
-      Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)
-
-    if (type === 'mint') {
-      const first = { rsvAmount: amount, rsvHash } as RsvTransaction
-      const second = {
-        mobUsdAmount: amount,
-        txoId: nation.idYear.toString(),
-        memo: rsvHash,
-      } as MobUsdTransaction
-      return { type, first, second, confirmed: true }
-    } else {
-      // burn
-      const first = {
-        mobUsdAmount: amount,
-        txoId: nation.idYear.toString(),
-        memo: rsvHash,
-      } as MobUsdTransaction
-      const second = { rsvAmount: amount, rsvHash } as RsvTransaction
-      return { type, first, second, confirmed: true } as TransactionPair
-    }
-  }
-
-  const getTestData = async (): Promise<TransactionPair[]> => {
-    const nationData = await getNationData()
-    const transactions = nationData.map((nation) =>
-      generateTransactionFromNationData(nation)
-    )
-    return transactions
+  const fetchMints = async () => {
+    const newMints = await getAuditedMints(mintPage)
+    setMints(mints.concat(newMints))
+    setMintPage(mintPage + 1)
   }
 
   return (
@@ -143,7 +92,7 @@ export const AuditList: FC<any> = (): ReactElement => {
               scrollableTarget="scrollableMints"
             >
               {mints.map((i, index) => (
-                <RowItem {...i} key={index} />
+                <AuditedMint {...i} key={index} />
               ))}
             </InfiniteScroll>
           </div>
@@ -169,7 +118,7 @@ export const AuditList: FC<any> = (): ReactElement => {
               scrollableTarget="scrollableBurns"
             >
               {burns.map((i, index) => (
-                <RowItem {...i} key={index} />
+                <AuditedBurn {...i} key={index} />
               ))}
             </InfiniteScroll>
           </div>

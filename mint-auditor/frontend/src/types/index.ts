@@ -1,7 +1,5 @@
-export type {
-  MobUsdTransaction,
-  RsvTransaction,
-  TransactionPair,
-} from './transactions'
+export type { TAuditedMintResponse, TAuditedBurnResponse } from './api'
 
-export type { AuditedMintResponse, AuditedBurnResponse } from './api'
+export type { TAuditedMint, TMint, TDeposit } from './mint'
+
+export type { TAuditedBurn, TBurn, TWithdrawal } from './burn'
