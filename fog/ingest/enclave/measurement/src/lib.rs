@@ -3,7 +3,6 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 
-use core::convert::TryFrom;
 use mc_attest_core::SecurityVersion;
 use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier};
 use mc_sgx_css::Signature;

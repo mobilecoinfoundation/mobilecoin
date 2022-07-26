@@ -8,14 +8,13 @@ use crate::{
     watcher_db::WatcherDB,
 };
 use mc_api::block_num_to_s3block_path;
+use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_transaction_core::{BlockData, BlockIndex};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
-    iter::FromIterator,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -175,48 +174,44 @@ impl Watcher {
                 .collect();
 
             // Attempt to fetch block data for all urls in parallel.
-            let url_to_block_data_result = parallel_fetch_blocks(
-                url_to_block_index,
-                self.transactions_fetcher_by_url.clone(),
-            )?;
+            let url_to_block_data_result =
+                parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher_by_url.clone());
 
             // Store data for each successfully synced blocked. Track on whether any of the
             // sources was able to produce block data. If so, more data might be
             // available.
             let mut had_success = false;
 
-            for (src_url, (block_index, block_data_result)) in url_to_block_data_result.iter() {
+            for (src_url, (block_index, block_data_result)) in url_to_block_data_result {
                 match block_data_result {
                     Ok(block_data) => {
                         log::info!(
                             self.logger,
-                            "Archive block retrieved for {:?} {:?}",
+                            "Archive block retrieved for {} {}",
                             src_url,
                             block_index
                         );
                         if self.store_block_data {
-                            match self.watcher_db.add_block_data(src_url, block_data) {
+                            match self.watcher_db.add_block_data(&src_url, &block_data) {
                                 Ok(()) => {}
                                 Err(WatcherDBError::AlreadyExists) => {}
-                                Err(err) => {
-                                    return Err(err.into());
-                                }
+                                Err(err) => Err(err)?,
                             };
                         }
 
                         if let Some(signature) = block_data.signature() {
-                            let filename = block_num_to_s3block_path(*block_index)
+                            let filename = block_num_to_s3block_path(block_index)
                                 .into_os_string()
                                 .into_string()
                                 .unwrap();
                             self.watcher_db.add_block_signature(
-                                src_url,
-                                *block_index,
+                                &src_url,
+                                block_index,
                                 signature.clone(),
                                 filename,
                             )?;
                         } else {
-                            self.watcher_db.update_last_synced(src_url, *block_index)?;
+                            self.watcher_db.update_last_synced(&src_url, block_index)?;
                         }
 
                         had_success = true;
@@ -270,26 +265,24 @@ impl Watcher {
 fn parallel_fetch_blocks(
     url_to_block_index: HashMap<Url, BlockIndex>,
     transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
-) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
-    Ok(HashMap::from_iter(
-        url_to_block_index
-            .into_par_iter()
-            .map(|(src_url, block_index)| {
-                let block_fetch_result = transactions_fetcher_by_url
-                    .get(&src_url)
-                    .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
-                    .and_then(|transactions_fetcher| {
-                        assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
+) -> HashMap<Url, (u64, Result<BlockData, WatcherError>)> {
+    url_to_block_index
+        .into_par_iter()
+        .map(|(src_url, block_index)| {
+            let block_fetch_result = transactions_fetcher_by_url
+                .get(&src_url)
+                .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
+                .and_then(|transactions_fetcher| {
+                    assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
 
-                        transactions_fetcher
-                            .get_block_data_by_index(block_index, None)
-                            .map_err(WatcherError::from)
-                    });
+                    transactions_fetcher
+                        .get_block_data_by_index(block_index, None)
+                        .map_err(WatcherError::from)
+                });
 
-                (src_url, (block_index, block_fetch_result))
-            })
-            .collect::<Vec<_>>(),
-    ))
+            (src_url, (block_index, block_fetch_result))
+        })
+        .collect()
 }
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.

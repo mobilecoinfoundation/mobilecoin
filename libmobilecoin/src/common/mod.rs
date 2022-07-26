@@ -37,15 +37,6 @@
 
 pub(crate) mod macros;
 
-pub use buffer::*;
-pub use data::*;
-pub use error::*;
-pub use rng::*;
-pub use string::*;
-
-pub(crate) use boundary::*;
-pub(crate) use into_ffi::*;
-
 mod boundary;
 mod buffer;
 mod data;
@@ -53,3 +44,16 @@ mod error;
 mod into_ffi;
 mod rng;
 mod string;
+
+pub use self::{
+    buffer::{McBuffer, McMutableBuffer},
+    data::{mc_data_free, mc_data_get_bytes, McData},
+    error::{mc_error_free, McError},
+    rng::{CallbackRng, FfiCallbackRng, McRngCallback, SdkRng},
+    string::mc_string_free,
+};
+
+pub(crate) use self::{
+    boundary::{ffi_boundary, ffi_boundary_with_error},
+    into_ffi::{FfiTryFrom, FfiTryInto, FromFfi, IntoFfi, TryFromFfi},
+};

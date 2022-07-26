@@ -9,6 +9,7 @@ license = "GPL-3.0"
 # mobilecoin
 mc-api = { path = "../../../api" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
@@ -23,7 +24,7 @@ mc-fog-uri = { path = "../../uri" }
 
 # third-party
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 protobuf = "2.27.1"
 retry = "1.3"
 

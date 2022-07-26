@@ -5,56 +5,63 @@
 
 use crate::error::WatcherDBError;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
+};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_transaction_core::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
 use mc_util_serial::{decode, encode};
 use prost::Message;
-use std::{str::FromStr, sync::Arc};
+use std::{str, sync::Arc};
 use url::Url;
 
 /// Block datas database name.
 pub const BLOCK_DATAS_BY_INDEX_DB_NAME: &str = "watcher_db:block_data:blocks_datas_by_index";
 
-/// Blocks by hash database name.
+/// [Block]s by hash database name.
 pub const BLOCKS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:blocks_by_hash";
 
-/// BlockContents by hash database name.
+/// [BlockContents] by hash database name.
 pub const BLOCK_CONTENTS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_contents_by_hash";
 
 /// An internal object for representing BlockData that doesn't hold the actual
 /// Block and BlockContents since those might be shared with other blocks.
 #[derive(Clone, Message)]
 pub struct StoredBlockData {
-    /// 32 bytes hash of Block.
-    #[prost(bytes, required, tag = "1")]
+    /// 32 bytes hash of [Block].
+    #[prost(bytes, required, tag = 1)]
     pub block_hash: Vec<u8>,
 
-    /// 32 bytes hash of BlockContent.
-    #[prost(bytes, required, tag = "2")]
+    /// 32 bytes hash of [BlockContents].
+    #[prost(bytes, required, tag = 2)]
     pub block_contents_hash: Vec<u8>,
 
     /// Block signature (optional).
     // The signature is unique (we do not expect to encounter duplicate signatures)
     // so we store it inside here.
-    #[prost(message, tag = "3")]
+    #[prost(message, tag = 3)]
     pub signature: Option<BlockSignature>,
+
+    /// Block metadata (optional).
+    // The metadata is expected to be as unique as the signature, so we store it inline.
+    #[prost(message, optional, tag = 4)]
+    pub metadata: Option<BlockMetadata>,
 }
 
 /// Object for managing the storage of BlockDatas.
 #[derive(Clone)]
 pub struct BlockDataStore {
     /// Blocks data database. Indexed by (block index, tx_src_url) and maps into
-    /// a StoredBlockData object
+    /// a [StoredBlockData] object.
     block_datas_by_index: Database,
 
-    /// Block hash -> Block.
+    /// Block hash -> [Block].
     blocks_by_hash: Database,
 
-    /// BlockContents hash -> BlockContents
+    /// BlockContents hash -> [BlockContents].
     block_contents_by_hash: Database,
 
     /// Logger.
@@ -67,6 +74,7 @@ impl BlockDataStore {
         let block_datas_by_index = env.open_db(Some(BLOCK_DATAS_BY_INDEX_DB_NAME))?;
         let blocks_by_hash = env.open_db(Some(BLOCKS_BY_HASH_DB_NAME))?;
         let block_contents_by_hash = env.open_db(Some(BLOCK_CONTENTS_BY_HASH_DB_NAME))?;
+
         Ok(Self {
             block_datas_by_index,
             blocks_by_hash,
@@ -97,10 +105,12 @@ impl BlockDataStore {
         let stored_block_data = StoredBlockData {
             block_hash,
             block_contents_hash,
-            signature: block_data.signature().clone(),
+            metadata: block_data.metadata().cloned(),
+            signature: block_data.signature().cloned(),
         };
 
-        let mut key_bytes = block_data.block().index.to_be_bytes().to_vec();
+        let block_index = block_data.block().index;
+        let mut key_bytes = block_index.to_be_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
         let value_bytes = encode(&stored_block_data);
@@ -108,21 +118,17 @@ impl BlockDataStore {
         log::debug!(
             self.logger,
             "Storing block data for {}@{}: {} bytes",
-            block_data.block().index,
+            block_index,
             src_url,
             value_bytes.len()
         );
 
-        match db_txn.put(
+        Ok(db_txn.put(
             self.block_datas_by_index,
             &key_bytes,
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
-        ) {
-            Ok(()) => Ok(()),
-            Err(lmdb::Error::KeyExist) => Err(WatcherDBError::AlreadyExists),
-            Err(err) => Err(err.into()),
-        }
+        )?)
     }
 
     /// Get BlockData for a given block index provided by a specific tx source
@@ -136,11 +142,7 @@ impl BlockDataStore {
         let mut key_bytes = block_index.to_be_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
-        let stored_block_data_bytes = match db_txn.get(self.block_datas_by_index, &key_bytes) {
-            Ok(bytes) => Ok(bytes),
-            Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
-            Err(err) => Err(err.into()),
-        }?;
+        let stored_block_data_bytes = db_txn.get(self.block_datas_by_index, &key_bytes)?;
 
         let stored_block_data: StoredBlockData = decode(stored_block_data_bytes)?;
 
@@ -152,6 +154,7 @@ impl BlockDataStore {
             block,
             block_contents,
             stored_block_data.signature,
+            stored_block_data.metadata,
         ))
     }
 
@@ -180,7 +183,7 @@ impl BlockDataStore {
             }
 
             let tx_source_url_bytes = &key_bytes[first_key_bytes.len()..];
-            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+            let tx_source_url = Url::parse(str::from_utf8(tx_source_url_bytes)?)?;
 
             // Get the StoredBlockData.
             let stored_block_data: StoredBlockData = decode(value_bytes)?;
@@ -188,10 +191,14 @@ impl BlockDataStore {
             let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
             let block_contents =
                 self.get_block_contents_by_hash(db_txn, &stored_block_data.block_contents_hash)?;
-
             results.insert(
                 tx_source_url,
-                BlockData::new(block, block_contents, stored_block_data.signature),
+                BlockData::new(
+                    block,
+                    block_contents,
+                    stored_block_data.signature,
+                    stored_block_data.metadata,
+                ),
             );
         }
 
@@ -221,9 +228,7 @@ impl BlockDataStore {
                         break;
                     }
                 }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                Err(err) => Err(err)?,
             }
 
             block_index += 1;
@@ -245,9 +250,8 @@ impl BlockDataStore {
             &encode(block),
             WriteFlags::NO_OVERWRITE,
         ) {
-            Ok(()) => Ok(hash),
-            Err(lmdb::Error::KeyExist) => Ok(hash),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::KeyExist) => Ok(hash),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -264,9 +268,8 @@ impl BlockDataStore {
             &encode(block_contents),
             WriteFlags::NO_OVERWRITE,
         ) {
-            Ok(()) => Ok(hash),
-            Err(lmdb::Error::KeyExist) => Ok(hash),
-            Err(err) => Err(err.into()),
+            Ok(()) | Err(lmdb::Error::KeyExist) => Ok(hash),
+            Err(err) => Err(err)?,
         }
     }
 
@@ -275,10 +278,8 @@ impl BlockDataStore {
         db_txn: &impl Transaction,
         hash: &[u8],
     ) -> Result<Block, WatcherDBError> {
-        db_txn
-            .get(self.blocks_by_hash, &hash)
-            .map_err(WatcherDBError::from)
-            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
+        let bytes = db_txn.get(self.blocks_by_hash, &hash)?;
+        Ok(decode(bytes)?)
     }
 
     fn get_block_contents_by_hash(
@@ -286,10 +287,8 @@ impl BlockDataStore {
         db_txn: &impl Transaction,
         hash: &[u8],
     ) -> Result<BlockContents, WatcherDBError> {
-        db_txn
-            .get(self.block_contents_by_hash, &hash)
-            .map_err(WatcherDBError::from)
-            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
+        let bytes = db_txn.get(self.block_contents_by_hash, &hash)?;
+        Ok(decode(bytes)?)
     }
 }
 
@@ -298,40 +297,17 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_crypto_keys::Ed25519Pair;
-    use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use std::iter::FromIterator;
 
     #[test_with_logger]
     fn block_data_store_happy_path(logger: Logger) {
-        let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
         let tx_src_url1 = Url::parse("http://www.my_url1.com").unwrap();
         let tx_src_url2 = Url::parse("http://www.my_url2.com").unwrap();
         let tx_src_urls = vec![tx_src_url1.clone(), tx_src_url2.clone()];
         let watcher_db = setup_watcher_db(&tx_src_urls, logger);
-        let blocks = setup_blocks();
-
-        let block_datas = blocks
-            .iter()
-            .map(|(block, contents)| {
-                BlockData::new(
-                    block.clone(),
-                    contents.clone(),
-                    Some(
-                        BlockSignature::from_block_and_keypair(
-                            block,
-                            &Ed25519Pair::from_random(&mut rng),
-                        )
-                        .unwrap(),
-                    ),
-                )
-            })
-            .collect::<Vec<_>>();
+        let blocks_data = setup_blocks();
 
         // Initially, there is no data.
-        for block_data in block_datas.iter() {
+        for block_data in &blocks_data {
             assert_eq!(
                 watcher_db
                     .get_block_data_map(block_data.block().index)
@@ -342,67 +318,67 @@ mod tests {
 
         // Add a block to tx_src_url1 and see that we can get it.
         watcher_db
-            .add_block_data(&tx_src_url1, &block_datas[0])
+            .add_block_data(&tx_src_url1, &blocks_data[0])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![(tx_src_url1.clone(), block_datas[0].clone()),])
+            HashMap::from_iter([(tx_src_url1.clone(), blocks_data[0].clone()),])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
 
         // Add the same block but for a different URL.
         watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[0])
+            .add_block_data(&tx_src_url2, &blocks_data[0])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![
-                (tx_src_url1.clone(), block_datas[0].clone()),
-                (tx_src_url2.clone(), block_datas[0].clone()),
+            HashMap::from_iter([
+                (tx_src_url1.clone(), blocks_data[0].clone()),
+                (tx_src_url2.clone(), blocks_data[0].clone()),
             ])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
 
         // Add the same block again (should error).
         assert!(watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[0])
+            .add_block_data(&tx_src_url2, &blocks_data[0])
             .is_err());
 
         // Add another block.
         watcher_db
-            .add_block_data(&tx_src_url2, &block_datas[1])
+            .add_block_data(&tx_src_url2, &blocks_data[1])
             .unwrap();
 
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[0].block().index)
+                .get_block_data_map(blocks_data[0].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![
-                (tx_src_url1, block_datas[0].clone()),
-                (tx_src_url2.clone(), block_datas[0].clone()),
+            HashMap::from_iter([
+                (tx_src_url1, blocks_data[0].clone()),
+                (tx_src_url2.clone(), blocks_data[0].clone()),
             ])
         );
         assert_eq!(
             watcher_db
-                .get_block_data_map(block_datas[1].block().index)
+                .get_block_data_map(blocks_data[1].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![(tx_src_url2, block_datas[1].clone()),])
+            HashMap::from_iter([(tx_src_url2, blocks_data[1].clone()),])
         );
     }
 }

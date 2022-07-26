@@ -16,7 +16,6 @@ extern crate std;
 extern crate lazy_static;
 
 mod amount;
-mod blockchain;
 mod domain_separators;
 mod input_rules;
 mod memo;
@@ -39,7 +38,6 @@ pub mod validation;
 pub mod proptest_fixtures;
 
 pub use amount::{AmountError, MaskedAmount};
-pub use blockchain::*;
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use signed_contingent_input::{
@@ -50,10 +48,9 @@ pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 pub use tx_out_gift_code::TxOutGiftCode;
 
-// Re-export Amount and TokenId from transaction-types, and certain types from
-// RingSignature crate
+// Re-export from transaction-types, and some from RingSignature crate.
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
-pub use mc_transaction_types::{Amount, TokenId};
+pub use mc_transaction_types::*;
 
 /// Re-export all of mc-crypto-ring-signature
 pub mod ring_signature {

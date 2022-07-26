@@ -2,16 +2,14 @@
 
 //! The Noise Framework's SymmetricState object.
 
-use alloc::vec;
-
 use crate::{
     cipher_state::{CipherError, CipherState, NoiseCipher, NoiseDigest},
     handshake_hash::HandshakeHash,
     patterns::HandshakePattern,
     protocol_name::ProtocolName,
 };
-use alloc::vec::Vec;
-use core::{convert::TryInto, marker::PhantomData};
+use alloc::{vec, vec::Vec};
+use core::marker::PhantomData;
 use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use hkdf::{InvalidLength, SimpleHkdf};
@@ -152,7 +150,7 @@ where
     ///
     /// MobileCoin does not currently utilize pre-shared keys anywhere, so
     /// this is unused,
-    #[allow(unused)]
+    #[allow(dead_code)]
     pub fn mix_key_and_hash(
         &mut self,
         input_key_material: KexAlgo::Secret,

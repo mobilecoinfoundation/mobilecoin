@@ -36,7 +36,7 @@ class FogNetwork(Network):
         cmd = ' && '.join([
             f'dropdb --if-exists {FOG_SQL_DATABASE_NAME}',
             f'createdb {FOG_SQL_DATABASE_NAME}',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {TARGET_DIR}/fog-sql-recovery-db-migrations',
+            f'{DATABASE_URL_ENV} {TARGET_DIR}/fog-sql-recovery-db-migrations',
         ])
         print(f'Creating postgres database: {cmd}')
         subprocess.check_output(cmd, shell=True)
@@ -47,7 +47,7 @@ class FogNetwork(Network):
         print("Starting fog services...")
         try:
             # TODO
-            subprocess.check_output("killall -9 fog_ingest_server 2>/dev/null", shell=True)
+            subprocess.check_output("pkill -9 fog_ingest_server 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 1:
                 raise
@@ -132,20 +132,18 @@ class FogNetwork(Network):
             f'activate',
         ])
         print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        subprocess.check_output(cmd, shell=True)
 
     def stop(self):
-        if hasattr(self, "fog_ledger"):
-            self.fog_ledger.stop()
+        def stop_server(name):
+            server = getattr(self, name, None)
+            if server is not None:
+                server.stop()
 
-        if hasattr(self, "fog_report"):
-            self.fog_report.stop()
-
-        if hasattr(self, "fog_view"):
-            self.fog_view.stop()
-
-        if hasattr(self, "fog_ingest"):
-            self.fog_ingest.stop()
+        stop_server("fog_ledger")
+        stop_server("fog_report")
+        stop_server("fog_view")
+        stop_server("fog_ingest")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')

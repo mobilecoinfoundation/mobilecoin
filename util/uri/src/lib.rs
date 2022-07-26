@@ -307,7 +307,6 @@ mod consensus_peer_uri_tests {
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng as FixedRng;
-    use std::convert::TryFrom;
 
     #[test]
     fn test_valid_peer_uris() {

@@ -18,8 +18,6 @@ use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
     collections::HashSet,
-    convert::TryFrom,
-    iter::Iterator,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,

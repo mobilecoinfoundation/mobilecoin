@@ -25,7 +25,6 @@ use mc_util_grpc::{
 use mc_util_keyfile::UncheckedMnemonicAccount;
 use mc_util_uri::{ConsensusClientUri, Uri, UriScheme};
 use std::{
-    convert::TryFrom,
     str::FromStr,
     sync::{Arc, Mutex},
     thread::sleep,

@@ -94,7 +94,11 @@ pub enum WatcherDBError {
 
 impl From<lmdb::Error> for WatcherDBError {
     fn from(src: lmdb::Error) -> Self {
-        Self::LmdbError(src)
+        match src {
+            lmdb::Error::KeyExist => Self::AlreadyExists,
+            lmdb::Error::NotFound => Self::NotFound,
+            _ => Self::LmdbError(src),
+        }
     }
 }
 
@@ -124,6 +128,12 @@ impl From<MetadataStoreError> for WatcherDBError {
 
 impl From<FromUtf8Error> for WatcherDBError {
     fn from(_src: FromUtf8Error) -> Self {
+        Self::Utf8
+    }
+}
+
+impl From<std::str::Utf8Error> for WatcherDBError {
+    fn from(_: std::str::Utf8Error) -> Self {
         Self::Utf8
     }
 }

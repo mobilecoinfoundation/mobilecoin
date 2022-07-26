@@ -1,8 +1,7 @@
 //! Convert to/from external::AccountKey
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_account_keys::AccountKey;
-use std::convert::TryFrom;
 
 impl From<&AccountKey> for external::AccountKey {
     fn from(src: &AccountKey) -> Self {

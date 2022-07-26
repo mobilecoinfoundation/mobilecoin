@@ -310,8 +310,8 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.1"
-source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55#9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55"
+version = "0.2.2"
+source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=7c1804bf4f95ef84a7a53be93552ddf1708135bb#7c1804bf4f95ef84a7a53be93552ddf1708135bb"
 dependencies = [
  "libc",
 ]
@@ -461,9 +461,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9be70c98951c83b8d2f8f60d7065fa6d5146873094452a1008da8c2f1e4205ad"
+checksum = "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -678,6 +678,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hkdf",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -689,6 +690,13 @@ dependencies = [
  "rand_core",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "mc-account-keys-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-crypto-keys",
 ]
 
 [[package]]
@@ -722,6 +730,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
+ "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-rand",
@@ -730,6 +739,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
+ "mc-util-repr-bytes",
  "prost",
  "rjson",
  "serde",
@@ -770,6 +780,7 @@ dependencies = [
  "chrono",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -786,6 +797,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-attest-verifier-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "hex_fmt",
+ "mc-crypto-digestible",
+ "mc-util-encodings",
+ "prost",
+ "serde",
+]
+
+[[package]]
+name = "mc-blockchain-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "prost",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
@@ -798,11 +845,24 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-util-serial",
+ "prost",
  "rand_core",
  "serde",
  "sha3",
  "siphasher",
  "slog",
+]
+
+[[package]]
+name = "mc-consensus-scp-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "prost",
+ "serde",
 ]
 
 [[package]]
@@ -954,7 +1014,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hex_fmt",
- "mc-account-keys",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1044,6 +1104,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
@@ -1372,6 +1433,7 @@ dependencies = [
 name = "mc-transaction-types"
 version = "1.3.0-pre0"
 dependencies = [
+ "displaydoc",
  "mc-crypto-digestible",
  "serde",
  "subtle",
@@ -1423,6 +1485,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array",
+ "hex_fmt",
  "prost",
  "serde",
 ]
@@ -1572,9 +1635,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc03e116981ff7d8da8e5c220e374587b98d294af7ba7dd7fda761158f00086f"
+checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -1715,9 +1778,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.137"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
+checksum = "0171ebb889e45aa68b44aee0859b3eede84c6f5f5c228e6f140c0b2a0a46cad6"
 dependencies = [
  "serde_derive",
 ]
@@ -1742,9 +1805,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.137"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f26faba0c3959972377d3b2d306ee9f71faee9714294e41bb777f83f88578be"
+checksum = "dc1d3230c1de7932af58ad8ffbe1d784bd55efd5a9d84ac24f69c72d83543dfb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1801,9 +1864,9 @@ checksum = "8347046d4ebd943127157b94d63abb990fcf729dc4e9978927fdf4ac3c998d06"
 
 [[package]]
 name = "smallvec"
-version = "1.2.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "spin"
@@ -1984,9 +2047,9 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
+version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
+checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "which"
@@ -2060,9 +2123,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.5.5"
+version = "1.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94693807d016b2f2d2e14420eb3bfcca689311ff775dcf113d74ea624b7cdf07"
+checksum = "20b578acffd8516a6c3f2a1bdefc1ec37e547bb4e0fb8b6b01a4cafc886b4442"
 dependencies = [
  "zeroize_derive",
 ]

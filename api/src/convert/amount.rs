@@ -1,9 +1,8 @@
 //! Convert to/from external::Amount
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{CompressedCommitment, MaskedAmount};
 use mc_util_repr_bytes::ReprBytes;
-use std::convert::TryFrom;
 
 impl From<&MaskedAmount> for external::MaskedAmount {
     fn from(source: &MaskedAmount) -> Self {

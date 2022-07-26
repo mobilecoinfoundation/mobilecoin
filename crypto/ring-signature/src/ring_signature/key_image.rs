@@ -1,18 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::Error;
-use crate::ring_signature::{hash_to_point, Scalar};
-use core::{convert::TryFrom, fmt};
+use super::{hash_to_point, Error, Scalar};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_prost_message_from_repr_bytes,
-    derive_repr_bytes_from_as_ref_and_try_from, typenum::U32, LengthMismatch,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
+    LengthMismatch,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize, Digestible)]
 #[digestible(transparent)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).
 pub struct KeyImage {
@@ -29,12 +28,6 @@ impl KeyImage {
     /// Copies `self` into a new Vec.
     pub fn to_vec(&self) -> alloc::vec::Vec<u8> {
         self.point.as_bytes().to_vec()
-    }
-}
-
-impl fmt::Debug for KeyImage {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "KeyImage({})", hex_fmt::HexFmt(self.as_bytes()))
     }
 }
 
@@ -73,13 +66,13 @@ impl AsRef<CompressedRistretto> for KeyImage {
 
 impl AsRef<[u8; 32]> for KeyImage {
     fn as_ref(&self) -> &[u8; 32] {
-        self.point.as_bytes()
+        self.as_bytes()
     }
 }
 
 impl AsRef<[u8]> for KeyImage {
     fn as_ref(&self) -> &[u8] {
-        &self.point.as_bytes()[..]
+        &self.as_bytes()[..]
     }
 }
 
@@ -101,3 +94,4 @@ impl TryFrom<&[u8]> for KeyImage {
 derive_repr_bytes_from_as_ref_and_try_from!(KeyImage, U32);
 derive_prost_message_from_repr_bytes!(KeyImage);
 derive_core_cmp_from_as_ref!(KeyImage, [u8; 32]);
+derive_debug_and_display_hex_from_as_ref!(KeyImage);

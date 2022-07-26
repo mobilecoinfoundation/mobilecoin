@@ -90,15 +90,6 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
-]
-
-[[package]]
-name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
@@ -108,9 +99,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.57"
+version = "1.0.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
+checksum = "bb07d2053ccdbe10e2af2995a2f116c1330396493dc1269f6a91d0ae82e19704"
 
 [[package]]
 name = "arc-swap"
@@ -163,9 +154,9 @@ dependencies = [
 
 [[package]]
 name = "async-compression"
-version = "0.3.12"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2bf394cfbbe876f0ac67b13b6ca819f9c9f2fb9ec67223cceb1555fbab1c31a"
+checksum = "345fd392ab01f746c717b1357165b76f0b67a60192007b234058c9045fdcf695"
 dependencies = [
  "flate2",
  "futures-core",
@@ -234,9 +225,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "backtrace"
-version = "0.3.65"
+version = "0.3.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11a17d453482a265fd5f8479f2a3f405566e6ca627837aaddb85af8b1ab8ef61"
+checksum = "cab84319d616cfb654d03394f38ab7e6f0919e181b1b57e1fd15e7fb4077d9a7"
 dependencies = [
  "addr2line",
  "cc",
@@ -287,7 +278,7 @@ dependencies = [
  "bitflags",
  "cexpr 0.4.0",
  "clang-sys",
- "clap 2.33.0",
+ "clap 2.34.0",
  "env_logger 0.8.3",
  "lazy_static",
  "lazycell",
@@ -310,7 +301,7 @@ dependencies = [
  "bitflags",
  "cexpr 0.6.0",
  "clang-sys",
- "clap 2.33.0",
+ "clap 2.34.0",
  "env_logger 0.9.0",
  "lazy_static",
  "lazycell",
@@ -478,9 +469,9 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 
 [[package]]
 name = "camino"
-version = "1.0.5"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52d74260d9bf6944e2208aa46841b4b8f0d7ffc0849a06837b2f510337f86b2b"
+checksum = "869119e97797867fd90f5e22af7d0bd274bd4635ebb9eb68c04f3f513ae6c412"
 dependencies = [
  "serde",
 ]
@@ -515,13 +506,13 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4acbb09d9ee8e23699b9634375c72795d095bf268439da88562cf9b501f181fa"
+checksum = "3abb7553d5b9b8421c6de7cb02606ff15e0c6eea7d8eadd75ef013fd636bec36"
 dependencies = [
  "camino",
  "cargo-platform",
- "semver 1.0.9",
+ "semver 1.0.12",
  "serde",
  "serde_json",
 ]
@@ -536,6 +527,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cast"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
+
+[[package]]
 name = "castaway"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -543,11 +540,11 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 
 [[package]]
 name = "cbindgen"
-version = "0.23.0"
+version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b6d248e3ca02f3fbfabcb9284464c596baec223a26d91bbf44a5a62ddb0d900"
+checksum = "a6358dedf60f4d9b8db43ad187391afe959746101346fe51bb978126bec61dfb"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "heck",
  "indexmap",
  "log",
@@ -638,11 +635,11 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.0"
+version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
 dependencies = [
- "ansi_term 0.11.0",
+ "ansi_term",
  "atty",
  "bitflags",
  "strsim 0.8.0",
@@ -653,16 +650,16 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.18"
+version = "3.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2dbdf4bdacb33466e854ce889eee8dfd5729abf7ccd7664d0a2d60cd384440b"
+checksum = "ab8b79fe3946ceb4a0b1c080b4018992b8d27e9ff363644c1c9b6387c854614d"
 dependencies = [
  "atty",
  "bitflags",
  "clap_derive",
  "clap_lex",
  "indexmap",
- "lazy_static",
+ "once_cell",
  "strsim 0.10.0",
  "termcolor",
  "textwrap 0.15.0",
@@ -670,9 +667,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "3.1.18"
+version = "3.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25320346e922cffe59c0bbc5410c8d8784509efb321488971081313cb1e1a33c"
+checksum = "759bf187376e1afa7b85b959e6a664a3e7a95203415dba952ad19139e798f902"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -683,9 +680,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a37c35f1112dad5e6e0b1adaff798507497a18fceeb30cceb3bae7d1427b9213"
+checksum = "5538cd660450ebeb4234cfecf8f2284b844ffc4c50531e66d584ad5b91293613"
 dependencies = [
  "os_str_bytes",
 ]
@@ -795,13 +792,13 @@ dependencies = [
 
 [[package]]
 name = "criterion"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1604dafd25fba2fe2d5895a9da139f8dc9b319a5fe5354ca137cbbce4e178d10"
+checksum = "b01d6de93b2b6c65e17c634a26653a29d107b3c98c607c765bf38d041531cd8f"
 dependencies = [
  "atty",
- "cast",
- "clap 2.33.0",
+ "cast 0.3.0",
+ "clap 2.34.0",
  "criterion-plot",
  "csv",
  "itertools",
@@ -825,15 +822,15 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d00996de9f2f7559f7f4dc286073197f83e92256a59ed395f9aac01fe717da57"
 dependencies = [
- "cast",
+ "cast 0.2.3",
  "itertools",
 ]
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aaa7bd5fb665c6864b5f963dd9097905c54125909c7aa94c9e18507cdbe6c53"
+checksum = "4c02a4d71819009c192cf4872265391563fd6a84c81ff2c0f2a7026ca4c1d85c"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils",
@@ -887,16 +884,6 @@ checksum = "57952ca27b5e3606ff4dd79b0020231aaf9d6aa76dc05fd30137538c50bd3ce8"
 dependencies = [
  "generic-array",
  "typenum",
-]
-
-[[package]]
-name = "crypto-mac"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
-dependencies = [
- "generic-array",
- "subtle",
 ]
 
 [[package]]
@@ -1065,13 +1052,13 @@ dependencies = [
 [[package]]
 name = "diesel"
 version = "1.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b28135ecf6b7d446b43e27e225622a038cc4e2930a1022f51cdb97ada19b8e4d"
+source = "git+https://github.com/mobilecoinofficial/diesel?rev=026f6379715d27c8be48396e5ca9059f4a263198#026f6379715d27c8be48396e5ca9059f4a263198"
 dependencies = [
  "bitflags",
  "byteorder",
  "chrono",
  "diesel_derives",
+ "libsqlite3-sys",
  "pq-sys",
  "r2d2",
 ]
@@ -1553,18 +1540,17 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "wasi 0.9.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
 name = "getrandom"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9be70c98951c83b8d2f8f60d7065fa6d5146873094452a1008da8c2f1e4205ad"
+checksum = "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasi 0.11.0+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -1597,9 +1583,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "go-grpc-gateway-testing"
-version = "1.0.0"
+version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -1616,9 +1602,9 @@ dependencies = [
 
 [[package]]
 name = "grpcio"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86ef249d9cb1b1843767501ae7463b500542e7f9e72d9c2d61ed320fbefa6c79"
+checksum = "f9bcdd3694fa08158334501af37bdf5b4f00b1865b602d917e3cd74ecf80cd0a"
 dependencies = [
  "futures-executor",
  "futures-util",
@@ -1640,9 +1626,9 @@ dependencies = [
 
 [[package]]
 name = "grpcio-sys"
-version = "0.10.1+1.44.0"
+version = "0.10.3+1.44.0-patched"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "925586932dbbea927e913783da0be160ee74e0b0519d7b20cec35547a0a84631"
+checksum = "f23adc509a3c4dea990e0ab8d2add4a65389ee69c288b7851d75dd1df7a6d6c6"
 dependencies = [
  "bindgen 0.59.2",
  "boringssl-src",
@@ -1732,21 +1718,11 @@ dependencies = [
 
 [[package]]
 name = "hmac"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
-dependencies = [
- "crypto-mac 0.8.0",
- "digest 0.9.0",
-]
-
-[[package]]
-name = "hmac"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a2a2320eb7ec0ebe8da8f744d7812d9fc4cb4d09344ac01898dbcb6a20ae69b"
 dependencies = [
- "crypto-mac 0.11.1",
+ "crypto-mac",
  "digest 0.9.0",
 ]
 
@@ -2094,10 +2070,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "libz-sys"
-version = "1.1.6"
+name = "libsqlite3-sys"
+version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e7e15d7610cce1d9752e137625f14e61a28cd45929b6e12e47b50fe154ee2e"
+checksum = "898745e570c7d0453cc1fbc4a701eb6c662ed54e8fec8b7d14be137ebeeb9d14"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
+name = "libz-sys"
+version = "1.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9702761c3935f8cc2f101793272e202c72b99da8f4224a19ddcf1279a6450bbf"
 dependencies = [
  "cc",
  "libc",
@@ -2245,6 +2232,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hkdf",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -2272,6 +2260,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
@@ -2282,10 +2271,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-account-keys-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-crypto-keys",
+]
+
+[[package]]
 name = "mc-admin-http-gateway"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2344,9 +2340,11 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "generic-array",
- "maplit",
  "mc-account-keys",
- "mc-attest-core",
+ "mc-attest-verifier-types",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
+ "mc-common",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-ring-signature-signer",
@@ -2363,6 +2361,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "mc-util-zip-exact",
  "mc-watcher-api",
  "pem",
  "prost",
@@ -2428,6 +2427,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
+ "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-rand",
@@ -2436,6 +2436,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
+ "mc-util-repr-bytes",
  "mc-util-serial",
  "pem",
  "prost",
@@ -2510,6 +2511,7 @@ dependencies = [
  "chrono",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -2524,6 +2526,78 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "sha2 0.10.2",
+]
+
+[[package]]
+name = "mc-attest-verifier-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "hex_fmt",
+ "mc-crypto-digestible",
+ "mc-util-encodings",
+ "prost",
+ "serde",
+]
+
+[[package]]
+name = "mc-blockchain-test-utils"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+]
+
+[[package]]
+name = "mc-blockchain-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-blockchain-test-utils",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-blockchain-validators"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "pem",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
 ]
 
 [[package]]
@@ -2546,6 +2620,7 @@ dependencies = [
  "mc-util-logger-macros",
  "mc-util-serial",
  "proptest",
+ "prost",
  "rand_core 0.6.3",
  "scoped_threadpool",
  "sentry",
@@ -2575,6 +2650,7 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-api",
  "mc-crypto-keys",
@@ -2596,6 +2672,7 @@ dependencies = [
 name = "mc-connection-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
+ "mc-blockchain-types",
  "mc-connection",
  "mc-consensus-enclave-api",
  "mc-ledger-db",
@@ -2632,6 +2709,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-enclave-edl",
@@ -2658,6 +2736,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -2689,6 +2768,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
@@ -2734,6 +2814,8 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-keys",
@@ -2744,16 +2826,15 @@ dependencies = [
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-serial",
+ "mc-util-test-helper",
  "mockall",
- "rand_core 0.6.3",
- "rand_hc 0.3.1",
 ]
 
 [[package]]
 name = "mc-consensus-mint-client"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "grpcio",
  "hex",
@@ -2785,6 +2866,7 @@ dependencies = [
  "crossbeam-channel",
  "maplit",
  "mc-common",
+ "mc-consensus-scp-types",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -2805,7 +2887,7 @@ dependencies = [
 name = "mc-consensus-scp-play"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
@@ -2814,12 +2896,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-consensus-scp-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "rand_hc 0.3.1",
+ "serde",
+]
+
+[[package]]
 name = "mc-consensus-service"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
  "chrono",
- "clap 3.1.18",
+ "clap 3.2.12",
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -2833,6 +2931,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -2849,6 +2948,7 @@ dependencies = [
  "mc-peers",
  "mc-peers-test-utils",
  "mc-sgx-build",
+ "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -2881,10 +2981,11 @@ name = "mc-consensus-service-config"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "hex",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-scp",
@@ -3016,7 +3117,7 @@ dependencies = [
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "schnorrkel-og",
- "semver 1.0.9",
+ "semver 1.0.12",
  "serde",
  "serde_json",
  "sha2 0.10.2",
@@ -3081,7 +3182,7 @@ name = "mc-crypto-rand"
 version = "1.3.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -3095,6 +3196,7 @@ dependencies = [
  "displaydoc",
  "hex_fmt",
  "mc-account-keys",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
@@ -3157,7 +3259,7 @@ name = "mc-crypto-x509-test-vectors"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.1.18",
+ "clap 3.2.12",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3222,7 +3324,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3280,11 +3382,10 @@ name = "mc-fog-ingest-client"
 version = "1.3.0-pre0"
 dependencies = [
  "assert_cmd",
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "grpcio",
  "hex",
- "maplit",
  "mc-account-keys",
  "mc-api",
  "mc-attest-net",
@@ -3425,7 +3526,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "dirs",
  "displaydoc",
  "futures",
@@ -3433,12 +3534,12 @@ dependencies = [
  "hex",
  "itertools",
  "lazy_static",
- "maplit",
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-net",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-crypto-keys",
@@ -3484,6 +3585,8 @@ name = "mc-fog-ingest-server-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-net",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-ingest-enclave",
@@ -3491,7 +3594,6 @@ dependencies = [
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",
- "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -3527,6 +3629,7 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -3635,7 +3738,7 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3648,6 +3751,8 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -3690,6 +3795,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-ledger-enclave",
@@ -3704,9 +3810,11 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "mc-account-keys",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -3717,14 +3825,11 @@ dependencies = [
  "mc-fog-sql-recovery-db",
  "mc-fog-uri",
  "mc-ledger-db",
- "mc-transaction-core",
- "mc-transaction-core-test-utils",
  "mc-util-build-info",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-uri",
  "mc-watcher",
- "rand 0.8.5",
  "retry",
  "tempdir",
 ]
@@ -3776,7 +3881,7 @@ dependencies = [
 name = "mc-fog-overseer-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -3817,6 +3922,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
@@ -3858,7 +3964,7 @@ name = "mc-fog-report-cli"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "hex",
  "mc-account-keys",
@@ -3896,7 +4002,7 @@ dependencies = [
 name = "mc-fog-report-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3969,7 +4075,7 @@ name = "mc-fog-sample-paykit"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3977,6 +4083,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -4006,6 +4113,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-telemetry",
+ "mc-util-test-helper",
  "mc-util-uri",
  "protobuf",
  "rand 0.8.5",
@@ -4064,12 +4172,13 @@ name = "mc-fog-sql-recovery-db"
 version = "1.3.0-pre0"
 dependencies = [
  "chrono",
- "clap 3.1.18",
+ "clap 3.2.12",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
@@ -4096,13 +4205,14 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "grpcio",
  "hex_fmt",
  "lazy_static",
  "maplit",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-rand",
  "mc-fog-sample-paykit",
@@ -4128,10 +4238,12 @@ dependencies = [
 name = "mc-fog-test-infra"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "digest 0.10.3",
  "hex",
  "mc-account-keys",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -4303,7 +4415,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4345,7 +4457,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4355,6 +4467,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
@@ -4400,21 +4513,24 @@ dependencies = [
  "lazy_static",
  "lmdb-rkv",
  "mc-account-keys",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-rand",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
+ "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-lmdb",
  "mc-util-metrics",
  "mc-util-serial",
  "mc-util-telemetry",
+ "mc-util-test-helper",
  "mockall",
  "prost",
  "rand 0.8.5",
- "rand_core 0.6.3",
  "tempdir",
 ]
 
@@ -4422,10 +4538,11 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "dirs",
  "displaydoc",
  "mc-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -4444,7 +4561,7 @@ dependencies = [
 name = "mc-ledger-from-archive"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
@@ -4455,7 +4572,7 @@ dependencies = [
 name = "mc-ledger-migration"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
@@ -4474,6 +4591,8 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
@@ -4484,6 +4603,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-telemetry",
+ "mc-util-test-helper",
  "mc-util-uri",
  "mockall",
  "protobuf",
@@ -4499,33 +4619,43 @@ dependencies = [
 name = "mc-mint-auditor"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
+ "diesel",
+ "diesel_migrations",
  "displaydoc",
  "grpcio",
+ "hex",
  "hostname",
  "lazy_static",
- "lmdb-rkv",
  "mc-account-keys",
+ "mc-api",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-mint-auditor-api",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
+ "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-grpc",
- "mc-util-lmdb",
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-serial",
+ "mc-util-test-helper",
  "mc-util-uri",
  "prost",
  "protobuf",
- "rand_core 0.6.3",
- "rand_hc 0.3.1",
+ "rayon",
+ "reqwest",
+ "rocket",
  "serde",
  "serde_json",
+ "serde_with",
  "tempfile",
+ "toml",
+ "url",
 ]
 
 [[package]]
@@ -4535,6 +4665,7 @@ dependencies = [
  "cargo-emit",
  "futures",
  "grpcio",
+ "mc-api",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-serial",
@@ -4547,7 +4678,7 @@ name = "mc-mobilecoind"
 version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
- "clap 3.1.18",
+ "clap 3.2.12",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4560,10 +4691,13 @@ dependencies = [
  "mc-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
  "mc-consensus-api",
+ "mc-consensus-enclave-api",
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-crypto-digestible",
@@ -4580,7 +4714,6 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-sgx-css",
  "mc-transaction-core",
- "mc-transaction-core-test-utils",
  "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -4618,6 +4751,7 @@ dependencies = [
  "hex_fmt",
  "mc-api",
  "mc-common",
+ "mc-consensus-api",
  "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
@@ -4627,10 +4761,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-mobilecoind-dev-faucet"
+version = "1.3.0-pre0"
+dependencies = [
+ "async-channel",
+ "clap 3.2.12",
+ "displaydoc",
+ "grpcio",
+ "hex",
+ "mc-account-keys",
+ "mc-api",
+ "mc-attest-verifier",
+ "mc-common",
+ "mc-connection",
+ "mc-consensus-enclave-measurement",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation",
+ "mc-mobilecoind-api",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-grpc",
+ "mc-util-keyfile",
+ "mc-util-serial",
+ "mc-util-uri",
+ "rand 0.8.5",
+ "rocket",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "mc-mobilecoind-json"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "hex",
  "mc-api",
@@ -4642,12 +4808,12 @@ dependencies = [
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-grpc",
+ "mc-util-serial",
  "protobuf",
  "rand 0.8.5",
  "rocket",
  "serde",
  "serde_derive",
- "serde_with",
 ]
 
 [[package]]
@@ -4712,6 +4878,7 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
@@ -4740,6 +4907,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "grpcio",
  "hex",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -4796,7 +4964,7 @@ dependencies = [
 name = "mc-sgx-css-dump"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "hex_fmt",
  "mc-sgx-css",
 ]
@@ -4997,12 +5165,9 @@ dependencies = [
  "mc-crypto-rand",
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-validation-test-utils",
- "mc-ledger-db",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-from-random",
- "rand 0.8.5",
- "tempdir",
+ "mc-util-serial",
 ]
 
 [[package]]
@@ -5038,6 +5203,7 @@ dependencies = [
 name = "mc-transaction-types"
 version = "1.3.0-pre0"
 dependencies = [
+ "displaydoc",
  "mc-crypto-digestible",
  "serde",
  "subtle",
@@ -5048,7 +5214,7 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "hex",
  "mc-api",
 ]
@@ -5058,7 +5224,7 @@ name = "mc-util-build-enclave"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
- "cargo_metadata 0.14.2",
+ "cargo_metadata 0.15.0",
  "displaydoc",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -5109,10 +5275,23 @@ dependencies = [
 
 [[package]]
 name = "mc-util-cli"
-version = "0.1.0"
+version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "mc-util-build-info",
+]
+
+[[package]]
+name = "mc-util-dump-ledger"
+version = "1.3.0-pre0"
+dependencies = [
+ "clap 3.2.12",
+ "displaydoc",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-ledger-db",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -5141,11 +5320,11 @@ dependencies = [
 name = "mc-util-generate-sample-ledger"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "hex",
  "mc-account-keys",
+ "mc-blockchain-test-utils",
  "mc-common",
- "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-util-build-info",
@@ -5161,7 +5340,7 @@ name = "mc-util-grpc"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "clap 3.1.18",
+ "clap 3.2.12",
  "cookie",
  "displaydoc",
  "futures",
@@ -5194,7 +5373,7 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -5205,7 +5384,7 @@ dependencies = [
 name = "mc-util-grpc-token-generator"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "hex",
  "mc-common",
  "mc-util-grpc",
@@ -5221,7 +5400,7 @@ name = "mc-util-keyfile"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "hex",
  "mc-account-keys",
@@ -5297,6 +5476,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array",
+ "hex_fmt",
  "prost",
  "serde",
  "serde_cbor",
@@ -5306,7 +5486,7 @@ dependencies = [
 name = "mc-util-seeded-ed25519-key-gen"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "hex",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -5320,8 +5500,10 @@ name = "mc-util-serial"
 version = "1.3.0-pre0"
 dependencies = [
  "prost",
+ "protobuf",
  "serde",
  "serde_cbor",
+ "serde_with",
 ]
 
 [[package]]
@@ -5339,13 +5521,12 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "itertools",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
  "rand 0.8.5",
- "rand_core 0.6.3",
  "rand_hc 0.3.1",
 ]
 
@@ -5395,7 +5576,7 @@ dependencies = [
 name = "mc-watcher"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.18",
+ "clap 3.2.12",
  "displaydoc",
  "futures",
  "grpcio",
@@ -5406,14 +5587,14 @@ dependencies = [
  "mc-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-sync",
- "mc-transaction-core",
- "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
@@ -5584,9 +5765,9 @@ dependencies = [
 
 [[package]]
 name = "more-asserts"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7843ec2de400bcbc6a6328c958dc38e5359da6e93e72e37bc5246bf1ae776389"
+checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
 
 [[package]]
 name = "multer"
@@ -5695,18 +5876,18 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.28.3"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40bec70ba014595f99f7aa110b84331ffe1ee9aece7fe6f387cc7e3ecda4d456"
+checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
  "memchr",
 ]
 
 [[package]]
 name = "once_cell"
-version = "1.10.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
+checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
 name = "oorandom"
@@ -5899,11 +6080,11 @@ dependencies = [
 
 [[package]]
 name = "pbkdf2"
-version = "0.4.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "216eaa586a190f0a738f2f918511eecfa90f13295abec0e457cdebcceda80cbd"
+checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
 dependencies = [
- "crypto-mac 0.8.0",
+ "digest 0.10.3",
 ]
 
 [[package]]
@@ -6144,9 +6325,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.39"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c54b25569025b7fc9651de43004ae593a75ad88543b17178aa5e1b9c4f15f56f"
+checksum = "dd96a1e8ed2596c337f8eae5f24924ec83f5ad5ab21ea8e455d3566c69fbcaf7"
 dependencies = [
  "unicode-ident",
 ]
@@ -6201,9 +6382,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc03e116981ff7d8da8e5c220e374587b98d294af7ba7dd7fda761158f00086f"
+checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
 dependencies = [
  "bytes 1.1.0",
  "prost-derive",
@@ -6284,21 +6465,21 @@ checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
 name = "quote"
-version = "1.0.18"
+version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1feb54ed693b93a84e14094943b84b7c4eae204c512b7ccb95ab0c66d278ad1"
+checksum = "3bcdf212e9776fbcb2d23ab029360416bb1706b1aea2d1a5ba002727cbcab804"
 dependencies = [
  "proc-macro2",
 ]
 
 [[package]]
 name = "r2d2"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "545c5bc2b880973c9c10e4067418407a0ccaa3091781d1671d46eb35107cb26f"
+checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
 dependencies = [
  "log",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "scheduled-thread-pool",
 ]
 
@@ -6395,7 +6576,7 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
 ]
 
 [[package]]
@@ -6473,7 +6654,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
  "redox_syscall",
 ]
 
@@ -6499,9 +6680,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.5.6"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d83f127d94bdbcda4c8cc2e50f6f84f4b611f69c902699ca385a39c3a75f9ff1"
+checksum = "4c4eb3267174b8c6c2f654116623910a0fef09c4753f8dd83db29c48a0df988b"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -6520,9 +6701,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.26"
+version = "0.6.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49b3de9ec5dc0a3417da371aab17d729997c15010e7fd24ff707773a33bddb64"
+checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
 
 [[package]]
 name = "remove_dir_all"
@@ -6535,9 +6716,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.10"
+version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46a1f7aa4f35e5e8b4160449f51afc758f0ce6454315a9fa7d0d113e958c41eb"
+checksum = "b75aa69a3f06bbcc66ede33af2af253c6f7a86b1ca0033f60c580a27074fbf92"
 dependencies = [
  "async-compression",
  "base64",
@@ -6558,13 +6739,14 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "rustls",
- "rustls-pemfile 0.3.0",
+ "rustls-pemfile",
  "serde",
  "serde_json",
  "serde_urlencoded",
  "tokio",
  "tokio-rustls",
- "tokio-util 0.6.9",
+ "tokio-util 0.7.2",
+ "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6809,7 +6991,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
- "semver 1.0.9",
+ "semver 1.0.12",
 ]
 
 [[package]]
@@ -6831,18 +7013,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0167bac7a9f490495f3c33013e7722b53cb087ecbe082fb0c6387c96f634ea50"
 dependencies = [
  "openssl-probe",
- "rustls-pemfile 1.0.0",
+ "rustls-pemfile",
  "schannel",
  "security-framework",
-]
-
-[[package]]
-name = "rustls-pemfile"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ee86d63972a7c661d1536fefe8c3c8407321c3df668891286de28abcd087360"
-dependencies = [
- "base64",
 ]
 
 [[package]]
@@ -6993,9 +7166,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.9"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb243bdfdb5936c8dc3c45762a19d12ab4550cdc753bc247637d4ec35a040fd"
+checksum = "a2333e6df6d6598f2b1974829f853c2b4c5f4a6e503c10af918081aa6f8564e1"
 dependencies = [
  "serde",
 ]
@@ -7008,9 +7181,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "904eca4fb30c6112a1dae60c0a9e29cfb42f42129da4260f1ee20e94151b62e3"
+checksum = "73642819e7fa63eb264abc818a2f65ac8764afbe4870b5ee25bcecc491be0d4c"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -7026,21 +7199,21 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1671189d1b759879fa4bdde46c50a499abb14332ed81f84fc6f60658f41b2fdb"
+checksum = "49bafa55eefc6dbc04c7dac91e8c8ab9e89e9414f3193c105cabd991bbc75134"
 dependencies = [
  "backtrace",
- "lazy_static",
+ "once_cell",
  "regex",
  "sentry-core",
 ]
 
 [[package]]
 name = "sentry-contexts"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db80ceff16bb1a4b2689b8758e5e61e405fc4d8ff9f2d1b5b845b76ce37fa34e"
+checksum = "c63317c4051889e73f0b00ce4024cae3e6a225f2e18a27d2c1522eb9ce2743da"
 dependencies = [
  "hostname",
  "libc",
@@ -7051,11 +7224,11 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c9f509d3959ed4dbbd80ca42572caad682aaa1cdd92c719e0815d0e87f82c96"
+checksum = "5a4591a2d128af73b1b819ab95f143bc6a2fbe48cd23a4c45e1ee32177e66ae6"
 dependencies = [
- "lazy_static",
+ "once_cell",
  "rand 0.8.5",
  "sentry-types",
  "serde",
@@ -7064,9 +7237,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4e00357035f6af5404870048167affaa551e15e0bee6efa2157e4b9bec6a453"
+checksum = "58a76b41861ebde9b0a689fa13080ad5508583e094c48acad461eec5acd7fc5f"
 dependencies = [
  "log",
  "sentry-core",
@@ -7074,9 +7247,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8b442769cc34115f64393f7bfe4f863c3c38749e0c0b9613a7ae25b37c7ba53"
+checksum = "696c74c5882d5a0d5b4a31d0ff3989b04da49be7983b7f52a52c667da5b480bf"
 dependencies = [
  "sentry-backtrace",
  "sentry-core",
@@ -7084,9 +7257,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f58a7caf31b4c6388d97959997bec6e2bb608fb51c5c06b1ac20e2dfe854250d"
+checksum = "f855446c5f08db26a73b0c532b4354d33143982eadf84071d2a0102f9885a31e"
 dependencies = [
  "sentry-core",
  "serde_json",
@@ -7095,12 +7268,12 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "254b600e93e9ef00a48382c9f1e86d27884bd9a5489efa4eb9210c20c72e88a6"
+checksum = "823923ae5f54a729159d720aa12181673044ee5c79cbda3be09e56f885e5468f"
 dependencies = [
  "debugid",
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
  "hex",
  "serde",
  "serde_json",
@@ -7112,9 +7285,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.137"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
+checksum = "0171ebb889e45aa68b44aee0859b3eede84c6f5f5c228e6f140c0b2a0a46cad6"
 dependencies = [
  "serde_derive",
 ]
@@ -7149,9 +7322,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.137"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f26faba0c3959972377d3b2d306ee9f71faee9714294e41bb777f83f88578be"
+checksum = "dc1d3230c1de7932af58ad8ffbe1d784bd55efd5a9d84ac24f69c72d83543dfb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7160,9 +7333,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b7ce2b32a1aed03c558dc61a5cd328f15aff2dbc17daad8fb8af04d2100e15c"
+checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
 dependencies = [
  "itoa 1.0.1",
  "ryu",
@@ -7183,11 +7356,10 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "1.13.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b827f2113224f3f19a665136f006709194bdfdcb1fdc1e4b2b5cbac8e0cced54"
+checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
 dependencies = [
- "rustversion",
  "serde",
  "serde_with_macros",
 ]
@@ -7206,20 +7378,22 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5bcc41d18f7a1d50525d080fd3e953be87c4f9f1a974f3c21798ca00d54ec15"
+checksum = "7eec42e7232e5ca56aa59d63af3c7f991fe71ee6a3ddd2d3480834cf3902b007"
 dependencies = [
+ "futures",
  "lazy_static",
- "parking_lot 0.11.2",
+ "log",
+ "parking_lot 0.12.0",
  "serial_test_derive",
 ]
 
 [[package]]
 name = "serial_test_derive"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2881bccd7d60fb32dfa3d7b3136385312f8ad75e2674aab2852867a09790cae8"
+checksum = "f1b95bb2f4f624565e8fe8140c789af7e2082c0e0561b5a82a1b678baa9703dc"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -7543,9 +7717,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.95"
+version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbaf6116ab8924f39d52792136fb74fd60a80194cf1b1c6ffa6453eef1c3f942"
+checksum = "c50aef8a904de4c23c788f104b7dddc7d6f79c647c7c8ce4cc8f73eb0ca773dd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7648,18 +7822,18 @@ checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thiserror"
-version = "1.0.24"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0f4a65597094d4483ddaed134f409b2cb7c1beccf25201a9f73c719254fa98e"
+checksum = "bd829fe32373d27f76265620b5309d0340cb8550f523c1dda251d6298069069a"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.24"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7765189610d8241a44529806d6fd1f2e0a08734313a35d5b3a556f92b381f3c0"
+checksum = "0396bc89e626244658bef819e22d0cc459e795a5ebe878e6ec336d1674a8d79a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7668,11 +7842,11 @@ dependencies = [
 
 [[package]]
 name = "thread_local"
-version = "1.0.1"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
+checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
- "lazy_static",
+ "once_cell",
 ]
 
 [[package]]
@@ -7726,17 +7900,17 @@ checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "tiny-bip39"
-version = "0.8.2"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffc59cb9dfc85bb312c3a78fd6aa8a8582e310b0fa885d5bb877f6dcc601839d"
+checksum = "62cc94d358b5a1e84a5cb9109f559aa3c4d634d2b1b4de3d0fa4adc7c78e2861"
 dependencies = [
  "anyhow",
- "hmac 0.8.1",
+ "hmac 0.12.1",
  "once_cell",
  "pbkdf2",
- "rand 0.7.3",
+ "rand 0.8.5",
  "rustc-hash",
- "sha2 0.9.8",
+ "sha2 0.10.2",
  "thiserror",
  "unicode-normalization",
  "wasm-bindgen",
@@ -7844,6 +8018,7 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -7921,7 +8096,7 @@ version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77be66445c4eeebb934a7340f227bfe7b338173d3f8c00a60a5a58005c9faecf"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "lazy_static",
  "matchers",
  "regex",
@@ -8008,9 +8183,9 @@ checksum = "d22af068fba1eb5edcb4aea19d382b2a3deb4c8f9d475c589b6ada9e0fd493ee"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.17"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07fbfce1c8a97d547e8b5334978438d9d6ec8c20e38f56d4a4374d181493eaef"
+checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
 dependencies = [
  "tinyvec",
 ]
@@ -8062,7 +8237,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
 dependencies = [
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
  "serde",
 ]
 
@@ -8134,9 +8309,9 @@ checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
 name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
+version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
+checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasm-bindgen"
@@ -8407,9 +8582,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.5.5"
+version = "1.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94693807d016b2f2d2e14420eb3bfcca689311ff775dcf113d74ea624b7cdf07"
+checksum = "20b578acffd8516a6c3f2a1bdefc1ec37e547bb4e0fb8b6b01a4cafc886b4442"
 dependencies = [
  "zeroize_derive",
 ]

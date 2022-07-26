@@ -28,9 +28,9 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.5"

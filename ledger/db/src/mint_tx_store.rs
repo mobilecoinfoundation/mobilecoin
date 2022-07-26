@@ -9,7 +9,8 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error, MintConfigStore};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_transaction_core::{mint::MintTx, BlockIndex};
+use mc_blockchain_types::BlockIndex;
+use mc_transaction_core::mint::MintTx;
 use mc_util_serial::{decode, encode, Message};
 
 // LMDB Database names.
@@ -462,7 +463,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NotFound")]
     fn write_mint_txs_fail_when_signer_is_unknown() {
         let (mint_config_store, mint_tx_store, env) = init_test_stores();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -488,13 +488,13 @@ mod tests {
             &mut rng,
         );
         let mut db_txn = env.begin_rw_txn().unwrap();
-        mint_tx_store
-            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
-            .unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn),
+            Err(Error::NotFound)
+        );
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NotFound")]
     fn write_mint_txs_fail_when_signature_is_invalid() {
         let (mint_config_store, mint_tx_store, env) = init_test_stores();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -514,9 +514,10 @@ mod tests {
         let mut mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         mint_tx1.prefix.amount += 1;
         let mut db_txn = env.begin_rw_txn().unwrap();
-        mint_tx_store
-            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
-            .unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn),
+            Err(Error::NotFound)
+        );
     }
 
     #[test]

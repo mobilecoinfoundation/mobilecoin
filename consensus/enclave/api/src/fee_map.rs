@@ -3,7 +3,6 @@
 //! A helper object for maintaining a map of token id -> minimum fee.
 
 use alloc::collections::BTreeMap;
-use core::{convert::TryFrom, iter::FromIterator};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};

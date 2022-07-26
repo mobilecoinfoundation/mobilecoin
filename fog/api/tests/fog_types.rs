@@ -3,7 +3,6 @@
 // Test that mc_fog_types structs match the protos defined in .proto files,
 // by testing that they round-trip through the proto-generated rust types
 
-use core::convert::TryFrom;
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_api::kex_rng;
 use mc_fog_kex_rng::{KexRngPubkey, StoredRng};

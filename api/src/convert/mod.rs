@@ -5,9 +5,7 @@
 //! gRPC and Protobuf provide a reduced selection of types, and so there are
 //! some differences between values stored in the ledger and values transmitted
 //! over the API. This module provides conversions between "equivalent" types,
-//! such as `mc_api::blockchain::Block` and `mc_transaction_core::Block`.
-
-mod error;
+//! such as `mc_api::blockchain::Block` and `mc_blockchain_types::Block`.
 
 // blockchain
 mod archive_block;
@@ -15,6 +13,7 @@ mod block;
 mod block_contents;
 mod block_contents_hash;
 mod block_id;
+mod block_metadata;
 mod block_signature;
 
 // external
@@ -27,7 +26,9 @@ mod ed25519_signature;
 mod key_image;
 mod mint_config;
 mod mint_tx;
+mod node;
 mod public_address;
+mod quorum_set;
 mod ring_mlsag;
 mod ristretto_private;
 mod signature_rct_bulletproofs;
@@ -47,13 +48,16 @@ mod watcher;
 // printable
 mod tx_out_gift_code;
 
-pub use self::error::ConversionError;
+// error
+mod error;
+pub use error::ConversionError;
 
+use mc_blockchain_types::BlockIndex;
 use std::path::PathBuf;
 
 /// Helper method for getting the suggested path/filename for a given block
 /// index.
-pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
+pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
     let filename = format!("{:016x}.pb", block_index);
     let mut path = PathBuf::new();
     for i in 0..7 {
@@ -69,7 +73,7 @@ pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -
 /// `bucket_size` specifies how many blocks are expected to be joined together.
 pub fn merged_block_num_to_s3block_path(
     bucket_size: u64,
-    first_block_index: mc_transaction_core::BlockIndex,
+    first_block_index: BlockIndex,
 ) -> PathBuf {
     let base_dir = format!("merged-{}", bucket_size);
     let mut path = PathBuf::new();
@@ -81,7 +85,6 @@ pub fn merged_block_num_to_s3block_path(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::From;
 
     #[test]
     fn test_block_num_to_s3block_path() {

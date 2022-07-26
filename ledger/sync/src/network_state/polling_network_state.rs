@@ -5,17 +5,15 @@
 //! and utilizing SCPNetworkState.
 
 use crate::{NetworkState, SCPNetworkState};
+use mc_blockchain_types::BlockIndex;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
 use mc_connection::{
-    BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
+    BlockInfo, BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
-use mc_consensus_scp::{
-    core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic,
-};
-use mc_transaction_core::BlockIndex;
+use mc_consensus_scp::{ballot::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic};
 use mc_util_uri::ConnectionUri;
 use retry::delay::{jitter, Fibonacci};
 use std::{
@@ -40,6 +38,9 @@ pub struct PollingNetworkState<BC: BlockchainConnection> {
     /// check logic.
     scp_network_state: SCPNetworkState<ResponderId>,
 
+    /// Last block info objects, per responder id
+    block_infos: HashMap<ResponderId, BlockInfo>,
+
     /// Logger.
     logger: Logger,
 }
@@ -58,13 +59,14 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         Self {
             manager,
             scp_network_state: SCPNetworkState::new(local_node_id, quorum_set),
+            block_infos: Default::default(),
             logger,
         }
     }
 
     /// Polls peers to find out the current state of the network.
     pub fn poll(&mut self) {
-        type ResultsMap = HashMap<ResponderId, Option<BlockIndex>>;
+        type ResultsMap = HashMap<ResponderId, Option<BlockInfo>>;
         let results_and_condvar = Arc::new((Mutex::new(ResultsMap::default()), Condvar::new()));
 
         for conn in self.manager.conns() {
@@ -89,24 +91,24 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
 
                     let &(ref lock, ref condvar) = &*thread_results_and_condvar;
 
-                    let block_height_result = conn.fetch_block_height(Self::get_retry_iterator());
+                    let block_info_result = conn.fetch_block_info(Self::get_retry_iterator());
 
                     let mut results = lock.lock().expect("mutex poisoned");
 
-                    match &block_height_result {
-                        Ok(index) => {
+                    match &block_info_result {
+                        Ok(info) => {
                             log::debug!(
                                 thread_logger,
                                 "Last block reported by {}: {}",
                                 conn,
-                                index
+                                info.block_index
                             );
-                            results.insert(responder_id.clone(), Some(*index));
+                            results.insert(responder_id.clone(), Some(info.clone()));
                         }
                         Err(err) => {
                             log::error!(
                                 thread_logger,
-                                "Failed getting last block from {}: {:?}",
+                                "Failed getting block info from {}: {:?}",
                                 conn,
                                 err
                             );
@@ -134,23 +136,29 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         );
 
         // Hackishly feed into SCPNetworkState
-        for (responder_id, block_index) in results.iter() {
-            if let Some(block_index) = block_index {
+        for (responder_id, block_info) in results.iter() {
+            if let Some(block_info) = block_info.as_ref() {
                 self.scp_network_state.push(Msg::<&str, ResponderId>::new(
                     responder_id.clone(),
                     QuorumSet::empty(),
-                    *block_index as SlotIndex,
+                    block_info.block_index as SlotIndex,
                     Topic::Externalize(ExternalizePayload {
                         C: Ballot::new(1, &["fake"]),
                         HN: 1,
                     }),
                 ));
+                self.block_infos
+                    .insert(responder_id.clone(), block_info.clone());
             }
         }
     }
 
     pub fn peer_to_current_block_index(&self) -> &HashMap<ResponderId, BlockIndex> {
         self.scp_network_state.peer_to_current_slot()
+    }
+
+    pub fn peer_to_block_info(&self) -> &HashMap<ResponderId, BlockInfo> {
+        &self.block_infos
     }
 
     fn get_retry_iterator() -> Box<dyn Iterator<Item = Duration>> {

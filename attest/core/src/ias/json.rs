@@ -1,8 +1,7 @@
 //! Basic RJSON DOM, taken from rjson tests.
 
-use crate::error::JsonError;
+use crate::JsonError;
 use alloc::{string::String, vec::Vec};
-use core::convert::TryInto;
 use mc_common::HashMap;
 use rjson::{Array, Null, Object, Value};
 

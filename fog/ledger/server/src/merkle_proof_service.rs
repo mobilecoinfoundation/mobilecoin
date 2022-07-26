@@ -3,18 +3,19 @@
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_enclave_api::ClientSession;
+use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{ledger::OutputResultCode, ledger_grpc::FogMerkleProofApi};
 use mc_fog_ledger_enclave::{GetOutputsResponse, LedgerEnclaveProxy, OutputContext, OutputResult};
 use mc_fog_ledger_enclave_api::Error as EnclaveError;
-use mc_ledger_db::{self, Error as DbError, Ledger};
+use mc_ledger_db::{Error as DbError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{
     rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
     send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
-use std::{convert::From, sync::Arc};
+use std::sync::Arc;
 
 // Maximum number of TxOuts that may be returned for a single request.
 pub const MAX_REQUEST_SIZE: usize = 2000;
@@ -141,10 +142,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
                 .collect::<Result<Vec<_>, DbError>>()
                 .map_err(|err| rpc_database_err(err, &self.logger))?,
             latest_block_version,
-            max_block_version: core::cmp::max(
-                latest_block_version,
-                *mc_transaction_core::MAX_BLOCK_VERSION,
-            ),
+            max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
         })
     }
 

@@ -7,6 +7,8 @@
 #![feature(core_intrinsics)]
 
 extern crate alloc;
+#[macro_use]
+extern crate mc_util_repr_bytes;
 
 mod error;
 mod ias;
@@ -25,9 +27,7 @@ pub use crate::{
         QuoteVerifyError, ReportBodyVerifyError, ReportDetailsError, RevocationCause, SgxError,
         SgxResult, SignatureError, TargetInfoError, VerifyError,
     },
-    ias::verify::{
-        EpidPseudonym, VerificationReport, VerificationReportData, VerificationSignature,
-    },
+    ias::verify::{EpidPseudonym, VerificationReportData},
     nonce::{IasNonce, Nonce, QuoteNonce},
     quote::{Quote, QuoteSignType},
     report::Report,
@@ -53,6 +53,8 @@ pub use crate::{
         ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
     },
 };
+
+pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;

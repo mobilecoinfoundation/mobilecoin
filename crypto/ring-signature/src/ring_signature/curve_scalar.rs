@@ -6,20 +6,20 @@
 //! represents an element of \\(\mathbb Z / \ell\\).
 
 use super::Error;
-use core::fmt;
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_prost_message_from_repr_bytes,
-    derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
+    GenericArray, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A curve scalar
-#[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible, Zeroize)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CurveScalar {
     /// The scalar value
@@ -81,9 +81,6 @@ impl From<&[u8; 32]> for CurveScalar {
     }
 }
 
-// Implements Ord, PartialOrd, PartialEq, Hash.
-derive_core_cmp_from_as_ref!(CurveScalar, [u8; 32]);
-
 impl AsRef<[u8]> for CurveScalar {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -115,13 +112,8 @@ impl ReprBytes for CurveScalar {
     }
 }
 
-impl fmt::Debug for CurveScalar {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CurveScalar({})", hex_fmt::HexFmt(self.as_bytes()))
-    }
-}
-
-// Implements prost::Message. Requires Debug and ReprBytes32.
+derive_core_cmp_from_as_ref!(CurveScalar, [u8; 32]);
+derive_debug_and_display_hex_from_as_ref!(CurveScalar);
 derive_prost_message_from_repr_bytes!(CurveScalar);
 derive_try_from_slice_from_repr_bytes!(CurveScalar);
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
@@ -46,11 +46,7 @@ impl TryFrom<&CompressedCommitment> for Commitment {
 
 impl fmt::Debug for Commitment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Commitment({})",
-            hex_fmt::HexFmt(self.point.compress().as_bytes())
-        )
+        write!(f, "Commitment({})", hex_fmt::HexFmt(self.to_bytes()))
     }
 }
 

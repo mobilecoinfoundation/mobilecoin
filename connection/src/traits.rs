@@ -5,15 +5,14 @@
 use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
-use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token, TokenId};
-use mc_util_serial::prost::alloc::fmt::Formatter;
+use mc_transaction_core::{tokens::Mob, tx::Tx, Token, TokenId};
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::BTreeMap,
-    fmt::{Debug, Display, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::Hash,
-    iter::FromIterator,
     ops::Range,
     result::Result as StdResult,
     time::Duration,
@@ -31,6 +30,12 @@ pub trait Connection: Display + Eq + Hash + Ord + PartialEq + PartialOrd + Send 
 pub trait AttestationError: Debug + Display + Send + Sync {
     /// Should the error result in re-attestation?
     fn should_reattest(&self) -> bool;
+
+    /// Should the error be retried?
+    /// Some errors like, failing to verify IAS report, are not retriable, since
+    /// report verification is deterministic and the report will probably not be
+    /// different the next time.
+    fn should_retry(&self) -> bool;
 }
 
 pub trait AttestedConnection: Connection {
@@ -99,13 +104,12 @@ impl From<LastBlockInfoResponse> for BlockInfo {
     fn from(src: LastBlockInfoResponse) -> Self {
         // Needed for nodes that do not yet return the fee map.
         let minimum_fees = if src.minimum_fees.is_empty() {
-            BTreeMap::from_iter([(Mob::ID, src.mob_minimum_fee)])
+            [(Mob::ID, src.mob_minimum_fee)].into()
         } else {
-            BTreeMap::from_iter(
-                src.minimum_fees
-                    .iter()
-                    .map(|(token_id, fee)| (TokenId::from(*token_id), *fee)),
-            )
+            src.minimum_fees
+                .iter()
+                .map(|(token_id, fee)| (TokenId::from(*token_id), *fee))
+                .collect()
         };
 
         BlockInfo {
@@ -113,6 +117,21 @@ impl From<LastBlockInfoResponse> for BlockInfo {
             minimum_fees,
             network_block_version: src.network_block_version,
         }
+    }
+}
+
+impl From<BlockInfo> for LastBlockInfoResponse {
+    fn from(src: BlockInfo) -> Self {
+        let mut result = LastBlockInfoResponse::new();
+        result.index = src.block_index;
+        result.network_block_version = src.network_block_version;
+        result.set_minimum_fees(
+            src.minimum_fees
+                .into_iter()
+                .map(|(token_id, fee)| (*token_id, fee))
+                .collect(),
+        );
+        result
     }
 }
 

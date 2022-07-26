@@ -8,6 +8,8 @@ edition = "2021"
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../api" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
@@ -18,7 +20,6 @@ mc-transaction-core = { path = "../../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
+mc-util-test-helper = { path = "../../../util/test-helper" }
 
-mockall = "0.11.1"
-rand_core = "0.6"
-rand_hc = "0.3"
+mockall = "0.11"

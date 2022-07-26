@@ -2,7 +2,6 @@
 
 use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPrivate;
-use std::convert::TryFrom;
 
 /// Convert RistrettoPrivate --> external::RistrettoPrivate
 impl From<&RistrettoPrivate> for external::RistrettoPrivate {

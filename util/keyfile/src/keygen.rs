@@ -15,7 +15,6 @@ use rand_core::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -166,7 +165,6 @@ fn compare_keyfile_names(a: &Path, b: &Path) -> Ordering {
 mod test {
     use super::*;
     use crate::mnemonic_acct::UncheckedMnemonicAccount;
-    use std::convert::TryFrom;
 
     /// A default seed for [write_default_keyfiles()] calls.
     const DEFAULT_SEED: [u8; 32] = [1u8; 32];

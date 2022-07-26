@@ -2,12 +2,9 @@
 
 //! Abstract traits used by Structs which implement key management
 
-pub use digest::Digest;
-pub use ed25519::signature::{DigestSigner, DigestVerifier, Signature, Signer, Verifier};
-pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
-
+use crate::{Digest, LengthMismatch, ReprBytes, Unsigned};
 use alloc::{string::String, vec::Vec};
-use core::{convert::TryFrom, fmt::Debug, hash::Hash};
+use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;

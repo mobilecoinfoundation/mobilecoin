@@ -6,7 +6,6 @@ use crate::{
     EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedSubaddresses,
     TransactionBuilder, TxBuilderError,
 };
-use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};
@@ -46,11 +45,7 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         amount,
         recipient,
         hint,
-        |_| {
-            Ok(block_version
-                .e_memo_feature_is_supported()
-                .then(MemoPayload::default))
-        },
+        |_| Ok(MemoPayload::default()),
         rng,
     )
 }

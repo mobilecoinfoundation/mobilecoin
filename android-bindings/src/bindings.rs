@@ -9,10 +9,8 @@ use crate::{
     error::McError,
     ffi::{jni_big_int_to_u64, jni_ffi_call, jni_ffi_call_or, RUST_OBJ_FIELD},
 };
-
 use aes_gcm::Aes256Gcm;
 use bip39::{Language, Mnemonic};
-use core::convert::TryFrom;
 use generic_array::{typenum::U66, GenericArray};
 use jni::{
     objects::{JObject, JString},
@@ -53,8 +51,10 @@ use mc_transaction_core::{
 };
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
-    SenderMemoCredential, TransactionBuilder,
+    GiftCodeCancellationMemo, GiftCodeCancellationMemoBuilder, GiftCodeFundingMemo,
+    GiftCodeFundingMemoBuilder, GiftCodeSenderMemo, GiftCodeSenderMemoBuilder, InputCredentials,
+    MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses, SenderMemoCredential,
+    TransactionBuilder, TxOutContext,
 };
 
 use mc_util_from_random::FromRandom;
@@ -1350,6 +1350,178 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_DestinationMemo_get_1total_1out
 }
 
 /********************************************************************
+ * GiftCodeFundingMemo
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemo_init_1jni_1from_1memo_1data(
+    env: JNIEnv,
+    obj: JObject,
+    memo_data: jbyteArray,
+) {
+    jni_ffi_call(&env, |env| {
+        let memo_data = <[u8; 64]>::try_from(&env.convert_byte_array(memo_data)?[..])?;
+        let memo: GiftCodeFundingMemo = GiftCodeFundingMemo::from(&memo_data);
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemo_validate_1gift_1code_1funding_1tx_1out(
+    env: JNIEnv,
+    obj: JObject,
+    tx_out_public_key: JObject,
+) -> jboolean {
+    jni_ffi_call_or(
+        || Ok(JNI_FALSE),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeFundingMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let key: MutexGuard<RistrettoPublic> =
+                env.get_rust_field(tx_out_public_key, RUST_OBJ_FIELD)?;
+
+            let key_matches = memo.public_key_matches(&key);
+
+            Ok(key_matches as u8)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemo_get_1note(
+    env: JNIEnv,
+    obj: JObject,
+) -> jstring {
+    jni_ffi_call_or(
+        || Ok(env.new_string("")?.into_inner()),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeFundingMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let funding_note = memo.funding_note()?;
+
+            Ok(env.new_string(funding_note)?.into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemo_get_1fee(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeFundingMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+
+            Ok(memo.get_fee() as jlong)
+        },
+    )
+}
+
+/********************************************************************
+ * GiftCodeSenderMemo
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemo_init_1jni_1from_1memo_1data(
+    env: JNIEnv,
+    obj: JObject,
+    memo_data: jbyteArray,
+) {
+    jni_ffi_call(&env, |env| {
+        let memo_data = <[u8; 64]>::try_from(&env.convert_byte_array(memo_data)?[..])?;
+        let memo: GiftCodeSenderMemo = GiftCodeSenderMemo::from(&memo_data);
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemo_get_1note(
+    env: JNIEnv,
+    obj: JObject,
+) -> jstring {
+    jni_ffi_call_or(
+        || Ok(env.new_string("")?.into_inner()),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeSenderMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let sender_note = memo.sender_note()?;
+
+            Ok(env.new_string(sender_note)?.into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemo_get_1fee(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeSenderMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+
+            Ok(memo.get_fee() as jlong)
+        },
+    )
+}
+
+/********************************************************************
+ * GiftCodeCancellationMemo
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeCancellationMemo_init_1jni_1from_1memo_1data(
+    env: JNIEnv,
+    obj: JObject,
+    memo_data: jbyteArray,
+) {
+    jni_ffi_call(&env, |env| {
+        let memo_data = <[u8; 64]>::try_from(&env.convert_byte_array(memo_data)?[..])?;
+        let memo: GiftCodeCancellationMemo = GiftCodeCancellationMemo::from(&memo_data);
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeCancellationMemo_get_1global_1index(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeCancellationMemo> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+
+            Ok(memo.cancelled_gift_code_index() as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeCancellationMemo_get_1fee(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let memo: MutexGuard<GiftCodeCancellationMemo> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+
+            Ok(memo.get_fee() as jlong)
+        },
+    )
+}
+
+/********************************************************************
  * TxOut
  */
 
@@ -1457,6 +1629,65 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_decrypt_1memo_1payload(
             let memo_payload_bytes: &[u8] = memo_payload_generic_array.as_slice();
 
             Ok(env.byte_array_from_slice(memo_payload_bytes)?)
+        },
+    )
+}
+
+/********************************************************************
+ * TxOutContext
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1tx_1out(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let tx_out = tx_out_context.tx_out.to_owned();
+            let mbox = Box::new(Mutex::new(tx_out));
+            let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1confirmation_1number(
+    env: JNIEnv,
+    obj: JObject,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let confirmation_number = &tx_out_context.confirmation;
+            let bytes = mc_util_serial::encode(confirmation_number);
+            Ok(env.byte_array_from_slice(&bytes)?)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1shared_1secret(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let tx_out_context: MutexGuard<TxOutContext> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let shared_secret = tx_out_context.shared_secret.to_owned();
+            let mbox = Box::new(Mutex::new(shared_secret));
+            let ptr: *mut Mutex<RistrettoPublic> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
         },
     )
 }
@@ -1575,6 +1806,58 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutMemoBuilder_init_1jni_1wit
     jni_ffi_call(&env, |env| {
         let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
             Box::new(RTHMemoBuilder::default());
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo_builder_box)?)
+    })
+}
+
+/********************************************************************
+ * GiftCodeMemoBuilders
+ */
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemoBuiler_init(
+    env: JNIEnv,
+    obj: JObject,
+    note: JString,
+) {
+    jni_ffi_call(&env, |env| {
+        let note: String = env.get_string(note)?.into();
+        let memo_builder = GiftCodeFundingMemoBuilder::new(note.as_str())?;
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> = Box::new(memo_builder);
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo_builder_box)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemoBuiler_init(
+    env: JNIEnv,
+    obj: JObject,
+    note: JString,
+) {
+    jni_ffi_call(&env, |env| {
+        let note: String = env.get_string(note)?.into();
+        let memo_builder = GiftCodeSenderMemoBuilder::new(note.as_str())?;
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> = Box::new(memo_builder);
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo_builder_box)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeCancellationMemoBuiler_init(
+    env: JNIEnv,
+    obj: JObject,
+    global_index: JObject,
+) {
+    jni_ffi_call(&env, |env| {
+        let index = jni_big_int_to_u64(env, global_index)?;
+        let memo_builder = GiftCodeCancellationMemoBuilder::new(index);
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> = Box::new(memo_builder);
+
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, memo_builder_box)?)
     })
 }
@@ -1704,8 +1987,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
-            let (tx_out, confirmation_number) =
-                tx_builder.add_output(amount, &recipient, &mut rng)?;
+            let tx_out_context = tx_builder.add_output(amount, &recipient, &mut rng)?;
+            let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1722,8 +2005,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
-            let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
+            let mbox = Box::new(Mutex::new(tx_out_context));
+            let ptr: *mut Mutex<TxOutContext> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },
     )
@@ -1757,8 +2040,9 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 token_id: tx_builder.get_fee_token_id(),
             };
 
-            let (tx_out, confirmation_number) =
+            let tx_out_context =
                 tx_builder.add_change_output(amount, &change_destination, &mut rng)?;
+            let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1775,7 +2059,61 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 }
             }
 
-            let mbox = Box::new(Mutex::new(tx_out));
+            let mbox = Box::new(Mutex::new(tx_out_context));
+            let ptr: *mut Mutex<TxOutContext> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1code_1output(
+    env: JNIEnv,
+    obj: JObject,
+    value: JObject,
+    source_account_key: JObject,
+    confirmation_number_out: jbyteArray,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let mut tx_builder: MutexGuard<TransactionBuilder<FogResolver>> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let source_account_key: MutexGuard<AccountKey> =
+                env.get_rust_field(source_account_key, RUST_OBJ_FIELD)?;
+
+            let value = jni_big_int_to_u64(env, value)?;
+            let reserved_subaddresses = ReservedSubaddresses::from(&*source_account_key);
+            let mut rng = McRng::default();
+
+            // TODO (GH #1867): If you want to do mixed transactions, use something other
+            // than fee_token_id here.
+            let amount = Amount {
+                value: value as u64,
+                token_id: tx_builder.get_fee_token_id(),
+            };
+
+            let tx_out_context =
+                tx_builder.add_gift_code_output(amount, &reserved_subaddresses, &mut rng)?;
+            if !confirmation_number_out.is_null() {
+                let len = env.get_array_length(confirmation_number_out)?;
+                if len as usize >= tx_out_context.confirmation.to_vec().len() {
+                    env.set_byte_array_region(
+                        confirmation_number_out,
+                        0,
+                        tx_out_context
+                            .confirmation
+                            .to_vec()
+                            .into_iter()
+                            .map(|u| u as i8)
+                            .collect::<Vec<_>>()
+                            .as_slice(),
+                    )?;
+                }
+            }
+
+            let mbox = Box::new(Mutex::new(tx_out_context.tx_out));
             let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
             Ok(ptr as jlong)
         },

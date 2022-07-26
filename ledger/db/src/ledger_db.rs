@@ -8,6 +8,10 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockMetadata, BlockSignature,
+    BlockVersion, MAX_BLOCK_VERSION,
+};
 use mc_common::{logger::global_log, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
@@ -15,15 +19,13 @@ use mc_transaction_core::{
     mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, TokenId,
-    MAX_BLOCK_VERSION,
+    TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
 use mc_util_telemetry::{
     mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, Span,
 };
 use std::{
-    convert::TryInto,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -31,12 +33,15 @@ use std::{
 };
 
 pub const MAX_LMDB_FILE_SIZE: usize = 1 << 40; // 1 TB
-pub const MAX_LMDB_DATABASES: u32 = 27; // maximum number of databases in the lmdb file
+
+/// maximum number of [Database]s in the lmdb file
+pub const MAX_LMDB_DATABASES: u32 = 19;
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
 pub const BLOCKS_DB_NAME: &str = "ledger_db:blocks";
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
+pub const BLOCK_METADATA_DB_NAME: &str = "ledger_db:block_metadata";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
@@ -102,6 +107,9 @@ pub struct LedgerDB {
     /// Block signatures by number. `block number -> BlockSignature`
     block_signatures: Database,
 
+    /// Block metadata by number. `block number -> BlockMetadata`
+    block_metadata: Database,
+
     /// Key Images
     key_images: Database,
 
@@ -141,11 +149,12 @@ impl Ledger for LedgerDB {
     /// * `block` - A block.
     /// * `block_contents` - The contents of the block.
     /// * `signature` - This node's signature over the block.
-    fn append_block(
+    fn append_block<'b>(
         &mut self,
-        block: &Block,
-        block_contents: &BlockContents,
-        signature: Option<BlockSignature>,
+        block: &'b Block,
+        block_contents: &'b BlockContents,
+        signature: Option<&'b BlockSignature>,
+        metadata: Option<&'b BlockMetadata>,
     ) -> Result<(), Error> {
         let start_time = Instant::now();
 
@@ -163,7 +172,7 @@ impl Ledger for LedgerDB {
         let mut db_transaction = self.env.begin_rw_txn()?;
 
         // Validate the block is safe to append.
-        self.validate_append_block(block, block_contents, &db_transaction)?;
+        self.validate_append_block(block, block_contents, metadata, &db_transaction)?;
 
         // Write key images included in block.
         self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
@@ -189,7 +198,7 @@ impl Ledger for LedgerDB {
         )?;
 
         // Write block.
-        self.write_block(block, signature.as_ref(), &mut db_transaction)?;
+        self.write_block(block, signature, metadata, &mut db_transaction)?;
 
         // Commit.
         db_transaction.commit()?;
@@ -239,10 +248,16 @@ impl Ledger for LedgerDB {
         self.get_block_contents_impl(&db_transaction, block_number)
     }
 
-    /// Gets a block signature by its index in the blockchain.
+    /// Gets a block's signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.get_block_signature_impl(&db_transaction, block_number)
+    }
+
+    /// Gets a block's metadata by its index in the blockchain.
+    fn get_block_metadata(&self, block_number: u64) -> Result<BlockMetadata, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.get_block_metadata_impl(&db_transaction, block_number)
     }
 
     /// Gets a block and all of its associated data by its index in the
@@ -257,8 +272,13 @@ impl Ledger for LedgerDB {
             Err(Error::NotFound) => Ok(None),
             Err(err) => Err(err),
         }?;
+        let metadata = match self.get_block_metadata_impl(&db_transaction, block_number) {
+            Ok(metadata) => Ok(Some(metadata)),
+            Err(Error::NotFound) => Ok(None),
+            Err(err) => Err(err),
+        }?;
 
-        Ok(BlockData::new(block, contents, signature))
+        Ok(BlockData::new(block, contents, signature, metadata))
     }
 
     /// Gets block index by a TxOut global index.
@@ -422,6 +442,9 @@ impl LedgerDB {
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
+        // Block metadata was added later, so we call create_db instead of open_db.
+        // If the Database exists, create_db returns it.
+        let block_metadata = env.create_db(Some(BLOCK_METADATA_DB_NAME), DatabaseFlags::empty())?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
@@ -439,6 +462,7 @@ impl LedgerDB {
             counts,
             blocks,
             block_signatures,
+            block_metadata,
             key_images,
             key_images_by_block,
             tx_outs_by_block,
@@ -465,6 +489,7 @@ impl LedgerDB {
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(BLOCK_METADATA_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
@@ -510,6 +535,7 @@ impl LedgerDB {
         &self,
         block: &Block,
         signature: Option<&BlockSignature>,
+        metadata: Option<&BlockMetadata>,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), lmdb::Error> {
         // Update total number of blocks.
@@ -534,6 +560,15 @@ impl LedgerDB {
                 self.block_signatures,
                 &u64_to_key_bytes(block.index),
                 &encode(signature),
+                WriteFlags::empty(),
+            )?;
+        }
+
+        if let Some(metadata) = metadata {
+            db_transaction.put(
+                self.block_metadata,
+                &u64_to_key_bytes(block.index),
+                &encode(metadata),
                 WriteFlags::empty(),
             )?;
         }
@@ -623,6 +658,7 @@ impl LedgerDB {
         &self,
         block: &Block,
         block_contents: &BlockContents,
+        metadata: Option<&BlockMetadata>,
         db_transaction: &impl Transaction,
     ) -> Result<(), Error> {
         // Check version is correct
@@ -739,6 +775,12 @@ impl LedgerDB {
             }
         }
 
+        let block_version = BlockVersion::try_from(block.version)
+            .or(Err(Error::InvalidBlockVersion(block.version)))?;
+        if block_version.require_block_metadata() && metadata.is_none() {
+            return Err(Error::BlockMetadataRequired);
+        }
+
         // All good
         Ok(())
     }
@@ -819,6 +861,19 @@ impl LedgerDB {
         Ok(signature)
     }
 
+    /// Implementation of the `get_block_metadata` method that operates inside
+    /// a given transaction.
+    fn get_block_metadata_impl(
+        &self,
+        db_transaction: &impl Transaction,
+        block_number: u64,
+    ) -> Result<BlockMetadata, Error> {
+        let key = u64_to_key_bytes(block_number);
+        let metadata_bytes = db_transaction.get(self.block_metadata, &key)?;
+        let metadata = decode(metadata_bytes)?;
+        Ok(metadata)
+    }
+
     /// Returns true if the Ledger contains the given TxOut public key.
     fn contains_tx_out_public_key_impl(
         &self,
@@ -854,6 +909,14 @@ impl LedgerDB {
     }
 }
 
+/// Creates a LedgerDB instance at the given path.
+pub fn create_ledger_in(path: &Path) -> LedgerDB {
+    let path = PathBuf::from(path);
+    std::fs::create_dir_all(&path).expect("Could not create dirs");
+    LedgerDB::create(&path).expect("Could not create ledger_db");
+    LedgerDB::open(&path).expect("Could not open ledger_db")
+}
+
 // Specifies how we encode the u32/u64 chunk number in lmdb
 // The lexicographical sorting of the numbers, done by lmdb, must match the
 // numeric order of the chunks. Thus we use Big Endian byte order here
@@ -869,21 +932,17 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
-
-    use core::convert::TryFrom;
-    use mc_account_keys::AccountKey;
-    use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
-    use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount,
-        BlockVersion, Token,
-    };
+    use crate::test_utils::{add_block_contents_to_ledger, add_txos_and_key_images_to_ledger};
+    use mc_blockchain_test_utils::{get_blocks, make_block_metadata};
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_transaction_core::{membership_proofs::compute_implied_merkle_root, BlockVersion};
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
         create_test_tx_out, mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
+    use mc_util_test_helper::get_seeded_rng;
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
     use tempdir::TempDir;
     use test::Bencher;
 
@@ -907,141 +966,75 @@ mod ledger_db_test {
     /// * `n_txs_per_block` - number of transactions per block.
     fn populate_db(
         db: &mut LedgerDB,
-        num_blocks: u64,
-        num_outputs_per_block: u64,
-    ) -> (Vec<Block>, Vec<BlockContents>) {
-        let initial_amount: u64 = 5_000 * 1_000_000_000_000;
-
+        num_blocks: usize,
+        num_outputs_per_block: usize,
+    ) -> Vec<BlockData> {
         // Generate 1 public / private addresses and create transactions.
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let account_key = AccountKey::random(&mut rng);
-
-        let mut parent_block: Option<Block> = None;
-        let mut blocks: Vec<Block> = Vec::new();
-        let mut blocks_contents: Vec<BlockContents> = Vec::new();
-
-        for block_index in 0..num_blocks {
-            let outputs: Vec<TxOut> = (0..num_outputs_per_block)
-                .map(|_i| {
-                    let mut result = TxOut::new(
-                        Amount {
-                            value: initial_amount,
-                            token_id: Mob::ID,
-                        },
-                        &account_key.default_subaddress(),
-                        &RistrettoPrivate::from_random(&mut rng),
-                        Default::default(),
-                    )
-                    .unwrap();
-                    // Origin block doesn't have memos
-                    if block_index == 0 {
-                        result.e_memo = None
-                    };
-                    result
-                })
-                .collect();
-
-            // Non-origin blocks must have at least one key image.
-            let key_images: Vec<KeyImage> = if block_index > 0 {
-                vec![KeyImage::from(block_index)]
-            } else {
-                vec![]
-            };
-
-            let block_contents = BlockContents {
-                key_images,
-                outputs: outputs.clone(),
-                ..Default::default()
-            };
-
-            let block = match parent_block {
-                None => Block::new_origin_block(&outputs),
-                Some(parent) => Block::new_with_parent(
-                    BLOCK_VERSION,
-                    &parent,
-                    &Default::default(),
-                    &block_contents,
-                ),
-            };
-            assert_eq!(block_index, block.index);
-
-            db.append_block(&block, &block_contents, None)
-                .expect("failed writing initial transactions");
-            blocks.push(block.clone());
-            blocks_contents.push(block_contents);
-            parent_block = Some(block);
+        let blocks = get_blocks(
+            BLOCK_VERSION,
+            num_blocks,
+            1,
+            1,
+            num_outputs_per_block,
+            1 << 20,
+            None,
+            &mut get_seeded_rng(),
+        );
+        for block_data in &blocks {
+            db.append_block_data(block_data).unwrap_or_else(|err| {
+                panic!(
+                    "failed writing block with index {}: {}",
+                    block_data.block().index,
+                    err
+                );
+            });
         }
 
         // Verify that db now contains n transactions.
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
-        (blocks, blocks_contents)
+        blocks
+    }
+
+    fn get_origin_block() -> BlockData {
+        // The origin block contains a single output belonging to the
+        // `origin_account_key`.
+        get_blocks(BLOCK_VERSION, 1, 1, 1, 1, 1000, None, &mut get_seeded_rng())
+            .pop()
+            .unwrap()
+    }
+
+    fn add_origin_block(ledger_db: &mut LedgerDB) -> BlockData {
+        let block_data = get_origin_block();
+        ledger_db.append_block_data(&block_data).unwrap();
+
+        block_data
     }
 
     #[test]
     // Test initial conditions of a new LedgerDB instance.
-    fn test_ledger_db_initialization() {
+    fn ledger_db_initialization() {
         let ledger_db = create_db();
         assert_eq!(ledger_db.num_blocks().unwrap(), 0);
         assert_eq!(ledger_db.num_txos().unwrap(), 0);
     }
 
-    fn get_origin_block_and_contents(account_key: &AccountKey) -> (Block, BlockContents) {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
-        let mut output = TxOut::new(
-            Amount {
-                value: 1000,
-                token_id: Mob::ID,
-            },
-            &account_key.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
-        // Origin block transactions dont' have memos
-        output.e_memo = None;
-
-        let outputs = vec![output];
-        let block = Block::new_origin_block(&outputs);
-        let block_contents = BlockContents {
-            outputs,
-            ..Default::default()
-        };
-
-        (block, block_contents)
-    }
-
     #[test]
     // Appending a block without any minting-related transactions should correctly
     // update each LMDB database.
-    fn test_append_block_without_minting() {
+    fn append_block_without_minting() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        let origin = add_origin_block(&mut ledger_db);
 
         assert_eq!(1, ledger_db.num_blocks().unwrap());
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
         assert_eq!(1, ledger_db.num_txos().unwrap());
 
-        let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
-
-        assert_eq!(
-            origin_block_contents,
-            ledger_db.get_block_contents(0).unwrap()
-        );
 
         let key_images = ledger_db.get_key_images_by_block(0).unwrap();
         assert_eq!(key_images.len(), 0);
@@ -1051,38 +1044,33 @@ mod ledger_db_test {
 
         // === Create and append a non-origin block. ===
 
-        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-
-        let block_contents = BlockContents {
-            key_images: key_images.clone(),
-            outputs,
-            ..Default::default()
-        };
-        let block = Block::new_with_parent(
+        let block_data = add_txos_and_key_images_to_ledger(
+            &mut ledger_db,
             BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
+            outputs,
+            key_images.clone(),
+            &mut rng,
+        )
+        .unwrap();
 
         assert_eq!(2, ledger_db.num_blocks().unwrap());
-        // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        // The new block should be in the ledger:
-        assert_eq!(block, ledger_db.get_block(1).unwrap());
-        assert_eq!(5, ledger_db.num_txos().unwrap());
 
+        // The origin block should still be in the ledger:
+        assert_eq!(origin.block(), &ledger_db.get_block(0).unwrap());
         // The origin's TxOut should still be in the ledger:
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
+        // The new block should be in the ledger:
+        assert_eq!(block_data.block(), &ledger_db.get_block(1).unwrap());
+        assert_eq!(5, ledger_db.num_txos().unwrap());
+
         // Each TxOut from the current block should be in the ledger.
-        for (i, tx_out) in block_contents.outputs.iter().enumerate() {
+        for (i, tx_out) in block_data.contents().outputs.iter().enumerate() {
             // The first tx_out is the origin block, tx_outs are for the following block
             // hence the + 1
             assert_eq!(
@@ -1097,9 +1085,7 @@ mod ledger_db_test {
             assert_eq!(block_index, 1);
         }
 
-        assert!(ledger_db
-            .contains_key_image(key_images.get(0).unwrap())
-            .unwrap());
+        assert!(ledger_db.contains_key_image(&key_images[0]).unwrap());
 
         let block_one_key_images = ledger_db.get_key_images_by_block(1).unwrap();
         assert_eq!(key_images, block_one_key_images);
@@ -1115,21 +1101,12 @@ mod ledger_db_test {
         let token_id2 = TokenId::from(2);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
+        let origin = add_origin_block(&mut ledger_db);
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
-        assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None,);
+        assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None);
 
         // === Append a block with only a single MintConfigTx. ===
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1138,30 +1115,19 @@ mod ledger_db_test {
             validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
-
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
-            .unwrap();
+        let block1 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
+                .unwrap();
 
         assert_eq!(2, ledger_db.num_blocks().unwrap());
         // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        assert_eq!(1, ledger_db.num_txos().unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
         // The new block should be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
 
         // The origin's TxOut should still be in the ledger:
+        assert_eq!(1, ledger_db.num_txos().unwrap());
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
-
-        // The new block contents should be in the ledger.
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1198,28 +1164,19 @@ mod ledger_db_test {
             ],
             ..Default::default()
         };
-
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
-        );
-
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
+        let block2 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng)
+                .unwrap();
 
         assert_eq!(3, ledger_db.num_blocks().unwrap());
-
-        // The previous blocks should still be in the ledger.
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
         assert_eq!(1, ledger_db.num_txos().unwrap());
 
+        // The previous blocks should still be in the ledger.
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
+
         // The new block contents should be in the ledger.
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1268,25 +1225,15 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: DuplicateMintConfigTx")]
     // Appending a block that contains a previously-seen MintConfigTx should
     // fail.
-    fn test_append_block_fails_for_duplicate_mint_config_txs() {
+    fn append_block_fails_for_duplicate_mint_config_txs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // === Append a block with only a single MintConfigTx. ===
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1296,15 +1243,7 @@ mod ledger_db_test {
             ..Default::default()
         };
 
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
             .unwrap();
 
         // Try appending a block that contains the same set mint config tx.
@@ -1317,18 +1256,10 @@ mod ledger_db_test {
             ],
             ..Default::default()
         };
-
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
+        assert_eq!(
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng),
+            Err(Error::DuplicateMintConfigTx)
         );
-
-        // This should fail.
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
     }
 
     #[test]
@@ -1340,19 +1271,8 @@ mod ledger_db_test {
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
-        assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
+        let origin = add_origin_block(&mut ledger_db);
+        let origin_tx_out = origin.contents().outputs[0].clone();
 
         assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None);
 
@@ -1365,49 +1285,33 @@ mod ledger_db_test {
             ..Default::default()
         };
 
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
-            .unwrap();
+        let block1 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
+                .unwrap();
 
         // === Append a block with only a single MintTx. ===
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 10, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
-        );
-
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
+        let block2 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng)
+                .unwrap();
 
         assert_eq!(3, ledger_db.num_blocks().unwrap());
         assert_eq!(2, ledger_db.num_txos().unwrap());
         // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
         // The new block should be in the ledger:
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
 
         // The origin's TxOut should still be in the ledger:
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
-
-        // The new block contents should be in the ledger.
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1446,34 +1350,22 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
-
-        let block3 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block2,
-            &Default::default(),
-            &block_contents3,
-        );
-
-        ledger_db
-            .append_block(&block3, &block_contents3, None)
-            .unwrap();
+        let block3 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents3, &mut rng)
+                .unwrap();
 
         assert_eq!(4, ledger_db.num_blocks().unwrap());
         assert_eq!(3, ledger_db.num_txos().unwrap());
-        // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
         // Previous blocks should still be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
 
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
         // The new block should be in the ledger:
-        assert_eq!(block3, ledger_db.get_block(3).unwrap());
-        assert_eq!(block_contents3, ledger_db.get_block_contents(3).unwrap());
+        assert_eq!(block3, ledger_db.get_block_data(3).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1510,36 +1402,24 @@ mod ledger_db_test {
 
         let block_contents4 = BlockContents {
             mint_txs: vec![mint_tx3.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
-
-        let block4 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block3,
-            &Default::default(),
-            &block_contents4,
-        );
-
-        ledger_db
-            .append_block(&block4, &block_contents4, None)
-            .unwrap();
+        let block4 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents4, &mut rng)
+                .unwrap();
 
         assert_eq!(5, ledger_db.num_blocks().unwrap());
         assert_eq!(4, ledger_db.num_txos().unwrap());
-        // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        // Previous blocks should still be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
-        assert_eq!(block3, ledger_db.get_block(3).unwrap());
 
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
-        assert_eq!(block_contents3, ledger_db.get_block_contents(3).unwrap());
+        // Previous blocks should still be in the ledger:
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
+        assert_eq!(block3, ledger_db.get_block_data(3).unwrap());
+
         // The new block should be in the ledger:
-        assert_eq!(block4, ledger_db.get_block(4).unwrap());
-        assert_eq!(block_contents4, ledger_db.get_block_contents(4).unwrap());
+        assert_eq!(block4, ledger_db.get_block_data(4).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1583,38 +1463,29 @@ mod ledger_db_test {
 
         let block_contents5 = BlockContents {
             mint_txs: vec![mint_tx4.clone(), mint_tx5.clone()],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
-        let block5 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block4,
-            &Default::default(),
-            &block_contents5,
-        );
-
-        ledger_db
-            .append_block(&block5, &block_contents5, None)
-            .unwrap();
+        let block5 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents5, &mut rng)
+                .unwrap();
 
         assert_eq!(6, ledger_db.num_blocks().unwrap());
         assert_eq!(6, ledger_db.num_txos().unwrap());
-        // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        // Previous blocks should still be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
-        assert_eq!(block3, ledger_db.get_block(3).unwrap());
-        assert_eq!(block4, ledger_db.get_block(4).unwrap());
 
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
-        assert_eq!(block_contents3, ledger_db.get_block_contents(3).unwrap());
-        assert_eq!(block_contents4, ledger_db.get_block_contents(4).unwrap());
+        // Previous blocks should still be in the ledger:
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
+        assert_eq!(block3, ledger_db.get_block_data(3).unwrap());
+        assert_eq!(block4, ledger_db.get_block_data(4).unwrap());
+
         // The new block should be in the ledger:
-        assert_eq!(block5, ledger_db.get_block(5).unwrap());
-        assert_eq!(block_contents5, ledger_db.get_block_contents(5).unwrap());
+        assert_eq!(block5, ledger_db.get_block_data(5).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1660,40 +1531,30 @@ mod ledger_db_test {
 
         let block_contents6 = BlockContents {
             mint_txs: vec![mint_tx6.clone(), mint_tx7.clone()],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
-        let block6 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block5,
-            &Default::default(),
-            &block_contents6,
-        );
-
-        ledger_db
-            .append_block(&block6, &block_contents6, None)
-            .unwrap();
+        let block6 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents6, &mut rng)
+                .unwrap();
 
         assert_eq!(7, ledger_db.num_blocks().unwrap());
         assert_eq!(8, ledger_db.num_txos().unwrap());
-        // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        // Previous blocks should still be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
-        assert_eq!(block3, ledger_db.get_block(3).unwrap());
-        assert_eq!(block4, ledger_db.get_block(4).unwrap());
-        assert_eq!(block5, ledger_db.get_block(5).unwrap());
 
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
-        assert_eq!(block_contents3, ledger_db.get_block_contents(3).unwrap());
-        assert_eq!(block_contents4, ledger_db.get_block_contents(4).unwrap());
-        assert_eq!(block_contents5, ledger_db.get_block_contents(5).unwrap());
+        // Previous blocks should still be in the ledger:
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
+        assert_eq!(block3, ledger_db.get_block_data(3).unwrap());
+        assert_eq!(block4, ledger_db.get_block_data(4).unwrap());
+        assert_eq!(block5, ledger_db.get_block_data(5).unwrap());
+
         // The new block should be in the ledger:
-        assert_eq!(block6, ledger_db.get_block(6).unwrap());
-        assert_eq!(block_contents6, ledger_db.get_block_contents(6).unwrap());
+        assert_eq!(block6, ledger_db.get_block_data(6).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1726,26 +1587,19 @@ mod ledger_db_test {
     #[test]
     // Appending a block that contains a mix of outputs, key images and mint
     // transactions should work as expected.
-    fn test_append_block_containing_outputs_key_images_and_mint_txs() {
+    fn append_block_containing_outputs_key_images_and_mint_txs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        let origin = add_origin_block(&mut ledger_db);
 
         // === Create and append a non-origin block. ===
-        let outputs1: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs1: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1761,24 +1615,15 @@ mod ledger_db_test {
             mint_txs: vec![], /* For this block we cant include any mint txs since we need an
                                * active configuration first. */
         };
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
-            .unwrap();
+        let block1 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
+                .unwrap();
 
         assert_eq!(2, ledger_db.num_blocks().unwrap());
         // The origin block should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
         // The new block should be in the ledger:
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        // The new block contents should be in the ledger:
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1828,7 +1673,7 @@ mod ledger_db_test {
         // Each TxOut from the current block should be in the ledger.
         assert_eq!(5, ledger_db.num_txos().unwrap());
 
-        for (i, tx_out) in block_contents1.outputs.iter().enumerate() {
+        for (i, tx_out) in block1.contents().outputs.iter().enumerate() {
             // The first tx_out is the origin block, tx_outs are for the following block
             // hence the + 1
             assert_eq!(
@@ -1845,15 +1690,17 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block_contents1.key_images.get(0).unwrap())
+            .contains_key_image(block1.contents().key_images.get(0).unwrap())
             .unwrap());
 
         let block1_key_images = ledger_db.get_key_images_by_block(1).unwrap();
-        assert_eq!(block_contents1.key_images, block1_key_images);
+        assert_eq!(block1.contents().key_images, block1_key_images);
 
         //  === Write another block - this one has a MintTx in addition to all
         // the other txs.
-        let outputs2: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs2: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx3 = create_mint_config_tx(token_id1, &mut rng);
@@ -1866,29 +1713,16 @@ mod ledger_db_test {
             validated_mint_config_txs: vec![to_validated(&mint_config_tx3)],
             mint_txs: vec![mint_tx1, mint_tx2],
         };
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
-        );
-
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
+        let block2 =
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng)
+                .unwrap();
 
         assert_eq!(3, ledger_db.num_blocks().unwrap());
         // The previous blocks should still be in the ledger:
-        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
-        assert_eq!(
-            origin_block_contents,
-            ledger_db.get_block_contents(0).unwrap()
-        );
-        assert_eq!(block1, ledger_db.get_block(1).unwrap());
-        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
+        assert_eq!(origin, ledger_db.get_block_data(0).unwrap());
+        assert_eq!(block1, ledger_db.get_block_data(1).unwrap());
         // The new block should be in the ledger:
-        assert_eq!(block2, ledger_db.get_block(2).unwrap());
-        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
+        assert_eq!(block2, ledger_db.get_block_data(2).unwrap());
 
         // The active mint configs should be updated.
         assert_eq!(
@@ -1938,7 +1772,7 @@ mod ledger_db_test {
         // Each TxOut from the current block should be in the ledger.
         assert_eq!(9, ledger_db.num_txos().unwrap());
 
-        for (i, tx_out) in block_contents2.outputs.iter().enumerate() {
+        for (i, tx_out) in block2.contents().outputs.iter().enumerate() {
             assert_eq!(
                 ledger_db.get_tx_out_by_index((i + 5) as u64).unwrap(),
                 *tx_out
@@ -1953,33 +1787,22 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block_contents2.key_images.get(0).unwrap())
+            .contains_key_image(block2.contents().key_images.get(0).unwrap())
             .unwrap());
 
         let block2_key_images = ledger_db.get_key_images_by_block(2).unwrap();
-        assert_eq!(block_contents2.key_images, block2_key_images);
+        assert_eq!(block2.contents().key_images, block2_key_images);
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: TooFewOutputs")]
-    // Appending a block that contains more MintTxs than outputs should
-    // fail.
-    fn test_append_block_fails_if_not_enough_outputs() {
+    // Appending a block that contains more MintTxs than outputs should fail.
+    fn append_block_fails_if_not_enough_outputs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
@@ -1990,15 +1813,7 @@ mod ledger_db_test {
             ..Default::default()
         };
 
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
             .unwrap();
 
         // === Append a block with two MintTxs but only a single TxOut. ===
@@ -2007,43 +1822,25 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
+        assert_eq!(
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng),
+            Err(Error::TooFewOutputs)
         );
-
-        // This should fail.
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: DuplicateMintTx")]
-    // Appending a block that contains a previously-seen MintTx should
-    // fail.
-    fn test_append_block_fails_for_duplicate_mint_txs() {
+    // Appending a block that contains a previously-seen MintTx should fail.
+    fn append_block_fails_for_duplicate_mint_txs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
@@ -2053,16 +1850,7 @@ mod ledger_db_test {
             validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
-
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
             .unwrap();
 
         // === Append a block with only a single MintTx. ===
@@ -2070,19 +1858,11 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
-        );
-
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng)
             .unwrap();
 
         // === Append another block that includes the previous MintTx.
@@ -2098,43 +1878,29 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2, mint_tx1],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
-        let block3 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block2,
-            &Default::default(),
-            &block_contents3,
+        assert_eq!(
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents3, &mut rng),
+            Err(Error::DuplicateMintTx)
         );
-
-        // This is expected to fail.
-        ledger_db
-            .append_block(&block3, &block_contents3, None)
-            .unwrap();
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NotFound")]
     // Appending a block that contains a MintTx that does not reference any active
     // configuration should fail.
-    fn test_append_block_fails_for_mint_tx_not_signed_by_active_configuration() {
+    fn append_block_fails_for_mint_tx_not_signed_by_active_configuration() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
@@ -2145,15 +1911,7 @@ mod ledger_db_test {
             ..Default::default()
         };
 
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
             .unwrap();
 
         // === Append a block with only a single MintTx signed by an unknown signer. ===
@@ -2166,21 +1924,14 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
+        assert_eq!(
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng),
+            Err(Error::NotFound)
         );
-
-        // This should fail.
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
-            .unwrap();
     }
 
     #[test]
@@ -2191,18 +1942,9 @@ mod ledger_db_test {
         let token_id1 = TokenId::from(1);
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
+        let origin = add_origin_block(&mut ledger_db);
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
+        let origin_tx_out = origin.contents().outputs[0].clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
         assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None,);
@@ -2215,16 +1957,7 @@ mod ledger_db_test {
             validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
-
-        let block1 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents1,
-        );
-
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents1, &mut rng)
             .unwrap();
 
         // === Append a block with only a single MintTx. ===
@@ -2237,19 +1970,11 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block2 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block1,
-            &Default::default(),
-            &block_contents2,
-        );
-
-        ledger_db
-            .append_block(&block2, &block_contents2, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents2, &mut rng)
             .unwrap();
 
         // === Append another block with a MintTx that will exceed the mint limit, we
@@ -2263,19 +1988,12 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block3 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block2,
-            &Default::default(),
-            &block_contents3,
-        );
-
         assert_eq!(
-            ledger_db.append_block(&block3, &block_contents3, None),
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents3, &mut rng),
             Err(Error::MintLimitExceeded(
                 11,
                 mint_config_tx1.prefix.configs[0].mint_limit - 10,
@@ -2312,19 +2030,11 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx3],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
-        let block3 = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block2,
-            &Default::default(),
-            &block_contents3,
-        );
-
-        ledger_db
-            .append_block(&block3, &block_contents3, None)
+        add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents3, &mut rng)
             .unwrap();
 
         // Amount minted should not update.
@@ -2352,139 +2062,109 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NoOutputs")]
     // Appending an empty block should fail.
-    fn test_append_block_fails_when_block_is_empty() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    fn append_block_fails_when_block_is_empty() {
         let mut ledger_db = create_db();
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
+        let origin = add_origin_block(&mut ledger_db);
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        // === Append a block with no contents. ===
-
-        let block_contents1 = Default::default();
-
-        let block1 = Block::new_with_parent(
+        // === Attempt to append a block with no contents. ===
+        let block_contents = Default::default();
+        let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block,
+            origin.block(),
             &Default::default(),
-            &block_contents1,
+            &block_contents,
         );
 
-        ledger_db
-            .append_block(&block1, &block_contents1, None)
-            .unwrap();
+        assert_eq!(
+            ledger_db.append_block(&block, &block_contents, None, None),
+            Err(Error::NoOutputs)
+        );
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NoKeyImages")]
     // Appending a non-origin block should fail if the block contains no key images
     // and no minting transactions.
-    fn test_append_block_fails_for_non_origin_non_minting_blocks_without_key_images() {
+    fn append_block_fails_for_non_origin_non_minting_blocks_without_key_images() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the
-        // `origin_account_key`.
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // === Attempt to append a block without key images ===
-        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let block_contents = BlockContents {
             outputs,
             ..Default::default()
         };
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents,
-        );
 
-        // This is expected to fail.
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
+        assert_eq!(
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents, &mut rng),
+            Err(Error::NoKeyImages)
+        );
     }
 
     #[test]
     #[ignore]
     // A block that attempts a double spend should be rejected.
-    fn test_reject_double_spend() {
+    fn reject_double_spend() {
         unimplemented!();
     }
 
     #[test]
     // `num_blocks` should return the correct number of blocks.
-    fn test_num_blocks() {
+    fn num_blocks() {
         let mut ledger_db = create_db();
         assert_eq!(ledger_db.num_blocks().unwrap(), 0);
-        let n_blocks: u64 = 7;
+        let n_blocks = 7;
         populate_db(&mut ledger_db, n_blocks, 1);
-        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
+        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks as u64);
     }
 
     #[test]
     // Getting a block by index should return the correct block, if it exists.
-    fn test_get_block_by_index() {
+    fn get_block_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (expected_blocks, _) = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block = ledger_db
                 .get_block(block_index as u64)
                 .unwrap_or_else(|_| panic!("Could not get block {:?}", block_index));
 
-            let expected_block: Block = expected_blocks.get(block_index as usize).unwrap().clone();
-            assert_eq!(block, expected_block);
+            assert_eq!(&block, expected_blocks[block_index as usize].block());
         }
     }
 
     #[test]
     // Getting block contents by index should return the correct block contents, if
     // that exists.
-    fn test_get_block_contents_by_index() {
+    fn get_block_contents_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (_, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block_contents = ledger_db
                 .get_block_contents(block_index as u64)
                 .unwrap_or_else(|_| panic!("Could not get block contents {:?}", block_index));
 
-            let expected_block_contents = expected_block_contents
-                .get(block_index as usize)
-                .unwrap()
-                .clone();
-            assert_eq!(block_contents, expected_block_contents);
+            let expected_block_contents = expected_blocks[block_index as usize].contents();
+            assert_eq!(&block_contents, expected_block_contents);
         }
     }
 
     #[test]
     // Getting a block by its index should return an error if the block doesn't
     // exist.
-    fn test_get_block_by_index_doesnt_exist() {
+    fn get_block_by_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
         populate_db(&mut ledger_db, n_blocks, 1);
@@ -2503,12 +2183,13 @@ mod ledger_db_test {
     #[test]
     // Getting a block number by tx out index should return the correct block
     // number, if it exists.
-    fn test_get_block_index_by_tx_out_index() {
+    fn get_block_index_by_tx_out_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (_expected_blocks, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+        let blocks = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected = blocks.iter().map(BlockData::contents);
 
-        for (block_index, block_contents) in expected_block_contents.iter().enumerate() {
+        for (block_index, block_contents) in expected.enumerate() {
             for tx_out in block_contents.outputs.iter() {
                 let tx_out_index = ledger_db
                     .get_tx_out_index_by_public_key(&tx_out.public_key)
@@ -2525,7 +2206,7 @@ mod ledger_db_test {
     #[test]
     // Getting a block index by a tx out index return an error if the tx out index
     // doesn't exist.
-    fn test_get_block_index_by_tx_out_index_doesnt_exist() {
+    fn get_block_index_by_tx_out_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
         populate_db(&mut ledger_db, n_blocks, 1);
@@ -2543,17 +2224,12 @@ mod ledger_db_test {
 
     #[test]
     // `Ledger::contains_key_image` should find key images that exist.
-    fn test_contains_key_image() {
+    fn contains_key_image() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
         // The origin block can't contain key images.
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // Write the next block, containing several key images.
         let num_key_images = 3;
@@ -2561,24 +2237,16 @@ mod ledger_db_test {
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let tx_out = create_test_tx_out(&mut rng);
+        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
         let outputs = vec![tx_out];
-
-        let block_contents = BlockContents {
-            key_images: key_images.clone(),
-            outputs,
-            ..Default::default()
-        };
-        let block = Block::new_with_parent(
+        add_txos_and_key_images_to_ledger(
+            &mut ledger_db,
             BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
+            outputs,
+            key_images.clone(),
+            &mut rng,
+        )
+        .unwrap();
 
         // The ledger should each key image.
         for key_image in &key_images {
@@ -2589,53 +2257,24 @@ mod ledger_db_test {
     #[test]
     // `get_key_images_by_block` should return the correct set of key images used in
     // a single block.
-    fn test_get_key_images_by_block() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    fn get_key_images_by_block() {
         let mut ledger_db = create_db();
+        let blocks = populate_db(&mut ledger_db, 3, 2);
+        let expected_key_images = blocks[1].contents().key_images.clone();
 
-        // Populate the ledger with some initial blocks.
-        let n_blocks = 3;
-        populate_db(&mut ledger_db, n_blocks, 2);
-
-        // Append a new block to the ledger.
-        let num_key_images = 3;
-        let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(rng.next_u64()))
-            .collect();
-
-        let tx_out = create_test_tx_out(&mut rng);
-        let outputs = vec![tx_out];
-
-        let block_contents = BlockContents {
-            key_images: key_images.clone(),
-            outputs,
-            ..Default::default()
-        };
-        let parent = ledger_db.get_block(n_blocks - 1).unwrap();
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None)
-            .unwrap();
-
-        let returned_key_images = ledger_db.get_key_images_by_block(block.index).unwrap();
-        assert_eq!(key_images, returned_key_images);
+        assert_eq!(
+            expected_key_images,
+            ledger_db.get_key_images_by_block(1).unwrap()
+        );
     }
 
     #[test]
     /// Attempting to append an empty block should return Error::NoOutputs.
-    fn test_append_empty_block() {
+    fn append_empty_block() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        // The origin block can't contain key images.
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // Write the next block, containing several key images but no outputs.
         let num_key_images = 3;
@@ -2647,15 +2286,9 @@ mod ledger_db_test {
             key_images,
             ..Default::default()
         };
-        let block = Block::new_with_parent(
-            BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_contents,
-        );
 
         assert_eq!(
-            ledger_db.append_block(&block, &block_contents, None),
+            add_block_contents_to_ledger(&mut ledger_db, BLOCK_VERSION, block_contents, &mut rng),
             Err(Error::NoOutputs)
         );
     }
@@ -2663,27 +2296,15 @@ mod ledger_db_test {
     #[test]
     /// Appending an block of incorrect version should return
     /// Error::InvalidBlockVersion.
-    fn test_append_block_with_invalid_version() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    fn append_block_with_invalid_version() {
+        let block_data = get_origin_block();
         let mut ledger_db = create_db();
-        let account_key = AccountKey::random(&mut rng);
 
-        let (mut block, block_contents) = get_origin_block_and_contents(&account_key);
-
-        let wrong_version = 1337;
-        block.version = wrong_version;
-        // Recompute the block ID to reflect the modified version.
-        block.id = compute_block_id(
-            block.version,
-            &block.parent_id,
-            block.index,
-            block.cumulative_txo_count,
-            &block.root_element,
-            &block.contents_hash,
-        );
+        let mut block = block_data.block().clone();
+        block.version = 1337;
 
         assert_eq!(
-            ledger_db.append_block(&block, &block_contents, None),
+            ledger_db.append_block(&block, block_data.contents(), None, None),
             Err(Error::InvalidBlockVersion(block.version))
         );
     }
@@ -2694,44 +2315,29 @@ mod ledger_db_test {
     /// Appending a block > MAX_BLOCK_VERSION should fail even if it is after a
     /// block with version == MAX_BLOCK_VERSION.
     /// Appending a block with a version < last block's version should fail.
-    fn test_append_block_with_version_bumps() {
+    fn append_block_with_version_bumps() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        let mut last_block = origin_block;
+        add_origin_block(&mut ledger_db);
 
         // MAX_BLOCK_VERSION sets the current max block version
         for block_version in BlockVersion::iterator() {
             // In each iteration we add a few blocks with the same version.
             for _ in 0..3 {
-                let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
-
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                    .collect();
                 let key_images: Vec<KeyImage> =
                     (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-
-                let block_contents = BlockContents {
-                    key_images,
-                    outputs,
-                    ..Default::default()
-                };
-                last_block = Block::new_with_parent(
+                add_txos_and_key_images_to_ledger(
+                    &mut ledger_db,
                     block_version,
-                    &last_block,
-                    &Default::default(),
-                    &block_contents,
-                );
-
-                ledger_db
-                    .append_block(&last_block, &block_contents, None)
-                    .unwrap();
+                    outputs,
+                    key_images,
+                    &mut rng,
+                )
+                .unwrap();
             }
 
             // All blocks should've been written (+ origin block).
@@ -2749,7 +2355,9 @@ mod ledger_db_test {
 
         // Appending a block with version < previous block version should fail.
         {
-            let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+            let outputs: Vec<TxOut> = (0..4)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect();
 
             let key_images: Vec<KeyImage> =
                 (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
@@ -2770,7 +2378,7 @@ mod ledger_db_test {
                 &block_contents,
             );
             assert_eq!(
-                ledger_db.append_block(&invalid_block, &block_contents, None),
+                ledger_db.append_block(&invalid_block, &block_contents, None, None),
                 Err(Error::InvalidBlockVersion(invalid_block.version))
             );
 
@@ -2782,7 +2390,7 @@ mod ledger_db_test {
                     &block_contents,
                 );
                 assert_eq!(
-                    ledger_db.append_block(&invalid_block, &block_contents, None),
+                    ledger_db.append_block(&invalid_block, &block_contents, None, None),
                     Err(Error::InvalidBlockVersion(invalid_block.version))
                 );
             }
@@ -2790,18 +2398,72 @@ mod ledger_db_test {
     }
 
     #[test]
-    fn test_append_block_at_wrong_location() {
+    fn append_block_requires_metadata() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin = add_origin_block(&mut ledger_db);
+        let mut last_block = origin.block().clone();
+
+        // MAX_BLOCK_VERSION sets the current max block version
+        for block_version in BlockVersion::iterator() {
+            // In each iteration we add a few blocks with the same version.
+            for _ in 0..3 {
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| create_test_tx_out(block_version, &mut rng))
+                    .collect();
+
+                let key_images: Vec<KeyImage> =
+                    (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+                let block_contents = BlockContents {
+                    key_images,
+                    outputs,
+                    ..Default::default()
+                };
+                last_block = Block::new_with_parent(
+                    block_version,
+                    &last_block,
+                    &Default::default(),
+                    &block_contents,
+                );
+
+                let metadata = make_block_metadata(last_block.id.clone(), &mut rng);
+
+                let result = ledger_db.append_block(&last_block, &block_contents, None, None);
+
+                if block_version.require_block_metadata() {
+                    assert_eq!(result, Err(Error::BlockMetadataRequired));
+                    ledger_db
+                        .append_block(&last_block, &block_contents, None, Some(&metadata))
+                        .unwrap();
+                } else {
+                    result.unwrap();
+                }
+            }
+
+            // All blocks should've been written (+ origin block).
+            assert_eq!(
+                ledger_db.num_blocks().unwrap(),
+                1 + (3 * (*block_version + 1)) as u64
+            );
+        }
+    }
+
+    #[test]
+    fn append_block_at_wrong_location() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
         // initialize a ledger with 3 blocks.
         let n_blocks = 3;
-        let (blocks, _) = populate_db(&mut ledger_db, n_blocks, 2);
-        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
+        let blocks = populate_db(&mut ledger_db, n_blocks, 2);
+        let origin = blocks[0].block();
+        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks as u64);
 
         let key_images = vec![KeyImage::from(rng.next_u64())];
 
-        let tx_out = create_test_tx_out(&mut rng);
+        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let outputs = vec![tx_out];
         let block_contents = BlockContents {
@@ -2813,22 +2475,21 @@ mod ledger_db_test {
         // Appending a block to a previously written location should fail.
         let mut new_block = Block::new(
             BLOCK_VERSION,
-            &blocks[0].id,
+            &origin.id,
             1,
-            blocks[0].cumulative_txo_count,
+            origin.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
-
         assert_eq!(
-            ledger_db.append_block(&new_block, &block_contents, None),
+            ledger_db.append_block(&new_block, &block_contents, None, None),
             Err(Error::InvalidBlockIndex(new_block.index))
         );
 
         // Appending a non-contiguous location should fail.
-        new_block.index = 3 * n_blocks;
+        new_block.index += n_blocks as u64;
         assert_eq!(
-            ledger_db.append_block(&new_block, &block_contents, None),
+            ledger_db.append_block(&new_block, &block_contents, None, None),
             Err(Error::InvalidBlockIndex(new_block.index))
         );
     }
@@ -2836,17 +2497,11 @@ mod ledger_db_test {
     #[test]
     /// Appending a block with a spent key image should return
     /// Error::KeyImageAlreadySpent.
-    fn test_append_block_with_spent_key_image() {
+    fn append_block_with_spent_key_image() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        // The origin block can't contain key images.
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        add_origin_block(&mut ledger_db);
 
         // Write the next block, containing several key images.
         let num_key_images = 3;
@@ -2854,47 +2509,24 @@ mod ledger_db_test {
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let block_one_contents = {
-            let tx_out = create_test_tx_out(&mut rng);
-            let outputs = vec![tx_out];
-            BlockContents {
-                key_images: block_one_key_images.clone(),
-                outputs,
-                ..Default::default()
-            }
-        };
-
-        let block_one = Block::new_with_parent(
+        add_txos_and_key_images_to_ledger(
+            &mut ledger_db,
             BLOCK_VERSION,
-            &origin_block,
-            &Default::default(),
-            &block_one_contents,
-        );
-
-        ledger_db
-            .append_block(&block_one, &block_one_contents, None)
-            .unwrap();
+            vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
+            block_one_key_images.clone(),
+            &mut rng,
+        )
+        .unwrap();
 
         // The next block reuses a key image.
-        let block_two_contents = {
-            let tx_out = create_test_tx_out(&mut rng);
-            let outputs = vec![tx_out];
-            BlockContents {
-                key_images: block_one_key_images,
-                outputs,
-                ..Default::default()
-            }
-        };
-
-        let block_two = Block::new_with_parent(
-            BLOCK_VERSION,
-            &block_one,
-            &Default::default(),
-            &block_two_contents,
-        );
-
         assert_eq!(
-            ledger_db.append_block(&block_two, &block_two_contents, None),
+            add_txos_and_key_images_to_ledger(
+                &mut ledger_db,
+                BLOCK_VERSION,
+                vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
+                block_one_key_images,
+                &mut rng,
+            ),
             Err(Error::KeyImageAlreadySpent)
         );
     }
@@ -2902,23 +2534,17 @@ mod ledger_db_test {
     #[test]
     /// Appending a block with a pre-existing output public key should return
     /// Error::DuplicateOutputPublicKey.
-    fn test_append_block_with_duplicate_output_public_key() {
+    fn append_block_with_duplicate_output_public_key() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        // Write a block to the ledger.
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
+        let origin = add_origin_block(&mut ledger_db);
 
         // The next block reuses a public key.
         let existing_tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
 
         let block_one_contents = {
-            let mut tx_out = create_test_tx_out(&mut rng);
+            let mut tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
             tx_out.public_key = existing_tx_out.public_key;
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
@@ -2931,54 +2557,50 @@ mod ledger_db_test {
 
         let block_one = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block,
+            origin.block(),
             &Default::default(),
             &block_one_contents,
         );
 
         assert_eq!(
-            ledger_db.append_block(&block_one, &block_one_contents, None),
+            ledger_db.append_block(&block_one, &block_one_contents, None, None),
             Err(Error::DuplicateOutputPublicKey)
         );
     }
 
     #[test]
     // append_block rejects invalid blocks.
-    fn test_append_invalid_blocks() {
+    fn append_invalid_blocks() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
-        let account_key = AccountKey::random(&mut rng);
 
-        let (origin_block, origin_block_contents) = get_origin_block_and_contents(&account_key);
+        let origin = get_origin_block();
 
         // append_block rejects a block with invalid id.
         {
-            let mut block = origin_block.clone();
+            let mut block = origin.block().clone();
             block.id.0[0] += 1;
             assert_eq!(
-                ledger_db.append_block(&block, &origin_block_contents, None),
+                ledger_db.append_block(&block, origin.contents(), None, None),
                 Err(Error::InvalidBlockID(block.id.clone()))
             );
         }
 
         // append_block rejects a block with invalid contents hash.
         {
-            let mut block = origin_block.clone();
+            let mut block = origin.block().clone();
             block.contents_hash.0[0] += 1;
             assert_eq!(
-                ledger_db.append_block(&block, &origin_block_contents, None),
+                ledger_db.append_block(&block, origin.contents(), None, None),
                 Err(Error::InvalidBlockContents)
             );
         }
 
-        assert_eq!(
-            ledger_db.append_block(&origin_block, &origin_block_contents, None),
-            Ok(())
-        );
+        assert_eq!(ledger_db.append_block_data(&origin), Ok(()));
 
         // append_block rejects a block with non-existent parent.
         {
-            let tx_out = create_test_tx_out(&mut rng);
+            let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
             let key_images = vec![KeyImage::from(rng.next_u64())];
             let outputs = vec![tx_out];
@@ -2996,28 +2618,28 @@ mod ledger_db_test {
                 BLOCK_VERSION,
                 &bad_parent_id,
                 1,
-                origin_block.cumulative_txo_count,
+                origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );
 
             assert_eq!(
-                ledger_db.append_block(&block_one_bad, &block_contents, None),
+                ledger_db.append_block(&block_one_bad, &block_contents, None, None),
                 Err(Error::InvalidParentBlockID(block_one_bad.parent_id.clone()))
             );
 
             // This block correctly has block zero as its parent.
             let block_one_good = Block::new(
                 BLOCK_VERSION,
-                &origin_block.id,
+                &origin.block().id,
                 1,
-                origin_block.cumulative_txo_count,
+                origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );
 
             assert_eq!(
-                ledger_db.append_block(&block_one_good, &block_contents, None),
+                ledger_db.append_block(&block_one_good, &block_contents, None, None),
                 Ok(())
             );
         }
@@ -3026,75 +2648,29 @@ mod ledger_db_test {
     #[test]
     // ledger.num_txos agrees with the computed block header values
     fn double_check_num_txos() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        // Make random recipients
-        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-        let recipient_pub_keys = accounts
-            .iter()
-            .map(|account| account.default_subaddress())
-            .collect::<Vec<_>>();
-
         // Get some random blocks
-        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-            BLOCK_VERSION,
-            &recipient_pub_keys[..],
-            20,
-            20,
-            35,
-            &origin_block,
-            &mut rng,
-        );
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let results = get_blocks(BLOCK_VERSION, 25, 3, 1, 1, 42, None, &mut rng);
 
-        for (block, block_contents) in &results {
-            println!("block {} containing {:?}", block.index, block_contents);
-            ledger_db.append_block(block, block_contents, None).unwrap();
-            assert_eq!(block.cumulative_txo_count, ledger_db.num_txos().unwrap());
+        for block_data in results {
+            ledger_db
+                .append_block_data(&block_data)
+                .expect("failed to write block data");
+            assert_eq!(
+                block_data.block().cumulative_txo_count,
+                ledger_db.num_txos().unwrap()
+            );
         }
     }
 
     #[test]
     // ledger_db.get_root_tx_out_membership_element returns the correct element
     fn get_root_tx_out_membership_element_returns_correct_element() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
-
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None)
-            .unwrap();
-
-        // Make random recipients
-        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-        let recipient_pub_keys = accounts
-            .iter()
-            .map(|account| account.default_subaddress())
-            .collect::<Vec<_>>();
-
-        // Get some random blocks
-        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-            BLOCK_VERSION,
-            &recipient_pub_keys[..],
-            20,
-            20,
-            35,
-            &origin_block,
-            &mut rng,
-        );
-
-        for (block, block_contents) in &results {
-            ledger_db.append_block(block, block_contents, None).unwrap();
-        }
+        // Add some random blocks
+        populate_db(&mut ledger_db, 42, 3);
 
         // The root element should be the same for all TxOuts in the ledger.
         let root_element = ledger_db.get_root_tx_out_membership_element().unwrap();
@@ -3119,7 +2695,7 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
         let n_blocks = 150;
         let n_txs_per_block = 1;
-        let _ = populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
+        populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
 
         b.iter(|| ledger_db.num_blocks().unwrap())
     }
@@ -3130,9 +2706,13 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
         let n_blocks = 30;
         let n_txs_per_block = 1000;
-        let _ = populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
+        populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        b.iter(|| ledger_db.get_block(rng.next_u64() % n_blocks).unwrap())
+        b.iter(|| {
+            ledger_db
+                .get_block(rng.next_u64() % n_blocks as u64)
+                .unwrap()
+        })
     }
 }

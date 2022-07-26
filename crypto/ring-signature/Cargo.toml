@@ -18,7 +18,7 @@ subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys", default-features = false }
+mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
@@ -33,8 +33,10 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend", "serde"] }
 
 [dev-dependencies]
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 tempdir = "0.3"
 
+mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }

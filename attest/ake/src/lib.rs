@@ -32,11 +32,8 @@ pub use crate::{
 #[cfg(feature = "sgx-sim")]
 mod test {
     //! Unit tests for Attested Key Exchange
-    extern crate std;
-
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use core::convert::TryFrom;
     use mc_attest_core::Quote;
     use mc_attest_net::{Client, RaClient};
     use mc_attest_verifier::{MrSignerVerifier, Verifier, IAS_SIM_ROOT_ANCHORS};

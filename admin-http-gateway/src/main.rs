@@ -19,7 +19,7 @@ use rocket::{
     FromForm,
 };
 use serde_derive::Serialize;
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 /// Gateway options.
 #[derive(Clone, Debug, Parser)]

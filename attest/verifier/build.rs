@@ -23,7 +23,6 @@ use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
-    convert::TryFrom,
     env,
     fs::{read, remove_file, write},
     path::{Path, PathBuf},

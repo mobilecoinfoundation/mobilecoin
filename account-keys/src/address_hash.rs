@@ -4,7 +4,6 @@
 //! This is used in certain memos, as a compact representation of the address.
 
 use crate::account_keys::PublicAddress;
-use core::convert::TryInto;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use subtle::{Choice, ConstantTimeEq};
 

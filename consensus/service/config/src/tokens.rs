@@ -9,7 +9,7 @@ use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fs, iter::FromIterator, ops::Range, path::Path};
+use std::{fs, ops::Range, path::Path};
 
 /// Sane values for MOB, enforced unless the allow_any_fee option is used.
 pub const ACCEPTABLE_MOB_FEE_VALUES: Range<u64> = 10_000..1_000_000_000_000u64;
@@ -78,7 +78,6 @@ mod pem_signer_set {
 
 mod hex_signature {
     use super::*;
-    use std::convert::TryFrom;
 
     /// Helper method for serializing an Ed25519Signature into a hex string.
     pub fn serialize<S: Serializer>(
@@ -318,7 +317,6 @@ impl TokensConfig {
 mod tests {
     use super::*;
     use mc_crypto_keys::Ed25519Private;
-    use std::convert::TryFrom;
 
     #[test]
     fn empty_config() {

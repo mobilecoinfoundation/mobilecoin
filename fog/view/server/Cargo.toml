@@ -15,10 +15,10 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third party
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 lazy_static = "1.4"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
@@ -59,6 +59,7 @@ rand_core = "0.6"
 tempdir = "0.3"
 
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }

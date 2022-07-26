@@ -19,6 +19,7 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-net = { path = "../../../attest/net" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
@@ -44,10 +45,10 @@ mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 # third-party
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 lazy_static = "1.4"
 rand = "0.8"
@@ -64,6 +65,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-test-helper = { path = "../../../util/test-helper" }

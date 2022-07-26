@@ -145,18 +145,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_required_output_with_fog_hint_address(
             amount,
             recipient,
             recipient,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_output(amount, recipient, memo_ctxt)).transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -204,19 +197,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_required_output_with_fog_hint_address(
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_change_output(amount, change_destination, memo_ctxt))
-                        .transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -247,7 +232,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         amount: Amount,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) =
@@ -384,13 +369,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use maplit::btreemap;
-
     use crate::{
         test_utils::get_input_credentials, EmptyMemoBuilder, MemoType, TransactionBuilder,
     };
     use assert_matches::assert_matches;
-    use core::convert::TryFrom;
+    use maplit::btreemap;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_crypto_ring_signature_signer::NoKeysRingSigner;

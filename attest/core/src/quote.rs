@@ -17,10 +17,10 @@ use crate::{
 use alloc::vec::Vec;
 use core::{
     cmp::{max, min},
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     ops::Range,
 };
+use hex_fmt::HexFmt;
 use mc_sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
 use mc_util_encodings::{
     base64_buffer_size, Error as EncodingError, FromBase64, IntelLayout, ToBase64, ToX64,
@@ -346,9 +346,10 @@ impl Debug for Quote {
         write!(
             f,
             "Quote: {{ version: {}, sign_type: {}, epid_group_id: {}, qe_svn: {}, pce_svn: {}, xeid: {}, basename: {:?}, report_body: {:?}, signature_len: {}, signature: {:?} }}",
-            self.version()?, self.sign_type()?, self.epid_group_id()?, self.qe_security_version()?,
-            self.pce_security_version()?, self.xeid()?, self.basename()?, self.report_body()?,
-            self.signature_len()?, self. signature()
+            self.version()?, self.sign_type()?, self.epid_group_id()?,
+            self.qe_security_version()?, self.pce_security_version()?,
+            self.xeid()?, self.basename()?, self.report_body()?,
+            self.signature_len()?, self.signature().map(HexFmt)
         )
     }
 }

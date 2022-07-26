@@ -285,38 +285,25 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "KeyLength")]
     fn bad_initialize_key() {
         let mut cipher = CipherState::<Aes256Gcm>::default();
         let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize() - 1];
 
-        cipher
-            .initialize_key(Some(key))
-            .expect("Could not intialize key");
+        assert_eq!(
+            cipher.initialize_key(Some(key)),
+            Err(CipherError::KeyLength)
+        );
     }
 
     #[test]
-    #[should_panic(expected = "Could not encrypt: NoKey")]
     fn dont_encrypt_decrypt() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
         let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
 
-        let ciphertext = encryptor
-            .encrypt_with_ad(&[], &key)
-            .expect("Could not encrypt");
-
-        assert_eq!(key, ciphertext);
-        assert_eq!(encryptor.nonce, 0);
-        assert_eq!(encryptor.bytes_sent, 0);
-
-        let mut decryptor = CipherState::<Aes256Gcm>::default();
-        let plaintext = decryptor
-            .decrypt_with_ad(&[], &ciphertext)
-            .expect("Could not decrypt");
-
-        assert_eq!(plaintext, key);
-        assert_eq!(decryptor.nonce, 0);
-        assert_eq!(decryptor.bytes_sent, 0);
+        assert_eq!(
+            encryptor.encrypt_with_ad(&[], &key),
+            Err(CipherError::NoKey)
+        );
     }
 
     #[test]
@@ -352,7 +339,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Could not encrypt without key: NoKey")]
     fn remove_key() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
         let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
@@ -372,12 +358,12 @@ mod test {
             .initialize_key(None)
             .expect("Could not de-initialize key");
 
-        let ciphertext2 = encryptor
-            .encrypt_with_ad(&[], &key)
-            .expect("Could not encrypt without key");
+        assert_eq!(
+            encryptor.encrypt_with_ad(&[], &key),
+            Err(CipherError::NoKey)
+        );
 
         assert!(!encryptor.has_key());
-        assert_eq!(key, ciphertext2);
         assert_eq!(encryptor.nonce, 0);
         assert_eq!(encryptor.bytes_sent, 0);
     }

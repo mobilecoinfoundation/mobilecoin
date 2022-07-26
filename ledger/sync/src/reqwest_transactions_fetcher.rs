@@ -7,16 +7,15 @@
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 use displaydoc::Display;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
+use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     lru::LruCache,
     ResponderId,
 };
-use mc_transaction_core::{Block, BlockData, BlockIndex};
 use protobuf::Message;
 use reqwest::Error as ReqwestError;
 use std::{
-    convert::TryFrom,
     fs,
     sync::{
         atomic::{AtomicU64, Ordering},

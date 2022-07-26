@@ -4,6 +4,7 @@ cargo-features = ["named-profiles"]
 members = [
     "account-keys",
     "account-keys/slip10",
+    "account-keys/types",
     "admin-http-gateway",
     "android-bindings",
     "api",
@@ -14,6 +15,9 @@ members = [
     "attest/trusted",
     "attest/untrusted",
     "attest/verifier",
+    "attest/verifier/types",
+    "blockchain/types",
+    "blockchain/validators",
     "common",
     "connection",
     "connection/test-utils",
@@ -27,6 +31,7 @@ members = [
     "consensus/mint-client",
     "consensus/scp",
     "consensus/scp/play",
+    "consensus/scp/types",
     "consensus/service",
     "consensus/service/config",
     "crypto/box",
@@ -104,6 +109,7 @@ members = [
     "mint-auditor",
     "mint-auditor/api",
     "mobilecoind",
+    "mobilecoind-dev-faucet",
     "mobilecoind-json",
     "mobilecoind/api",
     "peers",
@@ -130,6 +136,7 @@ members = [
     "util/build/script",
     "util/build/sgx",
     "util/cli",
+    "util/dump-ledger",
     "util/encodings",
     "util/ffi",
     "util/from-random",
@@ -189,6 +196,14 @@ codegen-units = 1
 [profile.test]
 rpath = true
 
+[profile.ci]
+# Build config.
+inherits = "test"
+# Enable some compiler optimizations.
+opt-level = 2
+# LLVM's Link-Time Optimization: Some, relatively quick to generate.
+lto = "thin"
+
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
@@ -217,3 +232,6 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }
+
+# Override diesel dependency with our fork, to statically link SQLite.
+diesel = { git = "https://github.com/mobilecoinofficial/diesel", rev = "026f6379715d27c8be48396e5ca9059f4a263198" }

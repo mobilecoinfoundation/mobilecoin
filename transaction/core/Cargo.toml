@@ -58,7 +58,7 @@ tempdir = "0.3"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", features = ["proptest"] }
-mc-ledger-db = { path = "../../ledger/db" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-transaction-std = { path = "../../transaction/std", features = ["test-only"] }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }

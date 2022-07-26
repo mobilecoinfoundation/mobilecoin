@@ -7,11 +7,12 @@ readme = "README.md"
 
 [dependencies]
 generic-array = "0.14"
+hex_fmt = { version = "0.3", optional = true }
 prost = { version = "0.10", optional = true, default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", optional = true, default-features = false, features = ["alloc"] }
 
 [features]
-default = ["alloc", "prost", "serde"]
+default = ["alloc", "prost", "serde", "hex_fmt"]
 alloc = []
 
 [dev-dependencies]

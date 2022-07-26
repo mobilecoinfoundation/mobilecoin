@@ -1,0 +1,42 @@
+name: Set up sccache
+
+runs:
+  using: composite
+  steps:
+    - name: Install sccache as needed
+      shell: bash
+      run: |
+        command -v sccache >/dev/null || (
+          cd ${RUNNER_TEMP:-/tmp}
+          curl -LO https://github.com/mozilla/sccache/releases/download/v0.2.15/sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
+          tar -xzf sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
+          chmod a+x sccache-v0.2.15-x86_64-unknown-linux-musl/sccache
+          mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache ${CARGO_HOME:-~/.cargo}/bin/
+        )
+    - name: Cache sccache dir
+      uses: actions/cache@v3
+      with:
+        path: /tmp/sccache
+        key: v1-sccache-${{ runner.os }}-${{ hashFiles('rust-toolchain') }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          v1-sccache-${{ runner.os }}-${{ hashFiles('rust-toolchain') }}
+          v1-sccache-${{ runner.os }}
+    - name: Set up env vars
+      shell: bash
+      # "You can make an environment variable available to any subsequent steps
+      # in a workflow job by defining or updating the environment variable
+      # and writing this to the GITHUB_ENV environment file."
+      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
+      run: |
+        # Set up env vars
+        echo 'RUSTC_WRAPPER=sccache' >> $GITHUB_ENV
+        echo 'CMAKE_C_COMPILER_LAUNCHER=sccache' >> $GITHUB_ENV
+        echo 'CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $GITHUB_ENV
+        # sccache doesn't support incremental building
+        echo 'CARGO_INCREMENTAL=0' >> $GITHUB_ENV
+        # Set cache dir explicitly so that all platforms use the same location
+        echo 'SCCACHE_DIR=/tmp/sccache' >> $GITHUB_ENV
+        # Tune some params
+        echo 'SCCACHE_IDLE_TIMEOUT=1200' >> $GITHUB_ENV
+        echo 'SCCACHE_CACHE_SIZE=10G' >> $GITHUB_ENV
+        echo 'SCCACHE_ERROR_LOG=/tmp/sccache.log' >> $GITHUB_ENV

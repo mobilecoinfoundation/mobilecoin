@@ -15,6 +15,7 @@ subtle = { version = "2", default-features = false }
 zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
+mc-account-keys-types = { path = "types" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-hashes = { path = "../crypto/hashes" }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false }

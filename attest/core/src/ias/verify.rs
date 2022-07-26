@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Attestation Verification Report handling
-
-use alloc::vec;
+//! Verification for IAS.
 
 use super::json::JsonValue;
 use crate::{
@@ -16,27 +14,15 @@ use crate::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
     },
-    B64_CONFIG,
+    VerificationReport, B64_CONFIG,
 };
 use alloc::{
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
-use core::{
-    convert::{TryFrom, TryInto},
-    f64::EPSILON,
-    fmt::Debug,
-    intrinsics::fabsf64,
-    result::Result,
-    str,
-};
-use mc_crypto_digestible::Digestible;
+use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, result::Result, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
-use prost::{
-    bytes::{Buf, BufMut},
-    encoding::{self, DecodeContext, WireType},
-    DecodeError, Message,
-};
 use serde::{Deserialize, Serialize};
 
 // The lengths of the two EPID Pseudonym chunks
@@ -447,114 +433,8 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
     }
 }
 
-/// A type containing the bytes of the VerificationReport signature
-#[derive(
-    Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
-)]
-#[repr(transparent)]
-pub struct VerificationSignature(#[digestible(never_omit)] Vec<u8>);
-
-impl AsRef<[u8]> for VerificationSignature {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl From<VerificationSignature> for Vec<u8> {
-    fn from(src: VerificationSignature) -> Vec<u8> {
-        src.0
-    }
-}
-
-impl From<Vec<u8>> for VerificationSignature {
-    fn from(src: Vec<u8>) -> Self {
-        Self(src)
-    }
-}
-
-impl From<&[u8]> for VerificationSignature {
-    fn from(src: &[u8]) -> Self {
-        src.to_vec().into()
-    }
-}
-
-impl FromHex for VerificationSignature {
-    type Error = EncodingError;
-
-    fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        // 2 hex chars per byte
-        Ok(hex::decode(s)?.into())
-    }
-}
-
-const TAG_SIGNATURE_CONTENTS: u32 = 1;
-
-impl Message for VerificationSignature {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        encoding::bytes::encode(TAG_SIGNATURE_CONTENTS, &self.0, buf);
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        if tag == TAG_SIGNATURE_CONTENTS {
-            encoding::bytes::merge(wire_type, &mut self.0, buf, ctx)
-        } else {
-            encoding::skip_field(wire_type, tag, buf, ctx)
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        encoding::bytes::encoded_len(TAG_SIGNATURE_CONTENTS, &self.0)
-    }
-
-    fn clear(&mut self) {
-        self.0.clear()
-    }
-}
-
-/// Container for holding the quote verification sent back from IAS.
-///
-/// The fields correspond to the data sent from IAS in the
-/// [Attestation Verification Report](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
-///
-/// This structure is supposed to be filled in from the results of an IAS
-/// web request and then validated directly or serialized into an enclave for
-/// validation.
-#[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
-)]
-pub struct VerificationReport {
-    /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
-    #[prost(message, required)]
-    pub sig: VerificationSignature,
-    /// Attestation Report Signing Certificate Chain, as an array of
-    /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
-    /// header.
-    #[prost(bytes, repeated)]
-    pub chain: Vec<Vec<u8>>,
-    /// The raw report body JSON, as a byte sequence
-    #[prost(string, required)]
-    #[digestible(never_omit)]
-    pub http_body: String,
-}
-
 #[cfg(test)]
 mod test {
-    extern crate std;
-
     use super::*;
 
     const IAS_WITH_PIB: &str = include_str!("../../data/test/ias_with_pib.json");
@@ -562,8 +442,8 @@ mod test {
     #[test]
     fn test_verification_report_with_pib() {
         let report = VerificationReport {
-            sig: VerificationSignature::default(),
-            chain: Vec::default(),
+            sig: Default::default(),
+            chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB.trim()),
         };
 
@@ -575,13 +455,10 @@ mod test {
     }
 
     #[test]
-    #[should_panic(
-        expected = "failed parsing timestamp: TimestampParse(\"invalid\", \"input contains invalid characters\")"
-    )]
     fn test_parse_timestamp_with_invalid_timestamp() {
         let report = VerificationReport {
-            sig: VerificationSignature::default(),
-            chain: Vec::default(),
+            sig: Default::default(),
+            chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB),
         };
 
@@ -590,7 +467,12 @@ mod test {
 
         data.timestamp = "invalid".to_string();
 
-        // This is expected to fail.
-        let _timestamp = data.parse_timestamp().expect("failed parsing timestamp");
+        assert_eq!(
+            data.parse_timestamp(),
+            Err(VerifyError::TimestampParse(
+                "invalid".into(),
+                "input contains invalid characters".into()
+            ))
+        );
     }
 }

@@ -1,0 +1,28 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// QuorumSet data types.
+// Implemented here because the Rust definition is generic, so these types are for the current impl.
+
+syntax = "proto3";
+
+package quorum_set;
+option go_package = "mobilecoin/api";
+
+import "external.proto";
+
+message Node {
+    string responder_id = 1;
+    external.Ed25519Public public_key = 2;
+}
+
+message QuorumSetMember {
+    oneof member {
+        Node node = 1;
+        QuorumSet inner_set = 2;
+    }
+}
+
+message QuorumSet {
+    uint32 threshold = 1;
+    repeated QuorumSetMember members = 2;
+}

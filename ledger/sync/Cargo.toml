@@ -12,6 +12,8 @@ path = "src/test_app/main.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-verifier = { path = "../../attest/verifier" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
@@ -24,7 +26,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 mockall = "0.11.1"
 protobuf = "2.27.1"
 rand = "0.8"
@@ -40,4 +42,6 @@ mc-connection-test-utils = { path = "../../connection/test-utils" }
 mc-consensus-scp = { path = "../../consensus/scp", features = ["test_utils"] }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers-test-utils = { path = "../../peers/test-utils" }
+mc-util-test-helper = { path = "../../util/test-helper" }
+
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

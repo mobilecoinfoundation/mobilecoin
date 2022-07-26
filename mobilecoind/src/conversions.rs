@@ -10,15 +10,14 @@ use crate::{
 use mc_account_keys::PublicAddress;
 use mc_api::ConversionError;
 use mc_common::HashMap;
-use mc_mobilecoind_api::{self};
+use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
-impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
+impl From<&UnspentTxOut> for api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
         let mut dst = Self::new();
 
@@ -34,10 +33,10 @@ impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
+impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::UnspentTxOut) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::UnspentTxOut) -> Result<Self, Self::Error> {
         let tx_out = TxOut::try_from(src.get_tx_out())?;
         let subaddress_index = src.subaddress_index;
         let key_image = KeyImage::try_from(src.get_key_image())?;
@@ -58,7 +57,7 @@ impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
     }
 }
 
-impl From<&Outlay> for mc_mobilecoind_api::Outlay {
+impl From<&Outlay> for api::Outlay {
     fn from(src: &Outlay) -> Self {
         let mut dst = Self::new();
 
@@ -69,10 +68,10 @@ impl From<&Outlay> for mc_mobilecoind_api::Outlay {
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
+impl TryFrom<&api::Outlay> for Outlay {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::Outlay) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
         let receiver = PublicAddress::try_from(src.get_receiver())?;
 
@@ -80,9 +79,9 @@ impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
     }
 }
 
-impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
-    fn from(src: &TxProposal) -> mc_mobilecoind_api::TxProposal {
-        let mut dst = mc_mobilecoind_api::TxProposal::new();
+impl From<&TxProposal> for api::TxProposal {
+    fn from(src: &TxProposal) -> api::TxProposal {
+        let mut dst = api::TxProposal::new();
 
         dst.set_input_list(RepeatedField::from_vec(
             src.utxos.iter().map(|utxo| utxo.into()).collect(),
@@ -109,10 +108,10 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
+impl TryFrom<&api::TxProposal> for TxProposal {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::TxProposal) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::TxProposal) -> Result<Self, Self::Error> {
         if src.fee != src.get_tx().get_prefix().fee {
             return Err(ConversionError::FeeMismatch);
         }
@@ -174,17 +173,18 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPublic;
-    use mc_ledger_db::Ledger;
-    use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, MaskedAmount, Token,
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
     };
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey, BlockVersion,
+    use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, BlockVersion,
+        MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     #[test]
     fn test_unspent_tx_out_conversion() {
@@ -220,7 +220,7 @@ mod test {
             token_id: *Mob::ID,
         };
 
-        let proto = mc_mobilecoind_api::UnspentTxOut::from(&rust);
+        let proto = api::UnspentTxOut::from(&rust);
 
         assert_eq!(tx_out, TxOut::try_from(proto.get_tx_out()).unwrap());
         assert_eq!(subaddress_index, proto.subaddress_index);
@@ -246,7 +246,7 @@ mod test {
             receiver: public_addr.clone(),
             value: 1234,
         };
-        let proto = mc_mobilecoind_api::Outlay::from(&rust);
+        let proto = api::Outlay::from(&rust);
 
         assert_eq!(proto.value, rust.value);
         assert_eq!(
@@ -333,7 +333,7 @@ mod test {
             outlay_confirmation_numbers,
         };
 
-        let proto = mc_mobilecoind_api::TxProposal::from(&rust);
+        let proto = api::TxProposal::from(&rust);
 
         assert_eq!(
             rust.utxos,

@@ -1,9 +1,8 @@
 //! Convert to/from external::TxOut
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, EncryptedMemo, MaskedAmount};
-use std::convert::TryFrom;
 
 /// Convert tx::TxOut --> external::TxOut.
 impl From<&tx::TxOut> for external::TxOut {

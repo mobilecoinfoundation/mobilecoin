@@ -2,77 +2,37 @@
 
 //! Convert to/from mc_mint_auditor_api::Counters.
 
-use crate::Counters;
+use crate::db::Counters;
 
 /// Convert Counters --> mc_mint_auditor_api::Counters
 impl From<&Counters> for mc_mint_auditor_api::Counters {
     fn from(src: &Counters) -> Self {
         let mut dst = mc_mint_auditor_api::Counters::new();
-        dst.set_num_blocks_synced(src.num_blocks_synced);
-        dst.set_num_burns_exceeding_balance(src.num_burns_exceeding_balance);
+        dst.set_num_blocks_synced(src.num_blocks_synced());
+        dst.set_num_burns_exceeding_balance(src.num_burns_exceeding_balance());
         dst.set_num_mint_txs_without_matching_mint_config(
-            src.num_mint_txs_without_matching_mint_config,
+            src.num_mint_txs_without_matching_mint_config(),
+        );
+        dst.set_num_mismatching_mints_and_deposits(src.num_mismatching_mints_and_deposits());
+        dst.set_num_mismatching_burns_and_withdrawals(src.num_mismatching_burns_and_withdrawals());
+        dst.set_num_unknown_ethereum_token_deposits(src.num_unknown_ethereum_token_deposits());
+        dst.set_num_unknown_ethereum_token_withdrawals(
+            src.num_unknown_ethereum_token_withdrawals(),
+        );
+        dst.set_num_mints_to_unknown_safe(src.num_mints_to_unknown_safe());
+        dst.set_num_burns_from_unknown_safe(src.num_burns_from_unknown_safe());
+        dst.set_num_unexpected_errors_matching_deposits_to_mints(
+            src.num_unexpected_errors_matching_deposits_to_mints(),
+        );
+        dst.set_num_unexpected_errors_matching_mints_to_deposits(
+            src.num_unexpected_errors_matching_mints_to_deposits(),
+        );
+        dst.set_num_unexpected_errors_matching_withdrawals_to_burns(
+            src.num_unexpected_errors_matching_withdrawals_to_burns(),
+        );
+        dst.set_num_unexpected_errors_matching_burns_to_withdrawals(
+            src.num_unexpected_errors_matching_burns_to_withdrawals(),
         );
         dst
-    }
-}
-
-/// Convert mc_mint_auditor_api::Counters --> Counters
-impl From<&mc_mint_auditor_api::Counters> for Counters {
-    fn from(src: &mc_mint_auditor_api::Counters) -> Self {
-        Self {
-            num_blocks_synced: src.get_num_blocks_synced(),
-            num_burns_exceeding_balance: src.get_num_burns_exceeding_balance(),
-            num_mint_txs_without_matching_mint_config: src
-                .get_num_mint_txs_without_matching_mint_config(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use mc_util_serial::{decode, encode};
-    use protobuf::Message;
-
-    #[test]
-    // Counters --> mc_mint_auditor_api::Counters --> Counters
-    // should be the identity function.
-    fn test_convert_block_audit_data() {
-        let source = Counters {
-            num_blocks_synced: 10,
-            num_burns_exceeding_balance: 20,
-            num_mint_txs_without_matching_mint_config: 30,
-        };
-
-        // decode(encode(source)) should be the identity function.
-        {
-            let bytes = encode(&source);
-            let recovered = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
-
-        // Converting should be the identity function.
-        {
-            let external = mc_mint_auditor_api::Counters::from(&source);
-            let recovered = Counters::from(&external);
-            assert_eq!(source, recovered);
-        }
-
-        // Encoding with prost, decoding with protobuf should be the identity
-        // function.
-        {
-            let bytes = encode(&source);
-            let recovered = mc_mint_auditor_api::Counters::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, mc_mint_auditor_api::Counters::from(&source));
-        }
-
-        // Encoding with protobuf, decoding with prost should be the identity function.
-        {
-            let external = mc_mint_auditor_api::Counters::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
-            let recovered: Counters = decode(&bytes).unwrap();
-            assert_eq!(source, recovered);
-        }
     }
 }

@@ -31,7 +31,7 @@ use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
-use std::{collections::HashSet, iter::FromIterator, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
@@ -248,7 +248,7 @@ pub mod well_formed_tests {
                 // This is expected.
                 assert_eq!(
                     e,
-                    TransactionValidationError::Ledger("CapacityExceeded".to_string())
+                    TransactionValidationError::Ledger(LedgerError::CapacityExceeded.to_string())
                 );
             }
         }
@@ -504,7 +504,6 @@ mod combine_tests {
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::convert::TryFrom;
 
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);
@@ -538,6 +537,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
@@ -624,6 +624,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
+                        block_version,
                         Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
@@ -708,6 +709,7 @@ mod combine_tests {
 
             // Create a TxOut that was sent to Alice.
             let tx_out = TxOut::new(
+                block_version,
                 Amount {
                     value: 123,
                     token_id: Mob::ID,
@@ -820,6 +822,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
@@ -902,6 +905,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -910,6 +914,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -1027,6 +1032,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,

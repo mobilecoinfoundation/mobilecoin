@@ -7,9 +7,17 @@ extern crate alloc;
 
 mod util;
 
+use crate::util::{
+    create_test_tx, create_test_tx_with_amount,
+    create_test_tx_with_amount_and_comparer_and_recipients,
+};
 use alloc::vec::Vec;
+use mc_account_keys::AccountKey;
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
-use mc_ledger_db::Ledger;
+use mc_ledger_db::{
+    test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT},
+    Ledger,
+};
 use mc_transaction_core::{
     constants::{MAX_TOMBSTONE_BLOCKS, RING_SIZE},
     membership_proofs::Range,
@@ -18,9 +26,7 @@ use mc_transaction_core::{
     validation::*,
     BlockVersion, InputRules, Token,
 };
-use mc_transaction_core_test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT};
 use mc_util_test_helper::get_seeded_rng;
-use util::*;
 
 #[test]
 // Should return MissingMemo when memos are missing in an output
@@ -747,21 +753,31 @@ fn test_validate_tombstone_tombstone_block_too_far() {
     }
 }
 
-// FIXME: This test needs to involve a Tx with more than one output to make
 // sense
 #[test]
-#[ignore]
 fn test_global_validate_for_blocks_with_sorted_outputs() {
     let mut rng = get_seeded_rng();
     let fee = Mob::MINIMUM_FEE + 1;
+
+    let recipients = vec![
+        AccountKey::random(&mut rng).default_subaddress(),
+        AccountKey::random(&mut rng).default_subaddress(),
+        AccountKey::random(&mut rng).default_subaddress(),
+        AccountKey::random(&mut rng).default_subaddress(),
+        AccountKey::random(&mut rng).default_subaddress(),
+    ];
+    let recipients_refs = recipients.iter().collect::<Vec<_>>();
+
     for block_version in BlockVersion::iterator() {
         // for block version < 3 it doesn't matter
         // for >= 3 it shall return an error about unsorted outputs
-        let (tx, ledger) = create_test_tx_with_amount_and_comparer::<InverseTxOutputsOrdering>(
-            block_version,
-            INITIALIZE_LEDGER_AMOUNT - fee,
-            fee,
-        );
+        let (tx, ledger) =
+            create_test_tx_with_amount_and_comparer_and_recipients::<InverseTxOutputsOrdering>(
+                block_version,
+                INITIALIZE_LEDGER_AMOUNT - fee,
+                fee,
+                &recipients_refs,
+            );
 
         let highest_indices = tx.get_membership_proof_highest_indices();
         let root_proofs: Vec<TxOutMembershipProof> = ledger

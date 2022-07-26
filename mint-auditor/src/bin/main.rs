@@ -6,12 +6,24 @@ use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_mint_auditor::{counters, Error, MintAuditorDb, MintAuditorService};
+use mc_mint_auditor::{
+    db::{
+        transaction, AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, Conn, MintAuditorDb,
+        SyncBlockData,
+    },
+    gnosis::{GnosisSafeConfig, GnosisSyncThread},
+    http_api::start_http_server,
+    Error, MintAuditorService,
+};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
+use serde_json::json;
 use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
+
+/// Maximum number of concurrent connections in the database pool.
+const DB_POOL_SIZE: u32 = 10;
 
 /// Clap configuration for each subcommand this program supports.
 #[derive(Clone, Subcommand)]
@@ -39,6 +51,11 @@ pub enum Command {
         /// Optional admin service listening URI.
         #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
         admin_listen_uri: Option<AdminUri>,
+
+        /// Gnosis safe configuration file (json/toml).
+        /// When provided, the configured gnosis safe(s) will be audited.
+        #[clap(long, env = "MC_GNOSIS_SAFE_CONFIG", parse(try_from_str = parse_gnosis_safe_config))]
+        gnosis_safe_config: Option<GnosisSafeConfig>,
     },
 
     /// Get the audit data for a specific block, optionally in JSON format
@@ -56,6 +73,19 @@ pub enum Command {
         #[clap(long, env = "MC_JSON")]
         json: bool,
     },
+    StartHttpServer {
+        /// Path to mint auditor db.
+        #[clap(long, parse(from_os_str), env = "MC_MINT_AUDITOR_DB")]
+        mint_auditor_db: PathBuf,
+
+        /// Optional port for HTTP server. Defualts to 8080
+        #[clap(long, default_value = "8080", env = "PORT")]
+        port: u16,
+
+        /// Optional host for HTTP server. defaults to 127.0.0.1
+        #[clap(long, default_value = "127.0.0.1", env = "HOST")]
+        host: String,
+    },
 }
 
 /// Configuration for the mint auditor.
@@ -69,7 +99,8 @@ pub struct Config {
     pub command: Command,
 }
 
-fn main() {
+#[rocket::main]
+async fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let config = Config::parse();
@@ -82,16 +113,16 @@ fn main() {
             poll_interval,
             listen_uri,
             admin_listen_uri,
-        } => {
-            cmd_scan_ledger(
-                ledger_db,
-                mint_auditor_db,
-                poll_interval,
-                listen_uri,
-                admin_listen_uri,
-                logger,
-            );
-        }
+            gnosis_safe_config,
+        } => cmd_scan_ledger(
+            ledger_db,
+            mint_auditor_db,
+            poll_interval,
+            listen_uri,
+            admin_listen_uri,
+            gnosis_safe_config,
+            logger,
+        ),
 
         Command::GetBlockAuditData {
             mint_auditor_db,
@@ -99,6 +130,14 @@ fn main() {
             json,
         } => {
             cmd_get_block_audit_data(mint_auditor_db, block_index, json, logger);
+        }
+
+        Command::StartHttpServer {
+            mint_auditor_db,
+            port,
+            host,
+        } => {
+            cmd_start_http_server(mint_auditor_db, port, host, logger).await;
         }
     }
 }
@@ -110,11 +149,16 @@ fn cmd_scan_ledger(
     poll_interval: Duration,
     listen_uri: Option<MintAuditorUri>,
     admin_listen_uri: Option<AdminUri>,
+    gnosis_safe_config: Option<GnosisSafeConfig>,
     logger: Logger,
 ) {
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
-    let mint_auditor_db = MintAuditorDb::create_or_open(&mint_auditor_db_path, logger.clone())
-        .expect("Could not open mint auditor DB");
+    let mint_auditor_db = MintAuditorDb::new_from_path(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        DB_POOL_SIZE,
+        logger.clone(),
+    )
+    .expect("Could not open mint auditor DB");
 
     let _api_server = listen_uri.map(|listen_uri| {
         // Create RPC services.
@@ -157,8 +201,30 @@ fn cmd_scan_ledger(
         .expect("Failed starting admin grpc server")
     });
 
+    let _gnosis_safe_fetcher_threads = gnosis_safe_config.as_ref().map(|gnosis_safe_config| {
+        gnosis_safe_config
+            .safes
+            .iter()
+            .map(|safe_config| {
+                GnosisSyncThread::start(
+                    safe_config,
+                    mint_auditor_db.clone(),
+                    poll_interval,
+                    logger.clone(),
+                )
+                .expect("Failed starting gnosis safe fetcher thread")
+            })
+            .collect::<Vec<_>>()
+    });
+
     loop {
-        sync_loop(&mint_auditor_db, &ledger_db, &logger).expect("sync_loop failed");
+        sync_loop(
+            &mint_auditor_db,
+            gnosis_safe_config.as_ref(),
+            &ledger_db,
+            &logger,
+        )
+        .expect("sync_loop failed");
         sleep(poll_interval);
     }
 }
@@ -170,45 +236,77 @@ fn cmd_get_block_audit_data(
     json: bool,
     logger: Logger,
 ) {
-    let mint_auditor_db = MintAuditorDb::open(&mint_auditor_db_path, logger.clone())
-        .expect("Could not open mint auditor DB");
+    let mint_auditor_db = MintAuditorDb::new_from_path(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        DB_POOL_SIZE,
+        logger.clone(),
+    )
+    .expect("Could not open mint auditor DB");
 
-    let block_index = block_index
-        .or_else(|| {
-            mint_auditor_db
-                .last_synced_block_index()
-                .expect("Could not get last synced block index")
-        })
-        .expect("No blocks synced");
+    let conn = mint_auditor_db
+        .get_conn()
+        .expect("Could not get db connection");
 
-    let audit_data = mint_auditor_db
-        .get_block_audit_data(block_index)
-        .expect("Could not get audit data for block");
+    transaction(&conn, |conn| -> Result<(), Error> {
+        let last_synced_block_index = BlockAuditData::last_synced_block_index(conn)?;
+        let block_index = block_index
+            .or(last_synced_block_index)
+            .ok_or_else(|| Error::Other("Failed figuring out the last block index".into()))?;
 
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string(&audit_data).expect("failed serializing json")
-        );
-    } else {
-        println!("Block index: {}", block_index);
-        for (token_id, balance) in audit_data.balance_map.iter() {
-            println!("Token {}: {}", token_id, balance);
+        let audit_data = BlockAuditData::get(conn, block_index)?;
+        let balance_map = BlockBalance::get_balances_for_block(conn, block_index)?;
+
+        if json {
+            let obj = json!({
+                "block_audit_data": audit_data,
+                "balances": balance_map,
+            });
+            println!(
+                "{}",
+                serde_json::to_string(&obj)
+                    .map_err(|err| Error::Other(format!("failed serializing json: {}", err)))?
+            );
+        } else {
+            println!("Block index: {}", block_index);
+            for (token_id, balance) in balance_map.iter() {
+                println!("Token {}: {}", token_id, balance);
+            }
         }
-    }
+
+        Ok(())
+    })
+    .expect("db transaction failed");
+}
+
+async fn cmd_start_http_server(
+    mint_auditor_db_path: PathBuf,
+    port: u16,
+    host: String,
+    logger: Logger,
+) {
+    let mint_auditor_db = MintAuditorDb::new_from_path(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        DB_POOL_SIZE,
+        logger.clone(),
+    )
+    .expect("Could not open mint auditor DB");
+
+    start_http_server(mint_auditor_db, port, host).await;
 }
 
 /// Synchronizes the mint auditor database with the ledger database.
 /// Will run until all blocks in the ledger database have been synced.
 fn sync_loop(
     mint_auditor_db: &MintAuditorDb,
+    gnosis_safe_config: Option<&GnosisSafeConfig>,
     ledger_db: &LedgerDB,
     logger: &Logger,
 ) -> Result<(), Error> {
     loop {
+        let conn = mint_auditor_db.get_conn()?;
         let num_blocks_in_ledger = ledger_db.num_blocks()?;
 
-        let last_synced_block_index = mint_auditor_db.last_synced_block_index()?;
+        let last_synced_block_index = BlockAuditData::last_synced_block_index(&conn)?;
         let num_blocks_synced = last_synced_block_index
             .map(|block_index| block_index + 1)
             .unwrap_or(0);
@@ -226,8 +324,24 @@ fn sync_loop(
             Ordering::Less => {
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
-                mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
-                update_counters(mint_auditor_db)?;
+
+                // SQLite3 does not like concurrent writes. Since we are going to be writing to
+                // the database, ensure we are the only writers.
+                conn.exclusive_transaction(|| -> Result<(), Error> {
+                    let sync_block_data = mint_auditor_db.sync_block_with_conn(
+                        &conn,
+                        block_data.block(),
+                        block_data.contents(),
+                    )?;
+
+                    // If we were configured to audit Gnosis safes, attempt to do that with
+                    // information we found in the block.
+                    if let Some(config) = gnosis_safe_config {
+                        audit_block_data(&sync_block_data, config, &conn, logger)?;
+                    }
+
+                    Ok(())
+                })?;
             }
         };
     }
@@ -235,14 +349,67 @@ fn sync_loop(
     Ok(())
 }
 
-// Update prometheus counters.
-fn update_counters(mint_auditor_db: &MintAuditorDb) -> Result<(), Error> {
-    let counters = mint_auditor_db.get_counters()?;
+/// Perform gnosis auditing of any data found in the block.
+fn audit_block_data(
+    sync_block_data: &SyncBlockData,
+    config: &GnosisSafeConfig,
+    conn: &Conn,
+    logger: &Logger,
+) -> Result<(), Error> {
+    // Audit mints.
+    for mint_tx in &sync_block_data.mint_txs {
+        match AuditedMint::try_match_mint_with_deposit(mint_tx, config, conn) {
+            Ok(deposit) => {
+                log::info!(
+                    logger,
+                    "MintTx nonce={} matched Gnosis deposit eth_tx_hash={}",
+                    mint_tx.nonce_hex(),
+                    deposit.eth_tx_hash(),
+                )
+            }
+            Err(Error::NotFound) => {
+                log::debug!(logger, "MintTx with nonce={} does not currently have matching Gnosis deposit, this could be fine if the safe data is not fully synced.", mint_tx.nonce_hex());
+            }
+            Err(err) => {
+                log::error!(
+                    logger,
+                    "MintTx nonce={} failed matching Gnosis deposit: {}",
+                    mint_tx.nonce_hex(),
+                    err
+                );
+            }
+        };
+    }
 
-    counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
-    counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
-    counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
-        .set(counters.num_mint_txs_without_matching_mint_config as i64);
+    // Audit burns.
+    for burn_tx_out in &sync_block_data.burn_tx_outs {
+        match AuditedBurn::try_match_burn_with_withdrawal(burn_tx_out, config, conn) {
+            Ok(withdrawal) => {
+                log::info!(
+                    logger,
+                    "BurnTxOut pub_key={} matched Gnosis withdrawal eth_tx_hash={}",
+                    burn_tx_out.public_key_hex(),
+                    withdrawal.eth_tx_hash(),
+                )
+            }
+            Err(Error::NotFound) => {
+                log::debug!(logger, "BurnTxOut with pub_key={} does not currently have matching Gnosis withdrawal, this could be fine if the safe data is not fully synced.", burn_tx_out.public_key_hex());
+            }
+            Err(err) => {
+                log::error!(
+                    logger,
+                    "BurnTxOut pub_key={} failed matching Gnosis withdrawal: {}",
+                    burn_tx_out.public_key_hex(),
+                    err
+                );
+            }
+        }
+    }
 
     Ok(())
+}
+
+/// Load a gnosis safe config file.
+fn parse_gnosis_safe_config(path: &str) -> Result<GnosisSafeConfig, Error> {
+    Ok(GnosisSafeConfig::load_from_path(path)?)
 }

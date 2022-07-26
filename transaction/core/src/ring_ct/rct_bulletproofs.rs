@@ -18,7 +18,7 @@ use curve25519_dalek::{
 use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_ring_signature::{
-    Commitment, CompressedCommitment, GeneratorCache, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
+    Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
@@ -31,7 +31,7 @@ use crate::{
     constants::FEE_BLINDING,
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_ct::Error,
+    ring_ct::{Error, GeneratorCache},
     Amount, BlockVersion,
 };
 

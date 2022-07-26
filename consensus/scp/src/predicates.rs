@@ -1,16 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Predicates for use in trust decisions for SCP.
-use mc_common::NodeID;
-use std::{
-    collections::{BTreeSet, HashMap, HashSet},
-    sync::Arc,
-};
-
-use crate::{
-    core_types::{Ballot, GenericNodeId, Value},
-    msg::Msg,
-};
+use crate::{ballot::Ballot, GenericNodeId, Msg, Value};
+use mc_common::{HashMap, HashSet, NodeID};
+use std::{collections::BTreeSet, sync::Arc};
 
 /// An interface for predicates, used for performing searches for quorums and
 /// blocking sets. See `findQuorum`, `findBlockingSet`.
@@ -19,8 +12,8 @@ pub trait Predicate<V: Value, ID: GenericNodeId = NodeID>: Clone {
     type Result;
 
     /// Tests whether the predicate is true for a given message.
-    /// Retruns Some(Predicate) if `msg` satisfies the predicate, `None`
-    /// otherwise. This allows the predicate to evolve it's state as it is
+    /// Returns Some(Predicate) if `msg` satisfies the predicate, `None`
+    /// otherwise. This allows the predicate to evolve its state as it is
     /// called on more and more messages.
     fn test(&self, msg: &Msg<V, ID>) -> Option<Self>;
 
@@ -182,8 +175,7 @@ impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, 
 #[cfg(test)]
 mod predicates_tests {
     use super::*;
-    use crate::{core_types::*, msg::*, quorum_set::*, test_utils::test_node_id};
-    use std::iter::FromIterator;
+    use crate::{msg::*, test_utils::test_node_id, QuorumSet, QuorumSetExt, Topic};
 
     #[test]
     // BallotSetPredicate can be used to pick a quorum that intersects with a given
@@ -283,7 +275,7 @@ mod predicates_tests {
             &local_node_id,
             &msgs,
             BallotSetPredicate {
-                ballots: HashSet::from_iter(vec![ballot_1.clone(), ballot_3]),
+                ballots: HashSet::from_iter([ballot_1.clone(), ballot_3]),
                 test_fn: Arc::new(|msg, ballots| {
                     ballots
                         .intersection(&msg.votes_or_accepts_prepared())
@@ -294,9 +286,9 @@ mod predicates_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![test_node_id(1), test_node_id(2), test_node_id(3)])
+            HashSet::from_iter([test_node_id(1), test_node_id(2), test_node_id(3)])
         );
-        assert_eq!(pred.result(), HashSet::from_iter(vec![ballot_1]));
+        assert_eq!(pred.result(), HashSet::from_iter([ballot_1]));
     }
 
     #[test]
@@ -369,7 +361,7 @@ mod predicates_tests {
         let (node_ids, pred) = local_node_quorum_set.findBlockingSet(
             &msgs,
             BallotSetPredicate {
-                ballots: HashSet::from_iter(vec![ballot_1.clone(), ballot_3]),
+                ballots: HashSet::from_iter([ballot_1.clone(), ballot_3]),
                 test_fn: Arc::new(|msg, ballots| {
                     ballots
                         .intersection(&msg.votes_or_accepts_prepared())
@@ -380,9 +372,9 @@ mod predicates_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![test_node_id(2), test_node_id(3)])
+            HashSet::from_iter([test_node_id(2), test_node_id(3)])
         );
-        assert_eq!(pred.result(), HashSet::from_iter(vec![ballot_1]));
+        assert_eq!(pred.result(), HashSet::from_iter([ballot_1]));
     }
 
     #[test]
@@ -437,8 +429,8 @@ mod predicates_tests {
             ],
         );
 
-        let values_1 = BTreeSet::from_iter(vec!["a".to_string(), "A".to_string()]);
-        let values_2 = BTreeSet::from_iter(vec!["b".to_string(), "B".to_string()]);
+        let values_1 = BTreeSet::from_iter(["a".to_string(), "A".to_string()]);
+        let values_2 = BTreeSet::from_iter(["b".to_string(), "B".to_string()]);
 
         let mut msgs = HashMap::<NodeID, Msg<String>>::default();
 
@@ -475,7 +467,7 @@ mod predicates_tests {
             &local_node_id,
             &msgs,
             ValueSetPredicate {
-                values: BTreeSet::from_iter(vec![
+                values: BTreeSet::from_iter([
                     "a".to_string(),
                     "A".to_string(),
                     "c".to_string(),
@@ -489,7 +481,7 @@ mod predicates_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![test_node_id(1), test_node_id(2), test_node_id(3)])
+            HashSet::from_iter([test_node_id(1), test_node_id(2), test_node_id(3)])
         );
         assert_eq!(pred.result(), values_1);
     }
@@ -520,8 +512,8 @@ mod predicates_tests {
         let node_6_quorum_set =
             QuorumSet::new_with_node_ids(1, vec![test_node_id(5), test_node_id(7)]);
 
-        let values_1 = BTreeSet::from_iter(vec!["a".to_string(), "A".to_string()]);
-        let values_2 = BTreeSet::from_iter(vec!["b".to_string(), "B".to_string()]);
+        let values_1 = BTreeSet::from_iter(["a".to_string(), "A".to_string()]);
+        let values_2 = BTreeSet::from_iter(["b".to_string(), "B".to_string()]);
 
         let mut msgs = HashMap::<NodeID, Msg<String>>::default();
 
@@ -557,7 +549,7 @@ mod predicates_tests {
         let (node_ids, pred) = local_node_quorum_set.findBlockingSet(
             &msgs,
             ValueSetPredicate {
-                values: BTreeSet::from_iter(vec![
+                values: BTreeSet::from_iter([
                     "a".to_string(),
                     "A".to_string(),
                     "c".to_string(),
@@ -571,7 +563,7 @@ mod predicates_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![test_node_id(2), test_node_id(3)])
+            HashSet::from_iter([test_node_id(2), test_node_id(3)])
         );
         assert_eq!(pred.result(), values_1);
     }

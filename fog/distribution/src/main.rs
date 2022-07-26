@@ -19,7 +19,7 @@
 
 #![deny(missing_docs)]
 
-use core::{cell::RefCell, cmp::max, convert::TryFrom};
+use core::{cell::RefCell, cmp::max};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -54,7 +54,6 @@ use rayon::prelude::*;
 use retry::{delay, retry, OperationResult};
 use std::{
     collections::BTreeMap,
-    convert::TryInto,
     iter::empty,
     path::Path,
     str::FromStr,

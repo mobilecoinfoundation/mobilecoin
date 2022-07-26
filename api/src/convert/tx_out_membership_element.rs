@@ -1,11 +1,10 @@
 //! Convert to/from external::TxOutMembershipElement
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{
     membership_proofs::Range,
     tx::{TxOutMembershipElement, TxOutMembershipHash},
 };
-use std::convert::TryFrom;
 
 /// Convert TxOutMembershipElement -> external::TxOutMembershipElement
 impl From<&TxOutMembershipElement> for external::TxOutMembershipElement {

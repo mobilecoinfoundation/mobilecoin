@@ -1,8 +1,7 @@
 //! Convert to/from external::KeyImage.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::ring_signature::KeyImage;
-use std::convert::TryFrom;
 
 /// Convert KeyImage -->  external::KeyImage.
 impl From<&KeyImage> for external::KeyImage {

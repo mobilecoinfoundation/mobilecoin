@@ -15,8 +15,8 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_types::view::TxOutSearchResult;
 
+pub use mc_blockchain_types::Block;
 pub use mc_fog_types::{common::BlockRange, ETxOutRecord};
-pub use mc_transaction_core::Block;
 pub use types::{
     AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngestableRange, IngressPublicKeyRecord,
     IngressPublicKeyStatus, ReportData,

@@ -16,7 +16,7 @@ use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
-use mc_connection::{AttestedConnection, Connection};
+use mc_connection::{AttestationError, AttestedConnection, Connection};
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::McRng;
 use mc_util_grpc::{BasicCredentials, GrpcCookieStore};

@@ -11,11 +11,11 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third-party
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "3.2", features = ["derive", "env"] }
 dirs = "4.0"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.2"
+grpcio = "0.10.3"
 hex = "0.4"
 itertools = "0.10"
 lazy_static = "1.4"
@@ -30,6 +30,7 @@ mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-net = { path = "../../../attest/net" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-connection = { path = "../../../connection" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
@@ -65,7 +66,6 @@ mc-util-build-info = { path = "../../../util/build/info" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 
-maplit = "1"
 rand_core = "0.6"
 rand_hc = "0.3"
 tempdir = "0.3"

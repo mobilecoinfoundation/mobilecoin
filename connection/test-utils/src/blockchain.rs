@@ -2,13 +2,14 @@
 
 //! Connection mock and test utilities
 
+use mc_blockchain_types::{Block, BlockID, BlockIndex, BlockVersion};
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
     Result as ConnectionResult, UserTxConnection,
 };
 use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex, BlockVersion};
+use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
@@ -32,15 +33,19 @@ pub struct MockBlockchainConnection<L: Ledger + Sync> {
 
     /// Proposed transactions.
     pub proposed_txs: Vec<Tx>,
+
+    /// The fee map for this peer.
+    pub fee_map: FeeMap,
 }
 
 impl<L: Ledger + Sync> MockBlockchainConnection<L> {
-    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64) -> Self {
+    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64, fee_map: FeeMap) -> Self {
         Self {
             uri,
             ledger,
             latency_millis,
             proposed_txs: Vec::new(),
+            fee_map,
         }
     }
 }
@@ -117,7 +122,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
-            minimum_fees: FeeMap::default_map(),
+            minimum_fees: self.fee_map.as_ref().clone(),
             network_block_version: *BlockVersion::MAX,
         })
     }
@@ -140,8 +145,9 @@ mod tests {
     // Mock peer should return the correct range of blocks.
     fn fetch_blocks() {
         let mock_ledger = get_mock_ledger(25);
-        assert_eq!(mock_ledger.lock().blocks_by_block_number.len(), 25);
-        let mut mock_peer = MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50);
+        assert_eq!(mock_ledger.num_blocks().unwrap(), 25);
+        let mut mock_peer =
+            MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50, FeeMap::default());
 
         {
             // Get a subset of the peer's blocks.

@@ -7,9 +7,10 @@ use crate::{
     error::{Error, Result},
     BlockInfo, MemoHandlerError, TransactionStatus,
 };
-use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
+use core::{result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
@@ -28,7 +29,7 @@ use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
+    Amount, SignedContingentInput, TokenId,
 };
 use mc_transaction_std::{
     EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,
@@ -1032,15 +1033,11 @@ mod test_build_transaction_helper {
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
-        constants::MILLIMOB_TO_PICOMOB,
-        onetime_keys::recover_public_subaddress_spend_key,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipProof},
-        Amount, Token,
+        constants::MILLIMOB_TO_PICOMOB, onetime_keys::recover_public_subaddress_spend_key,
+        tokens::Mob, tx::TxOut, Amount, Token,
     };
     use mc_transaction_core_test_utils::get_outputs;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, iter::FromIterator};
+    use mc_util_test_helper::get_seeded_rng;
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}
@@ -1057,27 +1054,23 @@ mod test_build_transaction_helper {
     // that do not appear in `inputs`.
     #[test_with_logger]
     fn test_build_transaction_helper_rings_disjoint_from_inputs(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         for block_version in BlockVersion::iterator() {
             let sender_account_key = AccountKey::random(&mut rng);
             let sender_public_address = sender_account_key.default_subaddress();
 
             // Amount per input.
-            let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
-            let amount_to_send = Amount {
-                value: 457 * MILLIMOB_TO_PICOMOB,
-                token_id: Mob::ID,
-            };
+            let initial_amount = Amount::new(300 * MILLIMOB_TO_PICOMOB, Mob::ID);
+            let amount_to_send = Amount::new(457 * MILLIMOB_TO_PICOMOB, Mob::ID);
             let num_inputs = 3;
             let ring_size = 1;
 
             // Create inputs.
             let inputs = {
-                let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-                for _i in 0..num_inputs {
-                    recipient_and_amount.push((sender_public_address.clone(), initial_amount));
-                }
+                let recipient_and_amount = (0..num_inputs)
+                    .map(|_| (sender_public_address.clone(), initial_amount))
+                    .collect::<Vec<_>>();
                 let outputs = get_outputs(block_version, &recipient_and_amount, &mut rng);
 
                 let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
@@ -1118,10 +1111,9 @@ mod test_build_transaction_helper {
             let mut rings: Vec<Vec<TxOut>> = Vec::new();
             for _i in 0..num_inputs {
                 let ring: Vec<TxOut> = {
-                    let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-                    for _i in 0..ring_size {
-                        recipient_and_amount.push((sender_public_address.clone(), 33));
-                    }
+                    let recipient_and_amount = (0..ring_size)
+                        .map(|_| (sender_public_address.clone(), Amount::new(33, Mob::ID)))
+                        .collect::<Vec<_>>();
                     get_outputs(block_version, &recipient_and_amount, &mut rng)
                 };
                 assert_eq!(ring.len(), ring_size);

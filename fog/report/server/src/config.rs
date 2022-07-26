@@ -11,7 +11,7 @@ use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_util_uri::{AdminUri, FogUri};
 use pem::PemError;
 use serde::Serialize;
-use std::{convert::TryFrom, fs, io::Error as IoError, path::PathBuf, result::Result as StdResult};
+use std::{fs, io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use x509_signature::X509Certificate;
 
 /// Configuration options for the report server
