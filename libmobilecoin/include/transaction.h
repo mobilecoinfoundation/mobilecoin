@@ -17,6 +17,12 @@ extern "C" {
 
 typedef struct {
   uint64_t masked_value;
+  const McBuffer* MC_NONNULL masked_token_id;
+} McTxOutMaskedAmount;
+
+typedef struct {
+  uint64_t value;
+  uint64_t token_id;
 } McTxOutAmount;
 
 typedef struct _McTransactionBuilderRing McTransactionBuilderRing;
@@ -34,22 +40,11 @@ typedef struct _McTxOutMemoBuilder McTxOutMemoBuilder;
 /// * `LibMcError::InvalidInput`
 /// * `LibMcError::TransactionCrypto`
 bool mc_tx_out_reconstruct_commitment(
-  const McTxOutAmount* MC_NONNULL tx_out_amount,
+  const McTxOutMaskedAmount* MC_NONNULL tx_out_masked_amount,
   const McBuffer* MC_NONNULL tx_out_public_key,
   const McBuffer* MC_NONNULL view_private_key,
   McMutableBuffer* MC_NONNULL out_commitment,
   McError* MC_NULLABLE * MC_NULLABLE out_error
-)
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
-
-/// # Preconditions
-///
-/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
-bool mc_tx_out_matches_any_subaddress(
-  const McTxOutAmount* MC_NONNULL tx_out_amount,
-  const McBuffer* MC_NONNULL tx_out_public_key,
-  const McBuffer* MC_NONNULL view_private_key,
-  bool* MC_NONNULL out_matches
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
@@ -105,11 +100,11 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 ///
 /// * `LibMcError::InvalidInput`
 /// * `LibMcError::TransactionCrypto`
-bool mc_tx_out_get_value(
-  const McTxOutAmount* MC_NONNULL tx_out_amount,
+bool mc_tx_out_get_amount(
+  const McTxOutMaskedAmount* MC_NONNULL tx_out_masked_amount,
   const McBuffer* MC_NONNULL tx_out_public_key,
   const McBuffer* MC_NONNULL view_private_key,
-  uint64_t* MC_NONNULL out_value,
+  McTxOutAmount* MC_NONNULL out_amount,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
@@ -169,11 +164,13 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3);
 
 McTransactionBuilder* MC_NULLABLE mc_transaction_builder_create(
   uint64_t fee,
+  uint64_t token_id,
   uint64_t tombstone_block,
   const McFogResolver* MC_NULLABLE fog_resolver,
   McTxOutMemoBuilder* MC_NONNULL memo_builder,
   uint32_t block_version
-);
+)
+MC_ATTRIBUTE_NONNULL(5);
 
 void mc_transaction_builder_free(
   McTransactionBuilder* MC_NULLABLE transaction_builder
@@ -241,7 +238,7 @@ McData* MC_NULLABLE mc_transaction_builder_add_change_output(
   McMutableBuffer* MC_NONNULL out_tx_out_shared_secret,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 4, 5, 6);
+MC_ATTRIBUTE_NONNULL(1, 2, 4, 6);
 
 /// # Preconditions
 ///
@@ -264,28 +261,6 @@ McData* MC_NULLABLE mc_transaction_builder_fund_gift_code_output(
         McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 5);
-
-/// # Preconditions
-///
-/// * `transaction_builder` - must not have been previously consumed by a call to `build`.
-/// * `recipient_address` - must be a valid `PublicAddress`.
-/// * `fog_hint_address` - must be a valid `PublicAddress` with `fog_info`.
-/// * `out_tx_out_confirmation_number` - length must be >= 32.
-///
-/// # Errors
-///
-/// * `LibMcError::AttestationVerification`
-/// * `LibMcError::InvalidInput`
-McData* MC_NULLABLE mc_transaction_builder_add_output_with_fog_hint_address(
-  McTransactionBuilder* MC_NONNULL transaction_builder,
-  uint64_t amount,
-  const McPublicAddress* MC_NONNULL recipient_address,
-  const McPublicAddress* MC_NONNULL fog_hint_address,
-  McRngCallback* MC_NULLABLE rng_callback,
-  McMutableBuffer* MC_NONNULL out_tx_out_confirmation_number,
-  McError* MC_NULLABLE * MC_NULLABLE out_error
-)
-MC_ATTRIBUTE_NONNULL(1, 3, 4, 5, 7);
 
 /// # Preconditions
 ///
