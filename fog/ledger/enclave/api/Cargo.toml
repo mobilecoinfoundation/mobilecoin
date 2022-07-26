@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-api"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["MobileCoin"]
 edition = "2018"
 description = """

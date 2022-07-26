@@ -95,6 +95,23 @@ jobs:
       with:
         cache_buster: ${{ secrets.CACHE_BUSTER }}
 
+    - name: Lint rust projects
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      env:
+        IAS_MODE: DEV
+        SGX_MODE: SW
+        RUST_BACKTRACE: full
+        CONSENSUS_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        LEDGER_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+      run: |
+        git config --global --add safe.directory '*'
+        ./tools/lint.sh
+        rm -rf ./target/debug
+
     - name: Build rust hardware projects
       if: |
         steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
@@ -110,7 +127,7 @@ jobs:
         INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
       run: |
         git config --global --add safe.directory '*'
-        cargo build --release \
+        cargo build --release --locked \
           -p mc-admin-http-gateway \
           -p mc-consensus-mint-client \
           -p mc-consensus-service \
@@ -364,7 +381,7 @@ jobs:
 
     - name: Package and publish chart
       if: "! contains(github.event.head_commit.message, '[skip charts]')"
-      uses: mobilecoinofficial/gha-k8s-toolbox@a89efdf4305f3b926b1bb61a59f267532406e653
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-publish
         chart_repo_username: ${{ secrets.HARBOR_USERNAME }}

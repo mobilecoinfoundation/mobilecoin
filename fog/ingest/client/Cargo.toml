@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-client"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
