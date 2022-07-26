@@ -34,6 +34,23 @@ typedef struct _McTxOutMemoBuilder McTxOutMemoBuilder;
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+/// * `LibMcError::TransactionCrypto`
+bool mc_tx_out_get_shared_secret(
+  const McBuffer* MC_NONNULL view_private_key,
+  const McBuffer* MC_NONNULL tx_out_public_key,
+  McMutableBuffer* MC_NONNULL out_shared_secret,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3);
+
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 ///
 /// # Errors
 ///

@@ -65,6 +65,34 @@ impl_into_ffi!(Option<Box<dyn MemoBuilder + Sync + Send>>);
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+#[no_mangle]
+pub extern "C" fn mc_tx_out_get_shared_secret(
+    view_private_key: FfiRefPtr<McBuffer>,
+    tx_out_public_key: FfiRefPtr<McBuffer>,
+    out_shared_secret: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
+
+        let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
+
+        let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
+
+        let out_shared_secret = out_shared_secret
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPrivate::size())
+            .expect("out_shared_secret length is insufficient");
+
+        out_shared_secret.copy_from_slice(&shared_secret.to_bytes());
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 #[no_mangle]
 pub extern "C" fn mc_tx_out_reconstruct_commitment(
     tx_out_masked_amount: FfiRefPtr<McTxOutMaskedAmount>,
