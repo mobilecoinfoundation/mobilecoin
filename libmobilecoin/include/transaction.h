@@ -587,7 +587,7 @@ McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_cancellation_create(
 bool mc_memo_gift_code_funding_memo_create(
         const McBuffer* MC_NONNULL tx_out_public_key,
         uint64_t fee,
-        const char* MC_NONNULL gift_code_funding_note
+        const char* MC_NONNULL gift_code_funding_note,
         McMutableBuffer* MC_NONNULL out_memo_data,
         McError* MC_NULLABLE * MC_NULLABLE out_error
 )
