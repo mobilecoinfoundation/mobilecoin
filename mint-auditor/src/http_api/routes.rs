@@ -4,7 +4,10 @@
 
 use crate::{
     db::Counters,
-    http_api::{api_types::BlockAuditDataResponse, service::MintAuditorHttpService},
+    http_api::{
+        api_types::{AuditedBurnResponse, AuditedMintResponse, BlockAuditDataResponse},
+        service::MintAuditorHttpService,
+    },
 };
 use rocket::{get, serde::json::Json, State};
 
@@ -42,6 +45,34 @@ pub fn get_last_block_audit_data(
 ) -> Result<Json<BlockAuditDataResponse>, String> {
     match service.get_last_block_audit_data() {
         Ok(block_audit_data) => Ok(Json(block_audit_data)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Get a paginated list of audited mints, along with corresponding mint tx and
+/// gnosis safe deposit
+#[get("/audited_mints?<offset>&<limit>")]
+pub fn get_audited_mints(
+    offset: Option<u64>,
+    limit: Option<u64>,
+    service: &State<MintAuditorHttpService>,
+) -> Result<Json<Vec<AuditedMintResponse>>, String> {
+    match service.get_audited_mints(offset, limit) {
+        Ok(audited_mints) => Ok(Json(audited_mints)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Get a paginated list of audited burns, along with corresponding burn tx and
+/// gnosis safe withdrawal
+#[get("/audited_burns?<offset>&<limit>")]
+pub fn get_audited_burns(
+    offset: Option<u64>,
+    limit: Option<u64>,
+    service: &State<MintAuditorHttpService>,
+) -> Result<Json<Vec<AuditedBurnResponse>>, String> {
+    match service.get_audited_burns(offset, limit) {
+        Ok(audited_burns) => Ok(Json(audited_burns)),
         Err(e) => Err(e.to_string()),
     }
 }

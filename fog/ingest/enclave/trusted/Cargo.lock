@@ -668,6 +668,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hkdf",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -679,6 +680,13 @@ dependencies = [
  "rand_core",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "mc-account-keys-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-crypto-keys",
 ]
 
 [[package]]
@@ -996,7 +1004,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hex_fmt",
- "mc-account-keys",
+ "mc-account-keys-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",

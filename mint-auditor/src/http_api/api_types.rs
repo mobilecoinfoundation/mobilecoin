@@ -2,7 +2,10 @@
 
 //! Request and response types
 
-use crate::db::BlockAuditData;
+use crate::db::{
+    AuditedBurn, AuditedMint, BlockAuditData, BurnTxOut, GnosisSafeDeposit, GnosisSafeWithdrawal,
+    MintTx,
+};
 use mc_common::HashMap;
 use mc_transaction_core::TokenId;
 use rocket::serde::Serialize;
@@ -26,4 +29,22 @@ impl BlockAuditDataResponse {
                 .collect(),
         }
     }
+}
+
+/// Audited mint with corresponding mint tx and gnosis safe deposit
+#[derive(Serialize, Debug, Eq, PartialEq)]
+#[allow(missing_docs)]
+pub struct AuditedMintResponse {
+    pub audited: AuditedMint,
+    pub mint: MintTx,
+    pub deposit: GnosisSafeDeposit,
+}
+
+/// Audited burn with corresponding burn tx and gnosis safe withdrawal
+#[derive(Serialize, Debug, Eq, PartialEq)]
+#[allow(missing_docs)]
+pub struct AuditedBurnResponse {
+    pub audited: AuditedBurn,
+    pub burn: BurnTxOut,
+    pub withdrawal: GnosisSafeWithdrawal,
 }

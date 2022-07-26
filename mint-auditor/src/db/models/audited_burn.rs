@@ -288,6 +288,35 @@ impl AuditedBurn {
 
         Ok(())
     }
+
+    /// Get paginated list of audited burns
+    pub fn list_with_burn_and_withdrawal(
+        offset: Option<u64>,
+        limit: Option<u64>,
+        conn: &Conn,
+    ) -> Result<Vec<(AuditedBurn, BurnTxOut, GnosisSafeWithdrawal)>, Error> {
+        let mut query = audited_burns::table
+            .into_boxed()
+            .inner_join(burn_tx_outs::table)
+            .inner_join(gnosis_safe_withdrawals::table);
+
+        if let Some(o) = offset {
+            query = query.offset(o as i64);
+        }
+
+        if let Some(l) = limit {
+            query = query.limit(l as i64);
+        }
+
+        Ok(query
+            .order_by(audited_burns::id)
+            .select((
+                audited_burns::all_columns,
+                burn_tx_outs::all_columns,
+                gnosis_safe_withdrawals::all_columns,
+            ))
+            .load(conn)?)
+    }
 }
 
 #[cfg(test)]
@@ -774,5 +803,44 @@ mod tests {
                 .num_unknown_ethereum_token_withdrawals(),
             1
         );
+    }
+
+    #[test_with_logger]
+    fn test_list_audited_burns(logger: Logger) {
+        let config = &test_gnosis_config().safes[0];
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let burn_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = burn_auditor_db.get_conn().unwrap();
+        let token_id = config.tokens[0].token_id;
+
+        let mut withdrawals: Vec<GnosisSafeWithdrawal> = vec![];
+        let mut burns: Vec<BurnTxOut> = vec![];
+
+        for _ in 0..10 {
+            let mut burn = create_burn_tx_out(token_id, 100, &mut rng);
+            burns.push(burn.clone());
+            burn.insert(&conn).unwrap();
+            let mut withdrawal = create_gnosis_safe_withdrawal_from_burn_tx_out(&burn, &mut rng);
+            withdrawals.push(withdrawal.clone());
+            insert_gnosis_withdrawal(&mut withdrawal, &conn);
+            AuditedBurn::try_match_withdrawal_with_burn(&withdrawal, config, &conn).unwrap();
+        }
+
+        let all_audited_mints =
+            AuditedBurn::list_with_burn_and_withdrawal(None, None, &conn).unwrap();
+        assert_eq!(all_audited_mints.len(), 10);
+
+        let (_audited_burn, burn_tx, withdrawal) = &all_audited_mints[0];
+        assert_eq!(burn_tx.public_key_hex(), burns[0].public_key_hex());
+        assert_eq!(withdrawal.eth_tx_hash(), withdrawals[0].eth_tx_hash());
+
+        let paginated_burns =
+            AuditedBurn::list_with_burn_and_withdrawal(Some(4), Some(3), &conn).unwrap();
+        assert_eq!(paginated_burns.len(), 3);
+        let (audited_burn, _burn_tx, _withdrawal) = &paginated_burns[0];
+        assert_eq!(audited_burn.id.unwrap(), 5);
+        let (audited_burn, _burn_tx, _withdrawal) = &paginated_burns[2];
+        assert_eq!(audited_burn.id.unwrap(), 7);
     }
 }
