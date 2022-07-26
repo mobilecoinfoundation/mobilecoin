@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [unreleased]
+
+### Fixed
+
+#### CI/CD
+
+- Fix metadata script for new release branch patterns. ([#2298])
 
 ## [1.2.2] - 2022-06-09
 
