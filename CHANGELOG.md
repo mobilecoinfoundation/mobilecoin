@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## [unreleased]
+## [2.0.0] - 2022-07-25
 
 ### Fixed
 
@@ -13,16 +13,19 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Fix metadata script for new release branch patterns. ([#2298])
 
-## [1.2.2] - 2022-06-09
+### Security
+
+- Bump SGX to 2.17, mitigate INTEL-SA-00615
+
+
+## [1.2.2] - 2022-06-17
 
 ### Changed
 
 - Update CI deployments to use zerossl instead of letsencrypt
 
 
-## [1.2.1] - YANKED
-
-[This was never released]
+## [1.2.1] - UNRELEASED
 
 ### Changed
 
@@ -35,9 +38,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
 
 
-## [1.2.0] - YANKED
-
-[This was never released]
+## [1.2.0] - UNRELEASED
 
 ### Added
 

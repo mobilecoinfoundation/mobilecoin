@@ -1,4 +1,4 @@
 [image]
-dockerfile = docker/Dockerfile
+dockerfile-version = v0.0.14
 target = builder-install
-repository = gcr.io/mobilenode-211420/
+repository = mobilecoin
