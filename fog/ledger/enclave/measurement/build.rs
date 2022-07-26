@@ -13,7 +13,7 @@ use std::{env::var, path::PathBuf};
 const SGX_VERSION: &str = "2.17.100.3";
 
 const LEDGER_ENCLAVE_PRODUCT_ID: u16 = 2;
-const LEDGER_ENCLAVE_SECURITY_VERSION: u16 = 2;
+const LEDGER_ENCLAVE_SECURITY_VERSION: u16 = 4;
 const LEDGER_ENCLAVE_NAME: &str = "ledger-enclave";
 const LEDGER_ENCLAVE_DIR: &str = "../trusted";
 
