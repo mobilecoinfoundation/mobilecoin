@@ -52,7 +52,7 @@ mc-fog-view-enclave = { path = "../enclave" }
 mc-fog-view-enclave-api = { path = "../enclave/api" }
 
 [dev-dependencies]
-pem = "1.0"
+pem = "1.1"
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
