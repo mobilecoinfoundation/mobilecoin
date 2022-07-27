@@ -5,7 +5,9 @@
 use crate::{
     db::Counters,
     http_api::{
-        api_types::{AuditedBurnResponse, AuditedMintResponse, BlockAuditDataResponse},
+        api_types::{
+            AuditedBurnResponse, AuditedMintResponse, BlockAuditDataResponse, LedgerBalanceResponse,
+        },
         service::MintAuditorHttpService,
     },
 };
@@ -75,4 +77,26 @@ pub fn get_audited_burns(
         Ok(audited_burns) => Ok(Json(audited_burns)),
         Err(e) => Err(e.to_string()),
     }
+}
+
+// Get sum total of mints and burns
+#[get("/ledger_balance")]
+pub fn get_ledger_balance(
+    service: &State<MintAuditorHttpService>,
+) -> Result<Json<LedgerBalanceResponse>, String> {
+    let mut ledger_balance = LedgerBalanceResponse {
+        mint_balance: 0.to_string(),
+        burn_balance: 0.to_string(),
+    };
+
+    match service.get_mint_total() {
+        Ok(response) => ledger_balance.mint_balance = response.to_string(),
+        Err(e) => return Err(e.to_string()),
+    };
+    match service.get_burn_total() {
+        Ok(response) => ledger_balance.burn_balance = response.to_string(),
+        Err(e) => return Err(e.to_string()),
+    };
+
+    Ok(Json(ledger_balance))
 }

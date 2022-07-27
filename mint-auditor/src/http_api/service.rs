@@ -3,7 +3,10 @@
 //! Mint auditor service for handling HTTP requests
 
 use crate::{
-    db::{AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
+    db::{
+        AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, BurnTxOut, Counters, MintAuditorDb,
+        MintTx,
+    },
     http_api::api_types::{AuditedBurnResponse, AuditedMintResponse, BlockAuditDataResponse},
     Error,
 };
@@ -95,6 +98,36 @@ impl MintAuditorHttpService {
 
         Ok(response)
     }
+
+    /// Get the sum total of all mint amounts
+    pub fn get_mint_total(&self) -> Result<u128, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
+
+        let query_result = MintTx::get_mint_amounts(&conn)?;
+
+        let response = query_result
+            .into_iter()
+            .map(|(_token_id, amount)| amount as u128)
+            .reduce(|a, b| a + b)
+            .unwrap();
+
+        Ok(response)
+    }
+
+    /// Get the sum total of all burn amounts
+    pub fn get_burn_total(&self) -> Result<u128, Error> {
+        let conn = self.mint_auditor_db.get_conn()?;
+
+        let query_result = BurnTxOut::get_burn_amounts(&conn)?;
+
+        let response = query_result
+            .into_iter()
+            .map(|(_token_id, amount)| amount as u128)
+            .reduce(|a, b| a + b)
+            .unwrap();
+
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
@@ -102,10 +135,10 @@ mod tests {
     use super::*;
     use crate::db::{
         test_utils::{
-            append_and_sync, create_burn_tx_out, create_gnosis_safe_deposit,
-            create_gnosis_safe_withdrawal_from_burn_tx_out, insert_gnosis_deposit,
-            insert_gnosis_withdrawal, insert_mint_tx_from_deposit, test_gnosis_config,
-            TestDbContext,
+            append_and_sync, create_and_insert_burn_tx_out, create_burn_tx_out,
+            create_gnosis_safe_deposit, create_gnosis_safe_withdrawal_from_burn_tx_out,
+            insert_gnosis_deposit, insert_gnosis_withdrawal, insert_mint_tx_from_deposit,
+            test_gnosis_config, TestDbContext,
         },
         BurnTxOut, GnosisSafeDeposit, GnosisSafeWithdrawal, MintTx,
     };
@@ -217,6 +250,54 @@ mod tests {
         // The number of blocks synced depends on the database that [get_test_db]
         // generates.
         assert_eq!(response.num_blocks_synced(), 3,);
+    }
+
+    #[test_with_logger]
+    fn test_get_mint_total(logger: Logger) {
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+        let service = MintAuditorHttpService::new(mint_auditor_db);
+
+        let mut deposits: Vec<GnosisSafeDeposit> = vec![];
+        let mut mints: Vec<MintTx> = vec![];
+        let mut amount_deposited: u128 = 0;
+
+        for _ in 0..10 {
+            let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+            deposits.push(deposit.clone());
+            insert_gnosis_deposit(&mut deposit, &conn);
+            let mint = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+            mints.push(mint.clone());
+            amount_deposited += 100;
+        }
+
+        let mint_balance = service.get_mint_total().unwrap();
+
+        assert_eq!(mint_balance, amount_deposited)
+    }
+
+    #[test_with_logger]
+    fn test_get_burn_total(logger: Logger) {
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+        let service = MintAuditorHttpService::new(mint_auditor_db);
+
+        let mut burns: Vec<BurnTxOut> = vec![];
+        let mut amount_burned: u128 = 0;
+
+        for i in 0..10 {
+            let burn = create_and_insert_burn_tx_out(TokenId::from(i), 100, &conn, &mut rng);
+            burns.push(burn.clone());
+            amount_burned += 100;
+        }
+
+        let burn_balance = service.get_burn_total().unwrap();
+
+        assert_eq!(burn_balance, amount_burned)
     }
 
     #[test_with_logger]

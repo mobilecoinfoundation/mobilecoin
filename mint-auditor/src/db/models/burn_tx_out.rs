@@ -175,6 +175,21 @@ impl BurnTxOut {
             .optional()?)
     }
 
+    /// Get a collection of burn token amounts
+    pub fn get_burn_amounts(conn: &Conn) -> Result<Vec<(TokenId, i64)>, Error> {
+        let query = burn_tx_outs::table.select((
+            burn_tx_outs::columns::token_id,
+            burn_tx_outs::columns::amount,
+        ));
+
+        let rows = query.load::<(i64, i64)>(conn)?;
+
+        Ok(rows
+            .iter()
+            .map(|(token_id, balance)| (TokenId::from(*token_id as u64), *balance))
+            .collect())
+    }
+
     /// A helper method to get a copy of this object with the id field set to
     /// None, used in tests.
     #[allow(dead_code)]

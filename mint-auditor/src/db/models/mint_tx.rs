@@ -186,6 +186,19 @@ impl MintTx {
             .optional()?)
     }
 
+    /// Get a collection of mint token amounts
+    pub fn get_mint_amounts(conn: &Conn) -> Result<Vec<(TokenId, i64)>, Error> {
+        let query =
+            mint_txs::table.select((mint_txs::columns::token_id, mint_txs::columns::amount));
+
+        let rows = query.load::<(i64, i64)>(conn)?;
+
+        Ok(rows
+            .iter()
+            .map(|(token_id, balance)| (TokenId::from(*token_id as u64), *balance))
+            .collect())
+    }
+
     /// Get [MintTx]s for a given block index.
     pub fn get_mint_txs_by_block_index(
         block_index: BlockIndex,

@@ -48,3 +48,11 @@ pub struct AuditedBurnResponse {
     pub burn: BurnTxOut,
     pub withdrawal: GnosisSafeWithdrawal,
 }
+
+/// Total minted and burned amounts
+#[derive(Serialize, Debug, Eq, PartialEq)]
+#[allow(missing_docs)]
+pub struct LedgerBalanceResponse {
+    pub mint_balance: String,
+    pub burn_balance: String,
+}
