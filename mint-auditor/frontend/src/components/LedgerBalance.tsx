@@ -19,7 +19,7 @@ export const LedgerBalance: FC = () => {
       {ledgerBalance ? (
         <Typography>
           {ledgerBalance.mintedTotal} - {ledgerBalance.burnedTotal} ={' '}
-          {ledgerBalance.total}
+          {ledgerBalance.mintedTotal - ledgerBalance.burnedTotal}
         </Typography>
       ) : (
         <Typography>loading...</Typography>
