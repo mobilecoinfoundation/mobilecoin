@@ -50,7 +50,7 @@ mc-util-test-with-data = { path = "../util/test-with-data" }
 mc-util-zip-exact = { path = "../util/zip-exact" }
 
 generic-array = "0.14"
-pem = "1.0"
+pem = "1.1"
 prost = { version = "0.10", default-features = false }
 rand = "0.8"
 rand_core = "0.6"

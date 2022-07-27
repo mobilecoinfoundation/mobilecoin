@@ -64,4 +64,4 @@ mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.2"
 hex = "0.4"
-pem = "1.0"
+pem = "1.1"
