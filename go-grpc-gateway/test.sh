@@ -26,7 +26,7 @@ trap my_exit EXIT INT HUP TERM
 set -x
 
 # Spawn rust stub server
-./../target/debug/stub --client-listen-uri insecure-fog://localhost:3000 &
+./../target/debug/stub --network-id "local" --client-listen-uri insecure-fog://localhost:3000 &
 pid=$!
 
 sleep 1
@@ -58,6 +58,26 @@ if [ "$result" != "$expected" ]; then
     echo "$result"
     echo "Expected:"
     echo "$expected"
+    exit 1
+fi
+
+# Test if Network-Id is being properly passed on
+result=$(curl -XPOST -H "Content-Type: application/x-protobuf" -H "Network-Id: local" http://localhost:8080/report.ReportAPI/GetReports -d "")
+expected=$(echo -e "\\032\\004\\001\\001")
+if [ "$result" != "$expected" ]; then
+    set +x
+    echo "Unexpected result for ReportAPI/GetReports with Network-id local"
+    echo "$result"
+    echo "Expected:"
+    echo "$expected"
+    exit 1
+fi
+
+# Test if an error is being propagated when Network-Id is wrong
+result=$(curl -XPOST -H "Content-Type: application/x-protobuf" -H "Network-Id: wrong" http://localhost:8080/report.ReportAPI/GetReports -d "")
+if [ "$?" -eq 0 ]; then
+    echo "Passed, but we expected failure for ReportAPI/GetReports with Network-id wrong"
+    echo "$result"
     exit 1
 fi
 

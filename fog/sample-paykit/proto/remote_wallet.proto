@@ -34,11 +34,15 @@ service RemoteWalletApi {
 message FreshBalanceCheckRequest {
     /// Mnemonic key for the account the new client will be using.
     string mnemonic = 1;
-    /// FOG URI (should have view and ledger servers accessible).
+
+    /// Fog URI (should have view and ledger servers accessible).
     string fog_uri = 2;
 
     /// Account Index for the account the new client will be using.
     uint32 account_index = 3;
+
+    /// Network id
+    string network_id = 4;
 }
 
 message BalanceCheckResponse {

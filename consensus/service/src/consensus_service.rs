@@ -348,6 +348,7 @@ impl<
             ));
 
         let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
+            self.config.network_id.clone(),
             enclave,
             self.client_authenticator.clone(),
             self.logger.clone(),
@@ -469,6 +470,7 @@ impl<
         ));
 
         let attested_service = create_attested_api(AttestedApiService::<PeerSession>::new(
+            self.config.network_id.clone(),
             enclave,
             peer_authenticator,
             self.logger.clone(),

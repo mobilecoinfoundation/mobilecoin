@@ -52,6 +52,10 @@ use std::{
 #[derive(Debug, clap::Parser)]
 #[clap(version)]
 struct Config {
+    /// The network id of the network we expect to interact with
+    #[clap(long, env = "MC_NETWORK_ID")]
+    pub network_id: String,
+
     /// Path to mobilecoin public address. Fog url and spki will be extracted,
     /// and fog signature will be checked, unless no-validate is passed.
     #[clap(long, short, env = "MC_PUBLIC_ADDRESS")]
@@ -92,6 +96,7 @@ struct Config {
 
 /// Get fog response with retries, retrying if NoReports error occurs
 fn get_fog_response_with_retries(
+    network_id: &str,
     fog_uri: FogUri,
     retry_duration: Duration,
     logger: &Logger,
@@ -99,7 +104,7 @@ fn get_fog_response_with_retries(
     // Create the grpc object and report verifier
     let grpc_env = Arc::new(EnvBuilder::new().name_prefix("cli").build());
 
-    let conn = GrpcFogReportConnection::new(grpc_env, logger.clone());
+    let conn = GrpcFogReportConnection::new(network_id.to_owned(), grpc_env, logger.clone());
 
     let deadline = Instant::now() + retry_duration;
     loop {
@@ -232,6 +237,7 @@ fn main() {
 
         // Try to make request
         let responses = get_fog_response_with_retries(
+            &config.network_id,
             fog_uri.clone(),
             Duration::from_secs(config.retry_seconds),
             &logger,
@@ -259,6 +265,7 @@ fn main() {
 
         // Try to make request
         let responses = get_fog_response_with_retries(
+            &config.network_id,
             fog_uri,
             Duration::from_secs(config.retry_seconds),
             &logger,

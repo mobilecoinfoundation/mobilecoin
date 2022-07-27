@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::server::DbPollSharedState;
+use crate::{config::MobileAcctViewConfig, server::DbPollSharedState};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
@@ -10,8 +10,8 @@ use mc_fog_types::view::QueryRequestAAD;
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
-    Authenticator,
+    check_request_network_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_telemetry::{tracer, Tracer};
@@ -19,6 +19,9 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
+    /// Server Config
+    config: MobileAcctViewConfig,
+
     /// Enclave providing access to the Recovery DB
     enclave: E,
 
@@ -39,6 +42,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
     /// Creates a new fog-view-service node (but does not create sockets and
     /// start it etc.)
     pub fn new(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: Arc<DB>,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
@@ -46,6 +50,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         logger: Logger,
     ) -> Self {
         Self {
+            config,
             enclave,
             db,
             db_poll_shared_state,
@@ -139,6 +144,10 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -181,6 +190,10 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }

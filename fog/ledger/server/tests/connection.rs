@@ -162,6 +162,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
             let mut client = FogMerkleProofGrpcClient::new(
+                String::default(),
                 client_uri,
                 GRPC_RETRY_CONFIG,
                 verifier,
@@ -353,6 +354,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
             let mut client = FogKeyImageGrpcClient::new(
+                String::default(),
                 client_uri,
                 GRPC_RETRY_CONFIG,
                 verifier,

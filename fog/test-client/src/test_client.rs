@@ -99,6 +99,7 @@ pub struct TestClient {
     policy: TestClientPolicy,
     grpc_retry_config: GrpcRetryConfig,
     account_keys: Vec<AccountKey>,
+    network_id: String,
     consensus_uris: Vec<ConsensusClientUri>,
     fog_ledger: FogLedgerUri,
     fog_view: FogViewUri,
@@ -126,6 +127,7 @@ impl TestClient {
     pub fn new(
         policy: TestClientPolicy,
         account_keys: Vec<AccountKey>,
+        network_id: String,
         consensus_uris: Vec<ConsensusClientUri>,
         fog_ledger: FogLedgerUri,
         fog_view: FogViewUri,
@@ -144,6 +146,7 @@ impl TestClient {
             policy,
             grpc_retry_config,
             account_keys,
+            network_id,
             consensus_uris,
             fog_ledger,
             fog_view,
@@ -211,6 +214,7 @@ impl TestClient {
             );
             let uri = &self.consensus_uris[i % self.consensus_uris.len()];
             let client = ClientBuilder::new(
+                self.network_id.clone(),
                 uri.clone(),
                 self.fog_view.clone(),
                 self.fog_ledger.clone(),

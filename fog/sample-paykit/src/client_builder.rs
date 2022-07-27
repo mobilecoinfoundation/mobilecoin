@@ -24,6 +24,7 @@ use std::sync::Arc;
 /// Builder object which helps to initialize the sample paykit
 pub struct ClientBuilder {
     // Required
+    network_id: String,
     uri: ConsensusClientUri,
     key: AccountKey,
     logger: Logger,
@@ -51,6 +52,7 @@ pub struct ClientBuilder {
 impl ClientBuilder {
     /// Create a new client builder object
     pub fn new(
+        network_id: String,
         uri: ConsensusClientUri,
         fog_view_address: FogViewUri,
         ledger_server_address: FogLedgerUri,
@@ -58,6 +60,7 @@ impl ClientBuilder {
         logger: Logger,
     ) -> Self {
         Self {
+            network_id,
             uri,
             key,
             logger,
@@ -149,6 +152,7 @@ impl ClientBuilder {
         );
 
         let consensus_service_conn = ThickClient::new(
+            self.network_id.clone(),
             self.uri.clone(),
             verifier,
             grpc_env.clone(),
@@ -165,7 +169,8 @@ impl ClientBuilder {
             fog_ingest_verifier
         );
 
-        let fog_report_conn = GrpcFogReportConnection::new(grpc_env, self.logger.clone());
+        let fog_report_conn =
+            GrpcFogReportConnection::new(self.network_id.clone(), grpc_env, self.logger.clone());
 
         Client::new(
             consensus_service_conn,
@@ -191,6 +196,7 @@ impl ClientBuilder {
         log::debug!(self.logger, "Fog view attestation verifier: {:?}", verifier);
 
         FogViewGrpcClient::new(
+            self.network_id.clone(),
             self.fog_view_address.clone(),
             self.grpc_retry_config,
             verifier,
@@ -219,6 +225,7 @@ impl ClientBuilder {
 
         (
             FogMerkleProofGrpcClient::new(
+                self.network_id.clone(),
                 self.ledger_server_address.clone(),
                 self.grpc_retry_config,
                 verifier.clone(),
@@ -226,6 +233,7 @@ impl ClientBuilder {
                 self.logger.clone(),
             ),
             FogKeyImageGrpcClient::new(
+                self.network_id.clone(),
                 self.ledger_server_address.clone(),
                 self.grpc_retry_config,
                 verifier,

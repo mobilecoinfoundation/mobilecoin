@@ -8,6 +8,10 @@ use serde::Serialize;
 #[derive(Clone, Debug, Parser, Serialize)]
 #[clap(name = "stub-server", about = "Stub which implements fog grpc apis.")]
 pub struct Config {
+    /// The network id of the network we are a part of
+    #[clap(long, env = "MC_NETWORK_ID")]
+    pub network_id: String,
+
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogUri,

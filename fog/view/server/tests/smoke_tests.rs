@@ -60,6 +60,7 @@ fn get_test_environment(
 
     let server = {
         let config = ViewConfig {
+            network_id: "local".to_string(),
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
             client_listen_uri: uri.clone(),
             client_auth_token_secret: None,
@@ -102,7 +103,14 @@ fn get_test_environment(
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env, logger)
+        FogViewGrpcClient::new(
+            "local".to_string(),
+            uri,
+            GRPC_RETRY_CONFIG,
+            verifier,
+            grpcio_env,
+            logger,
+        )
     };
 
     (db_test_context, server, client)

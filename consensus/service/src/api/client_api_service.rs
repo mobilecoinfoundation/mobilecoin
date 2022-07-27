@@ -24,7 +24,7 @@ use mc_consensus_service_config::Config;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
-use mc_util_grpc::{rpc_logger, send_result, Authenticator};
+use mc_util_grpc::{check_request_network_id, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
@@ -209,6 +209,10 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
+
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
         }
@@ -253,6 +257,10 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
+
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
         }
@@ -286,6 +294,10 @@ impl ConsensusClientApi for ClientApiService {
         sink: UnarySink<ProposeMintTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
 
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
@@ -390,6 +402,7 @@ mod client_api_tests {
     fn get_config() -> Config {
         Config::try_parse_from(&[
             "foo",
+            "--network-id=local",
             "--peer-responder-id=localhost:8081",
             "--client-responder-id=localhost:3223",
             "--msg-signer-key=MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",

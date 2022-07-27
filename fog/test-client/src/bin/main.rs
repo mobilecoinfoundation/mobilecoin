@@ -75,6 +75,7 @@ fn main() {
     let test_client = TestClient::new(
         policy,
         account_keys,
+        config.network_id,
         config.consensus_config.consensus_validators,
         config.fog_ledger,
         config.fog_view,

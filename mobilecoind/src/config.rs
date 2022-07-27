@@ -202,7 +202,8 @@ impl Config {
                 .build(),
         );
 
-        let conn = GrpcFogReportConnection::new(env, logger);
+        // TODO: Supply a network-id to mobilecoind?
+        let conn = GrpcFogReportConnection::new(String::default(), env, logger);
 
         let verifier = self.get_fog_ingest_verifier();
 
@@ -326,6 +327,8 @@ impl PeersConfig {
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
+                    // TODO: Supply a network-id to mobilecoind?
+                    String::default(),
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),

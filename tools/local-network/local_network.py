@@ -46,6 +46,10 @@ CLI_PORT = 31337
 if 'MC_LOG' not in os.environ:
     os.environ['MC_LOG'] = 'debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error'
 
+# Set a network id if none is provided
+if 'MC_NETWORK_ID' not in os.environ:
+    os.environ['MC_NETWORK_ID'] = 'local'
+
 # Cloud logging-sepcific configuration
 LOG_BRANCH = os.getenv('LOG_BRANCH', None)
 LOGSTASH_HOST = os.getenv('LOGSTASH_HOST', None)
