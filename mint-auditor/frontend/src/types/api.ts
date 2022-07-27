@@ -51,6 +51,11 @@ export type TAuditedBurnResponse = {
   } //pub struct GnosisSafeWithdrawal
 }
 
+export type TLedgerBalanceResponse = {
+  mint_balance: string
+  burn_balance: string
+}
+
 // from `GET /v1/safes/{address}/balances/usd` at https://safe-transaction.gnosis.io/
 export type TGnosisSafeUsdBalanceResponse = {
   tokenAddress: string

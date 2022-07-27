@@ -3,6 +3,7 @@ export type {
   TAuditedBurnResponse,
   TGnosisSafeUsdBalanceResponse,
   TErc20Info,
+  TLedgerBalanceResponse,
 } from './api'
 
 export type { TAuditedMint, TMint, TDeposit } from './mint'

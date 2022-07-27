@@ -7,6 +7,7 @@ import {
   TAuditedMint,
   TGnosisSafeUsdBalanceResponse,
   TLedgerBalance,
+  TLedgerBalanceResponse,
 } from '../types'
 
 const mintAuditorUrl = 'http://localhost:7334'
@@ -69,7 +70,9 @@ export const getGnosisSafeBalance = async (
   return response.balance
 }
 
-// todo: needs to be hooked up to a balance endpoint on the mint auditor
 export const getLedgerBalance = async (): Promise<TLedgerBalance> => {
-  return await get<TLedgerBalance>(mintAuditorUrl + '/ledger_balance')
+  const response = await get<TLedgerBalanceResponse>(
+    mintAuditorUrl + '/ledger_balance'
+  )
+  return camelCaseKeys(response) as TLedgerBalance
 }
