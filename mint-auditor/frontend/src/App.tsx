@@ -3,6 +3,7 @@ import { Box, CssBaseline, ThemeProvider } from '@mui/material'
 import { createTheme } from '@mui/material/styles'
 import { Header } from './layout/Header'
 import { AuditList } from './layout/AuditList'
+import { Balances } from './layout/Balances'
 
 export const App = () => {
   const theme = createTheme({
@@ -37,6 +38,7 @@ export const App = () => {
         }}
       >
         <Header />
+        <Balances />
         <AuditList />
       </Box>
     </ThemeProvider>

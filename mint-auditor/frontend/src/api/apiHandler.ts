@@ -5,15 +5,31 @@ import {
   TAuditedMintResponse,
   TAuditedBurn,
   TAuditedMint,
+  TGnosisSafeUsdBalanceResponse,
+  TLedgerBalance,
 } from '../types'
 
-const url = 'http://localhost:7334'
+const mintAuditorUrl = 'http://localhost:7334'
+const gnosisSafeUrl = 'https://safe-transaction.gnosis.io'
 
 const paginate = (pageNumber: number): Record<string, number> => {
   const offset = pageNumber * 50
   const limit = 50
 
   return { offset, limit }
+}
+
+const get = async <T>(
+  url: string,
+  params?: Record<string, any>
+): Promise<T> => {
+  const response = await axios.get(url, { params })
+  if (response.status >= 400) {
+    console.error(
+      `api failure: GET to ${url} responded with ${response.status}`
+    )
+  }
+  return response.data as T
 }
 
 const camelCaseKeys = (
@@ -28,39 +44,32 @@ const camelCaseKeys = (
 
 export const getAuditedMints = async (page: number): Promise<TAuditedMint> => {
   const { offset, limit } = paginate(page)
-  try {
-    const response = await axios.get(url + '/audited_mints', {
-      params: { offset, limit },
-    })
-    console.log(response)
-    if ('data' in response) {
-      return camelCaseKeys(
-        response['data'] as TAuditedMintResponse
-      ) as TAuditedMint
-    } else {
-      throw Error('unexpected json format')
-    }
-  } catch (err) {
-    console.log(err)
-    throw err
-  }
+  const response = await get<TAuditedMintResponse>(
+    mintAuditorUrl + '/audited_mints',
+    { params: { offset, limit } }
+  )
+  return camelCaseKeys(response) as TAuditedMint
 }
+
 export const getAuditedBurns = async (page: number): Promise<TAuditedBurn> => {
   const { offset, limit } = paginate(page)
-  try {
-    const response = await axios.get(url + '/audited_burns', {
-      params: { offset, limit },
-    })
-    console.log(response)
-    if ('data' in response) {
-      return camelCaseKeys(
-        response['data'] as TAuditedBurnResponse
-      ) as TAuditedBurn
-    } else {
-      throw Error('unexpected json format')
-    }
-  } catch (err) {
-    console.log(err)
-    throw err
-  }
+  const response = await get<TAuditedBurnResponse>(
+    mintAuditorUrl + '/audited_burns',
+    { params: { offset, limit } }
+  )
+  return camelCaseKeys(response) as TAuditedBurn
+}
+
+export const getGnosisSafeBalance = async (
+  address: string
+): Promise<string> => {
+  const response = await get<TGnosisSafeUsdBalanceResponse>(
+    gnosisSafeUrl + `/v1/safes/${address}/balances/usd`
+  )
+  return response.balance
+}
+
+// todo: needs to be hooked up to a balance endpoint on the mint auditor
+export const getLedgerBalance = async (): Promise<TLedgerBalance> => {
+  return await get<TLedgerBalance>(mintAuditorUrl + '/ledger_balance')
 }

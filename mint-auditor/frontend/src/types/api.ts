@@ -50,3 +50,22 @@ export type TAuditedBurnResponse = {
     mc_tx_out_public_key_hex: string
   } //pub struct GnosisSafeWithdrawal
 }
+
+// from `GET /v1/safes/{address}/balances/usd` at https://safe-transaction.gnosis.io/
+export type TGnosisSafeUsdBalanceResponse = {
+  tokenAddress: string
+  token: TErc20Info
+  balance: string
+  ethValue: string
+  timestamp: string
+  fiatBalance: string
+  fiatConversion: string
+  fiatCode: string
+}
+
+export type TErc20Info = {
+  name: string
+  symbol: string
+  decimals: number
+  logoUri: string
+}
