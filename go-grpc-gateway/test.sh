@@ -28,7 +28,7 @@ trap my_exit EXIT INT HUP TERM
 set -x
 
 # Spawn rust stub server
-"$CARGO_TARGET_DIR/debug/stub" --network-id "local" --client-listen-uri insecure-fog://localhost:3000 &
+"$CARGO_TARGET_DIR/debug/stub" --chain-id "local" --client-listen-uri insecure-fog://localhost:3000 &
 pid=$!
 
 sleep 1
