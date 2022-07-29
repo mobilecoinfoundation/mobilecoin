@@ -22,7 +22,7 @@ std = ["rand_core/std", "rand/std", "rand/std_rng"]
 
 [dependencies]
 cfg-if = "1.0"
-getrandom = "0.2"
+getrandom = { version = "0.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"

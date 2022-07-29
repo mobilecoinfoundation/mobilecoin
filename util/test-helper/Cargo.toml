@@ -8,9 +8,12 @@ edition = "2021"
 name = "generate-account-keys"
 path = "src/bin/generate_account_keys.rs"
 
+[features]
+default = [ "mc-account-keys/default", "mc-common/default" ]
+
 [dependencies]
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { path = "../../account-keys", default_features = false }
 
 # External dependencies
 clap = { version = "3.2", features = ["derive", "env"] }
@@ -19,6 +22,6 @@ rand = "0.8"
 rand_hc = "0.3"
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
+mc-common = { path = "../../common", default_features = false, features = ["loggers"] }
 
 itertools = "0.10.3"

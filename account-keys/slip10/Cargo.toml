@@ -10,6 +10,7 @@ license = "GPL-3.0"
 [dependencies]
 mc-account-keys = { path = "../", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-platform = { path = "../../crypto/platform" }
 
 displaydoc = { version = "0.2", default-features = false }
 hkdf = "0.12.3"
@@ -18,11 +19,7 @@ slip10_ed25519 = "0.1"
 tiny-bip39 = "1.0"
 zeroize = "1.5"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 
 [dev-dependencies]
 hex = "0.4"

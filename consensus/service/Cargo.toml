@@ -66,6 +66,7 @@ mc-sgx-build = { path = "../../sgx/build" }
 mc-account-keys = { path = "../../account-keys" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
+mc-crypto-platform = { path = "../../crypto/platform" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers-test-utils = { path = "../../peers/test-utils" }
@@ -80,8 +81,4 @@ rand_hc = "0.3"
 serial_test = "0.8"
 tempdir = "0.3"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }

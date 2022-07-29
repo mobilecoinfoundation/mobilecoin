@@ -25,6 +25,7 @@ zeroize = { version = "1", default-features = false }
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
 mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
+mc-crypto-platform = { path = "../../crypto/platform" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-transaction-types = { path = "../../transaction/types" }
@@ -32,10 +33,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly", "serde"] }
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend", "serde"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "serde"] }
 
 [dev-dependencies]
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }

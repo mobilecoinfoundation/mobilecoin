@@ -31,6 +31,20 @@ pub trait MaybeSerde {}
 #[cfg(not(feature = "serde"))]
 impl <T> MaybeSerde for T {}
 
+/// Marker trait for `Into<Vec<u8>>` when `alloc` feature is enabled
+#[cfg(feature = "alloc")]
+pub trait MaybeAlloc: Into<Vec<u8>> {}
+
+#[cfg(feature = "alloc")]
+impl <T: Into<Vec<u8>>> MaybeAlloc for T {}
+
+/// Marker trait for `Into<Vec<u8>>` when `alloc` feature is disabled
+#[cfg(not(feature = "alloc"))]
+pub trait MaybeAlloc {}
+
+#[cfg(not(feature = "alloc"))]
+impl <T> MaybeAlloc for T {}
+
 
 /// A collection of common errors for use by implementers
 #[derive(
@@ -126,7 +140,6 @@ impl <D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
 
 /// Blanket implementation of fingerprinting for any public key which also
 /// implements the DistinguishedEncoding trait.
-#[cfg(feature = "alloc")]
 impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
     fn fingerprint<D: Digest>(&self) -> Fingerprint<D> {
         // Convert to DER
@@ -220,8 +233,7 @@ where
 pub trait KexReusablePrivate:
     Clone
     + KexPrivate
-    // TODO(@ryankurte): does this need to be a vec, or could we use const N here..?
-    + Into<Vec<u8>>
+    + MaybeAlloc
     + MaybeSerde
     + for<'bytes> TryFrom<&'bytes [u8]>
 where

@@ -6,7 +6,7 @@ use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
     KeyError, PrivateKey, PublicKey, Signature,
 };
-use alloc::vec::Vec;
+
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -24,7 +24,6 @@ use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_prost_message_from_repr_bytes,
     derive_repr_bytes_from_as_ref_and_try_from,
     derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
@@ -43,6 +42,9 @@ use mc_util_repr_bytes::derive_serde_from_repr_bytes;
 
 #[cfg(feature = "alloc")]
 use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 use signature::Error as SignatureError;
 use subtle::{Choice, ConstantTimeEq};
@@ -92,6 +94,7 @@ derive_into_vec_from_repr_bytes!(RistrettoPrivate);
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPrivate);
 
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPrivate);
 
 impl RistrettoPrivate {
@@ -291,6 +294,7 @@ impl ReprBytes for RistrettoPublic {
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPublic);
 
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPublic);
 
 #[cfg(feature = "alloc")]
@@ -400,10 +404,11 @@ impl Display for RistrettoPublic {
     }
 }
 
-impl From<&RistrettoPublic> for Vec<u8> {
-    fn from(src: &RistrettoPublic) -> Vec<u8> {
+#[cfg(feature = "alloc")]
+impl From<&RistrettoPublic> for alloc::vec::Vec<u8> {
+    fn from(src: &RistrettoPublic) -> alloc::vec::Vec<u8> {
         let compressed = src.as_ref().compress();
-        Vec::from(&compressed.as_bytes()[..])
+        alloc::vec::Vec::from(&compressed.as_bytes()[..])
     }
 }
 
@@ -540,7 +545,9 @@ derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
 
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
+
 derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
 derive_debug_and_display_hex_from_as_ref!(CompressedRistrettoPublic);
 
@@ -630,6 +637,7 @@ derive_into_vec_from_repr_bytes!(RistrettoSignature);
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoSignature);
 
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoSignature);
 
 #[cfg(test)]

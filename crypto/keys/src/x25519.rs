@@ -4,7 +4,7 @@
 
 use crate::{
     Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
-    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG, DER_MAX_LEN,
 };
 
 #[cfg(feature = "alloc")]
@@ -17,9 +17,12 @@ use digest::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_core_cmp_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from,
 };
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 
 use rand_core::{CryptoRng, RngCore};
 #[cfg(feature = "serde")]
@@ -99,7 +102,7 @@ const X25519_SPKI_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const X25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
-static_assertions::const_assert!(X25519_SPKI_DER_LEN < super::DER_MAX_LEN);
+static_assertions::const_assert!(X25519_SPKI_DER_LEN <= super::DER_MAX_LEN);
 
 impl PublicKey for X25519Public {}
 
@@ -208,6 +211,8 @@ impl TryFrom<&[u8]> for X25519Public {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(X25519Public, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(X25519Public);
 
 impl Clone for X25519Public {
@@ -247,12 +252,20 @@ impl Debug for X25519Public {
     /// assert_eq!(format!("{:?}", pubkey), PUBKEY);
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let der = self.to_der();
-        let encoded = base64::encode_config(&der, B64_CONFIG);
+        // Encode key to DER
+        let mut der_buff = [0u8; DER_MAX_LEN];
+        let der = self.to_der_slice(&mut der_buff);
+
+        // Encode DER to base64
+        let mut b64_buff = [0u8; DER_MAX_LEN / 4 * 3];
+        let n = base64::encode_config_slice(der, B64_CONFIG, &mut b64_buff);
+        let b64_str = core::str::from_utf8(&b64_buff[..n])
+            .map_err(|_| core::fmt::Error)?;
+
         write!(
             f,
             "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            encoded
+            b64_str
         )
     }
 }
@@ -340,10 +353,11 @@ impl From<&X25519EphemeralPrivate> for X25519Public {
     }
 }
 
-impl From<&X25519Public> for Vec<u8> {
-    fn from(src: &X25519Public) -> Vec<u8> {
+#[cfg(feature = "alloc")]
+impl From<&X25519Public> for alloc::vec::Vec<u8> {
+    fn from(src: &X25519Public) -> alloc::vec::Vec<u8> {
         let bytes = src.0.as_bytes();
-        Vec::from(&bytes[..])
+        alloc::vec::Vec::from(&bytes[..])
     }
 }
 
@@ -414,7 +428,7 @@ const X25519_PKI_DER_PREFIX: [u8; 16] = [
 
 const X25519_PKI_DER_LEN: usize = 0x02 + 0x2E;
 
-static_assertions::const_assert!(X25519_PKI_DER_LEN < super::DER_MAX_LEN);
+static_assertions::const_assert!(X25519_PKI_DER_LEN <= super::DER_MAX_LEN);
 
 impl DistinguishedEncoding for X25519Private {
     fn der_size() -> usize {
@@ -521,6 +535,7 @@ impl<'de> Deserialize<'de> for X25519Private {
 /// let keyout: Vec<u8> = privkey.into();
 /// assert_eq!(&key as &[u8], keyout.as_slice());
 /// ```
+#[cfg(feature = "alloc")]
 impl From<X25519Private> for Vec<u8> {
     fn from(src: X25519Private) -> Vec<u8> {
         src.0.to_bytes().to_vec()

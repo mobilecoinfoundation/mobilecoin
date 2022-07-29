@@ -21,7 +21,6 @@ use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
     derive_repr_bytes_from_as_ref_and_try_from,
 };
 use rand_core::{CryptoRng, RngCore};
@@ -29,6 +28,12 @@ use zeroize::Zeroize;
 
 #[cfg(feature = "alloc")]
 use alloc::{vec::Vec};
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
 use serde::{self as serde, Deserialize, Serialize};
@@ -71,7 +76,7 @@ const ED25519_SIG_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const ED25519_SIG_DER_LEN: usize = 0x02 + 0x4A;
 
-static_assertions::const_assert!(ED25519_SIG_DER_LEN < super::DER_MAX_LEN);
+static_assertions::const_assert!(ED25519_SIG_DER_LEN <= super::DER_MAX_LEN);
 
 impl DistinguishedEncoding for Ed25519Signature {
     fn der_size() -> usize {
@@ -132,10 +137,11 @@ impl TryFrom<&[u8]> for Ed25519Public {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Public {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Public {
     type Error = KeyError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
@@ -143,7 +149,11 @@ impl TryFrom<Vec<u8>> for Ed25519Public {
 derive_core_cmp_from_as_ref!(Ed25519Public, [u8; PUBLIC_KEY_LENGTH]);
 derive_debug_and_display_hex_from_as_ref!(Ed25519Public);
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(Ed25519Public);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(Ed25519Public);
 
 // ASN.1 DER SubjectPublicKeyInfo Bytes -- this is a set of nested TLVs
@@ -164,7 +174,7 @@ const ED25519_SPKI_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const ED25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
-static_assertions::const_assert!(ED25519_SPKI_DER_LEN < super::DER_MAX_LEN);
+static_assertions::const_assert!(ED25519_SPKI_DER_LEN <= super::DER_MAX_LEN);
 
 
 impl DistinguishedEncoding for Ed25519Public {
@@ -262,7 +272,7 @@ const ED25519_PKI_DER_PREFIX: [u8; 16] = [
 
 const ED25519_PKI_DER_LEN: usize = 0x02 + 0x2E;
 
-static_assertions::const_assert!(ED25519_PKI_DER_LEN < super::DER_MAX_LEN);
+static_assertions::const_assert!(ED25519_PKI_DER_LEN <= super::DER_MAX_LEN);
 
 impl DistinguishedEncoding for Ed25519Private {
     fn der_size() -> usize {
@@ -315,10 +325,11 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Private {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Private {
     type Error = SignatureError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
@@ -470,16 +481,20 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Signature {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Signature {
     type Error = SignatureError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(Ed25519Signature);
+
 derive_core_cmp_from_as_ref!(Ed25519Signature);
 derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
