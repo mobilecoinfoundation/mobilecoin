@@ -34,7 +34,7 @@ fn main() {
 
     let mut server = Server::new(
         db,
-        config.network_id.clone(),
+        config.chain_id.clone(),
         &config.client_listen_uri,
         materials,
         logger.clone(),

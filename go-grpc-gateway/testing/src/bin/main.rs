@@ -16,7 +16,7 @@ fn main() {
 
     let mut server = Server::new(
         &config.client_listen_uri,
-        config.network_id.clone(),
+        config.chain_id.clone(),
         logger.clone(),
     );
     server.start();

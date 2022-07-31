@@ -26,9 +26,9 @@ use std::{fmt::Debug, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
     version
 )]
 pub struct Config {
-    /// The network id of the network we are a part of
-    #[clap(long, env = "MC_NETWORK_ID")]
-    pub network_id: String,
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
 
     /// Peer Responder ID
     ///
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn test_local_uris_with_pubkey() {
         let config = Config {
-            network_id: "local".to_string(),
+            chain_id: "local".to_string(),
             peer_responder_id: ResponderId::from_str("localhost:8081").unwrap(),
             client_responder_id: ResponderId::from_str("localhost:3223").unwrap(),
             msg_signer_key: keypair_from_base64(
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_deployed_uris_with_pubkey() {
         let config = Config {
-            network_id: "local".to_string(),
+            chain_id: "local".to_string(),
             peer_responder_id: ResponderId::from_str("peer1.NETWORKNAME.mobilecoin.com:443").unwrap(),
             client_responder_id: ResponderId::from_str("node1.NETWORKNAME.mobilecoin.com:443").unwrap(),
             msg_signer_key: keypair_from_base64(

@@ -5,20 +5,20 @@ use mc_fog_report_api::{
     report_grpc::ReportApi,
 };
 use mc_fog_report_types::ReportResponse;
-use mc_util_grpc::{check_request_network_id, rpc_logger, send_result};
+use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 
 #[derive(Clone)]
 pub struct Service {
     /// Network id stirng
-    network_id: String,
+    chain_id: String,
     /// Slog logger object
     logger: Logger,
 }
 
 impl Service {
-    pub fn new(network_id: String, logger: Logger) -> Self {
-        Self { network_id, logger }
+    pub fn new(chain_id: String, logger: Logger) -> Self {
+        Self { chain_id, logger }
     }
 
     fn build_report_response(&self) -> Result<ReportResponse, RpcStatus> {
@@ -40,7 +40,7 @@ impl ReportApi for Service {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_network_id(&self.network_id, &ctx) {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
             }
 

@@ -27,8 +27,8 @@ func headerMatcher(header string) (string, bool) {
 	if header == "Cookie" {
 		return "cookie", true
 	}
-	if header == "Network-Id" {
-		return "network-id", true
+	if header == "Chain-Id" {
+		return "chain-id", true
 	}
 	return runtime.DefaultHeaderMatcher(header)
 }

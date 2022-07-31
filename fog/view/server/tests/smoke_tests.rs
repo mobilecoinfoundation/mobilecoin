@@ -60,7 +60,7 @@ fn get_test_environment(
 
     let server = {
         let config = ViewConfig {
-            network_id: "local".to_string(),
+            chain_id: "local".to_string(),
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
             client_listen_uri: uri.clone(),
             client_auth_token_secret: None,

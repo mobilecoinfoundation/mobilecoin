@@ -203,7 +203,7 @@ docker_run = ["docker",
               # This is required to run the fog unit tests
               "--env", "TEST_DATABASE_URL=postgres://localhost",
               # This is consumed by servers when running locally in the container
-              "--env", "NETWORK_ID=local",
+              "--env", "MC_CHAIN_ID=local",
               "--volume", mount_from + ":" + mount_point,
               "--workdir", workdir]
 

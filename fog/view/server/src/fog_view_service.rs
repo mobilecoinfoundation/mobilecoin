@@ -10,7 +10,7 @@ use mc_fog_types::view::QueryRequestAAD;
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
-    check_request_network_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
     rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
@@ -144,7 +144,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+            if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
             }
 
@@ -190,7 +190,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_network_id(&self.config.network_id, &ctx) {
+            if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
             }
 

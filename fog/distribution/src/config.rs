@@ -117,7 +117,7 @@ impl Config {
                 );
                 let logger = logger.new(o!("mc.cxn" => uri.addr()));
                 ThickClient::new(
-                    // TODO: Supply a network-id to fog distribution?
+                    // TODO: Supply a chain-id to fog distribution?
                     String::default(),
                     uri.clone(),
                     verifier.clone(),

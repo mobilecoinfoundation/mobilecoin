@@ -23,9 +23,9 @@ use std::{path::PathBuf, time::Duration};
     version
 )]
 pub struct TestClientConfig {
-    /// The network id of the network we expect to interact with
-    #[clap(long, env = "MC_NETWORK_ID")]
-    pub network_id: String,
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
 
     /// A URI to host the prometheus data at.
     ///

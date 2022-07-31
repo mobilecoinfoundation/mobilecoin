@@ -11,7 +11,7 @@ use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_fog_report_api::{report::ReportRequest, report_grpc};
 use mc_fog_report_types::ReportResponse;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, NETWORK_ID_GRPC_HEADER};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::FogUri;
 use std::sync::Arc;
 
@@ -24,8 +24,8 @@ pub use mc_fog_report_validation::FogReportResponses;
 /// establishing new connections each time.
 #[derive(Clone)]
 pub struct GrpcFogReportConnection {
-    /// network id, ignored if empty
-    network_id: String,
+    /// chain id, ignored if empty
+    chain_id: String,
     /// grpc environment
     env: Arc<Environment>,
     /// The logging instance
@@ -34,9 +34,9 @@ pub struct GrpcFogReportConnection {
 
 impl GrpcFogReportConnection {
     /// Create a new GrpcFogReportConnection object
-    pub fn new(network_id: String, env: Arc<Environment>, logger: Logger) -> Self {
+    pub fn new(chain_id: String, env: Arc<Environment>, logger: Logger) -> Self {
         Self {
-            network_id,
+            chain_id,
             env,
             logger,
         }
@@ -86,10 +86,10 @@ impl GrpcFogReportConnection {
 
         // Request reports
         let mut metadata_builder = MetadataBuilder::new();
-        if !self.network_id.is_empty() {
+        if !self.chain_id.is_empty() {
             metadata_builder
-                .add_str(NETWORK_ID_GRPC_HEADER, &self.network_id)
-                .expect("Could not add network-id header");
+                .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
+                .expect("Could not add chain-id header");
         }
 
         let req = ReportRequest::new();

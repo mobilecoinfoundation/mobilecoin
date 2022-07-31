@@ -45,7 +45,7 @@ impl FogViewGrpcClient {
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(
-        network_id: String,
+        chain_id: String,
         uri: FogViewUri,
         grpc_retry_config: GrpcRetryConfig,
         verifier: Verifier,
@@ -60,7 +60,7 @@ impl FogViewGrpcClient {
 
         Self {
             conn: EnclaveConnection::new(
-                network_id,
+                chain_id,
                 uri.clone(),
                 grpc_client,
                 verifier,

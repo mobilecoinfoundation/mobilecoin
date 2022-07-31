@@ -11,14 +11,14 @@ use mc_common::{
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_util_grpc::{
-    check_request_network_id, rpc_logger, rpc_permissions_error, send_result, Authenticator,
+    check_request_chain_id, rpc_logger, rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct AttestedApiService<S: Session> {
-    network_id: String,
+    chain_id: String,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
@@ -27,13 +27,13 @@ pub struct AttestedApiService<S: Session> {
 
 impl<S: Session> AttestedApiService<S> {
     pub fn new(
-        network_id: String,
+        chain_id: String,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
-            network_id,
+            chain_id,
             enclave,
             authenticator,
             logger,
@@ -46,7 +46,7 @@ impl AttestedApi for AttestedApiService<PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_network_id(&self.network_id, &ctx) {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
             }
 
@@ -93,7 +93,7 @@ impl AttestedApi for AttestedApiService<ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_network_id(&self.network_id, &ctx) {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
             }
 

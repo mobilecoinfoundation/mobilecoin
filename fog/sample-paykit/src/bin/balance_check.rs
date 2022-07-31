@@ -28,9 +28,9 @@ use std::{
 
 #[derive(Debug, Parser)]
 struct Config {
-    /// The network id of the network we expect to interact with
-    #[clap(long, env = "MC_NETWORK_ID")]
-    pub network_id: String,
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
 
     /// Path to root identity file to use
     /// Note: This contains the fog-url which is the same as the report-server
@@ -62,7 +62,7 @@ fn main() {
         .expect("Could not create dummy consensus client uri");
 
     let mut sample_paykit = ClientBuilder::new(
-        config.network_id.clone(),
+        config.chain_id.clone(),
         consensus_client_uri,
         config.view_uri.clone(),
         config.ledger_uri,
