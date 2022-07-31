@@ -350,6 +350,7 @@ mod client_api_tests {
     use clap::Parser;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+            CallOption, MetadataBuilder,
     };
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -373,7 +374,7 @@ mod client_api_tests {
     };
     use mc_transaction_core_test_utils::{create_mint_config_tx, create_mint_tx};
     use mc_util_from_random::FromRandom;
-    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
+    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator, CHAIN_ID_GRPC_HEADER, CHAIN_ID_MISMATCH_ERR_MSG};
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use serial_test::serial;
@@ -416,6 +417,20 @@ mod client_api_tests {
             "--ias-api-key=asdf",
         ])
         .unwrap()
+    }
+
+    // Make a "call option" object which includes appropriate grpc headers
+    fn call_option(chain_id: &str) -> CallOption {
+        let mut metadata_builder = MetadataBuilder::new();
+
+        // Add the chain id header if we have a chain id specified
+        if !chain_id.is_empty() {
+            metadata_builder
+                .add_str(CHAIN_ID_GRPC_HEADER, &chain_id)
+                .expect("Could not add chain-id header");
+        }
+
+        CallOption::default().headers(metadata_builder.build())
     }
 
     // A note about `#[serial(counters)]`: some of the tests here rely on
@@ -487,6 +502,27 @@ mod client_api_tests {
             Ok(propose_tx_response) => {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        // Try with chain id header
+        match client.client_tx_propose_opt(&message, call_option("local")) {
+            Ok(propose_tx_response) => {
+                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        // Try with wrong chain id header
+        match client.client_tx_propose_opt(&message, call_option("wrong")) {
+            Err(grpcio::Error::RpcFailure(status)) => {
+                let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
+                assert_eq!(std::str::from_utf8(status.details()).unwrap(), expected);
+            }
+            Ok(_) => {
+                panic!("Got success, but failure was expected");
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
