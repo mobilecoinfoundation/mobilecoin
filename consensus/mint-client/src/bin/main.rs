@@ -28,7 +28,7 @@ fn call_option(chain_id: &str) -> CallOption {
     // Add the chain id header if we have a chain id specified
     if !chain_id.is_empty() {
         metadata_builder
-            .add_str(CHAIN_ID_GRPC_HEADER, &chain_id)
+            .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
             .expect("Could not add chain-id header");
     }
 
@@ -97,7 +97,11 @@ fn main() {
             println!("Hash: {}", hex::encode(hash));
         }
 
-        Commands::SubmitMintConfigTx { node, tx_filenames, chain_id } => {
+        Commands::SubmitMintConfigTx {
+            node,
+            tx_filenames,
+            chain_id,
+        } => {
             // Load all txs.
             let txs =
                 TxFile::load_multiple::<MintConfigTx>(&tx_filenames).expect("failed loading txs");

@@ -233,19 +233,16 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
             if let Err(err) = result {
                 match err {
-                    Error::Grpc(
+                    Error::Connection(
                         _,
                         retry::Error::Operation {
-                            error: grpcio::Error::RpcFailure(status),
+                            error:
+                                mc_fog_enclave_connection::Error::Rpc(grpcio::Error::RpcFailure(status)),
                             ..
                         },
                     ) => {
-                        let expected_details =
-                            format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
-                        assert_eq!(
-                            std::str::from_utf8(status.details()).unwrap(),
-                            expected_details
-                        );
+                        let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
+                        assert_eq!(status.message(), expected_details);
                     }
                     _ => {
                         panic!("unexpected grpcio error: {}", err);

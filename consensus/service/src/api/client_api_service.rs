@@ -349,8 +349,8 @@ mod client_api_tests {
     };
     use clap::Parser;
     use grpcio::{
-        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
-            CallOption, MetadataBuilder,
+        CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder,
+        RpcStatusCode, Server, ServerBuilder,
     };
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -374,7 +374,9 @@ mod client_api_tests {
     };
     use mc_transaction_core_test_utils::{create_mint_config_tx, create_mint_tx};
     use mc_util_from_random::FromRandom;
-    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator, CHAIN_ID_GRPC_HEADER, CHAIN_ID_MISMATCH_ERR_MSG};
+    use mc_util_grpc::{
+        AnonymousAuthenticator, TokenAuthenticator, CHAIN_ID_GRPC_HEADER, CHAIN_ID_MISMATCH_ERR_MSG,
+    };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use serial_test::serial;
@@ -426,7 +428,7 @@ mod client_api_tests {
         // Add the chain id header if we have a chain id specified
         if !chain_id.is_empty() {
             metadata_builder
-                .add_str(CHAIN_ID_GRPC_HEADER, &chain_id)
+                .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
                 .expect("Could not add chain-id header");
         }
 
@@ -519,7 +521,7 @@ mod client_api_tests {
         match client.client_tx_propose_opt(&message, call_option("wrong")) {
             Err(grpcio::Error::RpcFailure(status)) => {
                 let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
-                assert_eq!(std::str::from_utf8(status.details()).unwrap(), expected);
+                assert_eq!(status.message(), expected);
             }
             Ok(_) => {
                 panic!("Got success, but failure was expected");
