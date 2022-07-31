@@ -11,8 +11,8 @@ use mc_fog_ledger_enclave_api::Error as EnclaveError;
 use mc_ledger_db::{Error as DbError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{
-    rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
-    send_result, Authenticator, check_request_chain_id,
+    check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_invalid_arg_error,
+    rpc_logger, rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::Arc;
@@ -311,8 +311,13 @@ mod test {
 
         let enclave = MockEnclave::default();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
-        let mut ledger_server_node =
-            MerkleProofService::new("local".to_string(), mock_ledger.clone(), enclave, authenticator, logger.clone());
+        let mut ledger_server_node = MerkleProofService::new(
+            "local".to_string(),
+            mock_ledger.clone(),
+            enclave,
+            authenticator,
+            logger.clone(),
+        );
 
         let request = OutputContext {
             indexes: (0..50).collect(),
@@ -365,8 +370,13 @@ mod test {
 
         let enclave = MockEnclave::default();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
-        let mut ledger_server_node =
-            MerkleProofService::new("local".to_string(), mock_ledger, enclave, authenticator, logger.clone());
+        let mut ledger_server_node = MerkleProofService::new(
+            "local".to_string(),
+            mock_ledger,
+            enclave,
+            authenticator,
+            logger.clone(),
+        );
 
         let request = OutputContext {
             indexes: (0..50).collect(),

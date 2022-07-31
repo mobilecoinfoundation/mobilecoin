@@ -16,8 +16,8 @@ use mc_common::{
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    KeyImageResultExtension, OutputResultExtension, Error
+    Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    KeyImageResultExtension, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
@@ -226,20 +226,30 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 logger.clone(),
             );
 
-            let result = client
-                .get_outputs(
-                    vec![0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
-                    num_blocks - 1,
-                );
-                
+            let result = client.get_outputs(
+                vec![0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
+                num_blocks - 1,
+            );
+
             if let Err(err) = result {
                 match err {
-                    Error::Grpc(_, retry::Error::Operation { error: grpcio::Error::RpcFailure(status), .. } ) => {
-                        
-                        let expected_details =                 format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
-                        assert_eq!(std::str::from_utf8(status.details()).unwrap(), expected_details);
+                    Error::Grpc(
+                        _,
+                        retry::Error::Operation {
+                            error: grpcio::Error::RpcFailure(status),
+                            ..
+                        },
+                    ) => {
+                        let expected_details =
+                            format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
+                        assert_eq!(
+                            std::str::from_utf8(status.details()).unwrap(),
+                            expected_details
+                        );
                     }
-                    _ => { panic!("unexpected grpcio error: {}", err); }
+                    _ => {
+                        panic!("unexpected grpcio error: {}", err);
+                    }
                 }
             } else {
                 panic!("Expected an error when chain-id is wrong");

@@ -12,8 +12,8 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
-    Authenticator, check_request_chain_id
+    check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_watcher::watcher_db::WatcherDB;

@@ -8,7 +8,9 @@ use mc_fog_api::{
     ledger_grpc::FogBlockApi,
 };
 use mc_ledger_db::{self, Error as DbError, Ledger};
-use mc_util_grpc::{rpc_database_err, rpc_logger, send_result, Authenticator, check_request_chain_id};
+use mc_util_grpc::{
+    check_request_chain_id, rpc_database_err, rpc_logger, send_result, Authenticator,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
