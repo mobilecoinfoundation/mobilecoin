@@ -8,7 +8,7 @@ use mc_fog_api::{
     ledger_grpc::FogBlockApi,
 };
 use mc_ledger_db::{self, Error as DbError, Ledger};
-use mc_util_grpc::{rpc_database_err, rpc_logger, send_result, Authenticator};
+use mc_util_grpc::{rpc_database_err, rpc_logger, send_result, Authenticator, check_request_chain_id};
 use mc_util_metrics::SVC_COUNTERS;
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BlockService<L: Ledger + Clone> {
+    chain_id: String,
     ledger: L,
     watcher: WatcherDB,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
@@ -24,12 +25,14 @@ pub struct BlockService<L: Ledger + Clone> {
 
 impl<L: Ledger + Clone> BlockService<L> {
     pub fn new(
+        chain_id: String,
         ledger: L,
         watcher: WatcherDB,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
+            chain_id,
             ledger,
             watcher,
             authenticator,
@@ -107,6 +110,10 @@ impl<L: Ledger + Clone> FogBlockApi for BlockService<L> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
