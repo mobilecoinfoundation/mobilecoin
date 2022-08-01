@@ -242,7 +242,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                         },
                     ) => {
                         let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
-                        assert_eq!(status.message(), expected_details);
+                        assert_eq!(status.message(), expected);
                     }
                     _ => {
                         panic!("unexpected grpcio error: {}", err);
