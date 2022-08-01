@@ -507,6 +507,68 @@ mod client_api_tests {
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_ok_with_chain_id(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+        tx_manager.expect_validate().times(1).return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
 
         // Try with chain id header
         match client.client_tx_propose_opt(&message, call_option("local")) {
@@ -516,6 +578,45 @@ mod client_api_tests {
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_ok_wrong_chain_id(logger: Logger) {
+        let consensus_enclave = MockConsensusEnclave::new();
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let ledger = MockLedger::new();
+
+        let tx_manager = MockTxManager::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
 
         // Try with wrong chain id header
         match client.client_tx_propose_opt(&message, call_option("wrong")) {
