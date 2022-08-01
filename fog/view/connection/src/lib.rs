@@ -37,8 +37,7 @@ impl FogViewGrpcClient {
     /// Create a new fog view grpc client
     ///
     /// Arguments:
-    /// * chain-id: The id of the network we expect to connect to, if
-    ///   available
+    /// * chain-id: The id of the network we expect to connect to, if available
     /// * uri: The Uri to connect to
     /// * grpc_retry_config: Retry policy to use for connection issues
     /// * verifier: The attestation verifier
