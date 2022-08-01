@@ -52,6 +52,7 @@ pub fn get_enclave_path(filename: &str) -> PathBuf {
                     .expect("No parent for result, could not find target directory")
                     .to_path_buf();
             }
+            result
         }
     };
 
