@@ -377,7 +377,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_finalize_1jni(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1value(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
     env: JNIEnv,
     obj: JObject,
     view_key: JObject,
@@ -395,14 +395,27 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1value(
                 env.get_rust_field(tx_pub_key, RUST_OBJ_FIELD)?;
             let shared_secret = create_shared_secret(&tx_pub_key, &view_key);
             let (amount, _) = masked_amount.get_value(&shared_secret)?;
+            let value = env.new_object(
+                "java/math/BigInteger",
+                "(I[B)V",
+                &[
+                    jni::objects::JValue::Int(1),
+                    env.byte_array_from_slice(&amount.value.to_be_bytes())?
+                        .into(),
+                ],
+            )?;
+            let token_id = env.new_object(
+                "com/mobilecoin/lib/UnsignedLong",
+                "(J)V",
+                &[jni::objects::JValue::Long(*amount.token_id as i64)],
+            )?;
             Ok(env
                 .new_object(
-                    "java/math/BigInteger",
-                    "(I[B)V", // public BigInteger(int signum, byte[] magnitude)
+                    "com/mobilecoin/lib/Amount",
+                    "(Ljava/math/BigInteger;Lcom/mobilecoin/lib/UnsignedLong;)V",
                     &[
-                        1.into(),
-                        env.byte_array_from_slice(&amount.value.to_be_bytes())?
-                            .into(),
+                        jni::objects::JValue::Object(value),
+                        jni::objects::JValue::Object(token_id),
                     ],
                 )?
                 .into_inner())
