@@ -341,12 +341,12 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_init_1jni_1with_1s
     jni_ffi_call(&env, |env| {
         let tx_out_shared_secret: MutexGuard<RistrettoPublic> =
             env.get_rust_field(tx_out_shared_secret, RUST_OBJ_FIELD)?;
-            let masked_token_id_bytes = env.convert_byte_array(masked_token_id)?;
-            let masked_amount = MaskedAmount::reconstruct(
-                masked_value as u64,
-                &masked_token_id_bytes,
-                &tx_out_shared_secret,
-            )?;
+        let masked_token_id_bytes = env.convert_byte_array(masked_token_id)?;
+        let masked_amount = MaskedAmount::reconstruct(
+            masked_value as u64,
+            &masked_token_id_bytes,
+            &tx_out_shared_secret,
+        )?;
 
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, masked_amount)?)
     })
