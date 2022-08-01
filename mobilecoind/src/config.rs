@@ -285,6 +285,10 @@ impl Config {
 /// Wrapper for configuring and parsing peer URIs.
 #[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// Validator nodes to connect to.
     /// Sample usages:
     ///     --peer mc://foo:123 --peer mc://bar:456
@@ -327,8 +331,7 @@ impl PeersConfig {
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
-                    // TODO: Supply a network-id to mobilecoind?
-                    String::default(),
+                    self.chain_id.to_owned(),
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),
