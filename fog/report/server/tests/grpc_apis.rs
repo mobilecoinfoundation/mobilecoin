@@ -31,7 +31,13 @@ fn report_server_grpc_tests(logger: Logger) {
         .expect("Could not parse x509 test vectors key");
 
     let client_uri = FogUri::from_str("insecure-fog://0.0.0.0:3400").unwrap();
-    let mut server = Server::new(db, &client_uri, materials, logger.clone());
+    let mut server = Server::new(
+        db,
+        "local".to_string(),
+        &client_uri,
+        materials,
+        logger.clone(),
+    );
     server.start();
 
     let env = Arc::new(grpcio::EnvBuilder::new().build());

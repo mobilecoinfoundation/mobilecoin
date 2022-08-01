@@ -113,6 +113,8 @@ fn main() {
                     .expect("failed parsing URI");
 
             ThickClient::new(
+                // TODO: Supply a network-id here?
+                String::default(),
                 node_uri.clone(),
                 verifier.clone(),
                 grpc_env.clone(),

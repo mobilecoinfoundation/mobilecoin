@@ -103,6 +103,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let key_image_service = KeyImageService::new(
+            config.chain_id.clone(),
             ledger.clone(),
             watcher.clone(),
             enclave.clone(),
@@ -111,18 +112,21 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             logger.clone(),
         );
         let merkle_proof_service = MerkleProofService::new(
+            config.chain_id.clone(),
             ledger.clone(),
             enclave.clone(),
             client_authenticator.clone(),
             logger.clone(),
         );
         let block_service = BlockService::new(
+            config.chain_id.clone(),
             ledger.clone(),
             watcher.clone(),
             client_authenticator.clone(),
             logger.clone(),
         );
         let untrusted_tx_out_service = UntrustedTxOutService::new(
+            config.chain_id.clone(),
             ledger,
             watcher,
             client_authenticator.clone(),
