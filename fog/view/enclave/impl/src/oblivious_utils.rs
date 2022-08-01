@@ -57,7 +57,9 @@ fn maybe_overwrite_tx_out_search_result(
     );
     let shard_ciphertext_length = shard_tx_out_search_result.ciphertext.len();
 
-    let shard_cipher_text_length_delta = (CLIENT_CIPHERTEXT_LENGTH - shard_ciphertext_length) as u8;
+    let shard_cipher_text_length_delta =
+        u8::try_from(CLIENT_CIPHERTEXT_LENGTH - shard_ciphertext_length)
+            .expect("Shard ciphertext length exceeds bounds");
     // Need to add a 1 because the first byte is reserved for the delta.
     assert!(
         shard_cipher_text_length_delta >= 1,
@@ -105,6 +107,13 @@ fn should_overwrite_tx_out_search_result(
     let shard_code_is_bad_search_key =
         shard_tx_out_search_result_code.ct_eq(&(TxOutSearchResultCode::BadSearchKey as u32));
 
+    //   We make the same query to several shards and get several responses, and
+    // this logic determines how we fill the one client response.
+    //   At a high level, we want to prioritize "found" responses, and then "bad
+    // search key" responses,  which means the argument was invalid. After that
+    // the other two responses are "retriable" errors that the client will retry
+    // after a backoff. The "not found" response is the default response and
+    // gets overwritten by any other response.
     do_search_keys_match
            // Always write a Found code
         & (shard_code_is_found
