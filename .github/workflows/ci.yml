@@ -419,6 +419,7 @@ jobs:
         run: |
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/fog-local-network"
+          export MC_CHAIN_ID="local"
 
           cd /tmp/fog-local-network
 

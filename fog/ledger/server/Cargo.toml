@@ -39,6 +39,7 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
+mc-fog-enclave-connection = { path = "../../enclave_connection" }
 mc-fog-ledger-enclave = { path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }
 mc-fog-types = { path = "../../types" }

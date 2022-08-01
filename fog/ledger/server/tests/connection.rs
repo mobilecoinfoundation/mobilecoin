@@ -16,7 +16,7 @@ use mc_common::{
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
@@ -29,7 +29,7 @@ use mc_transaction_core::{
     Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::GrpcRetryConfig;
+use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
@@ -115,6 +115,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             ))
             .unwrap();
             let config = LedgerServerConfig {
+                chain_id: "local".to_string(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir,
                 admin_listen_uri: Default::default(),
@@ -162,10 +163,11 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
             let mut client = FogMerkleProofGrpcClient::new(
-                client_uri,
+                "local".to_string(),
+                client_uri.clone(),
                 GRPC_RETRY_CONFIG,
-                verifier,
-                grpc_env,
+                verifier.clone(),
+                grpc_env.clone(),
                 logger.clone(),
             );
 
@@ -213,6 +215,42 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             assert!(response.results[1].status().as_ref().unwrap().is_some());
             assert!(response.results[2].status().as_ref().unwrap().is_none());
             assert!(response.results[3].status().as_ref().unwrap().is_none());
+
+            // Check that wrong chain id results in an error
+            let mut client = FogMerkleProofGrpcClient::new(
+                "wrong".to_string(),
+                client_uri,
+                GRPC_RETRY_CONFIG,
+                verifier,
+                grpc_env,
+                logger.clone(),
+            );
+
+            let result = client.get_outputs(
+                vec![0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
+                num_blocks - 1,
+            );
+
+            if let Err(err) = result {
+                match err {
+                    Error::Connection(
+                        _,
+                        retry::Error::Operation {
+                            error:
+                                mc_fog_enclave_connection::Error::Rpc(grpcio::Error::RpcFailure(status)),
+                            ..
+                        },
+                    ) => {
+                        let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
+                        assert_eq!(status.message(), expected);
+                    }
+                    _ => {
+                        panic!("unexpected grpcio error: {}", err);
+                    }
+                }
+            } else {
+                panic!("Expected an error when chain-id is wrong");
+            }
         }
 
         // grpcio detaches all its threads and does not join them :(
@@ -306,6 +344,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             ))
             .unwrap();
             let config = LedgerServerConfig {
+                chain_id: "local".to_string(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir,
                 admin_listen_uri: Default::default(),
@@ -353,6 +392,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
             let mut client = FogKeyImageGrpcClient::new(
+                String::default(),
                 client_uri,
                 GRPC_RETRY_CONFIG,
                 verifier,
@@ -504,6 +544,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         ))
         .unwrap();
         let config = LedgerServerConfig {
+            chain_id: "local".to_string(),
             ledger_db: db_full_path.to_path_buf(),
             watcher_db: watcher_dir,
             admin_listen_uri: Default::default(),
@@ -665,6 +706,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         ))
         .unwrap();
         let config = LedgerServerConfig {
+            chain_id: "local".to_string(),
             ledger_db: db_full_path.to_path_buf(),
             watcher_db: watcher_dir,
             admin_listen_uri: Default::default(),

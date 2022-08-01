@@ -35,6 +35,9 @@ FOG_SQL_DATABASE_NAME = 'fog_local'
 # falling back to postgres://localhost/fog_local.
 DATABASE_URL_ENV = 'DATABASE_URL=${DATABASE_URL:-postgres://${PGHOST:-localhost}/%s}' % FOG_SQL_DATABASE_NAME
 
+# Set a sane chain id if none is provided
+if 'MC_CHAIN_ID' not in os.environ:
+    os.environ['MC_CHAIN_ID'] = 'local'
 
 def target_dir(release):
     default_target_dir = os.path.join(PROJECT_DIR, 'target')

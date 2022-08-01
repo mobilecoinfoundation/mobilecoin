@@ -107,6 +107,8 @@ impl TxSubmitter {
             .map(|uri| {
                 let logger = logger.new(o!("mc.cxn" => uri.addr()));
                 ThickClient::new(
+                    // TODO: Pass a chain id to the mobilecoind-dev-faucet?
+                    String::default(),
                     uri.clone(),
                     verifier.clone(),
                     env.clone(),

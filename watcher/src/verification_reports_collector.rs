@@ -75,6 +75,8 @@ impl NodeClient for ConsensusNodeClient {
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
         let mut client = ThickClient::new(
+            // TODO: Supply a network-id to watcher?
+            String::default(),
             node_url.clone(),
             verifier,
             env,

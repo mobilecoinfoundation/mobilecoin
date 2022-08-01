@@ -11,8 +11,8 @@ use mc_fog_ledger_enclave_api::Error as EnclaveError;
 use mc_ledger_db::{Error as DbError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{
-    rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
-    send_result, Authenticator,
+    check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_invalid_arg_error,
+    rpc_logger, rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::Arc;
@@ -22,6 +22,7 @@ pub const MAX_REQUEST_SIZE: usize = 2000;
 
 #[derive(Clone)]
 pub struct MerkleProofService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
+    chain_id: String,
     ledger: L,
     enclave: E,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
@@ -30,12 +31,14 @@ pub struct MerkleProofService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
     pub fn new(
+        chain_id: String,
         ledger: L,
         enclave: E,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
+            chain_id,
             ledger,
             enclave,
             authenticator,
@@ -165,6 +168,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProof
     fn get_outputs(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -176,6 +183,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProof
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -300,8 +311,13 @@ mod test {
 
         let enclave = MockEnclave::default();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
-        let mut ledger_server_node =
-            MerkleProofService::new(mock_ledger.clone(), enclave, authenticator, logger.clone());
+        let mut ledger_server_node = MerkleProofService::new(
+            "local".to_string(),
+            mock_ledger.clone(),
+            enclave,
+            authenticator,
+            logger.clone(),
+        );
 
         let request = OutputContext {
             indexes: (0..50).collect(),
@@ -354,8 +370,13 @@ mod test {
 
         let enclave = MockEnclave::default();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
-        let mut ledger_server_node =
-            MerkleProofService::new(mock_ledger, enclave, authenticator, logger.clone());
+        let mut ledger_server_node = MerkleProofService::new(
+            "local".to_string(),
+            mock_ledger,
+            enclave,
+            authenticator,
+            logger.clone(),
+        );
 
         let request = OutputContext {
             indexes: (0..50).collect(),
