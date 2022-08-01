@@ -306,11 +306,11 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AttestedClient_decrypt_1payload
 }
 
 /*****************************************************************
- * Amount
+ * MaskedAmount
  */
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_init_1jni(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_init_1jni(
     env: JNIEnv,
     obj: JObject,
     commitment: jbyteArray,
@@ -331,7 +331,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_init_1jni(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_init_1jni_1with_1secret(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_init_1jni_1with_1secret(
     env: JNIEnv,
     obj: JObject,
     tx_out_shared_secret: JObject,
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_init_1jni_1with_1secret(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_get_1bytes(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_get_1bytes(
     env: JNIEnv,
     obj: JObject,
 ) -> jbyteArray {
@@ -366,7 +366,10 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_get_1bytes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_finalize_1jni(env: JNIEnv, obj: JObject) {
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_finalize_1jni(
+    env: JNIEnv,
+    obj: JObject,
+) {
     jni_ffi_call(&env, |env| {
         let _: MaskedAmount = env.take_rust_field(obj, RUST_OBJ_FIELD)?;
         Ok(())
@@ -374,7 +377,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_finalize_1jni(env: JNIEn
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Amount_unmask_1value(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1value(
     env: JNIEnv,
     obj: JObject,
     view_key: JObject,
@@ -1568,7 +1571,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 &tx_out_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (u64::MIN
+                ..=DEFAULT_SUBADDRESS_INDEX)
                 .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
@@ -2203,7 +2207,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
                 &tx_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (u64::MIN
+                ..=DEFAULT_SUBADDRESS_INDEX)
                 .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
