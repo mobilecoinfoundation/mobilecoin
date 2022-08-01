@@ -10,6 +10,9 @@ name = "mobilecoin_android"
 crate-type = ["cdylib"]
 
 [dependencies]
+# External dependencies
+crc = "3.0.0"
+
 # fog
 mc-fog-kex-rng = { path = "../fog/kex_rng" }
 
