@@ -596,7 +596,7 @@ mod tests {
             .collect();
 
         let results: Vec<TxOutSearchResult> = collate_shard_tx_out_search_results(
-            client_search_keys.clone(),
+            client_search_keys,
             shard_tx_out_search_results,
         )
         .unwrap()
