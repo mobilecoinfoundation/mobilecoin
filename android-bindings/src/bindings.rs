@@ -406,15 +406,20 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
                         .into(),
                 ],
             )?;
-            let token_id = env.new_object(
+            let token_id_ul = env.new_object(
                 "com/mobilecoin/lib/UnsignedLong",
                 "(J)V",
                 &[jni::objects::JValue::Long(*amount.token_id as i64)],
             )?;
+            let token_id = env.new_object(
+                "com/mobilecoin/lib/TokenId",
+                "(Lcom/mobilecoin/lib/UnsignedLong;)V",
+                &[jni::objects::JValue::Object(token_id_ul)],
+            )?;
             Ok(env
                 .new_object(
                     "com/mobilecoin/lib/Amount",
-                    "(Ljava/math/BigInteger;Lcom/mobilecoin/lib/UnsignedLong;)V",
+                    "(Ljava/math/BigInteger;Lcom/mobilecoin/lib/TokenId;)V",
                     &[
                         jni::objects::JValue::Object(value),
                         jni::objects::JValue::Object(token_id),
