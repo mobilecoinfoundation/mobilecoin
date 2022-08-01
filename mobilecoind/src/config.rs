@@ -203,7 +203,7 @@ impl Config {
         );
 
         // TODO: Supply a network-id to mobilecoind?
-        let conn = GrpcFogReportConnection::new(String::default(), env, logger);
+        let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
 
         let verifier = self.get_fog_ingest_verifier();
 
