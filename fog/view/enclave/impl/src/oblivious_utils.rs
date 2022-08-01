@@ -595,16 +595,14 @@ mod tests {
             })
             .collect();
 
-        let results: Vec<TxOutSearchResult> = collate_shard_tx_out_search_results(
-            client_search_keys,
-            shard_tx_out_search_results,
-        )
-        .unwrap()
-        .into_iter()
-        // Sort by ciphertext length (ascending) in order to know what each expected result
-        // should be.
-        .sorted_by(|a, b| Ord::cmp(&b.ciphertext[0], &a.ciphertext[0]))
-        .collect();
+        let results: Vec<TxOutSearchResult> =
+            collate_shard_tx_out_search_results(client_search_keys, shard_tx_out_search_results)
+                .unwrap()
+                .into_iter()
+                // Sort by ciphertext length (ascending) in order to know what each expected result
+                // should be.
+                .sorted_by(|a, b| Ord::cmp(&b.ciphertext[0], &a.ciphertext[0]))
+                .collect();
 
         let mut expected_first_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
         let expected_first_result_delta = (CLIENT_CIPHERTEXT_LENGTH - 1) as u8;
