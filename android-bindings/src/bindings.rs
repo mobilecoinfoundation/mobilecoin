@@ -11,6 +11,7 @@ use crate::{
 };
 use aes_gcm::Aes256Gcm;
 use bip39::{Language, Mnemonic};
+use crc::Crc;
 use generic_array::{typenum::U66, GenericArray};
 use jni::{
     objects::{JObject, JString},
@@ -2335,6 +2336,23 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_get_1shared_1secret(
             let ptr: *mut Mutex<RistrettoPublic> = Box::into_raw(mbox);
 
             Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_compute_1commitment_1crc32(
+    env: JNIEnv,
+    _obj: JObject,
+    commitment_bytes: jbyteArray,
+) -> jint {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let commitment_bytes = env.convert_byte_array(commitment_bytes)?;
+            let crc32 = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&commitment_bytes);
+            Ok(crc32 as jint)
         },
     )
 }
