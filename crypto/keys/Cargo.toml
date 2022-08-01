@@ -34,7 +34,6 @@ signature = { version = "1.4.0", default-features = false, features = ["digest-p
 subtle = { version = "2", default-features = false }
 zeroize = { version = "1", default-features = false }
 static_assertions = "1.1.0"
-hybrid-array = { version = "0.1.0", path = "../../../../rustcrypto/utils/hybrid-array" }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
