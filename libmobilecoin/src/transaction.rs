@@ -369,6 +369,10 @@ pub extern "C" fn mc_transaction_builder_ring_add_element(
 pub type McTransactionBuilder = Option<TransactionBuilder<FogResolver>>;
 impl_into_ffi!(Option<TransactionBuilder<FogResolver>>);
 
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_transaction_builder_create(
     fee: u64,
@@ -377,8 +381,9 @@ pub extern "C" fn mc_transaction_builder_create(
     fog_resolver: FfiOptRefPtr<McFogResolver>,
     memo_builder: FfiMutPtr<McTxOutMemoBuilder>,
     block_version: u32,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McTransactionBuilder> {
-    ffi_boundary(|| {
+    ffi_boundary_with_error(out_error, || {
         let fog_resolver =
             fog_resolver
                 .as_ref()
@@ -389,7 +394,7 @@ pub extern "C" fn mc_transaction_builder_create(
                     FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
                         .expect("FogResolver could not be constructed from the provided materials")
                 });
-        let block_version = BlockVersion::try_from(block_version).unwrap();
+        let block_version = BlockVersion::try_from(block_version)?;
 
         let memo_builder_box = memo_builder
             .into_mut()
@@ -407,7 +412,7 @@ pub extern "C" fn mc_transaction_builder_create(
         .expect("failure not expected");
 
         transaction_builder.set_tombstone_block(tombstone_block);
-        Some(transaction_builder)
+        Ok(Some(transaction_builder))
     })
 }
 
