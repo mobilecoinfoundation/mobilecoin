@@ -21,12 +21,14 @@ use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_debug_and_display_hex_from_as_ref, derive_prost_message_from_repr_bytes,
+    derive_debug_and_display_hex_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from, typenum::U32, LengthMismatch,
 };
-use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 /// A secret value used as input key material to derive private keys.
 #[derive(Clone, Default, PartialEq, Eq, Hash, Zeroize)]
@@ -75,24 +77,26 @@ impl FromRandom for RootEntropy {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(RootEntropy, U32);
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RootEntropy);
 derive_debug_and_display_hex_from_as_ref!(RootEntropy);
 
 /// A RootIdentity contains 32 bytes of root entropy (for deriving private keys
 /// using a KDF), together with any fog data for the account.
-#[derive(Clone, PartialEq, Eq, Hash, Message)]
+#[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "prost", derive(prost::Message))]
 pub struct RootIdentity {
     /// Root entropy used to derive a user's private keys.
-    #[prost(message, required, tag = 1)]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = 1))]
     pub root_entropy: RootEntropy,
     /// Fog report url
-    #[prost(string, tag = 2)]
+    #[cfg_attr(feature = "prost", prost(string, tag = 2))]
     pub fog_report_url: String,
     /// Fog report id
-    #[prost(string, tag = 3)]
+    #[cfg_attr(feature = "prost", prost(string, tag = 3))]
     pub fog_report_id: String,
     /// Fog authority subjectPublicKeyInfo
-    #[prost(bytes, tag = 4)]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = 4))]
     pub fog_authority_spki: Vec<u8>,
 }
 
