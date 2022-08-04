@@ -4,16 +4,16 @@ use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
 };
 use futures::{future::try_join_all, TryStreamExt, SinkExt};
-use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
+use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_common::{logger::Logger, ResponderId};
+use mc_common::{logger::Logger};
 use mc_fog_api::{
     ledger::{LedgerRequest, LedgerResponse, MultiLedgerStoreQueryRequest, MultiLedgerStoreQueryResponse}, ledger_grpc::LedgerStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::LedgerStoreUri;
 //use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
-use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{rpc_invalid_arg_error};
 use std::{str::FromStr, sync::Arc};
 
 const RETRY_COUNT: usize = 3;
@@ -73,6 +73,64 @@ where
     }
 }
 
+/// The result of processing the MultiLedgerStoreQueryResponse from each Fog Ledger Shard.
+pub struct ProcessedShardResponseData {
+    /// gRPC clients for Shards that need to be retried for a successful
+    /// response.
+    pub shard_clients_for_retry: Vec<Arc<LedgerStoreApiClient>>,
+
+    /// Uris for individual Fog Ledger Stores that need to be authenticated with
+    /// by the Fog Router. It should only have entries if
+    /// `shard_clients_for_retry` has entries.
+    pub store_uris_for_authentication: Vec<LedgerStoreUri>,
+
+    /// New, successfully processed query responses.
+    pub new_query_responses: Vec<attest::Message>,
+}
+
+impl ProcessedShardResponseData {
+    pub fn new(
+        shard_clients_for_retry: Vec<Arc<LedgerStoreApiClient>>,
+        store_uris_for_authentication: Vec<LedgerStoreUri>,
+        new_query_responses: Vec<attest::Message>,
+    ) -> Self {
+        ProcessedShardResponseData {
+            shard_clients_for_retry,
+            store_uris_for_authentication,
+            new_query_responses,
+        }
+    }
+}
+
+/// Processes the MultiLedgerStoreQueryResponses returned by each Ledger Shard.
+pub fn process_shard_responses(
+    clients_and_responses: Vec<(Arc<LedgerStoreApiClient>, MultiLedgerStoreQueryResponse)>,
+) -> Result<ProcessedShardResponseData, RouterServerError> {
+    let mut shard_clients_for_retry = Vec::new();
+    let mut store_uris_for_authentication = Vec::new();
+    let mut new_query_responses = Vec::new();
+
+    for (shard_client, mut response) in clients_and_responses {
+        // We did not receive a query_response for this shard.Therefore, we need to:
+        //  (a) retry the query
+        //  (b) authenticate with the Ledger Store that returned the decryption_error
+        if response.has_decryption_error() {
+            shard_clients_for_retry.push(shard_client);
+            let store_uri =
+                LedgerStoreUri::from_str(&response.get_decryption_error().store_uri)?;
+            store_uris_for_authentication.push(store_uri);
+        } else {
+            new_query_responses.push(response.take_query_response());
+        }
+    }
+
+    Ok(ProcessedShardResponseData::new(
+        shard_clients_for_retry,
+        store_uris_for_authentication,
+        new_query_responses,
+    ))
+}
+
 /// Handles a client's authentication request.
 fn handle_auth_request<E>(
     enclave: E,
@@ -91,6 +149,7 @@ where
     Ok(response)
 }
 
+#[allow(unused_variables)] // FIXME when enclave code is set up. 
 /// Handles a client's query request.
 async fn handle_query_request<E>(
     query: attest::Message,
@@ -105,8 +164,9 @@ where
     let mut shard_clients = shard_clients.clone();
     // TODO: use retry crate?
     for _ in 0..RETRY_COUNT {
-        let multi_view_store_query_request = enclave
-            .create_multi_view_store_query_data(query.clone().into())
+        /*
+        let multi_ledger_store_query_request = enclave
+            .create_multi_ledger_store_query_data(query.clone().into())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal encryption error",
@@ -114,9 +174,10 @@ where
                     logger.clone(),
                 )
             })?
-            .into();
+            .into();*/
+        let test_request = MultiLedgerStoreQueryRequest::default();
         let clients_and_responses =
-            route_query(&multi_view_store_query_request, shard_clients.clone())
+            route_query(&test_request, shard_clients.clone())
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
@@ -126,7 +187,7 @@ where
                     )
                 })?;
 
-        let mut processed_shard_response_data = shard_responses_processor::process_shard_responses(
+        let mut processed_shard_response_data = process_shard_responses(
             clients_and_responses,
         )
         .map_err(|err| {
@@ -143,12 +204,14 @@ where
             break;
         }
 
-        authenticate_view_stores(
+        /* TODO pending ledger router code enclave-side. 
+        
+        authenticate_ledger_stores(
             enclave.clone(),
-            processed_shard_response_data.view_store_uris_for_authentication,
+            processed_shard_response_data.store_uris_for_authentication,
             logger.clone(),
         )
-        .await?;
+        .await?;*/
     }
 
     // TODO: Collate the query_responses into one response for the client. Make an
@@ -179,15 +242,19 @@ async fn query_shard(
     Ok((shard_client, response))
 }
 
-/// Authenticates Fog Ledger Stores that have previously not been authenticated.
-async fn authenticate_view_stores<E: LedgerEnclaveProxy>(
+
+
+/* TODO pending ledger router code enclave-side. 
+
+// Authenticates Fog Ledger Stores that have previously not been authenticated.
+async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
     enclave: E,
-    view_store_uris: Vec<LedgerStoreUri>,
+    ledger_store_uris: Vec<LedgerStoreUri>,
     logger: Logger,
-) -> Result<Vec<()>, RpcStatus> {
-    let pending_auth_requests = view_store_uris
+) -> Result<(), RpcStatus> {
+    let pending_auth_requests = ledger_store_uris
         .into_iter()
-        .map(|store_uri| authenticate_view_store(enclave.clone(), store_uri, logger.clone()));
+        .map(|store_uri| authenticate_ledger_store(enclave.clone(), store_uri, logger.clone()));
 
     try_join_all(pending_auth_requests).await.map_err(|err| {
         router_server_err_to_rpc_status(
@@ -196,29 +263,31 @@ async fn authenticate_view_stores<E: LedgerEnclaveProxy>(
             logger.clone(),
         )
     })
+    Ok(())
 }
 
-/// Authenticates a Fog Ledger Store that has previously not been authenticated.
-async fn authenticate_view_store<E: LedgerEnclaveProxy>(
+// Authenticates a Fog Ledger Store that has previously not been authenticated.
+async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     enclave: E,
-    view_store_url: LedgerStoreUri,
+    ledger_store_url: LedgerStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let view_store_id = ResponderId::from_str(&view_store_url.to_string())?;
-    let client_auth_request = enclave.view_store_init(view_store_id.clone())?;
+    let ledger_store_id = ResponderId::from_str(&ledger_store_url.to_string())?;
+    let client_auth_request = enclave.ledger_store_init(ledger_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
-            .name_prefix("authenticate-view-store".to_string())
+            .name_prefix("authenticate-ledger-store".to_string())
             .build(),
     );
-    let view_store_client = LedgerStoreApiClient::new(
-        ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_store_url, &logger),
+    let ledger_store_client = LedgerStoreApiClient::new(
+        ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&ledger_store_url, &logger),
     );
 
-    let auth_unary_receiver = view_store_client.auth_async(&client_auth_request.into())?;
+    let auth_unary_receiver = ledger_store_client.auth_async(&client_auth_request.into())?;
     let auth_response = auth_unary_receiver.await?;
 
-    let result = enclave.view_store_connect(view_store_id, auth_response.into())?;
+    let result = enclave.ledger_store_connect(ledger_store_id, auth_response.into())?;
 
     Ok(result)
 }
+*/ 

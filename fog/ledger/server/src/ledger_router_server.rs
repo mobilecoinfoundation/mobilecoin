@@ -38,7 +38,7 @@ impl LedgerRouterServer {
         );
 
         // Init ledger router service.
-        let fog_view_router_service = ledger_grpc::create_ledger_api(
+        let ledger_router_service = ledger_grpc::create_ledger_api(
             LedgerRouterService::new(enclave, shards, logger.clone()),
         );
         log::debug!(logger, "Constructed Fog Ledger Router GRPC Service");
@@ -59,7 +59,7 @@ impl LedgerRouterServer {
                     ledger_store_uri.addr(),
                 );
                 let server_builder = grpcio::ServerBuilder::new(env)
-                    .register_service(fog_view_router_service)
+                    .register_service(ledger_router_service)
                     .register_service(health_service)
                     .bind_using_uri(&ledger_store_uri, logger.clone());
         

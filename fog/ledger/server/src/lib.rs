@@ -19,3 +19,7 @@ pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;
 pub use server::LedgerServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
+
+pub use config::LedgerRouterConfig; 
+pub use ledger_router_server::LedgerRouterServer; 
+pub use ledger_router_service::LedgerRouterService;
