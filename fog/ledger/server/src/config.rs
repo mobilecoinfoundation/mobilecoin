@@ -7,11 +7,11 @@
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
-use mc_fog_uri::FogLedgerUri;
+use mc_fog_uri::{FogLedgerUri, LedgerRouterUri, LedgerStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration, str::FromStr};
 
 /// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
@@ -73,7 +73,32 @@ pub struct LedgerServerConfig {
     pub omap_capacity: u64,
 }
 
+/// A Fog Server can either fulfill client requests directly or fulfill Fog
+/// Ledger Router requests, and these types of servers use different URLs.
+/// 
+/// TODO - This is almost identical to Fog View's implementation of this 
+/// combine it later?
+#[derive(Clone, Serialize)]
+pub enum ClientListenUri {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    ClientFacing(LedgerRouterUri),
+    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    Store(LedgerStoreUri),
+}
 
+impl FromStr for ClientListenUri {
+    type Err = String;
+    fn from_str(input: &str) -> Result<Self, String> {
+        if let Ok(fog_ledger_router_uri) = LedgerRouterUri::from_str(input) {
+            return Ok(ClientListenUri::ClientFacing(fog_ledger_router_uri));
+        }
+        if let Ok(fog_ledger_store_uri) = LedgerStoreUri::from_str(input) {
+            return Ok(ClientListenUri::Store(fog_ledger_store_uri));
+        }
+
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
+    }
+}
 
 /// Configuration parameters for the Fog Ledger Router service.
 #[derive(Clone, Parser, Serialize)]
@@ -88,9 +113,9 @@ pub struct LedgerRouterConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: FogLedgerUri,
+    pub client_listen_uri: ClientListenUri,
 
-    // TODO: Add shard uris which are of type Vec<FogViewStoreUri>.
+    // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
     /// About 75% of this capacity can be used.
     /// The hash table will overflow when there are more TxOut's than this,

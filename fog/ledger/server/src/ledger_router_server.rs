@@ -19,11 +19,11 @@ pub struct LedgerRouterServer {
 
 impl LedgerRouterServer {
     /// Creates a new ledger router server instance
-    /// TODO: Pass in and use shards to route to. 
     #[allow(dead_code)] // FIXME
-    pub fn new<E>(
-        config: LedgerRouterConfig, 
+    pub fn new<E> (
+        config: LedgerRouterConfig,
         enclave: E,
+        shards: Vec<ledger_grpc::LedgerStoreApiClient>,
         logger: Logger,
     ) -> LedgerRouterServer
     where
@@ -39,29 +39,35 @@ impl LedgerRouterServer {
 
         // Init ledger router service.
         let fog_view_router_service = ledger_grpc::create_ledger_api(
-            LedgerRouterService::new(enclave, logger.clone()),
+            LedgerRouterService::new(enclave, shards, logger.clone()),
         );
         log::debug!(logger, "Constructed Fog Ledger Router GRPC Service");
 
         // Health check service
         let health_service =
-            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
-                .into_service();
+            mc_util_grpc::HealthService::new(
+                Some(readiness_indicator.into()), logger.clone()
+            ).into_service();
 
-        // Package service into grpc server
-        log::info!(
-            logger,
-            "Starting Fog View Router server on {}",
-            config.client_listen_uri.addr(),
-        );
-        let server_builder = grpcio::ServerBuilder::new(env)
-            .register_service(fog_view_router_service)
-            .register_service(health_service)
-            .bind_using_uri(&config.client_listen_uri, logger.clone());
-
-        let server = server_builder.build().unwrap();
-
-        Self { server, logger }
+        match config.client_listen_uri {
+            crate::config::ClientListenUri::ClientFacing(_ledger_router_uri) => todo!(),
+            crate::config::ClientListenUri::Store(ledger_store_uri) => {
+                // Package service into grpc server
+                log::info!(
+                    logger,
+                    "Starting Fog View Router server on {}",
+                    ledger_store_uri.addr(),
+                );
+                let server_builder = grpcio::ServerBuilder::new(env)
+                    .register_service(fog_view_router_service)
+                    .register_service(health_service)
+                    .bind_using_uri(&ledger_store_uri, logger.clone());
+        
+                let server = server_builder.build().unwrap();
+        
+                Self { server, logger }
+            },
+        }
     }
 
     #[allow(dead_code)] // FIXME
