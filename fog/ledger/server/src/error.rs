@@ -53,6 +53,7 @@ impl From<LedgerEnclaveError> for RouterServerError {
     }
 }
 
+#[allow(dead_code)] // FIXME when the ledger router is more than just a skeleton.  
 #[derive(Debug, Display)]
 pub enum LedgerServerError {
     /// Ledger Enclave error: {0}

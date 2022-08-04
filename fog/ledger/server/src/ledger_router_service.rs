@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use futures::{TryFutureExt, FutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
@@ -8,6 +11,8 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_util_grpc::rpc_logger;
 use mc_util_metrics::SVC_COUNTERS;
 
+use crate::router_handlers;
+
 #[allow(dead_code)] // FIXME
 #[derive(Clone)]
 pub struct LedgerRouterService<E>
@@ -15,7 +20,7 @@ where
     E: LedgerEnclaveProxy,
 {
     enclave: E,
-    shards: Vec<ledger_grpc::LedgerStoreApiClient>,
+    shards: Vec<Arc<ledger_grpc::LedgerStoreApiClient>>,
     logger: Logger,
 }
 
@@ -24,6 +29,7 @@ impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     /// fulfill gRPC requests.
     #[allow(dead_code)] // FIXME
     pub fn new(enclave: E, shards: Vec<ledger_grpc::LedgerStoreApiClient>, logger: Logger) -> Self {
+        let shards = shards.into_iter().map(Arc::new).collect();
         Self {
             enclave,
             shards,
@@ -45,29 +51,23 @@ where
     ) {
         log::info!(self.logger, "Request received in request fn");
         let _timer = SVC_COUNTERS.req(&ctx);
-        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |_logger| {
-            todo!("Streaming GRPC Ledger API not yet implemented.");
-        });
-    }
-}
-
-/* 
-        log::info!(self.logger, "Request received in request fn");
-        let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            log::warn!(self.logger, "Streaming GRPC Ledger API only partially implemented.");
+            
             let logger = logger.clone();
-            // TODO: Confirm that we don't need to perform the authenticator logic. I think
-            // we don't  because of streaming...
-            let future = router_request_handler::handle_requests(
-                self.shard_clients.clone(),
+
+            let future = router_handlers::handle_requests(
+                self.shards.clone(),
                 self.enclave.clone(),
                 requests,
                 responses,
                 logger.clone(),
             )
             .map_err(move |err: grpcio::Error| log::error!(&logger, "failed to reply: {}", err))
-            // TODO: Do stuff with the error
+            // TODO: Do more with the error than just push it to the log. 
             .map(|_| ());
 
             ctx.spawn(future)
-        }); */
+        });
+    }
+}
