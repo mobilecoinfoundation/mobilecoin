@@ -11,6 +11,73 @@ use mc_fog_uri::FogViewStoreUri;
 use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
 
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+use crate::error::RouterServerError;
+use mc_attest_api::attest;
+use mc_fog_api::{view::MultiViewStoreQueryResponse, view_grpc::FogViewStoreApiClient};
+use mc_fog_uri::FogViewStoreUri;
+use std::{str::FromStr, sync::Arc};
+
+/// The result of processing the MultiViewStoreQueryResponse from each Fog View
+/// Shard.
+pub struct ProcessedShardResponseData {
+    /// gRPC clients for Shards that need to be retried for a successful
+    /// response.
+    pub shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
+
+    /// Uris for *individual* Fog View Stores that need to be authenticated with
+    /// by the Fog Router. It should only have entries if
+    /// `shard_clients_for_retry` has entries.
+    pub view_store_uris_for_authentication: Vec<FogViewStoreUri>,
+
+    /// New, successfully processed query responses.
+    pub new_query_responses: Vec<attest::Message>,
+}
+
+impl ProcessedShardResponseData {
+    pub fn new(
+        shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
+        view_store_uris_for_authentication: Vec<FogViewStoreUri>,
+        new_query_responses: Vec<attest::Message>,
+    ) -> Self {
+        ProcessedShardResponseData {
+            shard_clients_for_retry,
+            view_store_uris_for_authentication,
+            new_query_responses,
+        }
+    }
+}
+
+/// Processes the MultiViewStoreQueryResponses returned by each Fog View Shard.
+pub fn process_shard_responses(
+    clients_and_responses: Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>,
+) -> Result<ProcessedShardResponseData, RouterServerError> {
+    let mut shard_clients_for_retry = Vec::new();
+    let mut view_store_uris_for_authentication = Vec::new();
+    let mut new_query_responses = Vec::new();
+
+    for (shard_client, mut response) in clients_and_responses {
+        // We did not receive a query_response for this shard.Therefore, we need to:
+        //  (a) retry the query
+        //  (b) authenticate with the Fog View Store that returned the decryption_error
+        if response.has_decryption_error() {
+            shard_clients_for_retry.push(shard_client);
+            let store_uri =
+                FogViewStoreUri::from_str(&response.get_decryption_error().fog_view_store_uri)?;
+            view_store_uris_for_authentication.push(store_uri);
+        } else {
+            new_query_responses.push(response.take_query_response());
+        }
+    }
+
+    Ok(ProcessedShardResponseData::new(
+        shard_clients_for_retry,
+        view_store_uris_for_authentication,
+        new_query_responses,
+    ))
+}
+
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
 /// Shard.
 pub struct ProcessedShardResponseData {
