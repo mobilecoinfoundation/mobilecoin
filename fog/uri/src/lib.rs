@@ -74,6 +74,34 @@ impl UriScheme for FogLedgerScheme {
     const DEFAULT_INSECURE_PORT: u16 = 3223;
 }
 
+/// Fog Ledger Router Uri Scheme
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct LedgerRouterScheme {}
+
+impl UriScheme for LedgerRouterScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "ledger-router";
+    const SCHEME_INSECURE: &'static str = "insecure-ledger-router";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3223;
+}
+
+/// Fog Ledger Store (for use with router) Uri Scheme
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct LedgerStoreScheme {}
+
+impl UriScheme for LedgerStoreScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "ledger-store";
+    const SCHEME_INSECURE: &'static str = "insecure-ledger-store";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3223;
+}
+
 /// Fog Ingest Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct FogIngestScheme {}
