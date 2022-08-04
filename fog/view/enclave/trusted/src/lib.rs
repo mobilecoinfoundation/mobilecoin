@@ -130,7 +130,9 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
             serialize(&ENCLAVE.create_multi_view_store_query_data(client_query))
         }
         ViewEnclaveRequest::CollateQueryResponses(client_query_request, shard_query_responses) => {
-            serialize(&ENCLAVE.collate_shard_query_responses(client_query_request, shard_query_responses))
+            serialize(
+                &ENCLAVE.collate_shard_query_responses(client_query_request, shard_query_responses),
+            )
         }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))

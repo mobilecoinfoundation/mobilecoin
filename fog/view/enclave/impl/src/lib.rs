@@ -236,17 +236,11 @@ where
         let client_query_response =
             self.create_client_query_response(client_query_request, shard_query_responses)?;
         let response_plaintext_bytes = mc_util_serial::encode(&client_query_response);
-        let response = self
-            .ake
-            .client_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
+        let response =
+            self.ake
+                .client_encrypt(&channel_id, &client_query.aad, &response_plaintext_bytes)?;
 
-        let result = EnclaveMessage {
-            aad: client_query.aad,
-            channel_id: client_query.channel_id,
-            data: response.data,
-        };
-
-        Ok(result)
+        Ok(response)
     }
 }
 
@@ -259,39 +253,23 @@ where
         client_query_request: QueryRequest,
         shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
     ) -> Result<QueryResponse> {
-        let encrypted_shard_query_responses: Vec<EnclaveMessage<ClientSession>> =
-            shard_query_responses.values().cloned().collect();
-        let encrypted_shard_query_response = encrypted_shard_query_responses
-            .get(0)
+        let encrypted_shard_query_response = shard_query_responses
+            .values()
+            .next()
             .expect("Shard query responses must have at least one response.")
             .clone();
-        let shard_query_response_plaintext = self
-            .ake
-            .client_decrypt(encrypted_shard_query_response)?;
-        let shard_query_response: QueryResponse =
+        let shard_query_response_plaintext =
+            self.ake.client_decrypt(encrypted_shard_query_response)?;
+        let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
                 Error::ProstDecode
             })?;
 
-        let mut client_query_response = QueryResponse {
-            highest_processed_block_count: shard_query_response.highest_processed_block_count,
-            highest_processed_block_signature_timestamp: shard_query_response
-                .highest_processed_block_signature_timestamp,
-            next_start_from_user_event_id: shard_query_response.next_start_from_user_event_id,
-            missed_block_ranges: shard_query_response.missed_block_ranges,
-            rng_records: shard_query_response.rng_records,
-            decommissioned_ingest_invocations: shard_query_response
-                .decommissioned_ingest_invocations,
-            tx_out_search_results: Default::default(),
-            last_known_block_count: shard_query_response.last_known_block_count,
-            last_known_block_cumulative_txo_count: shard_query_response
-                .last_known_block_cumulative_txo_count,
-        };
-        client_query_response.tx_out_search_results =
+        shard_query_response.tx_out_search_results =
             self.get_collated_tx_out_search_results(client_query_request, shard_query_responses)?;
 
-        Ok(client_query_response)
+        Ok(shard_query_response)
     }
 
     fn get_collated_tx_out_search_results(

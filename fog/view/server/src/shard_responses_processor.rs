@@ -71,34 +71,49 @@ mod tests {
     use super::*;
     use grpcio::ChannelBuilder;
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_fog_uri::FogViewStoreScheme;
     use mc_util_grpc::ConnectionUriGrpcioChannel;
+    use mc_util_uri::UriScheme;
 
-    fn create_successful_mvq_response() -> MultiViewStoreQueryResponse {
+    fn create_successful_mvq_response(client_index: usize) -> MultiViewStoreQueryResponse {
         let mut successful_response = MultiViewStoreQueryResponse::new();
         let client_auth_request = Vec::new();
         successful_response
             .mut_query_response()
             .set_data(client_auth_request);
+        let view_uri_string = format!(
+            "{}://node{}.test.mobilecoin.com:{}",
+            FogViewStoreScheme::SCHEME_INSECURE,
+            client_index,
+            FogViewStoreScheme::DEFAULT_INSECURE_PORT,
+        );
+        successful_response.set_fog_view_store_uri(view_uri_string);
 
         successful_response
     }
 
-    fn create_failed_mvq_response(i: usize) -> MultiViewStoreQueryResponse {
+    fn create_failed_mvq_response(client_index: usize) -> MultiViewStoreQueryResponse {
         let mut failed_response = MultiViewStoreQueryResponse::new();
         let view_uri_string = format!(
-            "insecure-fog-view-store://node{}.test.mobilecoin.com:3225",
-            i
+            "{}://node{}.test.mobilecoin.com:{}",
+            FogViewStoreScheme::SCHEME_INSECURE,
+            client_index,
+            FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
+        failed_response.set_fog_view_store_uri(view_uri_string);
         failed_response
-            .set_fog_view_store_uri(view_uri_string);
+            .mut_decryption_error()
+            .set_error_message("Could not decrypt shard response".to_string());
 
         failed_response
     }
 
     fn create_grpc_client(i: usize, logger: Logger) -> Arc<FogViewStoreApiClient> {
         let view_uri_string = format!(
-            "insecure-fog-view-store://node{}.test.mobilecoin.com:3225",
-            i
+            "{}://node{}.test.mobilecoin.com:{}",
+            FogViewStoreScheme::SCHEME_INSECURE,
+            i,
+            FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         let view_uri = FogViewStoreUri::from_str(&view_uri_string).unwrap();
         let grpc_env = Arc::new(
@@ -116,8 +131,9 @@ mod tests {
 
     #[test_with_logger]
     fn one_successful_response_no_shard_clients(logger: Logger) {
-        let grpc_client = create_grpc_client(0, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response();
+        let client_index = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -130,8 +146,9 @@ mod tests {
 
     #[test_with_logger]
     fn one_successful_response_no_pending_authentications(logger: Logger) {
-        let grpc_client = create_grpc_client(0, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response();
+        let client_index = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -144,8 +161,9 @@ mod tests {
 
     #[test_with_logger]
     fn one_successful_response_one_new_query_response(logger: Logger) {
-        let grpc_client = create_grpc_client(0, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response();
+        let client_index = 0;
+        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
         let result = process_shard_responses(clients_and_responses);
@@ -215,7 +233,7 @@ mod tests {
         for i in 0..NUMBER_OF_SUCCESSES {
             let client_index = i + NUMBER_OF_FAILURES;
             let grpc_client = create_grpc_client(client_index, logger.clone());
-            let successful_mvq_response = create_successful_mvq_response();
+            let successful_mvq_response = create_successful_mvq_response(client_index);
             clients_and_responses.push((grpc_client, successful_mvq_response));
         }
 
