@@ -14,7 +14,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
 digest = { version = "0.10", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
