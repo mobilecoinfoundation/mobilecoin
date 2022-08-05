@@ -2111,7 +2111,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
 
             let value = jni_big_int_to_u64(env, value)?;
             let reserved_subaddresses = ReservedSubaddresses::from(&*source_account_key);
-            let mut rng = McRng::default();//TODO: pass RNG from SDK
+            let mut rng = McRng::default(); //TODO: pass RNG from SDK
 
             // TODO (GH #1867): If you want to do mixed transactions, use something other
             // than fee_token_id here.
@@ -3100,8 +3100,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_set_1word_1pos(
 ) {
     jni_ffi_call(&env, |env| {
         let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-        let word_pos: [u8; 16] = env.convert_byte_array(word_pos_bytes)?
-            .try_into().unwrap();
+        let word_pos: [u8; 16] = env.convert_byte_array(word_pos_bytes)?.try_into().unwrap();
         // Java is always big endian
         rng.set_word_pos(u128::from_be_bytes(word_pos));
         Ok(())
