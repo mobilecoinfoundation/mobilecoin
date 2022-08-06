@@ -138,6 +138,9 @@ jobs:
         uses: ./.github/actions/check-dirty-git
       - name: Build rust testing stub
         working-directory: go-grpc-gateway/testing
+        env:
+          SGX_MODE: SW
+          IAS_MODE: DEV
         run: cargo build --locked
       - name: Run curl test
         working-directory: go-grpc-gateway
