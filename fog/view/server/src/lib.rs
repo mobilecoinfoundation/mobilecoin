@@ -13,5 +13,6 @@ pub mod sharding_strategy;
 mod block_tracker;
 mod counters;
 mod db_fetcher;
+mod fog_view_router_admin_service;
 mod router_request_handler;
 mod shard_responses_processor;

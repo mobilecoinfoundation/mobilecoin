@@ -4408,6 +4408,7 @@ dependencies = [
  "futures",
  "grpcio",
  "hex",
+ "itertools",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",

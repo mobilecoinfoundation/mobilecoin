@@ -7,7 +7,7 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
-use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -160,4 +160,8 @@ pub struct FogViewRouterConfig {
     /// to disk by linux kernel.
     #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
+
+    /// Router admin listening URI.
+    #[clap(long)]
+    pub admin_listen_uri: FogViewRouterAdminUri,
 }
