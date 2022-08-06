@@ -110,7 +110,7 @@ jobs:
 
   build-and-test-go:
     runs-on: [self-hosted, Linux, small]
-    container: golang:latest
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
