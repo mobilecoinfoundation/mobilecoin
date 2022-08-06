@@ -48,9 +48,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
 
-
-## [1.2.0] - UNRELEASED
->>>>>>> 5ccb1892 (Branch and prep 2.0.0 release (#2275))
+## [1.2.0]
 
 ### Added
 
