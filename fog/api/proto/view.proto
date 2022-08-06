@@ -10,10 +10,22 @@ import "external.proto";
 import "kex_rng.proto";
 import "fog_common.proto";
 
+import "google/protobuf/empty.proto";
+
 /// A single Duplex streaming API that allows clients to authorize with Fog View and
 /// query it for TxOuts.
 service FogViewRouterAPI {
     rpc request(stream FogViewRouterRequest) returns (stream FogViewRouterResponse) {}
+}
+
+service FogViewRouterAdminAPI {
+    // Adds a shard to the Fog View Router's list of shards to query.
+    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
+}
+
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
 }
 
 message FogViewRouterRequest {
