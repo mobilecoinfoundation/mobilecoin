@@ -4,7 +4,7 @@
 //! [`VerificationReport`](::mc_attest_core::VerificationReport)
 //! structure.
 
-use crate::{avr::Kind as AvrKind, StatusKind, Error, Verify};
+use crate::{avr::Kind as AvrKind, Error, StatusKind, Verify};
 use alloc::{vec, vec::Vec};
 use mbedtls::{
     alloc::{Box as MbedtlsBox, List as MbedtlsList},
