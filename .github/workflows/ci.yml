@@ -109,7 +109,7 @@ jobs:
 
 
   build-and-test-go:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: [self-hosted, Linux, large]
     container: mobilecoin/builder-install:v0.0.16
 
     steps:
