@@ -11,7 +11,7 @@ if [ ! -f "grpc-proxy" ]; then
     exit 1
 fi
 
-: "${CARGO_TARGET_DIR:=/tmp/mobilenode/target/}"
+: "${CARGO_TARGET_DIR:=../target/}"
 
 if [ ! -f "$CARGO_TARGET_DIR/debug/stub" ]; then
     echo "Missing rust testing stub, needs cargo build"
