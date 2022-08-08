@@ -143,6 +143,8 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
+        Commands::HashTxFile { params:_ } => todo!(),
+
         Commands::GenerateAndSubmitMintTx {
             node,
             params,

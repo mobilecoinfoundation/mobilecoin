@@ -242,6 +242,19 @@ pub enum Commands {
         params: MintConfigTxParams,
     },
 
+    ///new hash tx file command lol
+    HashTxFile { params:i64 },
+
+        /*#[clap(
+            long = "tx-file",
+            required = true,
+            use_value_delimiter = true,
+            env = "MC_MINTING_TX_FILES"
+        )]
+        tx_filenames: Vec<PathBuf>,
+
+    }, */
+
     /// Generate a MintConfigTx and write it to a JSON file.
     GenerateMintConfigTx {
         /// Filename to write the mint configuration to.
