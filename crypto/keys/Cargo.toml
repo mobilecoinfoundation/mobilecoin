@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-keys"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Diffie-Hellman Key Exchange and Digital Signatures"

@@ -11,7 +11,7 @@ if [ ! -f "grpc-proxy" ]; then
     exit 1
 fi
 
-: "${CARGO_TARGET_DIR:=/tmp/mobilenode/target/}"
+: "${CARGO_TARGET_DIR:=../target/}"
 
 if [ ! -f "$CARGO_TARGET_DIR/debug/stub" ]; then
     echo "Missing rust testing stub, needs cargo build"
@@ -28,7 +28,7 @@ trap my_exit EXIT INT HUP TERM
 set -x
 
 # Spawn rust stub server
-"$CARGO_TARGET_DIR/debug/stub" --network-id "local" --client-listen-uri insecure-fog://localhost:3000 &
+"$CARGO_TARGET_DIR/debug/stub" --chain-id "local" --client-listen-uri insecure-fog://localhost:3000 &
 pid=$!
 
 sleep 1

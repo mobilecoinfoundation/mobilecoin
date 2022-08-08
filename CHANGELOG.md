@@ -11,6 +11,22 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Support env overrides for ~all command-line flags.
   - Flags that take multiple values can be repeated on the command line,
     or passed as comma-separated values via environment or command-line args.
+- Update CI deployments to use zerossl instead of letsencrypt
+
+## [2.0.0] - 2022-07-25
+
+### Fixed
+
+#### CI/CD
+
+- Fix metadata script for new release branch patterns. ([#2298])
+
+### Security
+
+- Bump SGX to 2.17, mitigate INTEL-SA-00615
+
+
+## [1.2.2] - 2022-06-17
 
 ### Changed
  - Updated SGX to 2.16
@@ -21,6 +37,16 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 * Replaced `datatest` with a custom `test_with_data` macro.
 * Replace `structopt` with `clap`.
 * Updated grpcio from 0.9 to 0.10.
+
+### Changed
+
+- Expose the ability to get a TX shared secret to iOS SDK
+- Restore the ability to derive an account from legacy root entropy to iOS SDK
+- Improve the construction of `Amount` objects from Android SDK
+
+### Fixed
+
+- Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
 
 ## [1.2.0]
 

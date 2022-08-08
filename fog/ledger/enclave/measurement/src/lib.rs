@@ -13,7 +13,7 @@ pub fn sigstruct() -> Signature {
 }
 
 pub const CONFIG_ADVISORIES: &[&str] = &[];
-pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334"];
+pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334", "INTEL-SA-00615"];
 
 pub fn get_mr_signer_verifier(override_minimum_svn: Option<SecurityVersion>) -> MrSignerVerifier {
     let signature = sigstruct();

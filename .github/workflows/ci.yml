@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -38,7 +38,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -93,7 +93,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -108,9 +108,9 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
 
-  lint-go:
-    runs-on: [self-hosted, Linux, small]
-    container: golang:latest
+  build-and-test-go:
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -126,15 +126,31 @@ jobs:
             v1-go-${{ runner.os }}
       - name: Set up Go
         uses: actions/setup-go@v3
+      - name: Build go
+        working-directory: go-grpc-gateway
+        run: ./install_tools.sh && ./build.sh
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
       - name: Lint Go code
         working-directory: go-grpc-gateway
         run: ./lint.sh
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
+      - name: Build rust testing stub
+        working-directory: go-grpc-gateway/testing
+        env:
+          SGX_MODE: SW
+          IAS_MODE: DEV
+        run: cargo build --locked
+      - name: Run curl test
+        working-directory: go-grpc-gateway
+        run: ./test.sh
+      - name: Check dirty git
+        uses: ./.github/actions/check-dirty-git
 
   cbindgen:
     runs-on: [self-hosted, Linux, small]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -150,7 +166,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -169,7 +185,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     strategy:
       matrix:
@@ -208,7 +224,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     strategy:
       matrix:
@@ -241,7 +257,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     strategy:
       matrix:
@@ -289,7 +305,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -312,7 +328,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -352,7 +368,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.10
+    container: mobilecoin/builder-install:v0.0.16
 
     steps:
       - name: Check out code
@@ -485,7 +501,6 @@ jobs:
         uses: ./.github/actions/upload-core-dumps
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
-
 
   publish-test-results:
     runs-on: [self-hosted, Linux, small]
