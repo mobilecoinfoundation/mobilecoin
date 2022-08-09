@@ -35,7 +35,7 @@ use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_EN
 use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, X25519};
-use mc_crypto_rand::McRng;
+use mc_crypto_rand::{McRng, RngCore};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use mc_fog_report_types::{Report, ReportResponse};
@@ -61,9 +61,11 @@ use mc_util_from_random::FromRandom;
 use mc_util_uri::FogUri;
 use protobuf::Message;
 use rand::{rngs::StdRng, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 use sha2::Sha512;
 use std::{
     collections::BTreeMap,
+    convert::TryInto,
     ops::DerefMut,
     str::FromStr,
     sync::{Mutex, MutexGuard},
@@ -1988,6 +1990,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
     value: JObject,
     recipient: JObject,
     confirmation_number_out: jbyteArray,
+    java_rng: JObject,
 ) -> jlong {
     jni_ffi_call_or(
         || Ok(0),
@@ -2008,8 +2011,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
             let recipient: MutexGuard<PublicAddress> =
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
-            let mut rng = McRng::default();
-            let tx_out_context = tx_builder.add_output(amount, &recipient, &mut rng)?;
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(java_rng, RUST_OBJ_FIELD)?;
+            let tx_out_context = tx_builder.add_output(amount, &recipient, &mut *rng)?;
             let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
@@ -2041,6 +2044,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
     value: JObject,
     source_account_key: JObject,
     confirmation_number_out: jbyteArray,
+    java_rng: JObject,
 ) -> jlong {
     jni_ffi_call_or(
         || Ok(0),
@@ -2053,7 +2057,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
 
             let value = jni_big_int_to_u64(env, value)?;
             let change_destination = ReservedSubaddresses::from(&*source_account_key);
-            let mut rng = McRng::default();
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(java_rng, RUST_OBJ_FIELD)?;
 
             // TODO (GH #1867): If you want to do mixed transactions, use something other
             // than fee_token_id here.
@@ -2063,7 +2067,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
             };
 
             let tx_out_context =
-                tx_builder.add_change_output(amount, &change_destination, &mut rng)?;
+                tx_builder.add_change_output(amount, &change_destination, &mut *rng)?;
             let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
@@ -2107,7 +2111,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1gift_1c
 
             let value = jni_big_int_to_u64(env, value)?;
             let reserved_subaddresses = ReservedSubaddresses::from(&*source_account_key);
-            let mut rng = McRng::default();
+            let mut rng = McRng::default(); //TODO: pass RNG from SDK
 
             // TODO (GH #1867): If you want to do mixed transactions, use something other
             // than fee_token_id here.
@@ -2178,6 +2182,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_set_1fee(
 pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_build_1tx(
     env: JNIEnv,
     obj: JObject,
+    java_rng: JObject,
 ) -> jlong {
     jni_ffi_call_or(
         || Ok(0),
@@ -2186,8 +2191,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_build_1tx(
             let tx_builder: TransactionBuilder<FogResolver> =
                 env.take_rust_field(obj, RUST_OBJ_FIELD)?;
 
-            let mut rng = McRng::default();
-            let tx = tx_builder.build(&NoKeysRingSigner {}, &mut rng)?;
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(java_rng, RUST_OBJ_FIELD)?;
+            let tx = tx_builder.build(&NoKeysRingSigner {}, &mut *rng)?;
 
             let mbox = Box::new(Mutex::new(tx));
             let ptr: *mut Mutex<Tx> = Box::into_raw(mbox);
@@ -2860,4 +2865,255 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKeyDeriver_accountKey_1f
             Ok(ptr as jlong)
         },
     )
+}
+
+/********************************************************************
+ * DefaultRng
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_init_1jni(
+    env: JNIEnv,
+    _obj: JObject,
+) -> jobject {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let rng = McRng::default();
+            let mbox = Box::new(Mutex::new(rng));
+            let ptr: *mut Mutex<McRng> = Box::into_raw(mbox);
+            Ok(env
+                .new_object(
+                    "com/mobilecoin/lib/DefaultRng",
+                    "(J)V",
+                    &[jni::objects::JValue::Long(ptr as jlong)],
+                )?
+                .into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_next_1int(
+    env: JNIEnv,
+    obj: JObject,
+) -> jint {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<McRng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            Ok(rng.next_u32() as jint)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_next_1long(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<McRng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            Ok(rng.next_u64() as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_next_1bytes(
+    env: JNIEnv,
+    obj: JObject,
+    length: jint,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<McRng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let mut bytes = vec![0; length as usize];
+            rng.fill_bytes(&mut bytes);
+            Ok(env.byte_array_from_slice(&bytes)?)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultRng_finalize_1jni(
+    env: JNIEnv,
+    obj: JObject,
+) {
+    jni_ffi_call(&env, |env| {
+        let _: McRng = env.take_rust_field(obj, RUST_OBJ_FIELD)?;
+        Ok(())
+    })
+}
+
+/********************************************************************
+ * ChaCha20Rng
+ */
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_seed_1from_1long(
+    env: JNIEnv,
+    _obj: JObject,
+    seed: jlong,
+) -> jobject {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let rng = ChaCha20Rng::seed_from_u64(seed as u64);
+            let mbox = Box::new(Mutex::new(rng));
+            let ptr: *mut Mutex<ChaCha20Rng> = Box::into_raw(mbox);
+            Ok(env
+                .new_object(
+                    "com/mobilecoin/lib/ChaCha20Rng",
+                    "(J)V",
+                    &[jni::objects::JValue::Long(ptr as jlong)],
+                )?
+                .into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_seed_1from_1bytes(
+    env: JNIEnv,
+    _obj: JObject,
+    seed: jbyteArray,
+) -> jobject {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let seed_bytes = env.convert_byte_array(seed)?.try_into().unwrap();
+            let rng = ChaCha20Rng::from_seed(seed_bytes);
+            let mbox = Box::new(Mutex::new(rng));
+            let ptr: *mut Mutex<ChaCha20Rng> = Box::into_raw(mbox);
+            Ok(env
+                .new_object(
+                    "com/mobilecoin/lib/ChaCha20Rng",
+                    "(J)V",
+                    &[jni::objects::JValue::Long(ptr as jlong)],
+                )?
+                .into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_next_1int(
+    env: JNIEnv,
+    obj: JObject,
+) -> jint {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            Ok(rng.next_u32() as jint)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_next_1long(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            Ok(rng.next_u64() as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_next_1bytes(
+    env: JNIEnv,
+    obj: JObject,
+    length: jint,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let mut bytes = vec![0; length as usize];
+            rng.fill_bytes(&mut bytes);
+            Ok(env.byte_array_from_slice(&bytes)?)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_get_1seed(
+    env: JNIEnv,
+    obj: JObject,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            Ok(env.byte_array_from_slice(&rng.get_seed())?)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_get_1word_1pos(
+    env: JNIEnv,
+    obj: JObject,
+) -> jobject {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            // Java is always big endian
+            let word_pos_bytes = rng.get_word_pos().to_be_bytes();
+            let word_pos = env.new_object(
+                "java/math/BigInteger",
+                "(I[B)V",
+                &[
+                    jni::objects::JValue::Int(1),
+                    env.byte_array_from_slice(&word_pos_bytes)?.into(),
+                ],
+            )?;
+            Ok(word_pos.into_inner())
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_set_1word_1pos(
+    env: JNIEnv,
+    obj: JObject,
+    word_pos_bytes: jbyteArray,
+) {
+    jni_ffi_call(&env, |env| {
+        let mut rng: MutexGuard<ChaCha20Rng> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+        let word_pos: [u8; 16] = env.convert_byte_array(word_pos_bytes)?.try_into().unwrap();
+        // Java is always big endian
+        rng.set_word_pos(u128::from_be_bytes(word_pos));
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ChaCha20Rng_finalize_1jni(
+    env: JNIEnv,
+    obj: JObject,
+) {
+    jni_ffi_call(&env, |env| {
+        let _: ChaCha20Rng = env.take_rust_field(obj, RUST_OBJ_FIELD)?;
+        Ok(())
+    })
 }
