@@ -143,7 +143,24 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::HashTxFile { params:_ } => todo!(),
+        Commands::HashTxFile { 
+            tx_filenames,
+        } => {
+            let txs =
+                TxFile::load_multiple::<MintConfigTx>(&tx_filenames).expect("failed loading txs");
+
+            //All tx prefixes should be the same.
+            if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
+                panic!("All txs must have the same prefix");
+            }
+
+            let r = txs.len();
+
+            for i in 0..r {
+                println!("Nonce {}", hex::encode(&txs[i].prefix.nonce));
+                println!("Hash {}", hex::encode(&txs[i].prefix.hash()));
+            }
+        },
 
         Commands::GenerateAndSubmitMintTx {
             node,
@@ -191,8 +208,8 @@ fn main() {
 
         Commands::HashMintTx { params } => {
             let tx_prefix = params
-                .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
-                .expect("failed creating tx prefix");
+            .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
+            .expect("failed creating tx prefix");
 
             // Print the nonce, since if we generated it randomlly then there is no way to
             // reconstruct the tx prefix that is being hashed without it.
