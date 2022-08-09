@@ -373,7 +373,8 @@ impl_into_ffi!(Option<TransactionBuilder<FogResolver>>);
 ///
 /// # Errors
 ///
-/// * `LibMcError::InvalidInput`
+/// * `LibMcError::InvalidInput` - SDK consumers may wish to handle this error in
+///     part by checking if a software update is available
 #[no_mangle]
 pub extern "C" fn mc_transaction_builder_create(
     fee: u64,

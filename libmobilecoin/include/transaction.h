@@ -182,7 +182,8 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3);
 ///
 /// # Errors
 ///
-/// * `LibMcError::InvalidInput`
+/// * `LibMcError::InvalidInput` - SDK consumers may wish to handle this error in
+///     part by checking if a software update is available
 McTransactionBuilder* MC_NULLABLE mc_transaction_builder_create(
   uint64_t fee,
   uint64_t token_id,
