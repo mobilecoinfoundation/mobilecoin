@@ -7,20 +7,23 @@ readme = "README.md"
 description = "MobileCoin BIP-39 Key Derivation"
 license = "GPL-3.0"
 
+[features]
+default = [ "tiny-bip39", "slip10_ed25519" ]
+
 [dependencies]
-mc-account-keys = { path = "../", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-platform = { path = "../../crypto/platform" }
 
 displaydoc = { version = "0.2", default-features = false }
 hkdf = "0.12.3"
 sha2 = { version = "0.10", default-features = false }
-slip10_ed25519 = "0.1"
-tiny-bip39 = "1.0"
-zeroize = "1.5"
+slip10_ed25519 = { version = "0.1", optional = true }
+tiny-bip39 = { version = "1.0", optional = true }
+zeroize = { version = "1.5", default-features = false }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 
 [dev-dependencies]
+mc-account-keys = { path = "../", default-features = false }
 hex = "0.4"
 hex_fmt = "0.3"

@@ -4,29 +4,14 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
-extern crate alloc;
-
-use alloc::borrow::ToOwned;
-use bip39::{Mnemonic, Seed};
-use core::result::Result as CoreResult;
 use curve25519_dalek::scalar::Scalar;
-use displaydoc::Display;
 use hkdf::Hkdf;
-use mc_account_keys::{AccountKey, Error as AccountKeyError};
 use mc_crypto_keys::RistrettoPrivate;
 use sha2::Sha512;
 use zeroize::Zeroize;
 
-/// An enumeration of errors which can occur while working with SLIP-0010 key
-/// derivation
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum Error {
-    /// There was an error creating the account key: {0}
-    AccountKey(AccountKeyError),
-}
-
-/// The result type
-pub type Result<T> = CoreResult<T, Error>;
+#[cfg(feature = "tiny-bip39")]
+use bip39::{Mnemonic, Seed};
 
 /// A key derived using SLIP-0010 key derivation
 #[derive(Zeroize)]
@@ -39,11 +24,31 @@ impl AsRef<[u8]> for Slip10Key {
     }
 }
 
+/// Mobilecoin view private key
+pub struct ViewPrivate(RistrettoPrivate);
+
+/// AsRef to [`RistrettoPrivate`] for backwards compatibility
+impl AsRef<RistrettoPrivate> for ViewPrivate {
+    fn as_ref(&self) -> &RistrettoPrivate {
+        &self.0
+    }
+}
+
+/// Mobilecoin spend private key
+pub struct SpendPrivate(RistrettoPrivate);
+
+/// AsRef to [`RistrettoPrivate`] for backwards compatibility
+impl AsRef<RistrettoPrivate> for SpendPrivate {
+    fn as_ref(&self) -> &RistrettoPrivate {
+        &self.0
+    }
+}
+
 /// Create the view and spend private keys, and return them in reverse order,
 /// e.g. `(spend, view)`, to match
 /// [`AccountKey::new()`](mc_account_key::AccountKey::new)
-impl From<Slip10Key> for (RistrettoPrivate, RistrettoPrivate) {
-    fn from(src: Slip10Key) -> (RistrettoPrivate, RistrettoPrivate) {
+impl From<Slip10Key> for (SpendPrivate, ViewPrivate) {
+    fn from(src: Slip10Key) -> (SpendPrivate, ViewPrivate) {
         let mut okm = [0u8; 64];
 
         let view_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-view"), src.as_ref());
@@ -60,7 +65,7 @@ impl From<Slip10Key> for (RistrettoPrivate, RistrettoPrivate) {
         let spend_scalar = Scalar::from_bytes_mod_order_wide(&okm);
         let spend_private_key = RistrettoPrivate::from(spend_scalar);
 
-        (spend_private_key, view_private_key)
+        (SpendPrivate(spend_private_key), ViewPrivate(view_private_key))
     }
 }
 
@@ -74,6 +79,7 @@ impl From<[u8; 32]> for Slip10Key {
 /// [`Mnemonic`](tiny_bip39::Mnemonic).
 ///
 /// This is equivalent to calling `mnemonic.derive_slip10_key(0)`.
+#[cfg(feature = "tiny-bip39")]
 impl From<Mnemonic> for Slip10Key {
     fn from(src: Mnemonic) -> Slip10Key {
         src.derive_slip10_key(0)
@@ -100,6 +106,7 @@ const COINTYPE_MOBILECOIN: u32 = 866;
 // This lets us get to
 // Mnemonic::from_phrases().derive_slip10_key(account_index).
 // try_into_account_key(...)
+#[cfg(feature = "tiny-bip39")]
 impl Slip10KeyGenerator for Mnemonic {
     fn derive_slip10_key(self, account_index: u32) -> Slip10Key {
         // We explicitly do not support passphrases for BIP-39 mnemonics, please
@@ -124,38 +131,14 @@ impl Slip10KeyGenerator for Mnemonic {
     }
 }
 
-impl Slip10Key {
-    /// Try to construct a new [`AccountKey`](mc_account_keys::AccountKey) from
-    /// an existing [`Slip10Key`].
-    // In the future, AccountKey::new_with_fog will be fallible.
-    pub fn try_into_account_key(
-        self,
-        fog_report_url: &str,
-        fog_report_id: &str,
-        fog_authority_spki: &[u8],
-    ) -> Result<AccountKey> {
-        let (spend_private_key, view_private_key) = self.into();
-        Ok(AccountKey::new_with_fog(
-            &spend_private_key,
-            &view_private_key,
-            fog_report_url,
-            fog_report_id.to_owned(),
-            fog_authority_spki,
-        ))
-    }
-}
 
-impl From<Slip10Key> for AccountKey {
-    fn from(src: Slip10Key) -> AccountKey {
-        let (spend_private_key, view_private_key) = src.into();
-        AccountKey::new(&spend_private_key, &view_private_key)
-    }
-}
 
 #[cfg(test)]
 mod test {
     use super::*;
     use bip39::Language;
+
+    use mc_account_keys::{AccountKey, Error as AccountKeyError};
 
     /// Test vector built using SLIP10 outputs and ristretto vectors
     struct SlipToRistretto {

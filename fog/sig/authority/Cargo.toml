@@ -5,6 +5,12 @@ authors = ["MobileCoin"]
 edition = "2021"
 description = "Create and verify fog authority signatures"
 
+[features]
+std = []
+alloc = []
+
+default = [ "std" ]
+
 [dependencies]
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 

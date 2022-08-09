@@ -6,11 +6,13 @@ edition = "2021"
 readme = "README.md"
 
 [features]
+std = []
+
 simd_backend = [ "curve25519-dalek/simd_backend" ]
 u64_backend = [ "curve25519-dalek/u64_backend" ]
 u32_backend = [ "curve25519-dalek/u32_backend" ]
 
-default = [ "prost", "mc-util-serial", "mc-util-repr-bytes/alloc" ]
+default = [ "std", "prost", "mc-util-serial", "mc-util-repr-bytes/alloc", "mc-crypto-digestible/default", "mc-crypto-hashes/default", "mc-fog-sig-authority/default" ]
 
 [dependencies]
 # External dependencies
@@ -24,12 +26,13 @@ zeroize = { version = "1", default-features = false }
 # MobileCoin dependencies
 mc-account-keys-types = { path = "types" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
-mc-crypto-hashes = { path = "../crypto/hashes" }
-mc-crypto-keys = { path = "../crypto/keys", default-features = false }
-mc-fog-sig-authority = { path = "../fog/sig/authority" }
+mc-crypto-hashes = { path = "../crypto/hashes", default_features = false }
+mc-crypto-keys = { path = "../crypto/keys", default_features = false }
+mc-fog-sig-authority = { path = "../fog/sig/authority", default_features = false }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../util/serial", optional = true }
+mc-account-keys-slip10 = { path = "./slip10" }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 

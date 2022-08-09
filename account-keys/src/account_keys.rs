@@ -13,20 +13,24 @@
 #![allow(non_snake_case)]
 
 use crate::domain_separators::SUBADDRESS_DOMAIN_TAG;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+
 use core::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
 };
+
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_account_keys_types::RingCtAddress;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_account_keys_slip10::Slip10Key;
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -264,6 +268,34 @@ impl PartialOrd for AccountKey {
 impl Ord for AccountKey {
     fn cmp(&self, other: &AccountKey) -> Ordering {
         self.default_subaddress().cmp(&other.default_subaddress())
+    }
+}
+
+impl AccountKey {
+    /// Try to construct a new [`AccountKey`] from
+    /// an existing [`Slip10Key`].
+    // In the future, AccountKey::new_with_fog will be fallible.
+    pub fn try_from_slip10_key(
+        slip10: Slip10Key,
+        fog_report_url: &str,
+        fog_report_id: &str,
+        fog_authority_spki: &[u8],
+    ) -> Result<AccountKey, crate::Error> {
+        let (spend_private_key, view_private_key) = slip10.into();
+        Ok(AccountKey::new_with_fog(
+            spend_private_key.as_ref(),
+            view_private_key.as_ref(),
+            fog_report_url,
+            fog_report_id.to_string(),
+            fog_authority_spki,
+        ))
+    }
+}
+
+impl From<Slip10Key> for AccountKey {
+    fn from(src: Slip10Key) -> AccountKey {
+        let (spend_private_key, view_private_key) = src.into();
+        AccountKey::new(spend_private_key.as_ref(), view_private_key.as_ref())
     }
 }
 
