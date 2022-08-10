@@ -27,6 +27,7 @@ mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-net = { path = "../../../attest/net" }
+mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 
