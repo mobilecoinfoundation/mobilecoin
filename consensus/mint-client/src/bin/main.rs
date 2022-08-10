@@ -143,24 +143,17 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::HashTxFile { 
-            tx_filenames,
-        } => {
-            let txs =
-                TxFile::load_multiple::<MintConfigTx>(&tx_filenames).expect("failed loading txs");
-
-            //All tx prefixes should be the same.
-            if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
-                panic!("All txs must have the same prefix");
+        Commands::HashTxFile { tx_file } => match tx_file {
+            TxFile::MintConfigTx(tx) => {
+                println!("Nonce {}", hex::encode(&tx.prefix.nonce));
+                println!("Hash {}", hex::encode(&tx.prefix.hash()));
             }
-
-            let r = txs.len();
-
-            for i in 0..r {
-                println!("Nonce {}", hex::encode(&txs[i].prefix.nonce));
-                println!("Hash {}", hex::encode(&txs[i].prefix.hash()));
+            TxFile::MintTx(tx) => {
+                println!("Nonce {}", hex::encode(&tx.prefix.nonce));
+                println!("Hash {}", hex::encode(&tx.prefix.hash()));
             }
         },
+
 
         Commands::GenerateAndSubmitMintTx {
             node,

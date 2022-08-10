@@ -242,20 +242,12 @@ pub enum Commands {
         params: MintConfigTxParams,
     },
 
-    /// Produce a hash of a MintTx or MintConfigTx transaction.
-    HashTxFile { // Paths for the JSON-formatted mint configuration tx files, each
-        /// containing a serde-serialized TxFile holding a MintConfigTx object.
-        #[clap(
-            long = "tx-file",
-            required = true,
-            use_value_delimiter = true,
-            env = "MC_MINTING_CONFIG_TX_FILES"
-        )]
-        tx_filenames: Vec<PathBuf>,
-      
+    ///print hash and nonce values from MintTx and ConfigMintTx from
+    HashTxFile {
+        /// The file to load
+        #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
+        tx_file: TxFile,
     },
-
-        
 
     /// Generate a MintConfigTx and write it to a JSON file.
     GenerateMintConfigTx {
@@ -311,6 +303,7 @@ pub enum Commands {
         params: MintTxParams,
     },
 
+
     /// Generate a MintTx and write it to a JSON file.
     GenerateMintTx {
         /// Filename to write the mint configuration to.
@@ -327,6 +320,7 @@ pub enum Commands {
         #[clap(flatten)]
         params: MintTxPrefixParams,
     },
+
 
     /// Submit json-encoded MintTx(s). If multiple transactions are provided,
     /// signatures will be merged.
