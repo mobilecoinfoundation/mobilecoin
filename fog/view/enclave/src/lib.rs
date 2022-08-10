@@ -6,7 +6,7 @@
 
 extern crate mc_fog_ocall_oram_storage_untrusted;
 
-use std::{path, result::Result as StdResult, sync::Arc};
+use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
 
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
@@ -205,6 +205,19 @@ impl ViewEnclaveApi for SgxViewEnclave {
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(
             client_query,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        client_query_request: EnclaveMessage<ClientSession>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CollateQueryResponses(
+            client_query_request,
+            shard_query_responses,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

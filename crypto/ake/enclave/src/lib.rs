@@ -467,6 +467,19 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Ok(backend_messages)
     }
 
+    pub fn backend_decrypt(
+        &self,
+        responder_id: ResponderId,
+        msg: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<u8>> {
+        // Ensure lock gets released as soon as we're done decrypting.
+        let mut backends = self.backends.lock()?;
+        backends
+            .get_mut(&responder_id)
+            .ok_or(Error::NotFound)
+            .and_then(|session| Ok(session.decrypt(&msg.aad, &msg.data)?))
+    }
+
     //
     // IAS related
     //
