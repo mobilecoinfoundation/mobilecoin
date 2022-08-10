@@ -12,5 +12,6 @@
 #include "transaction.h"
 #include "bip39.h"
 #include "slip10.h"
+#include "rng.h"
 
 #endif /* !LIBMOBILECOIN_H_ */

@@ -182,6 +182,26 @@ impl AsMut<[u8]> for McMutableBuffer<'_> {
     }
 }
 
+impl<'a> TryFromFfi<&McBuffer<'a>> for &'a [u8; 16] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        let src = src.as_slice_of_len(16)?;
+        // SAFETY: ok to unwrap because we just checked length
+        Ok(<&[u8; 16]>::try_from(src).unwrap())
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 16] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        Ok(*<&'a [u8; 16]>::try_from_ffi(src)?)
+    }
+}
+
 impl<'a> TryFromFfi<&McBuffer<'a>> for &'a [u8; 32] {
     type Error = LibMcError;
 
