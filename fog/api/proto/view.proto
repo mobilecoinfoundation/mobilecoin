@@ -37,14 +37,8 @@ message FogViewRouterResponse {
 }
 
 message FogViewStoreDecryptionError {
-    /// The FogViewStoreUri for the specific Fog View Store that
-    /// tried to decrypt the MultiViewStoreQueryRequest and failed.
-    /// The client should subsequently authenticate with the machine
-    /// described by this URI.
-    string fog_view_store_uri = 1;
-
     /// An error message that describes the decryption error.
-    string error_message = 2;
+    string error_message = 1;
 }
 
 message MultiViewStoreQueryRequest {
@@ -58,9 +52,15 @@ message MultiViewStoreQueryResponse {
     //  query.
     attest.Message query_response = 1;
 
+    /// The FogViewStoreUri for the specific Fog View Store that
+    /// tried to decrypt the MultiViewStoreQueryRequest and failed.
+    /// The client should subsequently authenticate with the machine
+    /// described by this URI.
+    string fog_view_store_uri = 2;
+
     /// Optional error that gets returned when the Fog View Store
     /// cannot decrypt the MultiViewStoreQuery.
-    FogViewStoreDecryptionError decryption_error = 2;
+    FogViewStoreDecryptionError decryption_error = 3;
 }
 
 /// Fulfills requests sent directly by a Fog client, e.g. a mobile phone using the SDK.

@@ -8,7 +8,7 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
@@ -93,6 +93,12 @@ pub enum ViewEnclaveRequest {
     /// Complete the client connection to a Fog View store that accepted our
     /// client auth request. This is meant to be called after [ViewStoreInit].
     ViewStoreConnect(ResponderId, ClientAuthResponse),
+    /// Collates shard query responses into a single query response for the
+    /// client.
+    CollateQueryResponses(
+        EnclaveMessage<ClientSession>,
+        BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -166,6 +172,14 @@ pub trait ViewEnclaveApi: ReportableEnclave {
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+
+    /// Receives all of the shards' query responses and collates them into one
+    /// query response for the client.
+    fn collate_shard_query_responses(
+        &self,
+        client_query_request: EnclaveMessage<ClientSession>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side
@@ -221,6 +235,8 @@ pub enum Error {
     EnclaveNotInitialized,
     /// Cipher encryption failed: {0}
     Cipher(CipherError),
+    /// Fog View Shard query response collation error
+    QueryResponseCollation,
 }
 
 impl From<SgxError> for Error {

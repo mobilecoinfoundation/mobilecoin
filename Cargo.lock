@@ -4426,6 +4426,7 @@ dependencies = [
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
  "mc-blockchain-types",
