@@ -7,6 +7,8 @@
 extern crate alloc;
 
 mod e_tx_out_store;
+mod oblivious_utils;
+
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
 use alloc::vec::Vec;
