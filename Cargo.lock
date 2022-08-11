@@ -2317,46 +2317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-android-bindings"
-version = "2.0.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "crc",
- "displaydoc",
- "generic-array",
- "jni",
- "mc-account-keys",
- "mc-account-keys-slip10",
- "mc-api",
- "mc-attest-ake",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-crypto-box",
- "mc-crypto-keys",
- "mc-crypto-noise",
- "mc-crypto-rand",
- "mc-crypto-ring-signature-signer",
- "mc-fog-kex-rng",
- "mc-fog-report-types",
- "mc-fog-report-validation",
- "mc-transaction-core",
- "mc-transaction-std",
- "mc-util-encodings",
- "mc-util-from-random",
- "mc-util-serial",
- "mc-util-uri",
- "protobuf",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "sha2 0.10.2",
- "slip10_ed25519",
- "tiny-bip39",
- "zeroize",
-]
-
-[[package]]
 name = "mc-api"
 version = "2.0.0"
 dependencies = [
