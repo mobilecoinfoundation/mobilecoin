@@ -564,22 +564,9 @@ fn try_digestible_enum_transparent(
             //
             // We can only support unit variants and unnamed tuples of size 1, in which case we skip right to digesting that.
             match &variant.fields {
-                // For an enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
-                //
-                // Note: The idea here is that, this is the same as what we append for Option::None.
-                // This allows schema evolution from a unit variant to a variant with a single
-                // Option member without changing the hash when the option is vacant.
+                // Enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
                 Fields::Unit => {
-                    // When not allowed to omit ourselves, we should append none, same as Option::None
-                    (quote! {
-                        Self::#variant_ident => {
-                            transcript.append_none(context);
-                        }
-                    },
-                    // When allowed to omit ourselves, we should append nothing, same as Option::None
-                    quote! {
-                        Self::#variant_ident => {}
-                    })
+                    panic!("Unit variants (options without associated data) cannot be used with digestible(transparent) on an enum");
                 }
 
                 // For an enum variant with one nameless member, e.g. SomeEnum::Possibility(u32),
@@ -619,6 +606,34 @@ fn try_digestible_enum_transparent(
             }
         })
         .unzip();
+
+    // Safety check: Try to make sure each variant of the enum has a different type.
+    // In the future we could allow a special way to bypass this check.
+    for i in 1..variant_data.variants.len() {
+        for j in 0..i {
+            let ith_type = match &variant_data.variants[i].fields {
+                Fields::Unnamed(FieldsUnnamed {
+                    unnamed: fields, ..
+                }) => {
+                    &fields[0].ty
+                },
+                _ => panic!("Unexpected variant")
+            };
+
+            let jth_type = match &variant_data.variants[j].fields {
+                Fields::Unnamed(FieldsUnnamed {
+                    unnamed: fields, ..
+                }) => {
+                    &fields[0].ty
+                },
+                _ => panic!("Unexpected variant")
+            };
+
+            if ith_type == jth_type {
+                panic!("The types of the {}'th and {}'th enum variants were the same. When using digestible(transparent), this is highly suspect", i, j);
+            }
+        }
+    }
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 

@@ -27,13 +27,13 @@ struct ThingV2 {
     b: Switch,
 }
 
-// A new, empty, state is added to the enum
+// An additional state is added to the enum
 #[derive(Digestible)]
 #[digestible(transparent)]
 enum SwitchV2 {
     Num(u64),
     Str(String),
-    Empty,
+    Flag(bool),
 }
 
 #[derive(Digestible)]
@@ -44,15 +44,13 @@ struct ThingV3 {
 }
 
 // A new field is added to the struct using the transparent enum. This does not
-// break hash compatibility because an empty state in a transparent enum is
-// treated similarly to Option::None, and nothing gets added to the hash to
-// represent it. So this is similar to adding an optional field.
+// break hash compatibility because we used the Option wrapper.
 #[derive(Digestible)]
 #[digestible(name = "Thing")]
 struct ThingV4 {
     a: u64,
     b: SwitchV2,
-    c: SwitchV2,
+    c: Option<SwitchV2>,
 }
 
 // Tests for struct schema evolution using transparent enums
@@ -127,7 +125,7 @@ fn transparent_enum_schema_evolution() {
             &ThingV4 {
                 a: 7,
                 b: SwitchV2::Num(8),
-                c: SwitchV2::Empty,
+                c: None,
             }
         )
     );
@@ -145,7 +143,25 @@ fn transparent_enum_schema_evolution() {
             &ThingV4 {
                 a: 7,
                 b: SwitchV2::Str("foo".into()),
-                c: SwitchV2::Empty,
+                c: None,
+            }
+        )
+    );
+
+    assert_eq!(
+        calculate_digest_ast(
+            b"test",
+            &ThingV3 {
+                a: 7,
+                b: SwitchV2::Flag(true),
+            }
+        ),
+        calculate_digest_ast(
+            b"test",
+            &ThingV4 {
+                a: 7,
+                b: SwitchV2::Flag(true),
+                c: None,
             }
         )
     );

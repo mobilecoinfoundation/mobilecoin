@@ -17,7 +17,7 @@ struct ExampleStruct {
 enum ExampleEnum {
     A(u16),
     B(ExampleStruct),
-    C,
+    C(bool),
 }
 
 #[derive(Digestible)]
@@ -34,7 +34,7 @@ struct ExampleStruct2 {
 enum TransEnum {
     A(u16),
     B(ExampleStruct),
-    C,
+    C(bool),
 }
 
 #[derive(Digestible)]
@@ -116,20 +116,17 @@ fn example_enum_b() {
 // expected
 #[test]
 fn example_enum_c() {
-    let arg = ExampleEnum::C;
+    let arg = ExampleEnum::C(true);
     let expected_ast = ASTNode::from(ASTVariant {
         context: b"C_test",
         name: b"ExampleEnum".to_vec(),
         which: 2,
-        value: Some(Box::new(ASTNode::from(ASTNone { context: b"C" }))),
+        value: Some(Box::new(ASTNode::from(ASTPrimitive { context: b"C", type_name: b"bool", data: vec![1u8] }))),
     });
     digestible_test_case_ast("C_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"C_test"),
-        [
-            36, 116, 29, 101, 185, 20, 3, 39, 50, 65, 57, 25, 15, 236, 167, 119, 53, 69, 6, 19,
-            134, 181, 97, 14, 175, 109, 81, 67, 31, 245, 205, 237
-        ]
+        [220, 136, 150, 83, 136, 170, 75, 139, 190, 220, 183, 47, 84, 174, 53, 244, 190, 64, 75, 154, 254, 21, 252, 153, 118, 31, 139, 221, 171, 170, 207, 121]
     );
 }
 
@@ -146,10 +143,7 @@ fn trans_enum_a() {
     digestible_test_case_ast("A_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"A_test"),
-        [
-            196, 66, 116, 1, 87, 75, 116, 241, 250, 78, 20, 22, 208, 227, 89, 118, 121, 77, 109,
-            255, 15, 184, 217, 249, 111, 181, 66, 141, 37, 23, 204, 243
-        ]
+        3u16.digest32::<MerlinTranscript>(b"A_test")
     );
 }
 
@@ -183,10 +177,7 @@ fn trans_enum_b() {
     digestible_test_case_ast("B_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"B_test"),
-        [
-            101, 107, 59, 55, 249, 37, 221, 203, 13, 36, 193, 85, 104, 62, 192, 193, 243, 144, 224,
-            171, 85, 200, 48, 29, 36, 71, 187, 89, 102, 228, 109, 87
-        ]
+        ExampleStruct { a: 0, b: 1, c: 2 }.digest32::<MerlinTranscript>(b"B_test")
     );
 }
 
@@ -194,15 +185,12 @@ fn trans_enum_b() {
 // expected
 #[test]
 fn trans_enum_c() {
-    let arg = TransEnum::C;
-    let expected_ast = ASTNode::from(ASTNone { context: b"C_test" });
+    let arg = TransEnum::C(false);
+    let expected_ast = ASTNode::from(ASTPrimitive { context: b"C_test", type_name: b"bool", data: vec![0u8] });
     digestible_test_case_ast("C_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"C_test"),
-        [
-            252, 90, 24, 108, 60, 163, 129, 134, 13, 8, 161, 22, 224, 185, 29, 10, 36, 94, 118,
-            145, 198, 122, 124, 191, 202, 246, 157, 170, 115, 124, 84, 154
-        ]
+        false.digest32::<MerlinTranscript>(b"C_test")
     );
 }
 
@@ -290,7 +278,7 @@ fn example_struct2() {
     let arg = ExampleStruct2 {
         a: 0,
         b: 1,
-        c: ExampleEnum::C,
+        c: ExampleEnum::C(true),
     };
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"foo1",
@@ -310,7 +298,7 @@ fn example_struct2() {
                 context: b"c",
                 name: b"ExampleEnum".to_vec(),
                 which: 2,
-                value: Some(Box::new(ASTNode::from(ASTNone { context: b"C" }))),
+        value: Some(Box::new(ASTNode::from(ASTPrimitive { context: b"C", type_name: b"bool", data: vec![1u8] }))),
             }),
         ],
         is_completed: true,
@@ -318,22 +306,17 @@ fn example_struct2() {
     digestible_test_case_ast("foo1", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"foo1"),
-        [
-            158, 86, 252, 228, 26, 251, 185, 40, 27, 106, 31, 99, 211, 11, 9, 81, 137, 138, 230,
-            218, 134, 127, 148, 109, 129, 200, 13, 34, 191, 15, 53, 93
-        ]
+        [159, 244, 234, 57, 119, 244, 123, 152, 147, 44, 113, 52, 181, 117, 162, 233, 66, 73, 46, 210, 255, 18, 110, 140, 19, 20, 15, 173, 128, 189, 213, 47]
     );
 }
 
-// Test that ExampleStruct3 is being mapped to an AST as expected,
-// with the vacant TransEnum being skipped, because "empty" struct members
-// are allowed to be omitted when hashing.
+// Test that ExampleStruct3 is being mapped to an AST as expected.
 #[test]
 fn example_struct3() {
     let arg = ExampleStruct3 {
         a: 0,
         b: 1,
-        c: TransEnum::C,
+        c: TransEnum::C(true),
     };
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"foo1",
@@ -349,15 +332,13 @@ fn example_struct3() {
                 type_name: b"uint",
                 data: vec![1u8, 0u8],
             }),
+            ASTNode::from(ASTPrimitive { context: b"c", type_name: b"bool", data: vec![1u8] }),
         ],
         is_completed: true,
     });
     digestible_test_case_ast("foo1", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"foo1"),
-        [
-            181, 165, 79, 230, 141, 89, 228, 0, 79, 208, 172, 197, 83, 24, 220, 112, 136, 232, 68,
-            201, 142, 6, 49, 26, 255, 126, 146, 204, 143, 36, 94, 67
-        ]
+        [41, 79, 252, 70, 13, 80, 217, 161, 226, 27, 73, 38, 252, 37, 224, 82, 62, 191, 54, 42, 14, 26, 249, 174, 4, 186, 29, 196, 44, 88, 71, 228]
     );
 }

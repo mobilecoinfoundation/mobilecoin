@@ -517,12 +517,11 @@ To make wrappers that don't cause a breaking change in this manner, use the `dig
 pub struct WrappedFoo(Foo)
 ```
 
-A wrapper object like this will be digested exactly like a `Foo` object.
+A `WrappedFoo` like this will be digested exactly like a `Foo` object.
 The transparent directive is only valid on structs with a single unnamed member.
 Structs with more than one member, or with named members, cannot be marked transparent.
 
-The `digestible(transparent)` directive can also be used on rust enums, as long as every variant of the enum has a single unnamed member,
-or is a unit variant (no data).
+The `digestible(transparent)` directive can also be used on rust enums, as long as every variant of the enum has a single unnamed member.
 
 ```
 #[derive(Digestible)]
@@ -530,7 +529,6 @@ or is a unit variant (no data).
 pub enum Switch {
     Num(u64),
     Str(String),
-    Empty,
 }
 ```
 
@@ -538,9 +536,6 @@ Normally, digestible faithfully represents the fact that an enum is involved in 
 It handles an enum value by hashing in the enum's name, the variant's name, and then the value.
 Marking an enum transparent means that digestible should attmept to ignore this layer and jump directly to hashing
 whatever data is contained in the enum.
-
-Enum variants without any data are treated similarly to `Option::None`. That is, they are skipped and nothing is added
-to the hash, when the context is that they are a struct member. This allows for adding complex enums like this to a structure to be a non-breaking change.
 
 In protobuf, one valid way to evolve schemas is to replace existing fields with a `OneOf` member, if for example there is a new version of it.
 The `digestible(transparent)` directive for rust enums provides a way for this not to be a breaking change for hashes.
