@@ -2,7 +2,7 @@
 
 //! An object for managing background data fetches from the recovery database.
 
-use crate::{block_tracker::BlockTracker, counters};
+use crate::{block_tracker::BlockTracker, counters, sharding_strategy::ShardingStrategy};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
@@ -75,11 +75,16 @@ pub struct DbFetcher {
 }
 
 impl DbFetcher {
-    pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
+    pub fn new<DB, SS>(
         db: DB,
         readiness_indicator: ReadinessIndicator,
+        sharding_strategy: SS,
         logger: Logger,
-    ) -> Self {
+    ) -> Self
+    where
+        DB: RecoveryDb + Clone + Send + Sync + 'static,
+        SS: ShardingStrategy + Clone + Send + Sync + 'static,
+    {
         let stop_requested = Arc::new(AtomicBool::new(false));
 
         let shared_state = Arc::new(Mutex::new(DbFetcherSharedState::default()));
@@ -102,6 +107,7 @@ impl DbFetcher {
                         thread_shared_state,
                         thread_num_queued_records_limiter,
                         readiness_indicator,
+                        sharding_strategy,
                         logger,
                     )
                 })
@@ -165,25 +171,35 @@ impl Drop for DbFetcher {
     }
 }
 
-struct DbFetcherThread<DB: RecoveryDb + Clone + Send + Sync + 'static> {
+struct DbFetcherThread<DB, SS>
+where
+    DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
+{
     db: DB,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
     readiness_indicator: ReadinessIndicator,
+    sharding_strategy: SS,
     logger: Logger,
 }
 
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database.
-impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
+impl<DB, SS> DbFetcherThread<DB, SS>
+where
+    DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
+{
     pub fn start(
         db: DB,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
         readiness_indicator: ReadinessIndicator,
+        sharding_strategy: SS,
         logger: Logger,
     ) {
         let thread = Self {
@@ -193,6 +209,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             block_tracker: BlockTracker::new(logger.clone()),
             num_queued_records_limiter,
             readiness_indicator,
+            sharding_strategy,
             logger,
         };
         thread.run();
@@ -305,6 +322,14 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
                     // Mark that we are done fetching data for this block.
                     self.block_tracker.block_processed(ingress_key, block_index);
+                    if !self.sharding_strategy.should_process_block(block_index) {
+                        log::trace!(
+                            self.logger,
+                            "Not adding block_index {} TxOuts because this shard is not responsible for it.",
+                            block_index,
+                        );
+                        continue;
+                    }
 
                     // Store the fetched records so that they could be consumed by the enclave
                     // when its ready.
@@ -366,6 +391,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sharding_strategy::EpochShardingStrategy;
     use mc_attest_core::VerificationReport;
     use mc_common::logger::test_with_logger;
     use mc_fog_recovery_db_iface::{IngressPublicKeyStatus, ReportData, ReportDb};
@@ -380,7 +406,12 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
+        let db_fetcher = DbFetcher::new(
+            db.clone(),
+            Default::default(),
+            EpochShardingStrategy::default(),
+            logger,
+        );
 
         // Initially, our database starts empty.
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
@@ -610,7 +641,12 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
+        let db_fetcher = DbFetcher::new(
+            db.clone(),
+            Default::default(),
+            EpochShardingStrategy::default(),
+            logger,
+        );
 
         // Register two ingress keys that have some overlap:
         // key_id1 starts at block 0, key2 starts at block 5.
@@ -667,7 +703,12 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
+        let db_fetcher = DbFetcher::new(
+            db.clone(),
+            Default::default(),
+            EpochShardingStrategy::default(),
+            logger,
+        );
 
         // Register two ingress keys that have some overlap:
         // invoc_id1 starts at block 0, invoc_id2 starts at block 50.
