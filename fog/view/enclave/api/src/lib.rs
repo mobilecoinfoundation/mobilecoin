@@ -235,7 +235,7 @@ pub enum Error {
     EnclaveNotInitialized,
     /// Cipher encryption failed: {0}
     Cipher(CipherError),
-    /// Fog View Shard query response collation error
+    /// Fog View Shard query response collation error.
     QueryResponseCollation,
 }
 

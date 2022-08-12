@@ -266,8 +266,22 @@ where
                 Error::ProstDecode
             })?;
 
-        shard_query_response.tx_out_search_results =
-            self.get_collated_tx_out_search_results(client_query_request, shard_query_responses)?;
+        let shard_query_responses = shard_query_responses
+            .into_iter()
+            .map(|(responder_id, enclave_message)| {
+                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?;
+                let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
+
+                Ok(query_response)
+            })
+            .collect::<Result<Vec<QueryResponse>>>()?;
+
+        shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
+            client_query_request,
+            shard_query_responses.clone(),
+        )?;
+        shard_query_response.highest_processed_block_count =
+            self.get_minimum_highest_processed_block_count(shard_query_responses);
 
         Ok(shard_query_response)
     }
@@ -275,25 +289,27 @@ where
     fn get_collated_tx_out_search_results(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: Vec<QueryResponse>,
     ) -> Result<Vec<TxOutSearchResult>> {
-        let plaintext_shard_tx_out_search_results: Vec<TxOutSearchResult> = shard_query_responses
+        let plaintext_search_results = shard_query_responses
             .into_iter()
-            .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?;
-                let plaintext_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
-
-                Ok(plaintext_response.tx_out_search_results)
-            })
-            .collect::<Result<Vec<Vec<TxOutSearchResult>>>>()?
-            .iter()
-            .flat_map(|array| array.iter())
-            .cloned()
-            .collect();
+            .flat_map(|response| response.tx_out_search_results)
+            .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
             client_query_request.get_txos,
-            plaintext_shard_tx_out_search_results,
+            plaintext_search_results,
         )
+    }
+
+    fn get_minimum_highest_processed_block_count(
+        &self,
+        shard_query_responses: Vec<QueryResponse>,
+    ) -> u64 {
+        shard_query_responses
+            .into_iter()
+            .map(|query_response| query_response.highest_processed_block_count)
+            .min()
+            .unwrap_or_default()
     }
 }
