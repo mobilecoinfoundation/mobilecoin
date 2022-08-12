@@ -509,7 +509,7 @@ Transparent Digestible
 Sometimes it is necessary to put a wrapper around a type, for instance, to support serialization somehow, or to implement a trait on it.
 Normally, this is a breaking change, because digestible will want to faithfully represent the wrapper in the hash, inserting the type name etc.
 
-To make wrappers that don't cause a breaking change in this manner, simply use the `digestible(transparent)` directive:
+To make wrappers that don't cause a breaking change in this manner, use the `digestible(transparent)` directive:
 
 ```
 #[derive(Digestible)]
