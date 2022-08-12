@@ -578,7 +578,7 @@ fn try_digestible_enum_transparent(
                     },
                     // When allowed to omit ourselves, we should append nothing, same as Option::None
                     quote! {
-                        Self::#variant_ident => {}                        
+                        Self::#variant_ident => {}
                     })
                 }
 

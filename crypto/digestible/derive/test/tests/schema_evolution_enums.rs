@@ -2,7 +2,7 @@
 
 /// Tests of the schema evolution properties of derive(Digestible)
 /// implementations when transparent enums are involved
-use mc_crypto_digestible::{Digestible};
+use mc_crypto_digestible::Digestible;
 use mc_crypto_digestible_test_utils::*;
 
 // An example structure
@@ -24,7 +24,7 @@ enum Switch {
 #[digestible(name = "Thing")]
 struct ThingV2 {
     a: u64,
-    b: Switch
+    b: Switch,
 }
 
 // A new, empty, state is added to the enum
@@ -43,9 +43,10 @@ struct ThingV3 {
     b: SwitchV2,
 }
 
-// A new field is added to the struct using the transparent enum. This does not break hash compatibility because
-// an empty state in a transparent enum is treated similarly to Option::None, and
-// nothing gets added to the hash to represent it. So this is similar to adding an optional field.
+// A new field is added to the struct using the transparent enum. This does not
+// break hash compatibility because an empty state in a transparent enum is
+// treated similarly to Option::None, and nothing gets added to the hash to
+// represent it. So this is similar to adding an optional field.
 #[derive(Digestible)]
 #[digestible(name = "Thing")]
 struct ThingV4 {
@@ -54,17 +55,28 @@ struct ThingV4 {
     c: SwitchV2,
 }
 
-
 // Tests for struct schema evolution using transparent enums
 #[test]
 fn transparent_enum_schema_evolution() {
     assert_eq!(
         calculate_digest_ast(b"test", &Thing { a: 7, b: 4 }),
-        calculate_digest_ast(b"test", &ThingV2 { a: 7, b: Switch::Num(4) })
+        calculate_digest_ast(
+            b"test",
+            &ThingV2 {
+                a: 7,
+                b: Switch::Num(4)
+            }
+        )
     );
 
     assert_eq!(
-        calculate_digest_ast(b"test", &ThingV2 { a: 7, b: Switch::Num(4) }),
+        calculate_digest_ast(
+            b"test",
+            &ThingV2 {
+                a: 7,
+                b: Switch::Num(4)
+            }
+        ),
         calculate_digest_ast(
             b"test",
             &ThingV3 {
@@ -75,7 +87,13 @@ fn transparent_enum_schema_evolution() {
     );
 
     assert_eq!(
-        calculate_digest_ast(b"test", &ThingV2 { a: 7, b: Switch::Str("foo".into()) }),
+        calculate_digest_ast(
+            b"test",
+            &ThingV2 {
+                a: 7,
+                b: Switch::Str("foo".into())
+            }
+        ),
         calculate_digest_ast(
             b"test",
             &ThingV3 {
@@ -97,7 +115,13 @@ fn transparent_enum_schema_evolution() {
     );
 
     assert_eq!(
-        calculate_digest_ast(b"test", &ThingV2 { a: 7, b: Switch::Num(8) }),
+        calculate_digest_ast(
+            b"test",
+            &ThingV2 {
+                a: 7,
+                b: Switch::Num(8)
+            }
+        ),
         calculate_digest_ast(
             b"test",
             &ThingV4 {
@@ -109,7 +133,13 @@ fn transparent_enum_schema_evolution() {
     );
 
     assert_eq!(
-        calculate_digest_ast(b"test", &ThingV2 { a: 7, b: Switch::Str("foo".into()) }),
+        calculate_digest_ast(
+            b"test",
+            &ThingV2 {
+                a: 7,
+                b: Switch::Str("foo".into())
+            }
+        ),
         calculate_digest_ast(
             b"test",
             &ThingV4 {
