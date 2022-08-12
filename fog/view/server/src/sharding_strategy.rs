@@ -20,6 +20,7 @@ pub trait ShardingStrategy {
 ///
 /// In practice, the set of Fog View Shards will contain overlapping
 /// [epoch_block_ranges] in order to obfuscate which shard processed the TxOuts.
+#[derive(Clone)]
 pub struct EpochShardingStrategy {
     /// If a block falls within this range, then the Fog View Store should
     /// process its TxOuts.

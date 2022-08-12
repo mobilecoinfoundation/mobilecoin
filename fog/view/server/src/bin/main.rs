@@ -6,7 +6,9 @@ use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
-use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
+use mc_fog_view_server::{
+    config::MobileAcctViewConfig, server::ViewServer, sharding_strategy::EpochShardingStrategy,
+};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
@@ -64,6 +66,9 @@ fn main() {
         recovery_db,
         ias_client,
         SystemTimeProvider::default(),
+        // TODO: Change the EpochShardingStrategy to incorporate config values that specify
+        //  start and end block indices. See PR #2352
+        EpochShardingStrategy::default(),
         logger.clone(),
     );
     server.start();
