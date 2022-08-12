@@ -214,7 +214,9 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
             Data::Struct(variant_data) => {
                 try_digestible_struct_transparent(&ident, generics, &variant_data)
             }
-            Data::Enum(_) => Err("Digestible cannot be derived transparently for an enum"),
+            Data::Enum(variant_data) => {
+                try_digestible_enum_transparent(&ident, generics, &variant_data)
+            }
             Data::Union(..) => Err("Digestible cannot be derived for a union"),
         }
     } else {
@@ -537,6 +539,101 @@ fn try_digestible_enum(
                 // Per-variant hashing.
                 match self {
                     #(#call)*
+                }
+            }
+        }
+    };
+
+    Ok(expanded.into())
+}
+
+fn try_digestible_enum_transparent(
+    ident: &Ident,
+    generics: &Generics,
+    variant_data: &DataEnum,
+) -> Result<TokenStream, &'static str> {
+    let (call, call_allow_omit) : (Vec<proc_macro2::TokenStream>, Vec<proc_macro2::TokenStream>) = variant_data
+        .variants
+        .iter()
+        .map(|variant| {
+            let variant_ident = &variant.ident;
+
+            // Our behavior differs based on whether the enum variant is a unit (has no data
+            // associated with it), or named (has struct data associated with it), or unnamed (has
+            // tuple data assocated with it).
+            //
+            // We can only support unit variants and unnamed tuples of size 1, in which case we skip right to digesting that.
+            match &variant.fields {
+                // For an enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
+                //
+                // Note: The idea here is that, this is the same as what we append for Option::None.
+                // This allows schema evolution from a unit variant to a variant with a single
+                // Option member without changing the hash when the option is vacant.
+                Fields::Unit => {
+                    // When not allowed to omit ourselves, we should append none, same as Option::None
+                    (quote! {
+                        Self::#variant_ident => {
+                            transcript.append_none(context);
+                        }
+                    },
+                    // When allowed to omit ourselves, we should append nothing, same as Option::None
+                    quote! {
+                        Self::#variant_ident => {}                        
+                    })
+                }
+
+                // For an enum variant with one nameless member, e.g. SomeEnum::Possibility(u32),
+                // we skip directly to adding the member to the transcript, so that nothing about the
+                // enum enters the transcript (it is transparent).
+                //
+                // The child value may not be omitted.
+                // However, if append_to_transcript_allow_omit is used then the child may be omitted.
+                //
+                // Self::Possibility(val) => {
+                //   val.append_to_transcript(context, transcript);
+                // }
+                Fields::Unnamed(FieldsUnnamed {
+                    unnamed: fields, ..
+                }) => {
+                    if fields.len() == 1 {
+                        (quote! {
+                            Self::#variant_ident(val) => {
+                                val.append_to_transcript(context, transcript);
+                            }
+                        },
+                        quote! {
+                            Self::#variant_ident(val) => {
+                                val.append_to_transcript_allow_omit(context, transcript);
+                            }
+                        })
+                    } else {
+                        panic!("Exactly zero or one unnamed fields may be present when using digestible(transparent) on an enum");
+                    }
+                }
+
+                // For an enum variant that has named fields (e.g. SomeEnum::MyVariant { a: u64, b: u64 },
+                // we cannot digest it transparently.
+                Fields::Named(FieldsNamed { .. }) => {
+                    panic!("Named fields cannot be used when using digestible(transparent) on an enum");
+                }
+            }
+        })
+        .unzip();
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let expanded = quote! {
+        impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
+            fn append_to_transcript<DT: mc_crypto_digestible::DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                // Per-variant hashing.
+                match self {
+                    #(#call)*
+                }
+            }
+            fn append_to_transcript_allow_omit<DT: mc_crypto_digestible::DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                // Per-variant hashing with allow_omit
+                match self {
+                    #(#call_allow_omit)*
                 }
             }
         }
