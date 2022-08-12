@@ -573,12 +573,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
 
 [[package]]
-name = "cesu8"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d43a04d8753f35258c91f8ec639f792891f748a1edbd759cf1dcea3382ad83c"
-
-[[package]]
 name = "cexpr"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,16 +707,6 @@ version = "0.1.45"
 source = "git+https://github.com/alexcrichton/cmake-rs?rev=5f89f90ee5d7789832963bffdb2dcb5939e6199c#5f89f90ee5d7789832963bffdb2dcb5939e6199c"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "combine"
-version = "4.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a909e4d93292cd8e9c42e189f61681eff9d67b6541f96b8a1a737f23737bd001"
-dependencies = [
- "bytes 1.1.0",
- "memchr",
 ]
 
 [[package]]
@@ -1977,26 +1961,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
 
 [[package]]
-name = "jni"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6df18c2e3db7e453d3c6ac5b3e9d5182664d28788126d39b91f2d1e22b017ec"
-dependencies = [
- "cesu8",
- "combine",
- "jni-sys",
- "log",
- "thiserror",
- "walkdir",
-]
-
-[[package]]
-name = "jni-sys"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
-
-[[package]]
 name = "js-sys"
 version = "0.3.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2314,46 +2278,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
-]
-
-[[package]]
-name = "mc-android-bindings"
-version = "2.0.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "crc",
- "displaydoc",
- "generic-array",
- "jni",
- "mc-account-keys",
- "mc-account-keys-slip10",
- "mc-api",
- "mc-attest-ake",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-crypto-box",
- "mc-crypto-keys",
- "mc-crypto-noise",
- "mc-crypto-rand",
- "mc-crypto-ring-signature-signer",
- "mc-fog-kex-rng",
- "mc-fog-report-types",
- "mc-fog-report-validation",
- "mc-transaction-core",
- "mc-transaction-std",
- "mc-util-encodings",
- "mc-util-from-random",
- "mc-util-serial",
- "mc-util-uri",
- "protobuf",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "sha2 0.10.2",
- "slip10_ed25519",
- "tiny-bip39",
- "zeroize",
 ]
 
 [[package]]
