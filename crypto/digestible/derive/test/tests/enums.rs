@@ -121,12 +121,19 @@ fn example_enum_c() {
         context: b"C_test",
         name: b"ExampleEnum".to_vec(),
         which: 2,
-        value: Some(Box::new(ASTNode::from(ASTPrimitive { context: b"C", type_name: b"bool", data: vec![1u8] }))),
+        value: Some(Box::new(ASTNode::from(ASTPrimitive {
+            context: b"C",
+            type_name: b"bool",
+            data: vec![1u8],
+        }))),
     });
     digestible_test_case_ast("C_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"C_test"),
-        [220, 136, 150, 83, 136, 170, 75, 139, 190, 220, 183, 47, 84, 174, 53, 244, 190, 64, 75, 154, 254, 21, 252, 153, 118, 31, 139, 221, 171, 170, 207, 121]
+        [
+            220, 136, 150, 83, 136, 170, 75, 139, 190, 220, 183, 47, 84, 174, 53, 244, 190, 64, 75,
+            154, 254, 21, 252, 153, 118, 31, 139, 221, 171, 170, 207, 121
+        ]
     );
 }
 
@@ -186,7 +193,11 @@ fn trans_enum_b() {
 #[test]
 fn trans_enum_c() {
     let arg = TransEnum::C(false);
-    let expected_ast = ASTNode::from(ASTPrimitive { context: b"C_test", type_name: b"bool", data: vec![0u8] });
+    let expected_ast = ASTNode::from(ASTPrimitive {
+        context: b"C_test",
+        type_name: b"bool",
+        data: vec![0u8],
+    });
     digestible_test_case_ast("C_test", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"C_test"),
@@ -298,7 +309,11 @@ fn example_struct2() {
                 context: b"c",
                 name: b"ExampleEnum".to_vec(),
                 which: 2,
-        value: Some(Box::new(ASTNode::from(ASTPrimitive { context: b"C", type_name: b"bool", data: vec![1u8] }))),
+                value: Some(Box::new(ASTNode::from(ASTPrimitive {
+                    context: b"C",
+                    type_name: b"bool",
+                    data: vec![1u8],
+                }))),
             }),
         ],
         is_completed: true,
@@ -306,7 +321,10 @@ fn example_struct2() {
     digestible_test_case_ast("foo1", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"foo1"),
-        [159, 244, 234, 57, 119, 244, 123, 152, 147, 44, 113, 52, 181, 117, 162, 233, 66, 73, 46, 210, 255, 18, 110, 140, 19, 20, 15, 173, 128, 189, 213, 47]
+        [
+            159, 244, 234, 57, 119, 244, 123, 152, 147, 44, 113, 52, 181, 117, 162, 233, 66, 73,
+            46, 210, 255, 18, 110, 140, 19, 20, 15, 173, 128, 189, 213, 47
+        ]
     );
 }
 
@@ -332,13 +350,20 @@ fn example_struct3() {
                 type_name: b"uint",
                 data: vec![1u8, 0u8],
             }),
-            ASTNode::from(ASTPrimitive { context: b"c", type_name: b"bool", data: vec![1u8] }),
+            ASTNode::from(ASTPrimitive {
+                context: b"c",
+                type_name: b"bool",
+                data: vec![1u8],
+            }),
         ],
         is_completed: true,
     });
     digestible_test_case_ast("foo1", &arg, expected_ast);
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"foo1"),
-        [41, 79, 252, 70, 13, 80, 217, 161, 226, 27, 73, 38, 252, 37, 224, 82, 62, 191, 54, 42, 14, 26, 249, 174, 4, 186, 29, 196, 44, 88, 71, 228]
+        [
+            41, 79, 252, 70, 13, 80, 217, 161, 226, 27, 73, 38, 252, 37, 224, 82, 62, 191, 54, 42,
+            14, 26, 249, 174, 4, 186, 29, 196, 44, 88, 71, 228
+        ]
     );
 }

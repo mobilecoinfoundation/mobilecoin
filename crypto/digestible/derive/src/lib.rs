@@ -614,19 +614,15 @@ fn try_digestible_enum_transparent(
             let ith_type = match &variant_data.variants[i].fields {
                 Fields::Unnamed(FieldsUnnamed {
                     unnamed: fields, ..
-                }) => {
-                    &fields[0].ty
-                },
-                _ => panic!("Unexpected variant")
+                }) => &fields[0].ty,
+                _ => panic!("Unexpected variant"),
             };
 
             let jth_type = match &variant_data.variants[j].fields {
                 Fields::Unnamed(FieldsUnnamed {
                     unnamed: fields, ..
-                }) => {
-                    &fields[0].ty
-                },
-                _ => panic!("Unexpected variant")
+                }) => &fields[0].ty,
+                _ => panic!("Unexpected variant"),
             };
 
             if ith_type == jth_type {
