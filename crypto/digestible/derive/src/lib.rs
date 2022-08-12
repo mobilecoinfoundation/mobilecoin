@@ -560,7 +560,7 @@ fn try_digestible_enum_transparent(
 
             // Our behavior differs based on whether the enum variant is a unit (has no data
             // associated with it), or named (has struct data associated with it), or unnamed (has
-            // tuple data assocated with it).
+            // tuple data associated with it).
             //
             // We can only support unit variants and unnamed tuples of size 1, in which case we skip right to digesting that.
             match &variant.fields {
