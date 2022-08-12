@@ -207,7 +207,6 @@ fn trans_enum_c() {
 }
 
 // Test that ExampleStruct is interchangeable with TransEnum(ExampleStruct)
-// Test that ExampleStruct2 is not interchangeable with ExampleStruct
 #[test]
 fn trans_enum_struct_interchangeability() {
     let arg = ExampleStruct { a: 7, b: 5, c: 19 };
