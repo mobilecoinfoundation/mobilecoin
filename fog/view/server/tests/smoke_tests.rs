@@ -34,7 +34,7 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
-    config::{ClientListenUri::ClientFacing, MobileAcctViewConfig as ViewConfig},
+    config::{ClientListenUri::ClientFacing, MobileAcctViewConfig as ViewConfig, ShardingStrategy},
     server::ViewServer,
     sharding_strategy::EpochShardingStrategy,
 };
@@ -73,6 +73,7 @@ fn get_test_environment(
             ias_api_key: Default::default(),
             admin_listen_uri: Default::default(),
             client_auth_token_max_lifetime: Default::default(),
+            sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
             postgres_config: Default::default(),
         };
 
