@@ -13,6 +13,7 @@ mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
+mc-sgx-debug = { path = "../../../sgx/debug" }
 mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
 mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }

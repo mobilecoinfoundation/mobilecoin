@@ -4,7 +4,7 @@
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::vec::Vec;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{ClientAuthRequest, ClientSession, EnclaveMessage, ClientAuthResponse};
 use mc_common::ResponderId;
 use mc_fog_types::ledger::GetOutputsResponse;
 use mc_transaction_core::ring_signature::KeyImage;
@@ -101,4 +101,37 @@ pub enum EnclaveCall {
     ///
     ///  Add key image data to the ORAM.
     AddKeyImageData(Vec<KeyImageData>),
+
+
+    /// The [LedgerEnclave::connect_to_store()] method.
+    ///
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
+    /// most likely a router, will act as a client to the Fog Ledger Store.
+    ConnectToStore(ResponderId), 
+
+    /// The [LedgerEnclave::finish_connecting_to_store()] method.
+    ///
+    /// Complete the connection to a Fog Ledger Store that has accepted our
+    /// ClientAuthRequest. This is meant to be called after the enclave has
+    /// initialized and discovers a new Fog Ledger Store.
+    FinishConnectingToStore(
+        ResponderId,
+        ClientAuthResponse,
+    ),
+    
+    /// The [LedgerEnclave::create_multi_ledger_store_query_data()] method.
+    ///
+    /// Transforms a client query request into a list of query request data.
+    ///
+    /// The returned list is meant to be used to construct the
+    /// MultiLedgerStoreQuery, which is sent to each shard.
+    CreateMultiLedgerStoreQueryData(EnclaveMessage<ClientSession>),
+
+    /// The [LedgerEnclave::handle_ledger_store_request()] method.
+    ///
+    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto LedgerRequest. 
+    /// Generally, these come in from a router. 
+    /// This could could be a key image request, a merkele proof 
+    /// request, and potentially in the future an untrusted tx out request.
+    HandleLedgerStoreRequest(EnclaveMessage<ClientSession>),
 }

@@ -8,6 +8,8 @@ mod error;
 mod key_image_service;
 mod ledger_router_server; 
 mod ledger_router_service; 
+mod ledger_store_server;
+mod ledger_store_service;
 mod merkle_proof_service;
 mod router_handlers;
 mod server;
