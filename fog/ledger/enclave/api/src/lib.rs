@@ -98,6 +98,40 @@ pub trait LedgerEnclave: ReportableEnclave {
 
     /// Add a key image data to the oram Using thrm -rf targete key image
     fn add_key_image_data(&self, records: Vec<KeyImageData>) -> Result<()>;
+
+
+    // LEDGER ROUTER / STORE SYSTEM
+
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
+    /// most likely a router, will act as a client to the Fog Ledger Store.
+    fn connect_to_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest>;
+
+    /// Complete the connection to a Fog Ledger Store that has accepted our
+    /// ClientAuthRequest. This is meant to be called after the enclave has
+    /// initialized and discovers a new Fog Ledger Store.
+    fn finish_connecting_to_store(
+        &self,
+        ledger_store_id: ResponderId,
+        ledger_store_auth_response: ClientAuthResponse,
+    ) -> Result<()>;
+    
+    /// Transforms a client query request into a list of query request data.
+    ///
+    /// The returned list is meant to be used to construct the
+    /// MultiLedgerStoreQuery, which is sent to each shard.
+    fn create_multi_ledger_store_query_data(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+
+    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto LedgerRequest. 
+    /// Generally, these come in from a router. 
+    /// This could could be a key image request, a merkele proof 
+    /// request, and potentially in the future an untrusted tx out request.
+    fn handle_ledger_store_request(
+        &self, 
+        router_query: EnclaveMessage<ClientSession>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side

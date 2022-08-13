@@ -191,6 +191,39 @@ where
 
         Ok(())
     }
+
+    fn connect_to_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest> {
+        mc_sgx_debug::eprintln!("Called connect_to_store(ledger_store_id: {})", ledger_store_id);
+        Ok(self.ake.backend_init(ledger_store_id)?)
+    }
+
+    #[allow(unused_variables)]
+    fn finish_connecting_to_store(
+        &self,
+        ledger_store_id: ResponderId,
+        ledger_store_auth_response: ClientAuthResponse,
+    ) -> Result<()> {
+        mc_sgx_debug::eprintln!("Called store_connection_ready(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
+        Ok(self
+            .ake
+            .backend_connect(ledger_store_id, ledger_store_auth_response)?)
+    }
+
+    fn create_multi_ledger_store_query_data(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+        mc_sgx_debug::eprintln!("Called create_multi_ledger_store_query_data(..)");
+        Ok(self
+            .ake
+            .reencrypt_client_message_for_backends(client_query)?)
+    }
+    fn handle_ledger_store_request(
+        &self, 
+        _: EnclaveMessage<ClientSession>
+    ) -> Result<EnclaveMessage<ClientSession>> { 
+        todo!() 
+    }
 }
 
 #[cfg(test)]

@@ -61,6 +61,15 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         }
         // Add Key Image Data
         EnclaveCall::AddKeyImageData(records) => serialize(&ENCLAVE.add_key_image_data(records)),
+
+        // Router / Store system
+        EnclaveCall::ConnectToStore(responder_id) => todo!(),
+        EnclaveCall::FinishConnectingToStore(
+            responder_id,
+            client_auth_response,
+        ) => todo!(), 
+        EnclaveCall::CreateMultiLedgerStoreQueryData(msg) => todo!(),
+        EnclaveCall::HandleLedgerStoreRequest(msg) => todo!(),
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
