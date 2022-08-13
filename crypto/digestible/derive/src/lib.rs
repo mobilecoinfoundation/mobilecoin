@@ -558,11 +558,6 @@ fn try_digestible_enum_transparent(
         .map(|variant| {
             let variant_ident = &variant.ident;
 
-            // Our behavior differs based on whether the enum variant is a unit (has no data
-            // associated with it), or named (has struct data associated with it), or unnamed (has
-            // tuple data associated with it).
-            //
-            // We can only support unit variants and unnamed tuples of size 1, in which case we skip right to digesting that.
             match &variant.fields {
                 // Enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
                 Fields::Unit => {
