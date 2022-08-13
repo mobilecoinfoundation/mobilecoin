@@ -1069,6 +1069,7 @@ dependencies = [
  "mc-oblivious-ram",
  "mc-oblivious-traits",
  "mc-sgx-compat",
+ "mc-sgx-debug",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-serial",
