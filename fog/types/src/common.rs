@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use alloc::{format, string::String, vec::Vec};
+use core::str::FromStr;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -45,9 +47,31 @@ impl core::fmt::Display for BlockRange {
     }
 }
 
+impl FromStr for BlockRange {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let block_indices: Vec<u64> = s
+            .split(',')
+            .map(|index_str| index_str.trim().parse())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| "BlockRange index is not a number.")?;
+        if block_indices.len() != 2 {
+            return Err(format!(
+                "Block range is composed of two indices, found {} indices",
+                block_indices.len()
+            ));
+        }
+        let result = BlockRange::new(block_indices[0], block_indices[1]);
+
+        Ok(result)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_contains() {
         let range = BlockRange::new(10, 13);
@@ -86,5 +110,56 @@ mod tests {
         assert!(range.overlaps(&BlockRange::new(0, 15)));
         assert!(!range.overlaps(&BlockRange::new(0, 10)));
         assert!(!range.overlaps(&BlockRange::new(13, 100)));
+    }
+
+    #[test]
+    fn from_string_well_formatted_creates_block_range() {
+        let start_block = 0;
+        let end_block = 10;
+        let block_range_str = format!("{},{}", start_block, end_block);
+
+        let result = BlockRange::from_str(&block_range_str);
+
+        assert!(result.is_ok());
+        let block_range = result.unwrap();
+        assert_eq!(block_range.start_block, start_block);
+        assert_eq!(block_range.end_block, end_block);
+    }
+
+    #[test]
+    fn from_string_well_formatted_with_whitespace_creates_block_range() {
+        let start_block = 0;
+        let end_block = 10;
+        let block_range_str = format!("     {} , {} ", start_block, end_block);
+
+        let result = BlockRange::from_str(&block_range_str);
+
+        assert!(result.is_ok());
+        let block_range = result.unwrap();
+        assert_eq!(block_range.start_block, start_block);
+        assert_eq!(block_range.end_block, end_block);
+    }
+
+    #[test]
+    fn from_string_multiple_indices_errors() {
+        let start_block = 0;
+        let end_block = 10;
+        let third_block = 10;
+        let block_range_str = format!("{},{},{}", start_block, end_block, third_block);
+
+        let result = BlockRange::from_str(&block_range_str);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_string_non_numbers_errors() {
+        let start_block = 'a';
+        let end_block = 'b';
+        let block_range_str = format!("{},{}", start_block, end_block);
+
+        let result = BlockRange::from_str(&block_range_str);
+
+        assert!(result.is_err());
     }
 }
