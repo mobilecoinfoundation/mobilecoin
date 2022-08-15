@@ -187,6 +187,15 @@ fn main() {
                 .expect("failed writing output file");
         }
 
+        Commands::HashTxFile { tx_file } => match tx_file {
+            TxFile::MintConfigTx(tx) => {
+                println!("{}", hex::encode(&tx.prefix.hash()));
+            }
+            TxFile::MintTx(tx) => {
+                println!("{}", hex::encode(&tx.prefix.hash()));
+            }
+        }
+
         Commands::HashMintTx { params } => {
             let tx_prefix = params
                 .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
