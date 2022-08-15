@@ -415,12 +415,10 @@ macro_rules! derive_core_cmp_from_as_ref {
     };
 }
 
-/// Derive [Debug] and [Display] from [AsRef<T>], using [hex_fmt::HexFmt] to
-/// render as a hexadecimal string.
+/// Derive [Debug] and [Display] from [AsRef<T>] to render as a hexadecimal string.
 ///
 /// This is not connected to [ReprBytes] but it is a macro like the above macros
 /// that is often needed for structs holding bytes.
-#[cfg(feature = "hex_fmt")]
 #[macro_export]
 macro_rules! derive_debug_and_display_hex_from_as_ref {
     ($mytype:ty) => {
@@ -435,8 +433,27 @@ macro_rules! derive_debug_and_display_hex_from_as_ref {
 
         impl core::fmt::Display for $mytype {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "{:x}", self)
+            }
+        }
+
+        impl core::fmt::LowerHex for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let data: &$asref = self.as_ref();
-                write!(f, "{}", $crate::_exports::hex_fmt::HexFmt(data))
+                for d in data {
+                    write!(f, "{:02x}", d)?;
+                }
+                Ok(())
+            }
+        }
+
+        impl core::fmt::UpperHex for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let data: &$asref = self.as_ref();
+                for d in data {
+                    write!(f, "{:02X}", d)?;
+                }
+                Ok(())
             }
         }
     };

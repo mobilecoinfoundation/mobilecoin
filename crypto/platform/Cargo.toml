@@ -1,0 +1,30 @@
+[package]
+name = "mc-crypto-platform"
+description = "MobileCoin Crypto Platform Configurator Package"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[features]
+
+simd_backend = [ "curve25519-dalek/simd_backend", "ed25519-dalek/simd_backend" ]
+u64_backend = [ "curve25519-dalek/u64_backend", "ed25519-dalek/u64_backend" ]
+u32_backend = [ "curve25519-dalek/u32_backend", "ed25519-dalek/u32_backend" ]
+serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]
+
+
+# Use simd backend for x86_64 platforms with `avx` or `avx2` support
+[target.'cfg(all(any(target_feature = "avx2", target_feature = "avx"), target_arch = "x86_64"))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly", "simd_backend"] }
+
+# Use u64 backend for x86_64 platforms without avx or avx2
+[target.'cfg(all(not(any(target_feature = "avx2", target_feature = "avx")), target_arch = "x86_64"))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
+
+# Otherwise let the platform folks make their own choices
+[target.'cfg(not(target_arch = "x86_64"))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"]  }
+x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }

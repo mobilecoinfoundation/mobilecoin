@@ -6,7 +6,7 @@ use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
     KeyError, PrivateKey, PublicKey, Signature,
 };
-use alloc::vec::Vec;
+
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -24,8 +24,7 @@ use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
-    derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from,
     derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
@@ -34,7 +33,19 @@ use schnorrkel_og::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
+
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+
 use signature::Error as SignatureError;
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
@@ -76,8 +87,14 @@ impl TryFrom<&[u8]> for RistrettoPrivate {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(RistrettoPrivate, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(RistrettoPrivate);
+
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPrivate);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPrivate);
 
 impl RistrettoPrivate {
@@ -274,9 +291,15 @@ impl ReprBytes for RistrettoPublic {
     }
 }
 
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPublic);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPublic);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(RistrettoPublic);
+
 derive_try_from_slice_from_repr_bytes!(RistrettoPublic);
 
 // Many historical APIs assumed TryFrom<&[u8;32]> existed for RistrettoPublic
@@ -381,10 +404,11 @@ impl Display for RistrettoPublic {
     }
 }
 
-impl From<&RistrettoPublic> for Vec<u8> {
-    fn from(src: &RistrettoPublic) -> Vec<u8> {
+#[cfg(feature = "alloc")]
+impl From<&RistrettoPublic> for alloc::vec::Vec<u8> {
+    fn from(src: &RistrettoPublic) -> alloc::vec::Vec<u8> {
         let compressed = src.as_ref().compress();
-        Vec::from(&compressed.as_bytes()[..])
+        alloc::vec::Vec::from(&compressed.as_bytes()[..])
     }
 }
 
@@ -404,7 +428,8 @@ impl TryFrom<&CompressedRistrettoPublic> for RistrettoPublic {
 /// This is a (compressed) curve point on the ristretto curve, but we make it a
 /// different type from RistrettoPublic in order to avoid bugs where the secret
 /// is publicized.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RistrettoSecret([u8; 32]);
 
 impl Drop for RistrettoSecret {
@@ -513,9 +538,16 @@ impl FromRandom for CompressedRistrettoPublic {
 impl PublicKey for CompressedRistrettoPublic {}
 
 derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
+
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
+
 derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
 derive_debug_and_display_hex_from_as_ref!(CompressedRistrettoPublic);
 
@@ -597,19 +629,27 @@ impl TryFrom<RistrettoSignature> for SchnorrkelSignature {
 
 derive_core_cmp_from_as_ref!(RistrettoSignature);
 derive_debug_and_display_hex_from_as_ref!(RistrettoSignature);
-derive_into_vec_from_repr_bytes!(RistrettoSignature);
 derive_repr_bytes_from_as_ref_and_try_from!(RistrettoSignature, U64);
+
+#[cfg(feature = "alloc")]
+derive_into_vec_from_repr_bytes!(RistrettoSignature);
+
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoSignature);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoSignature);
 
 #[cfg(test)]
 mod test {
     extern crate mc_util_test_helper;
 
+    #[cfg(feature = "serde")]
     use super::*;
 
     // Test that mc-util-serial can serialize a pubkey
     #[test]
+    #[cfg(feature = "serde")]
     fn test_pubkey_serialize() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let pubkey = RistrettoPublic::from_random(&mut rng);
@@ -623,6 +663,7 @@ mod test {
 
     // Test that mc-util-serial can serialize a private key
     #[test]
+    #[cfg(feature = "serde")]
     fn test_privkey_serialize() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let privkey = RistrettoPrivate::from_random(&mut rng);

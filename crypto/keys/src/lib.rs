@@ -48,6 +48,7 @@
 
 #![no_std]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 mod ed25519;
@@ -78,3 +79,5 @@ pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, Re
 pub use signature::{
     DigestSigner, DigestVerifier, Error as SignatureError, Signature, Signer, Verifier,
 };
+
+pub use traits::DER_MAX_LEN;
