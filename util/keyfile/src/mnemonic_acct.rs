@@ -63,7 +63,8 @@ impl TryFrom<UncheckedMnemonicAccount> for AccountKey {
         )
         .map_err(|e| Error::InvalidMnemonic(format!("{}", e)))?;
         let slip10 = mnemonic.derive_slip10_key(src.account_index.ok_or(Error::NoAccountIndex)?);
-        Ok(slip10.try_into_account_key(
+        Ok(AccountKey::try_from_slip10_key(
+            slip10,
             src.fog_report_url.unwrap_or_default().as_str(),
             src.fog_report_id.unwrap_or_default().as_str(),
             src.fog_authority_spki.unwrap_or_default().as_slice(),

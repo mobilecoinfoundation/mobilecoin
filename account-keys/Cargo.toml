@@ -25,6 +25,7 @@ zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "types" }
+mc-core = { path = "../core" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-hashes = { path = "../crypto/hashes", default_features = false }
 mc-crypto-keys = { path = "../crypto/keys", default_features = false }

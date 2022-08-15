@@ -6,12 +6,14 @@
 
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
-use mc_crypto_keys::RistrettoPrivate;
 use sha2::Sha512;
 use zeroize::Zeroize;
 
 #[cfg(feature = "tiny-bip39")]
 use bip39::{Mnemonic, Seed};
+
+use mc_core::{ViewPrivate, SpendPrivate};
+use mc_crypto_keys::RistrettoPrivate;
 
 /// A key derived using SLIP-0010 key derivation
 #[derive(Zeroize)]
@@ -21,26 +23,6 @@ pub struct Slip10Key([u8; 32]);
 impl AsRef<[u8]> for Slip10Key {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
-    }
-}
-
-/// Mobilecoin view private key
-pub struct ViewPrivate(RistrettoPrivate);
-
-/// AsRef to [`RistrettoPrivate`] for backwards compatibility
-impl AsRef<RistrettoPrivate> for ViewPrivate {
-    fn as_ref(&self) -> &RistrettoPrivate {
-        &self.0
-    }
-}
-
-/// Mobilecoin spend private key
-pub struct SpendPrivate(RistrettoPrivate);
-
-/// AsRef to [`RistrettoPrivate`] for backwards compatibility
-impl AsRef<RistrettoPrivate> for SpendPrivate {
-    fn as_ref(&self) -> &RistrettoPrivate {
-        &self.0
     }
 }
 
@@ -65,7 +47,7 @@ impl From<Slip10Key> for (SpendPrivate, ViewPrivate) {
         let spend_scalar = Scalar::from_bytes_mod_order_wide(&okm);
         let spend_private_key = RistrettoPrivate::from(spend_scalar);
 
-        (SpendPrivate(spend_private_key), ViewPrivate(view_private_key))
+        (SpendPrivate::from(spend_private_key), ViewPrivate::from(view_private_key))
     }
 }
 

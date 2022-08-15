@@ -1,0 +1,31 @@
+[package]
+name = "mc-core"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hkdf = "0.12.3"
+sha2 = { version = "0.10", default-features = false }
+
+mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-crypto-platform = { path = "../crypto/platform", default_features = false }
+mc-crypto-digestible = { path = "../crypto/digestible", default_features = false }
+mc-crypto-hashes = { path = "../crypto/hashes", default_features = false }
+
+zeroize = { version = "1.5", default-features = false }
+
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
+x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
+
+[dev-dependencies]
+#mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
+#mc-util-test-helper = { path = "../util/test-helper" }
+serde = { version = "*", features = [ "derive" ] }
+
+#mc-util-test-vector = { path = "../util/test-vector" }
+#mc-util-test-with-data = { path = "../util/test-with-data" }
+#mc-test-vectors-definitions = { path = "../test-vectors/definitions" }

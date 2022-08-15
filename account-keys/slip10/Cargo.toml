@@ -11,6 +11,7 @@ license = "GPL-3.0"
 default = [ "tiny-bip39", "slip10_ed25519" ]
 
 [dependencies]
+mc-core = { path = "../../core", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-platform = { path = "../../crypto/platform" }
 

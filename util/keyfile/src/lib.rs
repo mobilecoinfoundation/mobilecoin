@@ -196,9 +196,9 @@ mod testing {
         )
         .expect("Could not write keyfile");
 
-        let expected = mnemonic
-            .derive_slip10_key(0)
-            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
+        let expected = AccountKey::try_from_slip10_key(
+            mnemonic.derive_slip10_key(0),
+            fog_report_url, fog_report_id, fog_authority_spki)
             .expect("Could not create expected account key");
         let actual = read_keyfile(&path).expect("Could not read keyfile");
         assert_eq!(expected, actual);
@@ -234,8 +234,7 @@ mod testing {
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();
-        let expected = Slip10Key::from(Mnemonic::new(MnemonicType::Words24, Language::English))
-            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
+        let expected = AccountKey::try_from_slip10_key(Slip10Key::from(Mnemonic::new(MnemonicType::Words24, Language::English)), fog_report_url, fog_report_id, fog_authority_spki)
             .expect("Could not create expected account key")
             .default_subaddress();
 
