@@ -3059,6 +3059,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
  "mc-crypto-hashes",
+ "mc-crypto-platform",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -3072,6 +3073,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "signature",
+ "static_assertions",
  "subtle",
  "tempdir",
  "x25519-dalek",
@@ -3128,6 +3130,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-platform"
+version = "0.1.0"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "mc-crypto-rand"
 version = "2.0.0"
 dependencies = [
@@ -3151,6 +3162,7 @@ dependencies = [
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-platform",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -3176,6 +3188,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-keys",
+ "mc-crypto-platform",
  "mc-crypto-rand",
  "mc-crypto-ring-signature",
  "mc-transaction-types",
