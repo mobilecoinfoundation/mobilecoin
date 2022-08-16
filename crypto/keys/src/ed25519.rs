@@ -27,7 +27,7 @@ use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
 #[cfg(feature = "alloc")]
-use alloc::{vec::Vec};
+use alloc::vec::Vec;
 
 #[cfg(feature = "alloc")]
 use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
@@ -37,7 +37,6 @@ use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
 use serde::{self as serde, Deserialize, Serialize};
-
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
 // a detached signature -- use https://lapo.it/asn1js/
@@ -99,9 +98,9 @@ impl DistinguishedEncoding for Ed25519Signature {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8] {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.to_bytes();
-        buff[..ED25519_SIG_DER_LEN].iter_mut().for_each(|b| *b = 0 );
+        buff[..ED25519_SIG_DER_LEN].iter_mut().for_each(|b| *b = 0);
 
         let prefix_len = ED25519_SIG_DER_PREFIX.len();
         buff[..prefix_len].copy_from_slice(&ED25519_SIG_DER_PREFIX);
@@ -176,7 +175,6 @@ const ED25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
 static_assertions::const_assert!(ED25519_SPKI_DER_LEN <= super::DER_MAX_LEN);
 
-
 impl DistinguishedEncoding for Ed25519Public {
     fn der_size() -> usize {
         ED25519_SPKI_DER_LEN
@@ -196,10 +194,10 @@ impl DistinguishedEncoding for Ed25519Public {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8] {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.as_ref();
-        buff[..ED25519_SPKI_DER_LEN].iter_mut().for_each(|b| *b = 0 );
-        
+        buff[..ED25519_SPKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
+
         let prefix_len = ED25519_SPKI_DER_PREFIX.len();
         buff[..prefix_len].copy_from_slice(&ED25519_SPKI_DER_PREFIX);
         buff[prefix_len..ED25519_SPKI_DER_LEN].copy_from_slice(data);
@@ -293,9 +291,9 @@ impl DistinguishedEncoding for Ed25519Private {
         Self::try_from(&src[prefix_len..]).map_err(|_err| KeyError::InternalError)
     }
 
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8] {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let mut key = self.0.to_bytes();
-        buff[..ED25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0 );
+        buff[..ED25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
 
         let prefix_len = ED25519_PKI_DER_PREFIX.len();
         buff[..prefix_len].copy_from_slice(&ED25519_PKI_DER_PREFIX);

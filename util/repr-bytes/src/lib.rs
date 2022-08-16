@@ -415,7 +415,8 @@ macro_rules! derive_core_cmp_from_as_ref {
     };
 }
 
-/// Derive [Debug] and [Display] from [AsRef<T>] to render as a hexadecimal string.
+/// Derive [Debug] and [Display] from [AsRef<T>] to render as a hexadecimal
+/// string.
 ///
 /// This is not connected to [ReprBytes] but it is a macro like the above macros
 /// that is often needed for structs holding bytes.

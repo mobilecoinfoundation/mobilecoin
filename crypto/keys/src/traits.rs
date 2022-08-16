@@ -11,45 +11,41 @@ use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 #[cfg(feature = "alloc")]
-use alloc::{vec::Vec};
+use alloc::vec::Vec;
 
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 
 /// Marker trait for serialization when `serde` feature is enabled
 #[cfg(feature = "serde")]
 pub trait MaybeSerde: DeserializeOwned + Serialize {}
 
 #[cfg(feature = "serde")]
-impl <T: DeserializeOwned + Serialize> MaybeSerde for T {}
+impl<T: DeserializeOwned + Serialize> MaybeSerde for T {}
 
 /// Marker trait for serialization when `serde` feature is disabled
 #[cfg(not(feature = "serde"))]
 pub trait MaybeSerde {}
 
 #[cfg(not(feature = "serde"))]
-impl <T> MaybeSerde for T {}
+impl<T> MaybeSerde for T {}
 
 /// Marker trait for `Into<Vec<u8>>` when `alloc` feature is enabled
 #[cfg(feature = "alloc")]
 pub trait MaybeAlloc: Into<Vec<u8>> {}
 
 #[cfg(feature = "alloc")]
-impl <T: Into<Vec<u8>>> MaybeAlloc for T {}
+impl<T: Into<Vec<u8>>> MaybeAlloc for T {}
 
 /// Marker trait for `Into<Vec<u8>>` when `alloc` feature is disabled
 #[cfg(not(feature = "alloc"))]
 pub trait MaybeAlloc {}
 
 #[cfg(not(feature = "alloc"))]
-impl <T> MaybeAlloc for T {}
-
+impl<T> MaybeAlloc for T {}
 
 /// A collection of common errors for use by implementers
-#[derive(
-    Clone, Copy, Debug, Eq, Hash, Display, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Display, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum KeyError {
     /**
@@ -84,8 +80,9 @@ pub trait DistinguishedEncoding: Sized {
     /// Create a new object from the given DER-encoded SubjectPublicKeyInfo.
     fn try_from_der(src: &[u8]) -> Result<Self, KeyError>;
 
-    /// Create the standardized DER-encoded representation of this object and write to the provided buffer.
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8];
+    /// Create the standardized DER-encoded representation of this object and
+    /// write to the provided buffer.
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8];
 
     /// Create the standardized DER-encoded representation of this object.
     #[cfg(feature = "alloc")]
@@ -96,10 +93,9 @@ pub trait DistinguishedEncoding: Sized {
     }
 }
 
-
-/// Maximum length of the DER buffer required for [`DistinguishedEncoding::to_der()`]
+/// Maximum length of the DER buffer required for
+/// [`DistinguishedEncoding::to_der()`]
 pub const DER_MAX_LEN: usize = 128;
-
 
 /// A trait indicating that a fingerprint can be generated for an object.
 pub trait Fingerprintable {
@@ -113,11 +109,11 @@ pub struct Fingerprint<D: digest::OutputSizeUser> {
 }
 
 /// Debug impl for fingerprint objects
-impl <D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
+impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for i in 0..self.hash.len() {
             write!(f, "{:02x}", self.hash[i])?;
-            if i < self.hash.len()  - 1 {
+            if i < self.hash.len() - 1 {
                 write!(f, ":")?;
             }
         }
@@ -126,11 +122,11 @@ impl <D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
 }
 
 /// Display impl for fingerprint objects
-impl <D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
+impl<D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for i in 0..self.hash.len() {
             write!(f, "{:02x}", self.hash[i])?;
-            if i < self.hash.len()  - 1 {
+            if i < self.hash.len() - 1 {
                 write!(f, ":")?;
             }
         }
@@ -150,7 +146,7 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
         let hash = D::digest(&der);
 
         // Return fingerprint
-        Fingerprint{hash}
+        Fingerprint { hash }
     }
 }
 
@@ -231,11 +227,7 @@ where
 /// These types of key-exchange pairs can be saved and restored, and will
 /// persist after a key-exchange has been performed.
 pub trait KexReusablePrivate:
-    Clone
-    + KexPrivate
-    + MaybeAlloc
-    + MaybeSerde
-    + for<'bytes> TryFrom<&'bytes [u8]>
+    Clone + KexPrivate + MaybeAlloc + MaybeSerde + for<'bytes> TryFrom<&'bytes [u8]>
 where
     for<'privkey> <Self as PrivateKey>::Public: From<&'privkey Self>,
 {

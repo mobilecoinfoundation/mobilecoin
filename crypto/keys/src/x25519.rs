@@ -4,22 +4,18 @@
 
 use crate::{
     Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
-    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG, DER_MAX_LEN,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG,
+    DER_MAX_LEN,
 };
 
 #[cfg(feature = "alloc")]
-use alloc::{vec::Vec};
+use alloc::vec::Vec;
 
-use core::{
-    fmt::{Debug, Formatter, Result as FmtResult},
-};
+use core::fmt::{Debug, Formatter, Result as FmtResult};
 use digest::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref,
-    derive_repr_bytes_from_as_ref_and_try_from,
-};
+use mc_util_repr_bytes::{derive_core_cmp_from_as_ref, derive_repr_bytes_from_as_ref_and_try_from};
 
 #[cfg(feature = "alloc")]
 use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
@@ -146,7 +142,7 @@ impl DistinguishedEncoding for X25519Public {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8] {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.as_ref();
         Zeroize::zeroize(&mut buff[..X25519_SPKI_DER_LEN]);
 
@@ -259,8 +255,7 @@ impl Debug for X25519Public {
         // Encode DER to base64
         let mut b64_buff = [0u8; DER_MAX_LEN / 4 * 3];
         let n = base64::encode_config_slice(der, B64_CONFIG, &mut b64_buff);
-        let b64_str = core::str::from_utf8(&b64_buff[..n])
-            .map_err(|_| core::fmt::Error)?;
+        let b64_str = core::str::from_utf8(&b64_buff[..n]).map_err(|_| core::fmt::Error)?;
 
         write!(
             f,
@@ -449,9 +444,9 @@ impl DistinguishedEncoding for X25519Private {
         Self::try_from(&src[prefix_len..])
     }
 
-    fn to_der_slice<'a>(&self, buff: &'a mut[u8]) -> &'a [u8] {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let key = self.0.to_bytes();
-        buff[..X25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0 );
+        buff[..X25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
 
         let prefix_len = X25519_PKI_DER_PREFIX.len();
         buff[..prefix_len].copy_from_slice(&X25519_PKI_DER_PREFIX);
@@ -494,8 +489,7 @@ impl Debug for X25519Private {
         write!(
             f,
             "X25519Private with public SHA2-256 fingerprint {}",
-            X25519Public::from(self)
-                .fingerprint::<Sha256>()
+            X25519Public::from(self).fingerprint::<Sha256>()
         )
     }
 }

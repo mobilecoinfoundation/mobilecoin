@@ -24,8 +24,7 @@ use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_repr_bytes_from_as_ref_and_try_from,
-    derive_try_from_slice_from_repr_bytes, ReprBytes,
+    derive_repr_bytes_from_as_ref_and_try_from, derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
