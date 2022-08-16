@@ -6,10 +6,6 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [features]
-
-simd_backend = [ "curve25519-dalek/simd_backend", "ed25519-dalek/simd_backend" ]
-u64_backend = [ "curve25519-dalek/u64_backend", "ed25519-dalek/u64_backend" ]
-u32_backend = [ "curve25519-dalek/u32_backend", "ed25519-dalek/u32_backend" ]
 serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]
 
 
