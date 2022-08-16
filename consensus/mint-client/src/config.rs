@@ -259,8 +259,8 @@ pub enum Commands {
         params: MintConfigTxPrefixParams,
     },
 
-    /// Produce a hash of a MintConfigTx or MintTx tranasaction from a JSON tx-file.
-    /// This is useful for offline/HSM signing.
+    /// Produce a hash of a MintConfigTx or MintTx tranasaction from a JSON
+    /// tx-file. This is useful for offline/HSM signing.
     HashTxFile {
         /// The file to load
         #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
