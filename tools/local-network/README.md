@@ -23,7 +23,7 @@ kill the `local_network.py` and restart it.
 
 Stopping the network does not generally wipe out the ledger it generated.
 If you want to also start from a clean ledger, the script's "work directory" is (typically) `target/release/mc-local-network`,
-and you can simply delete this in order to start the ledger over from scratch the next time you start the network.
+delete this in order to start the ledger over from scratch the next time you start the network.
 
 ## bootstrap.sh
 
