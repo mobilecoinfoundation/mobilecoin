@@ -591,7 +591,7 @@ jobs:
                         --mobilecoind-addr localhost:4444 \
                         --mint-auditor-addr localhost:7774 \
                         --mint-client-bin "$BIN_DIR/mc-consensus-mint-client" \
-                        --node-url mc://localhost:3200 \
+                        --node-url insecure-mc://localhost:3200 \
                         --mint-signing-key "$MINTING_KEYS/minter1"
 
       - name: Upload core dumps
