@@ -42,17 +42,25 @@ This script starts a local mobilecoin consensus network by launching a separate 
 It relies on environment variables for configuration:
 
 - (required) `LEDGER_BASE` - Points at the ledger directory to initialize the nodes with (e.g. `./target/sample_data/ledger`).
-- (required) `IAS_API_KEY` - IAS Api key.
-- (required) `IAS_SPID` - IAS Service Provider ID.
+- (optional) `IAS_API_KEY` - IAS Api key.
+- (optional) `IAS_SPID` - IAS Service Provider ID.
 - (optional) `MC_LOG` - Log level configuration.
 - (optional) `MOB_RELEASE` - When set to 1 (default), build in release mode.
 - (optional) `LOG_BRANCH` - Enable cloud logging, tagging all logs/metrics with the provided branch name.
 - (optional) `LOGSTASH_HOST` - Logstash host:port to send logs to.
 - (optional) `GRAFANA_PASSWORD` - Grafana API key to sent metrics to.
-of the local drive.
 
 ## mobilecoind.sh
 
 This script starts mobilecoind and connects it to the nodes started by `local_network.py`.
 
 It has sane defaults and requires no extra configuration.
+
+Note that, current versions of `local_network.py` already start a `mobilecoind`, so you may
+be able to use that one instead of starting an additional instance.
+
+## send-mobilecoind-txs.sh
+
+This script uses curl to ask the `mobilecoind` started in the local network to send some transactions, to drive the network.
+
+Note that you must separately start `mobilecoind-json` for this script to work.
