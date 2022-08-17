@@ -556,7 +556,7 @@ jobs:
           MINT_AUDITOR_TESTS="$PWD/mint-auditor/tests"
 
           # These paths are created by the local_network.py script
-          WORK_DIR="$PWD/target/mc-local-network"
+          WORK_DIR="$PWD/target/release/mc-local-network"
           MINTING_KEYS="$WORK_DIR/minting-keys"
           export MC_CHAIN_ID="local"
 
