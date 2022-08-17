@@ -559,7 +559,7 @@ jobs:
           WORK_DIR="$PWD/target/release/mc-local-network"
           MINTING_KEYS="$WORK_DIR/minting-keys"
           export MC_CHAIN_ID="local"
-          export LEDGER_BASE="$PWD/ledger"
+          export LEDGER_BASE="/tmp/local-network/ledger"
 
           cd /tmp/local-network
 
