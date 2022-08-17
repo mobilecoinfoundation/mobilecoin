@@ -531,17 +531,9 @@ jobs:
               -p mc-consensus-mint-client \
               -p mc-consensus-service \
               -p mc-crypto-x509-test-vectors \
-              -p mc-fog-distribution \
-              -p mc-fog-ingest-client \
-              -p mc-fog-ingest-server \
-              -p mc-fog-ledger-server \
-              -p mc-fog-report-server \
-              -p mc-fog-sql-recovery-db \
-              -p mc-fog-test-client \
-              -p mc-fog-view-server \
               -p mc-ledger-distribution \
+              -p mc-mint-auditor \
               -p mc-mobilecoind \
-              -p mc-mobilecoind-dev-faucet \
               -p mc-util-generate-sample-ledger \
               -p mc-util-grpc-admin-tool \
               -p mc-util-keyfile \
@@ -557,17 +549,13 @@ jobs:
           # Generate sample keys and ledger.
           "$BIN_DIR/sample-keys" --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
           "$BIN_DIR/generate-sample-ledger" --txs 100
-
-          service postgresql start
-      - name: Run local network
-        env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://localhost
+      - name: Run local network and mint auditor
         run: |
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/local-network"
           MINT_AUDITOR_TESTS="$PWD/mint-auditor/tests"
+
+          # These paths are created by the local_network.py script
           WORK_DIR="$PWD/target/mc-local-network"
           MINTING_KEYS="$WORK_DIR/minting-keys"
           export MC_CHAIN_ID="local"
