@@ -559,12 +559,12 @@ jobs:
           WORK_DIR="$PWD/target/release/mc-local-network"
           MINTING_KEYS="$WORK_DIR/minting-keys"
           export MC_CHAIN_ID="local"
+          export LEDGER_BASE="$PWD/ledger"
 
           cd /tmp/local-network
 
           # Run local network in background.
-          MC_LOG="debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
-          LEDGER_BASE="$PWD/ledger" \
+          MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           python3 "$SCRIPT_DIR/local_network.py" --network-type dense5 --skip-build &
           # Give it time to spin up
           sleep 20
