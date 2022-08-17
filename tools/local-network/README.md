@@ -19,7 +19,7 @@ $ ./tools/local-network/local_network.py --network-type dense5 &
 
 Both `bootstrap.sh` and `local_network.py` will use cargo to build the required binaries.
 You only have to bootstrap once. To take down the network and start up a fresh one,
-you can just kill the `local_network.py` and restart it.
+kill the `local_network.py` and restart it.
 
 Stopping the network does not generally wipe out the ledger it generated.
 If you want to also start from a clean ledger, the script's "work directory" is (typically) `target/release/mc-local-network`,
