@@ -16,11 +16,11 @@ import time
 from local_network import *
 
 # Generate minter 1 and minter 2 ed25519 keys in the minting keys dir, if they don't already exist
-if not os.path.exists(f'{MINTING_KEYS_DIR}/minter1'}):
+if not os.path.exists(f'{MINTING_KEYS_DIR}/minter1'):
     subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/minter1', shell=True)
     subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/minter1 -out {MINTING_KEYS_DIR}/minter1.pub', shell=True)
 
-if not os.path.exists(f'{MINTING_KEYS_DIR}/minter2'}):
+if not os.path.exists(f'{MINTING_KEYS_DIR}/minter2'):
     subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/minter2', shell=True)
     subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/minter2 -out {MINTING_KEYS_DIR}/minter2.pub', shell=True)
 

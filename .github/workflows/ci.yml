@@ -549,7 +549,7 @@ jobs:
           # Generate sample keys and ledger.
           "$BIN_DIR/sample-keys" --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
           "$BIN_DIR/generate-sample-ledger" --txs 100
-      - name: Run local network and mint auditor
+      - name: Run local network and mint auditor tests
         run: |
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/local-network"
@@ -574,7 +574,7 @@ jobs:
             scan-ledger \
             --ledger-db "$WORK_DIR/mobilecoind-ledger-db" \
             --mint-auditor-db "$WORK_DIR/mint-auditor" \
-            --listen-uri insecure-mint-auditor://0.0.0.0:7774/
+            --listen-uri insecure-mint-auditor://0.0.0.0:7774/ &
 
           # Give it some time also
           sleep 5

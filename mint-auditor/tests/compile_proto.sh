@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 SCRIPT_DIR=$(dirname "$0")
 cd $SCRIPT_DIR
@@ -16,4 +16,4 @@ pip3 install grpcio grpcio-tools
 python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
 python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
 python3 -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
-python3 -m grpc_tools.protoc -I$MINT_AUDITOR_API --python_out=. --grpc_python_out=. $MINT_AUDITOR_API/mint_auditor.proto
+python3 -m grpc_tools.protoc -I$MC_API -I$MINT_AUDITOR_API --python_out=. --grpc_python_out=. $MINT_AUDITOR_API/mint_auditor.proto
