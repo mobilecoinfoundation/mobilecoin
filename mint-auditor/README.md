@@ -10,11 +10,12 @@ It also provides some Prometheus metrics to ease automated monitoring.
 The mint auditor requires a local ledger database to audit. It does not sync its own ledger, and relies on `mobilecoind` or `full-service` to take care of that. As such, the first step is to ensure something is running that is syncing the ledger to a local file.
 
 To run the mint auditor we can use `cargo`:
+
 ```
     cargo run -p mc-mint-auditor -- \
         scan-ledger \
-        --ledger-db /tmp/mc-local-network/node-ledger-0 \
-        --mint-auditor-db /tmp/mc-local-network/auditor-db \
+        --ledger-db /target/release/mc-local-network/node-ledger-0 \
+        --mint-auditor-db /target/release/mc-local-network/auditor-db \
         --listen-uri insecure-mint-auditor://127.0.0.1:7334/
 ```
 
@@ -22,6 +23,60 @@ This will run a mint auditor that scans the ledger, performs audits into its loc
 
 For Gnosis auditing, an additional parameter (`--gnosis-safe-config gnosis-safe.toml`) needs to be passed. The TOML (or JSON) file contains information about the Gnosis safe configuration to audit. See more below for details about this.
 
+### Running the integration tests
+
+These instructions assume you are running in docker using the `./mob prompt` tool.
+If that's not the case and you are just in a normal linux environment, this should still work, but
+`target/docker/release` should be switched to `target/release` in what follows.
+
+To run the integration tests, which live in `mint-auditor/tests/`, there are four steps:
+
+1. Start a local network in the background. This might look like:
+
+```
+$ cargo build --release
+$ export MC_LOG=info
+$ export LEDGER_BASE=$PWD/target/sample_data/ledger
+$ ./tools/local-network/bootstrap.sh
+$ ./tools/local-network/local_network.py --network-type dense5 --skip-build &
+```
+
+2. Generate and authorize minters.
+
+```
+$ ./tools/local-network/authorize-minters.py
+```
+
+3. Start the mint auditor in the background.
+
+```
+$ ./target/docker/release/mc-mint-auditor \
+      scan-ledger \
+      --ledger-db /target/docker/release/mc-local-network/mobilecoind-ledger-db \
+      --mint-auditor-db /target/docker/release/mc-local-network/auditor-db \
+      --listen-uri insecure-mint-auditor://127.0.0.1:7334/ &
+```
+
+4. Build and run the integration tests.
+
+```
+$ cd mint-auditor/tests
+$ bash compile_proto.sh
+$ python3 integration_test.py \
+    --mobilecoind-addr localhost:4444 \
+    --mint-auditor-addr localhost:7774 \
+    --mint-client-bin ../../target/docker/release/mc-consensus-mint-client \
+    --node-url insecure-mc://localhost:3200 \
+    --mint-signing-key ../../target/docker/release/mc-local-network/minting-keys/minter1
+```
+
+You should expect to see output like this if the test passed, and all the mints and
+burns were recognized by the auditor.
+
+```
+INFO:integration_test:207: Checking counters
+INFO:integration_test:213: All tests passed
+```
 
 ### Gnosis Safe Auditing
 
@@ -51,7 +106,7 @@ Once the safe is created, it will be assigned an address on the Ethereum blockch
 The Ethereum network you are testing with will need to have the metadata contract deployed. For the Rinkeby test network, this was already done and assigned the address `0x76BD419fBa96583d968b422D4f3CB2A70bf4CF40`.
 You will also need to know the 4 byte signature of the metadata contract `emitBytes` function. For the contract mentioned above, this is `AUX_BURN_FUNCTION_SIG.to_vec()` (since this is derived from the function signature, it should be the same for all unmodified deployments of this contract).
 
-#### Running the mint auditor
+#### Running the mint auditor with Gnosis safe
 
 1. The mint auditor requires a configuration file for auditing Gnosis safe. Below is an example of how this file should look like:
 
