@@ -216,9 +216,10 @@ McData* MC_NULLABLE mc_transaction_builder_add_output(
   const McPublicAddress* MC_NONNULL recipient_address,
   McRngCallback* MC_NULLABLE rng_callback,
   McMutableBuffer* MC_NONNULL out_tx_out_confirmation_number,
+  McMutableBuffer* MC_NONNULL out_tx_out_shared_secret,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 3, 6);
+MC_ATTRIBUTE_NONNULL(1, 3, 5, 6);
 
 /// # Preconditions
 ///
@@ -237,9 +238,10 @@ McData* MC_NULLABLE mc_transaction_builder_add_change_output(
   uint64_t amount,
   McRngCallback* MC_NULLABLE rng_callback,
   McMutableBuffer* MC_NONNULL out_tx_out_confirmation_number,
+  McMutableBuffer* MC_NONNULL out_tx_out_shared_secret,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 4, 6);
+MC_ATTRIBUTE_NONNULL(1, 2, 5, 6);
 
 /// # Preconditions
 ///
@@ -593,7 +595,7 @@ McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_cancellation_create(
 bool mc_memo_gift_code_funding_memo_create(
         const McBuffer* MC_NONNULL tx_out_public_key,
         uint64_t fee,
-        const char* MC_NONNULL gift_code_funding_note
+        const char* MC_NONNULL gift_code_funding_note,
         McMutableBuffer* MC_NONNULL out_memo_data,
         McError* MC_NULLABLE * MC_NULLABLE out_error
 )

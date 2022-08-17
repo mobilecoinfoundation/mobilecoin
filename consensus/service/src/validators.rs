@@ -248,7 +248,7 @@ pub mod well_formed_tests {
                 // This is expected.
                 assert_eq!(
                     e,
-                    TransactionValidationError::Ledger("CapacityExceeded".to_string())
+                    TransactionValidationError::Ledger(LedgerError::CapacityExceeded.to_string())
                 );
             }
         }

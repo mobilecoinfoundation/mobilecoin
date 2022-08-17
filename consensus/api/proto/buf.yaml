@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/mobilecoin/consensus-api
+deps:
+  - buf.build/mobilecoin/attest-api
+  - buf.build/mobilecoin/api
+breaking:
+  use:
+    - FILE

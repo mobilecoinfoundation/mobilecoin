@@ -200,6 +200,10 @@ docker_run = ["docker",
               # Give docker its own subdirectory under target so it doesn't trash
               # the host target directory, but will still be cleaned up with it.
               "--env", "CARGO_TARGET_DIR=" + mount_point + "/target/docker",
+              # This is required to run the fog unit tests
+              "--env", "TEST_DATABASE_URL=postgres://localhost",
+              # This is consumed by servers when running locally in the container
+              "--env", "MC_CHAIN_ID=local",
               "--volume", mount_from + ":" + mount_point,
               "--workdir", workdir]
 

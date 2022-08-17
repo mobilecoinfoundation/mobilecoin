@@ -1,0 +1,10 @@
+version: v1
+directories:
+  - api/proto
+  - attest/api/proto
+  - consensus/api/proto
+  - fog/api/proto
+  - fog/report/api/proto
+  - mint-auditor/api/proto
+  - mobilecoind/api/proto
+  - util/grpc/proto

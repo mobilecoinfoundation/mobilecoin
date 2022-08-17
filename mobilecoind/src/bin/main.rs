@@ -33,7 +33,8 @@ fn main() {
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-    mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+    mr_signer_verifier
+        .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
 
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -238,12 +239,8 @@ fn create_or_open_ledger_db(
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db = LedgerDB::open(&config.ledger_db).expect("Could not open ledger_db");
-            db.append_block(
-                block_data.block(),
-                block_data.contents(),
-                block_data.signature().cloned(),
-            )
-            .expect("Failed to appened initial transactions");
+            db.append_block_data(&block_data)
+                .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

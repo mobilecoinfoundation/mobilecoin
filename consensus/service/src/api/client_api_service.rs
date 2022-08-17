@@ -24,7 +24,7 @@ use mc_consensus_service_config::Config;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
-use mc_util_grpc::{rpc_logger, send_result, Authenticator};
+use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
@@ -209,6 +209,10 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
+
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
         }
@@ -253,6 +257,10 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
+
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
         }
@@ -286,6 +294,10 @@ impl ConsensusClientApi for ClientApiService {
         sink: UnarySink<ProposeMintTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
+            return send_result(ctx, sink, Err(err), &self.logger);
+        }
 
         if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
             return send_result(ctx, sink, err.into(), &self.logger);
@@ -337,7 +349,8 @@ mod client_api_tests {
     };
     use clap::Parser;
     use grpcio::{
-        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+        CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder,
+        RpcStatusCode, Server, ServerBuilder,
     };
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -361,7 +374,9 @@ mod client_api_tests {
     };
     use mc_transaction_core_test_utils::{create_mint_config_tx, create_mint_tx};
     use mc_util_from_random::FromRandom;
-    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
+    use mc_util_grpc::{
+        AnonymousAuthenticator, TokenAuthenticator, CHAIN_ID_GRPC_HEADER, CHAIN_ID_MISMATCH_ERR_MSG,
+    };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use serial_test::serial;
@@ -390,6 +405,7 @@ mod client_api_tests {
     fn get_config() -> Config {
         Config::try_parse_from(&[
             "foo",
+            "--chain-id=local",
             "--peer-responder-id=localhost:8081",
             "--client-responder-id=localhost:3223",
             "--msg-signer-key=MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",
@@ -403,6 +419,20 @@ mod client_api_tests {
             "--ias-api-key=asdf",
         ])
         .unwrap()
+    }
+
+    // Make a "call option" object which includes appropriate grpc headers
+    fn call_option(chain_id: &str) -> CallOption {
+        let mut metadata_builder = MetadataBuilder::new();
+
+        // Add the chain id header if we have a chain id specified
+        if !chain_id.is_empty() {
+            metadata_builder
+                .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
+                .expect("Could not add chain-id header");
+        }
+
+        CallOption::default().headers(metadata_builder.build())
     }
 
     // A note about `#[serial(counters)]`: some of the tests here rely on
@@ -474,6 +504,128 @@ mod client_api_tests {
             Ok(propose_tx_response) => {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_ok_with_chain_id(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+        tx_manager.expect_validate().times(1).return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
+
+        // Try with chain id header
+        match client.client_tx_propose_opt(&message, call_option("local")) {
+            Ok(propose_tx_response) => {
+                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_ok_wrong_chain_id(logger: Logger) {
+        let consensus_enclave = MockConsensusEnclave::new();
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let ledger = MockLedger::new();
+
+        let tx_manager = MockTxManager::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
+
+        // Try with wrong chain id header
+        match client.client_tx_propose_opt(&message, call_option("wrong")) {
+            Err(grpcio::Error::RpcFailure(status)) => {
+                let expected = format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, "local");
+                assert_eq!(status.message(), expected);
+            }
+            Ok(_) => {
+                panic!("Got success, but failure was expected");
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }

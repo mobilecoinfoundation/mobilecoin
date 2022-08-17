@@ -179,7 +179,8 @@ impl Config {
                     signature.product_id(),
                     signature.version(),
                 );
-                mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+                mr_signer_verifier
+                    .allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
                 mr_signer_verifier
             };
 
@@ -202,7 +203,8 @@ impl Config {
                 .build(),
         );
 
-        let conn = GrpcFogReportConnection::new(env, logger);
+        // TODO: Supply a network-id to mobilecoind?
+        let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
 
         let verifier = self.get_fog_ingest_verifier();
 
@@ -284,6 +286,10 @@ impl Config {
 /// Wrapper for configuring and parsing peer URIs.
 #[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// Validator nodes to connect to.
     /// Sample usages:
     ///     --peer mc://foo:123 --peer mc://bar:456
@@ -326,6 +332,7 @@ impl PeersConfig {
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
+                    self.chain_id.to_owned(),
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),

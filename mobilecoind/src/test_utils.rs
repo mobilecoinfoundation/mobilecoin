@@ -2,6 +2,10 @@
 
 //! Utilities for mobilecoind unit tests
 
+pub use mc_ledger_db::test_utils::{
+    add_block_to_ledger, add_txos_and_key_images_to_ledger, add_txos_to_ledger,
+};
+
 use crate::{
     database::Database,
     monitor_store::{MonitorData, MonitorId},
@@ -10,24 +14,21 @@ use crate::{
 };
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_blockchain_types::{Block, BlockContents};
 use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
+use mc_consensus_enclave_api::FeeMap;
 use mc_consensus_scp::QuorumSet;
-use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Token};
-use mc_util_from_random::FromRandom;
+use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, Token};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
 use mc_watcher::watcher_db::WatcherDB;
 use std::{
-    path::PathBuf,
     str::FromStr,
     sync::{Arc, RwLock},
 };
@@ -71,18 +72,8 @@ pub fn get_test_databases(
     // Note that TempDir manages uniqueness by constructing paths
     // like: /tmp/ledger_db.tvF0XHTKsilx
     let ledger_db_tmp = TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
-    let ledger_db_path = ledger_db_tmp
-        .path()
-        .to_str()
-        .expect("Could not get path as string");
-    let mobilecoind_db_tmp =
-        TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
-    let mobilecoind_db_path = mobilecoind_db_tmp
-        .path()
-        .to_str()
-        .expect("Could not get path as string");
-
-    let mut ledger_db = generate_ledger_db(ledger_db_path);
+    let ledger_db_path = ledger_db_tmp.path();
+    let mut ledger_db = recreate_ledger_db(ledger_db_path);
 
     for block_index in 0..num_blocks {
         let (block_version, key_images) = if block_index == 0 {
@@ -90,19 +81,20 @@ pub fn get_test_databases(
         } else {
             (block_version, vec![KeyImage::from(rng.next_u64())])
         };
-        let _new_block_height = add_block_to_ledger_db(
-            block_version,
+        add_block_to_ledger(
             &mut ledger_db,
+            block_version,
             &public_addresses,
-            Amount {
-                value: DEFAULT_PER_RECIPIENT_AMOUNT,
-                token_id: Mob::ID,
-            },
+            Amount::new(DEFAULT_PER_RECIPIENT_AMOUNT, Mob::ID),
             &key_images,
             rng,
-        );
+        )
+        .unwrap();
     }
 
+    let mobilecoind_db_tmp =
+        TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+    let mobilecoind_db_path = mobilecoind_db_tmp.path();
     let mobilecoind_db =
         Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");
 
@@ -127,112 +119,6 @@ pub fn get_test_monitor_data_and_id(
     (data, monitor_id)
 }
 
-/// Creates an empty LedgerDB.
-///
-/// # Arguments
-/// * `path` - Path to the ledger's data.mdb file. If such a file exists, it
-///   will be replaced.
-fn generate_ledger_db(path: &str) -> LedgerDB {
-    // DELETE the old database if it already exists.
-    let _ = std::fs::remove_file(format!("{}/data.mdb", path));
-    LedgerDB::create(&PathBuf::from(path)).expect("Could not create ledger_db");
-
-    LedgerDB::open(&PathBuf::from(path)).expect("Could not open ledger_db")
-}
-
-/// Adds a block containing one txo for each provided recipient and returns new
-/// block height.
-///
-/// # Arguments
-/// * `ledger_db` - Ledger database instance.
-/// * `recipients` - Recipients of outputs.
-/// * `output_amount` - The amount each recipient will get.
-/// * `key_images` - Key images to include in the block.
-/// * `rng` - Random number generator.
-pub fn add_block_to_ledger_db(
-    block_version: BlockVersion,
-    ledger_db: &mut LedgerDB,
-    recipients: &[PublicAddress],
-    output_amount: Amount,
-    key_images: &[KeyImage],
-    rng: &mut (impl CryptoRng + RngCore),
-) -> u64 {
-    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
-
-    let outputs: Vec<_> = recipients
-        .iter()
-        .map(|recipient| {
-            TxOut::new(
-                block_version,
-                // TODO: allow for subaddress index!
-                output_amount,
-                recipient,
-                &RistrettoPrivate::from_random(rng),
-                Default::default(),
-            )
-            .expect("Could not create TxOut")
-        })
-        .collect();
-
-    let block_contents = BlockContents {
-        key_images: key_images.to_vec(),
-        outputs: outputs.clone(),
-        ..Default::default()
-    };
-
-    let new_block = if num_blocks > 0 {
-        let parent = ledger_db
-            .get_block(num_blocks - 1)
-            .expect("failed to get parent block");
-
-        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
-    } else {
-        Block::new_origin_block(&outputs)
-    };
-
-    ledger_db
-        .append_block(&new_block, &block_contents, None)
-        .expect("failed writing initial transactions");
-
-    ledger_db.num_blocks().expect("failed to get block height")
-}
-
-/// Adds a block containing the given TXOs.
-///
-/// # Arguments
-/// * `ledger_db`
-/// * `outputs` - TXOs to add to ledger.
-pub fn add_txos_to_ledger_db(
-    block_version: BlockVersion,
-    ledger_db: &mut LedgerDB,
-    outputs: &[TxOut],
-    rng: &mut (impl CryptoRng + RngCore),
-) -> u64 {
-    let block_contents = BlockContents {
-        key_images: vec![KeyImage::from(rng.next_u64())],
-        outputs: outputs.to_owned(),
-        ..Default::default()
-    };
-
-    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
-
-    let new_block = if num_blocks > 0 {
-        let parent = ledger_db
-            .get_block(num_blocks - 1)
-            .expect("failed to get parent block");
-
-        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
-    } else {
-        Block::new_origin_block(outputs)
-    };
-
-    ledger_db
-        .append_block(&new_block, &block_contents, None)
-        .expect("failed writing initial transactions");
-
-    ledger_db.num_blocks().expect("failed to get block height")
-}
-
 pub fn get_free_port() -> u16 {
     portpicker::pick_unused_port().expect("pick_unused_port")
 }
@@ -248,8 +134,10 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
-    let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
-    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
+    let peer1 =
+        MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0, FeeMap::default());
+    let peer2 =
+        MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0, FeeMap::default());
 
     let node_ids = vec![
         peer1.uri().host_and_port_responder_id().unwrap(),

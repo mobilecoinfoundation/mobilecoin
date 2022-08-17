@@ -60,6 +60,7 @@ fn get_test_environment(
 
     let server = {
         let config = ViewConfig {
+            chain_id: "local".to_string(),
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
             client_listen_uri: uri.clone(),
             client_auth_token_secret: None,
@@ -97,12 +98,20 @@ fn get_test_environment(
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+        mr_signer_verifier
+            .allow_hardening_advisories(mc_fog_view_enclave_measurement::HARDENING_ADVISORIES);
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env, logger)
+        FogViewGrpcClient::new(
+            "local".to_string(),
+            uri,
+            GRPC_RETRY_CONFIG,
+            verifier,
+            grpcio_env,
+            logger,
+        )
     };
 
     (db_test_context, server, client)

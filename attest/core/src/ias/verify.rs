@@ -455,9 +455,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic(
-        expected = "failed parsing timestamp: TimestampParse(\"invalid\", \"input contains invalid characters\")"
-    )]
     fn test_parse_timestamp_with_invalid_timestamp() {
         let report = VerificationReport {
             sig: Default::default(),
@@ -470,7 +467,12 @@ mod test {
 
         data.timestamp = "invalid".to_string();
 
-        // This is expected to fail.
-        let _timestamp = data.parse_timestamp().expect("failed parsing timestamp");
+        assert_eq!(
+            data.parse_timestamp(),
+            Err(VerifyError::TimestampParse(
+                "invalid".into(),
+                "input contains invalid characters".into()
+            ))
+        );
     }
 }

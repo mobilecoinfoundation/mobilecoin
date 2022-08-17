@@ -27,12 +27,15 @@ impl FogKeyImageGrpcClient {
     /// Create a new client object
     ///
     /// Arguments:
-    /// uri: The uri to connect to
-    /// grpc_retry_config: The retry policy to use when connecting
-    /// verifier: The attestation verifier
-    /// env: The grpc environment (thread pool) to use for this connection
-    /// logger: for logging
+    /// * chain_id: The id of the network we expect to talk to. Ignored if
+    ///   empty.
+    /// * uri: The uri to connect to
+    /// * grpc_retry_config: The retry policy to use when connecting
+    /// * verifier: The attestation verifier
+    /// * env: The grpc environment (thread pool) to use for this connection
+    /// * logger: for logging
     pub fn new(
+        chain_id: String,
         uri: FogLedgerUri,
         grpc_retry_config: GrpcRetryConfig,
         verifier: Verifier,
@@ -46,7 +49,7 @@ impl FogKeyImageGrpcClient {
         let grpc_client = FogKeyImageApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(uri.clone(), grpc_client, verifier, logger),
+            conn: EnclaveConnection::new(chain_id, uri.clone(), grpc_client, verifier, logger),
             grpc_retry_config,
             uri,
         }

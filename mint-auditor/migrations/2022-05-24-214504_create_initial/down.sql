@@ -1,7 +1,10 @@
 DROP TABLE counters;
+DROP TABLE audited_burns;
+DROP TABLE audited_mints;
 DROP TABLE gnosis_safe_withdrawals;
 DROP TABLE gnosis_safe_deposits;
 DROP TABLE gnosis_safe_txs;
+DROP TABLE burn_tx_outs;
 DROP TABLE mint_txs;
 DROP TABLE mint_configs;
 DROP TABLE mint_config_txs;

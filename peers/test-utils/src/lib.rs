@@ -274,7 +274,7 @@ mod peer_manager_tests {
     fn mock_peer_fetch_blocks() {
         let (local_node_id, _) = test_node_id_and_signer(1);
         let mock_ledger = get_mock_ledger(25);
-        assert_eq!(mock_ledger.lock().blocks_by_block_number.len(), 25);
+        assert_eq!(mock_ledger.num_blocks().unwrap(), 25);
         let mut mock_peer =
             MockPeerConnection::new(test_peer_uri(123), local_node_id, mock_ledger, 50);
 

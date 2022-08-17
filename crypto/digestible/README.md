@@ -503,6 +503,42 @@ struct Thing {
 This feature makes it easy to add fields in a backwards-compatible way without having to wrap them in an `Option<>`.
 For example, for integer fields this can remove the ambiguity of `None` vs `Some(0)`. It mimics the Protobuf behavior, where fields set to zero are omitted.
 
+Transparent Digestible
+----------------------
+
+Sometimes it is necessary to put a wrapper around a type, for instance, to support serialization somehow, or to implement a trait on it.
+Normally, this is a breaking change, because digestible will want to faithfully represent the wrapper in the hash, inserting the type name etc.
+
+To make wrappers that don't cause a breaking change in this manner, use the `digestible(transparent)` directive:
+
+```
+#[derive(Digestible)]
+#[digestible(transparent)]
+pub struct WrappedFoo(Foo)
+```
+
+A `WrappedFoo` like this will be digested exactly like a `Foo` object.
+The transparent directive is only valid on structs with a single unnamed member.
+Structs with more than one member, or with named members, cannot be marked transparent.
+
+The `digestible(transparent)` directive can also be used on rust enums, as long as every variant of the enum has a single unnamed member.
+
+```
+#[derive(Digestible)]
+#[digestible(transparent)]
+pub enum Switch {
+    Num(u64),
+    Str(String),
+}
+```
+
+Normally, digestible faithfully represents the fact that an enum is involved in the data structure.
+It handles an enum value by hashing in the enum's name, the variant's name, and then the value.
+Marking an enum transparent means that digestible should attmept to ignore this layer and jump directly to hashing
+whatever data is contained in the enum.
+
+In protobuf, one valid way to evolve schemas is to replace existing fields with a `OneOf` member, if for example there is a new version of it.
+The `digestible(transparent)` directive for rust enums provides a way for this not to be a breaking change for hashes.
 
 References
 ----------

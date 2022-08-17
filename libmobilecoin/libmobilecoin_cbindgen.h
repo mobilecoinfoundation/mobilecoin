@@ -785,6 +785,7 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
                                                          FfiRefPtr<McPublicAddress> recipient_address,
                                                          FfiOptMutPtr<McRngCallback> rng_callback,
                                                          FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                         FfiMutPtr<McMutableBuffer> out_tx_out_shared_secret,
                                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
@@ -806,6 +807,7 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAcco
                                                                 uint64_t amount,
                                                                 FfiOptMutPtr<McRngCallback> rng_callback,
                                                                 FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                                FfiMutPtr<McMutableBuffer> out_tx_out_shared_secret,
                                                                 FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**

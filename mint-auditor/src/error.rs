@@ -2,7 +2,10 @@
 
 //! Mint auditor error data type.
 
-use crate::{db::TransactionRetriableError, gnosis::Error as GnosisError};
+use crate::{
+    db::TransactionRetriableError,
+    gnosis::{Error as GnosisError, EthAddr, EthTxHash},
+};
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
@@ -11,6 +14,8 @@ use mc_api::display::Error as ApiDisplayError;
 use mc_blockchain_types::BlockIndex;
 use mc_crypto_keys::KeyError;
 use mc_ledger_db::Error as LedgerDbError;
+use mc_transaction_core::ViewKeyMatchError;
+use mc_transaction_std::MemoDecodingError;
 use mc_util_serial::DecodeError;
 use std::io::Error as IoError;
 
@@ -22,6 +27,21 @@ pub enum Error {
 
     /// Already exists: {0}
     AlreadyExists(String),
+
+    /// Object not saved to database
+    ObjectNotSaved,
+
+    /// Deposit and mint mismatch: {0}
+    DepositAndMintMismatch(String),
+
+    /// Withdrawal and burn mismatch: {0}
+    WithdrawalAndBurnMismatch(String),
+
+    /// Ethereum token {0} not audited in safe {1} (tx hash: {2})
+    EthereumTokenNotAudited(EthAddr, EthAddr, EthTxHash),
+
+    /// Gnosis safe {0} not audited
+    GnosisSafeNotAudited(EthAddr),
 
     /// IO: {0}
     Io(IoError),
@@ -61,6 +81,15 @@ pub enum Error {
 
     /// Invalid nonce identifier: {0:?}
     InvalidNonceIdentifier(Vec<u8>),
+
+    /// View key match: {0}
+    ViewKeyMatch(ViewKeyMatchError),
+
+    /// Memo decoding: {0}
+    MemoDecoding(MemoDecodingError),
+
+    /// Invalid memo type
+    InvalidMemoType,
 
     /// Other: {0}
     Other(String),
@@ -129,6 +158,18 @@ impl From<FromHexError> for Error {
 impl From<KeyError> for Error {
     fn from(err: KeyError) -> Self {
         Self::Key(err)
+    }
+}
+
+impl From<ViewKeyMatchError> for Error {
+    fn from(err: ViewKeyMatchError) -> Self {
+        Self::ViewKeyMatch(err)
+    }
+}
+
+impl From<MemoDecodingError> for Error {
+    fn from(err: MemoDecodingError) -> Self {
+        Self::MemoDecoding(err)
     }
 }
 

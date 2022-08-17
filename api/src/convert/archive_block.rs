@@ -104,76 +104,22 @@ impl TryFrom<&ArchiveBlocks> for Vec<BlockData> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_blockchain_test_utils::make_block_metadata;
-    use mc_blockchain_types::{
-        Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
-    };
-    use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
-    use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
-        membership_proofs::Range,
-        ring_signature::KeyImage,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Amount, MaskedAmount, Token,
-    };
-    use mc_util_from_random::FromRandom;
+    use mc_blockchain_test_utils::get_blocks;
+    use mc_blockchain_types::{Block, BlockVersion};
+    use mc_util_test_helper::get_seeded_rng;
     use mc_util_zip_exact::zip_exact;
-    use rand::{rngs::StdRng, SeedableRng};
 
-    fn generate_test_blocks_data(num_blocks: u64) -> Vec<BlockData> {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let mut blocks_data = Vec::new();
-        let mut last_block: Option<Block> = None;
-
-        for block_idx in 0..num_blocks {
-            let amount = Amount {
-                value: 1u64 << 13,
-                token_id: Mob::ID,
-            };
-            let tx_out = TxOut {
-                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
-                    .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
-                e_memo: None,
-            };
-            let key_image = KeyImage::from(block_idx);
-
-            let parent_block_id = last_block
-                .map(|block| block.id)
-                .unwrap_or_else(|| BlockID::try_from(&[1u8; 32][..]).unwrap());
-
-            let block_contents = BlockContents {
-                key_images: vec![key_image],
-                outputs: vec![tx_out.clone()],
-                ..Default::default()
-            };
-            let block = Block::new(
-                BlockVersion::ZERO,
-                &parent_block_id,
-                99 + block_idx,
-                400 + block_idx,
-                &TxOutMembershipElement {
-                    range: Range::new(10, 20).unwrap(),
-                    hash: TxOutMembershipHash::from([12u8; 32]),
-                },
-                &block_contents,
-            );
-
-            last_block = Some(block.clone());
-
-            let signer = Ed25519Private::from_random(&mut rng);
-            let signature =
-                BlockSignature::from_block_and_keypair(&block, &(signer.into())).unwrap();
-
-            let metadata = make_block_metadata(block.id.clone(), &mut rng);
-            let block_data = BlockData::new(block, block_contents, signature, metadata);
-            blocks_data.push(block_data);
-        }
-
-        blocks_data
+    fn generate_test_blocks_data(num_blocks: usize) -> Vec<BlockData> {
+        get_blocks(
+            BlockVersion::MAX,
+            num_blocks,
+            5,
+            1,
+            2,
+            42,
+            None,
+            &mut get_seeded_rng(),
+        )
     }
 
     #[test]

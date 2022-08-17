@@ -4,6 +4,8 @@
 
 use crate::{blockchain, ConversionError};
 use mc_blockchain_types::{BlockMetadata, BlockMetadataContents};
+use mc_common::ResponderId;
+use std::str::FromStr;
 
 impl From<&BlockMetadataContents> for blockchain::BlockMetadataContents {
     fn from(src: &BlockMetadataContents) -> Self {
@@ -11,6 +13,7 @@ impl From<&BlockMetadataContents> for blockchain::BlockMetadataContents {
         proto.set_block_id(src.block_id().into());
         proto.set_quorum_set(src.quorum_set().into());
         proto.set_verification_report(src.verification_report().into());
+        proto.set_responder_id(src.responder_id().to_string());
         proto
     }
 }
@@ -22,7 +25,14 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
         let block_id = src.get_block_id().try_into()?;
         let quorum_set = src.get_quorum_set().try_into()?;
         let report = src.get_verification_report().try_into()?;
-        Ok(BlockMetadataContents::new(block_id, quorum_set, report))
+        let responder_id = ResponderId::from_str(&src.responder_id)
+            .map_err(|_| ConversionError::InvalidContents)?;
+        Ok(BlockMetadataContents::new(
+            block_id,
+            quorum_set,
+            report,
+            responder_id,
+        ))
     }
 }
 

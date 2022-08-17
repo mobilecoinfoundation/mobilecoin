@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -39,6 +39,7 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
+mc-fog-enclave-connection = { path = "../../enclave_connection" }
 mc-fog-ledger-enclave = { path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }
 mc-fog-types = { path = "../../types" }
@@ -65,6 +66,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-test-helper = { path = "../../../util/test-helper" }

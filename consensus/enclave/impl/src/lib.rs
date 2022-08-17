@@ -1036,7 +1036,10 @@ mod tests {
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{add_txos_to_ledger, create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{
         tokens::Mob,
         tx::TxOutMembershipHash,
@@ -1044,8 +1047,7 @@ mod tests {
         BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
-        create_transaction, initialize_ledger, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
@@ -1514,7 +1516,7 @@ mod tests {
             let recipient = AccountKey::random(&mut rng);
 
             let mut ledger = create_ledger();
-            let n_blocks = 1;
+            let n_blocks = 2;
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Spend outputs from the origin block. These are token_id=0.
@@ -1541,30 +1543,20 @@ mod tests {
                 for _ in 0..5 {
                     let spendable_output = TxOut::new(
                         block_version,
-                        Amount {
-                            value: 10_000_000_000,
-                            token_id,
-                        },
+                        Amount::new(10_000_000_000, token_id),
                         &sender.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
                     )
                     .unwrap();
 
-                    // Append this output to the ledger.
-                    let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-                    let block_contents = BlockContents {
-                        outputs: vec![spendable_output.clone()],
-                        key_images: vec![KeyImage::from(rng.next_u64())],
-                        ..Default::default()
-                    };
-                    let block = Block::new_with_parent(
+                    add_txos_to_ledger(
+                        &mut ledger,
                         block_version,
-                        &parent_block,
-                        &Default::default(),
-                        &block_contents,
-                    );
-                    ledger.append_block(&block, &block_contents, None).unwrap();
+                        &[spendable_output.clone()],
+                        &mut rng,
+                    )
+                    .unwrap();
 
                     let tx = create_transaction(
                         block_version,

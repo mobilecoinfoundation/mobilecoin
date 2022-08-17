@@ -1,11 +1,11 @@
 [package]
 name = "mc-fog-report-api-test-utils"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
 
 [dependencies]
 mc-util-serial = { path = "../../../../util/serial" }
-prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 protobuf = "2.22.1"

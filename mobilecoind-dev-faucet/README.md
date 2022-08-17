@@ -83,7 +83,7 @@ POST requests to `/cancel_slam` will cancel an in-progress slam.
 
 ### Launching
 
-The faucet should be started using a keyfile, which is a json formatted file containing a 
+The faucet should be started using a keyfile, which is a json formatted file containing a
 mnemonic string or a root entropy for a MobileCoin account.
 
 Required options are:

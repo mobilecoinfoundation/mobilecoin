@@ -15,10 +15,9 @@ enclave {
          */
         public sgx_status_t viewenclave_call([in, size=inbuf_len] const uint8_t* inbuf,
                                               size_t inbuf_len,
-                                              [user_check] uint8_t *outbuf,
+                                              [out, size=outbuf_len] uint8_t *outbuf,
                                               size_t outbuf_len,
-                                              [user_check] size_t* outbuf_used,
-                                              [user_check] uint64_t* outbuf_retry_id);
-
+                                              [out] size_t* outbuf_used,
+                                              [in, out] uint64_t* outbuf_retry_id);
     };
 };

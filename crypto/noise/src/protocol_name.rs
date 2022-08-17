@@ -29,7 +29,7 @@ pub enum ProtocolNameError {
 /// implementation of the protocol names described in
 /// [section 8](http://noiseprotocol.org/noise.html#protocol-names-and-modifiers)
 /// of the specification.
-#[derive(Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Copy, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
@@ -98,6 +98,12 @@ macro_rules! impl_protocol_names {
             }
         }
 
+        impl core::fmt::Debug for ProtocolName<$handshake, $kex, $cipher, $hash> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, $name)
+            }
+        }
+
         /// Retrieve the string value of the given ProtocolName.
         impl AsRef<str> for ProtocolName<$handshake, $kex, $cipher, $hash> {
             fn as_ref(&self) -> &'static str {
@@ -115,8 +121,6 @@ macro_rules! impl_protocol_names {
     )*}
 }
 
-// We prefix our own extension protocols with "McNoise" to distinguish them
-// from those in the framework specification.
 impl_protocol_names! {
     "Noise_IX_25519_AESGCM_SHA512", HandshakeIX, X25519, Aes256Gcm, Sha512;
     "Noise_NX_25519_AESGCM_SHA512", HandshakeNX, X25519, Aes256Gcm, Sha512;
@@ -125,20 +129,13 @@ impl_protocol_names! {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use aes_gcm::Aes256Gcm;
     use core::str::FromStr;
 
     #[test]
     fn mobilecoin_ix_25519_aesgcm_sha512_from_str() {
         let name = "Noise_IX_25519_AESGCM_SHA512";
-        let parsed_name = ProtocolName::<
-            HandshakeIX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|_| panic!("Could not parse '{}'", name));
+        let parsed_name =
+            ProtocolName::<HandshakeIX, X25519, Aes256Gcm, Sha512>::from_str(name).unwrap();
         let new_name: &str = parsed_name.as_ref();
         assert_eq!(name, new_name);
     }
@@ -146,31 +143,20 @@ mod test {
     #[test]
     fn mobilecoin_nx_25519_aesgcm_sha512_from_str() {
         let name = "Noise_NX_25519_AESGCM_SHA512";
-        let parsed_name = ProtocolName::<
-            HandshakeNX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|_| panic!("Could not parse '{}'", name));
+        let parsed_name =
+            ProtocolName::<HandshakeNX, X25519, Aes256Gcm, Sha512>::from_str(name).unwrap();
         let new_name: &str = parsed_name.as_ref();
         assert_eq!(name, new_name);
     }
 
     #[test]
-    #[should_panic(
-        expected = "Could not parse 'McNoise_XX_25519_CHACHA_SHA256': The string given does not match the type in question"
-    )]
     fn bogus_str() {
-        let name = "McNoise_XX_25519_CHACHA_SHA256";
-        let parsed_name = ProtocolName::<
-            HandshakeNX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|e| panic!("Could not parse '{}': {}", name, e));
-        let new_name: &str = parsed_name.as_ref();
-        assert_eq!(name, new_name);
+        assert_eq!(
+            ProtocolName::<HandshakeNX, X25519, Aes256Gcm, Sha512>::from_str(
+                "Noise_XX_25519_CHACHA_SHA256"
+            )
+            .unwrap_err(),
+            ProtocolNameError::Unknown
+        );
     }
 }

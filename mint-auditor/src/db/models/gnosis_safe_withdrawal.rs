@@ -5,13 +5,16 @@ use crate::{
     db::{
         last_insert_rowid,
         models::{SqlEthAddr, SqlEthTxHash},
-        schema::gnosis_safe_withdrawals,
+        schema::{audited_burns, gnosis_safe_withdrawals},
         Conn,
     },
     error::Error,
     gnosis::{EthAddr, EthTxHash},
 };
-use diesel::prelude::*;
+use diesel::{
+    dsl::{exists, not},
+    prelude::*,
+};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use serde::{Deserialize, Serialize};
 
@@ -122,5 +125,177 @@ impl GnosisSafeWithdrawal {
         self.id = Some(diesel::select(last_insert_rowid).get_result::<i32>(conn)?);
 
         Ok(())
+    }
+
+    /// Attempt to find a [GnosisSafeWithdrawal] that has a given nonce and no
+    /// matching entry in the `audited_burns` table.
+    pub fn find_unaudited_withdrawal_by_public_key(
+        public_key_hex: &str,
+        conn: &Conn,
+    ) -> Result<Option<Self>, Error> {
+        Ok(gnosis_safe_withdrawals::table
+            .filter(gnosis_safe_withdrawals::mc_tx_out_public_key_hex.eq(public_key_hex))
+            .filter(not(exists(
+                audited_burns::table
+                    .select(audited_burns::gnosis_safe_withdrawal_id)
+                    .filter(
+                        audited_burns::gnosis_safe_withdrawal_id
+                            .nullable()
+                            .eq(gnosis_safe_withdrawals::id),
+                    ),
+            )))
+            .first(conn)
+            .optional()?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{
+        models::AuditedBurn,
+        test_utils::{
+            create_and_insert_burn_tx_out, create_gnosis_safe_withdrawal_from_burn_tx_out,
+            insert_gnosis_withdrawal, TestDbContext,
+        },
+    };
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core::TokenId;
+
+    #[test_with_logger]
+    fn test_find_unaudited_withdrawal_by_public_key(logger: Logger) {
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let token_id = TokenId::from(1);
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        // Create two BurnTxOuts.
+        let burn_tx_out1 = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+        let burn_tx_out2 = create_and_insert_burn_tx_out(token_id, 100, &conn, &mut rng);
+
+        // Create two Gnosis withdrawals.
+        let mut withdrawal1 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out1, &mut rng);
+        let mut withdrawal2 =
+            create_gnosis_safe_withdrawal_from_burn_tx_out(&burn_tx_out2, &mut rng);
+
+        // Since they haven't been inserted yet, they should not be found.
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        // Insert the first withdrawal, it should now be found.
+        insert_gnosis_withdrawal(&mut withdrawal1, &conn);
+
+        assert_eq!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            withdrawal1
+        );
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        // Insert the second withdrawal, they should both be found.
+        insert_gnosis_withdrawal(&mut withdrawal2, &conn);
+
+        assert_eq!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            withdrawal1,
+        );
+
+        assert_eq!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            withdrawal2,
+        );
+
+        // Insert a row to the `audited_burns` table marking the first withdrawal as
+        // audited. We should no longer be able to find it.
+        AuditedBurn::associate_withdrawal_with_burn(
+            withdrawal1.id().unwrap(),
+            burn_tx_out1.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        assert_eq!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
+            withdrawal2,
+        );
+
+        // Mark the second withdrawal as audited. We should no longer be able to find
+        // it.
+        AuditedBurn::associate_withdrawal_with_burn(
+            withdrawal2.id().unwrap(),
+            burn_tx_out2.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out1.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        assert!(
+            GnosisSafeWithdrawal::find_unaudited_withdrawal_by_public_key(
+                burn_tx_out2.public_key_hex(),
+                &conn
+            )
+            .unwrap()
+            .is_none()
+        );
     }
 }

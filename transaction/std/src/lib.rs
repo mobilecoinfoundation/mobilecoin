@@ -33,7 +33,9 @@ pub use memo_builder::{
 };
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
-pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
+pub use transaction_builder::{
+    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
+};
 
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;

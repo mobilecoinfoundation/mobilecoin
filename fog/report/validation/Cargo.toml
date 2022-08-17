@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-validation"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -20,5 +20,5 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = { version = "0.2", default-features = false }
-mockall = { version = "0.11.1", optional = true }
+mockall = { version = "0.11.2", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

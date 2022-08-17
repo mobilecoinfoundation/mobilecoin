@@ -95,6 +95,7 @@ where
             };
 
         let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
+            config.clone(),
             enclave.clone(),
             Arc::new(recovery_db),
             db_poll_thread.get_shared_state(),
