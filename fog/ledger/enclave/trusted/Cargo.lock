@@ -849,6 +849,7 @@ dependencies = [
 name = "mc-attest-verifier-types"
 version = "2.0.0"
 dependencies = [
+ "base64",
  "displaydoc",
  "hex",
  "hex_fmt",
