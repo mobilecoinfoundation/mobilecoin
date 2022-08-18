@@ -9,7 +9,7 @@ use mc_attest_core::{
     EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature,
 };
 use mc_common::logger::global_log;
-use mc_util_encodings::{FromBase64, FromHex, ToBase64};
+use mc_util_encodings::{FromBase64, ToBase64};
 use percent_encoding::percent_decode;
 use reqwest::{
     blocking::Client,
