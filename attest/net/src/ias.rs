@@ -102,7 +102,7 @@ impl RaClient for IasClient {
         let sig_str = headers
             .get(IAS_SIGNATURE)
             .ok_or(Error::MissingSignatureError)?;
-        let sig = VerificationSignature::from_hex(sig_str.to_str()?)?;
+        let sig = VerificationSignature::from_base64(sig_str.to_str()?)?;
 
         let pem_str = percent_decode(
             headers
