@@ -588,11 +588,11 @@ jobs:
           # Run the integration test
           cd "$MINT_AUDITOR_TESTS" && bash compile_proto.sh
           cd "$MINT_AUDITOR_TESTS" && python3 integration_test.py \
-                        --mobilecoind-addr localhost:4444 \
-                        --mint-auditor-addr localhost:7774 \
-                        --mint-client-bin "$BIN_DIR/mc-consensus-mint-client" \
-                        --node-url insecure-mc://localhost:3200 \
-                        --mint-signing-key "$MINTING_KEYS/minter1"
+             --mobilecoind-addr localhost:4444 \
+             --mint-auditor-addr localhost:7774 \
+             --node-url insecure-mc://localhost:3200 \
+             --mint-client-bin "$BIN_DIR/mc-consensus-mint-client" \
+             --mint-signing-key "$MINTING_KEYS/minter1"
 
       - name: Upload core dumps
         uses: ./.github/actions/upload-core-dumps
