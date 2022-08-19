@@ -13,8 +13,9 @@ pub use mc_transaction_core::{
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
 };
 pub use mint::{
-    create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
-    create_mint_tx_to_recipient, mint_config_tx_to_validated,
+    create_mint_config_tx, create_mint_config_tx_and_signers,
+    create_mint_config_tx_and_signers_for_set_nonce, create_mint_tx, create_mint_tx_to_recipient,
+    mint_config_tx_to_validated,
 };
 
 use core::convert::TryFrom;

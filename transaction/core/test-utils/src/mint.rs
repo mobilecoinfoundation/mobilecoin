@@ -24,14 +24,29 @@ pub fn create_mint_config_tx_and_signers(
     token_id: TokenId,
     rng: &mut (impl RngCore + CryptoRng),
 ) -> (MintConfigTx, Vec<Ed25519Pair>) {
+    let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+    rng.fill_bytes(&mut nonce);
+
+    create_mint_config_tx_and_signers_for_set_nonce(token_id, rng, nonce)
+}
+
+/// Generate a valid MintConfigTx and return it together with the set of signing
+/// keys that are allowed to sign it.
+///
+/// # Arguments
+/// `token_id` - The token id to use.
+/// `rng` - Randomness source.
+/// `nonce` - Nonce to use
+pub fn create_mint_config_tx_and_signers_for_set_nonce(
+    token_id: TokenId,
+    rng: &mut (impl RngCore + CryptoRng),
+    nonce: Vec<u8>,
+) -> (MintConfigTx, Vec<Ed25519Pair>) {
     let signer_1 = Ed25519Pair::from_random(rng);
     let signer_2 = Ed25519Pair::from_random(rng);
     let signer_3 = Ed25519Pair::from_random(rng);
     let signer_4 = Ed25519Pair::from_random(rng);
     let signer_5 = Ed25519Pair::from_random(rng);
-
-    let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
-    rng.fill_bytes(&mut nonce);
 
     // We use next_u32 for individual configurations mint limit to ensure the total
     // mint limit does not overflow.
