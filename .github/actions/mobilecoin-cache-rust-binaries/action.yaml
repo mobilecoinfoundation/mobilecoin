@@ -1,0 +1,29 @@
+name: Mobilecoin Rust Binary Cache
+description: Standardized rust binary cache setup
+
+inputs:
+  cache_buster:
+    description: "string to make cache unique"
+    required: false
+  path:
+    description: "path to mount cache"
+    required: false
+    default: |
+      rust_build_artifacts
+
+outputs:
+  cache-hit:
+    description: "did we get a cache hit?"
+    value: ${{ steps.rust_artifact_cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+  - name: Cache rust build binaries
+    id: rust_artifact_cache
+    uses: actions/cache@v3
+    with:
+      path: ${{ inputs.path }}
+      # Key is a hash of all the .rs, .proto and Cargo.toml files.
+      # if code changes, invalidate cache and rebuild
+      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml', '**/*.edl', '.cargo/config') }}-rust-build-artifacts

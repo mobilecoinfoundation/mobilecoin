@@ -1,0 +1,14 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "consensusNodeConfig.fullname" . }}-consensus-node
+  labels:
+    {{- include "consensusNodeConfig.labels" . | nindent 4 }}
+data:
+  CLIENT_HOSTNAME: {{ include "consensusNodeConfig.clientHostname" . | squote }}
+  PEER_HOSTNAME: {{ include "consensusNodeConfig.peerHostname" . | squote }}
+  MC_TX_SOURCE_URL: {{ include "consensusNodeConfig.txSourceUrl" . | squote }}
+  MC_BLOCK_VERSION: {{ .Values.global.node.nodeConfig.blockVersion | squote }}
+  MC_CLIENT_RESPONDER_ID: "{{ include "consensusNodeConfig.clientHostname" . }}:443"
+  MC_PEER_RESPONDER_ID: "{{ include "consensusNodeConfig.peerHostname" . }}:443"

@@ -1,0 +1,412 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - Deploy core apps to to the development namespace.
+
+name: mobilecoin-workflow-dev-deploy
+
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+      docker_image_org:
+        description: "Docker Image Org"
+        type: string
+        required: true
+        default: docker.io/mobilecoin
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: true
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: string
+        required: true
+      minting_config_enabled:
+        description: "Enable minting config"
+        type: string
+        default: 'false'
+        required: true
+      block_version:
+        description: "block_version"
+        type: string
+        required: true
+    secrets:
+      RANCHER_CLUSTER:
+        description: "Rancher cluster name"
+        required: true
+      RANCHER_URL:
+        description: "Rancher server URL"
+        required: true
+      RANCHER_TOKEN:
+        description: "Rancher access token"
+        required: true
+      LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
+      IAS_KEY:
+        description: "IAS"
+        required: true
+      IAS_SPID:
+        description: "IAS"
+        required: true
+      FOG_REPORT_SIGNING_CERT:
+        description: "Fog Report signing cert pem"
+        required: true
+      FOG_REPORT_SIGNING_CERT_KEY:
+        description: "Fog Report signing cert key"
+        required: true
+      FOG_REPORT_SIGNING_CA_CERT:
+        description: "Fog Report signing CA cert"
+        required: true
+      MINTING_TRUST_ROOT_PRIVATE:
+        description: "Root private key for singing the tokens config"
+        required: false
+      DOCKERHUB_TOKEN:
+        description: "Docker hub creds"
+        required: false
+      DOCKERHUB_USERNAME:
+        description: "Docker hub creds"
+        required: false
+      IP_INFO_TOKEN:
+        description: "ipinfo.io token for authenticated access"
+        required: true
+      CLIENT_AUTH_TOKEN:
+        description: "shared token for client auth"
+        required: false
+      CACHE_BUSTER:
+        description: "string to make cache unique"
+        required: false
+      INITIAL_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      FOG_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      MNEMONIC_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      MNEMONIC_FOG_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+
+jobs:
+  list-values:
+    name: 👾 Environment Info 👾
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: List input values
+      run: |
+        echo namespace ${{ inputs.namespace }}
+        echo version ${{ inputs.version }}
+        echo docker_image_org ${{ inputs.docker_image_org }}
+        echo ingest_color ${{ inputs.ingest_color }}
+        echo minting_config_enabled ${{ inputs.minting_config_enabled }}
+        echo chart_repo ${{ inputs.chart_repo }}
+
+    - name: 👾 Print Environment Details 👾
+      env:
+        CHART_REPO: ${{ inputs.chart_repo }}
+        NAMESPACE: ${{ inputs.namespace }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        .internal-ci/util/print_details.sh
+
+  # Reset consensus nodes between releases - if there's existing data, we'll
+  # restore from S3.
+  reset-releases:
+    runs-on: [self-hosted, Linux, small]
+    strategy:
+      matrix:
+        chart:
+        - consensus-node-1
+        - consensus-node-2
+        - consensus-node-3
+        - consensus-node-4
+        - consensus-node-5
+    steps:
+    - name: Delete release
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-release-delete
+        namespace: ${{ inputs.namespace }}
+        release_name: ${{ matrix.chart }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  setup-environment:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - reset-releases
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Create namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: namespace-create
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+    - name: Cache wallet seeds .tmp/seeds
+      uses: ./.github/actions/mobilecoin-cache-seeds
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    # use static keys if provided.
+    - name: Generate Wallet Seed
+      env:
+        INITIAL_KEYS_SEED: ${{ secrets.INITIAL_KEYS_SEED }}
+        FOG_KEYS_SEED: ${{ secrets.FOG_KEYS_SEED }}
+        MNEMONIC_KEYS_SEED: ${{ secrets.MNEMONIC_KEYS_SEED }}
+        MNEMONIC_FOG_KEYS_SEED: ${{ secrets.MNEMONIC_FOG_KEYS_SEED }}
+      run: |
+        .internal-ci/util/generate_wallet_seeds.sh
+
+    # write this to the seeds dir and set the path that toolbox will find it at.
+    - name: Write fog-report signing CA cert
+      env:
+        FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.FOG_REPORT_SIGNING_CA_CERT }}
+      run: |
+        mkdir -p .tmp/seeds
+        echo -n "${FOG_REPORT_SIGNING_CA_CERT}" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT
+        echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT_PATH
+
+    - name: Create wallet key secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        object_name: sample-keys-seeds
+        src: .tmp/seeds
+
+    - name: Create minting keys
+      if: inputs.minting_config_enabled == 'true'
+      env:
+        MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.MINTING_TRUST_ROOT_PRIVATE }}
+      run: |
+        .internal-ci/util/generate_minting_keys.sh
+
+    - name: Login to DockerHub
+      if: inputs.minting_config_enabled == 'true'
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # CBB: create a minimal image with just mc-consensus-mint-client binary.
+    - name: Generate and sign tokens config
+      if: inputs.minting_config_enabled == 'true'
+      id: tokens_config
+      run: |
+        docker run \
+          -v ${{ github.workspace }}:/workspace \
+          --network none \
+          --workdir /workspace \
+          ${{ inputs.docker_image_org }}/bootstrap-tools:${{ inputs.version }} \
+          .internal-ci/util/generate_tokens_config.sh
+
+    - name: Create minting key secrets
+      if: inputs.minting_config_enabled == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        object_name: consensus-minting-secrets
+        src: .tmp/seeds/minting
+
+    - name: Generate environment values file
+      env:
+        IAS_KEY: ${{ secrets.IAS_KEY }}
+        IAS_SPID: ${{ secrets.IAS_SPID }}
+        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
+        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
+        FOG_REPORT_SIGNING_CERT: ${{ secrets.FOG_REPORT_SIGNING_CERT }}
+        FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.FOG_REPORT_SIGNING_CERT_KEY }}
+        IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
+        CLIENT_AUTH_TOKEN: ${{ secrets.CLIENT_AUTH_TOKEN }}
+      run: |
+        mkdir -p .tmp/values/
+        .internal-ci/util/generate_dev_values.sh > .tmp/values/mc-core-dev-env-values.yaml
+
+    - name: Deploy environment setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mc-core-dev-env-setup
+        chart_version: ${{ inputs.version }}
+        chart_values: .tmp/values/mc-core-dev-env-values.yaml
+        chart_set: |
+          --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
+        release_name: mc-core-dev-env-setup
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  consensus-deploy:
+    needs:
+    - setup-environment
+    runs-on: [self-hosted, Linux, small]
+    strategy:
+      matrix:
+        release_name:
+        - consensus-node-1
+        - consensus-node-2
+        - consensus-node-3
+        - consensus-node-4
+        - consensus-node-5
+    steps:
+    - name: Deploy Consensus nodes
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: consensus-node
+        chart_version: ${{ inputs.version }}
+        chart_set: |
+          --set=image.org=${{ inputs.docker_image_org }}
+          --set=global.certManagerClusterIssuer=zerossl-prod-http
+        chart_wait_timeout: 10m
+        release_name: ${{ matrix.release_name }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  postgresql-deploy:
+    needs:
+    - setup-environment
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Deploy PostgreSQL instance
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: https://charts.bitnami.com/bitnami
+        chart_name: postgresql
+        chart_version: 11.2.3
+        chart_set: |
+          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
+          --set=global.postgresql.auth.database=fog_recovery
+          --set=architecture=replication
+        chart_wait_timeout: 5m
+        release_name: fog-recovery-postgresql
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  mobilecoind-deploy:
+    needs:
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Deploy Consensus nodes
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mobilecoind
+        chart_version: ${{ inputs.version }}
+        chart_set: |
+          --set=image.org=${{ inputs.docker_image_org }}
+        chart_wait_timeout: 5m
+        release_name: mobilecoind
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  fog-ingest-deploy:
+    needs:
+    - postgresql-deploy
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Deploy fog-ingest
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ingest
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_set: |
+          --set=image.org=${{ inputs.docker_image_org }}
+        release_name: fog-ingest-${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+    - name: Run fog-recovery database migrations
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          fog-sql-recovery-db-migrations
+
+    - name: Activate primary ingest
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: fog-ingest-activate
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  fog-services-deploy:
+    needs:
+    - postgresql-deploy
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Deploy fog-services
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-services
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        # Set orderedReady for compatibility with 1.1.3 chart - remove after 1.2.x
+        chart_set: |
+          --set=image.org=${{ inputs.docker_image_org }}
+          --set=global.certManagerClusterIssuer=zerossl-prod-http
+          --set=fogLedger.podManagementPolicy=OrderedReady
+        release_name: fog-services
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}

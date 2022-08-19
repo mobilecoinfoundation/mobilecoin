@@ -1,0 +1,9 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fog-ingest
+  labels:
+    {{- include "fogIngestConfig.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.fogIngest | nindent 2 }}
