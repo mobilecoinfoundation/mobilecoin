@@ -1476,6 +1476,101 @@ mod mint_tx_tests {
         );
     }
 
+    /// combine_mint_txs adequately sorts inputs and disposes of
+    /// duplicates.
+    #[test_with_logger]
+    fn combine_mint_txs_sorts_and_keeps_duplicate_nonces_across_tokens(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let token_id_1 = TokenId::from(1);
+        let token_id_2 = TokenId::from(2);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx),
+                to_validated(&mint_config_tx2),
+            ],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+        let mut rng1: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mint_tx1 = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng1,
+        );
+
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mint_tx2 = create_mint_tx(
+            token_id_2,
+            &[Ed25519Pair::from(signers2[0].private_key())],
+            1,
+            &mut rng2,
+        );
+
+        assert_eq!(mint_tx1.prefix.nonce, mint_tx2.prefix.nonce);
+        // Test txs, each one using a different mint configuration (determined by the
+        // signers)
+        let mint_txs = vec![mint_tx1, mint_tx2];
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
+            (
+                token_id_1,
+                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+            (
+                token_id_2,
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+        ])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+
+        let mut expected_result = mint_txs.clone();
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_txs(
+                &[
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
     /// combine_mint_txs only accepts one transaction for each mint
     /// configuration.
     #[test_with_logger]
