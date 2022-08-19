@@ -14,8 +14,8 @@ To run the mint auditor we can use `cargo`:
 ```
     cargo run -p mc-mint-auditor -- \
         scan-ledger \
-        --ledger-db /target/release/mc-local-network/node-ledger-0 \
-        --mint-auditor-db /target/release/mc-local-network/auditor-db \
+        --ledger-db ./target/release/mc-local-network/node-ledger-0 \
+        --mint-auditor-db ./target/release/mc-local-network/auditor-db \
         --listen-uri insecure-mint-auditor://127.0.0.1:7334/
 ```
 
