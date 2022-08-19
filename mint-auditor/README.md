@@ -52,8 +52,8 @@ $ ./tools/local-network/authorize-minters.py
 ```
 $ ./target/docker/release/mc-mint-auditor \
       scan-ledger \
-      --ledger-db /target/docker/release/mc-local-network/mobilecoind-ledger-db \
-      --mint-auditor-db /target/docker/release/mc-local-network/auditor-db \
+      --ledger-db ./target/docker/release/mc-local-network/mobilecoind-ledger-db \
+      --mint-auditor-db ./target/docker/release/mc-local-network/auditor-db \
       --listen-uri insecure-mint-auditor://127.0.0.1:7334/ &
 ```
 
