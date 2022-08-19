@@ -63,7 +63,7 @@ impl<L: Ledger> MintTxManagerImpl<L> {
 #[derive(Debug, Eq, Hash, PartialEq)]
 struct NonceByTokenId {
     nonce: Vec<u8>,
-    token_id: u64
+    token_id: u64,
 }
 
 impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
@@ -113,7 +113,10 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         let mut seen_nonces = HashSet::default();
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
-            let nonce_with_token_id = NonceByTokenId {nonce: tx.prefix.nonce.clone(), token_id: tx.prefix.token_id};
+            let nonce_with_token_id = NonceByTokenId {
+                nonce: tx.prefix.nonce.clone(),
+                token_id: tx.prefix.token_id,
+            };
             if seen_nonces.len() >= max_elements {
                 return false;
             }
@@ -179,10 +182,14 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         let mut seen_nonces = HashSet::default();
         let mut seen_mint_configs = HashSet::default();
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            let nonce_with_token_id = NonceByTokenId {
+                nonce: tx.prefix.nonce.clone(),
+                token_id: tx.prefix.token_id,
+            };
             if seen_nonces.len() >= max_elements {
                 return false;
             }
-            if seen_nonces.contains(&tx.prefix.nonce) {
+            if seen_nonces.contains(&nonce_with_token_id) {
                 return false;
             }
 
@@ -204,7 +211,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 return false;
             }
 
-            seen_nonces.insert(tx.prefix.nonce.clone());
+            seen_nonces.insert(nonce_with_token_id);
             seen_mint_configs.insert(active_mint_config.mint_config);
             true
         });
