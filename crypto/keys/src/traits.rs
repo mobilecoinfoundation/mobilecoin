@@ -111,26 +111,14 @@ pub struct Fingerprint<D: digest::OutputSizeUser> {
 /// Debug impl for fingerprint objects
 impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        for i in 0..self.hash.len() {
-            write!(f, "{:02x}", self.hash[i])?;
-            if i < self.hash.len() - 1 {
-                write!(f, ":")?;
-            }
-        }
-        Ok(())
+        write!(f, "Fingerprint({})", self)
     }
 }
 
 /// Display impl for fingerprint objects
 impl<D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        for i in 0..self.hash.len() {
-            write!(f, "{:02x}", self.hash[i])?;
-            if i < self.hash.len() - 1 {
-                write!(f, ":")?;
-            }
-        }
-        Ok(())
+        write!(f, "{}", HexFmt(&self.hash))
     }
 }
 

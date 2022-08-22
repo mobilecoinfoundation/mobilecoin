@@ -1,7 +1,7 @@
 [package]
 name = "mc-crypto-platform"
 description = "MobileCoin Crypto Platform Configurator Package"
-version = "0.1.0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 

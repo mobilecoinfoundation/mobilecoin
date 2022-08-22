@@ -6,7 +6,6 @@ use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
     KeyError, PrivateKey, PublicKey, Signature,
 };
-
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},

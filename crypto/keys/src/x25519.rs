@@ -49,8 +49,8 @@ impl AsRef<[u8]> for X25519Secret {
 
 /// The debug implementation will output the SHA-256 sum of the secret, but not
 /// the secret itself
-impl core::fmt::Debug for X25519Secret {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+impl Debug for X25519Secret {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut hasher = Sha256::new();
         hasher.update(self.as_ref());
         let hash_results = hasher.finalize();
@@ -279,7 +279,7 @@ impl<'de> Deserialize<'de> for X25519Public {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                X25519Public::try_from_der(value).map_err(|err| E::custom(err))
+                X25519Public::try_from_der(value).map_err(E::custom)
             }
         }
 
@@ -508,7 +508,7 @@ impl<'de> Deserialize<'de> for X25519Private {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                X25519Private::try_from_der(value).map_err(|err| E::custom(err))
+                X25519Private::try_from_der(value).map_err(E::custom)
             }
         }
 

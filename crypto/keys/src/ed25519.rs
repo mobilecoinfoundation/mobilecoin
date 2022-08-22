@@ -7,7 +7,6 @@ use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
     Signature as SignatureTrait, SignatureError, Signer, Verifier,
 };
-
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
@@ -489,12 +488,11 @@ impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Signature {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
+derive_core_cmp_from_as_ref!(Ed25519Signature);
+derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
 #[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(Ed25519Signature);
-
-derive_core_cmp_from_as_ref!(Ed25519Signature);
-derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {
