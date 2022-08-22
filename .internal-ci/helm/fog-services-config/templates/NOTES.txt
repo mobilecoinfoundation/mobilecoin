@@ -1,1 +1,1 @@
-fog-ingest config
+fog-services-config

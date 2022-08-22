@@ -52,7 +52,7 @@ do
 done
 
 is_set key_dir
-is_set token_id
+is_set token_ids
 is_set NAMESPACE
 
 if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]

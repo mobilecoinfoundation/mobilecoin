@@ -26,6 +26,6 @@ runs:
     uses: actions/cache@v3
     with:
       path: ${{ inputs.path }}
-      # Key is a hash of all the .rs, .proto and Cargo.toml files.
-      # if code changes, invalidate cache and rebuild
-      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}-cargo-cache
+      # Key is a hash of all the Cargo.toml and Cargo.lock files.
+      # if packages change, invalidate cache and rebuild
+      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}-cargo-cache
