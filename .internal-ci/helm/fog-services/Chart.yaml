@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v2
+name: fog-services
+description: fog services (report, view, ledger)
+type: application
+version: 0.0.0
+appVersion: 0.0.0
+dependencies:
+- name: mc-core-common-config
+  repository: file://../mc-core-common-config
+  version: 0.0.0
+  condition: mcCoreCommonConfig.enabled
+  alias: mcCoreCommonConfig
+- name: fog-services-config
+  repository: file://../fog-services-config
+  version: 0.0.0
+  condition: fogServicesConfig.enabled
+  alias: fogServicesConfig

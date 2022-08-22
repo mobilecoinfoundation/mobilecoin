@@ -1,0 +1,5 @@
+Common consensus config
+
+Client hostname: {{ include "consensusNodeConfig.clientHostname" . }}
+Peer hostname: {{ include "consensusNodeConfig.peerHostname" . }}
+Blockchain Path: {{ include "consensusNodeConfig.ledgerDistributionAWSPath" . }}

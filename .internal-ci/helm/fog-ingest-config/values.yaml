@@ -1,0 +1,29 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+fullnameOverride: ''
+
+fogRecoveryDatabase:
+  configMap:
+    # Default to a TF or external created ConfigMap
+    enabled: false
+  secret:
+    # Default to a TF or external created Secret
+    enabled: false
+  ### helm install fog-recovery bitnami/postgresql -n <namespace> \
+  #   --set global.postgresql.auth.existingSecret=fog-recover-postgresql \
+  #   --set global.postgresql.auth.database=fog_recovery \
+  #   --
+  #   For helm deployed postgres, set configMap.enabled and secret.enabled true
+  hostname: fog-recovery-postgresql-primary
+  password: ''
+  username: postgres
+  database: fog_recovery
+  port: '5432'
+  options: '?sslmode=disable'
+
+fogIngest:
+  # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
+  POSTGRES_IDLE_TIMEOUT: '60'
+  POSTGRES_MAX_LIFETIME: '120'
+  POSTGRES_CONNECTION_TIMEOUT: '5'
+  POSTGRES_MAX_CONNECTIONS: '3'
+  FOG_PUBKEY_EXPIRY_WINDOW: '10'

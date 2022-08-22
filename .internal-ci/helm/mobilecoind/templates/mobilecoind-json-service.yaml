@@ -1,0 +1,16 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mobilecoind.fullname" . }}-json
+  labels:
+    {{- include "mobilecoind.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: mobilecoind
+    {{- include "mobilecoind.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: json
+    port: 9090
+    targetPort: json

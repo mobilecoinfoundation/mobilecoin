@@ -1,0 +1,19 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- if eq .Values.watcher.persistenceEnabled true }}
+{{- range .Values.watcher.instances }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .watchername }}-{{ include "chart.fullname" $ }}-data
+  labels:
+    {{- include "chart.labels" $ | nindent 4 }}
+spec:
+  storageClassName: {{ $.Values.watcher.storageClass }}
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: 512Gi
+---
+{{- end }}
+{{- end }}
