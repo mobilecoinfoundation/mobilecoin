@@ -99,7 +99,7 @@ pub extern "C" fn mc_chacha20_rng_create_with_bytes(
 ///
 /// * `LibMcError::Poison`
 #[no_mangle]
-pub extern "C" fn mc_chacha20_get_word_pos(
+pub extern "C" fn mc_chacha20_rng_get_word_pos(
     chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>,
     out_word_pos: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,

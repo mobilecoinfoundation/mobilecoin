@@ -429,9 +429,9 @@ FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_bytes(FfiRefPtr
  *
  * * `LibMcError::Poison`
  */
-void mc_chacha20_get_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
-                              FfiMutPtr<McMutableBuffer> out_word_pos,
-                              FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_chacha20_rng_get_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                                  FfiMutPtr<McMutableBuffer> out_word_pos,
+                                  FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * Sets the current word_pos of the ChaCha20Rng instance
@@ -446,9 +446,9 @@ void mc_chacha20_get_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
  *
  * * `LibMcError::Poison`
  */
-void mc_chacha20_set_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
-                              FfiRefPtr<McBuffer> bytes,
-                              FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_chacha20_rng_set_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                                  FfiRefPtr<McBuffer> bytes,
+                                  FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * Returns the next random u64 value from the ChaCha20Rng
@@ -477,7 +477,8 @@ uint64_t mc_chacha20_rng_next_long(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
  *
  * * `chacha20_rng` - must be a valid ChaCha20Rng
  */
-void mc_chacha20_rng_free(FfiOptOwnedPtr<Mutex<McChaCha20Rng>> chacha20_rng);
+bool mc_chacha20_rng_free(FfiOptOwnedPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 bool mc_ristretto_private_validate(FfiRefPtr<McBuffer> ristretto_private,
                                    FfiMutPtr<bool> out_valid);
