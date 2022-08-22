@@ -1,16 +1,13 @@
 use crate::common::*;
 use mc_util_ffi::*;
 use rand_chacha::ChaCha20Rng;
-use rand_core::SeedableRng;
-use rand_core::RngCore;
-use std::sync::Mutex;
-use std::convert::TryInto;
-
+use rand_core::{RngCore, SeedableRng};
+use std::{convert::TryInto, sync::Mutex};
 
 pub type McChaCha20Rng = ChaCha20Rng;
 
 pub struct McU128 {
-    pub bytes: [u8; 16]    
+    pub bytes: [u8; 16],
 }
 
 impl McU128 {
@@ -43,16 +40,21 @@ impl_into_ffi!(FfiOwnedPtr<McU128>);
 impl_into_ffi!(Mutex<McChaCha20Rng>);
 
 #[no_mangle]
-pub extern "C" fn mc_chacha20_rng_create_with_long(long_val: u64) -> FfiOptOwnedPtr<Mutex<McChaCha20Rng>> {
-    ffi_boundary(|| {
-        Mutex::new(McChaCha20Rng::seed_from_u64(long_val))
-    })
+pub extern "C" fn mc_chacha20_rng_create_with_long(
+    long_val: u64,
+) -> FfiOptOwnedPtr<Mutex<McChaCha20Rng>> {
+    ffi_boundary(|| Mutex::new(McChaCha20Rng::seed_from_u64(long_val)))
 }
 
 #[no_mangle]
-pub extern "C" fn mc_chacha20_rng_create_with_bytes(bytes: FfiRefPtr<McBuffer>) -> FfiOptOwnedPtr<Mutex<McChaCha20Rng>> {
+pub extern "C" fn mc_chacha20_rng_create_with_bytes(
+    bytes: FfiRefPtr<McBuffer>,
+) -> FfiOptOwnedPtr<Mutex<McChaCha20Rng>> {
     ffi_boundary(|| {
-        let bytes: [u8; 32] = bytes.as_slice().try_into().expect("seed size must be 32 bytes");
+        let bytes: [u8; 32] = bytes
+            .as_slice()
+            .try_into()
+            .expect("seed size must be 32 bytes");
         Mutex::new(McChaCha20Rng::from_seed(bytes))
     })
 }
@@ -61,25 +63,31 @@ pub extern "C" fn mc_chacha20_rng_create_with_bytes(bytes: FfiRefPtr<McBuffer>) 
 pub extern "C" fn mc_chacha20_get_word_pos(
     chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>,
     out_word_pos: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) {
-    ffi_boundary(|| {
-        let word_pos = chacha20_rng.lock().unwrap().get_word_pos();
+    ffi_boundary_with_error(out_error, || {
+        let word_pos = chacha20_rng.lock()?.get_word_pos();
         let mc_u128 = McU128::from_u128(word_pos);
 
-        let out_word_pos = out_word_pos
-            .into_mut()
-            .as_slice_mut_of_len(16)
-            .expect("word_pos length is not exaclty 16 bytes");
+        let out_word_pos = out_word_pos.into_mut().as_slice_mut_of_len(16)?;
 
         out_word_pos.copy_from_slice(&mc_u128.bytes);
+
+        Ok(())
     })
 }
 
 #[no_mangle]
-pub extern "C" fn mc_chacha20_set_word_pos(chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>, bytes: FfiRefPtr<McBuffer>) {
+pub extern "C" fn mc_chacha20_set_word_pos(
+    chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>,
+    bytes: FfiRefPtr<McBuffer>,
+) {
     ffi_boundary(|| {
         let mc_u128 = McU128 {
-            bytes: bytes.as_slice().try_into().expect("word_pos length is not exaclty 16 bytes")
+            bytes: bytes
+                .as_slice()
+                .try_into()
+                .expect("word_pos length is not exaclty 16 bytes"),
         };
         let word_pos = mc_u128.to_u128();
         chacha20_rng.lock().unwrap().set_word_pos(word_pos);
