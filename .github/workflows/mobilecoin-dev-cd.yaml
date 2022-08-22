@@ -230,7 +230,7 @@ jobs:
     - name: Generate Docker Tags
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_meta
-      uses: docker/metadata-action@v3
+      uses: docker/metadata-action@v4
       with:
         images: ${{ env.DOCKER_ORG }}/runtime-base
         flavor: |
@@ -307,7 +307,7 @@ jobs:
     - name: Generate Docker Tags
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_meta
-      uses: docker/metadata-action@v3
+      uses: docker/metadata-action@v4
       with:
         images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
         tags: ${{ needs.generate-metadata.outputs.docker_tag }}
