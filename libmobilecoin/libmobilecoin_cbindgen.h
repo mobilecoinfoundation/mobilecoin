@@ -10,6 +10,8 @@
 
 #define LIB_MC_ERROR_CODE_PANIC -2
 
+#define LIB_MC_ERROR_CODE_POISON -3
+
 #define LIB_MC_ERROR_CODE_INVALID_INPUT 100
 
 #define LIB_MC_ERROR_CODE_INVALID_OUTPUT 101
@@ -97,6 +99,8 @@ typedef struct McRngCallback {
   FfiCallbackRng rng;
   FfiOptMutPtr<void> context;
 } McRngCallback;
+
+typedef ChaCha20Rng McChaCha20Rng;
 
 typedef FullyValidatedFogPubkey McFullyValidatedFogPubkey;
 
@@ -391,6 +395,100 @@ ssize_t mc_bip39_entropy_from_mnemonic(FfiStr mnemonic,
  * * `prefix` - must be a nul-terminated C string containing valid UTF-8.
  */
 FfiOptOwnedStr mc_bip39_words_by_prefix(FfiStr prefix);
+
+/**
+ * Returns a new ChaCha20Rng instance initialized with the
+ * seed value provided by the u64 long_val parameter
+ *
+ * # Arguments
+ *
+ * * `long_val` - an unsigned 64 bit value to use as the rng seed
+ *
+ * # Errors
+ *
+ * * `LibMcError::Poison`
+ */
+FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_long(uint64_t long_val,
+                                                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * Returns a new ChaCha20Rng instance initialized with the
+ * seed value provided by the bytes data, which must be at
+ * least 32 bytes (only the first 32 bytes will be used)
+ *
+ * # Arguments
+ *
+ * * `bytes` - 32 bytes of data to use as the rng seed
+ *
+ * # Errors
+ *
+ * * `LibMcError::Poison`
+ */
+FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_bytes(FfiRefPtr<McBuffer> bytes,
+                                                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * Returns the current word_pos of the ChaCha20Rng instance
+ *
+ * # Arguments
+ *
+ * * `chacha20_rng` - must be a valid ChaCha20Rng
+ * * `out_word_pos` - pointer to buffer of 128 bytes where the current
+ *   chacha20_rng wordpos will be returned
+ *
+ * # Errors
+ *
+ * * `LibMcError::Poison`
+ */
+void mc_chacha20_get_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                              FfiMutPtr<McMutableBuffer> out_word_pos,
+                              FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * Sets the current word_pos of the ChaCha20Rng instance
+ *
+ * /// # Arguments
+ *
+ * * `chacha20_rng` - must be a valid ChaCha20Rng
+ * * `out_word_pos` - pointer to buffer of 128 bytes where the current
+ *   chacha20_rng wordpos will be returned
+ *
+ * # Errors
+ *
+ * * `LibMcError::Poison`
+ */
+void mc_chacha20_set_word_pos(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                              FfiRefPtr<McBuffer> bytes,
+                              FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * Returns the next random u64 value from the ChaCha20Rng
+ *
+ * /// # Arguments
+ *
+ * * `chacha20_rng` - must be a valid ChaCha20Rng
+ *
+ * # Errors
+ *
+ * * `LibMcError::Poison`
+ */
+uint64_t mc_chacha20_rng_next_long(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
+                                   FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * frees the ChaCha20Rng
+ *
+ * # Preconditions
+ *
+ * * The ChaCha20Rng is no longer in use
+ *
+ * # Arguments
+ *
+ * * `chacha20_rng` - must be a valid ChaCha20Rng
+ *
+ * * `chacha20_rng` - must be a valid ChaCha20Rng
+ */
+void mc_chacha20_rng_free(FfiOptOwnedPtr<Mutex<McChaCha20Rng>> chacha20_rng);
 
 bool mc_ristretto_private_validate(FfiRefPtr<McBuffer> ristretto_private,
                                    FfiMutPtr<bool> out_valid);
