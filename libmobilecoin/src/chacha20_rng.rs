@@ -103,7 +103,7 @@ pub extern "C" fn mc_chacha20_get_word_pos(
     chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>,
     out_word_pos: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-) {
+) -> bool {
     ffi_boundary_with_error(out_error, || {
         let word_pos = chacha20_rng.lock()?.get_word_pos();
         let mc_u128 = McU128::from_u128(word_pos);
@@ -128,11 +128,11 @@ pub extern "C" fn mc_chacha20_get_word_pos(
 ///
 /// * `LibMcError::Poison`
 #[no_mangle]
-pub extern "C" fn mc_chacha20_set_word_pos(
+pub extern "C" fn mc_chacha20_rng_set_word_pos(
     chacha20_rng: FfiMutPtr<Mutex<McChaCha20Rng>>,
     bytes: FfiRefPtr<McBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-) {
+) -> bool {
     ffi_boundary_with_error(out_error, || {
         let mc_u128 = McU128 {
             bytes: bytes
@@ -180,7 +180,7 @@ pub extern "C" fn mc_chacha20_rng_next_long(
 pub extern "C" fn mc_chacha20_rng_free(
     chacha20_rng: FfiOptOwnedPtr<Mutex<McChaCha20Rng>>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-) {
+) -> bool {
     ffi_boundary_with_error(out_error, || {
         let _ = chacha20_rng;
         Ok(())
