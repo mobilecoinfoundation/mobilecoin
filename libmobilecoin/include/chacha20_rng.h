@@ -54,7 +54,7 @@ MC_ATTRIBUTE_NONNULL(1);
 /// # Errors
 ///
 /// * `LibMcError::Poison`
-void mc_chacha20_rng_get_word_pos(
+bool mc_chacha20_rng_get_word_pos(
     ChaCha20Rng* MC_NULLABLE chacha20_rng,
     const McBuffer* MC_NONNULL out_word_pos,
     McError* MC_NULLABLE * MC_NULLABLE out_error
@@ -72,7 +72,7 @@ MC_ATTRIBUTE_NONNULL(1,2);
 /// # Errors
 ///
 /// * `LibMcError::Poison`
-void mc_chacha20_set_word_pos(
+bool mc_chacha20_rng_set_word_pos(
     ChaCha20Rng* MC_NULLABLE chacha20_rng,
     const McBuffer* MC_NONNULL bytes,
     McError* MC_NULLABLE * MC_NULLABLE out_error
@@ -94,7 +94,7 @@ uint64_t mc_chacha20_rng_next_long(
 )
 MC_ATTRIBUTE_NONNULL(1);
 
-/// frees the ChaCha20Rng
+/// Frees the ChaCha20Rng
 ///
 /// # Preconditions
 /// 
@@ -105,7 +105,10 @@ MC_ATTRIBUTE_NONNULL(1);
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
-void mc_chacha20_rng_free(ChaCha20Rng* MC_NULLABLE chacha20_rng)
+bool mc_chacha20_rng_free(
+    ChaCha20Rng* MC_NULLABLE chacha20_rng,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
 MC_ATTRIBUTE_NONNULL(1);
 
 #ifdef __cplusplus
