@@ -168,9 +168,9 @@ pub extern "C" fn mc_chacha20_rng_next_long(
 /// frees the ChaCha20Rng
 ///
 /// # Preconditions
-/// 
+///
 /// * The ChaCha20Rng is no longer in use
-/// 
+///
 /// # Arguments
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
