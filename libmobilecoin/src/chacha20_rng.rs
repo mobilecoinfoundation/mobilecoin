@@ -177,8 +177,12 @@ pub extern "C" fn mc_chacha20_rng_next_long(
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
 #[no_mangle]
-pub extern "C" fn mc_chacha20_rng_free(chacha20_rng: FfiOptOwnedPtr<Mutex<McChaCha20Rng>>) {
-    ffi_boundary(|| {
+pub extern "C" fn mc_chacha20_rng_free(
+    chacha20_rng: FfiOptOwnedPtr<Mutex<McChaCha20Rng>>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) {
+    ffi_boundary_with_error(out_error, || {
         let _ = chacha20_rng;
+        Ok(())
     })
 }
