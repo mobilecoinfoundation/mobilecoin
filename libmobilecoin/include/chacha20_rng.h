@@ -11,18 +11,35 @@ extern "C" {
 
 typedef struct _ChaCha20Rng ChaCha20Rng;
 
-ChaCha20Rng* MC_NULLABLE mc_chacha20_rng_create_with_long(uint64_t value);
+ChaCha20Rng* MC_NULLABLE mc_chacha20_rng_create_with_long(
+    uint64_t value,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+);
 
-ChaCha20Rng* MC_NULLABLE mc_chacha20_rng_create_with_bytes(const McBuffer* MC_NONNULL bytes)
+ChaCha20Rng* MC_NULLABLE mc_chacha20_rng_create_with_bytes(
+    const McBuffer* MC_NONNULL bytes,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
 MC_ATTRIBUTE_NONNULL(1);
 
-void mc_chacha20_rng_get_word_pos(ChaCha20Rng* MC_NULLABLE chacha20_rng, const McBuffer* MC_NONNULL out_word_pos)
+void mc_chacha20_rng_get_word_pos(
+    ChaCha20Rng* MC_NULLABLE chacha20_rng,
+    const McBuffer* MC_NONNULL out_word_pos,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
 MC_ATTRIBUTE_NONNULL(1,2);
 
-void mc_chacha20_set_word_pos(ChaCha20Rng* MC_NULLABLE chacha20_rng, const McBuffer* MC_NONNULL bytes)
+void mc_chacha20_set_word_pos(
+    ChaCha20Rng* MC_NULLABLE chacha20_rng,
+    const McBuffer* MC_NONNULL bytes,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
 MC_ATTRIBUTE_NONNULL(1,2);
 
-uint64_t mc_chacha20_rng_next_long(ChaCha20Rng* MC_NULLABLE chacha20_rng)
+uint64_t mc_chacha20_rng_next_long(
+    ChaCha20Rng* MC_NULLABLE chacha20_rng,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
 MC_ATTRIBUTE_NONNULL(1);
 
 void mc_chacha20_rng_free(ChaCha20Rng* MC_NULLABLE chacha20_rng)
