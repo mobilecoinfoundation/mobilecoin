@@ -3,7 +3,7 @@ use crate::LibMcError;
 use mc_util_ffi::{FfiMutPtr, FfiOptMutPtr, FfiOptOwnedPtr, FfiRefPtr};
 use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
-use std::sync::Mutex;
+use std::{convert::TryInto, sync::Mutex};
 
 pub type McChaCha20Rng = ChaCha20Rng;
 
