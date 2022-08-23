@@ -1,5 +1,3 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
-
 use crate::common::*;
 use mc_util_ffi::*;
 use rand_chacha::ChaCha20Rng;
@@ -92,7 +90,7 @@ pub extern "C" fn mc_chacha20_rng_create_with_bytes(
 /// # Arguments
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
-/// * `out_word_pos` - pointer to buffer of 128 bytes where the current
+/// * `out_word_pos` - pointer to buffer of 16 bytes where the current
 ///   chacha20_rng wordpos will be returned
 ///
 /// # Errors
@@ -106,12 +104,8 @@ pub extern "C" fn mc_chacha20_rng_get_word_pos(
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
         let word_pos = chacha20_rng.lock()?.get_word_pos();
-        let mc_u128 = McU128::from_u128(word_pos);
-
         let out_word_pos = out_word_pos.into_mut().as_slice_mut_of_len(16)?;
-
-        out_word_pos.copy_from_slice(&mc_u128.bytes);
-
+        out_word_pos.copy_from_slice(&word_pos.to_be_bytes());
         Ok(())
     })
 }
@@ -134,16 +128,12 @@ pub extern "C" fn mc_chacha20_rng_set_word_pos(
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
-        let mc_u128 = McU128 {
-            bytes: bytes
+        chacha20_rng.lock()?.set_word_pos(u128::from_be_bytes(
+            bytes
                 .as_slice()
                 .try_into()
                 .expect("word_pos length is not exaclty 16 bytes"),
-        };
-        let word_pos = mc_u128.to_u128();
-
-        chacha20_rng.lock()?.set_word_pos(word_pos);
-
+        ));
         Ok(())
     })
 }
@@ -172,8 +162,6 @@ pub extern "C" fn mc_chacha20_rng_next_long(
 /// * The ChaCha20Rng is no longer in use
 ///
 /// # Arguments
-///
-/// * `chacha20_rng` - must be a valid ChaCha20Rng
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
 #[no_mangle]
