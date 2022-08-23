@@ -422,6 +422,7 @@ FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_long(uint64_t l
  *
  * # Errors
  *
+ * * `LibMcError::InvalidInput`
  * * `LibMcError::Poison`
  */
 FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_bytes(FfiRefPtr<McBuffer> bytes,
