@@ -41,7 +41,7 @@ use serde::{self as serde, Deserialize, Serialize};
 // a detached signature -- use https://lapo.it/asn1js/
 //
 // I'm not really sure if this is the correct way to do this, but I'm using
-// https://tools.ietf.org/html/rfc912 as a reference. Unfortunately, digital
+// https://tools.ietf.org/html/rfc5912 as a reference. Unfortunately, digital
 // signatures are representing by a structure that is nearly identical to
 // a SubjectPublicKeyInfo structure (this is 64 bytes, to accommodate the
 // concatenation of the "S" signature and "R" nonce).
