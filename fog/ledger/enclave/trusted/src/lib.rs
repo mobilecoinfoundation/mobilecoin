@@ -63,13 +63,15 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::AddKeyImageData(records) => serialize(&ENCLAVE.add_key_image_data(records)),
 
         // Router / Store system
-        EnclaveCall::ConnectToStore(responder_id) => todo!(),
+        EnclaveCall::ConnectToStore(responder_id) => serialize(&ENCLAVE.connect_to_store(responder_id)),
         EnclaveCall::FinishConnectingToStore(
             responder_id,
             client_auth_response,
-        ) => todo!(), 
-        EnclaveCall::CreateMultiLedgerStoreQueryData(msg) => todo!(),
-        EnclaveCall::HandleLedgerStoreRequest(msg) => todo!(),
+        ) => serialize(&ENCLAVE.finish_connecting_to_store(responder_id, client_auth_response)),
+        EnclaveCall::CreateMultiLedgerStoreQueryData(msg) => 
+            serialize(&ENCLAVE.create_multi_ledger_store_query_data(msg)),
+        EnclaveCall::HandleLedgerStoreRequest(msg) => 
+            serialize(&ENCLAVE.handle_ledger_store_request(msg)),
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
