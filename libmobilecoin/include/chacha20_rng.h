@@ -105,11 +105,8 @@ MC_ATTRIBUTE_NONNULL(1);
 /// # Arguments
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
-///
-/// * `chacha20_rng` - must be a valid ChaCha20Rng
 bool mc_chacha20_rng_free(
-    ChaCha20Rng* MC_NONNULL chacha20_rng,
-    McError* MC_NULLABLE * MC_NULLABLE out_error
+    ChaCha20Rng* MC_NONNULL chacha20_rng
 )
 MC_ATTRIBUTE_NONNULL(1);
 
