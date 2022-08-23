@@ -1,5 +1,5 @@
 use crate::{
-    common::{ffi_boundary_with_error, McBuffer, McError, McMutableBuffer},
+    common::{ffi_boundary, ffi_boundary_with_error, McBuffer, McError, McMutableBuffer},
     LibMcError,
 };
 use mc_util_ffi::{FfiMutPtr, FfiOptMutPtr, FfiOptOwnedPtr, FfiRefPtr};
@@ -139,11 +139,9 @@ pub extern "C" fn mc_chacha20_rng_next_long(
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
 #[no_mangle]
 pub extern "C" fn mc_chacha20_rng_free(
-    chacha20_rng: FfiOptOwnedPtr<Mutex<McChaCha20Rng>>,
-    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-) -> bool {
-    ffi_boundary_with_error(out_error, || {
+    chacha20_rng: FfiOptOwnedPtr<Mutex<McChaCha20Rng>>
+) {
+    ffi_boundary(|| {
         let _ = chacha20_rng;
-        Ok(())
     })
 }
