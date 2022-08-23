@@ -50,7 +50,7 @@ MC_ATTRIBUTE_NONNULL(1);
 /// # Arguments
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
-/// * `out_word_pos` - pointer to buffer of 128 bytes where the current
+/// * `out_word_pos` - pointer to buffer of 16 bytes where the current
 ///   chacha20_rng wordpos will be returned
 ///
 /// # Errors
