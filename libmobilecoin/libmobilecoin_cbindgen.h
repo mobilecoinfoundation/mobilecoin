@@ -487,8 +487,7 @@ uint64_t mc_chacha20_rng_next_long(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
  *
  * * `chacha20_rng` - must be a valid ChaCha20Rng
  */
-bool mc_chacha20_rng_free(FfiOptOwnedPtr<Mutex<McChaCha20Rng>> chacha20_rng,
-                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+void mc_chacha20_rng_free(FfiOptOwnedPtr<Mutex<McChaCha20Rng>> chacha20_rng);
 
 bool mc_ristretto_private_validate(FfiRefPtr<McBuffer> ristretto_private,
                                    FfiMutPtr<bool> out_valid);
