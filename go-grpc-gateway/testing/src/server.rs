@@ -15,14 +15,14 @@ pub struct Server {
 
 impl Server {
     /// Instantiate a server, ready to listen at the given URI
-    pub fn new(client_listen_uri: &FogUri, logger: Logger) -> Self {
+    pub fn new(client_listen_uri: &FogUri, chain_id: String, logger: Logger) -> Self {
         let env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("StubServer-RPC".to_string())
                 .build(),
         );
 
-        let service = Service::new(logger.clone());
+        let service = Service::new(chain_id, logger.clone());
 
         let report_service = report_grpc::create_report_api(service);
         log::debug!(logger, "Constructed Report GRPC Service");

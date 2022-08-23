@@ -1,0 +1,237 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fogServices.fullname" . }}-fog-view
+  labels:
+    app: fog-view
+    {{- include "fogServices.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.fogView.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app: fog-view
+      {{- include "fogServices.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.fogView.podAnnotations | nindent 8 }}
+      labels:
+        app: fog-view
+        {{- include "fogServices.labels" . | nindent 8 }}
+    spec:
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match on this helm chart install
+            app: fog-view
+            helm.sh/chart: {{ include "fogServices.chart" . }}
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              # match on this helm chart install
+              app: fog-view
+              helm.sh/chart: {{ include "fogServices.chart" . }}
+              {{- include "fogServices.selectorLabels" . | nindent 14 }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      initContainers:
+      - name: sysctl
+        image: ubuntu:20.04
+        command:
+        - sysctl
+        - -w
+        - net.ipv4.tcp_retries2=5
+        - net.core.somaxconn=65535
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          runAsNonRoot: False
+      containers:
+      - name: fog-view
+        image: "{{ .Values.fogView.image.org | default .Values.image.org }}/{{ .Values.fogView.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
+        command: [ "/usr/bin/supervisord" ]
+        ports:
+        - name: view
+          containerPort: 3225
+        - name: mgmt
+          containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: fog-view
+        - secretRef:
+            name: ias
+        env:
+        - name: RUST_BACKTRACE
+          value: {{ .Values.fogView.rust.backtrace | quote }}
+        - name: RUST_LOG
+          value: {{ .Values.fogView.rust.log | quote }}
+        - name: CLIENT_RESPONDER_ID
+          value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
+        - name: FOG_VIEW_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: fog-view-sentry-dsn
+        # Maps to Sentry Environment
+        - name: MC_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: FOGDB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-reader-0-postgresql
+              key: postgresql-hostname
+        - name: FOGDB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-reader-0-postgresql
+              key: postgresql-username
+        - name: FOGDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-password
+        - name: FOGDB_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-reader-0-postgresql
+              key: postgresql-database
+        - name: FOGDB_SSL_OPTIONS
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-reader-0-postgresql
+              key: postgresql-ssl-options
+        - name: DATABASE_URL
+          value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: client-auth-token
+              key: token
+              optional: true
+        # Hold liveness and readiness until this probe passes.
+        startupProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3225"
+          # wait up to 4 hours for start up
+          failureThreshold: 480
+          periodSeconds: 30
+        # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
+        livenessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3225"
+          failureThreshold: 5
+          periodSeconds: 30
+        # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
+        readinessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3225"
+          failureThreshold: 2
+          periodSeconds: 10
+        volumeMounts:
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: supervisor-conf
+          mountPath: /etc/supervisor/conf.d
+          readOnly: true
+        resources:
+          {{- toYaml .Values.fogView.resources | nindent 10 }}
+      - name: grpc-gateway
+        image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: Always
+        command:
+        - /usr/bin/go-grpc-gateway
+        - -grpc-server-endpoint=127.0.0.1:3225
+        - -grpc-insecure
+        - -http-server-listen=:8225
+        - -logtostderr
+        ports:
+          - name: view-http
+            containerPort: 8225
+        resources:
+          {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
+{{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5775
+            name: zk-compact-trft
+            protocol: UDP
+          - containerPort: 5778
+            name: config-rest
+            protocol: TCP
+          - containerPort: 6831
+            name: jg-compact-trft
+            protocol: UDP
+          - containerPort: 6832
+            name: jg-binary-trft
+            protocol: UDP
+          - containerPort: 14271
+            name: admin-http
+            protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+        args:
+          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+          - --reporter.type=grpc
+          - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+{{- end }}
+      nodeSelector:
+        {{- toYaml .Values.fogView.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.fogView.tolerations | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.fogView.affinity | nindent 8 }}
+      volumes:
+      - name: aesm-socket-dir
+        emptyDir: {}
+      - name: supervisor-conf
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-sgx
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-fog-view
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-admin

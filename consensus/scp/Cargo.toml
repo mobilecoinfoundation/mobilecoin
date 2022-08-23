@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Stellar Consensus Protocol"
@@ -19,7 +19,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 maplit = "1.0.2"
-mockall = "0.11.1"
+mockall = "0.11.2"
 primitive-types = "0.11.1"
 rand = "0.8"
 rand_hc = "0.3"

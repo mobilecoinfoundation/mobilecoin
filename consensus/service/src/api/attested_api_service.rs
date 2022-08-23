@@ -10,12 +10,15 @@ use mc_common::{
     HashSet,
 };
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
+use mc_util_grpc::{
+    check_request_chain_id, rpc_logger, rpc_permissions_error, send_result, Authenticator,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct AttestedApiService<S: Session> {
+    chain_id: String,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
@@ -24,11 +27,13 @@ pub struct AttestedApiService<S: Session> {
 
 impl<S: Session> AttestedApiService<S> {
     pub fn new(
+        chain_id: String,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
+            chain_id,
             enclave,
             authenticator,
             logger,
@@ -41,6 +46,10 @@ impl AttestedApi for AttestedApiService<PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -84,6 +93,10 @@ impl AttestedApi for AttestedApiService<ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -162,8 +175,12 @@ mod peer_tests {
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
-        let attested_api_service =
-            AttestedApiService::<PeerSession>::new(enclave, authenticator, logger);
+        let attested_api_service = AttestedApiService::<PeerSession>::new(
+            "local".to_string(),
+            enclave,
+            authenticator,
+            logger,
+        );
 
         let (client, _server) = get_client_server(attested_api_service);
 
@@ -222,8 +239,12 @@ mod client_tests {
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
-        let attested_api_service =
-            AttestedApiService::<ClientSession>::new(enclave, authenticator, logger);
+        let attested_api_service = AttestedApiService::<ClientSession>::new(
+            "local".to_string(),
+            enclave,
+            authenticator,
+            logger,
+        );
 
         let (client, _server) = get_client_server(attested_api_service);
 

@@ -451,7 +451,8 @@ fn build_fog_resolver(
     // XXX: This retry should possibly be in the GrpcFogPubkeyResolver object itself
     // instead 15'th fibonacci is 987, so the last delay should be ~100
     // seconds
-    let conn = GrpcFogReportConnection::new(env.clone(), logger.clone());
+    // TODO: Supply a chain id to fog-distribution?
+    let conn = GrpcFogReportConnection::new(String::default(), env.clone(), logger.clone());
     let responses = retry(
         delay::Fibonacci::from_millis(100)
             .map(delay::jitter)

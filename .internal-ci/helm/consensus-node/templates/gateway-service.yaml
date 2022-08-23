@@ -1,0 +1,17 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "consensusNode.fullname" . }}-grpc-gateway
+  labels:
+    app: grpc-gateway
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: grpc-gateway
+    {{- include "consensusNode.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: gateway
+    port: 8000
+    targetPort: gateway

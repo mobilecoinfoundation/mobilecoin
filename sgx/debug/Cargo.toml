@@ -1,5 +1,5 @@
 [package]
 name = "mc-sgx-debug"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"

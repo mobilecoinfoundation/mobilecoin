@@ -1,0 +1,573 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Build, deploy to development.
+
+name: mobilecoin-dev-cd
+
+env:
+  CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+  DOCKER_ORG: mobilecoin
+  PREVIOUS_RELEASE: v1.1.3-dev
+
+on:
+  push:
+    branches:
+    - master
+    - main
+    - feature/*
+    - release/*
+    tags:
+      - v[0-9]+*
+
+# don't run more than one at a time for a branch/tag
+concurrency: mobilecoin-dev-cd-${{ github.ref }}
+
+jobs:
+############################################
+# Generate environment information
+############################################
+  generate-metadata:
+    name: 👾 Environment Info 👾
+    runs-on: [self-hosted, Linux, small]
+    outputs:
+      namespace: ${{ steps.meta.outputs.namespace }}
+      tag: ${{ steps.meta.outputs.tag }}
+      docker_tag: ${{ steps.meta.outputs.docker_tag }}
+      docker_org: ${{ env.DOCKER_ORG }}
+      chart_repo: ${{ env.CHART_REPO }}
+      previous_release: ${{ env.PREVIOUS_RELEASE }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Generate version metadata
+      id: meta
+      shell: bash
+      run: |
+        .internal-ci/util/metadata.sh
+
+    - name: 👾 Print Environment Details 👾
+      shell: bash
+      env:
+        CHART_REPO: ${{ env.CHART_REPO }}
+        NAMESPACE: ${{ steps.meta.outputs.namespace }}
+        VERSION: ${{ steps.meta.outputs.tag }}
+      run: |
+        .internal-ci/util/print_details.sh
+
+#########################################
+# Build binaries
+#########################################
+  build-rust-hardware-projects:
+    runs-on: [self-hosted, Linux, large]
+    container:
+      image: mobilecoin/rust-sgx-base:v0.0.16
+    env:
+      ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
+      MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
+    steps:
+    - name: Checkout
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      uses: actions/checkout@v3
+
+    - name: Write environment values
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      env:
+        ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
+        MINTING_TRUST_ROOT_PUBLIC: ${{ secrets.DEV_MINTING_TRUST_ROOT_PUBLIC }}
+      run: |
+        mkdir -p "${GITHUB_WORKSPACE}/.tmp"
+        echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
+        echo "${MINTING_TRUST_ROOT_PUBLIC}" > "${MINTING_TRUST_ROOT_PUBLIC_KEY_PEM}"
+
+    - name: Cache rust build binaries
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      id: rust_artifact_cache
+      uses: ./.github/actions/mobilecoin-cache-rust-binaries
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    - name: Cache cargo packages
+      # We don't need cargo packages if we already have binaries.
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      uses: ./.github/actions/mobilecoin-cache-cargo-package
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    - name: Build rust hardware projects
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      env:
+        IAS_MODE: DEV
+        SGX_MODE: HW
+        RUST_BACKTRACE: full
+        MOB_RELEASE: 1
+        CONSENSUS_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        LEDGER_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+      run: |
+        git config --global --add safe.directory '*'
+        cargo build --release \
+          -p mc-admin-http-gateway \
+          -p mc-consensus-mint-client \
+          -p mc-consensus-service \
+          -p mc-fog-distribution \
+          -p mc-fog-ingest-server \
+          -p mc-fog-ingest-client \
+          -p mc-fog-ledger-server \
+          -p mc-fog-report-cli \
+          -p mc-fog-report-server \
+          -p mc-fog-sql-recovery-db \
+          -p mc-fog-test-client \
+          -p mc-fog-view-server \
+          -p mc-ledger-distribution \
+          -p mc-ledger-from-archive \
+          -p mc-ledger-migration \
+          -p mc-mint-auditor \
+          -p mc-mobilecoind \
+          -p mc-mobilecoind-json \
+          -p mc-util-generate-sample-ledger \
+          -p mc-util-grpc-admin-tool \
+          -p mc-util-grpc-token-generator \
+          -p mc-util-keyfile \
+          -p mc-util-seeded-ed25519-key-gen \
+          -p mc-watcher
+
+    - name: Copy artifacts to cache
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      run: |
+        mkdir -p rust_build_artifacts
+        find target/release -maxdepth 1 -executable -type f -exec cp "{}" rust_build_artifacts/ \;
+        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" rust_build_artifacts/ \;
+
+    - name: Create css measurements
+      if: |
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      shell: bash
+      run: |
+        cd rust_build_artifacts
+        for i in *.signed.so
+        do
+          css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
+          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile ${css}.css
+        done
+
+    - name: Check artifacts
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      run: |
+        ls -alR rust_build_artifacts
+
+    - name: Upload artifacts
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      uses: actions/upload-artifact@v3
+      with:
+        name: rust-binaries
+        path: rust_build_artifacts/
+
+  build-go-projects:
+    runs-on: [self-hosted, Linux, large]
+    container:
+      image: golang:1.18.5
+    steps:
+    - name: Checkout
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      uses: actions/checkout@v3
+
+    - name: Add protobuf-compiler
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      run: |
+        apt update
+        apt install -y protobuf-compiler zstd
+
+    - name: Cache go build binaries
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      id: go_artifact_cache
+      uses: ./.github/actions/mobilecoin-cache-go-binaries
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    - name: Build go-grpc-gateway
+      if: |
+        steps.go_artifact_cache.outputs.cache-hit != 'true' &&
+        ! contains(github.event.head_commit.message, '[skip build]')
+      run: |
+        cd go-grpc-gateway
+        ./install_tools.sh
+        ./build.sh
+        mkdir -p ../go_build_artifacts
+        cp grpc-proxy ../go_build_artifacts/
+
+    - name: check artifacts
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      run: |
+        ls -alR go_build_artifacts
+
+    - name: Upload Artifacts
+      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      uses: actions/upload-artifact@v3
+      with:
+        name: go-binaries
+        path: go_build_artifacts/
+
+########################################
+# Create/Refresh base runtime image
+########################################
+  docker-base:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: actions/checkout@v3
+
+    - name: Generate Docker Tags
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: docker_meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.DOCKER_ORG }}/runtime-base
+        flavor: |
+          latest=true
+        tags: |
+          type=sha
+
+    - name: Set up Docker Buildx
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to DockerHub
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Publish to DockerHub
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: docker_publish_dockerhub
+      uses: docker/build-push-action@v2
+      with:
+        build-args: |
+          REPO_ORG=${{ env.DOCKER_ORG }}
+        context: .
+        file: .internal-ci/docker/Dockerfile.runtime-base
+        labels: ${{ steps.docker_meta.outputs.labels }}
+        push: true
+        tags: ${{ steps.docker_meta.outputs.tags }}
+
+#########################################
+# Build/Publish public artifacts
+#########################################
+  docker:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - build-go-projects
+    - build-rust-hardware-projects
+    - docker-base
+    - generate-metadata
+    strategy:
+      matrix:
+        image:
+        - bootstrap-tools
+        - fogingest
+        - fog-ledger
+        - fogreport
+        - fog-test-client
+        - fogview
+        - go-grpc-gateway
+        - node_hw
+        - mobilecoind
+        - watcher
+    steps:
+    - name: Checkout
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: actions/checkout@v3
+
+    - name: Cache rust build binaries
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: rust_artifact_cache
+      uses: ./.github/actions/mobilecoin-cache-rust-binaries
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    - name: Cache go build binaries
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: go_artifact_cache
+      uses: ./.github/actions/mobilecoin-cache-go-binaries
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+
+    - name: Generate Docker Tags
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: docker_meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
+        tags: ${{ needs.generate-metadata.outputs.docker_tag }}
+
+    - name: Set up Docker Buildx
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to DockerHub
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Publish to DockerHub
+      if: "! contains(github.event.head_commit.message, '[skip docker]')"
+      id: docker_publish_dockerhub
+      uses: docker/build-push-action@v2
+      with:
+        build-args: |
+          REPO_ORG=${{ env.DOCKER_ORG }}
+          RUST_BIN_PATH=rust_build_artifacts
+          GO_BIN_PATH=go_build_artifacts
+        cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.namespace }}
+        cache-to: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.namespace }}
+        context: .
+        file: .internal-ci/docker/Dockerfile.${{ matrix.image }}
+        labels: ${{ steps.docker_meta.outputs.labels }}
+        push: true
+        tags: ${{ steps.docker_meta.outputs.tags }}
+
+  charts:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - docker
+    - generate-metadata
+    strategy:
+      matrix:
+        chart:
+        - consensus-node
+        - consensus-node-config
+        - fog-ingest
+        - fog-ingest-config
+        - fog-services
+        - fog-services-config
+        - fog-test-client
+        - mc-core-common-config
+        - mc-core-dev-env-setup
+        - mobilecoind
+        - watcher
+    steps:
+    - name: Checkout
+      if: "! contains(github.event.head_commit.message, '[skip charts]')"
+      uses: actions/checkout@v3
+
+    - name: Package and publish chart
+      if: "! contains(github.event.head_commit.message, '[skip charts]')"
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-publish
+        chart_repo_username: ${{ secrets.HARBOR_USERNAME }}
+        chart_repo_password: ${{ secrets.HARBOR_PASSWORD }}
+        chart_repo: ${{ env.CHART_REPO }}
+        chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_path: .internal-ci/helm/${{ matrix.chart }}
+
+#################################
+# Reset existing namespace
+#################################
+  dev-reset:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - generate-metadata
+    steps:
+    - name: Reset development namespace
+      if: "! contains(github.event.head_commit.message, '[skip dev-reset]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-reset
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}"
+          }
+
+#######################################
+# Deploy previous release to namespace
+#######################################
+  previous-release-deploy:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - dev-reset
+    - generate-metadata
+    steps:
+    - name: Deploy Release
+      if: "! contains(github.event.head_commit.message, '[skip previous-release-deploy]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-deploy
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "block_version": "0",
+            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
+            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
+            "minting_config_enabled": "false",
+            "ingest_color": "blue",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "version": "${{ needs.generate-metadata.outputs.previous_release }}",
+            "client_auth_enabled": "false",
+            "use_static_wallet_seeds": "true"
+          }
+
+  previous-release-test:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - previous-release-deploy
+    - generate-metadata
+    steps:
+    - name: Run MobileCoin integration tests
+      if: "! contains(github.event.head_commit.message, '[skip previous-release-test]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-test
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "ingest_color": "blue",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "fog_distribution": "true",
+            "testing_block_v0": "false",
+            "testing_block_v2": "false",
+            "client_auth_enabled": "false"
+          }
+
+###############################################
+# Deploy current version to namespace block v0
+###############################################
+  current-release-v0-deploy:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - previous-release-test
+    - generate-metadata
+    - charts
+    steps:
+    - name: Deploy Release
+      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-deploy]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-deploy
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "block_version": "0",
+            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
+            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
+            "minting_config_enabled": "true",
+            "ingest_color": "green",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "version": "${{ needs.generate-metadata.outputs.tag }}",
+            "client_auth_enabled": "false",
+            "use_static_wallet_seeds": "true"
+          }
+
+  current-release-v0-test:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - current-release-v0-deploy
+    - generate-metadata
+    steps:
+    - name: Run MobileCoin integration tests
+      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-test]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-test
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "ingest_color": "green",
+            "fog_distribution": "false",
+            "testing_block_v0": "true",
+            "testing_block_v2": "false",
+            "client_auth_enabled": "false"
+          }
+
+#################################################
+# Update current consensus to namespace block v1
+#################################################
+  current-release-v2-update:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - current-release-v0-test
+    - generate-metadata
+    steps:
+    - name: Update consensus config
+      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-update]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-update-consensus
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "block_version": "2",
+            "client_auth_enabled": "false",
+            "minting_config_enabled": "true",
+            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
+            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "version": "${{ needs.generate-metadata.outputs.tag }}"
+          }
+
+  current-release-v2-test:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - current-release-v2-update
+    - generate-metadata
+    steps:
+    - name: Run MobileCoin integration tests
+      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-test]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-test
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "ingest_color": "green",
+            "fog_distribution": "false",
+            "testing_block_v0": "true",
+            "testing_block_v2": "true",
+            "client_auth_enabled": "false"
+          }

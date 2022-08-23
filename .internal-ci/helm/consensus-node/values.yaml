@@ -1,0 +1,159 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+fullnameOverride: ''
+
+imagePullSecrets:
+- name: docker-credentials
+
+image:
+  org: mobilecoin
+  tag: ''
+
+### Shared values with child charts.
+global:
+  certManagerClusterIssuer: letsencrypt-production-http
+
+  # Shared across all instances of consensusNodeConfig config.
+  node:
+    ledgerDistribution:
+      awsAccessKeyId: ''
+      awsSecretAccessKey: ''
+      awsRegion: ''
+      s3Bucket: ''
+      startFrom: last
+
+    networkConfig:
+      threshold: ''
+      peers: {}
+
+    # tokensConfig:
+    #   tokensSignedJson: |-
+    #     { json }
+
+### Enable to launch child chart to create node required configMaps and secrets.
+#   See helm/consensus-node-config/values.yaml for config details.
+consensusNodeConfig:
+  enabled: false
+  fullnameOverride: '{{ .Release.Name }}'
+  node:
+    client:
+      hostname: ''
+    peer:
+      hostname: ''
+    txSourceUrl: ''
+    msgSignerKey:
+     privateKey: ''
+
+### Enable to launch child chart to create core common configMaps and secrets.
+#   See helm/mc-core-common-config/values.yaml for config details.
+mcCoreCommonConfig:
+  enabled: false
+  # clientAuth:
+  #   token: ''
+  # ias:
+  #   key: ''
+  #   spid: ''
+  # mobileCoinNetwork:
+  #   network: ''
+  #   partner: ''
+  # sentry:
+  #   consensus-sentry-dsn: ''
+  #   ledger-distribution-sentry-dsn: ''
+  #   fog-report-sentry-dsn: ''
+  #   fog-view-sentry-dsn: ''
+  #   fog-ledger-sentry-dsn: ''
+  #   fog-ingest-sentry-dsn: ''
+
+# Consensus node settings
+node:
+  image:
+    org: ''
+    name: node_hw
+
+  podAnnotations:
+    fluentbit.io/include: 'true'
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  resources:
+    limits:
+      intel.com/sgx: 5000
+    requests:
+      intel.com/sgx: 5000
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  initContainers: []
+
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 512Gi
+
+  client:
+    ingress:
+      annotations:
+        # HAProxy Ingress
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: 'true'
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+        # Nginx Ingress
+        nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+        nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
+
+  peer:
+    ingress:
+      annotations:
+        # HAProxy Ingress
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: 'true'
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+        # Nginx Ingress
+        nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+        nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
+
+# GRPC Gateway settings
+grpcGateway:
+  image:
+    org: ''
+    name: go-grpc-gateway
+  nodeSelector: {}
+  ingress:
+    #HAProxy Ingress
+    haproxy.org/path-rewrite: /gw/(.*) /\1      # Strip the /gw prefix
+    haproxy.org/server-ssl: 'false'             # The backend (server) is http
+    haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+    haproxy.org/timeout-server: 239s
+    haproxy.org/timeout-http-keep-alive: 120s
+    haproxy.org/abortonclose: 'true'
+    haproxy.org/backend-config-snippet: |-
+      http-reuse aggressive
+    # Nginx ingress
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+
+# Disable Client Connects
+acceptClientConnections: true
+
+jaegerTracing:
+  enabled: true
+  collector: 'dns:///jaeger-collector:14250'

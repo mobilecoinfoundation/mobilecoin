@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -52,7 +52,7 @@ mc-fog-view-enclave = { path = "../enclave" }
 mc-fog-view-enclave-api = { path = "../enclave/api" }
 
 [dev-dependencies]
-pem = "1.0"
+pem = "1.1"
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"

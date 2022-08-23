@@ -1,0 +1,10 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fog-public-fqdn
+  labels:
+    {{- include "fogServicesConfig.labels" . | nindent 4 }}
+data:
+  domainname: {{ tpl .Values.fogPublicFQDN.domainname . | quote }}
+  fogReportSANs: {{ tpl .Values.fogPublicFQDN.fogReportSANs . | quote }}

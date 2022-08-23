@@ -1,0 +1,171 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ include "chart.fullname" . }}"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app: fog-test-client
+spec:
+  replicas: {{ .Values.fogTestClient.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app: fog-test-client
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.fogTestClient.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app: fog-test-client
+    spec:
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+      - name: fog-test-client
+        image: '{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        env:
+        - name: MC_FOG_VIEW
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: FOG_VIEW
+        - name: MC_FOG_LEDGER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: FOG_LEDGER
+        - name: MC_CONSENSUS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: CONSENSUS_VALIDATORS
+        - name: MC_CONSENSUS_WAIT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: CONSENSUS_WAIT
+        - name: MC_TRANSFER_AMOUNT
+          value: "100000000000"
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        {{- if.Values.fogTestClientConfig.fogClientAuthTokenSecret.enabled }}
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.fogTestClientConfig.fogClientAuthTokenSecret.name }}
+              key: token
+        {{- end }}
+        ports:
+        - name: grpc-mgmt
+          containerPort: 8001
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 20
+          periodSeconds: 20
+        volumeMounts:
+        - mountPath: /keys
+          name: keys
+        - mountPath: /measurements
+          name: measurements
+        resources:
+          {{- toYaml .Values.fogTestClient.resources | nindent 12 }}
+      - name: admin-gateway
+        image: '{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        env:
+        - name: RUST_LOG
+          value: warn
+        ports:
+        - name: http-mgmt
+          containerPort: 9090
+          protocol: TCP
+        command:
+        - /usr/local/bin/mc-admin-http-gateway
+        args:
+        - --admin-uri=insecure-mca://127.0.0.1:8001/
+        - --listen-host=0.0.0.0
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 20
+          periodSeconds: 20
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5775
+            name: zk-compact-trft
+            protocol: UDP
+          - containerPort: 5778
+            name: config-rest
+            protocol: TCP
+          - containerPort: 6831
+            name: jg-compact-trft
+            protocol: UDP
+          - containerPort: 6832
+            name: jg-binary-trft
+            protocol: UDP
+          - containerPort: 14271
+            name: admin-http
+            protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+        args:
+          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+          - --reporter.type=grpc
+          - --agent.tags=cluster=undefined,container.name=fog-test-client,deployment.name={{ include "chart.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+      nodeSelector:
+        {{- toYaml .Values.fogTestClient.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.fogTestClient.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.fogTestClient.tolerations | nindent 8 }}
+      volumes:
+      - name: keys
+        secret:
+          secretName: {{ .Values.fogTestClientConfig.keysSecret.name }}
+      - name: measurements
+        configMap:
+          name: {{ .Values.fogTestClientConfig.measurementsConfigMap.name }}

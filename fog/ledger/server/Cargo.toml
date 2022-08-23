@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -39,6 +39,7 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
+mc-fog-enclave-connection = { path = "../../enclave_connection" }
 mc-fog-ledger-enclave = { path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }
 mc-fog-types = { path = "../../types" }

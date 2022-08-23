@@ -35,7 +35,6 @@ This distribution includes cryptographic software. Your country may have restric
 ## Repository Structure
 |Directory |Description |
 | :-- | :-- |
-| [android-bindings](./android-bindings) | Android bindings exposing primitives to build Fog-enabled MobileCoin clients |
 | [attest](./attest) | Remote attestation primitives. |
 | [build-info](./build-info) | Measurements made at compile time. |
 | [common](./common) | Items shared across MobileCoin crates. |
@@ -128,7 +127,7 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
 
 1. I thought you were called *MobileCoin*. Where is the code for mobile devices?
 
-    Please see [`fog`](./fog), [`android-bindings`](./android-bindings), and [`libmobilecoin`](./libmobilecoin), to see how the balance checking and
+    Please see [`fog`](./fog), [`android-bindings`](https://github.com/mobilecoinofficial/android-bindings), and [`libmobilecoin`](./libmobilecoin), to see how the balance checking and
     transaction building process works on mobile devices that don't sync the ledger.
 
     Please see also the MobileCoin [Android](https://github.com/mobilecoinofficial/android-sdk/) and [iOS](https://github.com/mobilecoinofficial/MobileCoin-Swift) SDKs,

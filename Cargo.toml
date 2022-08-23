@@ -6,7 +6,6 @@ members = [
     "account-keys/slip10",
     "account-keys/types",
     "admin-http-gateway",
-    "android-bindings",
     "api",
     "attest/ake",
     "attest/api",

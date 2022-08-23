@@ -15,4 +15,4 @@
 #     will replace all lines `serde = ..." in Cargo.toml with
 #     `serde = { version = "1.0", default-features = false}`
 
-find . -type f -name "Cargo.toml" -not -path "./cargo/*" -exec sed -i "s|^$1 = .*|$1 = $2|g" {} +
+find . -type f -name "Cargo.toml" -not -path "./cargo/*" -not -path "./target/**" -exec sed -i "s|^$1 = .*|$1 = $2|g" {} +

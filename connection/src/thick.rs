@@ -39,7 +39,7 @@ use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
 use mc_transaction_core::tx::Tx;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
 use secrecy::{ExposeSecret, SecretVec};
@@ -131,6 +131,9 @@ impl AttestationError for ThickClientAttestationError {
 
 /// A connection from a client to a consensus enclave.
 pub struct ThickClient<CP: CredentialsProvider> {
+    /// The chain id. This is used with the chain-id grpc header if
+    /// provided. Ignored if empty string.
+    chain_id: String,
     /// The destination's URI
     uri: ClientUri,
     /// The logging instance
@@ -156,6 +159,7 @@ pub struct ThickClient<CP: CredentialsProvider> {
 impl<CP: CredentialsProvider> ThickClient<CP> {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
+        chain_id: String,
         uri: ClientUri,
         verifier: Verifier,
         env: Arc<Environment>,
@@ -171,6 +175,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         let consensus_client_api_client = ConsensusClientApiClient::new(ch);
 
         Ok(Self {
+            chain_id,
             uri,
             logger,
             blockchain_api_client,
@@ -250,6 +255,13 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
                     .add_str("Authorization", &creds.authorization_header())
                     .expect("Error setting authorization header");
             }
+        }
+
+        // Add the chain id header if we have a chain id specified
+        if !self.chain_id.is_empty() {
+            metadata_builder
+                .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
+                .expect("Error setting chain-id header");
         }
 
         Ok(CallOption::default().headers(metadata_builder.build()))
