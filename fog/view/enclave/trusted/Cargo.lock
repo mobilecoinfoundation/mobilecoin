@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-platform"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",

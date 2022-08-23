@@ -6,6 +6,7 @@ use crate::{Digest, LengthMismatch, ReprBytes};
 
 use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
+use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -82,6 +83,9 @@ pub trait DistinguishedEncoding: Sized {
 
     /// Create the standardized DER-encoded representation of this object and
     /// write to the provided buffer.
+    ///
+    /// Note that this will panic if `buff.len()` is less than
+    /// [`DistinguishedEncoding::der_size()`]
     fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8];
 
     /// Create the standardized DER-encoded representation of this object.

@@ -445,12 +445,14 @@ impl DistinguishedEncoding for X25519Private {
     }
 
     fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
-        let key = self.0.to_bytes();
+        let mut key = self.0.to_bytes();
         buff[..X25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
 
         let prefix_len = X25519_PKI_DER_PREFIX.len();
         buff[..prefix_len].copy_from_slice(&X25519_PKI_DER_PREFIX);
         buff[prefix_len..X25519_PKI_DER_LEN].copy_from_slice(&key);
+        key.zeroize();
+
         &buff[..X25519_PKI_DER_LEN]
     }
 }

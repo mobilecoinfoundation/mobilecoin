@@ -8,9 +8,9 @@ readme = "README.md"
 
 [features]
 alloc = ["base64/alloc", "ed25519-dalek/alloc", "ed25519-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc"]
-serde_derive = ["serde", "ed25519/serde", "ed25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
+serde = ["dep:serde", "ed25519/serde", "ed25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
 prost = []
-default = ["alloc", "serde_derive", "prost", "mc-util-repr-bytes/default"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default"]
  
 [dependencies]
 
@@ -18,12 +18,12 @@ base64 = { version = "0.13", default-features = false }
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
-ed25519 = { version = "1.5", default-features = false, features = [] }
+ed25519 = { version = "1.5", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
-mc-crypto-digestible = { path = "../../crypto/digestible", default_features = false, features = ["dalek", "derive"] }
-mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default_features = false }
+mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
+mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-crypto-platform = { path = "../../crypto/platform" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
@@ -41,7 +41,7 @@ zeroize = { version = "1", default-features = false }
 [dev-dependencies]
 mc-crypto-hashes = { path = "../hashes" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
-mc-util-test-helper = { path = "../../util/test-helper", default_features = false }
+mc-util-test-helper = { path = "../../util/test-helper", default-features = false }
 
 pem = "1.1"
 rand_hc = "0.3"
