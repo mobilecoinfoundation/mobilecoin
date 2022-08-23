@@ -549,11 +549,11 @@ jobs:
   test-v2-bv3-release:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - update-v2-to-bv3
+    - update-v2-to-bv2
     - generate-metadata
     steps:
     - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip test-current-bv3-release]')"
+      if: "! contains(github.event.head_commit.message, '[skip test-v2-bv3-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-test

@@ -101,7 +101,7 @@ on:
         required: false
 
 env:
-  FLIPSIDE: ${{ if inputs.fog_color == 'blue' && 'green' || 'blue' }}
+  FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
 
 jobs:
   list-values:
