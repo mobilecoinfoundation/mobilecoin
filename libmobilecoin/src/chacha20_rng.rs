@@ -1,4 +1,4 @@
-use crate::common::*;
+use crate::{common::*, LibMcError};
 use mc_util_ffi::*;
 use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
@@ -38,6 +38,7 @@ pub extern "C" fn mc_chacha20_rng_create_with_long(
 ///
 /// # Errors
 ///
+/// * `LibMcError::InvalidInput`
 /// * `LibMcError::Poison`
 #[no_mangle]
 pub extern "C" fn mc_chacha20_rng_create_with_bytes(
@@ -45,10 +46,14 @@ pub extern "C" fn mc_chacha20_rng_create_with_bytes(
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<Mutex<McChaCha20Rng>> {
     ffi_boundary_with_error(out_error, || {
+        if bytes.len() != 32 {
+            return Err(LibMcError::InvalidInput("seed bytes length must be exactly 32 bytes".to_owned()));
+        }
+
         let bytes: [u8; 32] = bytes
-            .as_slice()
+            .as_slice_of_len(32)?
             .try_into()
-            .expect("seed size must be 32 bytes");
+            .expect("seed bytes length must be exactly 32 bytes");
         Ok(Mutex::new(McChaCha20Rng::from_seed(bytes)))
     })
 }
@@ -96,12 +101,14 @@ pub extern "C" fn mc_chacha20_rng_set_word_pos(
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
-        chacha20_rng.lock()?.set_word_pos(u128::from_be_bytes(
-            bytes
-                .as_slice()
-                .try_into()
-                .expect("word_pos length is not exaclty 16 bytes"),
-        ));
+        if bytes.len() != 16 {
+            return Err(LibMcError::InvalidInput("bytes length must be exactly 16 bytes for word_pos".to_owned()));
+        }
+        let bytes: [u8; 16] = bytes
+            .as_slice_of_len(16)?
+            .try_into()
+            .expect("bytes length must be exactly 16 bytes for word_pos");
+        chacha20_rng.lock()?.set_word_pos(u128::from_be_bytes(bytes));
         Ok(())
     })
 }
