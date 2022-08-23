@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-#![no_std]
-
 extern crate alloc;
 use alloc::vec::Vec;
 
@@ -99,6 +97,16 @@ mod json_u64 {
         }
     }
 
+    impl TryFrom<&json_u128::JsonU128> for JsonU64 {
+        type Error = std::num::TryFromIntError;
+
+        fn try_from(src: &json_u128::JsonU128) -> Result<JsonU64, Self::Error> {
+            let u128_src = u128::from(src);
+            let u64_src = u64::try_from(u128_src)?;
+            return Ok(JsonU64::from(&u64_src));
+        }
+    }
+
     impl From<&JsonU64> for u64 {
         fn from(src: &JsonU64) -> u64 {
             src.0
@@ -122,6 +130,64 @@ mod json_u64 {
 /// depends on relies on std, so it must be optional.
 #[cfg(feature = "serde_with")]
 pub use json_u64::JsonU64;
+
+#[cfg(feature = "serde_with")]
+mod json_u128 {
+
+    use super::*;
+
+    /// Represents u128 using string, when serializing to Json
+    /// Javascript integers are not 64 bit, and so it is not really proper json.
+    /// Using string avoids issues with some json parsers not handling large
+    /// numbers well.
+    ///
+    /// This does not rely on the serde-json arbitrary precision feature, which
+    /// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
+    #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
+    #[serde(transparent)]
+    pub struct JsonU128(#[serde(with = "serde_with::rust::display_fromstr")] pub u128);
+
+    impl From<&u128> for JsonU128 {
+        fn from(src: &u128) -> Self {
+            Self(*src)
+        }
+    }
+
+    impl From<&u64> for JsonU128 {
+        fn from(src: &u64) -> Self {
+            Self(*src as u128)
+        }
+    }
+
+    impl From<&JsonU128> for u128 {
+        fn from(src: &JsonU128) -> u128 {
+            src.0
+        }
+    }
+
+    impl From<JsonU128> for u128 {
+        fn from(src: JsonU128) -> u128 {
+            src.0
+        }
+    }
+
+    impl Into<f64> for JsonU128 {
+        fn into(self: JsonU128) -> f64 {
+            self.0 as f64
+        }
+    }
+
+    impl AsRef<u128> for JsonU128 {
+        fn as_ref(&self) -> &u128 {
+            &self.0
+        }
+    }
+}
+
+/// JsonU128 is exported if it is available -- the serde_with crate which it
+/// depends on relies on std, so it must be optional.
+#[cfg(feature = "serde_with")]
+pub use json_u128::JsonU128;
 
 /// Take a prost type and try to roundtrip it through a protobuf type
 #[cfg(feature = "test_utils")]
