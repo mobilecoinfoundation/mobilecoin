@@ -422,7 +422,7 @@ FfiOptOwnedPtr<Mutex<McChaCha20Rng>> mc_chacha20_rng_create_with_bytes(FfiRefPtr
  * # Arguments
  *
  * * `chacha20_rng` - must be a valid ChaCha20Rng
- * * `out_word_pos` - pointer to buffer of 128 bytes where the current
+ * * `out_word_pos` - pointer to buffer of 16 bytes where the current
  *   chacha20_rng wordpos will be returned
  *
  * # Errors
@@ -472,8 +472,6 @@ uint64_t mc_chacha20_rng_next_long(FfiMutPtr<Mutex<McChaCha20Rng>> chacha20_rng,
  * * The ChaCha20Rng is no longer in use
  *
  * # Arguments
- *
- * * `chacha20_rng` - must be a valid ChaCha20Rng
  *
  * * `chacha20_rng` - must be a valid ChaCha20Rng
  */
@@ -836,11 +834,18 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
                                              FfiRefPtr<McBuffer> tx_out_proto_bytes,
                                              FfiRefPtr<McBuffer> membership_proof_proto_bytes);
 
+/**
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t tombstone_block,
                                                                    FfiOptRefPtr<McFogResolver> fog_resolver,
                                                                    FfiMutPtr<McTxOutMemoBuilder> memo_builder,
-                                                                   uint32_t block_version);
+                                                                   uint32_t block_version,
+                                                                   FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 void mc_transaction_builder_free(FfiOptOwnedPtr<McTransactionBuilder> transaction_builder);
 
