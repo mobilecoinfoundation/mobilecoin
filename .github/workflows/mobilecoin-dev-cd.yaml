@@ -482,7 +482,7 @@ jobs:
             "block_version": "0",
             "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
             "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
-            "minting_config_enabled": "false",
+            "minting_config_enabled": "true",
             "ingest_color": "green",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "version": "${{ env.RELEASE_2X_TAG }}",
@@ -580,8 +580,8 @@ jobs:
     runs-on: [self-hosted, Linux, small]
     needs:
     - test-v2-bv2-release
-    - generate-metadata
     - charts
+    - generate-metadata
     steps:
     - name: Deploy Release
       if: "! contains(github.event.head_commit.message, '[skip deploy-current-bv2-release]')"
