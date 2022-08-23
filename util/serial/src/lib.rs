@@ -266,3 +266,26 @@ mod json_u64_tests {
         assert_eq!(deserialized, the_struct);
     }
 }
+
+#[cfg(test)]
+mod json_u128_tests {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(PartialEq, Serialize, Deserialize, Debug)]
+    struct TestStruct {
+        nums: Vec<JsonU128>,
+        block: JsonU128,
+    }
+
+    #[test]
+    fn test_serialize_jsonu128_struct() {
+        let the_struct = TestStruct {
+            nums: (&[0, 1, 2, u128::MAX]).iter().map(Into::into).collect(),
+            block: JsonU128(u128::MAX - 1),
+        };
+        let serialized = serialize(&the_struct).unwrap();
+        let deserialized: TestStruct = deserialize(&serialized).unwrap();
+        assert_eq!(deserialized, the_struct);
+    }
+}
