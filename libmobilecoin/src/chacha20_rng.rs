@@ -6,38 +6,6 @@ use std::{convert::TryInto, sync::Mutex};
 
 pub type McChaCha20Rng = ChaCha20Rng;
 
-// McU128 facilitates conversion between u128 and 16 bytes of u8
-pub struct McU128 {
-    pub bytes: [u8; 16],
-}
-
-impl McU128 {
-    pub fn from_u128(val: u128) -> McU128 {
-        McU128 {
-            bytes: val.to_be_bytes(),
-        }
-    }
-
-    pub fn to_u128(&self) -> u128 {
-        u128::from_be_bytes(self.bytes)
-    }
-}
-
-impl IntoFfi<McU128> for McU128 {
-    #[inline]
-    fn error_value() -> McU128 {
-        McU128 {
-            bytes: [u8::MAX; 16],
-        }
-    }
-
-    #[inline]
-    fn into_ffi(self) -> McU128 {
-        self
-    }
-}
-
-impl_into_ffi!(FfiOwnedPtr<McU128>);
 impl_into_ffi!(Mutex<McChaCha20Rng>);
 
 /// Returns a new ChaCha20Rng instance initialized with the
