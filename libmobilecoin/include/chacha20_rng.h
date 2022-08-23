@@ -106,9 +106,8 @@ MC_ATTRIBUTE_NONNULL(1);
 ///
 /// * `chacha20_rng` - must be a valid ChaCha20Rng
 bool mc_chacha20_rng_free(
-    ChaCha20Rng* MC_NONNULL chacha20_rng
-)
-MC_ATTRIBUTE_NONNULL(1);
+    ChaCha20Rng* MC_NULLABLE chacha20_rng
+);
 
 #ifdef __cplusplus
 }
