@@ -100,6 +100,9 @@ on:
         description: "static wallet seed"
         required: false
 
+env:
+  FLIPSIDE: ${{ if inputs.fog_color == 'blue' && 'green' || 'blue' }}
+
 jobs:
   list-values:
     name: 👾 Environment Info 👾
@@ -377,11 +380,21 @@ jobs:
           fog-sql-recovery-db-migrations
 
     - name: Activate primary ingest
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      uses: mobilecoinofficial/gha-k8s-toolbox@ad5c072ee5f1d8ef385d6f6edb8c6832fe1e2cf5
       with:
         action: fog-ingest-activate
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+    - name: Delete retired flipside ingest (if exists)
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-release-delete
+        namespace: ${{ inputs.namespace }}
+        release_name: ${{ env.FLIPSIDE }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
