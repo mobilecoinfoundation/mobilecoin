@@ -6,7 +6,7 @@ use crate::{Digest, LengthMismatch, ReprBytes};
 
 use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
-use hex_fmt::HexFmt;
+//use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -108,9 +108,9 @@ pub trait Fingerprintable {
 }
 
 /// A fingerprint object, generic over digest output size
-pub struct Fingerprint<D: digest::OutputSizeUser> {
-    hash: digest::generic_array::GenericArray<u8, D::OutputSize>,
-}
+pub struct Fingerprint<D: digest::OutputSizeUser>(
+    digest::generic_array::GenericArray<u8, D::OutputSize>,
+);
 
 /// Debug impl for fingerprint objects
 impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
@@ -122,7 +122,14 @@ impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
 /// Display impl for fingerprint objects
 impl<D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", HexFmt(&self.hash))
+        for i in 0..self.0.len() {
+            match i < (self.0.len() - 1) {
+                true => write!(f, "{:02x}:", self.0[i])?,
+                false => write!(f, "{:02x}", self.0[i])?,
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -138,7 +145,7 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
         let hash = D::digest(&der);
 
         // Return fingerprint
-        Fingerprint { hash }
+        Fingerprint(hash)
     }
 }
 
@@ -245,4 +252,25 @@ pub trait Kex {
         + PrivateKey<Public = Self::Public>
         + KexPrivate<Secret = Self::Secret>;
     type Secret: KexSecret;
+}
+
+#[cfg(test)]
+mod test {
+    use alloc::string::ToString;
+    use sha2::Sha256;
+
+    use super::Fingerprint;
+
+    #[test]
+    fn fingerprint_display() {
+        let mut h = [0u8; 32];
+
+        for i in 0..h.len() {
+            h[i] = i as u8;
+        }
+
+        let fp = Fingerprint::<Sha256>(h.into());
+
+        assert_eq!(fp.to_string(), "00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f");
+    }
 }
