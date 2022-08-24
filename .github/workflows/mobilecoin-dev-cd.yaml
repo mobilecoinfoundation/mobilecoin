@@ -454,6 +454,7 @@ jobs:
             "fog_distribution": "true",
             "testing_block_v0": "false",
             "testing_block_v2": "false",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
@@ -513,6 +514,7 @@ jobs:
             "fog_distribution": "false",
             "testing_block_v0": "true",
             "testing_block_v2": "false",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
@@ -567,8 +569,9 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "ingest_color": "green",
             "fog_distribution": "false",
-            "testing_block_v0": "true",
+            "testing_block_v0": "false",
             "testing_block_v2": "true",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
@@ -627,8 +630,9 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "ingest_color": "blue",
             "fog_distribution": "false",
-            "testing_block_v0": "true",
+            "testing_block_v0": "false",
             "testing_block_v2": "true",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
@@ -683,7 +687,8 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "ingest_color": "blue",
             "fog_distribution": "false",
-            "testing_block_v0": "true",
-            "testing_block_v2": "true",
+            "testing_block_v0": "false",
+            "testing_block_v2": "false",
+            "testing_block_v3": "true",
             "client_auth_enabled": "false"
           }

@@ -31,6 +31,11 @@ on:
         type: boolean
         required: false
         default: true
+      testing_block_v3:
+        description: "Run block v3 tests"
+        type: boolean
+        required: false
+        default: true
       client_auth_enabled:
         description: "Is client auth enabled?"
         type: boolean
@@ -43,9 +48,10 @@ jobs:
     with:
       namespace: ${{ github.event.inputs.namespace }}
       ingest_color: ${{ github.event.inputs.ingest_color }}
-      fog_distribution: ${{ github.event.inputs.fog_distribution == 'true' && 'true' || 'false' }}
-      testing_block_v0 : ${{ github.event.inputs.testing_block_v0 == 'true' && 'true' || 'false' }}
-      testing_block_v2: ${{ github.event.inputs.testing_block_v2 == 'true' && 'true' || 'false' }}
+      fog_distribution: ${{ github.event.inputs.fog_distribution && 'true' || 'false' }}
+      testing_block_v0 : ${{ github.event.inputs.testing_block_v0 && 'true' || 'false' }}
+      testing_block_v2: ${{ github.event.inputs.testing_block_v2 && 'true' || 'false' }}
+      testing_block_v3: ${{ github.event.inputs.testing_block_v3 && 'true' || 'false' }}
     secrets:
       RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
