@@ -418,7 +418,7 @@ jobs:
       with:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
-        release_name: ${{ env.FLIPSIDE }}
+        release_name: fog-ingest-${{ env.FLIPSIDE }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
