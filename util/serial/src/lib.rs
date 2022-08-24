@@ -103,7 +103,7 @@ mod json_u64 {
         fn try_from(src: &json_u128::JsonU128) -> Result<JsonU64, Self::Error> {
             let u128_src = u128::from(src);
             let u64_src = u64::try_from(u128_src)?;
-            return Ok(JsonU64::from(&u64_src));
+            Ok(JsonU64::from(&u64_src))
         }
     }
 
@@ -171,9 +171,9 @@ mod json_u128 {
         }
     }
 
-    impl Into<f64> for JsonU128 {
-        fn into(self: JsonU128) -> f64 {
-            self.0 as f64
+    impl From<JsonU128> for f64 {
+        fn from(src: JsonU128) -> f64 {
+            src.0 as f64
         }
     }
 
