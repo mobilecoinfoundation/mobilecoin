@@ -265,7 +265,7 @@ mod test {
     fn fingerprint_display() {
         let mut h = [0u8; 32];
 
-        for i in 0..h.len() {
+        for _i in 0..h.len() {
             h[i] = i as u8;
         }
 
