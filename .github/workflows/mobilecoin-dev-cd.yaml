@@ -240,7 +240,7 @@ jobs:
 
     - name: Set up Docker Buildx
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
@@ -314,7 +314,7 @@ jobs:
 
     - name: Set up Docker Buildx
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
