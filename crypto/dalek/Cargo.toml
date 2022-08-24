@@ -1,6 +1,6 @@
 [package]
-name = "mc-crypto-platform"
-description = "MobileCoin Crypto Platform Configurator Package"
+name = "mc-crypto-dalek"
+description = "MobileCoin Dalek Crypto Configurator Package"
 version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"

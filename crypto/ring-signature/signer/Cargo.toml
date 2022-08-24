@@ -18,8 +18,8 @@ zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys", default-features = false }
+mc-crypto-dalek = { path = "../../dalek" }
 mc-crypto-keys = { path = "../../keys", default-features = false }
-mc-crypto-platform = { path = "../../platform" }
 mc-crypto-ring-signature = { path = "..", default-features = false }
 mc-transaction-types = { path = "../../../transaction/types" }
 mc-util-serial = { path = "../../../util/serial" }

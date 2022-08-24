@@ -19,10 +19,10 @@ mc-account-keys = { path = "../../account-keys", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
+mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-platform = { path = "../../crypto/platform" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }

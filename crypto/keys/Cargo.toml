@@ -22,9 +22,10 @@ ed25519 = { version = "1.5", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
+
+mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
-mc-crypto-platform = { path = "../../crypto/platform" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
 rand_core = { version = "0.6", default-features = false }
