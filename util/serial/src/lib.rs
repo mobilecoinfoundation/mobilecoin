@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![no_std]
+
 extern crate alloc;
 use alloc::vec::Vec;
 
@@ -98,7 +100,7 @@ mod json_u64 {
     }
 
     impl TryFrom<&json_u128::JsonU128> for JsonU64 {
-        type Error = std::num::TryFromIntError;
+        type Error = core::num::TryFromIntError;
 
         fn try_from(src: &json_u128::JsonU128) -> Result<JsonU64, Self::Error> {
             let u128_src = u128::from(src);
