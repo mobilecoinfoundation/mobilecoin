@@ -252,7 +252,7 @@ jobs:
     - name: Publish to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -326,7 +326,7 @@ jobs:
     - name: Publish to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
