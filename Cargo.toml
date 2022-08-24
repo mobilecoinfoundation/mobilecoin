@@ -190,6 +190,7 @@ lto = true
 [profile.mobile-release]
 inherits = "mobile"
 codegen-units = 1
+lto = false
 
 # Skip the need for LD_LIBRARY_PATH in `cargo test`
 [profile.test]

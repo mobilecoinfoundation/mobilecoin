@@ -17,9 +17,8 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
-    tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, TokenId,
 };
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
@@ -34,9 +33,30 @@ use mc_util_ffi::*;
 /* ==== TxOut ==== */
 
 #[repr(C)]
-pub struct McTxOutAmount {
+pub struct McTxOutMaskedAmount<'a> {
     /// 32-byte `CompressedCommitment`
     masked_value: u64,
+
+    /// `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
+    /// shared_secret)` 8 bytes long when used, 0 bytes for older amounts
+    /// that don't have this.
+    masked_token_id: FfiRefPtr<'a, McBuffer<'a>>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct McTxOutAmount {
+    value: u64,
+    token_id: u64,
+}
+
+impl From<Amount> for McTxOutAmount {
+    fn from(amount: Amount) -> Self {
+        McTxOutAmount {
+            value: amount.value,
+            token_id: *amount.token_id,
+        }
+    }
 }
 
 pub type McTxOutMemoBuilder = Option<Box<dyn MemoBuilder + Sync + Send>>;
@@ -45,9 +65,37 @@ impl_into_ffi!(Option<Box<dyn MemoBuilder + Sync + Send>>);
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+#[no_mangle]
+pub extern "C" fn mc_tx_out_get_shared_secret(
+    view_private_key: FfiRefPtr<McBuffer>,
+    tx_out_public_key: FfiRefPtr<McBuffer>,
+    out_shared_secret: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
+
+        let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
+
+        let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
+
+        let out_shared_secret = out_shared_secret
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPrivate::size())
+            .expect("out_shared_secret length is insufficient");
+
+        out_shared_secret.copy_from_slice(&shared_secret.to_bytes());
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 #[no_mangle]
 pub extern "C" fn mc_tx_out_reconstruct_commitment(
-    tx_out_amount: FfiRefPtr<McTxOutAmount>,
+    tx_out_masked_amount: FfiRefPtr<McTxOutMaskedAmount>,
     tx_out_public_key: FfiRefPtr<McBuffer>,
     view_private_key: FfiRefPtr<McBuffer>,
     out_tx_out_commitment: FfiMutPtr<McMutableBuffer>,
@@ -60,10 +108,11 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
 
-        // FIXME #1596: McTxOutAmount should include the masked_token_id bytes, which
-        // are 0 or 4 bytes For now zero to avoid breaking changes to FFI
-        let (masked_amount, _) =
-            MaskedAmount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
+        let (masked_amount, _) = MaskedAmount::reconstruct(
+            tx_out_masked_amount.masked_value,
+            &tx_out_masked_amount.masked_token_id,
+            &shared_secret,
+        )?;
 
         let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
@@ -93,32 +142,6 @@ pub extern "C" fn mc_tx_out_commitment_crc32(
         *out_crc32.into_mut() =
             Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&commitment.to_bytes());
         Ok(())
-    })
-}
-
-/// # Preconditions
-///
-/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
-#[no_mangle]
-pub extern "C" fn mc_tx_out_matches_any_subaddress(
-    _tx_out_amount: FfiRefPtr<McTxOutAmount>,
-    tx_out_public_key: FfiRefPtr<McBuffer>,
-    view_private_key: FfiRefPtr<McBuffer>,
-    out_matches: FfiMutPtr<bool>,
-) -> bool {
-    ffi_boundary(|| {
-        let _view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
-            .expect("view_private_key is not a valid RistrettoPrivate");
-
-        let mut matches = false;
-        if let Ok(_public_key) = RistrettoPublic::try_from_ffi(&tx_out_public_key) {
-            // FIXME #1596: This function doesn't make sense unless we have access to the
-            // amount.commitment from the TxOut, or the commitment_crc32 from the fog tx
-            // out, so that we have some way to check if we recovered the
-            // correct commitment.
-            matches = true;
-        }
-        *out_matches.into_mut() = matches;
     })
 }
 
@@ -200,11 +223,11 @@ pub extern "C" fn mc_tx_out_get_subaddress_spend_public_key(
 /// * `LibMcError::InvalidInput`
 /// * `LibMcError::TransactionCrypto`
 #[no_mangle]
-pub extern "C" fn mc_tx_out_get_value(
-    tx_out_amount: FfiRefPtr<McTxOutAmount>,
+pub extern "C" fn mc_tx_out_get_amount(
+    tx_out_masked_amount: FfiRefPtr<McTxOutMaskedAmount>,
     tx_out_public_key: FfiRefPtr<McBuffer>,
     view_private_key: FfiRefPtr<McBuffer>,
-    out_value: FfiMutPtr<u64>,
+    out_amount: FfiMutPtr<McTxOutAmount>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
@@ -212,11 +235,13 @@ pub extern "C" fn mc_tx_out_get_value(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        let (_masked_amount, amount) =
-            MaskedAmount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
+        let (_masked_amount, amount) = MaskedAmount::reconstruct(
+            tx_out_masked_amount.masked_value,
+            &tx_out_masked_amount.masked_token_id,
+            &shared_secret,
+        )?;
 
-        // FIXME #1596: This should also return the amount.token_id
-        *out_value.into_mut() = amount.value;
+        *out_amount.into_mut() = McTxOutAmount::from(amount);
         Ok(())
     })
 }
@@ -348,6 +373,7 @@ impl_into_ffi!(Option<TransactionBuilder<FogResolver>>);
 #[no_mangle]
 pub extern "C" fn mc_transaction_builder_create(
     fee: u64,
+    token_id: u64,
     tombstone_block: u64,
     fog_resolver: FfiOptRefPtr<McFogResolver>,
     memo_builder: FfiMutPtr<McTxOutMemoBuilder>,
@@ -370,16 +396,12 @@ pub extern "C" fn mc_transaction_builder_create(
             .into_mut()
             .take()
             .expect("McTxOutMemoBuilder has already been used to build a Tx");
-        // FIXME: block version should be a parameter, it should be the latest
-        // version that fog ledger told us about, or that we got from ledger-db
-        //let block_version = BlockVersion::ZERO;
 
-        // TODO #1596: Support token id other than Mob
-        let token_id = Mob::ID;
+        let fee_amount = Amount::new(fee, TokenId::from(token_id));
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
             block_version,
-            Amount::new(fee, token_id),
+            fee_amount,
             fog_resolver,
             memo_builder_box,
         )
@@ -493,6 +515,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
         let recipient_address =
             PublicAddress::try_from_ffi(&recipient_address).expect("recipient_address is invalid");
         let mut rng = SdkRng::from_ffi(rng_callback);
+
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
@@ -505,17 +528,17 @@ pub extern "C" fn mc_transaction_builder_add_output(
             token_id: transaction_builder.get_fee_token_id(),
         };
 
-        let tx_out_context =
-            transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
-
-        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
-
         let out_tx_out_shared_secret = out_tx_out_shared_secret
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
             .expect("out_tx_out_shared_secret length is insufficient");
 
+        let tx_out_context =
+            transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
+
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
         out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+
         Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
@@ -551,6 +574,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .expect("McTransactionBuilder instance has already been used to build a Tx");
         let change_destination = ReservedSubaddresses::from(&account_key_obj);
         let mut rng = SdkRng::from_ffi(rng_callback);
+
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
@@ -563,17 +587,17 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             token_id: transaction_builder.get_fee_token_id(),
         };
 
-        let tx_out_context =
-            transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
-
-        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
-
         let out_tx_out_shared_secret = out_tx_out_shared_secret
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
             .expect("out_tx_out_shared_secret length is insufficient");
 
+        let tx_out_context =
+            transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
+
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
         out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+
         Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
@@ -627,35 +651,6 @@ pub extern "C" fn mc_transaction_builder_fund_gift_code_output(
         out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
         Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
-}
-
-/// # Preconditions
-///
-/// * `transaction_builder` - must not have been previously consumed by a call
-///   to `build`.
-/// * `recipient_address` - must be a valid `PublicAddress`.
-/// * `fog_hint_address` - must be a valid `PublicAddress` with `fog_info`.
-/// * `out_tx_out_confirmation_number` - length must be >= 32.
-///
-/// # Errors
-///
-/// * `LibMcError::AttestationVerification`
-/// * `LibMcError::InvalidInput`
-#[no_mangle]
-pub extern "C" fn mc_transaction_builder_add_output_with_fog_hint_address(
-    _transaction_builder: FfiMutPtr<McTransactionBuilder>,
-    _amount: u64,
-    _recipient_address: FfiRefPtr<McPublicAddress>,
-    _fog_hint_address: FfiRefPtr<McPublicAddress>,
-    _rng_callback: FfiOptMutPtr<McRngCallback>,
-    _out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
-    _out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-) -> FfiOptOwnedPtr<McData> {
-    // FIXME(chris): The SDK should probably stop binding to this function, I don't
-    // believe that there is legitimate use for this.
-    // It should bind "add_change_output" instead.
-    // Please speak to me if you disagree.
-    unimplemented!("TransactionBuilder::add_output_with_fog_hint_address was removed, please use add_change_output");
 }
 
 /// # Preconditions

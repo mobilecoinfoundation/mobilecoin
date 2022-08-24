@@ -56,6 +56,18 @@ MC_ATTRIBUTE_NONNULL(1, 2, 4, 5);
 
 /// # Preconditions
 ///
+/// * `root_entropy` - must be 32 bytes in length.
+/// * `out_view_private_key` - length must be >= 32.
+/// * `out_spend_private_key` - length must be >= 32.
+bool mc_account_private_keys_from_root_entropy(
+  const McBuffer* MC_NONNULL root_entropy,
+  McMutableBuffer* MC_NONNULL out_view_private_key,
+  McMutableBuffer* MC_NONNULL out_spend_private_key
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3);
+
+/// # Preconditions
+///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `spend_private_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `out_subaddress_view_public_key` - length must be >= 32.
