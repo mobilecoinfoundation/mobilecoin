@@ -104,7 +104,6 @@ members = [
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
-    "libmobilecoin",
     "mint-auditor",
     "mint-auditor/api",
     "mobilecoind",
