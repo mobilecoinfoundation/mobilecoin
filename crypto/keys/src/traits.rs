@@ -264,10 +264,7 @@ mod test {
     #[test]
     fn fingerprint_display() {
         let mut h = [0u8; 32];
-
-        for _i in 0..h.len() {
-            h[i] = i as u8;
-        }
+        h.iter_mut().enumerate().for_each(|(i, v)| *v = i as u8);
 
         let fp = Fingerprint::<Sha256>(h.into());
 
