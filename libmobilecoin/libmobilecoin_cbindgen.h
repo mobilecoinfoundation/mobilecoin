@@ -861,8 +861,8 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
  *
  * # Errors
  *
- * * `LibMcError::InvalidInput` - SDK consumers may wish to handle this error in
- *     part by checking if a software update is available
+ * * `LibMcError::InvalidInput` - SDK consumers may wish to handle this error
+ *   in part by checking if a software update is available
  */
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t token_id,
