@@ -857,12 +857,20 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
                                              FfiRefPtr<McBuffer> tx_out_proto_bytes,
                                              FfiRefPtr<McBuffer> membership_proof_proto_bytes);
 
+/**
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput` - SDK consumers may wish to handle this error
+ *   in part by checking if a software update is available
+ */
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t token_id,
                                                                    uint64_t tombstone_block,
                                                                    FfiOptRefPtr<McFogResolver> fog_resolver,
                                                                    FfiMutPtr<McTxOutMemoBuilder> memo_builder,
-                                                                   uint32_t block_version);
+                                                                   uint32_t block_version,
+                                                                   FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 void mc_transaction_builder_free(FfiOptOwnedPtr<McTransactionBuilder> transaction_builder);
 
