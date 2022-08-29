@@ -19,7 +19,7 @@ use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
-use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
+use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity, SealedClientMessage};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
@@ -196,11 +196,11 @@ where
     /// to be sent off to each Fog View Store shard.
     fn create_multi_view_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         Ok(self
             .ake
-            .reencrypt_client_message_for_backends(client_query)?)
+            .reencrypt_sealed_message_for_backends(&sealed_query)?)
     }
 
     fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
