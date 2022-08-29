@@ -1,5 +1,5 @@
 [package]
-name = "mc-fog-report-verifier"
+name = "mc-fog-ingest-report"
 version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"

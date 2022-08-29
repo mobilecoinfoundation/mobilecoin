@@ -10,17 +10,12 @@ automock = ["mockall"]
 
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
-mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
-mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-fog-report-types = { path = "../types" }
 mc-fog-report-validation = { path = "../validation" }
-mc-fog-report-verifier = { path = "../verifier" }
+mc-fog-ingest-report = { path = "../../ingest/report" }
 mc-fog-sig = { path = "../../sig", default-features = false }
-mc-util-encodings = { path = "../../../util/encodings" }
-mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
-displaydoc = { version = "0.2", default-features = false }
 mockall = { version = "0.11.2", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

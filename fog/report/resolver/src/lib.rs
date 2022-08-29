@@ -18,7 +18,7 @@ extern crate alloc;
 use mc_fog_report_validation::MockFogPubkeyResolver;
 use mc_fog_report_validation::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 
-use mc_fog_report_verifier::IngestReportVerifier;
+use mc_fog_ingest_report::IngestReportVerifier;
 
 use alloc::string::{String, ToString};
 use core::str::FromStr;
