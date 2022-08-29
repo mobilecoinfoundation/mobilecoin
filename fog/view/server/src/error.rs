@@ -33,6 +33,12 @@ impl From<mc_util_uri::UriParseError> for RouterServerError {
     }
 }
 
+impl From<mc_util_uri::UriConversionError> for RouterServerError {
+    fn from(src: mc_util_uri::UriConversionError) -> Self {
+        RouterServerError::ViewStoreError(format!("{}", src))
+    }
+}
+
 pub fn router_server_err_to_rpc_status(
     context: &str,
     src: RouterServerError,
