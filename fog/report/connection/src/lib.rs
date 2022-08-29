@@ -15,7 +15,7 @@ use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::FogUri;
 use std::sync::Arc;
 
-pub use mc_fog_report_validation::FogReportResponses;
+pub use mc_fog_report_types::FogReportResponses;
 
 /// Fog report server connection based on grpcio
 ///
