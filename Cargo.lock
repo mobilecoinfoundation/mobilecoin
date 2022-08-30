@@ -548,25 +548,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 
 [[package]]
-name = "cbindgen"
-version = "0.24.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6358dedf60f4d9b8db43ad187391afe959746101346fe51bb978126bec61dfb"
-dependencies = [
- "clap 3.2.16",
- "heck",
- "indexmap",
- "log",
- "proc-macro2",
- "quote",
- "serde",
- "serde_json",
- "syn",
- "tempfile",
- "toml",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2019,47 +2000,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 
 [[package]]
-name = "libmobilecoin"
-version = "2.0.0"
-dependencies = [
- "aes-gcm",
- "cbindgen",
- "cmake",
- "crc",
- "displaydoc",
- "generic-array",
- "libc",
- "mc-account-keys",
- "mc-account-keys-slip10",
- "mc-api",
- "mc-attest-ake",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-crypto-box",
- "mc-crypto-keys",
- "mc-crypto-noise",
- "mc-crypto-rand",
- "mc-crypto-ring-signature-signer",
- "mc-crypto-sig",
- "mc-fog-kex-rng",
- "mc-fog-report-validation",
- "mc-transaction-core",
- "mc-transaction-std",
- "mc-util-ffi",
- "mc-util-serial",
- "mc-util-uri",
- "protobuf",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_core 0.6.3",
- "sha2 0.10.2",
- "slip10_ed25519",
- "tiny-bip39",
- "zeroize",
-]
-
-[[package]]
 name = "libsqlite3-sys"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3192,19 +3132,6 @@ dependencies = [
  "subtle",
  "tempdir",
  "zeroize",
-]
-
-[[package]]
-name = "mc-crypto-sig"
-version = "2.0.0"
-dependencies = [
- "mc-crypto-keys",
- "mc-util-from-random",
- "mc-util-test-helper",
- "merlin",
- "rand_core 0.6.3",
- "rand_hc 0.3.1",
- "schnorrkel-og",
 ]
 
 [[package]]
