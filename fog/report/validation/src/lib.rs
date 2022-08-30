@@ -10,6 +10,8 @@
 //! mobilecoin transactions with fog recipients on an embedded device like a
 //! tiny hardware wallet, that doesn't have threads and won't have rust std.
 
+#![deny(missing_docs)]
+
 extern crate alloc;
 
 use core::fmt::{Debug, Display};
@@ -91,9 +93,12 @@ impl<A: Debug + Display, R: Debug + Display> From<FogSigError<A, R>> for FogPubk
     }
 }
 
+/// A basic implementation of the FogPubkeyResolver trait that must be seeded
+/// with a HashMap of PublicAddresses to FullValidatedFogPubkeys.
 pub struct FogResolver(HashMap<PublicAddress, FullyValidatedFogPubkey>);
 
 impl FogResolver {
+    /// Create a new FogResolver with an filled HashMap of responses
     pub fn new(responses: HashMap<PublicAddress, FullyValidatedFogPubkey>) -> Self {
         FogResolver(responses)
     }
