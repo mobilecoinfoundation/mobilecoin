@@ -43,7 +43,6 @@ This distribution includes cryptographic software. Your country may have restric
 | [enclave-boundary](./enclave-boundary) | Intel® SGX ECALL infrastructure. |
 | [fog](./fog) | Private payments for mobile devices |
 | [ledger](./ledger) | Storage and synchronization for the MobileCoin blockchain. |
-| [libmobilecoin](./libmobilecoin) | A C-library exposing primitives to build Fog-enabled MobileCoin clients |
 | [mcbuild](./mcbuild/) | Tools for building and signing enclaves. |
 | [mcconnection](./mcconnection/) | Attested MobileCoin connections. |
 | [mobilecoind](./mobilecoind/) | Blockchain daemon and example client code. |
