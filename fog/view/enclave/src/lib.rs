@@ -14,6 +14,7 @@ use mc_attest_core::{
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
+use mc_crypto_ake_enclave::SealedClientMessage;
 use mc_crypto_keys::X25519Public;
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_fog_types::ETxOutRecord;
@@ -201,10 +202,10 @@ impl ViewEnclaveApi for SgxViewEnclave {
 
     fn create_multi_view_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(
-            client_query,
+            sealed_query,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
