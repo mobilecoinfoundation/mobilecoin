@@ -17,6 +17,7 @@ use mc_attest_enclave_api::{
     Error as AttestEnclaveError,
 };
 use mc_common::ResponderId;
+use mc_crypto_ake_enclave::SealedClientMessage;
 use mc_crypto_keys::X25519Public;
 use mc_crypto_noise::CipherError;
 use mc_fog_recovery_db_iface::FogUserEvent;
@@ -84,9 +85,9 @@ pub enum ViewEnclaveRequest {
     Query(EnclaveMessage<ClientSession>, UntrustedQueryResponse),
     /// Request from untrusted to add encrypted tx out records to ORAM
     AddRecords(Vec<ETxOutRecord>),
-    /// Takes an encrypted fog_types::view::QueryRequest and returns a list of
+    /// Takes a sealed fog_types::view::QueryRequest and returns a list of
     /// fog_types::view::QueryRequest.
-    CreateMultiViewStoreQuery(EnclaveMessage<ClientSession>),
+    CreateMultiViewStoreQuery(SealedClientMessage),
     /// Begin a client connection to a Fog View Store discovered after
     /// initialization.
     ViewStoreInit(ResponderId),
@@ -170,7 +171,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// MultiViewStoreQuery, which is sent to each shard.
     fn create_multi_view_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
 
     /// Receives all of the shards' query responses and collates them into one

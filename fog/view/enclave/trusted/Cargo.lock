@@ -874,6 +874,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
+ "serde",
  "sha2",
 ]
 
@@ -1135,6 +1136,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
