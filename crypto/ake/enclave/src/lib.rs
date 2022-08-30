@@ -466,6 +466,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// to the current enclave which has been sealed for this enclave, into a
     /// list of outbound  messages for other enclaves that serve as backends to
     /// the current enclave.
+    ///                              / --> Backend Enclave 1
+    ///   Client -> Current Enclave ---> Backend Enclave 2
+    ///                              \ --> Backend Enclave N
     pub fn reencrypt_sealed_message_for_backends(
         &self,
         sealed_client_message: &SealedClientMessage,
