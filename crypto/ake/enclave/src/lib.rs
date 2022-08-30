@@ -27,7 +27,11 @@ use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 use sha2::{Sha256, Sha512};
 
-pub type SealedClientMessage = EnclaveMessage<ClientSession>;
+pub struct SealedClientMessage {
+    pub aad: Vec<u8>,
+    pub channel_id: ClientSession,
+    pub data: IntelSealed,
+}
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
@@ -449,10 +453,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let aad = incoming_client_message.aad.clone();
         let channel_id = incoming_client_message.channel_id.clone();
         let client_query_bytes = self.client_decrypt(incoming_client_message)?;
-        let sealed_data =
-            IntelSealed::seal_raw(&client_query_bytes, &[]).map(|x| x.as_ref().to_vec())?;
+        let sealed_data = IntelSealed::seal_raw(&client_query_bytes, &[])?;
 
-        Ok(EnclaveMessage {
+        Ok(SealedClientMessage {
             channel_id,
             aad,
             data: sealed_data,
@@ -467,8 +470,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         sealed_client_message: &SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        let sealed = IntelSealed::try_from(sealed_client_message.data.clone())?;
-        let (client_query_bytes, _) = sealed.unseal_raw()?;
+        let (client_query_bytes, _) = sealed_client_message.data.unseal_raw()?;
 
         let mut backends = self.backends.lock()?;
         let backend_messages = backends
