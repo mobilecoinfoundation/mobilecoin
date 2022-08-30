@@ -4,28 +4,43 @@
 //! Constructible from config (for testability) and with a mechanism for
 //! stopping it
 
-use crate::{config::FogViewRouterConfig, fog_view_router_service::FogViewRouterService};
+use crate::{config::FogViewRouterConfig, counters, fog_view_router_service::FogViewRouterService};
 use futures::executor::block_on;
+use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::view_grpc;
 use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::ViewEnclaveProxy;
+use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 use std::sync::Arc;
 
-pub struct FogViewRouterServer {
+pub struct FogViewRouterServer<E, RC>
+where
+    E: ViewEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
     server: grpcio::Server,
+    enclave: E,
+    config: FogViewRouterConfig,
     logger: Logger,
+    ra_client: RC,
+    report_cache_thread: Option<ReportCacheThread>,
 }
 
-impl FogViewRouterServer {
+impl<E, RC> FogViewRouterServer<E, RC>
+where
+    E: ViewEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
     /// Creates a new view router server instance
-    pub fn new<E>(
+    pub fn new(
         config: FogViewRouterConfig,
         enclave: E,
+        ra_client: RC,
         shards: Vec<view_grpc::FogViewStoreApiClient>,
         logger: Logger,
-    ) -> FogViewRouterServer
+    ) -> FogViewRouterServer<E, RC>
     where
         E: ViewEnclaveProxy,
     {
@@ -38,7 +53,7 @@ impl FogViewRouterServer {
         );
 
         let fog_view_router_service = view_grpc::create_fog_view_router_api(
-            FogViewRouterService::new(enclave, shards, logger.clone()),
+            FogViewRouterService::new(enclave.clone(), shards, logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router GRPC Service");
 
@@ -60,11 +75,28 @@ impl FogViewRouterServer {
 
         let server = server_builder.build().unwrap();
 
-        Self { server, logger }
+        Self {
+            server,
+            enclave,
+            config,
+            logger,
+            ra_client,
+            report_cache_thread: None,
+        }
     }
 
     /// Starts the server
     pub fn start(&mut self) {
+        self.report_cache_thread = Some(
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                self.ra_client.clone(),
+                self.config.ias_spid,
+                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
+        );
         self.server.start();
         for (host, port) in self.server.bind_addrs() {
             log::info!(self.logger, "API listening on {}:{}", host, port);
@@ -73,11 +105,18 @@ impl FogViewRouterServer {
 
     /// Stops the server
     pub fn stop(&mut self) {
+        if let Some(ref mut thread) = self.report_cache_thread.take() {
+            thread.stop().expect("Could not stop report cache thread");
+        }
         block_on(self.server.shutdown()).expect("Could not stop grpc server");
     }
 }
 
-impl Drop for FogViewRouterServer {
+impl<E, RC> Drop for FogViewRouterServer<E, RC>
+where
+    E: ViewEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
     fn drop(&mut self) {
         self.stop();
     }
