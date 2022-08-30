@@ -1,16 +1,20 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{config::ClientListenUri, server::DbPollSharedState};
+use crate::{
+    config::ClientListenUri, server::DbPollSharedState, sharding_strategy::ShardingStrategy,
+};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    view::{MultiViewStoreQueryRequest, MultiViewStoreQueryResponse},
+    view::{
+        MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus,
+    },
     view_grpc::{FogViewApi, FogViewStoreApi},
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
-use mc_fog_uri::ConnectionUri;
+use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
@@ -22,7 +26,12 @@ use mc_util_telemetry::{tracer, Tracer};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
+pub struct FogViewService<E, DB, SS>
+where
+    E: ViewEnclaveProxy,
+    DB: RecoveryDb + Send + Sync,
+    SS: ShardingStrategy,
+{
     /// Enclave providing access to the Recovery DB
     enclave: E,
 
@@ -40,9 +49,17 @@ pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
 
     /// Slog logger object
     logger: Logger,
+
+    /// Dictates what blocks to process.
+    sharding_strategy: SS,
 }
 
-impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
+impl<E, DB, SS> FogViewService<E, DB, SS>
+where
+    E: ViewEnclaveProxy,
+    DB: RecoveryDb + Send + Sync,
+    SS: ShardingStrategy,
+{
     /// Creates a new fog-view-service node (but does not create sockets and
     /// start it etc.)
     pub fn new(
@@ -51,6 +68,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         client_listen_uri: ClientListenUri,
+        sharding_strategy: SS,
         logger: Logger,
     ) -> Self {
         Self {
@@ -59,6 +77,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             db_poll_shared_state,
             authenticator,
             client_listen_uri,
+            sharding_strategy,
             logger,
         }
     }
@@ -151,6 +170,37 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         })
     }
 
+    fn process_queries(
+        &mut self,
+        fog_view_store_uri: FogViewStoreUri,
+        queries: Vec<attest::Message>,
+    ) -> MultiViewStoreQueryResponse {
+        let mut response = MultiViewStoreQueryResponse::new();
+        response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
+        for query in queries.into_iter() {
+            let result = self.query_impl(query);
+            // Only one of the query messages in an MVSQR is intended for this store
+            if let Ok(attested_message) = result {
+                {
+                    let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
+                    if !self
+                        .sharding_strategy
+                        .is_ready_to_serve_tx_outs(shared_state.processed_block_count.into())
+                    {
+                        response.set_status(MultiViewStoreQueryResponseStatus::NOT_READY);
+                    } else {
+                        response.set_query_response(attested_message);
+                        response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
+                    }
+                }
+                return response;
+            }
+        }
+
+        response.set_status(MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR);
+        response
+    }
+
     // Helper function that is common
     fn enclave_err_to_rpc_status(&self, context: &str, src: ViewEnclaveError) -> RpcStatus {
         // Treat prost-decode error as an invalid arg,
@@ -169,7 +219,12 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
 }
 
 // Implement grpc trait
-impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewService<E, DB> {
+impl<E, DB, SS> FogViewApi for FogViewService<E, DB, SS>
+where
+    E: ViewEnclaveProxy,
+    DB: RecoveryDb + Send + Sync,
+    SS: ShardingStrategy,
+{
     fn auth(
         &mut self,
         ctx: RpcContext,
@@ -204,7 +259,12 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
 }
 
 /// Implement the FogViewStoreService gRPC trait.
-impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewStoreApi for FogViewService<E, DB> {
+impl<E, DB, SS> FogViewStoreApi for FogViewService<E, DB, SS>
+where
+    E: ViewEnclaveProxy,
+    DB: RecoveryDb + Send + Sync,
+    SS: ShardingStrategy,
+{
     fn auth(
         &mut self,
         ctx: RpcContext,
@@ -235,20 +295,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewStoreApi for FogV
                 return send_result(ctx, sink, err.into(), logger);
             }
             if let ClientListenUri::Store(fog_view_store_uri) = self.client_listen_uri.clone() {
-                let mut response = MultiViewStoreQueryResponse::new();
-                response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
-                for query in request.queries {
-                    let result = self.query_impl(query);
-                    if let Ok(attested_message) = result {
-                        response.set_query_response(attested_message);
-                        return send_result(ctx, sink, Ok(response), logger);
-                    }
-                }
-
-                let decryption_error = response.mut_decryption_error();
-                decryption_error.set_error_message(
-                    "Could not decrypt a query embedded in the MultiViewStoreQuery".to_string(),
-                );
+                let response = self.process_queries(fog_view_store_uri, request.queries.into_vec());
                 send_result(ctx, sink, Ok(response), logger)
             } else {
                 let rpc_permissions_error = rpc_permissions_error(

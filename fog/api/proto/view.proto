@@ -36,14 +36,21 @@ message FogViewRouterResponse {
     }
 }
 
-message FogViewStoreDecryptionError {
-    /// An error message that describes the decryption error.
-    string error_message = 1;
-}
-
 message MultiViewStoreQueryRequest {
     /// A list of queries encrypted for Fog View Stores.
     repeated attest.Message queries = 1;
+}
+
+/// The status associated with a MultiViewStoreQueryResponse
+enum MultiViewStoreQueryResponseStatus {
+    /// The Fog View Store successfully fulfilled the request.
+    SUCCESS = 0;
+    /// The Fog View Store is unable to decrypt a query within the MultiViewStoreQuery. It needs to be authenticated
+    /// by the router.
+    AUTHENTICATION_ERROR = 1;
+    /// The Fog View Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
+    /// not loaded enough blocks yet.
+    NOT_READY = 2;
 }
 
 message MultiViewStoreQueryResponse {
@@ -58,9 +65,8 @@ message MultiViewStoreQueryResponse {
     /// described by this URI.
     string fog_view_store_uri = 2;
 
-    /// Optional error that gets returned when the Fog View Store
-    /// cannot decrypt the MultiViewStoreQuery.
-    FogViewStoreDecryptionError decryption_error = 3;
+    /// Status that gets returned when the Fog View Store services a MultiViewStoreQueryRequest.
+    MultiViewStoreQueryResponseStatus status = 3;
 }
 
 /// Fulfills requests sent directly by a Fog client, e.g. a mobile phone using the SDK.
