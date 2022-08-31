@@ -8,7 +8,7 @@ use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_common::{logger::Logger};
 use mc_fog_api::{
-    ledger::{LedgerRequest, LedgerResponse, MultiLedgerStoreQueryRequest, MultiLedgerStoreQueryResponse}, ledger_grpc::LedgerStoreApiClient,
+    ledger::{LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse}, ledger_grpc::LedgerStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::LedgerStoreUri;
@@ -19,7 +19,7 @@ use std::{str::FromStr, sync::Arc};
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
-/// routing them out to shards. 
+/// routing them out to shards.
 pub async fn handle_requests<E>(
     shard_clients: Vec<Arc<LedgerStoreApiClient>>,
     enclave: E,
@@ -166,7 +166,7 @@ where
     for _ in 0..RETRY_COUNT {
         /*
         let multi_ledger_store_query_request = enclave
-            .create_multi_ledger_store_query_data(query.clone().into())
+            .create_multi_key_image_store_query_data(query.clone().into())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal encryption error",
@@ -175,7 +175,7 @@ where
                 )
             })?
             .into();*/
-        let test_request = MultiLedgerStoreQueryRequest::default();
+        let test_request = MultiKeyImageQueryRequest::default();
         let clients_and_responses =
             route_query(&test_request, shard_clients.clone())
                 .await
