@@ -155,6 +155,29 @@ pub struct NonceSession {
     nonce: u64,
 }
 
+impl NonceSession {
+    /// Create a new nonce session from a vector and nonce.
+    ///
+    /// This takes a pre-created Vec in order to remove an extra allocation that
+    /// would be required when converting from a NonceMessage to an
+    /// [`EnclaveMessage`]`<`[`NonceSession`]`>`.
+    pub fn new(channel_id: Vec<u8>, nonce: u64) -> Self {
+        Self { channel_id, nonce }
+    }
+
+    /// Retrieves the nonce for this session
+    pub fn peek_nonce(&self) -> u64 {
+        self.nonce
+    }
+
+    /// Retrieves a copy of the nonce, and increments it for the next time.
+    pub fn get_nonce(&mut self) -> u64 {
+        let retval = self.nonce;
+        self.nonce += 1;
+        retval
+    }
+}
+
 impl AsRef<[u8]> for NonceSession {
     fn as_ref(&self) -> &[u8] {
         self.channel_id.as_ref()
