@@ -32,7 +32,7 @@ pub type Result<T> = StdResult<T, Error>;
 /// gather data that will be encrypted for the client in `outputs_for_client`.
 ///
 /// Key image check is now in ORAM, replacing untrusted
-/// which was doing the check directly.
+/// which was doing the check directly.Sha
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct OutputContext {
     /// The global txout indices being requested
@@ -104,12 +104,12 @@ pub trait LedgerEnclave: ReportableEnclave {
 
     /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
     /// most likely a router, will act as a client to the Fog Ledger Store.
-    fn connect_to_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest>;
+    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest>;
 
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    fn finish_connecting_to_store(
+    fn finish_connecting_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
         ledger_store_auth_response: ClientAuthResponse,
@@ -119,7 +119,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     ///
     /// The returned list is meant to be used to construct the
     /// MultiLedgerStoreQuery, which is sent to each shard.
-    fn create_multi_ledger_store_query_data(
+    fn create_key_image_store_query(
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
@@ -128,7 +128,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Generally, these come in from a router. 
     /// This could could be a key image request, a merkele proof 
     /// request, and potentially in the future an untrusted tx out request.
-    fn handle_ledger_store_request(
+    fn handle_key_image_store_request(
         &self, 
         router_query: EnclaveMessage<ClientSession>,
     ) -> Result<EnclaveMessage<ClientSession>>;

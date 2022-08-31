@@ -20,8 +20,8 @@ service LedgerAPI {
 service LedgerStoreAPI {
     /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
     rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
-    /// Input should be an encrypted MultiLedgerStoreQueryRequest, result is an encrypted QueryResponse.
-    rpc MultiLedgerStoreQuery(MultiLedgerStoreQueryRequest) returns (MultiLedgerStoreQueryResponse) {}
+    /// Input should be an encrypted MultiKeyImageStoreRequest, result is an encrypted response.
+    rpc MultiKeyImageStoreQuery(MultiKeyImageStoreRequest) returns (MultiKeyImageStoreResponse) {}
 }
 
 message LedgerRequest {
@@ -45,7 +45,7 @@ message LedgerResponse {
 // Identical to FogViewStoreDecryptionError - TODO, determine if we should unify these types.
 message FogLedgerStoreDecryptionError {
     /// The FogLedgerStoreUri for the specific Fog Ledger Store that
-    /// tried to decrypt the MultiLedgerStoreQueryRequest and failed.
+    /// tried to decrypt the MultiKeyImageStoreRequest and failed.
     /// The client should subsequently authenticate with the machine
     /// described by this URI.
     string store_uri = 1;
@@ -55,19 +55,19 @@ message FogLedgerStoreDecryptionError {
 }
 
 // Identical to MultiViewStoreQueryRequest - TODO, determine if we should unify these types.
-message MultiLedgerStoreQueryRequest {
+message MultiKeyImageStoreRequest {
     /// A list of queries encrypted for Fog Ledger Stores.
     repeated attest.Message queries = 1;
 }
 
-message MultiLedgerStoreQueryResponse {
+message MultiKeyImageStoreResponse {
     /// Optional field that gets set when the Fog Ledger Store is able to decrypt a query
-    /// included in the MultiLedgerStoreQueryRequest and create a query response for that
+    /// included in the MultiKeyImageStoreRequest and create a query response for that
     //  query.
     attest.Message query_response = 1;
 
     /// Optional error that gets returned when the Fog Ledger Store
-    /// cannot decrypt the MultiLedgerStoreQuery.
+    /// cannot decrypt the MultiKeyImageStoreRequest.
     FogLedgerStoreDecryptionError decryption_error = 2;
 }
 

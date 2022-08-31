@@ -6,8 +6,8 @@ mod counters;
 mod db_fetcher;
 mod error;
 mod key_image_service;
-mod ledger_router_server; 
-mod ledger_router_service; 
+mod key_image_store_server; 
+mod key_image_store_service; 
 mod ledger_store_server;
 mod ledger_store_service;
 mod merkle_proof_service;
@@ -23,5 +23,3 @@ pub use server::LedgerServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
 
 pub use config::LedgerRouterConfig; 
-pub use ledger_router_server::LedgerRouterServer; 
-pub use ledger_router_service::LedgerRouterService;
