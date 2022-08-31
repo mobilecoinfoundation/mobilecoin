@@ -12,7 +12,7 @@ mod error;
 pub use error::{Error, Result};
 
 use alloc::vec::Vec;
-use core::hash::Hash;
+use core::hash::{Hash, Hasher};
 use mc_attest_core::{QuoteNonce, Report};
 use serde::{Deserialize, Serialize};
 
@@ -149,7 +149,7 @@ impl Session for PeerSession {
 
 /// An opaque bytestream used as a session ID for a session which uses explicit
 /// nonces.
-#[derive(Clone, Debug, Default, Deserialize, Hash, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialOrd, Serialize)]
 pub struct NonceSession {
     channel_id: Vec<u8>,
     nonce: u64,
@@ -202,6 +202,12 @@ impl From<Vec<u8>> for NonceSession {
 impl From<NonceSession> for Vec<u8> {
     fn from(src: NonceSession) -> Self {
         src.channel_id
+    }
+}
+
+impl Hash for NonceSession {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.channel_id.hash(state)
     }
 }
 
