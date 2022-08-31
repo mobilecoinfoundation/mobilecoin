@@ -65,11 +65,11 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         // Router / Store system
         // Router-side
         EnclaveCall::ConnectToKeyImageStore(responder_id) => serialize(&ENCLAVE.connect_to_key_image_store(responder_id)),
-        EnclaveCall::FinishConnectingToStore(
+        EnclaveCall::FinishConnectingToKeyImageStore(
             responder_id,
             client_auth_response,
         ) => serialize(&ENCLAVE.finish_connecting_to_key_image_store(responder_id, client_auth_response)),
-        EnclaveCall::CreateLedgerStoreQuery(msg) => 
+        EnclaveCall::CreateKeyImageStoreQuery(msg) => 
             serialize(&ENCLAVE.create_key_image_store_query(msg)),
         // Store-side
         EnclaveCall::HandleKeyImageStoreRequest(msg) => 

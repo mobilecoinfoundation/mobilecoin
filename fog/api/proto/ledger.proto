@@ -17,7 +17,7 @@ service LedgerAPI {
 }
 
 /// Fulfills requests sent by the Fog Ledger Router. This is not meant to fulfill requests sent directly by the client.
-service LedgerStoreAPI {
+service KeyImageStoreAPI {
     /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
     rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
     /// Input should be an encrypted MultiKeyImageStoreRequest, result is an encrypted response.

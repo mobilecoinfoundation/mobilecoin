@@ -76,12 +76,12 @@ impl UriScheme for FogLedgerScheme {
 
 /// Fog Ledger Router Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct LedgerRouterScheme {}
+pub struct KeyImageRouterScheme {}
 
-impl UriScheme for LedgerRouterScheme {
+impl UriScheme for KeyImageRouterScheme {
     /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "ledger-router";
-    const SCHEME_INSECURE: &'static str = "insecure-ledger-router";
+    const SCHEME_SECURE: &'static str = "key-image-router";
+    const SCHEME_INSECURE: &'static str = "insecure-key-image-router";
 
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 443;
@@ -90,12 +90,12 @@ impl UriScheme for LedgerRouterScheme {
 
 /// Fog Ledger Store (for use with router) Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct LedgerStoreScheme {}
+pub struct KeyImageStoreScheme {}
 
-impl UriScheme for LedgerStoreScheme {
+impl UriScheme for KeyImageStoreScheme {
     /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "ledger-store";
-    const SCHEME_INSECURE: &'static str = "insecure-ledger-store";
+    const SCHEME_SECURE: &'static str = "key-image-store";
+    const SCHEME_INSECURE: &'static str = "insecure-key-image-store";
 
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 443;
@@ -138,9 +138,9 @@ pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// Uri used when talking to fog view router admin service.
 pub type FogViewRouterAdminUri = Uri<FogViewRouterAdminScheme>;
 /// Uri used when talking to fog ledger router service. 
-pub type LedgerRouterUri = Uri<LedgerRouterScheme>;
+pub type LedgerRouterUri = Uri<KeyImageRouterScheme>;
 /// Uri used when talking to fog ledger store service. 
-pub type LedgerStoreUri = Uri<LedgerStoreScheme>;
+pub type LedgerStoreUri = Uri<KeyImageStoreScheme>;
 /// Uri used when talking to fog view router service.
 pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
 /// Uri used when talking to fog view store service.
