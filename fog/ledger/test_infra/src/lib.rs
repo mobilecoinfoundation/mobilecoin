@@ -84,6 +84,32 @@ impl LedgerEnclave for MockEnclave {
     ) -> Result<(), mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
+
+    fn connect_to_key_image_store(&self, _ledger_store_id: ResponderId) -> EnclaveResult<ClientAuthRequest> {
+        unimplemented!()
+    }
+
+    fn finish_connecting_to_key_image_store(
+        &self,
+        _ledger_store_id: ResponderId,
+        _ledger_store_auth_response: ClientAuthResponse,
+    ) -> EnclaveResult<()> {
+        unimplemented!()
+    }
+
+    fn create_key_image_store_query(
+        &self,
+        _client_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<Vec<EnclaveMessage<ClientSession>>> {
+        unimplemented!()
+    }
+
+    fn handle_key_image_store_request(
+        &self, 
+        _router_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, Default)]

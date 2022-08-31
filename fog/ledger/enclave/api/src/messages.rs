@@ -106,14 +106,14 @@ pub enum EnclaveCall {
     ///
     /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
     /// most likely a router, will act as a client to the Fog Ledger Store.
-    ConnectToStore(ResponderId),
+    ConnectToKeyImageStore(ResponderId),
 
     /// The [LedgerEnclave::finish_connecting_to_store()] method.
     ///
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    FinishConnectingToStore(
+    FinishConnectingToKeyImageStore(
         ResponderId,
         ClientAuthResponse,
     ),

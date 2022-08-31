@@ -191,7 +191,9 @@ impl LedgerEnclave for LedgerSgxEnclave {
     // Router/store system.
     fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest> {
         mc_sgx_debug::eprintln!("Called connect_to_key_image_store(ledger_store_id: {})", ledger_store_id);
-        Ok(self.ake.backend_init(ledger_store_id)?)
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ConnectToKeyImageStore(ledger_store_id))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     #[allow(unused_variables)]
@@ -201,27 +203,29 @@ impl LedgerEnclave for LedgerSgxEnclave {
         ledger_store_auth_response: ClientAuthResponse,
     ) -> Result<()> {
         mc_sgx_debug::eprintln!("Called finish_connecting_to_key_image_store(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
-        Ok(self
-            .ake
-            .backend_connect(ledger_store_id, ledger_store_auth_response)?)
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::FinishConnectingToKeyImageStore(ledger_store_id, ledger_store_auth_response))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn create_key_image_store_query(
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        mc_sgx_debug::eprintln!("Called create_key_image_store_query(..)");
-        Ok(self
-            .ake
-            .reencrypt_client_message_for_backends(client_query)?)
+        mc_sgx_debug::eprintln!("Called create_key_image_store_query(..) - the router is handling a message from the client");
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateKeyImageStoreQuery(client_query))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn handle_key_image_store_request(
-        &self, 
+        &self,
         router_query: EnclaveMessage<ClientSession>,
     ) -> Result<EnclaveMessage<ClientSession>> {
-        mc_sgx_debug::eprintln!("Called handle_key_image_store_request(..)");
-        todo!()
+        mc_sgx_debug::eprintln!("Called handle_key_image_store_request(..) - the store is handling a message from the router.");
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::HandleKeyImageStoreRequest(router_query))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 }
 

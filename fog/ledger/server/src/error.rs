@@ -32,6 +32,7 @@ impl From<mc_util_uri::UriParseError> for RouterServerError {
     }
 }
 
+#[allow(dead_code)] //FIXME
 pub fn router_server_err_to_rpc_status(
     context: &str,
     src: RouterServerError,

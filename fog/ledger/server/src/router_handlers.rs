@@ -8,7 +8,7 @@ use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_common::{logger::Logger};
 use mc_fog_api::{
-    ledger::{LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse}, ledger_grpc::LedgerStoreApiClient,
+    ledger::{LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse}, ledger_grpc::KeyImageStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::LedgerStoreUri;
@@ -16,12 +16,14 @@ use mc_fog_uri::LedgerStoreUri;
 use mc_util_grpc::{rpc_invalid_arg_error};
 use std::{str::FromStr, sync::Arc};
 
+#[allow(dead_code)] //FIXME
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
 /// routing them out to shards.
+#[allow(dead_code)] //FIXME
 pub async fn handle_requests<E>(
-    shard_clients: Vec<Arc<LedgerStoreApiClient>>,
+    shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
     mut requests: RequestStream<LedgerRequest>,
     mut responses: DuplexSink<LedgerResponse>,
@@ -51,7 +53,7 @@ where
 /// query.
 pub async fn handle_request<E>(
     mut request: LedgerRequest,
-    shard_clients: Vec<Arc<LedgerStoreApiClient>>,
+    shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
     logger: Logger,
 ) -> Result<LedgerResponse, RpcStatus>
@@ -77,7 +79,7 @@ where
 pub struct ProcessedShardResponseData {
     /// gRPC clients for Shards that need to be retried for a successful
     /// response.
-    pub shard_clients_for_retry: Vec<Arc<LedgerStoreApiClient>>,
+    pub shard_clients_for_retry: Vec<Arc<KeyImageStoreApiClient>>,
 
     /// Uris for individual Fog Ledger Stores that need to be authenticated with
     /// by the Fog Router. It should only have entries if
@@ -90,7 +92,7 @@ pub struct ProcessedShardResponseData {
 
 impl ProcessedShardResponseData {
     pub fn new(
-        shard_clients_for_retry: Vec<Arc<LedgerStoreApiClient>>,
+        shard_clients_for_retry: Vec<Arc<KeyImageStoreApiClient>>,
         store_uris_for_authentication: Vec<LedgerStoreUri>,
         new_query_responses: Vec<attest::Message>,
     ) -> Self {
@@ -104,7 +106,7 @@ impl ProcessedShardResponseData {
 
 /// Processes the MultiLedgerStoreQueryResponses returned by each Ledger Shard.
 pub fn process_shard_responses(
-    clients_and_responses: Vec<(Arc<LedgerStoreApiClient>, MultiLedgerStoreQueryResponse)>,
+    clients_and_responses: Vec<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse)>,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
     let mut shard_clients_for_retry = Vec::new();
     let mut store_uris_for_authentication = Vec::new();
@@ -154,7 +156,7 @@ where
 async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
-    shard_clients: Vec<Arc<LedgerStoreApiClient>>,
+    shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     logger: Logger,
 ) -> Result<LedgerResponse, RpcStatus>
 where
@@ -175,7 +177,7 @@ where
                 )
             })?
             .into();*/
-        let test_request = MultiKeyImageQueryRequest::default();
+        let test_request = MultiKeyImageStoreRequest::default();
         let clients_and_responses =
             route_query(&test_request, shard_clients.clone())
                 .await
@@ -222,9 +224,9 @@ where
 
 /// Sends a client's query request to all of the Fog Ledger shards.
 async fn route_query(
-    request: &MultiLedgerStoreQueryRequest,
-    shard_clients: Vec<Arc<LedgerStoreApiClient>>,
-) -> Result<Vec<(Arc<LedgerStoreApiClient>, MultiLedgerStoreQueryResponse)>, RouterServerError> {
+    request: &MultiKeyImageStoreRequest,
+    shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
+) -> Result<Vec<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse)>, RouterServerError> {
     let responses = shard_clients
         .into_iter()
         .map(|shard_client| query_shard(request, shard_client));
@@ -233,10 +235,10 @@ async fn route_query(
 
 /// Sends a client's query request to one of the Fog Ledger shards.
 async fn query_shard(
-    request: &MultiLedgerStoreQueryRequest,
-    shard_client: Arc<LedgerStoreApiClient>,
-) -> Result<(Arc<LedgerStoreApiClient>, MultiLedgerStoreQueryResponse), RouterServerError> {
-    let client_unary_receiver = shard_client.multi_ledger_store_query_async(request)?;
+    request: &MultiKeyImageStoreRequest,
+    shard_client: Arc<KeyImageStoreApiClient>,
+) -> Result<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse), RouterServerError> {
+    let client_unary_receiver = shard_client.multi_key_image_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
     Ok((shard_client, response))
@@ -279,7 +281,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
             .name_prefix("authenticate-ledger-store".to_string())
             .build(),
     );
-    let ledger_store_client = LedgerStoreApiClient::new(
+    let ledger_store_client = KeyImageStoreApiClient::new(
         ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&ledger_store_url, &logger),
     );
 
