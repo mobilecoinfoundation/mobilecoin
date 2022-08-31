@@ -102,12 +102,11 @@ pub enum EnclaveCall {
     ///  Add key image data to the ORAM.
     AddKeyImageData(Vec<KeyImageData>),
 
-
     /// The [LedgerEnclave::connect_to_store()] method.
     ///
     /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
     /// most likely a router, will act as a client to the Fog Ledger Store.
-    ConnectToStore(ResponderId), 
+    ConnectToStore(ResponderId),
 
     /// The [LedgerEnclave::finish_connecting_to_store()] method.
     ///
@@ -119,19 +118,19 @@ pub enum EnclaveCall {
         ClientAuthResponse,
     ),
     
-    /// The [LedgerEnclave::create_multi_ledger_store_query_data()] method.
+    /// The [LedgerEnclave::create_key_image_store_query()] method.
     ///
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
-    /// MultiLedgerStoreQuery, which is sent to each shard.
-    CreateMultiLedgerStoreQueryData(EnclaveMessage<ClientSession>),
+    /// MultiKeyImageStoreRequest, which is sent to each shard.
+    CreateKeyImageStoreQuery(EnclaveMessage<ClientSession>),
 
-    /// The [LedgerEnclave::handle_ledger_store_request()] method.
+    /// The [LedgerEnclave::handle_key_image_store_request()] method.
     ///
     /// Used by a Ledger Store to handle an inbound encrypted ledger.proto LedgerRequest. 
     /// Generally, these come in from a router. 
     /// This could could be a key image request, a merkele proof 
     /// request, and potentially in the future an untrusted tx out request.
-    HandleLedgerStoreRequest(EnclaveMessage<ClientSession>),
+    HandleKeyImageStoreRequest(EnclaveMessage<ClientSession>),
 }
