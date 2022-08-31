@@ -30,9 +30,8 @@ is_set MC_BRANCH
 
 # Default vars
 export MC_LEDGER_PATH=${MC_LEDGER_PATH:-"/ledger"}
-export MC_STATE_FILE=${MC_STATE_FILE:-"/ledger/.distribution-state"}
+export MC_STATE_FILE=${MC_STATE_FILE:-"${MC_LEDGER_PATH}/.distribution-state"}
 export MC_SENTRY_DSN=${LEDGER_DISTRIBUTION_SENTRY_DSN}
-
 
 if [[ -f "${MC_STATE_FILE}" ]]
 then
