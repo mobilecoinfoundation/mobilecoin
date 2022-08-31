@@ -19,7 +19,8 @@ use mc_fog_api::{
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
-use std::{collections::BTreeMap, str::FromStr, sync::Arc};
+use mc_util_uri::ConnectionUri;
+use std::{collections::BTreeMap, sync::Arc};
 
 const RETRY_COUNT: usize = 3;
 
@@ -222,7 +223,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     view_store_url: FogViewStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let view_store_id = ResponderId::from_str(&view_store_url.to_string())?;
+    let view_store_id = view_store_url.responder_id()?;
     let client_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()

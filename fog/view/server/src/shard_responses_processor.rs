@@ -8,6 +8,7 @@ use mc_fog_api::{
     view_grpc::FogViewStoreApiClient,
 };
 use mc_fog_uri::FogViewStoreUri;
+use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
@@ -52,7 +53,7 @@ pub fn process_shard_responses(
         let store_uri = FogViewStoreUri::from_str(response.get_fog_view_store_uri())?;
         match response.get_status() {
             MultiViewStoreQueryResponseStatus::SUCCESS => {
-                let store_responder_id = ResponderId::from_str(&store_uri.to_string())?;
+                let store_responder_id = store_uri.responder_id()?;
                 new_query_responses.push((store_responder_id, response.take_query_response()));
             }
             // The shard was unable to produce a query response because the Fog View Store
