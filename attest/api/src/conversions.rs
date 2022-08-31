@@ -4,7 +4,10 @@
 
 use crate::attest::{AuthMessage, Message, NonceMessage};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, EnclaveMessage, EnclaveNonceMessage, PeerAuthRequest, PeerAuthResponse, Session};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, EnclaveNonceMessage, PeerAuthRequest,
+    PeerAuthResponse, Session,
+};
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
 

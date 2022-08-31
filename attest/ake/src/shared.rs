@@ -50,7 +50,7 @@ where
 /// Ready + NonceCiphertext => Ready + Vec
 impl<Cipher> Transition<Ready<Cipher>, NonceCiphertext<'_, '_>, Vec<u8>> for Ready<Cipher>
 where
-    Cipher: NoiseCipher
+    Cipher: NoiseCipher,
 {
     type Error = CipherError;
 
@@ -68,7 +68,7 @@ where
 /// Ready + NoncePlaintext => Ready + Vec
 impl<Cipher> Transition<Ready<Cipher>, NoncePlaintext<'_, '_>, Vec<u8>> for Ready<Cipher>
 where
-    Cipher: NoiseCipher
+    Cipher: NoiseCipher,
 {
     type Error = CipherError;
 
