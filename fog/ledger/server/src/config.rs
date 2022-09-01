@@ -7,7 +7,7 @@
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
-use mc_fog_uri::{FogLedgerUri, LedgerRouterUri, LedgerStoreUri};
+use mc_fog_uri::{FogLedgerUri, KeyImageRouterUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -79,24 +79,24 @@ pub struct LedgerServerConfig {
 /// TODO - This is almost identical to Fog View's implementation of this 
 /// combine it later?
 #[derive(Clone, Serialize)]
-pub enum ClientListenUri {
+pub enum KeyImageClientListenUri {
     /// URI used by the FogViewServer when fulfilling direct client requests.
-    ClientFacing(LedgerRouterUri),
+    ClientFacing(KeyImageRouterUri),
     /// URI used by the FogViewServer when fulfilling Fog View Router requests.
-    Store(LedgerStoreUri),
+    Store(KeyImageStoreUri),
 }
 
-impl FromStr for ClientListenUri {
+impl FromStr for KeyImageClientListenUri {
     type Err = String;
     fn from_str(input: &str) -> Result<Self, String> {
-        if let Ok(fog_ledger_router_uri) = LedgerRouterUri::from_str(input) {
-            return Ok(ClientListenUri::ClientFacing(fog_ledger_router_uri));
+        if let Ok(ledger_router_uri) = KeyImageRouterUri::from_str(input) {
+            return Ok(KeyImageClientListenUri::ClientFacing(ledger_router_uri));
         }
-        if let Ok(fog_ledger_store_uri) = LedgerStoreUri::from_str(input) {
-            return Ok(ClientListenUri::Store(fog_ledger_store_uri));
+        if let Ok(ledger_store_uri) = KeyImageStoreUri::from_str(input) {
+            return Ok(KeyImageClientListenUri::Store(ledger_store_uri));
         }
 
-        Err(format!("Incorrect ClientListenUri string: {}.", input))
+        Err(format!("Incorrect KeyImageClientListenUri string: {}.", input))
     }
 }
 
@@ -113,7 +113,7 @@ pub struct LedgerRouterConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: ClientListenUri,
+    pub client_listen_uri: KeyImageClientListenUri,
 
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
