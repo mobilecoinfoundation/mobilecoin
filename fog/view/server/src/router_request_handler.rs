@@ -171,7 +171,7 @@ where
     }
 
     let query_response = enclave
-        .collate_shard_query_responses(sealed_query.into(), query_responses)
+        .collate_shard_query_responses(sealed_query, query_responses)
         .map_err(|err| {
             router_server_err_to_rpc_status(
                 "Query: shard response collation",
