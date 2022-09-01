@@ -102,18 +102,6 @@ where
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
-            config.clone(),
-            enclave.clone(),
-            Arc::new(recovery_db),
-            db_poll_thread.get_shared_state(),
-            client_authenticator,
-            config.client_listen_uri.clone(),
-            sharding_strategy,
-            logger.clone(),
-        ));
-        log::debug!(logger, "Constructed View GRPC Service");
-
         // Health check service
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
@@ -121,6 +109,17 @@ where
 
         let server_builder = match config.client_listen_uri {
             ClientListenUri::ClientFacing(ref fog_view_uri) => {
+                let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
+                    config.clone(),
+                    enclave.clone(),
+                    Arc::new(recovery_db),
+                    db_poll_thread.get_shared_state(),
+                    client_authenticator,
+                    config.client_listen_uri.clone(),
+                    sharding_strategy,
+                    logger.clone(),
+                ));
+                log::debug!(logger, "Constructed client-facing View GRPC Service");
                 // Package service into grpc server
                 log::info!(logger, "Starting View server on {}", fog_view_uri.addr(),);
                 grpcio::ServerBuilder::new(env)
@@ -129,6 +128,17 @@ where
                     .bind_using_uri(fog_view_uri, logger.clone())
             }
             ClientListenUri::Store(ref fog_view_store_uri) => {
+                let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+                    config.clone(),
+                    enclave.clone(),
+                    Arc::new(recovery_db),
+                    db_poll_thread.get_shared_state(),
+                    client_authenticator,
+                    config.client_listen_uri.clone(),
+                    sharding_strategy,
+                    logger.clone(),
+                ));
+                log::debug!(logger, "Constructed View Store GRPC Service");
                 // Package service into grpc server
                 log::info!(
                     logger,
