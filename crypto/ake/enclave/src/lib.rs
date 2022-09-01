@@ -16,7 +16,7 @@ use mc_attest_core::{
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
-    PeerAuthResponse, PeerSession, Result,
+    PeerAuthResponse, PeerSession, Result, SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
@@ -25,16 +25,7 @@ use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
-use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Sha512};
-
-/// An EnclaveMessage<ClientSession> sealed for the current enclave
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SealedClientMessage {
-    pub aad: Vec<u8>,
-    pub channel_id: ClientSession,
-    pub data: IntelSealed,
-}
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
@@ -463,6 +454,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             aad,
             data: sealed_data,
         })
+    }
+
+    /// Unseals the data component of a sealed client message and returns the
+    /// plaintext
+    pub fn unseal(&self, sealed_message: &SealedClientMessage) -> Result<Vec<u8>> {
+        Ok(sealed_message.data.unseal_raw()?.0)
     }
 
     /// Transforms a sealed client message, i.e. a message sent from a client

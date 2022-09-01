@@ -126,13 +126,14 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
             serialize(&ENCLAVE.query(req, untrusted_query_response))
         }
         ViewEnclaveRequest::AddRecords(records) => serialize(&ENCLAVE.add_records(records)),
+        ViewEnclaveRequest::DecryptAndSealQuery(client_query) => {
+            serialize(&ENCLAVE.decrypt_and_seal_query(client_query))
+        }
         ViewEnclaveRequest::CreateMultiViewStoreQuery(sealed_query) => {
             serialize(&ENCLAVE.create_multi_view_store_query_data(sealed_query))
         }
-        ViewEnclaveRequest::CollateQueryResponses(client_query_request, shard_query_responses) => {
-            serialize(
-                &ENCLAVE.collate_shard_query_responses(client_query_request, shard_query_responses),
-            )
+        ViewEnclaveRequest::CollateQueryResponses(sealed_query, shard_query_responses) => {
+            serialize(&ENCLAVE.collate_shard_query_responses(sealed_query, shard_query_responses))
         }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
