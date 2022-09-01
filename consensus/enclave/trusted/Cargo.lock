@@ -1009,6 +1009,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-dalek"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "mc-crypto-digestible"
 version = "2.0.0"
 dependencies = [
@@ -1060,6 +1069,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex_fmt",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
  "mc-util-from-random",
@@ -1070,6 +1080,7 @@ dependencies = [
  "serde",
  "sha2",
  "signature",
+ "static_assertions",
  "subtle",
  "x25519-dalek",
  "zeroize",
@@ -1136,7 +1147,9 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hex_fmt",
+ "mc-account-keys",
  "mc-account-keys-types",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1160,6 +1173,7 @@ dependencies = [
  "generic-array",
  "hex_fmt",
  "mc-account-keys",
+ "mc-crypto-dalek",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
  "mc-transaction-types",
@@ -1802,6 +1816,12 @@ name = "spin"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"

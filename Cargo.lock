@@ -2932,6 +2932,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-dalek"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "mc-crypto-digestible"
 version = "2.0.0"
 dependencies = [
@@ -2999,6 +3008,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex_fmt",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
  "mc-crypto-hashes",
@@ -3015,6 +3025,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "signature",
+ "static_assertions",
  "subtle",
  "tempdir",
  "x25519-dalek",
@@ -3090,6 +3101,7 @@ dependencies = [
  "hex_fmt",
  "mc-account-keys",
  "mc-account-keys-types",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
@@ -3117,6 +3129,7 @@ dependencies = [
  "generic-array",
  "hex_fmt",
  "mc-account-keys",
+ "mc-crypto-dalek",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-keys",
  "mc-crypto-rand",

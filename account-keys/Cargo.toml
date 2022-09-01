@@ -32,14 +32,14 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 
 [dev-dependencies]
 criterion = "0.3"
-rand = "0.8"
-rand_hc = "0.3"
-tempdir = "0.3"
 
 mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
+rand = "0.8"
+rand_hc = "0.3"
+tempdir = "0.3"
 
 [[bench]]
 name = "account_keys_benchmarks"
