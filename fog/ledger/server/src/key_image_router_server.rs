@@ -9,23 +9,23 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::ConnectionUri;
 use mc_util_grpc::{ReadinessIndicator, ConnectionUriGrpcioServer};
 
-use crate::{ledger_router_service::LedgerRouterService, config::LedgerRouterConfig};
+use crate::{key_image_router_service::KeyImageRouterService, config::LedgerRouterConfig};
 
 #[allow(dead_code)] // FIXME
-pub struct LedgerRouterServer {
+pub struct KeyImageRouterServer {
     server: grpcio::Server,
     logger: Logger,
 }
 
-impl LedgerRouterServer {
+impl KeyImageRouterServer {
     /// Creates a new ledger router server instance
     #[allow(dead_code)] // FIXME
     pub fn new<E> (
         config: LedgerRouterConfig,
         enclave: E,
-        shards: Vec<ledger_grpc::LedgerStoreApiClient>,
+        shards: Vec<ledger_grpc::KeyImageStoreApiClient>,
         logger: Logger,
-    ) -> LedgerRouterServer
+    ) -> KeyImageRouterServer
     where
         E: LedgerEnclaveProxy,
     {
@@ -33,39 +33,44 @@ impl LedgerRouterServer {
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("Fog-ledger-router-server".to_string())
+                .name_prefix("key-image-router-and-store-server".to_string())
                 .build(),
         );
 
-        // Init ledger router service.
-        let ledger_router_service = ledger_grpc::create_ledger_api(
-            LedgerRouterService::new(enclave, shards, logger.clone()),
-        );
-        log::debug!(logger, "Constructed Fog Ledger Router GRPC Service");
-
-        // Health check service
+        // Health check service - will be used in both cases
         let health_service =
             mc_util_grpc::HealthService::new(
                 Some(readiness_indicator.into()), logger.clone()
             ).into_service();
 
         match config.client_listen_uri {
-            crate::config::ClientListenUri::ClientFacing(_ledger_router_uri) => todo!(),
-            crate::config::ClientListenUri::Store(ledger_store_uri) => {
+            // Router server
+            crate::config::KeyImageClientListenUri::ClientFacing(ledger_router_uri) => {
+
+                // Init ledger router service.
+                let ledger_router_service = ledger_grpc::create_ledger_api(
+                    KeyImageRouterService::new(enclave, shards, logger.clone()),
+                );
+                log::debug!(logger, "Constructed Key Image Store GRPC Service");
+
                 // Package service into grpc server
                 log::info!(
                     logger,
-                    "Starting Fog View Router server on {}",
-                    ledger_store_uri.addr(),
+                    "Starting Key Image Store server on {}",
+                    ledger_router_uri.addr(),
                 );
                 let server_builder = grpcio::ServerBuilder::new(env)
                     .register_service(ledger_router_service)
                     .register_service(health_service)
-                    .bind_using_uri(&ledger_store_uri, logger.clone());
+                    .bind_using_uri(&ledger_router_uri, logger.clone());
         
                 let server = server_builder.build().unwrap();
         
                 Self { server, logger }
+            },
+            // Store server. 
+            crate::config::KeyImageClientListenUri::Store(_ledger_store_uri) => {
+                todo!()
             },
         }
     }
@@ -85,7 +90,7 @@ impl LedgerRouterServer {
     }
 }
 
-impl Drop for LedgerRouterServer {
+impl Drop for KeyImageRouterServer {
     fn drop(&mut self) {
         self.stop();
     }

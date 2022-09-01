@@ -15,20 +15,20 @@ use crate::router_handlers;
 
 #[allow(dead_code)] // FIXME
 #[derive(Clone)]
-pub struct LedgerRouterService<E>
+pub struct KeyImageRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {
     enclave: E,
-    shards: Vec<Arc<ledger_grpc::LedgerStoreApiClient>>,
+    shards: Vec<Arc<ledger_grpc::KeyImageStoreApiClient>>,
     logger: Logger,
 }
 
-impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
+impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     /// Creates a new LedgerRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
     #[allow(dead_code)] // FIXME
-    pub fn new(enclave: E, shards: Vec<ledger_grpc::LedgerStoreApiClient>, logger: Logger) -> Self {
+    pub fn new(enclave: E, shards: Vec<ledger_grpc::KeyImageStoreApiClient>, logger: Logger) -> Self {
         let shards = shards.into_iter().map(Arc::new).collect();
         Self {
             enclave,
@@ -38,7 +38,7 @@ impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     }
 }
 
-impl<E> LedgerApi for LedgerRouterService<E>
+impl<E> LedgerApi for KeyImageRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {

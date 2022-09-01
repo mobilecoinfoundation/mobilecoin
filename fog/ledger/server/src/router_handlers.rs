@@ -11,7 +11,7 @@ use mc_fog_api::{
     ledger::{LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse}, ledger_grpc::KeyImageStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
-use mc_fog_uri::LedgerStoreUri;
+use mc_fog_uri::KeyImageStoreUri;
 //use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error};
 use std::{str::FromStr, sync::Arc};
@@ -84,7 +84,7 @@ pub struct ProcessedShardResponseData {
     /// Uris for individual Fog Ledger Stores that need to be authenticated with
     /// by the Fog Router. It should only have entries if
     /// `shard_clients_for_retry` has entries.
-    pub store_uris_for_authentication: Vec<LedgerStoreUri>,
+    pub store_uris_for_authentication: Vec<KeyImageStoreUri>,
 
     /// New, successfully processed query responses.
     pub new_query_responses: Vec<attest::Message>,
@@ -93,7 +93,7 @@ pub struct ProcessedShardResponseData {
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<KeyImageStoreApiClient>>,
-        store_uris_for_authentication: Vec<LedgerStoreUri>,
+        store_uris_for_authentication: Vec<KeyImageStoreUri>,
         new_query_responses: Vec<attest::Message>,
     ) -> Self {
         ProcessedShardResponseData {
@@ -119,7 +119,7 @@ pub fn process_shard_responses(
         if response.has_decryption_error() {
             shard_clients_for_retry.push(shard_client);
             let store_uri =
-                LedgerStoreUri::from_str(&response.get_decryption_error().store_uri)?;
+            KeyImageStoreUri::from_str(&response.get_decryption_error().store_uri)?;
             store_uris_for_authentication.push(store_uri);
         } else {
             new_query_responses.push(response.take_query_response());
