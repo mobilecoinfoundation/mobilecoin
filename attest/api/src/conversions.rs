@@ -2,11 +2,11 @@
 
 //! Conversions from gRPC message types into consensus_enclave_api types.
 
-use crate::attest::{AuthMessage, Message};
+use crate::attest::{AuthMessage, Message, NonceMessage};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
-    Session,
+    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, EnclaveNonceMessage, PeerAuthRequest,
+    PeerAuthResponse, Session,
 };
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
@@ -103,8 +103,30 @@ impl<S: Session> From<EnclaveMessage<S>> for Message {
     fn from(src: EnclaveMessage<S>) -> Message {
         let mut retval = Message::default();
         retval.set_aad(src.aad);
-        retval.set_channel_id(src.channel_id.clone().into());
+        retval.set_channel_id(src.channel_id.into());
         retval.set_data(src.data);
+        retval
+    }
+}
+
+impl<S: Session> From<NonceMessage> for EnclaveNonceMessage<S> {
+    fn from(src: NonceMessage) -> EnclaveNonceMessage<S> {
+        EnclaveNonceMessage {
+            aad: src.aad,
+            channel_id: S::from(&src.channel_id),
+            data: src.data,
+            nonce: src.nonce,
+        }
+    }
+}
+
+impl<S: Session> From<EnclaveNonceMessage<S>> for NonceMessage {
+    fn from(src: EnclaveNonceMessage<S>) -> NonceMessage {
+        let mut retval = NonceMessage::default();
+        retval.set_aad(src.aad);
+        retval.set_channel_id(src.channel_id.into());
+        retval.set_data(src.data);
+        retval.set_nonce(src.nonce);
         retval
     }
 }

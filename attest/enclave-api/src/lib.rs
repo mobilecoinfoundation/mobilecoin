@@ -95,6 +95,19 @@ pub struct EnclaveMessage<S: Session> {
     pub data: Vec<u8>,
 }
 
+/// Inbound and outbound messages to/from an enclave with an explicit nonce.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct EnclaveNonceMessage<S: Session> {
+    /// Authenticated data, if any.
+    pub aad: Vec<u8>,
+    /// The channel ID of this message.
+    pub channel_id: S,
+    /// The encrypted payload data of this message.
+    pub data: Vec<u8>,
+    /// The explicit nonce for this message.
+    pub nonce: u64,
+}
+
 /// The response to a request for a new report. The enclave will expect the
 /// QuoteNonce to be used when the report is quoted, and both the quote and
 /// report to be returned to the enclave during the verify_quote() phase.
