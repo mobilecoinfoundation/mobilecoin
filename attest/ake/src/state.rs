@@ -74,6 +74,7 @@ where
     pub fn binding(&self) -> &[u8] {
         self.binding.as_ref()
     }
+
     /// Using the writer cipher, encrypt the given plaintext.
     pub fn encrypt(&mut self, aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
         self.writer.encrypt_with_ad(aad, plaintext)
@@ -82,6 +83,28 @@ where
     /// Using the reader cipher, decrypt the provided ciphertext.
     pub fn decrypt(&mut self, aad: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
         self.reader.decrypt_with_ad(aad, ciphertext)
+    }
+
+    /// Using the writer cipher, encrypt the given plaintext for the nonce.
+    pub fn encrypt_with_nonce(
+        &mut self,
+        aad: &[u8],
+        plaintext: &[u8],
+        nonce: u64,
+    ) -> Result<Vec<u8>, CipherError> {
+        self.writer.set_nonce(nonce);
+        self.encrypt(aad, plaintext)
+    }
+
+    /// Using the reader cipher, decrypt the provided ciphertext for the nonce.
+    pub fn decrypt_with_nonce(
+        &mut self,
+        aad: &[u8],
+        ciphertext: &[u8],
+        nonce: u64,
+    ) -> Result<Vec<u8>, CipherError> {
+        self.reader.set_nonce(nonce);
+        self.decrypt(aad, ciphertext)
     }
 }
 
