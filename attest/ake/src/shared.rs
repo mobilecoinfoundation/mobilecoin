@@ -66,7 +66,7 @@ where
     }
 }
 
-/// Ready + NoncePlaintext => Ready + (Vec + u64)
+/// Ready + NoncePlaintext => Ready + (Vec, u64)
 impl<Cipher> Transition<Ready<Cipher>, NoncePlaintext<'_, '_>, (Vec<u8>, u64)> for Ready<Cipher>
 where
     Cipher: NoiseCipher,
