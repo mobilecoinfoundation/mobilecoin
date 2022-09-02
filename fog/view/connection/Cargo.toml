@@ -6,15 +6,20 @@ edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
+
 # mobilecoin
+mc-attest-ake = { path = "../../../attest/ake" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-crypto-noise = { path = "../../../crypto/noise" }
+mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-telemetry = { path = "../../../util/telemetry" }
+mc-util-uri = { path = "../../../util/uri" }
 
 # fog
 mc-fog-api = { path = "../../api" }
@@ -24,7 +29,9 @@ mc-fog-uri = { path = "../../uri" }
 mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
+aes-gcm = "0.9.4"
 grpcio = "0.11.0"
 futures = "0.3"
 retry = "1.3"
+sha2 = { version = "0.10", default-features = false }
 tokio = { version = "1.19.2", features = ["full"] }

@@ -4253,13 +4253,17 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "2.0.0"
 dependencies = [
+ "aes-gcm",
  "futures",
  "grpcio",
+ "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-types",
@@ -4268,7 +4272,9 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-telemetry",
+ "mc-util-uri",
  "retry",
+ "sha2 0.10.2",
  "tokio",
 ]
 
