@@ -4313,6 +4313,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-telemetry",
+ "mc-util-uri",
  "retry",
  "sha2 0.10.2",
  "tokio",

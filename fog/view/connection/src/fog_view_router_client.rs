@@ -5,7 +5,9 @@
 use aes_gcm::Aes256Gcm;
 use futures::{SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment};
-use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
+use mc_attest_ake::{
+    AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
+};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_core::VerificationReport;
 use mc_attest_verifier::Verifier;
@@ -21,6 +23,7 @@ use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::{ConnectionUri, FogViewRouterUri};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;
+use mc_util_uri::UriConversionError;
 use sha2::Sha512;
 use std::sync::Arc;
 
@@ -90,17 +93,10 @@ impl FogViewRouterGrpcClient {
 
         let mut csprng = McRng::default();
 
-        let initiator = Start::new(
-            self.uri
-                .responder_id()
-                .map_err(|_| Error::Attestation)?
-                .to_string(),
-        );
+        let initiator = Start::new(self.uri.responder_id()?.to_string());
 
         let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
-        let (initiator, auth_request_output) = initiator
-            .try_next(&mut csprng, init_input)
-            .map_err(|_| Error::Attestation)?;
+        let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
 
         let attested_message: AuthMessage = auth_request_output.into();
         let mut request = FogViewRouterRequest::new();
@@ -113,15 +109,14 @@ impl FogViewRouterGrpcClient {
             .response_receiver
             .try_next()
             .await?
-            .expect("Auth response was not received.");
+            .ok_or(Error::ResponseNotReceived)?;
         let auth_response_msg = response.take_auth();
 
         // Process server response, check if key exchange is successful
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
-        let (initiator, verification_report) = initiator
-            .try_next(&mut csprng, auth_response_event)
-            .map_err(|_| Error::Attestation)?;
+        let (initiator, verification_report) =
+            initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
@@ -130,10 +125,7 @@ impl FogViewRouterGrpcClient {
 
     fn deattest(&mut self) {
         if self.is_attested() {
-            log::trace!(
-                self.logger,
-                "Tearing down existing attested connection and clearing cookies."
-            );
+            log::trace!(self.logger, "Tearing down existing attested connection.");
             self.attest_cipher = None;
         }
     }
@@ -145,7 +137,7 @@ impl FogViewRouterGrpcClient {
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
     ) -> Result<QueryResponse, Error> {
-        log::info!(self.logger, "Query was called");
+        log::trace!(self.logger, "Query was called");
         if !self.is_attested() {
             let verification_report = self.attest().await;
             verification_report?;
@@ -189,7 +181,7 @@ impl FogViewRouterGrpcClient {
             .response_receiver
             .try_next()
             .await?
-            .expect("Query response was not received")
+            .ok_or(Error::ResponseNotReceived)?
             .take_query();
 
         {
@@ -210,11 +202,20 @@ pub enum Error {
     /// Decode errors.
     Decode(DecodeError),
 
+    /// Uri conversion errors.
+    UriConversion(UriConversionError),
+
+    /// Cipher errors.
+    Cipher(CipherError),
+
     /// Attestation errors.
-    Attestation,
+    Attestation(AttestAkeError),
 
     /// Grpc errors.
     Grpc(grpcio::Error),
+
+    /// Response not received
+    ResponseNotReceived,
 }
 
 impl From<DecodeError> for Error {
@@ -224,13 +225,25 @@ impl From<DecodeError> for Error {
 }
 
 impl From<CipherError> for Error {
-    fn from(_: CipherError) -> Self {
-        Self::Attestation
+    fn from(err: CipherError) -> Self {
+        Self::Cipher(err)
     }
 }
 
 impl From<grpcio::Error> for Error {
     fn from(err: grpcio::Error) -> Self {
         Self::Grpc(err)
+    }
+}
+
+impl From<UriConversionError> for Error {
+    fn from(err: UriConversionError) -> Self {
+        Self::UriConversion(err)
+    }
+}
+
+impl From<AttestAkeError> for Error {
+    fn from(err: AttestAkeError) -> Self {
+        Self::Attestation(err)
     }
 }

@@ -31,6 +31,7 @@ mc-fog-view-protocol = { path = "../protocol" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-telemetry = { path = "../../../util/telemetry" }
+mc-util-uri = { path = "../../../util/uri" }
 retry = "1.3"
 sha2 = { version = "0.10", default-features = false }
 tokio = { version = "1.19.2", features = ["full"] }
