@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Makes dummy requests to the fog view router service
+//! Makes requests to the fog view router service
 
 use aes_gcm::Aes256Gcm;
 use futures::{SinkExt, TryStreamExt};
@@ -52,12 +52,13 @@ impl FogViewRouterGrpcClient {
     ///
     /// Arguments:
     /// * uri: The Uri to connect to
+    /// * verifier: The attestation verifier
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(
         uri: FogViewRouterUri,
-        env: Arc<Environment>,
         verifier: Verifier,
+        env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
         let logger = logger.new(o!("mc.fog.view.router.uri" => uri.to_string()));
@@ -92,14 +93,14 @@ impl FogViewRouterGrpcClient {
         let initiator = Start::new(
             self.uri
                 .responder_id()
-                .map_err(|_| Error::Attestation())?
+                .map_err(|_| Error::Attestation)?
                 .to_string(),
         );
 
         let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
         let (initiator, auth_request_output) = initiator
             .try_next(&mut csprng, init_input)
-            .map_err(|_| Error::Attestation())?;
+            .map_err(|_| Error::Attestation)?;
 
         let attested_message: AuthMessage = auth_request_output.into();
         let mut request = FogViewRouterRequest::new();
@@ -108,7 +109,11 @@ impl FogViewRouterGrpcClient {
             .send((request.clone(), grpcio::WriteFlags::default()))
             .await?;
 
-        let mut response = self.response_receiver.try_next().await?.unwrap();
+        let mut response = self
+            .response_receiver
+            .try_next()
+            .await?
+            .expect("Auth response was not received.");
         let auth_response_msg = response.take_auth();
 
         // Process server response, check if key exchange is successful
@@ -116,7 +121,7 @@ impl FogViewRouterGrpcClient {
             AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
         let (initiator, verification_report) = initiator
             .try_next(&mut csprng, auth_response_event)
-            .map_err(|_| Error::Attestation())?;
+            .map_err(|_| Error::Attestation)?;
 
         self.attest_cipher = Some(initiator);
 
@@ -184,7 +189,7 @@ impl FogViewRouterGrpcClient {
             .response_receiver
             .try_next()
             .await?
-            .unwrap()
+            .expect("Query response was not received")
             .take_query();
 
         {
@@ -206,7 +211,7 @@ pub enum Error {
     Decode(DecodeError),
 
     /// Attestation errors.
-    Attestation(),
+    Attestation,
 
     /// Grpc errors.
     Grpc(grpcio::Error),
@@ -220,7 +225,7 @@ impl From<DecodeError> for Error {
 
 impl From<CipherError> for Error {
     fn from(_: CipherError) -> Self {
-        Self::Attestation()
+        Self::Attestation
     }
 }
 

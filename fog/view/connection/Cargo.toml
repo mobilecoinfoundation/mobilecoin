@@ -11,8 +11,9 @@ license = "GPL-3.0"
 aes-gcm = "0.9.4"
 futures = "0.3"
 grpcio = "0.10.3"
-mc-attest-ake = { path = "../../../attest/ake" }
+
 # mobilecoin
+mc-attest-ake = { path = "../../../attest/ake" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
