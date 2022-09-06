@@ -270,9 +270,9 @@ message TxOutRecord {
     oneof tx_out_masked_amount_token_id {
         /// The masked token id associated to the v1 amount field in the TxOut that was recovered
         /// The presence of this field indicates that a MaskedAmountV1 object was serialized.
-        bytes v1 = 10;
+        bytes tx_out_masked_amount_v1_token_id  = 10;
         /// The masked token id associated to the v2 amount field in the TxOut that was recovered
         /// The presence of this field indicates that a MaskedAmountV2 object was serialized.
-        bytes v2 = 11;
+        bytes tx_out_masked_amount_v2_token_id = 11;
     }
 }
