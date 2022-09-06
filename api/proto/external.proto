@@ -207,8 +207,8 @@ message TxOut {
     // For v1, the TxOut shared secret is used directly.
     // For v2, an intermediate secret called amount shared secret is used.
     oneof masked_amount {
-        MaskedAmount v1 = 1;
-        MaskedAmount v2 = 6;
+        MaskedAmount masked_amount_v1 = 1;
+        MaskedAmount masked_amount_v2 = 6;
     };
 
     // Public key.
