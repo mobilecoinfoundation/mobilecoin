@@ -36,10 +36,10 @@ impl From<&MaskedAmount> for external::TxOut_oneof_masked_amount {
     fn from(source: &MaskedAmount) -> Self {
         match source {
             MaskedAmount::V1(masked_amount) => {
-                external::TxOut_oneof_masked_amount::v1(masked_amount.into())
+                external::TxOut_oneof_masked_amount::masked_amount_v1(masked_amount.into())
             }
             MaskedAmount::V2(masked_amount) => {
-                external::TxOut_oneof_masked_amount::v2(masked_amount.into())
+                external::TxOut_oneof_masked_amount::masked_amount_v2(masked_amount.into())
             }
         }
     }
@@ -82,10 +82,10 @@ impl TryFrom<&external::TxOut_oneof_masked_amount> for MaskedAmount {
 
     fn try_from(source: &external::TxOut_oneof_masked_amount) -> Result<Self, Self::Error> {
         match source {
-            external::TxOut_oneof_masked_amount::v1(masked_amount) => {
+            external::TxOut_oneof_masked_amount::masked_amount_v1(masked_amount) => {
                 Ok(MaskedAmount::V1(masked_amount.try_into()?))
             }
-            external::TxOut_oneof_masked_amount::v2(masked_amount) => {
+            external::TxOut_oneof_masked_amount::masked_amount_v2(masked_amount) => {
                 Ok(MaskedAmount::V2(masked_amount.try_into()?))
             }
         }

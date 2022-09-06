@@ -497,13 +497,13 @@ pub struct JsonMaskedAmount {
 impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
     fn from(src: &mc_api::external::TxOut_oneof_masked_amount) -> Self {
         match src {
-            mc_api::external::TxOut_oneof_masked_amount::v1(src) => Self {
+            mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(src) => Self {
                 commitment: hex::encode(src.get_commitment().get_data()),
                 masked_value: JsonU64(src.get_masked_value()),
                 masked_token_id: hex::encode(src.get_masked_token_id()),
                 version: None,
             },
-            mc_api::external::TxOut_oneof_masked_amount::v2(src) => Self {
+            mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(src) => Self {
                 commitment: hex::encode(src.get_commitment().get_data()),
                 masked_value: JsonU64(src.get_masked_value()),
                 masked_token_id: hex::encode(src.get_masked_token_id()),
@@ -534,10 +534,10 @@ impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount 
         );
 
         match src.version {
-            None | Some(1) => Ok(mc_api::external::TxOut_oneof_masked_amount::v1(
+            None | Some(1) => Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(
                 masked_amount,
             )),
-            Some(2) => Ok(mc_api::external::TxOut_oneof_masked_amount::v2(
+            Some(2) => Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(
                 masked_amount,
             )),
             Some(other) => Err(format!("Unknown masked amount version: {}", other)),
