@@ -3882,6 +3882,7 @@ dependencies = [
  "mc-fog-ingest-enclave-measurement",
  "mc-fog-report-connection",
  "mc-fog-report-resolver",
+ "mc-fog-report-types",
  "mc-fog-report-validation",
  "mc-util-cli",
  "mc-util-keyfile",

@@ -19,6 +19,7 @@ mc-fog-api = { path = "../../api" }
 mc-fog-ingest-enclave-measurement = { path = "../../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../connection" }
 mc-fog-report-resolver = { path = "../resolver" }
+mc-fog-report-types = { path = "../types" }
 mc-fog-report-validation = { path = "../validation" }
 mc-util-cli = { path = "../../../util/cli" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
