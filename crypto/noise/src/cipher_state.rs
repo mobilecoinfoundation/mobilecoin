@@ -407,7 +407,7 @@ mod test {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
         let expected = 1234;
         encryptor.set_nonce(expected);
-        let actual = encryptor.nonce();
+        let actual = encryptor.next_nonce();
         assert_eq!(expected, actual);
     }
 }
