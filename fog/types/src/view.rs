@@ -210,10 +210,14 @@ impl From<&MaskedAmount> for TxOutAmountMaskedTokenId {
     fn from(src: &MaskedAmount) -> Self {
         match src {
             MaskedAmount::V1(masked_amount) => {
-                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(masked_amount.masked_token_id.clone())
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(
+                    masked_amount.masked_token_id.clone(),
+                )
             }
             MaskedAmount::V2(masked_amount) => {
-                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(masked_amount.masked_token_id.clone())
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(
+                    masked_amount.masked_token_id.clone(),
+                )
             }
         }
     }
