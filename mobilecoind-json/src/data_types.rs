@@ -534,12 +534,12 @@ impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount 
         );
 
         match src.version {
-            None | Some(1) => Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(
-                masked_amount,
-            )),
-            Some(2) => Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(
-                masked_amount,
-            )),
+            None | Some(1) => {
+                Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(masked_amount))
+            }
+            Some(2) => {
+                Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(masked_amount))
+            }
             Some(other) => Err(format!("Unknown masked amount version: {}", other)),
         }
     }

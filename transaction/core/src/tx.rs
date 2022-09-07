@@ -729,7 +729,6 @@ mod tests {
 
             // TxOut = decode(encode(TxOut))
             assert_eq!(tx_out, TxOut::decode(&tx_out.encode_to_vec()[..]).unwrap());
-            assert_eq!(tx_out.encode_to_vec().len(), 207);
 
             let tx_in = TxIn {
                 ring: vec![tx_out.clone()],
