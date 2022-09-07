@@ -7,7 +7,8 @@ name: mobilecoin-dev-cd
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  PREVIOUS_RELEASE: v1.1.3-dev
+  RELEASE_1X_TAG: v1.1.3-dev
+  RELEASE_2X_TAG: v2.0.0-dev
 
 on:
   push:
@@ -35,7 +36,6 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
-      previous_release: ${{ env.PREVIOUS_RELEASE }}
 
     steps:
     - name: Checkout
@@ -400,16 +400,16 @@ jobs:
           }
 
 #######################################
-# Deploy previous release to namespace
+# Deploy 1.x release to namespace
 #######################################
-  previous-release-deploy:
+  deploy-v1-bv0-release:
     runs-on: [self-hosted, Linux, small]
     needs:
     - dev-reset
     - generate-metadata
     steps:
     - name: Deploy Release
-      if: "! contains(github.event.head_commit.message, '[skip previous-release-deploy]')"
+      if: "! contains(github.event.head_commit.message, '[skip deploy-v1-bv0-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-deploy
@@ -426,19 +426,19 @@ jobs:
             "minting_config_enabled": "false",
             "ingest_color": "blue",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.previous_release }}",
+            "version": "${{ env.RELEASE_1X_TAG }}",
             "client_auth_enabled": "false",
             "use_static_wallet_seeds": "true"
           }
 
-  previous-release-test:
+  test-v1-bv0-release:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - previous-release-deploy
+    - deploy-v1-bv0-release
     - generate-metadata
     steps:
     - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip previous-release-test]')"
+      if: "! contains(github.event.head_commit.message, '[skip test-v1-bv0-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-test
@@ -454,21 +454,22 @@ jobs:
             "fog_distribution": "true",
             "testing_block_v0": "false",
             "testing_block_v2": "false",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
 ###############################################
-# Deploy current version to namespace block v0
+# Deploy v2.x to namespace at block v0
 ###############################################
-  current-release-v0-deploy:
+
+  deploy-v2-bv0-release:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - previous-release-test
+    - test-v1-bv0-release
     - generate-metadata
-    - charts
     steps:
     - name: Deploy Release
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-deploy]')"
+      if: "! contains(github.event.head_commit.message, '[skip deploy-v2-bv0-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-deploy
@@ -485,19 +486,19 @@ jobs:
             "minting_config_enabled": "true",
             "ingest_color": "green",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.tag }}",
+            "version": "${{ env.RELEASE_2X_TAG }}",
             "client_auth_enabled": "false",
             "use_static_wallet_seeds": "true"
           }
 
-  current-release-v0-test:
+  test-v2-bv0-release:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - current-release-v0-deploy
+    - deploy-v2-bv0-release
     - generate-metadata
     steps:
     - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-test]')"
+      if: "! contains(github.event.head_commit.message, '[skip test-v2-bv0-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-test
@@ -508,25 +509,26 @@ jobs:
         display-workflow-run-url-interval: 30s
         inputs: |
           {
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "ingest_color": "green",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "fog_distribution": "false",
             "testing_block_v0": "true",
             "testing_block_v2": "false",
+            "testing_block_v3": "false",
             "client_auth_enabled": "false"
           }
 
-#################################################
-# Update current consensus to namespace block v1
-#################################################
-  current-release-v2-update:
+###############################################
+# Upgrade v2.x to block v2
+###############################################
+  update-v2-to-bv2:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - current-release-v0-test
+    - test-v2-bv0-release
     - generate-metadata
     steps:
     - name: Update consensus config
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-update]')"
+      if: "! contains(github.event.head_commit.message, '[skip update-v2-to-bv3-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-update-consensus
@@ -543,17 +545,17 @@ jobs:
             "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
             "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.tag }}"
+            "version": "${{ env.RELEASE_2X_TAG }}"
           }
 
-  current-release-v2-test:
+  test-v2-bv2-release:
     runs-on: [self-hosted, Linux, small]
     needs:
-    - current-release-v2-update
+    - update-v2-to-bv2
     - generate-metadata
     steps:
     - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-test]')"
+      if: "! contains(github.event.head_commit.message, '[skip test-v2-bv3-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-test
@@ -567,7 +569,126 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "ingest_color": "green",
             "fog_distribution": "false",
-            "testing_block_v0": "true",
+            "testing_block_v0": "false",
             "testing_block_v2": "true",
+            "testing_block_v3": "false",
+            "client_auth_enabled": "false"
+          }
+
+
+###############################################
+# Deploy current version to namespace block v2
+###############################################
+  deploy-current-bv2-release:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - test-v2-bv2-release
+    - charts
+    - generate-metadata
+    steps:
+    - name: Deploy Release
+      if: "! contains(github.event.head_commit.message, '[skip deploy-current-bv2-release]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-deploy
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "block_version": "2",
+            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
+            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
+            "minting_config_enabled": "true",
+            "ingest_color": "blue",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "version": "${{ needs.generate-metadata.outputs.tag }}",
+            "client_auth_enabled": "false",
+            "use_static_wallet_seeds": "true"
+          }
+
+  test-current-bv2-release:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - deploy-current-bv2-release
+    - generate-metadata
+    steps:
+    - name: Run MobileCoin integration tests
+      if: "! contains(github.event.head_commit.message, '[skip test-current-bv2-release]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-test
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "ingest_color": "blue",
+            "fog_distribution": "false",
+            "testing_block_v0": "false",
+            "testing_block_v2": "true",
+            "testing_block_v3": "false",
+            "client_auth_enabled": "false"
+          }
+
+#################################################
+# Update current consensus to namespace block v3
+#################################################
+  update-current-to-bv3:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - test-current-bv2-release
+    - generate-metadata
+    steps:
+    - name: Update consensus config
+      if: "! contains(github.event.head_commit.message, '[skip update-current-to-bv3]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-update-consensus
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "block_version": "3",
+            "client_auth_enabled": "false",
+            "minting_config_enabled": "true",
+            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
+            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "version": "${{ needs.generate-metadata.outputs.tag }}"
+          }
+
+  test-current-bv3-release:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - update-current-to-bv3
+    - generate-metadata
+    steps:
+    - name: Run MobileCoin integration tests
+      if: "! contains(github.event.head_commit.message, '[skip test-current-bv3-release]')"
+      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
+      with:
+        workflow: mobilecoin-dispatch-dev-test
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        wait-for-completion: true
+        wait-for-completion-timeout: 30m
+        wait-for-completion-interval: 30s
+        display-workflow-run-url-interval: 30s
+        inputs: |
+          {
+            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
+            "ingest_color": "blue",
+            "fog_distribution": "false",
+            "testing_block_v0": "false",
+            "testing_block_v2": "false",
+            "testing_block_v3": "true",
             "client_auth_enabled": "false"
           }

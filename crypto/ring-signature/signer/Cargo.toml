@@ -18,16 +18,14 @@ zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys", default-features = false }
+mc-crypto-dalek = { path = "../../dalek" }
 mc-crypto-keys = { path = "../../keys", default-features = false }
 mc-crypto-ring-signature = { path = "..", default-features = false }
 mc-transaction-types = { path = "../../../transaction/types" }
 mc-util-serial = { path = "../../../util/serial" }
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }

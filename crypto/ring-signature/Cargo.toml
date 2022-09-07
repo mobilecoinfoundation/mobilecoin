@@ -5,38 +5,41 @@ authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
 
+[features]
+alloc = ["serde/alloc", "mc-crypto-digestible/alloc"]
+default = ["alloc"]
+
 [dependencies]
+
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "serde"] }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
-# Enable all default features not known to break code coverage builds
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"], optional = true }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
-rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1", default-features = false }
+mc-account-keys = { path = "../../account-keys", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-dalek = { path = "../../crypto/dalek" }
+mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
-
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly", "serde"] }
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend", "serde"] }
+# Enable all default features not known to break code coverage builds
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"], optional = true }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
-tempdir = "0.3"
 
 mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+tempdir = "0.3"

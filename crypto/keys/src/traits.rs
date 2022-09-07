@@ -2,19 +2,52 @@
 
 //! Abstract traits used by Structs which implement key management
 
-use crate::{Digest, LengthMismatch, ReprBytes, Unsigned};
-use alloc::{string::String, vec::Vec};
+use crate::{Digest, LengthMismatch, ReprBytes};
+
 use core::{fmt::Debug, hash::Hash};
 use displaydoc::Display;
+//use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+/// Marker trait for serialization when `serde` feature is enabled
+#[cfg(feature = "serde")]
+pub trait MaybeSerde: DeserializeOwned + Serialize {}
+
+#[cfg(feature = "serde")]
+impl<T: DeserializeOwned + Serialize> MaybeSerde for T {}
+
+/// Marker trait for serialization when `serde` feature is disabled
+#[cfg(not(feature = "serde"))]
+pub trait MaybeSerde {}
+
+#[cfg(not(feature = "serde"))]
+impl<T> MaybeSerde for T {}
+
+/// Marker trait for `Into<Vec<u8>>` when `alloc` feature is enabled
+#[cfg(feature = "alloc")]
+pub trait MaybeAlloc: Into<Vec<u8>> {}
+
+#[cfg(feature = "alloc")]
+impl<T: Into<Vec<u8>>> MaybeAlloc for T {}
+
+/// Marker trait for `Into<Vec<u8>>` when `alloc` feature is disabled
+#[cfg(not(feature = "alloc"))]
+pub trait MaybeAlloc {}
+
+#[cfg(not(feature = "alloc"))]
+impl<T> MaybeAlloc for T {}
+
 /// A collection of common errors for use by implementers
-#[derive(
-    Clone, Copy, Debug, Deserialize, Eq, Hash, Display, Ord, PartialEq, PartialOrd, Serialize,
-)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Display, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum KeyError {
     /**
      * The length of the given data does not match the algorithm's expected
@@ -48,44 +81,71 @@ pub trait DistinguishedEncoding: Sized {
     /// Create a new object from the given DER-encoded SubjectPublicKeyInfo.
     fn try_from_der(src: &[u8]) -> Result<Self, KeyError>;
 
+    /// Create the standardized DER-encoded representation of this object and
+    /// write to the provided buffer.
+    ///
+    /// Note that this will panic if `buff.len()` is less than
+    /// [`DistinguishedEncoding::der_size()`]
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8];
+
     /// Create the standardized DER-encoded representation of this object.
-    fn to_der(&self) -> Vec<u8>;
+    #[cfg(feature = "alloc")]
+    fn to_der(&self) -> Vec<u8> {
+        let mut buff = alloc::vec![0; <Self as DistinguishedEncoding>::der_size()];
+        self.to_der_slice(&mut buff);
+        buff
+    }
 }
 
-/// A trait indicating that a string fingerprint can be generated for an
-/// object.
+/// Maximum length of the DER buffer required for
+/// [`DistinguishedEncoding::to_der()`]
+pub const DER_MAX_LEN: usize = 128;
+
+/// A trait indicating that a fingerprint can be generated for an object.
 pub trait Fingerprintable {
-    fn fingerprint<D: Digest>(&self) -> Result<String, KeyError>;
+    /// Generate fingerprint
+    fn fingerprint<D: Digest>(&self) -> Fingerprint<D>;
+}
+
+/// A fingerprint object, generic over digest output size
+pub struct Fingerprint<D: digest::OutputSizeUser>(
+    digest::generic_array::GenericArray<u8, D::OutputSize>,
+);
+
+/// Debug impl for fingerprint objects
+impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Fingerprint({})", self)
+    }
+}
+
+/// Display impl for fingerprint objects
+impl<D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for i in 0..self.0.len() {
+            match i < (self.0.len() - 1) {
+                true => write!(f, "{:02x}:", self.0[i])?,
+                false => write!(f, "{:02x}", self.0[i])?,
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Blanket implementation of fingerprinting for any public key which also
 /// implements the DistinguishedEncoding trait.
 impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
-    fn fingerprint<D: Digest>(&self) -> Result<String, KeyError> {
+    fn fingerprint<D: Digest>(&self) -> Fingerprint<D> {
+        // Convert to DER
+        let mut buff = [0u8; DER_MAX_LEN];
+        let der = self.to_der_slice(&mut buff);
+
         // Get the hash of the DER bytes
-        let hash = D::digest(&self.to_der());
-        // Get the hex string of the hash as bytes
-        let output_size = D::OutputSize::to_usize();
+        let hash = D::digest(&der);
 
-        let hex_out = hex::encode(&hash);
-
-        // Add byte separators (i.e. make it "50:55:55:55..."
-        let mut return_val = String::with_capacity(output_size * 3 + 1);
-        return_val.push_str(
-            core::str::from_utf8(&hex_out.as_bytes()[..2])
-                .map_err(|_e| KeyError::InvalidPublicKey)?,
-        );
-        for ch in hex_out.as_bytes()[2..].chunks(2) {
-            return_val.push(':');
-            // We should never run into an error here in practice so long
-            // as hex::encode_upper() produces normal valid hexadecimal,
-            // because every character should be english alphanumeric,
-            // which means every character fits in ASCII, which means
-            // every character fits in one byte.
-            return_val.push_str(core::str::from_utf8(ch).map_err(|_e| KeyError::InvalidPublicKey)?);
-        }
-
-        Ok(return_val)
+        // Return fingerprint
+        Fingerprint(hash)
     }
 }
 
@@ -93,7 +153,6 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
 pub trait PublicKey:
     Clone
     + Debug
-    + DeserializeOwned
     + Digestible
     + Eq
     + Hash
@@ -101,7 +160,7 @@ pub trait PublicKey:
     + PartialOrd
     + Ord
     + ReprBytes<Error = KeyError>
-    + Serialize
+    + MaybeSerde
     + Sized
     + for<'bytes> TryFrom<&'bytes [u8], Error = KeyError>
 {
@@ -167,12 +226,7 @@ where
 /// These types of key-exchange pairs can be saved and restored, and will
 /// persist after a key-exchange has been performed.
 pub trait KexReusablePrivate:
-    Clone
-    + DeserializeOwned
-    + KexPrivate
-    + Into<Vec<u8>>
-    + Serialize
-    + for<'bytes> TryFrom<&'bytes [u8]>
+    Clone + KexPrivate + MaybeAlloc + MaybeSerde + for<'bytes> TryFrom<&'bytes [u8]>
 where
     for<'privkey> <Self as PrivateKey>::Public: From<&'privkey Self>,
 {
@@ -198,4 +252,22 @@ pub trait Kex {
         + PrivateKey<Public = Self::Public>
         + KexPrivate<Secret = Self::Secret>;
     type Secret: KexSecret;
+}
+
+#[cfg(test)]
+mod test {
+    use alloc::string::ToString;
+    use sha2::Sha256;
+
+    use super::Fingerprint;
+
+    #[test]
+    fn fingerprint_display() {
+        let mut h = [0u8; 32];
+        h.iter_mut().enumerate().for_each(|(i, v)| *v = i as u8);
+
+        let fp = Fingerprint::<Sha256>(h.into());
+
+        assert_eq!(fp.to_string(), "00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f");
+    }
 }

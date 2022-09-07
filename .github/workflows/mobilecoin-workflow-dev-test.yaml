@@ -67,6 +67,11 @@ on:
         type: string
         required: false
         default: 'true'
+      testing_block_v3:
+        description: "Run block v3 tests"
+        type: string
+        required: false
+        default: 'true'
     secrets:
       RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -98,6 +103,7 @@ jobs:
         echo fog_distribution ${{ inputs.fog_distribution }}
         echo testing_block_v0 ${{ inputs.testing_block_v0 }}
         echo testing_block_v2 ${{ inputs.testing_block_v2 }}
+        echo testing_block_v3 ${{ inputs.testing_block_v3 }}
 
   setup-environment:
     runs-on: [self-hosted, Linux, small]
@@ -203,8 +209,8 @@ jobs:
     env:
       SRC_KEYS_DIR: /tmp/sample_data/keys
       SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
-      DST_KEYS_DIR: /tmp/1.2-testing/keys
-      DST_FOG_KEYS_DIR: /tmp/1.2-testing/fog_keys
+      DST_KEYS_DIR: /tmp/2-testing/keys
+      DST_FOG_KEYS_DIR: /tmp/2-testing/fog_keys
       START_KEYS: '494'
       END_KEYS: '499'
     steps:
@@ -345,3 +351,139 @@ jobs:
           /test/fog-test-client.sh \
             --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
             --token-id 1
+
+  testing-block-v3:
+    name: Testing for block version 3 ${{ inputs.testing_block_v3 == 'true' && '(run)' || '(skipped)' }}
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - testing-block-v2
+    env:
+      SRC_KEYS_DIR: /tmp/sample_data/keys
+      SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
+      DST_KEYS_DIR: /tmp/3-testing/keys
+      DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
+      START_KEYS: '494'
+      END_KEYS: '499'
+    steps:
+    - name: Copy subset of non-fog keys
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_KEYS_DIR }} \
+            --dst ${{ env.DST_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Copy subset of fog keys
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_FOG_KEYS_DIR }} \
+            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Test - Minting config tx
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /test/minting-config-tx-test.sh \
+            --token-id 1
+
+    - name: Test - Minting tx
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /test/minting-tx-test.sh \
+            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --token-id 1
+
+    - name: Test - mobilecoind-json integration
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /test/mobilecoind-json-integration-test.sh \
+            --key-dir ${{ env.DST_KEYS_DIR }}
+
+    - name: Test - mint-auditor
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /test/mint-auditor-test.sh \
+            --token-id 1
+
+    - name: Test - use drain_accounts to transfer id 1 balances to fog keys
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /util/drain_accounts.sh \
+            --src ${{ env.DST_KEYS_DIR }} \
+            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --fee 1024 \
+            --token-id 1
+
+    - name: Test - fog-test-client token ids 0,1
+      if: inputs.testing_block_v3 == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /test/fog-test-client.sh \
+            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --token-ids 0,1

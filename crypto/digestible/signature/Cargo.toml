@@ -6,8 +6,14 @@ edition = "2021"
 description = "Digestible Signatures"
 readme = "README.md"
 
+[features]
+alloc = [ "mc-crypto-digestible/alloc" ]
+dalek = [ "mc-crypto-digestible/dalek" ]
+derive = [ "mc-crypto-digestible/derive" ]
+default = [ "alloc", "derive", "dalek" ]
+
 [dependencies]
-mc-crypto-digestible = { path = ".." }
+mc-crypto-digestible = { path = "..", default_features = false }
 
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
 signature = { version = "1.5.0", default-features = false }
