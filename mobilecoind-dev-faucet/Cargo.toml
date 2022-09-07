@@ -17,7 +17,7 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-connection = { path = "../connection" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
-mc-fog-report-validation = { path = "../fog/report/validation" }
+mc-fog-report-resolver = { path = "../fog/report/resolver" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }
