@@ -186,34 +186,34 @@ pub struct TxOutSearchResult {
 /// This is an enum because the options are used to capture which version of
 /// masked amount was serialized.
 #[derive(Clone, Eq, Hash, Oneof, PartialEq)]
-pub enum MaskedTokenId {
+pub enum TxOutAmountMaskedTokenId {
     /// A v1 masked amount's token id bytes.
     /// This is used when the masked amount in the original TxOut has version 1
     /// Note: This tag must match the historical tag used for masked token id
     /// bytes
     #[prost(bytes, tag = "10")]
-    V1(Vec<u8>),
+    TxOutAmountMaskedTokenIdV1(Vec<u8>),
 
     /// A v2 masked amount's token id bytes
     /// This is used when the masked amount in the original TxOut has version 2
     #[prost(bytes, tag = "11")]
-    V2(Vec<u8>),
+    TxOutAmountMaskedTokenIdV2(Vec<u8>),
 }
 
-impl Default for MaskedTokenId {
+impl Default for TxOutAmountMaskedTokenId {
     fn default() -> Self {
-        Self::V2(Default::default())
+        Self::TxOutAmountMaskedTokenIdV2(Default::default())
     }
 }
 
-impl From<&MaskedAmount> for MaskedTokenId {
+impl From<&MaskedAmount> for TxOutAmountMaskedTokenId {
     fn from(src: &MaskedAmount) -> Self {
         match src {
             MaskedAmount::V1(masked_amount) => {
-                MaskedTokenId::V1(masked_amount.masked_token_id.clone())
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(masked_amount.masked_token_id.clone())
             }
             MaskedAmount::V2(masked_amount) => {
-                MaskedTokenId::V2(masked_amount.masked_token_id.clone())
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(masked_amount.masked_token_id.clone())
             }
         }
     }
@@ -277,8 +277,8 @@ pub struct TxOutRecord {
 
     /// The masked token id associated to the amount field in the TxOut that
     /// was recovered
-    #[prost(oneof = "MaskedTokenId", tags = "10, 11")]
-    pub tx_out_amount_masked_token_id: Option<MaskedTokenId>,
+    #[prost(oneof = "TxOutAmountMaskedTokenId", tags = "10, 11")]
+    pub tx_out_amount_masked_token_id: Option<TxOutAmountMaskedTokenId>,
 }
 
 impl TxOutRecord {
@@ -376,7 +376,7 @@ pub struct FogTxOut {
     pub amount_masked_value: u64,
 
     /// The tx out masked token id
-    pub amount_masked_token_id: MaskedTokenId,
+    pub amount_masked_token_id: TxOutAmountMaskedTokenId,
 
     /// The crc32 of the tx out amount commitment bytes
     pub amount_commitment_data_crc32: u32,
@@ -397,7 +397,7 @@ impl TryFrom<&TxOut> for FogTxOut {
             .map_err(|_| FogTxOutError::Amount(AmountError::MissingMaskedAmount))?;
         let amount_masked_value = *masked_amount.get_masked_value();
         let amount_commitment_data_crc32 = masked_amount.commitment_crc32();
-        let amount_masked_token_id = MaskedTokenId::from(masked_amount);
+        let amount_masked_token_id = TxOutAmountMaskedTokenId::from(masked_amount);
         Ok(Self {
             target_key: src.target_key,
             public_key: src.public_key,
@@ -435,7 +435,7 @@ impl FogTxOut {
         // Reconstruct the correct masked amount version, based on which of the oneof
         // proto field was present
         let masked_amount = match &self.amount_masked_token_id {
-            MaskedTokenId::V1(bytes) => {
+            TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(bytes) => {
                 let (masked_amount, _) = MaskedAmount::reconstruct_v1(
                     self.amount_masked_value,
                     bytes,
@@ -444,7 +444,7 @@ impl FogTxOut {
                 .map_err(FogTxOutError::Amount)?;
                 masked_amount
             }
-            MaskedTokenId::V2(bytes) => {
+            TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(bytes) => {
                 let (masked_amount, _) = MaskedAmount::reconstruct_v2(
                     self.amount_masked_value,
                     bytes,
