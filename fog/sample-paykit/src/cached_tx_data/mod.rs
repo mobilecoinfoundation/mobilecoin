@@ -619,7 +619,7 @@ impl CachedTxData {
                     }
                 };
 
-                let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
+                let fog_tx_out_metadata = FogTxOutMetadata {
                     global_index: first_tx_out_global_index + i as u64,
                     block_index: block_data.index,
                     timestamp: block_data.timestamp,
