@@ -317,6 +317,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             } else {
                 self.tombstone_block
             },
+            fractional_outputs: Default::default(),
+            fractional_change: None,
+            max_allowed_change_value: 0,
         };
 
         // Get the tx out indices from the proofs in the input credentials,

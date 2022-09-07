@@ -7,6 +7,7 @@ use alloc::{format, string::String};
 use core::str::Utf8Error;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
+use serde::{Serialize, Deserialize};
 
 /// An error that occurs when creating a new TxOut
 #[derive(Clone, Debug, Display)]
@@ -30,7 +31,7 @@ impl From<NewMemoError> for NewTxError {
 }
 
 /// An error that occurs when handling a TxOut
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Display, Ord, PartialOrd, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TxOutConversionError {
     /// Unknown Masked Amount Version
     UnknownMaskedAmountVersion,

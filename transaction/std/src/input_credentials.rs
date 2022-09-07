@@ -131,6 +131,7 @@ impl From<&InputCredentials> for TxIn {
             ring: input_credential.ring.clone(),
             proofs: input_credential.membership_proofs.clone(),
             input_rules: None,
+            input_rule_verification_data: None,
         }
     }
 }

@@ -3,7 +3,7 @@
 //! Convert to/from external::TxIn.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules};
+use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules, RevealedTxOut, InputRuleVerificationData};
 
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {
@@ -51,10 +51,15 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
             .map(InputRules::try_from)
             .transpose()?;
 
+        let input_rule_verification_data = source.input_rule_verification_data.as_ref()
+            .map(InputRuleVerificationData::try_from)
+            .transpose()?;
+
         let tx_in = tx::TxIn {
             ring,
             proofs,
             input_rules,
+            input_rule_verification_data,
         };
         Ok(tx_in)
     }
@@ -74,6 +79,19 @@ impl From<&InputRules> for external::InputRules {
 
         input_rules.set_max_tombstone_block(source.max_tombstone_block);
 
+        let fractional_outputs = source
+            .fractional_outputs
+            .iter()
+            .map(external::RevealedTxOut::from)
+            .collect();
+        input_rules.set_fractional_outputs(fractional_outputs);
+
+        if let Some(fractional_change) = source.fractional_change.as_ref() {
+            input_rules.set_fractional_change(external::RevealedTxOut::from(fractional_change));
+        }
+
+        input_rules.set_max_allowed_change_value(source.max_allowed_change_value);
+
         input_rules
     }
 }
@@ -89,9 +107,74 @@ impl TryFrom<&external::InputRules> for InputRules {
             .map(tx::TxOut::try_from)
             .collect::<Result<Vec<_>, _>>()?;
         let max_tombstone_block = source.max_tombstone_block;
+        let fractional_outputs = source
+            .fractional_outputs
+            .iter()
+            .map(RevealedTxOut::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        let fractional_change = source.fractional_change.as_ref()
+            .map(RevealedTxOut::try_from)
+            .transpose()?;
+        let max_allowed_change_value = source.max_allowed_change_value;
         Ok(InputRules {
             required_outputs,
             max_tombstone_block,
+            fractional_outputs,
+            fractional_change,
+            max_allowed_change_value,
+        })
+    }
+}
+
+/// Convert InputRuleVerificationData --> external::InputRuleVerificationData.
+impl From<&InputRuleVerificationData> for external::InputRuleVerificationData {
+    fn from(source: &InputRuleVerificationData) -> Self {
+        let mut result = external::InputRuleVerificationData::new();
+
+        let real_output_amount_shared_secrets = source.real_output_amount_shared_secrets.iter().map(|x| x.to_vec()).collect();
+        result.set_real_output_amount_shared_secrets(real_output_amount_shared_secrets);
+
+        result.set_real_change_output_amount_shared_secret(source.real_change_output_amount_shared_secret.clone());
+
+        result
+    }
+}
+
+/// Convert external::InputRuleVerificationData --> InputRuleVerificationData
+impl TryFrom<&external::InputRuleVerificationData> for InputRuleVerificationData {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::InputRuleVerificationData) -> Result<Self, Self::Error> {
+        let real_output_amount_shared_secrets: Vec<Vec<u8>> = source.real_output_amount_shared_secrets.iter().map(|x| x.to_vec()).collect();
+        let real_change_output_amount_shared_secret: Vec<u8> = source.get_real_change_output_amount_shared_secret().to_vec();
+
+        Ok(InputRuleVerificationData {
+            real_output_amount_shared_secrets,
+            real_change_output_amount_shared_secret,
+        })
+    }
+}
+
+/// Convert RevealedTxOut --> external::RevealedTxOut.
+impl From<&RevealedTxOut> for external::RevealedTxOut {
+    fn from(source: &RevealedTxOut) -> Self {
+        let mut result = external::RevealedTxOut::new();
+        result.set_tx_out(external::TxOut::from(&source.tx_out));
+        result.set_amount_shared_secret(source.amount_shared_secret.to_vec());
+        result
+    }
+}
+
+/// Convert external::RevealedTxOut --> RevealedTxOut
+impl TryFrom<&external::RevealedTxOut> for RevealedTxOut {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::RevealedTxOut) -> Result<Self, Self::Error> {
+        let tx_out = tx::TxOut::try_from(source.tx_out.as_ref().ok_or(Self::Error::ObjectMissing)?)?;
+        let amount_shared_secret = source.get_amount_shared_secret().to_vec();
+        Ok(RevealedTxOut {
+            tx_out,
+            amount_shared_secret,
         })
     }
 }
