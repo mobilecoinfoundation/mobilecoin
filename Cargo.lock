@@ -3416,6 +3416,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-ingest-report"
+version = "2.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-attest-verifier",
+ "mc-crypto-keys",
+ "mc-util-encodings",
+ "serde",
+]
+
+[[package]]
 name = "mc-fog-ingest-server"
 version = "2.0.0"
 dependencies = [
@@ -3893,6 +3905,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-report-resolver"
+version = "2.0.0"
+dependencies = [
+ "mc-account-keys",
+ "mc-attest-verifier",
+ "mc-fog-ingest-report",
+ "mc-fog-report-types",
+ "mc-fog-report-validation",
+ "mc-fog-sig",
+ "mc-util-uri",
+ "mockall",
+ "serde",
+]
+
+[[package]]
 name = "mc-fog-report-server"
 version = "2.0.0"
 dependencies = [
@@ -3944,16 +3971,11 @@ version = "2.0.0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
- "mc-attest-core",
- "mc-attest-verifier",
  "mc-crypto-keys",
- "mc-fog-report-types",
  "mc-fog-sig",
- "mc-util-encodings",
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
- "serde",
 ]
 
 [[package]]
@@ -4600,6 +4622,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-connection",
+ "mc-fog-report-resolver",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
