@@ -10,5 +10,5 @@ readme = "README.md"
 cargo-emit = "0.2.1"
 displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
-url = "2.2"
+url = "2.3"
 walkdir = "2.3"
