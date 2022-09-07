@@ -235,6 +235,10 @@ message TxIn {
 
     // Any rules specified by the signed input
     InputRules input_rules = 3;
+
+    // Any additional witness data required to verify that rules have been followed
+    // (MCIP #42)
+    InputRuleVerificationData input_rule_verification_data = 4;
 }
 
 // Rules enforced on a transaction by a signed input within it (MCIP #31)
@@ -246,6 +250,43 @@ message InputRules {
     //
     // A value of zero here means no limit is enforced
     fixed64 max_tombstone_block = 2;
+
+    // Outputs permitted to be filled fractionally instead of fully (MCIP #42)
+    repeated RevealedTxOut fractional_outputs = 3;
+
+    // A change output for any leftover from this input, if a fractional fill occurs (MCIP #42)
+    RevealedTxOut fractional_change = 4;
+
+    // A maximum allowed value for the real change output corresponding to fractional (MCIP #42)
+    // This can be used to enforce a "minimum fill" limit for a swap.
+    // This value is ignored if set to zero.
+    fixed64 max_allowed_change_value = 5;
+}
+
+// A TxOut together with its amount shared secret. This is sometimes needed to
+// properly validate partial fill transactions (MCIP #42).
+message RevealedTxOut {
+    // The TxOut
+    TxOut tx_out = 1;
+    // Amount shared secret. This can be used to see the masked value and token id
+    // and confirm that they match the amount commitment.
+    //
+    // This must be exactly 32 bytes, and should be derived from TxOut shared secret
+    // using domain-separated SHA512 as in transaction-core.
+    bytes amount_shared_secret = 2;
+}
+
+// Additional data corresponding to any InputRules that are needed to validate the rules
+// (See MCIP #42)
+message InputRuleVerificationData {
+    // The amount shared secret of any "real" outputs corresponding to the fractional
+    // output which appear in the input rules. Each must be 32 bytes and should match
+    // to the TxOut in the tx prefix which corresponds to the corresponding fractional output.
+    repeated bytes real_output_amount_shared_secrets = 1;
+
+    // The amount shared secret of the "real" output corresponding to the fractional
+    // change output, if any. Must be exactly 32 bytes if present.
+    bytes real_change_output_amount_shared_secret = 2;
 }
 
 // A transaction that a client submits to consensus

@@ -60,11 +60,26 @@ impl From<Error> for ProposeTxResult {
             Error::MaskedTokenIdNotAllowed => Self::MaskedTokenIdNotAllowed,
             Error::UnsortedOutputs => Self::UnsortedOutputs,
             Error::InputRulesNotAllowed => Self::InputRulesNotAllowed,
-            Error::InputRule(InputRuleError::MissingRequiredOutput) => {
-                Self::InputRuleMissingRequiredOutput
-            }
-            Error::InputRule(InputRuleError::MaxTombstoneBlockExceeded) => {
-                Self::InputRuleMaxTombstoneBlockExceeded
+            Error::InputRule(ir) => {
+                match ir {
+                    InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
+                    InputRuleError::MaxTombstoneBlockExceeded =>
+                        Self::InputRuleMaxTombstoneBlockExceeded,
+                    InputRuleError::FractionalOutputsNotExpected => Self::InputRuleFractionalOutputsNotExpected,
+                    InputRuleError::ChangeOutputSharedSecretNotExpected => Self::InputRuleChangeOutputSharedSecretNotExpected,
+                    InputRuleError::MaxAllowedChangeValueNotExpected => Self::InputRuleMaxAlowedChangeValueNotExpected,
+                    InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
+                    InputRuleError::MissingChangeOutputSharedSecret => Self::InputRuleMissingChangeOutputSharedSecret,
+                    InputRuleError::WrongNumberOfAmountSharedSecrets => Self::InputRuleWrongNumberOfAmountSharedSecrets,
+                    InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
+                    InputRuleError::RealOutputTokenIdMismatch => Self::InputRuleRealOutputTokenIdMismatch,
+                    InputRuleError::RealOutputAmountExceedsFractional => Self::InputRuleRealOutputAmountExceedsFractional,
+                    InputRuleError::RealOutputAmountDoesNotRespectFillFraction => Self::InputRuleRealOutputAmountDoesNotRespectFillFraction,
+                    InputRuleError::RealChangeOutputAmountExceedsLimit => Self::InputRuleRealChangeOutputAmountExceedsLimit,
+                    InputRuleError::InvalidAmountSharedSecret => Self::InputRuleInvalidAmountSharedSecret,
+                    InputRuleError::TxOutConversion(_) => Self::InputRuleTxOutConversion,
+                    InputRuleError::Amount(_) => Self::InputRuleAmount,                    
+                }
             }
             Error::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
         }

@@ -82,6 +82,18 @@ impl MaskedAmount {
         }
     }
 
+    /// Returns the amount underlying the masked amount, given the amount shared
+    /// secret. This only works at v2 and up.
+    pub fn get_value_from_amount_shared_secret(
+        &self,
+        amount_shared_secret: &[u8; 32],
+    ) -> Result<(Amount, Scalar), AmountError> {
+        match &self {
+            Self::V1(_) => Err(AmountError::AmountTooOldForAmountSharedSecret),
+            Self::V2(masked_amount) => masked_amount.get_value_from_amount_shared_secret(amount_shared_secret),
+        }
+    }
+
     /// Get the masked value field
     pub fn get_masked_value(&self) -> &u64 {
         match self {

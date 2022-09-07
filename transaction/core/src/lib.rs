@@ -38,7 +38,7 @@ pub mod validation;
 pub mod proptest_fixtures;
 
 pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
-pub use input_rules::{InputRuleError, InputRules};
+pub use input_rules::{InputRuleError, InputRules, InputRuleVerificationData, RevealedTxOut};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,

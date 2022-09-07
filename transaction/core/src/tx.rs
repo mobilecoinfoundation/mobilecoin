@@ -23,7 +23,7 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
-    input_rules::InputRules,
+    input_rules::{InputRules, InputRuleVerificationData},
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
@@ -252,6 +252,10 @@ pub struct TxIn {
     /// Any rules associated to this input, per MCIP #31
     #[prost(message, tag = "3")]
     pub input_rules: Option<InputRules>,
+
+    /// Any additional data needed to verify the rules, per MCIP #42
+    #[prost(message, tag = "4")]
+    pub input_rule_verification_data: Option<InputRuleVerificationData>,
 }
 
 impl TxIn {
@@ -734,6 +738,7 @@ mod tests {
                 ring: vec![tx_out.clone()],
                 proofs: vec![],
                 input_rules: None,
+                input_rule_verification_data: None,
             };
 
             // TxIn = decode(encode(TxIn))
