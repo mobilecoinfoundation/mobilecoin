@@ -410,7 +410,7 @@ fn select_spendable_tx_outs(
 
                 let (amount, _blinding_factor) = tx_out
                     .get_masked_amount()
-                    .unwrap_or_else(|err| panic!("TX missing masked value: {}", err))
+                    .expect("TxOut missing masked value")
                     .get_value(&shared_secret)
                     .unwrap_or_else(|err| {
                         panic!(
