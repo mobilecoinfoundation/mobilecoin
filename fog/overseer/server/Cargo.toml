@@ -42,7 +42,7 @@ rand_core = "0.6"
 rand_hc = "0.3"
 regex = "1"
 tempdir = "0.3"
-url = "2.2.2"
+url = "2.3.0"
 
 # mc
 mc-attest-net = { path = "../../../attest/net" }
