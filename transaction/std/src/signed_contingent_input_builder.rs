@@ -15,8 +15,8 @@ use mc_transaction_core::{
     ring_ct::OutputSecret,
     ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
-    Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
-    SignedContingentInput, TokenId, UnmaskedAmount,
+    Amount, BlockVersion, InputRules, MaskedAmountV2, MemoContext, MemoPayload, NewMemoError,
+    RevealedTxOut, SignedContingentInput, TokenId, UnmaskedAmount,
 };
 use rand_core::{CryptoRng, RngCore};
 
@@ -42,6 +42,15 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     /// on the tombstone block for any transaction which incorporates the signed
     /// input.)
     tombstone_block: u64,
+    /// The fractional outputs required by the rules for this signed input.
+    fractional_outputs: Vec<RevealedTxOut>,
+    /// The fractional change output where any leftover from a partial fill is
+    /// returned. This is required if partial fill rules are used (MCIP
+    /// #42).
+    fractional_change: Option<RevealedTxOut>,
+    /// The maximum allowed change value, if any. This can be used to create a
+    /// minimum fill amount. (See MCIP #42).
+    maximum_allowed_change_value: u64,
     /// The source of validated fog pubkeys used for this signed contingent
     /// input
     fog_resolver: FPR,
@@ -116,6 +125,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             input_credentials,
             required_outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
+            fractional_outputs: Vec::new(),
+            fractional_change: None,
+            maximum_allowed_change_value: 0u64,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -282,6 +294,173 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         self.tombstone_block = min(self.fog_tombstone_block_limit, self.tombstone_block);
     }
 
+    /// Add a non-change fractional output to the input rules.
+    ///
+    /// If a sender memo credential has been set, this will create an
+    /// authenticated sender memo for the TxOut. Otherwise the memo will be
+    /// unused.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this output
+    /// * `recipient` - The recipient's public address
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_fractional_output<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        // Taking self.memo_builder here means that we can call functions on &mut self,
+        // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
+        let mut mb = self
+            .memo_builder
+            .take()
+            .expect("memo builder is missing, this is a logic error");
+        let result = self.make_fractional_output_with_fog_hint_address(
+            amount,
+            recipient,
+            recipient,
+            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
+            rng,
+        );
+        // Put the memo builder back, BEFORE question mark operator
+        self.memo_builder = Some(mb);
+        let (revealed_tx_out, confirmation_number) = result?;
+        self.fractional_outputs.push(revealed_tx_out.clone());
+        Ok((revealed_tx_out.tx_out, confirmation_number))
+    }
+
+    /// Add a standard change required output to the input rules.
+    ///
+    /// The change output is meant to send any value in the inputs not already
+    /// sent via outputs or fee, back to the sender's address.
+    /// The caller should ensure that the math adds up, and that
+    /// change_value + total_outlays + fee = total_input_value
+    ///
+    /// (Here, outlay means a non-change output).
+    ///
+    /// A change output should be sent to the dedicated change subaddress of the
+    /// sender.
+    ///
+    /// If provided, a Destination memo is attached to this output, which allows
+    /// for recoverable transaction history.
+    ///
+    /// The use of dedicated change subaddress for change outputs allows to
+    /// authenticate the contents of destination memos, which are otherwise
+    /// unauthenticated.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this change output.
+    /// * `change_destination` - An object including both a primary address and
+    ///   a change subaddress to use to create this change output. The primary
+    ///   address is used for the fog hint, the change subaddress owns the
+    ///   change output. These can both be obtained from an account key, but
+    ///   this API does not require the account key.
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_fractional_change_output<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        change_destination: &ReservedSubaddresses,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        if self.fractional_change.is_some() {
+            return Err(TxBuilderError::AlreadyHaveFractionalChange);
+        }
+
+        // Taking self.memo_builder here means that we can call functions on &mut self,
+        // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
+        let mut mb = self
+            .memo_builder
+            .take()
+            .expect("memo builder is missing, this is a logic error");
+        let result = self.make_fractional_output_with_fog_hint_address(
+            amount,
+            &change_destination.change_subaddress,
+            &change_destination.primary_address,
+            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
+            rng,
+        );
+        // Put the memo builder back, BEFORE question mark operator
+        self.memo_builder = Some(mb);
+        let (revealed_tx_out, confirmation_number) = result?;
+        self.fractional_change = Some(revealed_tx_out.clone());
+        Ok((revealed_tx_out.tx_out, confirmation_number))
+    }
+
+    /// Add a required output to the rules, using `fog_hint_address` to
+    /// construct the fog hint.
+    ///
+    /// This is a private implementation detail, and generally, fog users expect
+    /// that the transactions that they receive from fog belong to the account
+    /// that they are using. The only known use-case where recipient and
+    /// fog_hint_address are different is when sending change transactions
+    /// to oneself, when oneself is a fog user. Sending the change to the
+    /// main subaddress means that you don't have to hit fog once for the
+    /// main subaddress and once for the change subaddress, so it cuts the
+    /// number of requests in half.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this output
+    /// * `recipient` - The recipient's public address
+    /// * `fog_hint_address` - The public address used to create the fog hint
+    /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
+    /// * `rng` - RNG used to generate blinding for commitment
+    fn make_fractional_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        fog_hint_address: &PublicAddress,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+        rng: &mut RNG,
+    ) -> Result<(RevealedTxOut, TxOutConfirmationNumber), TxBuilderError> {
+        if !self.block_version.masked_amount_v2_is_supported() {
+            return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
+                *self.block_version,
+                "partial fills",
+            ));
+        }
+
+        let (hint, pubkey_expiry) =
+            crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
+
+        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
+            self.block_version,
+            amount,
+            recipient,
+            hint,
+            memo_fn,
+            rng,
+        )?;
+        self.impose_tombstone_block_limit(pubkey_expiry);
+
+        let amount_shared_secret = MaskedAmountV2::compute_amount_shared_secret(&shared_secret);
+
+        let revealed_tx_out = RevealedTxOut {
+            tx_out,
+            amount_shared_secret: amount_shared_secret.to_vec(),
+        };
+
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+        Ok((revealed_tx_out, confirmation))
+    }
+
+    /// Sets the max allowed change value. This ensures that at least some
+    /// minimum amount of the original input is used, so the signer can
+    /// impose a minimum fill requirement on the counterparty (to prevent
+    /// griefing).
+    ///
+    /// # Arguments
+    /// * `value` - The u64 value which the fractional change output in the
+    ///   filled order must not exceed. This is denominated in the token id of
+    ///   the fractional change output.
+    pub fn set_maximum_allowed_change_value(&mut self, value: u64) -> u64 {
+        self.maximum_allowed_change_value = value;
+        self.maximum_allowed_change_value
+    }
+
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(
         mut self,
@@ -310,6 +489,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.required_outputs_and_secrets.drain(..).unzip();
 
+        self.fractional_outputs
+            .sort_by(|a, b| a.tx_out.public_key.cmp(&b.tx_out.public_key));
+
         let input_rules = InputRules {
             required_outputs: outputs,
             max_tombstone_block: if self.tombstone_block == u64::max_value() {
@@ -317,9 +499,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             } else {
                 self.tombstone_block
             },
-            fractional_outputs: Default::default(),
-            fractional_change: None,
-            max_allowed_change_value: 0,
+            fractional_outputs: self.fractional_outputs,
+            fractional_change: self.fractional_change,
+            max_allowed_change_value: self.maximum_allowed_change_value,
         };
 
         // Get the tx out indices from the proofs in the input credentials,

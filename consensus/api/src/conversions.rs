@@ -15,8 +15,9 @@ use crate::{
 };
 use mc_api::ConversionError;
 use mc_transaction_core::{
-    mint::MintValidationError, validation::TransactionValidationError as Error, BlockVersion,
-    InputRuleError, TokenId,
+    mint::MintValidationError,
+    validation::TransactionValidationError as Error, BlockVersion, InputRuleError,
+    RevealedTxOutError, TokenId,
 };
 
 /// Convert TransactionValidationError --> ProposeTxResult.
@@ -60,28 +61,51 @@ impl From<Error> for ProposeTxResult {
             Error::MaskedTokenIdNotAllowed => Self::MaskedTokenIdNotAllowed,
             Error::UnsortedOutputs => Self::UnsortedOutputs,
             Error::InputRulesNotAllowed => Self::InputRulesNotAllowed,
-            Error::InputRule(ir) => {
-                match ir {
-                    InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
-                    InputRuleError::MaxTombstoneBlockExceeded =>
-                        Self::InputRuleMaxTombstoneBlockExceeded,
-                    InputRuleError::FractionalOutputsNotExpected => Self::InputRuleFractionalOutputsNotExpected,
-                    InputRuleError::ChangeOutputSharedSecretNotExpected => Self::InputRuleChangeOutputSharedSecretNotExpected,
-                    InputRuleError::MaxAllowedChangeValueNotExpected => Self::InputRuleMaxAlowedChangeValueNotExpected,
-                    InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
-                    InputRuleError::MissingChangeOutputSharedSecret => Self::InputRuleMissingChangeOutputSharedSecret,
-                    InputRuleError::WrongNumberOfAmountSharedSecrets => Self::InputRuleWrongNumberOfAmountSharedSecrets,
-                    InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
-                    InputRuleError::RealOutputTokenIdMismatch => Self::InputRuleRealOutputTokenIdMismatch,
-                    InputRuleError::RealOutputAmountExceedsFractional => Self::InputRuleRealOutputAmountExceedsFractional,
-                    InputRuleError::RealOutputAmountDoesNotRespectFillFraction => Self::InputRuleRealOutputAmountDoesNotRespectFillFraction,
-                    InputRuleError::RealChangeOutputAmountExceedsLimit => Self::InputRuleRealChangeOutputAmountExceedsLimit,
-                    InputRuleError::InvalidAmountSharedSecret => Self::InputRuleInvalidAmountSharedSecret,
-                    InputRuleError::TxOutConversion(_) => Self::InputRuleTxOutConversion,
-                    InputRuleError::Amount(_) => Self::InputRuleAmount,                    
-                }
-            }
+            Error::InputRule(ir) => ir.into(),
             Error::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
+        }
+    }
+}
+
+impl From<InputRuleError> for ProposeTxResult {
+    fn from(src: InputRuleError) -> Self {
+        match src {
+            InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
+            InputRuleError::MaxTombstoneBlockExceeded => Self::InputRuleMaxTombstoneBlockExceeded,
+            InputRuleError::FractionalOutputsNotExpected => {
+                Self::InputRuleFractionalOutputsNotExpected
+            }
+            InputRuleError::ChangeOutputSharedSecretNotExpected => {
+                Self::InputRuleChangeOutputSharedSecretNotExpected
+            }
+            InputRuleError::MaxAllowedChangeValueNotExpected => {
+                Self::InputRuleMaxAlowedChangeValueNotExpected
+            }
+            InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
+            InputRuleError::MissingChangeOutputSharedSecret => {
+                Self::InputRuleMissingChangeOutputSharedSecret
+            }
+            InputRuleError::WrongNumberOfAmountSharedSecrets => {
+                Self::InputRuleWrongNumberOfAmountSharedSecrets
+            }
+            InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
+            InputRuleError::RealOutputTokenIdMismatch => Self::InputRuleRealOutputTokenIdMismatch,
+            InputRuleError::RealOutputAmountExceedsFractional => {
+                Self::InputRuleRealOutputAmountExceedsFractional
+            }
+            InputRuleError::RealOutputAmountDoesNotRespectFillFraction => {
+                Self::InputRuleRealOutputAmountDoesNotRespectFillFraction
+            }
+            InputRuleError::RealChangeOutputAmountExceedsLimit => {
+                Self::InputRuleRealChangeOutputAmountExceedsLimit
+            }
+            InputRuleError::RevealedTxOut(rtxo_err) => match rtxo_err {
+                RevealedTxOutError::InvalidAmountSharedSecret => {
+                    Self::InputRuleInvalidAmountSharedSecret
+                }
+                RevealedTxOutError::TxOutConversion(_) => Self::InputRuleTxOutConversion,
+                RevealedTxOutError::Amount(_) => Self::InputRuleAmount,
+            },
         }
     }
 }

@@ -2,7 +2,7 @@
 
 mod util;
 
-use mc_transaction_core::{tx::Tx, BlockVersion, InputRules, InputRuleVerificationData};
+use mc_transaction_core::{tx::Tx, BlockVersion, InputRuleVerificationData, InputRules};
 
 use util::create_test_tx;
 
@@ -32,7 +32,9 @@ fn test_input_rules_verify_required_outputs() {
     });
 
     // Check that the Tx is following input rules (vacuously)
-    get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).unwrap();
+    get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .unwrap();
 
     // Modify the Tx to have some input rules.
     // (This invalidates the signature, but we aren't checking that here)
@@ -44,7 +46,9 @@ fn test_input_rules_verify_required_outputs() {
         .push(first_tx_out);
 
     // Check that the Tx is following input rules (vacuously)
-    get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).unwrap();
+    get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .unwrap();
 
     // Modify the input rules to refer to a non-existent tx out
     *get_first_rules_mut(&mut tx).required_outputs[0]
@@ -52,7 +56,9 @@ fn test_input_rules_verify_required_outputs() {
         .unwrap()
         .get_masked_value_mut() += 1;
 
-    assert!(get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).is_err());
+    assert!(get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .is_err());
 }
 
 // Test that input rules verification is working for max tombstone block rules
@@ -71,7 +77,9 @@ fn test_input_rules_verify_max_tombstone() {
     });
 
     // Check that the Tx is following input rules (vacuously)
-    get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).unwrap();
+    get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .unwrap();
 
     // Declare the tombstone block limit to be one less than the current value.
     tx.prefix.inputs[0].input_rules = Some(InputRules {
@@ -80,11 +88,15 @@ fn test_input_rules_verify_max_tombstone() {
         ..Default::default()
     });
 
-    assert!(get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).is_err());
+    assert!(get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .is_err());
 
     // Set the tombstone block limit to be more permissive, now everything should be
     // good
     get_first_rules_mut(&mut tx).max_tombstone_block = tx.prefix.tombstone_block + 1;
 
-    get_first_rules(&tx).verify(block_version, &tx, &InputRuleVerificationData::default()).unwrap();
+    get_first_rules(&tx)
+        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .unwrap();
 }

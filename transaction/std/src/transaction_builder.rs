@@ -20,8 +20,9 @@ use mc_transaction_core::{
     ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
-    SignedContingentInputError, Token, TokenId,
+    Amount, AmountError, BlockVersion, InputRuleVerificationData, MaskedAmount, MaskedAmountV2,
+    MemoContext, MemoPayload, NewMemoError, RevealedTxOut, RevealedTxOutError,
+    SignedContingentInput, SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -246,9 +247,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         &mut self,
         sci: SignedContingentInput,
     ) -> Result<(), SignedContingentInputError> {
-        // TODO: If there is a block version change that could cause an incompatibility,
-        // we should check for it here, e.g. if sci.block_version differs from
-        // self.block_version
+        if *self.block_version != sci.block_version {
+            return Err(SignedContingentInputError::BlockVersionMismatch(
+                *self.block_version,
+                sci.block_version,
+            ));
+        }
         // Check if the sci already has membership proofs, the caller is supposed to do
         // that
         if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
@@ -280,10 +284,194 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             if rules.max_tombstone_block != 0 {
                 self.impose_tombstone_block_limit(rules.max_tombstone_block);
             }
+            // 3. Check for any partial fill elements. These cannot be used with this API,
+            // the caller must use add_presigned_partial_fill_input instead.
+            if rules.fractional_change.is_some()
+                || !rules.fractional_outputs.is_empty()
+                || rules.max_allowed_change_value != 0
+            {
+                return Err(SignedContingentInputError::PartialFillInputNotAllowedHere);
+            }
         }
 
         self.add_presigned_input_raw(sci);
         Ok(())
+    }
+
+    /// Add a pre-signed Input with partial fill rules to the transaction, also
+    /// fulfilling any requirements imposed by the signed rules, so that our
+    /// transaction will be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appeared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    /// * `sci_change_amount` - The amount of value of the SCI which we are
+    ///   returning to the signer. This determines the "fill fraction" for the
+    ///   partial-fill rules. This will be equal to the
+    ///   real_change_output_amount.
+    ///
+    /// # Returns
+    /// * A list of all outlay amounts deduced to fulfill the fractional output
+    ///   rules
+    pub fn add_presigned_partial_fill_input(
+        &mut self,
+        mut sci: SignedContingentInput,
+        sci_change_amount: Amount,
+    ) -> Result<Vec<Amount>, SignedContingentInputError> {
+        if *self.block_version != sci.block_version {
+            return Err(SignedContingentInputError::BlockVersionMismatch(
+                *self.block_version,
+                sci.block_version,
+            ));
+        }
+        if !self.block_version.masked_amount_v2_is_supported() {
+            return Err(
+                SignedContingentInputError::FeatureNotSupportedAtBlockVersion(
+                    *self.block_version,
+                    "partial fills",
+                ),
+            );
+        }
+        // Check if the sci already has membership proofs, the caller is supposed to do
+        // that
+        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
+            return Err(SignedContingentInputError::MissingProofs);
+        }
+        let rules = sci
+            .tx_in
+            .input_rules
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingRules)?;
+        let fractional_change = rules
+            .fractional_change
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingFractionalChange)?;
+        let fractional_change_amount = fractional_change.reveal_amount()?;
+        if fractional_change_amount.value == 0 {
+            return Err(SignedContingentInputError::ZeroFractionalChange);
+        }
+        if fractional_change_amount.token_id != sci_change_amount.token_id {
+            return Err(SignedContingentInputError::TokenIdMismatch);
+        }
+        if fractional_change_amount.value < sci_change_amount.value {
+            return Err(SignedContingentInputError::ChangeExceededOffer);
+        }
+        if rules.max_allowed_change_value != 0
+            && rules.max_allowed_change_value < sci_change_amount.value
+        {
+            return Err(SignedContingentInputError::ChangeLimitExceeded);
+        }
+
+        let fill_fraction_num = (fractional_change_amount.value - sci_change_amount.value) as u128;
+        let fill_fraction_denom = fractional_change_amount.value as u128;
+
+        // Ensure that we can reveal all amounts
+        let fractional_outputs_and_amounts: Vec<(&RevealedTxOut, Amount)> = rules
+            .fractional_outputs
+            .iter()
+            .map(
+                |r_tx_out| -> Result<(&RevealedTxOut, Amount), RevealedTxOutError> {
+                    let amount = r_tx_out.reveal_amount()?;
+                    Ok((r_tx_out, amount))
+                },
+            )
+            .collect::<Result<_, _>>()?;
+
+        // Fill all fractional outputs to precisely the smallest degree required
+        // This helper function function takes a fractional output value, and returns
+        // num / denom * fractional_output_value, rounded up
+        fn division_helper(fractional_output_value: u64, num: u128, denom: u128) -> u64 {
+            let num_128 = fractional_output_value as u128 * num;
+            // Divide by fill_fraction_denom, rounding up, and truncate to u64
+            ((num_128 + (denom - 1)) / denom) as u64
+        }
+
+        // Add real outputs corresponding to fractional outputs to the list which is
+        // added to tx prefix
+        let real_fractional_amounts = fractional_outputs_and_amounts
+            .into_iter()
+            .map(|(r_tx_out, amount)| -> Result<Amount, AmountError> {
+                let real_amount = Amount::new(
+                    division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
+                    amount.token_id,
+                );
+                let mut real_tx_out = r_tx_out.tx_out.clone();
+
+                // Take the original TxOut and overwrite the masked amount to use the lesser
+                // amount, but with the same amount shared secret as before.
+                let amount_shared_secret: &[u8; 32] = &r_tx_out.amount_shared_secret[..]
+                    .try_into()
+                    .expect("size was checked earlier");
+                let new_masked_amount =
+                    MaskedAmountV2::new_from_amount_shared_secret(amount, amount_shared_secret)?;
+                let (new_amount, blinding) =
+                    new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
+                debug_assert!(real_amount == new_amount);
+
+                real_tx_out.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+
+                let output_secret = OutputSecret {
+                    amount: new_amount,
+                    blinding,
+                };
+
+                self.outputs_and_secrets.push((real_tx_out, output_secret));
+
+                Ok(real_amount)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Create the input rule verification data
+        // Note that all these amount shared secrets have already been validated for
+        // size Note: These are the correct amount shared secrets because we
+        // constructed the new masked amounts for real change and real outputs
+        // from the amount shared secrets for the fractional change and fractional
+        // outputs, so we know these are the correct values
+        let verification_data = InputRuleVerificationData {
+            real_change_output_amount_shared_secret: fractional_change.amount_shared_secret.clone(),
+            real_output_amount_shared_secrets: rules
+                .fractional_outputs
+                .iter()
+                .map(|r_tx_out| r_tx_out.amount_shared_secret.clone())
+                .collect(),
+        };
+
+        // Add the verification data to the sci
+        sci.tx_in.input_rule_verification_data = Some(verification_data);
+
+        // Enforce all non-partial fill rules so that our transaction will be valid
+        if rules.required_outputs.len() != sci.required_output_amounts.len() {
+            return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
+        }
+        // 1. Required outputs
+        for (required_output, unmasked_amount) in rules
+            .required_outputs
+            .iter()
+            .zip(sci.required_output_amounts.iter())
+        {
+            // Check if the required output is already there
+            if !self
+                .outputs_and_secrets
+                .iter()
+                .any(|(output, _sec)| output == required_output)
+            {
+                // If not, add it
+                self.outputs_and_secrets
+                    .push((required_output.clone(), unmasked_amount.clone().into()));
+            }
+        }
+        // 2. Max tombstone block
+        if rules.max_tombstone_block != 0 {
+            self.impose_tombstone_block_limit(rules.max_tombstone_block);
+        }
+
+        self.add_presigned_input_raw(sci);
+        Ok(real_fractional_amounts)
     }
 
     /// Add a pre-signed Input to the transaction, without also fulfilling

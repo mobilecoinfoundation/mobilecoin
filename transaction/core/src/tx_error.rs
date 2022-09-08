@@ -7,7 +7,7 @@ use alloc::{format, string::String};
 use core::str::Utf8Error;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// An error that occurs when creating a new TxOut
 #[derive(Clone, Debug, Display)]
