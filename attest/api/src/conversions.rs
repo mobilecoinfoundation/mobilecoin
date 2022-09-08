@@ -5,7 +5,7 @@
 use crate::attest::{AuthMessage, Message, NonceMessage};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, EnclaveNonceMessage, PeerAuthRequest,
+    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, NonceSession, PeerAuthRequest,
     PeerAuthResponse, Session,
 };
 use mc_crypto_keys::Kex;
@@ -109,24 +109,26 @@ impl<S: Session> From<EnclaveMessage<S>> for Message {
     }
 }
 
-impl<S: Session> From<NonceMessage> for EnclaveNonceMessage<S> {
-    fn from(src: NonceMessage) -> EnclaveNonceMessage<S> {
-        EnclaveNonceMessage {
+impl From<NonceMessage> for EnclaveMessage<NonceSession> {
+    fn from(src: NonceMessage) -> Self {
+        let channel_id = NonceSession::new(src.channel_id, src.nonce);
+        Self {
             aad: src.aad,
-            channel_id: S::from(&src.channel_id),
+            channel_id,
             data: src.data,
-            nonce: src.nonce,
         }
     }
 }
 
-impl<S: Session> From<EnclaveNonceMessage<S>> for NonceMessage {
-    fn from(src: EnclaveNonceMessage<S>) -> NonceMessage {
+impl From<EnclaveMessage<NonceSession>> for NonceMessage {
+    fn from(src: EnclaveMessage<NonceSession>) -> NonceMessage {
         let mut retval = NonceMessage::default();
         retval.set_aad(src.aad);
+        // it doesn't matter if we don't bump the nonce when retrieving it,
+        // src.channel_id will be discarded anyways.
+        retval.set_nonce(src.channel_id.peek_nonce());
         retval.set_channel_id(src.channel_id.into());
         retval.set_data(src.data);
-        retval.set_nonce(src.nonce);
         retval
     }
 }
