@@ -54,11 +54,7 @@ pub struct InputRules {
 
 impl InputRules {
     /// Verify that a Tx conforms to the rules.
-    pub fn verify(
-        &self,
-        _block_version: BlockVersion,
-        tx: &Tx,
-    ) -> Result<(), InputRuleError> {
+    pub fn verify(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         // NOTE: If this function gets too busy, we should split it into several
         // functions NOTE: The tests for this function are in
         // transaction/core/tests/input_rules.rs
@@ -85,10 +81,8 @@ impl InputRules {
                 .find(|x| x.public_key == fractional_change.tx_out.public_key)
                 .ok_or(InputRuleError::MissingRealChangeOutput)?;
             // Let's try to unblind its amount.
-            let real_change_amount = try_reveal_amount(
-                real_change,
-                fractional_change.amount_shared_secret.as_ref()
-            )?;
+            let real_change_amount =
+                try_reveal_amount(real_change, fractional_change.amount_shared_secret.as_ref())?;
 
             // Check the bounds of the real change amount
             if real_change_amount.token_id != fractional_change_amount.token_id {
@@ -126,7 +120,7 @@ impl InputRules {
                 // fractional output (which should be the same)
                 let real_output_amount = try_reveal_amount(
                     real_output,
-                    fractional_output.amount_shared_secret.as_ref()
+                    fractional_output.amount_shared_secret.as_ref(),
                 )?;
 
                 // Check the bounds of the real change amount

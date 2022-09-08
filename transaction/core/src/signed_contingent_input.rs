@@ -129,10 +129,14 @@ impl SignedContingentInput {
             // Check that partial fill rule specs look correct
             if let Some(fractional_change) = rules.fractional_change.as_ref() {
                 let amount = fractional_change.reveal_amount()?;
-                if amount.value == 0 { return Err(SignedContingentInputError::ZeroFractionalChange); }
+                if amount.value == 0 {
+                    return Err(SignedContingentInputError::ZeroFractionalChange);
+                }
                 for fractional_output in rules.fractional_outputs.iter() {
                     let amount = fractional_output.reveal_amount()?;
-                    if amount.value == 0 { return Err(SignedContingentInputError::ZeroFractionalOutput); }
+                    if amount.value == 0 {
+                        return Err(SignedContingentInputError::ZeroFractionalOutput);
+                    }
                 }
             } else {
                 if !rules.fractional_outputs.is_empty() || rules.max_allowed_change_value != 0 {
