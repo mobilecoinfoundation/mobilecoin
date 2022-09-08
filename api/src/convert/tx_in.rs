@@ -1,7 +1,9 @@
 //! Convert to/from external::TxIn.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules, RevealedTxOut, InputRuleVerificationData};
+use mc_transaction_core::{
+    tx, tx::TxOutMembershipProof, InputRuleVerificationData, InputRules, RevealedTxOut,
+};
 
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {
@@ -49,7 +51,9 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
             .map(InputRules::try_from)
             .transpose()?;
 
-        let input_rule_verification_data = source.input_rule_verification_data.as_ref()
+        let input_rule_verification_data = source
+            .input_rule_verification_data
+            .as_ref()
             .map(InputRuleVerificationData::try_from)
             .transpose()?;
 
@@ -110,7 +114,9 @@ impl TryFrom<&external::InputRules> for InputRules {
             .iter()
             .map(RevealedTxOut::try_from)
             .collect::<Result<Vec<_>, _>>()?;
-        let fractional_change = source.fractional_change.as_ref()
+        let fractional_change = source
+            .fractional_change
+            .as_ref()
             .map(RevealedTxOut::try_from)
             .transpose()?;
         let max_allowed_change_value = source.max_allowed_change_value;
@@ -129,10 +135,16 @@ impl From<&InputRuleVerificationData> for external::InputRuleVerificationData {
     fn from(source: &InputRuleVerificationData) -> Self {
         let mut result = external::InputRuleVerificationData::new();
 
-        let real_output_amount_shared_secrets = source.real_output_amount_shared_secrets.iter().map(|x| x.to_vec()).collect();
+        let real_output_amount_shared_secrets = source
+            .real_output_amount_shared_secrets
+            .iter()
+            .map(|x| x.to_vec())
+            .collect();
         result.set_real_output_amount_shared_secrets(real_output_amount_shared_secrets);
 
-        result.set_real_change_output_amount_shared_secret(source.real_change_output_amount_shared_secret.clone());
+        result.set_real_change_output_amount_shared_secret(
+            source.real_change_output_amount_shared_secret.clone(),
+        );
 
         result
     }
@@ -143,8 +155,14 @@ impl TryFrom<&external::InputRuleVerificationData> for InputRuleVerificationData
     type Error = ConversionError;
 
     fn try_from(source: &external::InputRuleVerificationData) -> Result<Self, Self::Error> {
-        let real_output_amount_shared_secrets: Vec<Vec<u8>> = source.real_output_amount_shared_secrets.iter().map(|x| x.to_vec()).collect();
-        let real_change_output_amount_shared_secret: Vec<u8> = source.get_real_change_output_amount_shared_secret().to_vec();
+        let real_output_amount_shared_secrets: Vec<Vec<u8>> = source
+            .real_output_amount_shared_secrets
+            .iter()
+            .map(|x| x.to_vec())
+            .collect();
+        let real_change_output_amount_shared_secret: Vec<u8> = source
+            .get_real_change_output_amount_shared_secret()
+            .to_vec();
 
         Ok(InputRuleVerificationData {
             real_output_amount_shared_secrets,
@@ -168,7 +186,8 @@ impl TryFrom<&external::RevealedTxOut> for RevealedTxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::RevealedTxOut) -> Result<Self, Self::Error> {
-        let tx_out = tx::TxOut::try_from(source.tx_out.as_ref().ok_or(Self::Error::ObjectMissing)?)?;
+        let tx_out =
+            tx::TxOut::try_from(source.tx_out.as_ref().ok_or(Self::Error::ObjectMissing)?)?;
         let amount_shared_secret = source.get_amount_shared_secret().to_vec();
         Ok(RevealedTxOut {
             tx_out,

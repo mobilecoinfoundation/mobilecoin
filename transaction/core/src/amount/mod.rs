@@ -90,7 +90,9 @@ impl MaskedAmount {
     ) -> Result<(Amount, Scalar), AmountError> {
         match &self {
             Self::V1(_) => Err(AmountError::AmountTooOldForAmountSharedSecret),
-            Self::V2(masked_amount) => masked_amount.get_value_from_amount_shared_secret(amount_shared_secret),
+            Self::V2(masked_amount) => {
+                masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)
+            }
         }
     }
 

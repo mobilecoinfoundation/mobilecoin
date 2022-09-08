@@ -23,7 +23,7 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
-    input_rules::{InputRules, InputRuleVerificationData},
+    input_rules::{InputRuleVerificationData, InputRules},
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},

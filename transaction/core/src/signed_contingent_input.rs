@@ -5,7 +5,7 @@
 use crate::{
     ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
-    Amount, TokenId, TxOutConversionError,
+    Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
@@ -128,6 +128,86 @@ impl SignedContingentInput {
 
         Ok(())
     }
+
+    /// When adding an SCI with fractional outputs to a transaction, a fill
+    /// amount must be specified, so that the transation builder knows how
+    /// much of the offer you want to fill.
+    ///
+    /// This function helps to compute that value.
+    /// The transaction builder offers an API where you pass an SCI with partial
+    /// fill rules, and an amount which is the amount of fractional change
+    /// you want to return to the originator. This number implies the fill
+    /// fraction, and the volume of every fractional output in the SCI.
+    ///
+    /// Frequently, the party filling the SCI knows exactly what they want to
+    /// get out of the SCI, and they want to pay the least amount to the
+    /// originator that will get them that. For instance, if there is an SCI
+    /// that offers MOB for Mobile Dollars at some rate via a partial fill
+    /// SCI, the user wants to know how to fill it to get exactly a certain
+    /// amount of MOB. This function will perform that computation. It
+    /// returns the fractional change amount which should be used with the
+    /// transaction builder to get that outcome.
+    ///
+    /// Arguments:
+    /// index - The index of the fractional output that we wish to target
+    /// amount - The amount that we want the real output corresponding to this
+    /// fractional output to have
+    ///
+    /// Returns:
+    /// amount - The smallest amount for the real change output corresponding to
+    /// the fractional change output that will          scale this
+    /// fractional output to at least the desired amount
+    pub fn fill_to_fractional_output_at(
+        &self,
+        index: usize,
+        amount: Amount,
+    ) -> Result<Amount, SignedContingentInputError> {
+        let rules = self
+            .tx_in
+            .input_rules
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingRules)?;
+        let fractional_change = rules
+            .fractional_change
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingFractionalChange)?;
+        let fractional_output = rules
+            .fractional_outputs
+            .get(index)
+            .ok_or(SignedContingentInputError::IndexOutOfBounds)?;
+
+        let fractional_change_amount = fractional_change.reveal_amount()?;
+        let fractional_output_amount = fractional_output.reveal_amount()?;
+
+        if fractional_change_amount.value == 0 {
+            return Err(SignedContingentInputError::ZeroFractionalChange);
+        }
+        if fractional_output_amount.value == 0 {
+            return Err(SignedContingentInputError::ZeroFractionalOutput);
+        }
+        if amount.token_id != fractional_output_amount.token_id {
+            return Err(SignedContingentInputError::TokenIdMismatch);
+        }
+        if amount.value > fractional_output_amount.value {
+            return Err(SignedContingentInputError::ChangeExceededOffer);
+        }
+
+        // The given amount appears to be an amount that we could scale this fractional
+        // output down to. Now we have to scale down the fractional change
+        // correspondingly
+
+        let num = (fractional_output_amount.value - amount.value) as u128;
+        let denom = fractional_output_amount.value as u128;
+
+        // This is rounding down, because, a smaller amount of change ensures a greater
+        // amount of output, so we get greater or equal to the desired amount of
+        // output, as desired.
+        let real_change_val = ((fractional_change_amount.value as u128 * num) / denom) as u64;
+        Ok(Amount::new(
+            real_change_val,
+            fractional_change_amount.token_id,
+        ))
+    }
 }
 
 impl From<SignedContingentInput> for PresignedInputRing {
@@ -184,6 +264,30 @@ pub enum SignedContingentInputError {
     RingSignature(RingSignatureError),
     /// TxOut conversion: {0}
     TxOutConversion(TxOutConversionError),
+    /// Partial fill input not allowed with this API
+    PartialFillInputNotAllowedHere,
+    /// Missing fractional change output
+    MissingFractionalChange,
+    /// Index out of bounds
+    IndexOutOfBounds,
+    /// Fractional change amount was zero
+    ZeroFractionalChange,
+    /// Fractional output amount was zero
+    ZeroFractionalOutput,
+    /// Token id mismatch
+    TokenIdMismatch,
+    /// Change value exceeded offer
+    ChangeExceededOffer,
+    /// Change value exceeded limit imposed by input rules
+    ChangeLimitExceeded,
+    /// Revealing TxOut: {0}
+    RevealedTxOut(RevealedTxOutError),
+    /// Feature is not supported at this block version ({0}): {1}
+    FeatureNotSupportedAtBlockVersion(u32, &'static str),
+    /// Block version mismatch: {0} vs. {1}
+    BlockVersionMismatch(u32, u32),
+    /// Amount: {0}
+    Amount(AmountError),
 }
 
 impl From<RingSignatureError> for SignedContingentInputError {
@@ -195,5 +299,17 @@ impl From<RingSignatureError> for SignedContingentInputError {
 impl From<TxOutConversionError> for SignedContingentInputError {
     fn from(src: TxOutConversionError) -> Self {
         Self::TxOutConversion(src)
+    }
+}
+
+impl From<RevealedTxOutError> for SignedContingentInputError {
+    fn from(src: RevealedTxOutError) -> Self {
+        Self::RevealedTxOut(src)
+    }
+}
+
+impl From<AmountError> for SignedContingentInputError {
+    fn from(src: AmountError) -> Self {
+        Self::Amount(src)
     }
 }

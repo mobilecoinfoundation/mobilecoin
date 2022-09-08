@@ -65,7 +65,15 @@ impl MaskedAmountV2 {
         tx_out_shared_secret: &RistrettoPublic,
     ) -> Result<Self, AmountError> {
         let amount_shared_secret = get_amount_shared_secret(tx_out_shared_secret);
-        let (value_mask, token_id_mask, blinding) = get_blinding_factors(&amount_shared_secret);
+        Self::new_from_amount_shared_secret(amount, &amount_shared_secret)
+    }
+
+    /// Create a new masked amount from an amount and an amount shared secret
+    pub fn new_from_amount_shared_secret(
+        amount: Amount,
+        amount_shared_secret: &[u8; 32],
+    ) -> Result<Self, AmountError> {
+        let (value_mask, token_id_mask, blinding) = get_blinding_factors(amount_shared_secret);
 
         // Pedersen generators
         let generator = generators(*amount.token_id);
@@ -100,6 +108,11 @@ impl MaskedAmountV2 {
     ) -> Result<(Amount, Scalar), AmountError> {
         let amount_shared_secret = get_amount_shared_secret(tx_out_shared_secret);
         self.get_value_from_amount_shared_secret(&amount_shared_secret)
+    }
+
+    /// Get the amount shared secret from the tx out shared secret
+    pub fn compute_amount_shared_secret(tx_out_shared_secret: &RistrettoPublic) -> [u8; 32] {
+        get_amount_shared_secret(tx_out_shared_secret)
     }
 
     /// Returns the amount underlying the masked amount, given the amount shared
