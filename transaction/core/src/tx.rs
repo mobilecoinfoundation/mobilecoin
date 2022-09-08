@@ -268,10 +268,15 @@ impl TxIn {
     ///
     /// The membership proofs are not signed, because it is useful to allow that
     /// someone later may update those proofs. See MCIP #31 for discussion.
+    ///
+    /// The input rule verification data are also not signed, because this is data
+    /// needed for transaction validation which is intended to be provided after
+    /// the originator has signed the contingent input. See MCIP #42 for discussion.
     pub fn signed_digest(&self) -> Option<[u8; 32]> {
         if self.input_rules.is_some() {
             let mut this = self.clone();
             this.proofs.clear();
+            this.input_rule_verification_data = None;
             Some(this.digest32::<MerlinTranscript>(b"mc-input-rules-digest"))
         } else {
             None
