@@ -202,7 +202,9 @@ pub enum TxOutAmountMaskedTokenId {
 
 impl Default for TxOutAmountMaskedTokenId {
     fn default() -> Self {
-        Self::TxOutAmountMaskedTokenIdV2(Default::default())
+        // Note: This must default to empty bytes with tag V1, to support the
+        // backwards compatibility with before masked token id even existed.
+        Self::TxOutAmountMaskedTokenIdV1(Default::default())
     }
 }
 
@@ -315,10 +317,13 @@ impl TxOutRecord {
     /// Note that this discards some metadata (timestamp, block_index,
     /// global_index).
     pub fn get_fog_tx_out(&self) -> Result<FogTxOut, FogTxOutError> {
+        // Note: Unwrap-or-default is used here because in the backwards compat path,
+        // neither v1 nor v2 bytes are present, and that isn't an error, it is supposed
+        // to decode to token id = 0.
         let amount_masked_token_id = self
             .tx_out_amount_masked_token_id
             .clone()
-            .ok_or(FogTxOutError::Amount(AmountError::MissingMaskedAmount))?;
+            .unwrap_or_default();
         Ok(FogTxOut {
             target_key: CompressedRistrettoPublic::try_from(&self.tx_out_target_key_data[..])?,
             public_key: CompressedRistrettoPublic::try_from(&self.tx_out_public_key_data[..])?,
