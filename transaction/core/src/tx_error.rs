@@ -2,21 +2,19 @@
 
 //! Errors that can occur when creating a new TxOut
 
-use crate::{AmountError, BlockVersion, MemoError};
+use crate::{AmountError, MemoError};
 use alloc::{format, string::String};
 use core::str::Utf8Error;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
 
 /// An error that occurs when creating a new TxOut
-#[derive(Debug, Display)]
+#[derive(Clone, Debug, Display)]
 pub enum NewTxError {
     /// Amount: {0}
     Amount(AmountError),
     /// Memo: {0}
     Memo(NewMemoError),
-    /// Token Id not allowed at block version: {0}
-    TokenIdNotAllowedAtBlockVersion(BlockVersion),
 }
 
 impl From<AmountError> for NewTxError {
@@ -31,13 +29,22 @@ impl From<NewMemoError> for NewTxError {
     }
 }
 
+/// An error that occurs when handling a TxOut
+#[derive(Clone, Debug, Display)]
+pub enum TxOutConversionError {
+    /// Unknown Masked Amount Version
+    UnknownMaskedAmountVersion,
+}
+
 /// An error that occurs when view key matching a TxOut
-#[derive(Debug, Display)]
+#[derive(Clone, Debug, Display)]
 pub enum ViewKeyMatchError {
     /// Key: {0}
     Key(KeyError),
     /// Amount: {0}
     Amount(AmountError),
+    /// Unknown Masked Amount Version
+    UnknownMaskedAmountVersion,
 }
 
 impl From<KeyError> for ViewKeyMatchError {
@@ -58,7 +65,7 @@ impl From<AmountError> for ViewKeyMatchError {
 /// We have included error codes for some known useful error conditions.
 /// For a custom MemoBuilder, you can try to reuse those, or use the Other
 /// error code.
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum NewMemoError {
     /// Limits for '{0}' value exceeded
     LimitsExceeded(&'static str),

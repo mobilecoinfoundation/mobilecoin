@@ -728,6 +728,16 @@ impl LedgerDB {
             return Err(Error::InvalidBlockContents);
         }
 
+        // Check that none of the outputs are missing masked amount (or, have a masked
+        // amount we don't understand)
+        if block_contents
+            .outputs
+            .iter()
+            .any(|output| output.get_masked_amount().is_err())
+        {
+            return Err(Error::MissingMaskedAmount);
+        }
+
         // Check that none of the key images were previously spent.
         for key_image in &block_contents.key_images {
             if self

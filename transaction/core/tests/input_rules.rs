@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 mod util;
 
 use mc_transaction_core::{tx::Tx, BlockVersion, InputRules};
@@ -44,9 +46,10 @@ fn test_input_rules_verify_required_outputs() {
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out
-    get_first_rules_mut(&mut tx).required_outputs[0]
-        .masked_amount
-        .masked_value += 1;
+    *get_first_rules_mut(&mut tx).required_outputs[0]
+        .get_masked_amount_mut()
+        .unwrap()
+        .get_masked_value_mut() += 1;
 
     assert!(get_first_rules(&tx).verify(block_version, &tx).is_err());
 }

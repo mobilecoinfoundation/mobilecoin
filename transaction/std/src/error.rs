@@ -5,6 +5,7 @@ use mc_crypto_ring_signature_signer::Error as SignerError;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
     ring_ct::Error as RingCtError, AmountError, NewMemoError, NewTxError, TokenId,
+    TxOutConversionError,
 };
 
 /// An error that can occur when using the TransactionBuilder
@@ -66,6 +67,9 @@ pub enum TxBuilderError {
 
     /// Signer: {0}
     Signer(SignerError),
+
+    /// TxOut Conversion: {0}
+    TxOutConversion(TxOutConversionError),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -119,6 +123,12 @@ impl From<FogPubkeyError> for TxBuilderError {
 impl From<NewMemoError> for TxBuilderError {
     fn from(src: NewMemoError) -> Self {
         TxBuilderError::Memo(src)
+    }
+}
+
+impl From<TxOutConversionError> for TxBuilderError {
+    fn from(src: TxOutConversionError) -> Self {
+        TxBuilderError::TxOutConversion(src)
     }
 }
 

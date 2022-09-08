@@ -229,15 +229,13 @@ mod test {
         logger::{test_with_logger, Logger},
         HashSet,
     };
-    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_ledger_test_infra::{MockEnclave, MockLedger};
     use mc_transaction_core::{
-        encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::Range,
-        onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
         tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-        Amount, MaskedAmount, Token,
+        Amount, BlockVersion, Token,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_grpc::AnonymousAuthenticator;
@@ -250,33 +248,21 @@ mod test {
     fn get_tx_outs(num_tx_outs: u32) -> Vec<TxOut> {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut tx_outs: Vec<TxOut> = Vec::new();
-        let tx_secret_key = RistrettoPrivate::from_random(&mut rng);
         let recipient_account = AccountKey::random(&mut rng);
         let value: u64 = 100;
 
         for output_index in 0..num_tx_outs {
             let recipient_account_default_subaddress = recipient_account.default_subaddress();
-            let target_key =
-                create_tx_out_target_key(&tx_secret_key, &recipient_account_default_subaddress);
-            let public_key = create_tx_out_public_key(
+            let tx_secret_key = RistrettoPrivate::from_random(&mut rng);
+            let amount = Amount::new(value + output_index as u64, Mob::ID);
+            let tx_out = TxOut::new(
+                BlockVersion::ZERO,
+                amount,
+                &recipient_account_default_subaddress,
                 &tx_secret_key,
-                recipient_account_default_subaddress.spend_public_key(),
-            );
-            let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_secret_key);
-            // FIXME: Without a different value, the txouts are identical - that
-            // may be fine, or we may want a more robust mock ledger populator.
-            let amount = Amount {
-                value: value + output_index as u64,
-                token_id: Mob::ID,
-            };
-            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
-            let tx_out = TxOut {
-                masked_amount,
-                target_key: target_key.into(),
-                public_key: public_key.into(),
-                e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
-                e_memo: None,
-            };
+                Default::default(),
+            )
+            .unwrap();
             tx_outs.push(tx_out);
         }
         tx_outs

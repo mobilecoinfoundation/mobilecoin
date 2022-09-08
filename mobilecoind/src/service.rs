@@ -592,7 +592,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
         let (amount, _blinding) = tx_out
-            .masked_amount
+            .get_masked_amount()
+            .map_err(|err| rpc_internal_error("tx_out.get_masked_amount", err, &self.logger))?
             .get_value(&shared_secret)
             .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
 
@@ -3725,7 +3726,11 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                        tx_out
+                            .get_masked_amount()
+                            .unwrap()
+                            .get_value(&shared_secret)
+                            .ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
@@ -3810,7 +3815,11 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                        tx_out
+                            .get_masked_amount()
+                            .unwrap()
+                            .get_value(&shared_secret)
+                            .ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
@@ -4261,7 +4270,11 @@ mod test {
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret =
             get_tx_out_shared_secret(data.account_key.view_private_key(), &tx_public_key);
-        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        let (amount, _blinding) = tx_out
+            .get_masked_amount()
+            .unwrap()
+            .get_value(&shared_secret)
+            .unwrap();
         assert_eq!(amount.value, tx_proposal.outlays[0].value);
         assert_eq!(amount.token_id, Mob::ID);
 
@@ -4338,7 +4351,11 @@ mod test {
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
-        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        let (amount, _blinding) = tx_out
+            .get_masked_amount()
+            .unwrap()
+            .get_value(&shared_secret)
+            .unwrap();
         assert_eq!(amount.value, expected_value);
         assert_eq!(amount.token_id, Mob::ID);
     }
@@ -5286,7 +5303,8 @@ mod test {
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
 
                         let (amount, _blinding) = tx_out
-                            .masked_amount
+                            .get_masked_amount()
+                            .unwrap()
                             .get_value(&shared_secret)
                             .expect("Malformed amount");
 

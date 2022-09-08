@@ -6,6 +6,7 @@ use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData, Signabl
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
     tx::{TxIn, TxOut, TxOutMembershipProof},
+    TxOutConversionError,
 };
 use zeroize::Zeroize;
 
@@ -80,7 +81,7 @@ impl InputCredentials {
             .position(|element| *element == real_input)
             .expect("Must still contain real input");
 
-        let masked_amount = &ring[real_index].masked_amount;
+        let masked_amount = &ring[real_index].get_masked_amount()?;
         let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
 
         let onetime_key_derive_data = onetime_key_derive_data.into();
@@ -109,13 +110,18 @@ impl InputCredentials {
     }
 }
 
-impl From<InputCredentials> for SignableInputRing {
-    fn from(src: InputCredentials) -> SignableInputRing {
-        SignableInputRing {
-            members: src.ring.iter().map(Into::into).collect(),
+impl TryFrom<InputCredentials> for SignableInputRing {
+    type Error = TxOutConversionError;
+    fn try_from(src: InputCredentials) -> Result<SignableInputRing, Self::Error> {
+        Ok(SignableInputRing {
+            members: src
+                .ring
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
             real_input_index: src.real_index,
             input_secret: src.input_secret.clone(),
-        }
+        })
     }
 }
 

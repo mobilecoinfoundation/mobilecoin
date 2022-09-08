@@ -9,6 +9,7 @@ use mc_attest_core::{
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::KeyError;
+use mc_fog_types::view::FogTxOutError;
 use mc_sgx_compat::sync::PoisonError;
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
@@ -18,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can occur when rotating keys in the ingest
 /// enclave
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum RotateKeysError {
     /**
      * We tried to rotate keys when there was an existing rotated key that
@@ -31,7 +32,7 @@ pub enum RotateKeysError {
 }
 
 /// An enumeration of errors which can occur inside an ingest enclave.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// Enclave not initialized
     NotInit,
@@ -87,6 +88,9 @@ pub enum Error {
      * row: capacity was {2}
      */
     ChunkTooBig(usize, usize, u64),
+
+    /// Invalid block data
+    InvalidBlockData(FogTxOutError),
 
     /// Error when rotating keys: {0}
     RotateKeys(RotateKeysError),

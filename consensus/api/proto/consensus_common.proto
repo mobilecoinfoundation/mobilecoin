@@ -92,6 +92,7 @@ enum ProposeTxResult {
     InputRulesNotAllowed = 46;
     InputRuleMissingRequiredOutput = 47;
     InputRuleMaxTombstoneBlockExceeded = 48;
+    UnknownMaskedAmountVersion = 49;
 }
 
 /// Response from TxPropose RPC call.
