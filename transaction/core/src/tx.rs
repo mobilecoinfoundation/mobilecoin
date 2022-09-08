@@ -23,7 +23,7 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
-    input_rules::{InputRuleVerificationData, InputRules},
+    input_rules::{InputRules},
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
@@ -252,10 +252,6 @@ pub struct TxIn {
     /// Any rules associated to this input, per MCIP #31
     #[prost(message, tag = "3")]
     pub input_rules: Option<InputRules>,
-
-    /// Any additional data needed to verify the rules, per MCIP #42
-    #[prost(message, tag = "4")]
-    pub input_rule_verification_data: Option<InputRuleVerificationData>,
 }
 
 impl TxIn {
@@ -268,15 +264,10 @@ impl TxIn {
     ///
     /// The membership proofs are not signed, because it is useful to allow that
     /// someone later may update those proofs. See MCIP #31 for discussion.
-    ///
-    /// The input rule verification data are also not signed, because this is data
-    /// needed for transaction validation which is intended to be provided after
-    /// the originator has signed the contingent input. See MCIP #42 for discussion.
     pub fn signed_digest(&self) -> Option<[u8; 32]> {
         if self.input_rules.is_some() {
             let mut this = self.clone();
             this.proofs.clear();
-            this.input_rule_verification_data = None;
             Some(this.digest32::<MerlinTranscript>(b"mc-input-rules-digest"))
         } else {
             None
@@ -743,7 +734,6 @@ mod tests {
                 ring: vec![tx_out.clone()],
                 proofs: vec![],
                 input_rules: None,
-                input_rule_verification_data: None,
             };
 
             // TxIn = decode(encode(TxIn))

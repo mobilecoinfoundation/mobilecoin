@@ -2,7 +2,7 @@
 
 mod util;
 
-use mc_transaction_core::{tx::Tx, BlockVersion, InputRuleVerificationData, InputRules};
+use mc_transaction_core::{tx::Tx, BlockVersion, InputRules};
 
 use util::create_test_tx;
 
@@ -33,7 +33,7 @@ fn test_input_rules_verify_required_outputs() {
 
     // Check that the Tx is following input rules (vacuously)
     get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .unwrap();
 
     // Modify the Tx to have some input rules.
@@ -47,7 +47,7 @@ fn test_input_rules_verify_required_outputs() {
 
     // Check that the Tx is following input rules (vacuously)
     get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .unwrap();
 
     // Modify the input rules to refer to a non-existent tx out
@@ -57,7 +57,7 @@ fn test_input_rules_verify_required_outputs() {
         .get_masked_value_mut() += 1;
 
     assert!(get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .is_err());
 }
 
@@ -78,7 +78,7 @@ fn test_input_rules_verify_max_tombstone() {
 
     // Check that the Tx is following input rules (vacuously)
     get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .unwrap();
 
     // Declare the tombstone block limit to be one less than the current value.
@@ -89,7 +89,7 @@ fn test_input_rules_verify_max_tombstone() {
     });
 
     assert!(get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .is_err());
 
     // Set the tombstone block limit to be more permissive, now everything should be
@@ -97,6 +97,6 @@ fn test_input_rules_verify_max_tombstone() {
     get_first_rules_mut(&mut tx).max_tombstone_block = tx.prefix.tombstone_block + 1;
 
     get_first_rules(&tx)
-        .verify(block_version, &tx, &InputRuleVerificationData::default())
+        .verify(block_version, &tx)
         .unwrap();
 }

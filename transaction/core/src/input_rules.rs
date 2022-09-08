@@ -52,28 +52,12 @@ pub struct InputRules {
     pub max_allowed_change_value: u64,
 }
 
-/// Additional witness data which may help verify that input rules were
-/// followed. (MCIP #42)
-#[derive(Clone, Digestible, PartialEq, Eq, Message, Serialize, Deserialize)]
-pub struct InputRuleVerificationData {
-    /// Outputs that are required to appear in the Tx prefix for the transaction
-    /// to be valid
-    #[prost(bytes, repeated, tag = "1")]
-    pub real_output_amount_shared_secrets: Vec<Vec<u8>>,
-
-    /// An upper bound on the tombstone block which must be respected for the
-    /// transaction to be valid
-    #[prost(bytes, tag = "2")]
-    pub real_change_output_amount_shared_secret: Vec<u8>,
-}
-
 impl InputRules {
     /// Verify that a Tx conforms to the rules.
     pub fn verify(
         &self,
         _block_version: BlockVersion,
         tx: &Tx,
-        verification_data: &InputRuleVerificationData,
     ) -> Result<(), InputRuleError> {
         // NOTE: If this function gets too busy, we should split it into several
         // functions NOTE: The tests for this function are in
@@ -103,9 +87,7 @@ impl InputRules {
             // Let's try to unblind its amount.
             let real_change_amount = try_reveal_amount(
                 real_change,
-                verification_data
-                    .real_change_output_amount_shared_secret
-                    .as_ref(),
+                fractional_change.amount_shared_secret.as_ref()
             )?;
 
             // Check the bounds of the real change amount
@@ -130,26 +112,21 @@ impl InputRules {
             let fill_fraction_denom = fractional_change_amount.value as u128;
 
             // Verify fractional_outputs
-            if self.fractional_outputs.len()
-                != verification_data.real_output_amount_shared_secrets.len()
-            {
-                return Err(InputRuleError::WrongNumberOfAmountSharedSecrets);
-            }
             for fractional_output in self.fractional_outputs.iter() {
                 // Try to unblind the fractional output amount.
                 let fractional_output_amount = fractional_output.reveal_amount()?;
                 // Let's check if there is a corresponding real output.
-                let (idx, real_output) = tx
+                let real_output = tx
                     .prefix
                     .outputs
                     .iter()
-                    .enumerate()
-                    .find(|(_idx, x)| x.public_key == fractional_change.tx_out.public_key)
+                    .find(|x| x.public_key == fractional_change.tx_out.public_key)
                     .ok_or(InputRuleError::MissingRealOutput)?;
-                // Let's try to unblind its amount.
+                // Let's try to unblind its amount, using amount shared secret from the
+                // fractional output (which should be the same)
                 let real_output_amount = try_reveal_amount(
                     real_output,
-                    verification_data.real_output_amount_shared_secrets[idx].as_ref(),
+                    fractional_output.amount_shared_secret.as_ref()
                 )?;
 
                 // Check the bounds of the real change amount
@@ -187,18 +164,6 @@ impl InputRules {
             if self.max_allowed_change_value != 0 {
                 return Err(InputRuleError::MaxAllowedChangeValueNotExpected);
             }
-            if !verification_data
-                .real_output_amount_shared_secrets
-                .is_empty()
-            {
-                return Err(InputRuleError::WrongNumberOfAmountSharedSecrets);
-            }
-            if !verification_data
-                .real_change_output_amount_shared_secret
-                .is_empty()
-            {
-                return Err(InputRuleError::ChangeOutputSharedSecretNotExpected);
-            }
         }
 
         Ok(())
@@ -214,16 +179,10 @@ pub enum InputRuleError {
     MaxTombstoneBlockExceeded,
     /// Fractional outputs are not expected
     FractionalOutputsNotExpected,
-    /// Change output shared secret is not expected
-    ChangeOutputSharedSecretNotExpected,
     /// Max allowed change value is not expected
     MaxAllowedChangeValueNotExpected,
     /// Missing real change output corresponding to fractional change
     MissingRealChangeOutput,
-    /// Missing change output shared secret
-    MissingChangeOutputSharedSecret,
-    /// There are the wrong number of amount shared secrets
-    WrongNumberOfAmountSharedSecrets,
     /// Missing real output corresponding to fractional output
     MissingRealOutput,
     /// Real output token id did not match fraction output token id

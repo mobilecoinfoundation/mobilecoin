@@ -2,7 +2,7 @@
 
 use crate::{external, ConversionError};
 use mc_transaction_core::{
-    tx, tx::TxOutMembershipProof, InputRuleVerificationData, InputRules, RevealedTxOut,
+    tx, tx::TxOutMembershipProof, InputRules, RevealedTxOut,
 };
 
 /// Convert tx::TxIn --> external::TxIn.
@@ -51,17 +51,10 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
             .map(InputRules::try_from)
             .transpose()?;
 
-        let input_rule_verification_data = source
-            .input_rule_verification_data
-            .as_ref()
-            .map(InputRuleVerificationData::try_from)
-            .transpose()?;
-
         let tx_in = tx::TxIn {
             ring,
             proofs,
             input_rules,
-            input_rule_verification_data,
         };
         Ok(tx_in)
     }
@@ -126,47 +119,6 @@ impl TryFrom<&external::InputRules> for InputRules {
             fractional_outputs,
             fractional_change,
             max_allowed_change_value,
-        })
-    }
-}
-
-/// Convert InputRuleVerificationData --> external::InputRuleVerificationData.
-impl From<&InputRuleVerificationData> for external::InputRuleVerificationData {
-    fn from(source: &InputRuleVerificationData) -> Self {
-        let mut result = external::InputRuleVerificationData::new();
-
-        let real_output_amount_shared_secrets = source
-            .real_output_amount_shared_secrets
-            .iter()
-            .map(|x| x.to_vec())
-            .collect();
-        result.set_real_output_amount_shared_secrets(real_output_amount_shared_secrets);
-
-        result.set_real_change_output_amount_shared_secret(
-            source.real_change_output_amount_shared_secret.clone(),
-        );
-
-        result
-    }
-}
-
-/// Convert external::InputRuleVerificationData --> InputRuleVerificationData
-impl TryFrom<&external::InputRuleVerificationData> for InputRuleVerificationData {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::InputRuleVerificationData) -> Result<Self, Self::Error> {
-        let real_output_amount_shared_secrets: Vec<Vec<u8>> = source
-            .real_output_amount_shared_secrets
-            .iter()
-            .map(|x| x.to_vec())
-            .collect();
-        let real_change_output_amount_shared_secret: Vec<u8> = source
-            .get_real_change_output_amount_shared_secret()
-            .to_vec();
-
-        Ok(InputRuleVerificationData {
-            real_output_amount_shared_secrets,
-            real_change_output_amount_shared_secret,
         })
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    Amount, BlockVersion, InputRuleVerificationData, TokenId,
+    Amount, BlockVersion, TokenId,
 };
 use alloc::{format, vec::Vec};
 use mc_common::HashSet;
@@ -464,17 +464,9 @@ pub fn validate_all_input_rules(
     block_version: BlockVersion,
     tx: &Tx,
 ) -> TransactionValidationResult<()> {
-    // Empty verification data for the case that it is missing
-    // This default allows to simplify the verification code somewhat
-    let empty_verification_data = InputRuleVerificationData::default();
-
     for input in tx.prefix.inputs.iter() {
         if let Some(rules) = input.input_rules.as_ref() {
-            let verification_data = input
-                .input_rule_verification_data
-                .as_ref()
-                .unwrap_or(&empty_verification_data);
-            rules.verify(block_version, tx, verification_data)?;
+            rules.verify(block_version, tx)?;
         }
     }
     Ok(())
