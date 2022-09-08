@@ -75,19 +75,10 @@ impl From<InputRuleError> for ProposeTxResult {
             InputRuleError::FractionalOutputsNotExpected => {
                 Self::InputRuleFractionalOutputsNotExpected
             }
-            InputRuleError::ChangeOutputSharedSecretNotExpected => {
-                Self::InputRuleChangeOutputSharedSecretNotExpected
-            }
             InputRuleError::MaxAllowedChangeValueNotExpected => {
                 Self::InputRuleMaxAlowedChangeValueNotExpected
             }
             InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
-            InputRuleError::MissingChangeOutputSharedSecret => {
-                Self::InputRuleMissingChangeOutputSharedSecret
-            }
-            InputRuleError::WrongNumberOfAmountSharedSecrets => {
-                Self::InputRuleWrongNumberOfAmountSharedSecrets
-            }
             InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
             InputRuleError::RealOutputTokenIdMismatch => Self::InputRuleRealOutputTokenIdMismatch,
             InputRuleError::RealOutputAmountExceedsFractional => {

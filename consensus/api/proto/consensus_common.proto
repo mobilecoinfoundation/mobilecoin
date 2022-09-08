@@ -94,19 +94,16 @@ enum ProposeTxResult {
     InputRuleMaxTombstoneBlockExceeded = 48;
     UnknownMaskedAmountVersion = 49;
     InputRuleFractionalOutputsNotExpected = 50;
-    InputRuleChangeOutputSharedSecretNotExpected = 51;
-    InputRuleMaxAlowedChangeValueNotExpected = 52;
-    InputRuleMissingRealChangeOutput = 53;
-    InputRuleMissingChangeOutputSharedSecret = 54;
-    InputRuleWrongNumberOfAmountSharedSecrets = 55;
-    InputRuleMissingRealOutput = 56;
-    InputRuleRealOutputTokenIdMismatch = 57;
-    InputRuleRealOutputAmountExceedsFractional = 58;
-    InputRuleRealOutputAmountDoesNotRespectFillFraction = 59;
-    InputRuleRealChangeOutputAmountExceedsLimit = 60;
-    InputRuleInvalidAmountSharedSecret = 61;
-    InputRuleTxOutConversion = 62;
-    InputRuleAmount = 63;
+    InputRuleMaxAlowedChangeValueNotExpected = 51;
+    InputRuleMissingRealChangeOutput = 52;
+    InputRuleMissingRealOutput = 53;
+    InputRuleRealOutputTokenIdMismatch = 54;
+    InputRuleRealOutputAmountExceedsFractional = 55;
+    InputRuleRealOutputAmountDoesNotRespectFillFraction = 56;
+    InputRuleRealChangeOutputAmountExceedsLimit = 57;
+    InputRuleInvalidAmountSharedSecret = 58;
+    InputRuleTxOutConversion = 59;
+    InputRuleAmount = 60;
 }
 
 /// Response from TxPropose RPC call.

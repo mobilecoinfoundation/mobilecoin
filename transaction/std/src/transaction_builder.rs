@@ -20,7 +20,7 @@ use mc_transaction_core::{
     ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, AmountError, BlockVersion, InputRuleVerificationData, MaskedAmount, MaskedAmountV2,
+    Amount, AmountError, BlockVersion, MaskedAmount, MaskedAmountV2,
     MemoContext, MemoPayload, NewMemoError, RevealedTxOut, RevealedTxOutError,
     SignedContingentInput, SignedContingentInputError, Token, TokenId,
 };
@@ -320,7 +320,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   rules
     pub fn add_presigned_partial_fill_input(
         &mut self,
-        mut sci: SignedContingentInput,
+        sci: SignedContingentInput,
         sci_change_amount: Amount,
     ) -> Result<Vec<Amount>, SignedContingentInputError> {
         if *self.block_version != sci.block_version {
@@ -425,24 +425,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 Ok(real_amount)
             })
             .collect::<Result<Vec<_>, _>>()?;
-
-        // Create the input rule verification data
-        // Note that all these amount shared secrets have already been validated for
-        // size Note: These are the correct amount shared secrets because we
-        // constructed the new masked amounts for real change and real outputs
-        // from the amount shared secrets for the fractional change and fractional
-        // outputs, so we know these are the correct values
-        let verification_data = InputRuleVerificationData {
-            real_change_output_amount_shared_secret: fractional_change.amount_shared_secret.clone(),
-            real_output_amount_shared_secrets: rules
-                .fractional_outputs
-                .iter()
-                .map(|r_tx_out| r_tx_out.amount_shared_secret.clone())
-                .collect(),
-        };
-
-        // Add the verification data to the sci
-        sci.tx_in.input_rule_verification_data = Some(verification_data);
 
         // Enforce all non-partial fill rules so that our transaction will be valid
         if rules.required_outputs.len() != sci.required_output_amounts.len() {
