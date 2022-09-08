@@ -14,8 +14,6 @@
 
 extern crate alloc;
 
-#[cfg(feature = "automock")]
-use mc_fog_report_validation::MockFogPubkeyResolver;
 use mc_fog_report_validation::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 
 use mc_fog_ingest_report::IngestReportVerifier;
