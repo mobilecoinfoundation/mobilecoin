@@ -527,7 +527,7 @@ jobs:
             --listen-uri insecure-mint-auditor://0.0.0.0:7774/ &
 
           # Give it some time also
-          sleep 5
+          sleep 20
 
           # Authorize minters
           python3 "$SCRIPT_DIR/authorize-minters.py"
