@@ -138,10 +138,8 @@ impl SignedContingentInput {
                         return Err(SignedContingentInputError::ZeroFractionalOutput);
                     }
                 }
-            } else {
-                if !rules.fractional_outputs.is_empty() || rules.max_allowed_change_value != 0 {
-                    return Err(SignedContingentInputError::MissingFractionalChange);
-                }
+            } else if !rules.fractional_outputs.is_empty() || rules.max_allowed_change_value != 0 {
+                return Err(SignedContingentInputError::MissingFractionalChange);
             }
         }
 
