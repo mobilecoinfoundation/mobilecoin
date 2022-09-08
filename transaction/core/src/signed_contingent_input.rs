@@ -108,6 +108,7 @@ impl SignedContingentInput {
                 return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
             }
 
+            // Check that required outputs match their claimed amounts
             for (amount, output) in self
                 .required_output_amounts
                 .iter()
@@ -122,6 +123,20 @@ impl SignedContingentInput {
                 ));
                 if &expected_commitment != output.get_masked_amount()?.commitment() {
                     return Err(SignedContingentInputError::RequiredOutputMismatch);
+                }
+            }
+
+            // Check that partial fill rule specs look correct
+            if let Some(fractional_change) = rules.fractional_change.as_ref() {
+                let amount = fractional_change.reveal_amount()?;
+                if amount.value == 0 { return Err(SignedContingentInputError::ZeroFractionalChange); }
+                for fractional_output in rules.fractional_outputs.iter() {
+                    let amount = fractional_output.reveal_amount()?;
+                    if amount.value == 0 { return Err(SignedContingentInputError::ZeroFractionalOutput); }
+                }
+            } else {
+                if !rules.fractional_outputs.is_empty() || rules.max_allowed_change_value != 0 {
+                    return Err(SignedContingentInputError::MissingFractionalChange);
                 }
             }
         }
