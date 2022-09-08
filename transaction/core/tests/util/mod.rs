@@ -9,6 +9,7 @@ use mc_ledger_db::{
     test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
         create_transaction_with_amount_and_comparer_and_recipients, initialize_ledger,
+        INITIALIZE_LEDGER_AMOUNT
     },
     Ledger, LedgerDB,
 };
@@ -81,11 +82,9 @@ pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     (tx, ledger)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrdering>(
     block_version: BlockVersion,
     amount: u64,
-    fee: u64,
     recipients: &[&PublicAddress],
 ) -> (Tx, LedgerDB) {
     let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
@@ -105,7 +104,7 @@ pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrderi
         &sender,
         recipients,
         amount,
-        fee,
+        INITIALIZE_LEDGER_AMOUNT - amount,
         n_blocks + 1,
         &mut rng,
     );
