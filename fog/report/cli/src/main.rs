@@ -22,7 +22,8 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
 use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_resolver::FogResolver;
-use mc_fog_report_validation::{FogPubkeyResolver, FogReportResponses, FullyValidatedFogPubkey};
+use mc_fog_report_types::FogReportResponses;
+use mc_fog_report_validation::{FogPubkeyResolver, FullyValidatedFogPubkey};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use std::{
