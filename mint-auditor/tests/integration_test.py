@@ -19,6 +19,8 @@ from mobilecoind_api_pb2_grpc import *
 
 logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
 
+# The number of seconds we wait at most for a server to catch up
+TIMEOUT_SECONDS = 120
 
 class MintAuditorClient:
     def __init__(self, address, ssl=False):
@@ -218,7 +220,7 @@ class MintAuditorTest:
     def wait_for_balance(self, monitor_id, token_id, expected_balance):
         """Poll mobilecoind until it has the expected balance"""
 
-        for _ in range(20):
+        for _ in range(TIMEOUT_SECONDS):
             self.mobilecoind_client.wait_for_monitor_to_sync(monitor_id)
 
             # Balance should show up in mobilecoild
@@ -236,7 +238,7 @@ class MintAuditorTest:
         """Wait for the mint auditor to sync to the network block height.
         Return the last block audit data"""
         network_block_index = self.mobilecoind_client.get_network_block_index()
-        for _ in range(20):
+        for _ in range(TIMEOUT_SECONDS):
             response = self.mint_auditor_client.get_last_block_audit_data()
             if response.block_audit_data.block_index == network_block_index:
                 break
