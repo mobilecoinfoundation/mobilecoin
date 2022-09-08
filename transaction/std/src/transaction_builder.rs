@@ -20,9 +20,9 @@ use mc_transaction_core::{
     ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, AmountError, BlockVersion, MaskedAmount, MaskedAmountV2,
-    MemoContext, MemoPayload, NewMemoError, RevealedTxOut, RevealedTxOutError,
-    SignedContingentInput, SignedContingentInputError, Token, TokenId,
+    Amount, AmountError, BlockVersion, MaskedAmount, MaskedAmountV2, MemoContext, MemoPayload,
+    NewMemoError, RevealedTxOut, RevealedTxOutError, SignedContingentInput,
+    SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};

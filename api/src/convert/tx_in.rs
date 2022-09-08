@@ -3,9 +3,7 @@
 //! Convert to/from external::TxIn.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{
-    tx, tx::TxOutMembershipProof, InputRules, RevealedTxOut,
-};
+use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules, RevealedTxOut};
 
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {
