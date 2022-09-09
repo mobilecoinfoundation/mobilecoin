@@ -727,6 +727,7 @@ dependencies = [
  "mc-api",
  "mc-crypto-keys",
  "mc-transaction-std",
+ "rand 0.8.5",
  "wasm-bindgen",
 ]
 
@@ -2338,7 +2339,6 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
- "mc-crypto-rand",
  "mc-sgx-css",
  "mc-sgx-types",
  "mc-util-build-script",
@@ -2349,6 +2349,7 @@ dependencies = [
  "pem",
  "prost",
  "rand 0.8.5",
+ "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "rjson",
  "serde",

@@ -15,5 +15,6 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-transaction-std = { path = "../transaction/std" }
 
 getrandom = { version = "0.2", features = ["js"] }
+rand = { version = "0.8", features = ["getrandom"] }
 hex = "0.4"
 wasm-bindgen = "0.2"
