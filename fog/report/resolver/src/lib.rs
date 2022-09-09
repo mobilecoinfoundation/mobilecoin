@@ -2,13 +2,6 @@
 
 //! Logic for representing fog public keys from the fog-report server
 //! that have been fully validated, and the associated metadata.
-//!
-//! Note: Ideally this crate would be no_std compatible, but that is
-//! aspirational. The ReportResponse object is not no_std right now, and neither
-//! is x509 stuff. This is tracked in FOG-334.
-//! The main reason to make it no_std compatible is to support constructing
-//! mobilecoin transactions with fog recipients on an embedded device like a
-//! tiny hardware wallet, that doesn't have threads and won't have rust std.
 
 #![deny(missing_docs)]
 
