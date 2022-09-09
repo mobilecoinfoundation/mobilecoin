@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use crate::{tx::TxOut, Amount, AmountError, TxOutConversionError};
 use alloc::{
     string::{String, ToString},
