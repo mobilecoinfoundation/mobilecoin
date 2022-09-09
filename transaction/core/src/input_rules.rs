@@ -55,8 +55,8 @@ pub struct InputRules {
 impl InputRules {
     /// Verify that a Tx conforms to the rules.
     pub fn verify(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
-        // NOTE: If this function gets too busy, we should split it into several
-        // functions NOTE: The tests for this function are in
+        // NOTE: If this function gets too busy, we should split it up
+        // NOTE: The tests for this function are in
         // transaction/core/tests/input_rules.rs
 
         // Verify max_tombstone_block

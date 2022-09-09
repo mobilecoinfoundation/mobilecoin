@@ -408,7 +408,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                     .try_into()
                     .expect("size was checked earlier");
                 let new_masked_amount =
-                    MaskedAmountV2::new_from_amount_shared_secret(amount, amount_shared_secret)?;
+                    MaskedAmountV2::new_from_amount_shared_secret(real_amount, amount_shared_secret)?;
                 let (new_amount, blinding) =
                     new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
                 debug_assert!(real_amount == new_amount);
@@ -425,6 +425,29 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 Ok(real_amount)
             })
             .collect::<Result<Vec<_>, _>>()?;
+
+        // Add the real fractional change output
+        {
+            let mut real_change = fractional_change.tx_out.clone();
+
+            let amount_shared_secret: &[u8; 32] = &fractional_change.amount_shared_secret[..]
+                .try_into()
+                .expect("size was checked earlier");
+            let new_masked_amount =
+                MaskedAmountV2::new_from_amount_shared_secret(sci_change_amount, amount_shared_secret)?;
+            let (new_amount, blinding) =
+                new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
+            debug_assert!(sci_change_amount == new_amount);
+
+            real_change.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+
+            let output_secret = OutputSecret {
+                amount: new_amount,
+                blinding,
+            };
+
+            self.outputs_and_secrets.push((real_change, output_secret));
+        }
 
         // Enforce all non-partial fill rules so that our transaction will be valid
         if rules.required_outputs.len() != sci.required_output_amounts.len() {
