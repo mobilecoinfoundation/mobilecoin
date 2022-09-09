@@ -2,6 +2,7 @@ cargo-features = ["named-profiles"]
 
 [workspace]
 members = [
+    "copper-wasm",
     "account-keys",
     "account-keys/slip10",
     "account-keys/types",
