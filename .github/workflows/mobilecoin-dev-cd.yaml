@@ -380,24 +380,18 @@ jobs:
 # Reset existing namespace
 #################################
   dev-reset:
-    runs-on: [self-hosted, Linux, small]
     needs:
     - generate-metadata
-    steps:
-    - name: Reset development namespace
-      if: "! contains(github.event.head_commit.message, '[skip dev-reset]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-reset
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}"
-          }
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: false
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
 
 #######################################
 # Deploy 1.x release to namespace
