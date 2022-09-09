@@ -28,7 +28,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_connection::{
-    Error as ConnectionError, HardcodedCredentialsProvider, RetryError,
+    Error as ConnectionError, HardcodedCredentialsProvider, ProposeTxResult, RetryError,
     RetryableBlockchainConnection, RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
@@ -43,7 +43,6 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    validation::TransactionValidationError,
     Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -644,7 +643,8 @@ fn submit_tx(
                 tries,
             }) => {
                 if let ConnectionError::TransactionValidation(
-                    TransactionValidationError::TombstoneBlockExceeded,
+                    ProposeTxResult::TombstoneBlockExceeded,
+                    _,
                 ) = error
                 {
                     log::debug!(
@@ -653,7 +653,8 @@ fn submit_tx(
                     return false;
                 }
                 if let ConnectionError::TransactionValidation(
-                    TransactionValidationError::ContainsSpentKeyImage,
+                    ProposeTxResult::ContainsSpentKeyImage,
+                    _,
                 ) = error
                 {
                     log::info!(

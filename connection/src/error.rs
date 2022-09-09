@@ -10,7 +10,6 @@ use grpcio::Error as GrpcError;
 use mc_blockchain_types::ConvertError;
 use mc_consensus_api::{consensus_common::ProposeTxResult, ConversionError};
 use mc_crypto_noise::CipherError;
-use mc_transaction_core::validation::TransactionValidationError;
 use std::{array::TryFromSliceError, result::Result as StdResult};
 
 pub type Result<T> = StdResult<T, Error>;
@@ -31,8 +30,8 @@ pub enum Error {
     Cipher(CipherError),
     /// Attestation failure: {0}
     Attestation(Box<dyn AttestationError + 'static>),
-    /// Transaction validation failure: {0}
-    TransactionValidation(TransactionValidationError),
+    /// Transaction validation failure: {0:?}: {1}
+    TransactionValidation(ProposeTxResult, String),
     /// Other error: {0}
     Other(String),
 }
@@ -86,14 +85,6 @@ impl From<ConversionError> for Error {
 impl From<TryFromSliceError> for Error {
     fn from(_src: TryFromSliceError) -> Self {
         ConversionError::ArrayCastError.into()
-    }
-}
-
-impl From<ProposeTxResult> for Error {
-    fn from(src: ProposeTxResult) -> Self {
-        src.try_into()
-            .map(Self::TransactionValidation)
-            .unwrap_or_else(|err| Error::Other(err.into()))
     }
 }
 

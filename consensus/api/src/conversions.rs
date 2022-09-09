@@ -15,8 +15,8 @@ use crate::{
 };
 use mc_api::ConversionError;
 use mc_transaction_core::{
-    mint::MintValidationError, ring_ct, ring_signature::Error as RingSignatureError,
-    validation::TransactionValidationError as Error, BlockVersion, InputRuleError, TokenId,
+    mint::MintValidationError, validation::TransactionValidationError as Error, BlockVersion,
+    InputRuleError, TokenId,
 };
 
 /// Convert TransactionValidationError --> ProposeTxResult.
@@ -67,63 +67,6 @@ impl From<Error> for ProposeTxResult {
                 Self::InputRuleMaxTombstoneBlockExceeded
             }
             Error::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
-        }
-    }
-}
-
-/// Convert ProposeTxResult --> TransactionValidationError.
-impl TryInto<Error> for ProposeTxResult {
-    type Error = &'static str;
-
-    fn try_into(self) -> Result<Error, Self::Error> {
-        match self {
-            Self::Ok => Err("Ok value cannot be convererted into TransactionValidationError"),
-            Self::InputsProofsLengthMismatch => Ok(Error::InputsProofsLengthMismatch),
-            Self::NoInputs => Ok(Error::NoInputs),
-            Self::TooManyInputs => Ok(Error::TooManyInputs),
-            Self::InsufficientInputSignatures => Ok(Error::InsufficientInputSignatures),
-            Self::InvalidInputSignature => Ok(Error::InvalidInputSignature),
-            Self::InvalidTransactionSignature => Ok(Error::InvalidTransactionSignature(
-                ring_ct::Error::RingSignature(RingSignatureError::InvalidSignature),
-            )),
-            Self::InvalidRangeProof => Ok(Error::InvalidRangeProof),
-            Self::InsufficientRingSize => Ok(Error::InsufficientRingSize),
-            Self::TombstoneBlockExceeded => Ok(Error::TombstoneBlockExceeded),
-            Self::TombstoneBlockTooFar => Ok(Error::TombstoneBlockTooFar),
-            Self::NoOutputs => Ok(Error::NoOutputs),
-            Self::TooManyOutputs => Ok(Error::TooManyOutputs),
-            Self::ExcessiveRingSize => Ok(Error::ExcessiveRingSize),
-            Self::DuplicateRingElements => Ok(Error::DuplicateRingElements),
-            Self::UnsortedRingElements => Ok(Error::UnsortedRingElements),
-            Self::UnequalRingSizes => Ok(Error::UnequalRingSizes),
-            Self::UnsortedKeyImages => Ok(Error::UnsortedKeyImages),
-            Self::ContainsSpentKeyImage => Ok(Error::ContainsSpentKeyImage),
-            Self::DuplicateKeyImages => Ok(Error::DuplicateKeyImages),
-            Self::DuplicateOutputPublicKey => Ok(Error::DuplicateOutputPublicKey),
-            Self::ContainsExistingOutputPublicKey => Ok(Error::ContainsExistingOutputPublicKey),
-            Self::MissingTxOutMembershipProof => Ok(Error::MissingTxOutMembershipProof),
-            Self::InvalidTxOutMembershipProof => Ok(Error::InvalidTxOutMembershipProof),
-            Self::InvalidRistrettoPublicKey => Ok(Error::InvalidRistrettoPublicKey),
-            Self::InvalidLedgerContext => Ok(Error::InvalidLedgerContext),
-            Self::Ledger => Ok(Error::Ledger(String::default())),
-            Self::MembershipProofValidationError => Ok(Error::MembershipProofValidationError),
-            Self::TxFeeError => Ok(Error::TxFeeError),
-            Self::KeyError => Ok(Error::KeyError),
-            Self::UnsortedInputs => Ok(Error::UnsortedInputs),
-            Self::MissingMemo => Ok(Error::MissingMemo),
-            Self::MemosNotAllowed => Ok(Error::MemosNotAllowed),
-            Self::TokenNotYetConfigured => Ok(Error::TokenNotYetConfigured),
-            Self::MissingMaskedTokenId => Ok(Error::MissingMaskedTokenId),
-            Self::MaskedTokenIdNotAllowed => Ok(Error::MaskedTokenIdNotAllowed),
-            Self::UnsortedOutputs => Ok(Error::UnsortedOutputs),
-            Self::InputRulesNotAllowed => Ok(Error::InputRulesNotAllowed),
-            Self::InputRuleMissingRequiredOutput => {
-                Ok(Error::InputRule(InputRuleError::MissingRequiredOutput))
-            }
-            Self::InputRuleMaxTombstoneBlockExceeded => {
-                Ok(Error::InputRule(InputRuleError::MaxTombstoneBlockExceeded))
-            }
-            Self::UnknownMaskedAmountVersion => Ok(Error::UnknownMaskedAmountVersion),
         }
     }
 }
