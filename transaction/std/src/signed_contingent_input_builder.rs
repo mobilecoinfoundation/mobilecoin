@@ -2576,7 +2576,11 @@ pub mod tests {
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(amount, &ReservedSubaddresses::from(&originator), &mut rng)
+                .add_fractional_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
                 .unwrap();
 
             builder.set_tombstone_block(2000);
@@ -2600,7 +2604,9 @@ pub mod tests {
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0].tx_out.clone();
+            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+                .tx_out
+                .clone();
 
             validate_tx_out(block_version, &output).unwrap();
 
@@ -2632,11 +2638,17 @@ pub mod tests {
             // Counterparty adds the presigned input, which also adds the fractional outputs
             // Returns 0 fractional change, so the entire offer is consumed.
             sci.tx_in.proofs = proofs;
-            builder.add_presigned_partial_fill_input(sci, Amount::new(0, Mob::ID)).unwrap();
+            builder
+                .add_presigned_partial_fill_input(sci, Amount::new(0, Mob::ID))
+                .unwrap();
 
             // Counterparty keeps the change from token id 2
             builder
-                .add_change_output(Amount::new(200_000, token2), &ReservedSubaddresses::from(&counterparty), &mut rng)
+                .add_change_output(
+                    Amount::new(200_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
                 .unwrap();
 
             // Counterparty keeps the Mob that Originator supplies, less fees
@@ -2673,7 +2685,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's MOB output");
 
@@ -2682,7 +2695,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's T2 output");
 
@@ -2691,7 +2705,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find originator's output");
 
@@ -2709,8 +2724,8 @@ pub mod tests {
             validate_tx_out(block_version, originator_output).unwrap();
             validate_tx_out(block_version, originator_change).unwrap();
 
-            // Counterparty's MOB output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -2730,8 +2745,8 @@ pub mod tests {
                 );
             }
 
-            // Counterparty's T2 change should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -2751,8 +2766,8 @@ pub mod tests {
                 );
             }
 
-            // Originator's T2 output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     originator.view_private_key(),
@@ -2835,7 +2850,11 @@ pub mod tests {
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(amount, &ReservedSubaddresses::from(&originator), &mut rng)
+                .add_fractional_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
                 .unwrap();
 
             builder.set_tombstone_block(2000);
@@ -2859,7 +2878,9 @@ pub mod tests {
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0].tx_out.clone();
+            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+                .tx_out
+                .clone();
 
             validate_tx_out(block_version, &output).unwrap();
 
@@ -2891,17 +2912,26 @@ pub mod tests {
             // Counterparty adds the presigned input, which also adds the fractional outputs
             // Returns 500 millimob fractional change, so half the offer is consumed.
             sci.tx_in.proofs = proofs;
-            builder.add_presigned_partial_fill_input(sci, Amount::new(500 * MILLIMOB_TO_PICOMOB, Mob::ID)).unwrap();
+            builder
+                .add_presigned_partial_fill_input(
+                    sci,
+                    Amount::new(500 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                )
+                .unwrap();
 
             // Counterparty keeps the change from token id 2
             builder
-                .add_change_output(Amount::new(50_000, token2), &ReservedSubaddresses::from(&counterparty), &mut rng)
+                .add_change_output(
+                    Amount::new(50_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
                 .unwrap();
 
             // Counterparty keeps the Mob that Originator supplies, less fees
             builder
                 .add_output(
-                    Amount::new(value/2 - Mob::MINIMUM_FEE, Mob::ID),
+                    Amount::new(value / 2 - Mob::MINIMUM_FEE, Mob::ID),
                     &counterparty.default_subaddress(),
                     &mut rng,
                 )
@@ -2932,7 +2962,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's MOB output");
 
@@ -2941,7 +2972,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's T2 output");
 
@@ -2950,7 +2982,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find originator's output");
 
@@ -2968,8 +3001,8 @@ pub mod tests {
             validate_tx_out(block_version, originator_output).unwrap();
             validate_tx_out(block_version, originator_change).unwrap();
 
-            // Counterparty's MOB output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -2980,7 +3013,7 @@ pub mod tests {
                     .unwrap()
                     .get_value(&ss)
                     .unwrap();
-                assert_eq!(amount, Amount::new(value/2 - Mob::MINIMUM_FEE, Mob::ID));
+                assert_eq!(amount, Amount::new(value / 2 - Mob::MINIMUM_FEE, Mob::ID));
 
                 let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
                 assert_matches!(
@@ -2989,8 +3022,8 @@ pub mod tests {
                 );
             }
 
-            // Counterparty's T2 change should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -3010,8 +3043,8 @@ pub mod tests {
                 );
             }
 
-            // Originator's T2 output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     originator.view_private_key(),
@@ -3043,7 +3076,7 @@ pub mod tests {
                     .unwrap()
                     .get_value(&ss)
                     .unwrap();
-                assert_eq!(amount, Amount::new(value/2, Mob::ID));
+                assert_eq!(amount, Amount::new(value / 2, Mob::ID));
 
                 let memo = originator_change.e_memo.unwrap().decrypt(&ss);
                 assert_matches!(
@@ -3055,7 +3088,8 @@ pub mod tests {
     }
 
     #[test]
-    // Test that a "simple" partial fill signed contingent input is quarter spendable
+    // Test that a "simple" partial fill signed contingent input is quarter
+    // spendable
     fn test_simple_partial_fill_signed_contingent_input_quarter_spendable() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
@@ -3094,7 +3128,11 @@ pub mod tests {
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(amount, &ReservedSubaddresses::from(&originator), &mut rng)
+                .add_fractional_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
                 .unwrap();
 
             builder.set_tombstone_block(2000);
@@ -3118,7 +3156,9 @@ pub mod tests {
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0].tx_out.clone();
+            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+                .tx_out
+                .clone();
 
             validate_tx_out(block_version, &output).unwrap();
 
@@ -3127,7 +3167,8 @@ pub mod tests {
                 subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
             );
 
-            // Counterparty has 100,000 of token id 2, but only wants to give one quarter of it
+            // Counterparty has 100,000 of token id 2, but only wants to give one quarter of
+            // it
             let input_credentials = get_input_credentials(
                 block_version,
                 Amount::new(100_000, token2),
@@ -3148,19 +3189,29 @@ pub mod tests {
             builder.add_input(input_credentials);
 
             // Counterparty adds the presigned input, which also adds the fractional outputs
-            // Returns 750 millimob fractional change, so one quarter of the offer is consumed.
+            // Returns 750 millimob fractional change, so one quarter of the offer is
+            // consumed.
             sci.tx_in.proofs = proofs;
-            builder.add_presigned_partial_fill_input(sci, Amount::new(750 * MILLIMOB_TO_PICOMOB, Mob::ID)).unwrap();
+            builder
+                .add_presigned_partial_fill_input(
+                    sci,
+                    Amount::new(750 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                )
+                .unwrap();
 
             // Counterparty keeps the change from token id 2
             builder
-                .add_change_output(Amount::new(75_000, token2), &ReservedSubaddresses::from(&counterparty), &mut rng)
+                .add_change_output(
+                    Amount::new(75_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
                 .unwrap();
 
             // Counterparty keeps the Mob that Originator supplies, less fees
             builder
                 .add_output(
-                    Amount::new(value/4 - Mob::MINIMUM_FEE, Mob::ID),
+                    Amount::new(value / 4 - Mob::MINIMUM_FEE, Mob::ID),
                     &counterparty.default_subaddress(),
                     &mut rng,
                 )
@@ -3191,7 +3242,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's MOB output");
 
@@ -3200,7 +3252,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find counterparty's T2 output");
 
@@ -3209,7 +3262,8 @@ pub mod tests {
                 .outputs
                 .iter()
                 .find(|tx_out| {
-                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
                 })
                 .expect("Didn't find originator's output");
 
@@ -3227,8 +3281,8 @@ pub mod tests {
             validate_tx_out(block_version, originator_output).unwrap();
             validate_tx_out(block_version, originator_change).unwrap();
 
-            // Counterparty's MOB output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -3239,7 +3293,7 @@ pub mod tests {
                     .unwrap()
                     .get_value(&ss)
                     .unwrap();
-                assert_eq!(amount, Amount::new(value/4 - Mob::MINIMUM_FEE, Mob::ID));
+                assert_eq!(amount, Amount::new(value / 4 - Mob::MINIMUM_FEE, Mob::ID));
 
                 let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
                 assert_matches!(
@@ -3248,8 +3302,8 @@ pub mod tests {
                 );
             }
 
-            // Counterparty's T2 change should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     counterparty.view_private_key(),
@@ -3269,8 +3323,8 @@ pub mod tests {
                 );
             }
 
-            // Originator's T2 output should belong to the correct recipient and have correct
-            // amount and have correct memo
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
             {
                 let ss = get_tx_out_shared_secret(
                     originator.view_private_key(),
@@ -3302,7 +3356,7 @@ pub mod tests {
                     .unwrap()
                     .get_value(&ss)
                     .unwrap();
-                assert_eq!(amount, Amount::new(value/4 * 3, Mob::ID));
+                assert_eq!(amount, Amount::new(value / 4 * 3, Mob::ID));
 
                 let memo = originator_change.e_memo.unwrap().decrypt(&ss);
                 assert_matches!(

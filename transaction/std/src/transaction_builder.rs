@@ -407,8 +407,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 let amount_shared_secret: &[u8; 32] = &r_tx_out.amount_shared_secret[..]
                     .try_into()
                     .expect("size was checked earlier");
-                let new_masked_amount =
-                    MaskedAmountV2::new_from_amount_shared_secret(real_amount, amount_shared_secret)?;
+                let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
+                    real_amount,
+                    amount_shared_secret,
+                )?;
                 let (new_amount, blinding) =
                     new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
                 debug_assert!(real_amount == new_amount);
@@ -433,8 +435,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             let amount_shared_secret: &[u8; 32] = &fractional_change.amount_shared_secret[..]
                 .try_into()
                 .expect("size was checked earlier");
-            let new_masked_amount =
-                MaskedAmountV2::new_from_amount_shared_secret(sci_change_amount, amount_shared_secret)?;
+            let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
+                sci_change_amount,
+                amount_shared_secret,
+            )?;
             let (new_amount, blinding) =
                 new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
             debug_assert!(sci_change_amount == new_amount);
