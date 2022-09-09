@@ -264,7 +264,7 @@ pub fn validate_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
 /// All outputs have no masked token id (new-style TxOuts (Post MCIP #25) are
 /// rejected)
 pub fn validate_that_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
-    if !tx_out.masked_amount.masked_token_id.is_empty() {
+    if !tx_out.get_masked_amount()?.masked_token_id().is_empty() {
         return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
     }
     Ok(())
@@ -273,7 +273,7 @@ pub fn validate_that_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionVal
 /// All outputs have a masked token id (old-style TxOuts (Pre MCIP #25) are
 /// rejected)
 pub fn validate_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
-    if tx_out.masked_amount.masked_token_id.len() != TokenId::NUM_BYTES {
+    if tx_out.get_masked_amount()?.masked_token_id().len() != TokenId::NUM_BYTES {
         return Err(TransactionValidationError::MissingMaskedTokenId);
     }
     Ok(())
@@ -293,9 +293,14 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
-    let rings = tx.prefix.get_input_rings();
+    let rings = tx.prefix.get_input_rings()?;
 
-    let output_commitments = tx.prefix.output_commitments();
+    let output_commitments = tx
+        .prefix
+        .output_commitments()?
+        .into_iter()
+        .cloned()
+        .collect::<Vec<_>>();
 
     let tx_prefix_hash = tx.prefix.hash();
     let message = tx_prefix_hash.as_bytes();

@@ -137,6 +137,7 @@ fn test_ingest_enclave(logger: Logger) {
                 let tx_out_record = bob_fog_credential
                     .decrypt_tx_out_result(tx_rows[idx].payload.clone())
                     .unwrap();
+
                 assert_eq!(tx_out_record.block_index, txs_for_ingest.block_index);
                 assert_eq!(
                     tx_out_record.tx_out_global_index,
@@ -144,7 +145,7 @@ fn test_ingest_enclave(logger: Logger) {
                 );
                 assert_eq!(
                     tx_out_record.get_fog_tx_out().unwrap(),
-                    FogTxOut::from(&tx_outs_for_bob[idx])
+                    FogTxOut::try_from(&tx_outs_for_bob[idx]).unwrap()
                 );
             }
 
@@ -305,7 +306,7 @@ fn test_ingest_enclave_malformed_txos(logger: Logger) {
                 );
                 assert_eq!(
                     tx_out_record.get_fog_tx_out().unwrap(),
-                    FogTxOut::from(&tx_outs[4 * index3])
+                    FogTxOut::try_from(&tx_outs[4 * index3]).unwrap()
                 );
 
                 assert!(
@@ -527,7 +528,7 @@ fn test_ingest_enclave_overflow(logger: Logger) {
                         "{:?} {:?} alice:{} bob:{}",
                         tx_out_record, tx_row, alice_found, bob_found,
                     );
-                    let expected_fog_tx_out = FogTxOut::from(&all_tx_outs[idx]);
+                    let expected_fog_tx_out = FogTxOut::try_from(&all_tx_outs[idx]).unwrap();
                     assert_eq!(
                         tx_out_record.get_fog_tx_out().unwrap(),
                         expected_fog_tx_out,
@@ -567,7 +568,7 @@ fn test_ingest_enclave_overflow(logger: Logger) {
                         "{:?} {:?} alice:{} bob:{}",
                         tx_out_record, tx_row, alice_found, bob_found,
                     );
-                    let expected_fog_tx_out = FogTxOut::from(&all_tx_outs[idx]);
+                    let expected_fog_tx_out = FogTxOut::try_from(&all_tx_outs[idx]).unwrap();
                     assert_eq!(
                         tx_out_record.get_fog_tx_out().unwrap(),
                         expected_fog_tx_out,

@@ -13,7 +13,7 @@ use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
 use mc_transaction_core::{
     validation::TransactionValidationError, AmountError, BlockVersionError,
-    SignedContingentInputError,
+    SignedContingentInputError, TxOutConversionError,
 };
 use mc_transaction_std::{SignedContingentInputBuilderError, TxBuilderError};
 use mc_util_uri::UriParseError;
@@ -32,6 +32,9 @@ pub enum TxOutMatchingError {
 
     /// Error parsing key: {0}
     Key(KeyError),
+
+    /// TxOut conversion error: {0}
+    TxOutConversion(TxOutConversionError),
 
     /// Error decompressing FogTxOut: {0}
     FogTxOut(FogTxOutError),
@@ -55,6 +58,12 @@ impl From<KeyError> for TxOutMatchingError {
 impl From<FogTxOutError> for TxOutMatchingError {
     fn from(src: FogTxOutError) -> Self {
         Self::FogTxOut(src)
+    }
+}
+
+impl From<TxOutConversionError> for TxOutMatchingError {
+    fn from(src: TxOutConversionError) -> Self {
+        Self::TxOutConversion(src)
     }
 }
 

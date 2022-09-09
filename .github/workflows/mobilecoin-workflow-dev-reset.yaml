@@ -13,6 +13,11 @@ on:
         description: "Target Namespace"
         type: string
         required: true
+      delete_namespace:
+        description: "Delete Target Namespace"
+        type: boolean
+        default: false
+        required: false
     secrets:
       RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -98,3 +103,18 @@ jobs:
         aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node3.${NAMESPACE}.development.mobilecoin.com
         aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node4.${NAMESPACE}.development.mobilecoin.com
         aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node5.${NAMESPACE}.development.mobilecoin.com
+
+  delete-namespace:
+    if: inputs.delete_namespace
+    needs:
+    - reset-storage
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Delete namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: namespace-delete
+        namespace: ${{ github.event.inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}

@@ -164,7 +164,7 @@ mod testing {
         assert!(bool::from(success));
 
         // Prep for DB record
-        let fog_txout = FogTxOut::from(&txo);
+        let fog_txout = FogTxOut::try_from(&txo).unwrap();
         let meta = FogTxOutMetadata {
             global_index: 1,
             block_index: 1,
