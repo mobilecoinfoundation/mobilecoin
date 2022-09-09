@@ -5506,6 +5506,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-wasm-test"
+version = "1.3.0-pre0"
+dependencies = [
+ "getrandom 0.2.7",
+ "mc-account-keys",
+ "mc-api",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "rand 0.8.5",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "mc-watcher"
 version = "2.0.0"
 dependencies = [
@@ -8333,21 +8348,6 @@ checksum = "6006f79628dfeb96a86d4db51fbf1344cd7fd8408f06fc9aa3c84913a4789688"
 dependencies = [
  "proc-macro2",
  "quote",
-]
-
-[[package]]
-name = "wasm-test"
-version = "1.3.0-pre0"
-dependencies = [
- "getrandom 0.2.7",
- "mc-account-keys",
- "mc-api",
- "mc-crypto-keys",
- "mc-transaction-core",
- "mc-transaction-std",
- "rand 0.8.5",
- "wasm-bindgen",
- "wasm-bindgen-test",
 ]
 
 [[package]]
