@@ -14,7 +14,7 @@ displaydoc = { version = "0.2", default-features = false }
 hex = "0.4"
 percent-encoding = "2.1.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-url = "2.2"
+url = "2.3"
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }

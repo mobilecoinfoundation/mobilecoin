@@ -69,4 +69,4 @@ mc-util-test-helper = { path = "../../../util/test-helper" }
 rand_core = "0.6"
 rand_hc = "0.3"
 tempdir = "0.3"
-url = "2.2"
+url = "2.3"
