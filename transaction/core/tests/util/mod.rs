@@ -9,7 +9,6 @@ use mc_ledger_db::{
     test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
         create_transaction_with_amount_and_comparer_and_recipients, initialize_ledger,
-        INITIALIZE_LEDGER_AMOUNT
     },
     Ledger, LedgerDB,
 };
@@ -17,6 +16,10 @@ use mc_transaction_core::{tx::Tx, BlockVersion};
 use mc_transaction_core_test_utils::AccountKey;
 use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
 use mc_util_test_helper::{RngType, SeedableRng};
+
+pub use mc_ledger_db::{
+    test_utils::{ INITIALIZE_LEDGER_AMOUNT }};
+
 
 pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
@@ -85,6 +88,7 @@ pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
 pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrdering>(
     block_version: BlockVersion,
     amount: u64,
+    fee: u64,
     recipients: &[&PublicAddress],
 ) -> (Tx, LedgerDB) {
     let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
@@ -104,7 +108,7 @@ pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrderi
         &sender,
         recipients,
         amount,
-        INITIALIZE_LEDGER_AMOUNT - amount,
+        fee,
         n_blocks + 1,
         &mut rng,
     );
