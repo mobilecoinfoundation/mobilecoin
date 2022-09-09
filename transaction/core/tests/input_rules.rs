@@ -143,7 +143,7 @@ fn test_input_rules_verify_fractional_outputs() {
     // Check that the Tx is following input rules (vacuously)
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
-    // We're going to pull the three TxOut's from the TxPrefix, and make
+    // We're going to pull the four TxOut's from the TxPrefix, and make
     // corresponding fractional outputs and fractional change from them, also
     // rewriting their amounts when we do that, to see what happens to the
     // validation routine. In order to do that, we need to get their amount
