@@ -174,6 +174,8 @@ impl SignedContingentInput {
     /// amount - The smallest amount for the real change output corresponding to
     /// the fractional change output that will scale this
     /// fractional output to at least the desired amount
+    ///
+    /// Note: This is tested in tests/signed_contingent_input.rs
     pub fn fill_to_fractional_output_at(
         &self,
         index: usize,
