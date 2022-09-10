@@ -10,7 +10,7 @@ use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};

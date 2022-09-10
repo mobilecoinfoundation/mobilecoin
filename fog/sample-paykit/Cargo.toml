@@ -40,6 +40,7 @@ mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-ledger-connection = { path = "../ledger/connection" }
 mc-fog-ledger-enclave-measurement = { path = "../ledger/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-resolver = { path = "../../fog/report/resolver" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-fog-types =  { path = "../types" }
 mc-fog-uri = { path = "../uri" }

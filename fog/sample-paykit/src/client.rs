@@ -22,8 +22,9 @@ use mc_fog_ledger_connection::{
     FogUntrustedLedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_report_connection::GrpcFogReportConnection;
-use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
-use mc_fog_types::BlockCount;
+use mc_fog_report_resolver::FogResolver;
+use mc_fog_report_validation::{FogPubkeyResolver};
+use mc_fog_types::{BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
