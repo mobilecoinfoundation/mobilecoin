@@ -3233,7 +3233,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-fog-ingest-enclave-measurement",
  "mc-fog-report-connection",
- "mc-fog-report-validation",
+ "mc-fog-report-resolver",
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-transaction-std",
@@ -3414,6 +3414,18 @@ dependencies = [
  "mc-util-build-enclave",
  "mc-util-build-script",
  "mc-util-build-sgx",
+]
+
+[[package]]
+name = "mc-fog-ingest-report"
+version = "2.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-attest-verifier",
+ "mc-crypto-keys",
+ "mc-util-encodings",
+ "serde",
 ]
 
 [[package]]
@@ -3870,6 +3882,8 @@ dependencies = [
  "mc-fog-api",
  "mc-fog-ingest-enclave-measurement",
  "mc-fog-report-connection",
+ "mc-fog-report-resolver",
+ "mc-fog-report-types",
  "mc-fog-report-validation",
  "mc-util-cli",
  "mc-util-keyfile",
@@ -3891,6 +3905,21 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
+]
+
+[[package]]
+name = "mc-fog-report-resolver"
+version = "2.0.0"
+dependencies = [
+ "mc-account-keys",
+ "mc-attest-verifier",
+ "mc-fog-ingest-report",
+ "mc-fog-report-types",
+ "mc-fog-report-validation",
+ "mc-fog-sig",
+ "mc-util-uri",
+ "mockall",
+ "serde",
 ]
 
 [[package]]
@@ -3945,16 +3974,11 @@ version = "2.0.0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
- "mc-attest-core",
- "mc-attest-verifier",
  "mc-crypto-keys",
- "mc-fog-report-types",
  "mc-fog-sig",
- "mc-util-encodings",
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
- "serde",
 ]
 
 [[package]]
@@ -3993,6 +4017,7 @@ dependencies = [
  "mc-fog-ledger-connection",
  "mc-fog-ledger-enclave-measurement",
  "mc-fog-report-connection",
+ "mc-fog-report-resolver",
  "mc-fog-report-validation",
  "mc-fog-types",
  "mc-fog-uri",
@@ -4601,6 +4626,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-connection",
+ "mc-fog-report-resolver",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
@@ -4671,7 +4697,7 @@ dependencies = [
  "mc-connection",
  "mc-consensus-enclave-measurement",
  "mc-crypto-ring-signature-signer",
- "mc-fog-report-validation",
+ "mc-fog-report-resolver",
  "mc-mobilecoind-api",
  "mc-transaction-core",
  "mc-transaction-std",

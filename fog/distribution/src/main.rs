@@ -35,7 +35,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
