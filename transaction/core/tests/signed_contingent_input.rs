@@ -2,17 +2,15 @@
 
 mod util;
 
-use mc_transaction_std::{
-    test_utils::get_input_credentials, EmptyMemoBuilder,
-    ReservedSubaddresses, SignedContingentInputBuilder
-};
-use mc_account_keys::{AccountKey};
+use mc_account_keys::AccountKey;
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
-use mc_fog_report_validation_test_utils::{MockFogResolver};
+use mc_fog_report_validation_test_utils::MockFogResolver;
 use mc_transaction_core::{
-    constants::MILLIMOB_TO_PICOMOB,
-    tokens::Mob,
-    Amount, Token, BlockVersion
+    constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Amount, BlockVersion, Token,
+};
+use mc_transaction_std::{
+    test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
+    SignedContingentInputBuilder,
 };
 use rand::{rngs::StdRng, SeedableRng};
 
@@ -59,18 +57,26 @@ fn test_fill_to_fractional_output_at() {
         sci.validate().unwrap();
 
         // Check what fill amounts are suggested by fill_to_fractional_output_at
-        let suggested_change = sci.fill_to_fractional_output_at(0, Amount::new(50_000, 2.into())).unwrap();
+        let suggested_change = sci
+            .fill_to_fractional_output_at(0, Amount::new(50_000, 2.into()))
+            .unwrap();
         assert_eq!(suggested_change.token_id, Mob::ID);
         assert_eq!(suggested_change.value, value / 2);
 
-        let suggested_change = sci.fill_to_fractional_output_at(0, Amount::new(20_000, 2.into())).unwrap();
+        let suggested_change = sci
+            .fill_to_fractional_output_at(0, Amount::new(20_000, 2.into()))
+            .unwrap();
         assert_eq!(suggested_change.token_id, Mob::ID);
         assert_eq!(suggested_change.value, value * 4 / 5);
 
         // Expect an error if a bad token id is used
-        assert!(sci.fill_to_fractional_output_at(0, Amount::new(20_000, Mob::ID)).is_err());
+        assert!(sci
+            .fill_to_fractional_output_at(0, Amount::new(20_000, Mob::ID))
+            .is_err());
 
         // Expect an error if the index is out of bounds
-        assert!(sci.fill_to_fractional_output_at(1, Amount::new(20_000, Mob::ID)).is_err());
+        assert!(sci
+            .fill_to_fractional_output_at(1, Amount::new(20_000, Mob::ID))
+            .is_err());
     }
 }
