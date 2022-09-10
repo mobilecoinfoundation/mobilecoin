@@ -158,9 +158,9 @@ members = [
     "util/test-helper",
     "util/test-vector",
     "util/uri",
+    "wasm-test",
     "watcher",
     "watcher/api",
-    "wasm-test",
 ]
 exclude = [
     # N.B. for some reason, putting these crates under `exclude` helps with
