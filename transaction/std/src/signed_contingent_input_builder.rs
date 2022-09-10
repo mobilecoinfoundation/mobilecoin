@@ -181,9 +181,6 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// A change output should be sent to the dedicated change subaddress of the
     /// sender.
     ///
-    /// If provided, a Destination memo is attached to this output, which allows
-    /// for recoverable transaction history.
-    ///
     /// The use of dedicated change subaddress for change outputs allows to
     /// authenticate the contents of destination memos, which are otherwise
     /// unauthenticated.
@@ -342,9 +339,6 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///
     /// A change output should be sent to the dedicated change subaddress of the
     /// sender.
-    ///
-    /// If provided, a Destination memo is attached to this output, which allows
-    /// for recoverable transaction history.
     ///
     /// The use of dedicated change subaddress for change outputs allows to
     /// authenticate the contents of destination memos, which are otherwise
