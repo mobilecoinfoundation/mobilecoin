@@ -66,6 +66,8 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build and test the wasm-test crate
+        env:
+          SGX_MODE: HW
         run: wasm-pack test --node wasm-test
 
   lint-rust:
