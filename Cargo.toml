@@ -158,6 +158,7 @@ members = [
     "util/test-helper",
     "util/test-vector",
     "util/uri",
+    "wasm-test",
     "watcher",
     "watcher/api",
 ]
