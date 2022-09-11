@@ -21,6 +21,8 @@ pub enum TargetFamily {
     Unix,
     /// The environment is some form of windows
     Windows,
+    /// The environment is wasm
+    Wasm,
 }
 
 /// An enumeration of errors which can occur while parsing the target family
@@ -38,6 +40,7 @@ impl TryFrom<&str> for TargetFamily {
         match src {
             "unix" => Ok(TargetFamily::Unix),
             "windows" => Ok(TargetFamily::Windows),
+            "wasm" => Ok(TargetFamily::Wasm),
             other => Err(TargetFamilyError::Unknown(other.to_owned())),
         }
     }
