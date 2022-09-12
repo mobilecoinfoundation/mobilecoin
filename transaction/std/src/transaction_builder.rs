@@ -13,16 +13,7 @@ use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::RingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
-use mc_transaction_core::{
-    encrypted_fog_hint::EncryptedFogHint,
-    fog_hint::FogHint,
-    onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs},
-    tokens::Mob,
-    tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
-    SignedContingentInputError, Token, TokenId,
-};
+use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, fog_hint::FogHint, onetime_keys::create_shared_secret, ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData}, tokens::Mob, tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix}, Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput, SignedContingentInputError, Token, TokenId};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use std::cmp::Ordering;
@@ -40,6 +31,19 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
     fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
         a.cmp(b)
     }
+}
+
+/// Signing data for external library
+#[derive(Debug)]
+pub struct TransactionSigningData {
+    pub tx_prefix: TxPrefix,
+
+    /// rings
+    pub rings: Vec<InputRing>,
+
+    /// rings
+    pub signing_data: SigningData,
+
 }
 
 /// Transaction output context is produced by add_output method
@@ -501,6 +505,43 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
     }
 
+    /// Return low level data to sign and construct transactions with external signers
+    pub fn get_signing_data<T: RngCore + CryptoRng>(
+        mut self, rng:
+        &mut T
+    ) -> Result<TransactionSigningData, TxBuilderError> {
+        let (
+            inputs,
+            outputs,
+            output_secrets
+        ) = self.prepare_for_signing::<DefaultTxOutputsOrdering>()?;
+
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
+
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<InputRing>, _>>()?;
+
+        let message = tx_prefix.hash().0;
+
+        let signing_data = SignatureRctBulletproofs::get_signing_data(
+            self.block_version,
+            &message,
+            &input_rings,
+            &output_secrets,
+            self.fee,
+            rng,
+        )?;
+
+        Ok(TransactionSigningData {
+            tx_prefix,
+            rings: input_rings,
+            signing_data
+        })
+    }
+
     /// Consume the builder and return the transaction with a comparer.
     /// Used only in testing library.
     #[cfg(feature = "test-only")]
@@ -527,6 +568,34 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
+        let (inputs, outputs, output_secrets) = self.prepare_for_signing::<O>().unwrap();
+
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
+
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<InputRing>, _>>()?;
+
+        let message = tx_prefix.hash().0;
+        let signature = SignatureRctBulletproofs::sign(
+            self.block_version,
+            &message,
+            &input_rings,
+            &output_secrets,
+            self.fee,
+            ring_signer,
+            rng,
+        )?;
+
+        Ok(Tx {
+            prefix: tx_prefix,
+            signature,
+        })
+    }
+
+    fn prepare_for_signing<O: TxOutputsOrdering>(&mut self) -> Result<(Vec<TxIn>, Vec<TxOut>, Vec<OutputSecret>), TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -612,29 +681,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.outputs_and_secrets.drain(..).unzip();
 
-        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
-
-        let input_rings = self
-            .input_materials
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<InputRing>, _>>()?;
-
-        let message = tx_prefix.hash().0;
-        let signature = SignatureRctBulletproofs::sign(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            ring_signer,
-            rng,
-        )?;
-
-        Ok(Tx {
-            prefix: tx_prefix,
-            signature,
-        })
+        Ok((inputs, outputs, output_secrets))
     }
 }
 

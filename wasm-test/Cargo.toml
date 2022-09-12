@@ -15,6 +15,7 @@ mc-api = { path = "../api" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer"}
 
 # These are required since they enable feature flags needed for wasm builds
 getrandom = { version = "0.2", features = ["js"] }

@@ -5513,6 +5513,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-crypto-keys",
+ "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-std",
  "rand 0.8.5",

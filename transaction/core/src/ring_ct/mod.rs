@@ -10,6 +10,6 @@ pub use self::{
     error::Error,
     generator_cache::GeneratorCache,
     rct_bulletproofs::{
-        InputRing, OutputSecret, PresignedInputRing, SignatureRctBulletproofs, SignedInputRing,
+        InputRing, OutputSecret, PresignedInputRing, SignatureRctBulletproofs, SignedInputRing, SigningData
     },
 };
