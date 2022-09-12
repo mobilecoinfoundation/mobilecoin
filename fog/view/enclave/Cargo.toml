@@ -34,7 +34,7 @@ mc-fog-view-enclave-measurement = { path = "./measurement" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 tempdir = "0.3"
 
 mc-fog-test-infra = { path = "../../test_infra" }

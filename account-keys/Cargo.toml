@@ -31,7 +31,7 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 
 mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
 mc-util-test-helper = { path = "../util/test-helper" }
