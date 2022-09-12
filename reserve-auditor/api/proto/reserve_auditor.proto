@@ -1,0 +1,156 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+
+// Reserve auditor client data types and service descriptors.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "external.proto";
+
+package reserve_auditor;
+
+
+option java_package = "com.mobilecoin.reserve_auditor";
+option java_outer_classname = "ReserveAuditor";
+
+service ReserveAuditorApi {
+    rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
+    rpc GetLastBlockAuditData(google.protobuf.Empty) returns (GetLastBlockAuditDataResponse) {}
+    rpc GetCounters(google.protobuf.Empty) returns (Counters) {}
+}
+
+/// A Gnosis Safe transaction.
+message GnosisSafeTx {
+    /// The Ethererum transaction hash.
+    string eth_tx_hash = 1;
+
+    /// The raw JSON transaction, as received from the Gnosis API service.
+    string raw_tx_json = 2;
+}
+
+/// A Gnosis Safe deposit (transfer into the safe).
+message GnosisSafeDeposit {
+    /// Database id.
+    int32 id = 1;
+
+    /// Ethereum transaction hash.
+    string eth_tx_hash = 2;
+
+    /// Ethereum block number.
+    uint64 eth_block_number = 3;
+
+    /// Safe address.
+    string safe_addr = 4;
+
+    /// The token address.
+    string token_addr = 5;
+
+    /// The amount being transferred.
+    uint64 amount = 6;
+
+    /// Expected nonce of the matching MintTx.
+    string expected_mc_mint_tx_nonce_hex = 7;
+}
+
+/// A Gnosis Safe withdrawal (transfer out of the safe).
+message GnosisSafeWithdrawal {
+    /// Database id.
+    int32 id = 1;
+
+    /// Ethereum transaction hash.
+    string eth_tx_hash = 2;
+
+    /// Ethereum block number.
+    uint64 eth_block_number = 3;
+
+    /// Safe address
+    string safe_addr = 4;
+
+    /// Token address.
+    string token_addr = 5;
+
+    /// The amount being transferred.
+    uint64 amount = 6;
+
+    /// Associated MobileCoin TxOut public key.
+    external.CompressedRistretto mc_tx_out_pub_key = 7;
+}
+
+/// Audit data for a single mint transaction.
+message AuditedMintTx {
+    /// The actual MintTx.
+    external.MintTx mint_tx = 1;
+
+    /// Matching Gnosis Safe deposit.
+    GnosisSafeDeposit gnosis_safe_deposit = 2;
+}
+
+/// Audit data for a single block.
+message BlockAuditData {
+    // The block index this audit data is for.
+    uint64 block_index = 1;
+
+    // Current balance in circulation (excluding MOB).
+    map<uint64, uint64> balances = 2;
+}
+
+/// Statistics we keep track of.
+message Counters {
+    /// Number of blocks we've synced so far.
+    uint64 num_blocks_synced = 1;
+
+    // Number of times we've encountered a burn that exceeds the calculated balance.
+    uint64 num_burns_exceeding_balance = 2;
+
+    // Number of `MintTx`s that did not match an active mint config.
+    uint64 num_mint_txs_without_matching_mint_config = 3;
+
+    // Number of mismatching MintTxs and Gnosis deposits.
+    uint64 num_mismatching_mints_and_deposits = 4;
+
+    // Number of mismatching BurnTxOuts and Gnosis withdrawals.
+    uint64 num_mismatching_burns_and_withdrawals = 5;
+
+    // Number of times we encountered deposits to an unknown Ethereum token
+    // contract address.
+    uint64 num_unknown_ethereum_token_deposits = 6;
+
+    // Number of times we encountered withdrawals from an unknown Ethereum token
+    // contract address.
+    uint64 num_unknown_ethereum_token_withdrawals = 7;
+
+    // Number of times we encountered a mint that is associated with an unaudited safe.
+    uint64 num_mints_to_unknown_safe = 8;
+
+    // Number of times we encountered a burn that is associated with an unaudited safe.
+    uint64 num_burns_from_unknown_safe = 9;
+
+    // Number of unexpected errors attempting to match deposits to mints.
+    uint64 num_unexpected_errors_matching_deposits_to_mints = 10;
+
+    // Number of unexpected errors attempting to match mints to deposits.
+    uint64 num_unexpected_errors_matching_mints_to_deposits = 11;
+
+    // Number of unexpected errors attempting to match withdrawals to burns.
+    uint64 num_unexpected_errors_matching_withdrawals_to_burns = 12;
+
+    // Number of unexpected errors attempting to match burns to withdrawals.
+    uint64 num_unexpected_errors_matching_burns_to_withdrawals = 13;
+}
+
+message GetBlockAuditDataRequest {
+    // The block index we are getting data for.
+    uint64 block_index = 1;
+}
+
+message GetBlockAuditDataResponse {
+    // Audit data for the requested block
+    BlockAuditData block_audit_data = 1;
+}
+
+
+message GetLastBlockAuditDataResponse {
+    // Audit data for the last block
+    BlockAuditData block_audit_data = 1;
+}
