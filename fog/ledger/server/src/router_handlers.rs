@@ -2,7 +2,7 @@
 
 use crate::error::{router_server_err_to_rpc_status, RouterServerError};
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
-use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
+use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
 use mc_common::{logger::Logger, ResponderId};
@@ -16,7 +16,7 @@ use mc_fog_api::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 //use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
-use mc_util_grpc::rpc_invalid_arg_error;
+use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 #[allow(dead_code)] //FIXME
@@ -239,14 +239,12 @@ where
             break;
         }
 
-        /* TODO pending ledger router code enclave-side.
-
         authenticate_ledger_stores(
             enclave.clone(),
             processed_shard_response_data.store_uris_for_authentication,
             logger.clone(),
         )
-        .await?;*/
+        .await?;
     }
 
     // TODO: Collate the query_responses into one response for the client. Make an
@@ -277,14 +275,12 @@ async fn query_shard(
     Ok((shard_client, response))
 }
 
-/* TODO pending ledger router code enclave-side.
-
 // Authenticates Fog Ledger Stores that have previously not been authenticated.
 async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
     enclave: E,
-    ledger_store_uris: Vec<LedgerStoreUri>,
+    ledger_store_uris: Vec<KeyImageStoreUri>,
     logger: Logger,
-) -> Result<(), RpcStatus> {
+) -> Result<Vec<()>, RpcStatus> {
     let pending_auth_requests = ledger_store_uris
         .into_iter()
         .map(|store_uri| authenticate_ledger_store(enclave.clone(), store_uri, logger.clone()));
@@ -296,31 +292,31 @@ async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
             logger.clone(),
         )
     })
-    Ok(())
 }
 
 // Authenticates a Fog Ledger Store that has previously not been authenticated.
 async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     enclave: E,
-    ledger_store_url: LedgerStoreUri,
+    ledger_store_url: KeyImageStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
     let ledger_store_id = ResponderId::from_str(&ledger_store_url.to_string())?;
-    let client_auth_request = enclave.ledger_store_init(ledger_store_id.clone())?;
+    let client_auth_request = enclave.connect_to_key_image_store(ledger_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("authenticate-ledger-store".to_string())
             .build(),
     );
     let ledger_store_client = KeyImageStoreApiClient::new(
-        ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&ledger_store_url, &logger),
+        ChannelBuilder::default_channel_builder(grpc_env)
+            .connect_to_uri(&ledger_store_url, &logger),
     );
 
     let auth_unary_receiver = ledger_store_client.auth_async(&client_auth_request.into())?;
     let auth_response = auth_unary_receiver.await?;
 
-    let result = enclave.ledger_store_connect(ledger_store_id, auth_response.into())?;
+    let result =
+        enclave.finish_connecting_to_key_image_store(ledger_store_id, auth_response.into())?;
 
     Ok(result)
 }
-*/
