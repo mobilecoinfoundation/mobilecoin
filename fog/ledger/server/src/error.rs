@@ -1,10 +1,11 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use displaydoc::Display;
 use grpcio::RpcStatus;
 use mc_common::logger::Logger;
 use mc_fog_ledger_enclave_api::Error as LedgerEnclaveError;
 use mc_sgx_report_cache_untrusted::Error as ReportCacheError;
 use mc_util_grpc::{rpc_internal_error, rpc_permissions_error};
-
 
 #[derive(Debug, Display)]
 pub enum RouterServerError {
@@ -32,6 +33,12 @@ impl From<mc_util_uri::UriParseError> for RouterServerError {
     }
 }
 
+impl From<mc_util_uri::UriConversionError> for RouterServerError {
+    fn from(src: mc_util_uri::UriConversionError) -> Self {
+        RouterServerError::LedgerStoreError(format!("{}", src))
+    }
+}
+
 #[allow(dead_code)] //FIXME
 pub fn router_server_err_to_rpc_status(
     context: &str,
@@ -54,7 +61,7 @@ impl From<LedgerEnclaveError> for RouterServerError {
     }
 }
 
-#[allow(dead_code)] // FIXME when the ledger router is more than just a skeleton.  
+#[allow(dead_code)] // FIXME when the ledger router is more than just a skeleton.
 #[derive(Debug, Display)]
 pub enum LedgerServerError {
     /// Ledger Enclave error: {0}

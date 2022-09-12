@@ -4,18 +4,20 @@ use crate::error::{router_server_err_to_rpc_status, RouterServerError};
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_common::logger::Logger;
+use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
+use mc_common::{logger::Logger, ResponderId};
 use mc_fog_api::{
     ledger::{
         LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
+        MultiKeyImageStoreResponseStatus,
     },
     ledger_grpc::KeyImageStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
-use mc_fog_uri::KeyImageStoreUri;
+use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 //use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
 use mc_util_grpc::rpc_invalid_arg_error;
-use std::{str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 #[allow(dead_code)] //FIXME
 const RETRY_COUNT: usize = 3;
@@ -96,14 +98,14 @@ pub struct ProcessedShardResponseData {
     pub store_uris_for_authentication: Vec<KeyImageStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<attest::Message>,
+    pub new_query_responses: Vec<(ResponderId, attest::Message)>,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<KeyImageStoreApiClient>>,
         store_uris_for_authentication: Vec<KeyImageStoreUri>,
-        new_query_responses: Vec<attest::Message>,
+        new_query_responses: Vec<(ResponderId, attest::Message)>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
@@ -125,12 +127,18 @@ pub fn process_shard_responses(
         // We did not receive a query_response for this shard.Therefore, we need to:
         //  (a) retry the query
         //  (b) authenticate with the Ledger Store that returned the decryption_error
-        if response.has_decryption_error() {
-            shard_clients_for_retry.push(shard_client);
-            let store_uri = KeyImageStoreUri::from_str(&response.get_decryption_error().store_uri)?;
-            store_uris_for_authentication.push(store_uri);
-        } else {
-            new_query_responses.push(response.take_query_response());
+        let store_uri = KeyImageStoreUri::from_str(response.get_fog_ledger_store_uri())?;
+        match response.get_status() {
+            MultiKeyImageStoreResponseStatus::SUCCESS => {
+                let store_responder_id = store_uri.responder_id()?;
+                new_query_responses.push((store_responder_id, response.take_query_response()));
+            }
+            MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => {
+                shard_clients_for_retry.push(shard_client);
+                store_uris_for_authentication.push(store_uri);
+            }
+            // This call will be retried as part of the larger retry logic
+            MultiKeyImageStoreResponseStatus::NOT_READY => (),
         }
     }
 
@@ -170,7 +178,7 @@ async fn handle_query_request<E>(
 where
     E: LedgerEnclaveProxy,
 {
-    let mut query_responses: Vec<attest::Message> = Vec::with_capacity(shard_clients.len());
+    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
@@ -210,7 +218,7 @@ where
                     )
                 })?;
 
-        let mut processed_shard_response_data = process_shard_responses(clients_and_responses)
+        let processed_shard_response_data = process_shard_responses(clients_and_responses)
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal query response processing",
@@ -219,7 +227,13 @@ where
                 )
             })?;
 
-        query_responses.append(&mut processed_shard_response_data.new_query_responses);
+        for (store_responder_id, new_query_response) in processed_shard_response_data
+            .new_query_responses
+            .into_iter()
+        {
+            query_responses.insert(store_responder_id, new_query_response.into());
+        }
+
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
         if shard_clients.is_empty() {
             break;
