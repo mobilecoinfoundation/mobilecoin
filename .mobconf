@@ -1,3 +1,4 @@
 [image]
 url = mobilecoin/builder-install
-tag = v0.0.16
+tag = v0.0.0-test_entrypoint_mob_user
+; tag = v0.0.16
