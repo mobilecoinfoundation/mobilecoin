@@ -195,15 +195,11 @@ impl From<ProtobufError> for LibMcError {
 
 impl From<TxBuilderError> for LibMcError {
     fn from(err: TxBuilderError) -> Self {
-        // TODO
-        // if let TxBuilderError::FogPublicKey(FogPubkeyError::IngestReport(
-        //     IngestReportError::Verifier(VerifierError::Verification(_)),
-        // )) = err
-        // {
-        //     LibMcError::AttestationVerificationFailed(format!("{:?}", err))
-        // } else {
+        if let TxBuilderError::FogPublicKey(fog_pub_key_err) = err {
+            LibMcError::from(fog_pub_key_err)
+        } else {
             LibMcError::InvalidInput(format!("{:?}", err))
-        // }
+        }
     }
 }
 
@@ -213,11 +209,6 @@ impl From<FogPubkeyError> for LibMcError {
             FogPubkeyError::NoFogReportUrl
             | FogPubkeyError::Url(_)
             | FogPubkeyError::Deserialization(_) => LibMcError::InvalidInput(err.to_string()),
-
-            // TODO
-            // FogPubkeyError::IngestReport(IngestReportError::Verifier(
-            //     VerifierError::Verification(_),
-            // )) => LibMcError::AttestationVerificationFailed(err.to_string()),
 
             _ => LibMcError::FogPubkey(err.to_string()),
         }
