@@ -94,3 +94,6 @@ rust_build_artifacts/
 go_build_artifacts/
 
 minting-trust-root*
+
+# new cache dir for mob prompt with user sccache
+.mob/

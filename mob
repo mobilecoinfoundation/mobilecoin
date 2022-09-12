@@ -51,6 +51,7 @@ tag = Image tag/version to use
 
 import argparse
 import configparser
+import grp
 import os
 import pathlib
 import platform
@@ -74,6 +75,7 @@ parser.add_argument("--ssh-agent", action='store_true', help='Use ssh-agent on h
 parser.add_argument("--expose", nargs='+', default=None, help="Any additional ports to expose")
 parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
 parser.add_argument("--cmd", nargs='+', default=None, help="Run this command inside the bash shell instead of an interactive prompt")
+parser.add_argument("--run-as-root", action='store_true', help="run prompt as root instead of local user")
 
 args = parser.parse_args()
 
@@ -195,8 +197,6 @@ docker_run = ["docker",
               "run",
               # Remove container afterwards.
               "--rm",
-              # container doesn't know mount_point so we have to set this
-              "--env", "CARGO_HOME=" + mount_point + "/cargo",
               # Give docker its own subdirectory under target so it doesn't trash
               # the host target directory, but will still be cleaned up with it.
               "--env", "CARGO_TARGET_DIR=" + mount_point + "/target/docker",
@@ -206,6 +206,20 @@ docker_run = ["docker",
               "--env", "MC_CHAIN_ID=local",
               "--volume", mount_from + ":" + mount_point,
               "--workdir", workdir]
+
+# the entrypoint script will pick up these vars and set up the user.
+if not args.run_as_root:
+    # figure out user and group
+    uid = os.getuid()
+    gid = os.getgid()
+    username = os.getlogin()
+    groupname = grp.getgrgid(gid)[0]
+    docker_run.extend([
+            "--env", "EXTERNAL_UID=" + str(uid),
+            "--env", "EXTERNAL_GID=" + str(gid),
+            "--env", "EXTERNAL_USER=" + username,
+            "--env", "EXTERNAL_GROUP=" + groupname
+    ])
 
 # Add /dev/isgx if HW mode, and it is available
 # Mimicking bash checks `if [ -c /dev/isgx ]`
@@ -233,25 +247,6 @@ if git_commit:
 
 for pair in build_env:
     docker_run.extend(["--env", pair])
-
-# Enable sccache usage if sccache dir is found on the host.
-# We do this by mounting the dir into the container, and setting the sccache
-# environment variable, which can be picked up by Makefile. sccache is already
-# installed in the container.
-#
-# An alternative might be to run the sccache server outside the container, and
-# expose port 4226 so that they can talk, per
-# https://github.com/mozilla/sccache/blob/master/docs/Jenkins.md
-#
-# This tool is not used in jenkins anymore so we don't do that
-host_sccache_dir = os.path.expanduser("~/.cache/sccache")  # per docs this is the default for sccache
-if "SCCACHE_DIR" in os.environ:
-    host_sccache_dir = os.environ["SCCACHE_DIR"]
-if os.path.isdir(host_sccache_dir):
-    docker_run.extend([
-        "--env", "SCCACHE=/root/.cargo/bin/sccache",
-        "--volume", host_sccache_dir + ":" + "/root/.cache/sccache",
-    ])
 
 # If running interactively (with a tty), get a tty in the container also
 # This allows colored build logs when running locally without messing up logs in CI
