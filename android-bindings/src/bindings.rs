@@ -39,8 +39,8 @@ use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, X25519};
 use mc_crypto_rand::McRng;
 use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
-use mc_fog_report_types::{Report, ReportResponse, FogReportResponses};
-use mc_fog_report_resolver::{FogResolver};
+use mc_fog_report_resolver::FogResolver;
+use mc_fog_report_types::{FogReportResponses, Report, ReportResponse};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{
