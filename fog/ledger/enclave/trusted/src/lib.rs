@@ -75,8 +75,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::DecryptAndSealQuery(client_query) => {
             serialize(&ENCLAVE.decrypt_and_seal_query(client_query))
         }
-        EnclaveCall::CreateKeyImageStoreQuery(msg) => {
-            serialize(&ENCLAVE.create_key_image_store_query(msg))
+        EnclaveCall::CreateMultiKeyImageStoreQueryData(msg) => {
+            serialize(&ENCLAVE.create_multi_key_image_store_query_data(msg))
         }
         // Store-side
         EnclaveCall::HandleKeyImageStoreRequest(msg) => {

@@ -232,13 +232,14 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn create_key_image_store_query(
+    fn create_multi_key_image_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        mc_sgx_debug::eprintln!("Called create_key_image_store_query(..) - the router is handling a message from the client");
-        let inbuf =
-            mc_util_serial::serialize(&EnclaveCall::CreateKeyImageStoreQuery(sealed_query))?;
+        mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..) - the router is handling a message from the client");
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateMultiKeyImageStoreQueryData(
+            sealed_query,
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

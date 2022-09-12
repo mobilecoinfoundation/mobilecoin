@@ -124,13 +124,13 @@ pub enum EnclaveCall {
     /// sealed for the current enclave.
     DecryptAndSealQuery(EnclaveMessage<ClientSession>),
 
-    /// The [LedgerEnclave::create_key_image_store_query()] method.
+    /// The [LedgerEnclave::create_multi_key_image_store_query()] method.
     ///
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
     /// MultiKeyImageStoreRequest, which is sent to each shard.
-    CreateKeyImageStoreQuery(SealedClientMessage),
+    CreateMultiKeyImageStoreQueryData(SealedClientMessage),
 
     /// The [LedgerEnclave::handle_key_image_store_request()] method.
     ///

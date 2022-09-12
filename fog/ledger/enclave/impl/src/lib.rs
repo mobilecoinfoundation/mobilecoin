@@ -224,11 +224,11 @@ where
         Ok(self.ake.decrypt_client_message_for_enclave(client_query)?)
     }
 
-    fn create_key_image_store_query(
+    fn create_multi_key_image_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        mc_sgx_debug::eprintln!("Called create_key_image_store_query(..)");
+        mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..)");
         Ok(self
             .ake
             .reencrypt_sealed_message_for_backends(&sealed_query)?)

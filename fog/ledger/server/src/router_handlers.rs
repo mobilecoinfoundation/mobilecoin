@@ -181,11 +181,16 @@ where
                 logger.clone(),
             )
         })?;
-    // TODO: use retry crate?
+    // The retry logic here really wants to look like:
+    // Set retries remaining to RETRY_COUNT
+    // Send query and process responses
+    // If there's a response from every shard, we're done
+    // If there's a new store, repeat
+    // If there's no new store and we don't have enough responses, decrement
+    // RETRY_COUNT and loop Remove this once this logic is implemented
     for _ in 0..RETRY_COUNT {
-        /*
         let multi_ledger_store_query_request = enclave
-            .create_multi_key_image_store_query_data(query.clone().into())
+            .create_multi_key_image_store_query_data(sealed_query.clone())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal encryption error",
@@ -193,17 +198,17 @@ where
                     logger.clone(),
                 )
             })?
-            .into();*/
-        let test_request = MultiKeyImageStoreRequest::default();
-        let clients_and_responses = route_query(&test_request, shard_clients.clone())
-            .await
-            .map_err(|err| {
-                router_server_err_to_rpc_status(
-                    "Query: internal query routing error",
-                    err,
-                    logger.clone(),
-                )
-            })?;
+            .into();
+        let clients_and_responses =
+            route_query(&multi_ledger_store_query_request, shard_clients.clone())
+                .await
+                .map_err(|err| {
+                    router_server_err_to_rpc_status(
+                        "Query: internal query routing error",
+                        err,
+                        logger.clone(),
+                    )
+                })?;
 
         let mut processed_shard_response_data = process_shard_responses(clients_and_responses)
             .map_err(|err| {
