@@ -3,7 +3,6 @@ cargo-features = ["named-profiles"]
 [workspace]
 members = [
     "account-keys",
-    "account-keys/slip10",
     "account-keys/types",
     "admin-http-gateway",
     "api",
@@ -34,6 +33,8 @@ members = [
     "consensus/service",
     "consensus/service/config",
     "consensus/tool",
+    "core",
+    "core/types",
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",
