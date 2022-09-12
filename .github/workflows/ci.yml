@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -38,7 +38,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -58,7 +58,7 @@ jobs:
 
   build-and-test-wasm:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -73,7 +73,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -90,7 +90,7 @@ jobs:
 
   build-and-test-go:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -130,7 +130,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -149,7 +149,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     strategy:
       matrix:
@@ -188,7 +188,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     strategy:
       matrix:
@@ -221,7 +221,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     strategy:
       matrix:
@@ -269,7 +269,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -292,7 +292,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -332,7 +332,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
@@ -468,7 +468,7 @@ jobs:
 
   mint-auditor-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.16
+    container: mobilecoin/builder-install:v0.0.0-test_entrypoint_mob_user
 
     steps:
       - name: Check out code
