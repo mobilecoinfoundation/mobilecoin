@@ -16,7 +16,9 @@ mod key_image_store;
 use alloc::vec::Vec;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -192,8 +194,14 @@ where
         Ok(())
     }
 
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest> {
-        mc_sgx_debug::eprintln!("Called connect_to_key_image_store(ledger_store_id: {})", ledger_store_id);
+    fn connect_to_key_image_store(
+        &self,
+        ledger_store_id: ResponderId,
+    ) -> Result<ClientAuthRequest> {
+        mc_sgx_debug::eprintln!(
+            "Called connect_to_key_image_store(ledger_store_id: {})",
+            ledger_store_id
+        );
         Ok(self.ake.backend_init(ledger_store_id)?)
     }
 
@@ -211,18 +219,18 @@ where
 
     fn create_key_image_store_query(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         mc_sgx_debug::eprintln!("Called create_key_image_store_query(..)");
         Ok(self
             .ake
-            .reencrypt_client_message_for_backends(client_query)?)
+            .reencrypt_sealed_message_for_backends(&sealed_query)?)
     }
     fn handle_key_image_store_request(
-        &self, 
-        _: EnclaveMessage<ClientSession>
-    ) -> Result<EnclaveMessage<ClientSession>> { 
-        todo!() 
+        &self,
+        _: EnclaveMessage<ClientSession>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        todo!()
     }
 }
 

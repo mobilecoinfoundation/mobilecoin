@@ -4,7 +4,9 @@
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::vec::Vec;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientSession, EnclaveMessage, ClientAuthResponse};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+};
 use mc_common::ResponderId;
 use mc_fog_types::ledger::GetOutputsResponse;
 use mc_transaction_core::ring_signature::KeyImage;
@@ -34,7 +36,7 @@ pub struct KeyImageData {
 
 /// An enumeration of API calls and their arguments for use across serialization
 /// boundaries.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum EnclaveCall {
     /// The [LedgerEnclave::enclave_init()] method.
     EnclaveInit(ResponderId, u64),
@@ -104,8 +106,9 @@ pub enum EnclaveCall {
 
     /// The [LedgerEnclave::connect_to_store()] method.
     ///
-    /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
-    /// most likely a router, will act as a client to the Fog Ledger Store.
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this
+    /// method, most likely a router, will act as a client to the Fog Ledger
+    /// Store.
     ConnectToKeyImageStore(ResponderId),
 
     /// The [LedgerEnclave::finish_connecting_to_store()] method.
@@ -113,24 +116,21 @@ pub enum EnclaveCall {
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    FinishConnectingToKeyImageStore(
-        ResponderId,
-        ClientAuthResponse,
-    ),
-    
+    FinishConnectingToKeyImageStore(ResponderId, ClientAuthResponse),
+
     /// The [LedgerEnclave::create_key_image_store_query()] method.
     ///
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
     /// MultiKeyImageStoreRequest, which is sent to each shard.
-    CreateKeyImageStoreQuery(EnclaveMessage<ClientSession>),
+    CreateKeyImageStoreQuery(SealedClientMessage),
 
     /// The [LedgerEnclave::handle_key_image_store_request()] method.
     ///
-    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto LedgerRequest. 
-    /// Generally, these come in from a router. 
-    /// This could could be a key image request, a merkele proof 
+    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto
+    /// LedgerRequest. Generally, these come in from a router.
+    /// This could could be a key image request, a merkele proof
     /// request, and potentially in the future an untrusted tx out request.
     HandleKeyImageStoreRequest(EnclaveMessage<ClientSession>),
 }

@@ -1,13 +1,14 @@
-use std::{env, sync::Arc, str::FromStr};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use std::{env, str::FromStr, sync::Arc};
+
+use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_common::logger::log;
 use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
-use mc_fog_ledger_enclave::{ENCLAVE_FILE, LedgerSgxEnclave};
-use mc_fog_ledger_server::LedgerRouterConfig;
-use mc_fog_ledger_server::KeyImageRouterServer;
-use clap::Parser;
-use mc_fog_uri::{KeyImageStoreUri, KeyImageStoreScheme};
+use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
+use mc_fog_ledger_server::{KeyImageRouterServer, LedgerRouterConfig};
+use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::UriScheme;
 
@@ -32,7 +33,7 @@ fn main() {
         config.omap_capacity,
         logger.clone(),
     );
-    
+
     let mut ledger_store_grpc_clients: Vec<KeyImageStoreApiClient> = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
