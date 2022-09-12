@@ -189,14 +189,16 @@ where
                 logger.clone(),
             )
         })?;
-    // The retry logic here really wants to look like:
+
+    // The retry logic here is:
     // Set retries remaining to RETRY_COUNT
     // Send query and process responses
     // If there's a response from every shard, we're done
     // If there's a new store, repeat
     // If there's no new store and we don't have enough responses, decrement
-    // RETRY_COUNT and loop Remove this once this logic is implemented
-    for _ in 0..RETRY_COUNT {
+    // RETRY_COUNT and loop
+    let mut remaining_retries = RETRY_COUNT;
+    while remaining_retries > 0 {
         let multi_ledger_store_query_request = enclave
             .create_multi_key_image_store_query_data(sealed_query.clone())
             .map_err(|err| {
@@ -234,17 +236,32 @@ where
             query_responses.insert(store_responder_id, new_query_response.into());
         }
 
-        shard_clients = processed_shard_response_data.shard_clients_for_retry;
-        if shard_clients.is_empty() {
+        if query_responses.len() >= shard_clients.len() {
             break;
         }
 
-        authenticate_ledger_stores(
-            enclave.clone(),
-            processed_shard_response_data.store_uris_for_authentication,
+        shard_clients = processed_shard_response_data.shard_clients_for_retry;
+        if !shard_clients.is_empty() {
+            authenticate_ledger_stores(
+                enclave.clone(),
+                processed_shard_response_data.store_uris_for_authentication,
+                logger.clone(),
+            )
+            .await?;
+        } else {
+            remaining_retries -= 1;
+        }
+    }
+
+    if remaining_retries == 0 {
+        return Err(router_server_err_to_rpc_status(
+            "Query: timed out connecting to key image stores",
+            RouterServerError::LedgerStoreError(format!(
+                "Received {} responses which failed to advance the MultiKeyImageStoreRequest",
+                RETRY_COUNT
+            )),
             logger.clone(),
-        )
-        .await?;
+        ));
     }
 
     // TODO: Collate the query_responses into one response for the client. Make an

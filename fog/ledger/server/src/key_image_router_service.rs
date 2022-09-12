@@ -1,11 +1,13 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use std::sync::Arc;
 
-use futures::{TryFutureExt, FutureExt};
+use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    ledger_grpc::{LedgerApi, self},
-    ledger::{LedgerRequest, LedgerResponse}, 
+    ledger::{LedgerRequest, LedgerResponse},
+    ledger_grpc::{self, LedgerApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_util_grpc::rpc_logger;
@@ -28,7 +30,11 @@ impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     /// Creates a new LedgerRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
     #[allow(dead_code)] // FIXME
-    pub fn new(enclave: E, shards: Vec<ledger_grpc::KeyImageStoreApiClient>, logger: Logger) -> Self {
+    pub fn new(
+        enclave: E,
+        shards: Vec<ledger_grpc::KeyImageStoreApiClient>,
+        logger: Logger,
+    ) -> Self {
         let shards = shards.into_iter().map(Arc::new).collect();
         Self {
             enclave,
@@ -52,8 +58,11 @@ where
         log::info!(self.logger, "Request received in request fn");
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            log::warn!(self.logger, "Streaming GRPC Ledger API only partially implemented.");
-            
+            log::warn!(
+                self.logger,
+                "Streaming GRPC Ledger API only partially implemented."
+            );
+
             let logger = logger.clone();
 
             let future = router_handlers::handle_requests(
@@ -64,7 +73,7 @@ where
                 logger.clone(),
             )
             .map_err(move |err: grpcio::Error| log::error!(&logger, "failed to reply: {}", err))
-            // TODO: Do more with the error than just push it to the log. 
+            // TODO: Do more with the error than just push it to the log.
             .map(|_| ());
 
             ctx.spawn(future)
