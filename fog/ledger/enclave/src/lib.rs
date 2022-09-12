@@ -220,6 +220,18 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        mc_sgx_debug::eprintln!(
+            "Called decrypt_and_seal_query(..) - the router is handling a message from the client"
+        );
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::DecryptAndSealQuery(client_query))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn create_key_image_store_query(
         &self,
         sealed_query: SealedClientMessage,

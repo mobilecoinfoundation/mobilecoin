@@ -1,19 +1,20 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    error::{router_server_err_to_rpc_status, RouterServerError},
-};
-use futures::{future::try_join_all, TryStreamExt, SinkExt};
+use crate::error::{router_server_err_to_rpc_status, RouterServerError};
+use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_common::{logger::Logger};
+use mc_common::logger::Logger;
 use mc_fog_api::{
-    ledger::{LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse}, ledger_grpc::KeyImageStoreApiClient,
+    ledger::{
+        LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
+    },
+    ledger_grpc::KeyImageStoreApiClient,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 //use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
-use mc_util_grpc::{rpc_invalid_arg_error};
+use mc_util_grpc::rpc_invalid_arg_error;
 use std::{str::FromStr, sync::Arc};
 
 #[allow(dead_code)] //FIXME
@@ -63,8 +64,15 @@ where
     if request.has_auth() {
         handle_auth_request(enclave, request.take_auth(), logger)
     } else if request.has_check_key_images() {
-        handle_query_request(request.take_check_key_images(), enclave, shard_clients, logger).await
-        // TODO: Handle other cases here as they are added, such as the merkele proof service.
+        handle_query_request(
+            request.take_check_key_images(),
+            enclave,
+            shard_clients,
+            logger,
+        )
+        .await
+        // TODO: Handle other cases here as they are added, such as the merkele
+        // proof service.
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid LedgerRequest request",
@@ -75,7 +83,8 @@ where
     }
 }
 
-/// The result of processing the MultiLedgerStoreQueryResponse from each Fog Ledger Shard.
+/// The result of processing the MultiLedgerStoreQueryResponse from each Fog
+/// Ledger Shard.
 pub struct ProcessedShardResponseData {
     /// gRPC clients for Shards that need to be retried for a successful
     /// response.
@@ -118,8 +127,7 @@ pub fn process_shard_responses(
         //  (b) authenticate with the Ledger Store that returned the decryption_error
         if response.has_decryption_error() {
             shard_clients_for_retry.push(shard_client);
-            let store_uri =
-            KeyImageStoreUri::from_str(&response.get_decryption_error().store_uri)?;
+            let store_uri = KeyImageStoreUri::from_str(&response.get_decryption_error().store_uri)?;
             store_uris_for_authentication.push(store_uri);
         } else {
             new_query_responses.push(response.take_query_response());
@@ -151,7 +159,7 @@ where
     Ok(response)
 }
 
-#[allow(unused_variables)] // FIXME when enclave code is set up. 
+#[allow(unused_variables)] // FIXME when enclave code is set up.
 /// Handles a client's query request.
 async fn handle_query_request<E>(
     query: attest::Message,
@@ -164,6 +172,15 @@ where
 {
     let mut query_responses: Vec<attest::Message> = Vec::with_capacity(shard_clients.len());
     let mut shard_clients = shard_clients.clone();
+    let sealed_query = enclave
+        .decrypt_and_seal_query(query.into())
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: internal encryption error",
+                err.into(),
+                logger.clone(),
+            )
+        })?;
     // TODO: use retry crate?
     for _ in 0..RETRY_COUNT {
         /*
@@ -178,27 +195,24 @@ where
             })?
             .into();*/
         let test_request = MultiKeyImageStoreRequest::default();
-        let clients_and_responses =
-            route_query(&test_request, shard_clients.clone())
-                .await
-                .map_err(|err| {
-                    router_server_err_to_rpc_status(
-                        "Query: internal query routing error",
-                        err,
-                        logger.clone(),
-                    )
-                })?;
+        let clients_and_responses = route_query(&test_request, shard_clients.clone())
+            .await
+            .map_err(|err| {
+                router_server_err_to_rpc_status(
+                    "Query: internal query routing error",
+                    err,
+                    logger.clone(),
+                )
+            })?;
 
-        let mut processed_shard_response_data = process_shard_responses(
-            clients_and_responses,
-        )
-        .map_err(|err| {
-            router_server_err_to_rpc_status(
-                "Query: internal query response processing",
-                err,
-                logger.clone(),
-            )
-        })?;
+        let mut processed_shard_response_data = process_shard_responses(clients_and_responses)
+            .map_err(|err| {
+                router_server_err_to_rpc_status(
+                    "Query: internal query response processing",
+                    err,
+                    logger.clone(),
+                )
+            })?;
 
         query_responses.append(&mut processed_shard_response_data.new_query_responses);
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
@@ -206,8 +220,8 @@ where
             break;
         }
 
-        /* TODO pending ledger router code enclave-side. 
-        
+        /* TODO pending ledger router code enclave-side.
+
         authenticate_ledger_stores(
             enclave.clone(),
             processed_shard_response_data.store_uris_for_authentication,
@@ -244,9 +258,7 @@ async fn query_shard(
     Ok((shard_client, response))
 }
 
-
-
-/* TODO pending ledger router code enclave-side. 
+/* TODO pending ledger router code enclave-side.
 
 // Authenticates Fog Ledger Stores that have previously not been authenticated.
 async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
@@ -292,4 +304,4 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
 
     Ok(result)
 }
-*/ 
+*/

@@ -64,16 +64,24 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 
         // Router / Store system
         // Router-side
-        EnclaveCall::ConnectToKeyImageStore(responder_id) => serialize(&ENCLAVE.connect_to_key_image_store(responder_id)),
-        EnclaveCall::FinishConnectingToKeyImageStore(
-            responder_id,
-            client_auth_response,
-        ) => serialize(&ENCLAVE.finish_connecting_to_key_image_store(responder_id, client_auth_response)),
-        EnclaveCall::CreateKeyImageStoreQuery(msg) => 
-            serialize(&ENCLAVE.create_key_image_store_query(msg)),
+        EnclaveCall::ConnectToKeyImageStore(responder_id) => {
+            serialize(&ENCLAVE.connect_to_key_image_store(responder_id))
+        }
+        EnclaveCall::FinishConnectingToKeyImageStore(responder_id, client_auth_response) => {
+            serialize(
+                &ENCLAVE.finish_connecting_to_key_image_store(responder_id, client_auth_response),
+            )
+        }
+        EnclaveCall::DecryptAndSealQuery(client_query) => {
+            serialize(&ENCLAVE.decrypt_and_seal_query(client_query))
+        }
+        EnclaveCall::CreateKeyImageStoreQuery(msg) => {
+            serialize(&ENCLAVE.create_key_image_store_query(msg))
+        }
         // Store-side
-        EnclaveCall::HandleKeyImageStoreRequest(msg) => 
-            serialize(&ENCLAVE.handle_key_image_store_request(msg)),
+        EnclaveCall::HandleKeyImageStoreRequest(msg) => {
+            serialize(&ENCLAVE.handle_key_image_store_request(msg))
+        }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }

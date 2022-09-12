@@ -118,6 +118,12 @@ pub enum EnclaveCall {
     /// initialized and discovers a new Fog Ledger Store.
     FinishConnectingToKeyImageStore(ResponderId, ClientAuthResponse),
 
+    /// The [LedgerEnclave::decrypt_and_seal_query()] method.
+    ///
+    /// Takes a client query message and returns a SealedClientMessage
+    /// sealed for the current enclave.
+    DecryptAndSealQuery(EnclaveMessage<ClientSession>),
+
     /// The [LedgerEnclave::create_key_image_store_query()] method.
     ///
     /// Transforms a client query request into a list of query request data.

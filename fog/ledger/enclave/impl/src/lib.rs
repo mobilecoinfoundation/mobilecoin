@@ -217,6 +217,13 @@ where
             .backend_connect(ledger_store_id, ledger_store_auth_response)?)
     }
 
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        Ok(self.ake.decrypt_client_message_for_enclave(client_query)?)
+    }
+
     fn create_key_image_store_query(
         &self,
         sealed_query: SealedClientMessage,

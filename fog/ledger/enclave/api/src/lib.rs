@@ -118,6 +118,14 @@ pub trait LedgerEnclave: ReportableEnclave {
         ledger_store_auth_response: ClientAuthResponse,
     ) -> Result<()>;
 
+    /// Decrypts a client query message and converts it into a
+    /// SealedClientMessage which can be unsealed multiple times to
+    /// construct the MultiKeyImageStoreQuery.
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage>;
+
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
