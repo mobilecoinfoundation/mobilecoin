@@ -21,4 +21,4 @@ rand_hc = "0.3"
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 
-itertools = "0.10.3"
+itertools = "0.10.4"
