@@ -29,9 +29,8 @@ use std::{convert::TryFrom, env, path::PathBuf};
 /// sense for our infrastructure.
 pub fn get_enclave_path(filename: &str) -> PathBuf {
     // First try searching right next to the target, this is for circle-ci
-    let maybe_result = env::current_exe()
-        .expect("Could not get current exe")
-        .with_file_name(filename);
+    let current_exe = env::current_exe().expect("Could not get current exe");
+    let maybe_result = current_exe.with_file_name(filename);
     // Try statting the file
     if std::fs::metadata(maybe_result.clone()).is_ok() {
         return maybe_result;
