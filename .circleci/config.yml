@@ -12,7 +12,7 @@ version: 2.1
 defaults:
   builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_29
   android-bindings-builder: &android-bindings-builder gcr.io/mobilenode-211420/android-bindings-builder:1_4
-  default-xcode-version: &default-xcode-version "12.0.0"
+  default-xcode-version: &default-xcode-version "12.5.1"
 
   default-environment: &default-environment
     # sccache config
@@ -218,7 +218,7 @@ commands:
       - run:
           name: Install Homebrew dependencies
           command: |
-            rm '/usr/local/lib/python3.8/site-packages/six.py'
+            rm -f /usr/local/lib/python3.8/site-packages/six.py
             brew bundle --no-upgrade
 
   save-homebrew-cache:
