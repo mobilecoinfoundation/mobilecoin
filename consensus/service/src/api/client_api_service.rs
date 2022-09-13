@@ -91,6 +91,7 @@ impl ClientApiService {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
                 let result = ProposeTxResult::from(cause.clone());
                 response.set_result(result);
+                response.set_err_msg(cause.to_string());
             }
             err
         })?;

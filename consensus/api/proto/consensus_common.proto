@@ -105,4 +105,7 @@ message ProposeTxResponse {
 
     /// The block version which is in effect right now
     uint32 block_version = 3;
+
+    /// Human-readable error message, in case of nonzero ProposeTxResult
+    string err_msg = 4;
 }

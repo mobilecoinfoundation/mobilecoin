@@ -4,10 +4,10 @@ use displaydoc::Display;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{
-    Error as ConnectionError, HardcodedCredentialsProvider, RetryError, RetryableUserTxConnection,
-    SyncConnection, ThickClient,
+    Error as ConnectionError, HardcodedCredentialsProvider, ProposeTxResult, RetryError,
+    RetryableUserTxConnection, SyncConnection, ThickClient,
 };
-use mc_transaction_core::{tx::Tx, validation::TransactionValidationError};
+use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{iter::empty, sync::Arc};
 
@@ -56,13 +56,15 @@ impl TxSubmitter {
             Ok(block_height) => Ok(block_height),
             Err(RetryError::Operation { error, .. }) => match error {
                 ConnectionError::TransactionValidation(
-                    TransactionValidationError::TombstoneBlockExceeded,
+                    ProposeTxResult::TombstoneBlockExceeded,
+                    _,
                 ) => {
                     log::debug!(logger, "Transaction {} tombstone block exceeded", counter);
                     Err(SubmitTxError::Rebuild)
                 }
                 ConnectionError::TransactionValidation(
-                    TransactionValidationError::ContainsSpentKeyImage,
+                    ProposeTxResult::ContainsSpentKeyImage,
+                    _,
                 ) => {
                     log::info!(logger, "Transaction {} contains a spent key image", counter);
                     Err(SubmitTxError::Fatal)

@@ -429,7 +429,10 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
         if resp.get_result() == ProposeTxResult::Ok {
             Ok(resp.get_block_count())
         } else {
-            Err(resp.get_result().into())
+            Err(Error::TransactionValidation(
+                resp.get_result(),
+                resp.get_err_msg().to_owned(),
+            ))
         }
     }
 }
