@@ -354,7 +354,6 @@ jobs:
               -p mc-fog-view-server \
               -p mc-ledger-distribution \
               -p mc-mobilecoind \
-              -p mc-mobilecoind-dev-faucet \
               -p mc-util-generate-sample-ledger \
               -p mc-util-grpc-admin-tool \
               -p mc-util-keyfile \
@@ -422,24 +421,6 @@ jobs:
               --fog-view insecure-fog-view://localhost:8200 \
               --fog-ledger insecure-fog-ledger://localhost:8200 \
               --key-dir "$PWD/fog_keys"
-
-          # Run mobilecoind-dev-faucet
-          MC_LOG="info" \
-          "$BIN_DIR"/mobilecoind-dev-faucet \
-            --keyfile "$PWD/keys/account_keys_0.json" \
-            --peer insecure-mc://localhost:3200/ \
-            --peer insecure-mc://localhost:3201/ \
-            --peer insecure-mc://localhost:3202/ \
-            --peer insecure-mc://localhost:3203/ \
-            --peer insecure-mc://localhost:3204/ &
-
-          # Give it time to spin up
-          sleep 20
-
-          # Try hitting the faucet
-          curl -s localhost:9090/status
-          curl -s localhost:9090/ -d '{"b58_address": "5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5"}' -X POST
-          curl -s localhost:9090/ -d '{"b58_address": "5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5"}' -X POST
 
           # Try triggering slam twice and see that it doesn't get stuck
           curl -s localhost:9090/slam -X POST
