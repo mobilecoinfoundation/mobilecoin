@@ -538,8 +538,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         fee,
         check_value_is_preserved,
         rng,
-    )
-    .unwrap();
+    )?;
 
     // Prove that the signer is allowed to spend a public key in each ring, and that
     // the input's value equals the value of the pseudo_output.
