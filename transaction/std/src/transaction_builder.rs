@@ -626,12 +626,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         if self.block_version < BlockVersion::default() {
             return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 0));
         }
+
         if self.block_version > BlockVersion::MAX {
             return Err(TxBuilderError::BlockVersionTooNew(
                 *self.block_version,
                 *BlockVersion::MAX,
             ));
         }
+
         if !self.block_version.masked_token_id_feature_is_supported()
             && self.fee.token_id != Mob::ID
         {
@@ -640,9 +642,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 "nonzero token id",
             ));
         }
+
         if self.input_materials.is_empty() {
             return Err(TxBuilderError::NoInputs);
         }
+
         // All inputs must have rings of the same size.
         if self
             .input_materials
@@ -651,6 +655,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         {
             return Err(TxBuilderError::InvalidRingSize);
         }
+
         for input in self.input_materials.iter() {
             if !self.block_version.mixed_transactions_are_supported()
                 && input.amount().token_id != self.fee.token_id
@@ -660,6 +665,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                     input.amount().token_id,
                 ));
             }
+
             match input {
                 InputMaterials::Presigned(input) => {
                     if !self.block_version.signed_input_rules_are_supported() {
@@ -683,15 +689,19 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 }
             }
         }
+
         // Construct a list of sorted inputs.
         // Inputs are sorted by the first ring element's public key. Note that each ring
         // is also sorted.
         self.input_materials
             .sort_by(|a, b| a.sort_key().cmp(b.sort_key()));
+
         let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
+
         // Outputs are sorted according to the rule (but generally by public key)
         self.outputs_and_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
+
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.outputs_and_secrets.drain(..).unzip();
 
