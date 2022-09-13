@@ -12,7 +12,7 @@ use mc_transaction_core::{
 use mc_transaction_types::Amount;
 use zeroize::Zeroize;
 
-/// Credentials required to construct a ring signature for an input.
+/// Credentials required to construct a view only ring for an input.
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct InputViewOnlyMaterials {
@@ -33,14 +33,14 @@ pub struct InputViewOnlyMaterials {
 }
 
 impl InputViewOnlyMaterials {
-    /// Creates an InputCredential instance used to create and sign an Input.
+    /// Creates an InputViewOnlyMaterials instance used to create a
+    /// ViewOnlyInput.
     ///
     /// # Arguments
     /// * `ring` - A "ring" of transaction outputs.
     /// * `membership_proofs` - Proof that each TxOut in `ring` is in the
     ///   ledger.
     /// * `real_index` - Index in `ring` of the output being spent.
-    /// * `onetime_private_key` - Private key for the output being spent.
     /// * `view_private_key` - The view private key belonging to the owner of
     ///   the real output.
     pub fn new(

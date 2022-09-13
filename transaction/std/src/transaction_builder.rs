@@ -166,7 +166,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Arguments
     /// * `input_view_only_materials` - Materials required to construct the
-    ///   onetime private key for the input.
+    ///   onetime private key for the input when combined with the spend private
+    ///   key for the account.
     pub fn add_view_only_input(&mut self, input_view_only_materials: InputViewOnlyMaterials) {
         self.input_materials
             .push(InputMaterials::ViewOnly(input_view_only_materials));

@@ -18,7 +18,7 @@ use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingent
 #[derive(Debug, Clone)]
 pub enum InputMaterials {
     /// View Only input materials, required to generate the onetime private key
-    /// with the associated spend private key
+    /// along with the associated spend private key of the owning account.
     ViewOnly(InputViewOnlyMaterials),
     /// Signable input materials
     Signable(InputCredentials),

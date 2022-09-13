@@ -103,26 +103,24 @@ pub struct SignedInputRing {
 /// and construct transaction
 #[derive(Clone, Debug)]
 pub struct ViewOnlySigningData {
-    /// Transaction extended message
-    pub extended_message: Vec<u8>,
+    /// Transaction extended message.
+    pub extended_message_digest: Vec<u8>,
 
-    /// pseudo output blindings
+    /// Pseudo output blindings.
     pub pseudo_output_blindings: Vec<Scalar>,
 
     /// Commitments of value equal to each real input.
     pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
-    /// This contains range_proof.to_bytes(). It is stored this way so that this
-    /// struct may derive Default, which is a requirement for serializing
-    /// with Prost.
+    /// This contains range_proof.to_bytes().
     pub range_proof_bytes: Vec<u8>,
 
     /// A range proof, one for each token id that is used in the transaction.
     ///
     /// The range proofs correspond to the sorted order of token ids used.
     ///
-    /// Note: This is EMPTY if mixed transactions is not enabled
+    /// Note: This is EMPTY if mixed transactions is not enabled.
     pub range_proofs: Vec<Vec<u8>>,
 
     /// Token id for each pseudo_output. This must have the same length as
@@ -130,7 +128,7 @@ pub struct ViewOnlySigningData {
     pub pseudo_output_token_ids: Vec<u64>,
 
     /// Token id for each output. This must have the same length as
-    /// `prefix.outputs`, after mixed transactions feature
+    /// `prefix.outputs`, after mixed transactions feature.
     pub output_token_ids: Vec<u64>,
 }
 
@@ -759,7 +757,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
     }
 
     Ok(ViewOnlySigningData {
-        extended_message: extended_message_digest,
+        extended_message_digest,
         pseudo_output_blindings,
         pseudo_output_commitments,
         range_proof_bytes: range_proof,
