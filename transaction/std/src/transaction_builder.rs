@@ -579,6 +579,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             }
 
             match input {
+                InputMaterials::ViewOnly(_) => {
+                    return Err(TxBuilderError::RingContainsViewOnlyInputs);
+                }
                 InputMaterials::Presigned(input) => {
                     if !self.block_version.signed_input_rules_are_supported() {
                         return Err(TxBuilderError::SignedInputRulesNotAllowed);

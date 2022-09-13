@@ -9,16 +9,17 @@
 //! of the first element of the ring being signed, then hand them off to build
 //! the actual signatures. This enum makes it convenient to do this.
 
-use crate::InputCredentials;
+use crate::{InputCredentials, InputViewOnlyMaterials, TxBuilderError};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_transaction_core::{
-    ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput, TxOutConversionError,
-};
+use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput};
 
 /// Material that can be used by the transaction builder to create an input to
 /// a transaction.
 #[derive(Debug, Clone)]
 pub enum InputMaterials {
+    /// View Only input materials, required to generate the onetime private key
+    /// with the associated spend private key
+    ViewOnly(InputViewOnlyMaterials),
     /// Signable input materials
     Signable(InputCredentials),
     /// Presigned input materials
@@ -41,6 +42,7 @@ impl InputMaterials {
     /// Get the sort key for whichever type of input this is
     pub fn sort_key(&self) -> &CompressedRistrettoPublic {
         match self {
+            InputMaterials::ViewOnly(materials) => &materials.ring[0].public_key,
             InputMaterials::Signable(cred) => &cred.ring[0].public_key,
             InputMaterials::Presigned(input) => &input.tx_in.ring[0].public_key,
         }
@@ -49,6 +51,7 @@ impl InputMaterials {
     /// Get the amount for whichever type of input this is
     pub fn amount(&self) -> Amount {
         match self {
+            InputMaterials::ViewOnly(materials) => materials.amount,
             InputMaterials::Signable(cred) => cred.input_secret.amount,
             InputMaterials::Presigned(input) => Amount::from(&input.pseudo_output_amount),
         }
@@ -57,6 +60,7 @@ impl InputMaterials {
     /// Get the ring size for whichever type of input this is
     pub fn ring_size(&self) -> usize {
         match self {
+            InputMaterials::ViewOnly(materials) => materials.ring.len(),
             InputMaterials::Signable(cred) => cred.ring.len(),
             InputMaterials::Presigned(input) => input.tx_in.ring.len(),
         }
@@ -66,9 +70,12 @@ impl InputMaterials {
 // Helper which converts from InputMaterials (TransactionBuilder type) to
 // InputRing (rct_bulletproofs type)
 impl TryFrom<InputMaterials> for InputRing {
-    type Error = TxOutConversionError;
+    type Error = TxBuilderError;
     fn try_from(src: InputMaterials) -> Result<InputRing, Self::Error> {
         Ok(match src {
+            InputMaterials::ViewOnly(_) => {
+                return Err(TxBuilderError::RingContainsViewOnlyInputs);
+            }
             InputMaterials::Signable(creds) => InputRing::Signable(creds.try_into()?),
             InputMaterials::Presigned(input) => InputRing::Presigned(input.into()),
         })
@@ -80,6 +87,7 @@ impl TryFrom<InputMaterials> for InputRing {
 impl From<&InputMaterials> for TxIn {
     fn from(src: &InputMaterials) -> TxIn {
         match src {
+            InputMaterials::ViewOnly(materials) => materials.into(),
             InputMaterials::Signable(ref creds) => creds.into(),
             InputMaterials::Presigned(input) => input.tx_in.clone(),
         }
