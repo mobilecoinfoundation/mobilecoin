@@ -1048,10 +1048,8 @@ name = "mc-crypto-rand"
 version = "2.0.0"
 dependencies = [
  "cfg-if 1.0.0",
- "getrandom",
  "rand",
  "rand_core",
- "rand_hc",
 ]
 
 [[package]]

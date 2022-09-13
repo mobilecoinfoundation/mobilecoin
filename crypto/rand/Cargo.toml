@@ -4,16 +4,17 @@ version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = '''
-This crate provides a no-std compatible rng called `RdRandRng`.
+This crate provides a no-std compatible rng called `McRng`.
 
 On targets with +rdrand target feature, it uses the intel RDRAND instruction
 to get randomness directly from the CPU, bypassing a dependency on the OS, libc,
-etc. For servers using SGX, this rng works in trusted and untrusted code equally
-well without changes, which is convenient.
+etc. For servers using SGX, this rng works in no_std trusted and untrusted code
+equally well without changes, which is convenient.
 
-For targets without rdrand, we provide a fallback implementation similar to the
-standard rust `rand` crate's `thread_rng`, using the `getrandom` crate OsRng to
-seed a thread-local rng. `RdRandRng` is in all configurations a zero-width type.
+For targets without rdrand, `McRng` is `ThreadRng`.
+On wasm, `ThreadRng` is not available, so `McRng` is `OsRng`.
+
+`McRng` is in all configurations a zero-width type.
 '''
 
 [features]
@@ -22,7 +23,5 @@ std = ["rand_core/std", "rand/std", "rand/std_rng"]
 
 [dependencies]
 cfg-if = "1.0"
-getrandom = { version = "0.2", default_features = false }
 rand = { version = "0.8", default-features = false }
 rand_core = { version = "0.6", default-features = false }
-rand_hc = "0.3"
