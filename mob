@@ -51,6 +51,7 @@ tag = Image tag/version to use
 
 import argparse
 import configparser
+import getpass
 import grp
 import os
 import pathlib
@@ -212,7 +213,7 @@ if not args.run_as_root:
     # figure out user and group
     uid = os.getuid()
     gid = os.getgid()
-    username = os.getlogin()
+    username = getpass.getuser()
     groupname = grp.getgrgid(gid)[0]
     docker_run.extend([
             "--env", "EXTERNAL_UID=" + str(uid),
