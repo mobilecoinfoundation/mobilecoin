@@ -455,6 +455,7 @@ impl SignatureRctBulletproofs {
             let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
+
             // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
             // same as generator.commit(Zero, Zero) and is faster.
             if difference != RistrettoPoint::identity() {
@@ -582,6 +583,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
         return Err(Error::TokenIdNotAllowed);
     }
+
     // input and output token ids must match fee_token_id if mixed transactions is
     // not enabled
     if !block_version.mixed_transactions_are_supported() {
@@ -598,6 +600,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             return Err(Error::MixedTransactionsNotAllowed);
         }
     }
+
     // Presigned rings and input rules cannot be used if signed input rules are not
     // enabled
     if !block_version.signed_input_rules_are_supported() {
@@ -633,26 +636,31 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             if ring.members.len() != ring_size {
                 return Err(Error::InvalidRingSize(ring.members.len()));
             }
+
             // Each `real_input_index` must be in [0,ring_size - 1].
             if ring.real_input_index >= ring_size {
                 return Err(Error::IndexOutOfBounds);
             }
         }
     }
+
     // This computes a sequence of appropriate pseudo output blindings, one for each
     // ring. For Signable rings, this will be a random number, but the last is
     // chosen so that the sum of all blinding factors is zero.
     // For pre-signed rings, we cannot change blinding, so we have to use what was
     // signed.
     let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
+
     // Create Range proofs for outputs and pseudo-outputs.
     let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
         .iter()
         .zip(pseudo_output_blindings.iter())
         .map(|(ring, blinding)| (ring.amount().value, *blinding))
         .collect();
+
     // Create a pedersen generator cache
     let mut generator_cache = GeneratorCache::default();
+
     // Range proof is present when mixed transactions are not supported, the set of
     // range proofs is present when they are.
     let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
@@ -672,6 +680,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
         (range_proof.to_bytes().to_vec(), vec![])
     } else {
         let mut range_proofs = Vec::default();
+
         // Collect list of of unique token ids
         let token_ids = {
             let mut token_ids = BTreeSet::default();
@@ -686,6 +695,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
         };
         for token_id in token_ids {
             let generator = generator_cache.get(token_id);
+
             // The input blinding is not the same as corresponding pseudo-output blinding
             let (values, blindings): (Vec<_>, Vec<_>) =
                 zip_exact(rings.iter(), pseudo_output_blindings.iter())?
@@ -713,6 +723,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
         }
         (vec![], range_proofs)
     };
+
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
     let pseudo_output_commitments: Vec<RistrettoPoint> =
@@ -734,23 +745,27 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             .sum();
         let sum_of_pseudo_output_commitments: RistrettoPoint =
             pseudo_output_commitments.iter().sum();
+
         // The implicit fee output.
         let generator = generator_cache.get(fee.token_id);
         let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
         let difference =
             sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
+
         // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
         // same as generator.commit(Zero, Zero) and is faster.
         if difference != RistrettoPoint::identity() {
             return Err(Error::ValueNotConserved);
         }
     }
+
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
     let pseudo_output_commitments: Vec<CompressedCommitment> = pseudo_output_commitments
         .into_iter()
         .map(|point| CompressedCommitment::from(&point.compress()))
         .collect();
+
     // Extend the message with the range proof and pseudo_output_commitments.
     // This ensures that they are signed by each RingMLSAG.
     let extended_message_digest = compute_extended_message_either_version(
