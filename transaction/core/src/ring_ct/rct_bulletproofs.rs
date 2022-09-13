@@ -614,9 +614,11 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             };
         }
     }
+
     if rings.is_empty() {
         return Err(Error::NoInputs);
     }
+
     let ring_size = rings
         .iter()
         .find_map(|ring| {
@@ -627,9 +629,11 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             }
         })
         .ok_or(Error::AllRingsPresigned)?;
+
     if ring_size == 0 {
         return Err(Error::InvalidRingSize(0));
     }
+
     for ring in rings {
         if let InputRing::Signable(ring) = ring {
             // Each ring must have the same size.
@@ -665,6 +669,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
     // range proofs is present when they are.
     let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
         // The implicit fee output is omitted from the range proof because it is known.
+
         let generator = generator_cache.get(fee.token_id);
         let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
             .iter()
@@ -677,6 +682,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             .unzip();
         let (range_proof, _commitments) =
             generate_range_proofs(&values, &blindings, generator, rng)?;
+
         (range_proof.to_bytes().to_vec(), vec![])
     } else {
         let mut range_proofs = Vec::default();
@@ -693,6 +699,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
             }
             token_ids
         };
+
         for token_id in token_ids {
             let generator = generator_cache.get(token_id);
 
@@ -714,13 +721,17 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
                         }
                     }))
                     .unzip();
+
             if values.is_empty() {
                 return Err(Error::NoCommitmentsForTokenId(token_id));
             }
+
             let (range_proof, _commitments) =
                 generate_range_proofs(&values, &blindings, generator, rng)?;
+
             range_proofs.push(range_proof.to_bytes());
         }
+
         (vec![], range_proofs)
     };
 
@@ -734,6 +745,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
                     .commit(Scalar::from(ring.amount().value), *blinding)
             })
             .collect();
+
     if check_value_is_preserved {
         let sum_of_output_commitments: RistrettoPoint = output_secrets
             .iter()
@@ -743,12 +755,14 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
                     .commit(Scalar::from(secret.amount.value), secret.blinding)
             })
             .sum();
+
         let sum_of_pseudo_output_commitments: RistrettoPoint =
             pseudo_output_commitments.iter().sum();
 
         // The implicit fee output.
         let generator = generator_cache.get(fee.token_id);
         let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+
         let difference =
             sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
 
@@ -782,6 +796,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
         .iter()
         .map(|secret| *secret.amount.token_id)
         .collect();
+
     if !block_version.mixed_transactions_are_supported() {
         pseudo_output_token_ids.clear();
         output_token_ids.clear();
