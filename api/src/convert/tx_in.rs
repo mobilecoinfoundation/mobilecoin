@@ -80,7 +80,7 @@ impl From<&InputRules> for external::InputRules {
         input_rules.set_fractional_outputs(fractional_outputs);
 
         if let Some(fractional_change) = source.fractional_change.as_ref() {
-            input_rules.set_fractional_change(external::RevealedTxOut::from(fractional_change));
+            input_rules.set_fractional_change(fractional_change.into());
         }
 
         input_rules.set_max_allowed_change_value(source.max_allowed_change_value);
