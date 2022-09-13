@@ -178,8 +178,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Arguments
     /// * `input_view_only_materials` - Materials required to construct the
-    ///   onetime private key for the input when combined with the spend private
+    ///   onetime private key for the input, excluding the spend private
     ///   key for the account.
+    ///
+    /// Using this method prevents you from fully building a transaction, since the spend key material is
+    /// unavailable. However, it allows you to call `get_signing_data` which returns all the information about
+    /// the transaction that allows it to later be signed by an external tool that have access to the spend private
+    /// key.
+    /// For an example of how this can be used to generate a fully valid and signed transaction, please see unit test below.
     pub fn add_view_only_input(&mut self, input_view_only_materials: InputViewOnlyMaterials) {
         self.input_materials
             .push(InputMaterials::ViewOnly(input_view_only_materials));
