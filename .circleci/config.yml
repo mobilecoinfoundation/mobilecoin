@@ -368,6 +368,22 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
+  run-wasm-tests:
+    steps:
+      - run:
+          name: Run wasm tests
+          command: |
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | bash
+            apt-get install -y clang-10 nodejs
+            CC=clang-10 wasm-pack test --node wasm-test
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+
   run-consensus-tests:
     steps:
       - run:
@@ -781,6 +797,19 @@ jobs:
       - check-dirty-git
       - post-build
 
+  # Run wasm tests on a single container
+  run-wasm-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-wasm-tests
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+
 workflows:
   version: 2
   # Build and run tests on a single container
@@ -828,4 +857,8 @@ workflows:
 
       # Run tests on a single container
       - build-and-test-go:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Run wasm tests on a single container
+      - run-wasm-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }

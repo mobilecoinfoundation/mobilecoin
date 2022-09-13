@@ -727,6 +727,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if 1.0.0",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "cookie"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1528,8 +1538,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9be70c98951c83b8d2f8f60d7065fa6d5146873094452a1008da8c2f1e4205ad"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2392,7 +2404,6 @@ dependencies = [
  "hex_fmt",
  "mc-common",
  "mc-crypto-digestible",
- "mc-crypto-rand",
  "mc-sgx-css",
  "mc-sgx-types",
  "mc-util-build-script",
@@ -2402,6 +2413,7 @@ dependencies = [
  "pem",
  "prost",
  "rand 0.8.5",
+ "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "rjson",
  "serde",
@@ -5269,6 +5281,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-wasm-test"
+version = "2.0.0"
+dependencies = [
+ "getrandom 0.2.6",
+ "mc-account-keys",
+ "mc-api",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "rand 0.8.5",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "mc-watcher"
 version = "2.0.0"
 dependencies = [
@@ -8042,6 +8069,30 @@ name = "wasm-bindgen-shared"
 version = "0.2.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
+
+[[package]]
+name = "wasm-bindgen-test"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96f1aa7971fdf61ef0f353602102dbea75a56e225ed036c1e3740564b91e6b7e"
+dependencies = [
+ "console_error_panic_hook",
+ "js-sys",
+ "scoped-tls",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "wasm-bindgen-test-macro"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6006f79628dfeb96a86d4db51fbf1344cd7fd8408f06fc9aa3c84913a4789688"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
 
 [[package]]
 name = "web-sys"

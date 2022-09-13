@@ -24,7 +24,6 @@ std = [
 [dependencies]
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
-mc-crypto-rand = { path = "../../crypto/rand" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
@@ -36,6 +35,7 @@ digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
 prost = { version = "0.10", default-features = false }
+rand_core = { version = "0.6", default-features = false }
 rjson = "0.3.1"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.10", default-features = false }

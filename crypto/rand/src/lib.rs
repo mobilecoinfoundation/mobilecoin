@@ -16,6 +16,9 @@ cfg_if! {
     if #[cfg(target_feature = "rdrand")] {
         mod rdrandrng;
         pub use rdrandrng::McRng;
+    } else if #[cfg(all(target_arch = "wasm32", target_os = "unknown"))] {
+        mod wasm;
+        pub use wasm::McRng;
     } else {
         mod fallback;
         pub use fallback::McRng;
