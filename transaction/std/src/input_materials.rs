@@ -26,6 +26,12 @@ pub enum InputMaterials {
     Presigned(SignedContingentInput),
 }
 
+impl From<InputViewOnlyMaterials> for InputMaterials {
+    fn from(view_only: InputViewOnlyMaterials) -> Self {
+        InputMaterials::ViewOnly(view_only)
+    }
+}
+
 impl From<InputCredentials> for InputMaterials {
     fn from(src: InputCredentials) -> Self {
         Self::Signable(src)
@@ -73,9 +79,7 @@ impl TryFrom<InputMaterials> for InputRing {
     type Error = TxBuilderError;
     fn try_from(src: InputMaterials) -> Result<InputRing, Self::Error> {
         Ok(match src {
-            InputMaterials::ViewOnly(_) => {
-                return Err(TxBuilderError::RingContainsViewOnlyInputs);
-            }
+            InputMaterials::ViewOnly(materials) => InputRing::ViewOnly(materials.try_into()?),
             InputMaterials::Signable(creds) => InputRing::Signable(creds.try_into()?),
             InputMaterials::Presigned(input) => InputRing::Presigned(input.into()),
         })

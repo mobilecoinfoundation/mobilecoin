@@ -26,6 +26,24 @@ pub struct SignableInputRing {
     pub input_secret: InputSecret,
 }
 
+/// A representation of the part of the input ring needed to create an MLSAG
+#[derive(Clone, Debug)]
+pub struct ViewOnlyInputRing {
+    /// A reduced representation of the TxOut's in the ring. For each ring
+    /// member we have only:
+    /// * The onetime-address (tx_out.target_key)
+    /// * The compressed commitment (tx_out.amount.commitment)
+    pub members: Vec<ReducedTxOut>,
+
+    /// The index of the real input among these ring members
+    pub real_input_index: usize,
+
+    /// The amount of the output
+    pub amount: Amount,
+    /// The blinding factor of the output we are trying to spend
+    pub blinding: Scalar,
+}
+
 /// The secrets needed to create a signature that spends an existing output as
 /// an input
 #[derive(Clone, Debug, Zeroize)]

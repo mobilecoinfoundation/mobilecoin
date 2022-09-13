@@ -3,9 +3,11 @@
 use crate::TxBuilderError;
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature_signer::ViewOnlyInputRing;
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
     tx::{TxIn, TxOut, TxOutMembershipProof},
+    TxOutConversionError,
 };
 use mc_transaction_types::Amount;
 use zeroize::Zeroize;
@@ -92,6 +94,23 @@ impl InputViewOnlyMaterials {
             real_index,
             amount,
             blinding,
+        })
+    }
+}
+
+impl TryFrom<InputViewOnlyMaterials> for ViewOnlyInputRing {
+    type Error = TxOutConversionError;
+
+    fn try_from(src: InputViewOnlyMaterials) -> Result<Self, Self::Error> {
+        Ok(ViewOnlyInputRing {
+            members: src
+                .ring
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+            real_input_index: src.real_index,
+            amount: src.amount,
+            blinding: src.blinding,
         })
     }
 }

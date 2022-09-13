@@ -5,8 +5,8 @@
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
 use crate::{
-    input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedSubaddresses,
-    TxBuilderError,
+    input_materials::InputMaterials, InputCredentials, InputViewOnlyMaterials, MemoBuilder,
+    ReservedSubaddresses, TxBuilderError,
 };
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
@@ -160,6 +160,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn add_input(&mut self, input_credentials: InputCredentials) {
         self.input_materials
             .push(InputMaterials::Signable(input_credentials));
+    }
+
+    /// Add a View Only Input to the transaction.
+    ///
+    /// # Arguments
+    /// * `input_view_only_materials` - Materials required to construct the
+    ///   onetime private key for the input.
+    pub fn add_view_only_input(&mut self, input_view_only_materials: InputViewOnlyMaterials) {
+        self.input_materials
+            .push(InputMaterials::ViewOnly(input_view_only_materials));
     }
 
     /// Add a pre-signed Input to the transaction, also fulfilling any
@@ -515,6 +525,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ) -> Result<Tx, TxBuilderError> {
         self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
     }
+
+    // pub fn build_view_only_signing_materials<RNG: CryptoRng + RngCore>(
+    //     self,
+    //     rng: &mut RNG,
+    // ) -> Result<ViewOnlySigningMaterials, TxBuilderError> {
+
+    // }
 
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).

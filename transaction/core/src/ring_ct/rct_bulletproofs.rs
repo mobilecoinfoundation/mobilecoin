@@ -20,7 +20,7 @@ use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
-use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, ViewOnlyInputRing};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -52,6 +52,9 @@ pub struct PresignedInputRing {
 /// control the order in which they will appear.
 #[derive(Clone, Debug)]
 pub enum InputRing {
+    /// An input ring that contains the data needed to sign it with the onetime
+    /// private key
+    ViewOnly(ViewOnlyInputRing),
     /// A signable input ring
     Signable(SignableInputRing),
     /// A presigned input ring
@@ -62,6 +65,7 @@ impl InputRing {
     /// Get the amount of the pseudo-output of this ring
     pub fn amount(&self) -> &Amount {
         match self {
+            InputRing::ViewOnly(ring) => &ring.amount,
             InputRing::Signable(ring) => &ring.input_secret.amount,
             InputRing::Presigned(ring) => &ring.pseudo_output_secret.amount,
         }
@@ -93,6 +97,41 @@ pub struct SignedInputRing {
     /// signed. If the input has rules, then a reduced digest is signed
     /// instead. (See MCIP #31 for rationale)
     pub signed_digest: Option<[u8; 32]>,
+}
+
+/// Signature data that is required for any signer to produce signature
+/// and construct transaction
+#[derive(Clone, Debug)]
+pub struct ViewOnlySigningData {
+    /// Transaction extended message
+    pub extended_message: Vec<u8>,
+
+    /// pseudo output blindings
+    pub pseudo_output_blindings: Vec<Scalar>,
+
+    /// Commitments of value equal to each real input.
+    pub pseudo_output_commitments: Vec<CompressedCommitment>,
+
+    /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
+    /// This contains range_proof.to_bytes(). It is stored this way so that this
+    /// struct may derive Default, which is a requirement for serializing
+    /// with Prost.
+    pub range_proof_bytes: Vec<u8>,
+
+    /// A range proof, one for each token id that is used in the transaction.
+    ///
+    /// The range proofs correspond to the sorted order of token ids used.
+    ///
+    /// Note: This is EMPTY if mixed transactions is not enabled
+    pub range_proofs: Vec<Vec<u8>>,
+
+    /// Token id for each pseudo_output. This must have the same length as
+    /// `pseudo_output_commitments`, after mixed transactions feature.
+    pub pseudo_output_token_ids: Vec<u64>,
+
+    /// Token id for each output. This must have the same length as
+    /// `prefix.outputs`, after mixed transactions feature
+    pub output_token_ids: Vec<u64>,
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
@@ -462,10 +501,68 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     signer: &S,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
+    let ViewOnlySigningData {
+        extended_message: extended_message_digest,
+        pseudo_output_blindings,
+        pseudo_output_commitments,
+        range_proofs,
+        range_proof_bytes,
+        pseudo_output_token_ids,
+        output_token_ids,
+        ..
+    } = get_view_only_signing_data(
+        block_version,
+        message,
+        rings,
+        output_secrets,
+        fee,
+        check_value_is_preserved,
+        rng,
+    )
+    .unwrap();
+
+    // Prove that the signer is allowed to spend a public key in each ring, and that
+    // the input's value equals the value of the pseudo_output.
+    let ring_signatures: Vec<RingMLSAG> = rings
+        .iter()
+        .zip(pseudo_output_blindings)
+        .map(
+            |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
+                Ok(match ring {
+                    InputRing::ViewOnly(_) => {
+                        return Err(Error::ViewOnlyRingCannotBeSigned);
+                    }
+                    InputRing::Signable(ring) => {
+                        signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
+                    }
+                    InputRing::Presigned(ring) => ring.mlsag.clone(),
+                })
+            },
+        )
+        .collect::<Result<_, _>>()?;
+
+    Ok(SignatureRctBulletproofs {
+        ring_signatures,
+        pseudo_output_commitments,
+        range_proof_bytes,
+        range_proofs,
+        pseudo_output_token_ids,
+        output_token_ids,
+    })
+}
+
+fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
+    block_version: BlockVersion,
+    message: &[u8; 32],
+    rings: &[InputRing],
+    output_secrets: &[OutputSecret],
+    fee: Amount,
+    check_value_is_preserved: bool,
+    rng: &mut CSPRNG,
+) -> Result<ViewOnlySigningData, Error> {
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
         return Err(Error::TokenIdNotAllowed);
     }
-
     // input and output token ids must match fee_token_id if mixed transactions is
     // not enabled
     if !block_version.mixed_transactions_are_supported() {
@@ -482,7 +579,6 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             return Err(Error::MixedTransactionsNotAllowed);
         }
     }
-
     // Presigned rings and input rules cannot be used if signed input rules are not
     // enabled
     if !block_version.signed_input_rules_are_supported() {
@@ -492,10 +588,10 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
                     return Err(Error::SignedInputRulesNotAllowed);
                 }
                 InputRing::Signable(_) => {}
+                InputRing::ViewOnly(_) => {}
             };
         }
     }
-
     if rings.is_empty() {
         return Err(Error::NoInputs);
     }
@@ -509,11 +605,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             }
         })
         .ok_or(Error::AllRingsPresigned)?;
-
     if ring_size == 0 {
         return Err(Error::InvalidRingSize(0));
     }
-
     for ring in rings {
         if let InputRing::Signable(ring) = ring {
             // Each ring must have the same size.
@@ -526,30 +620,25 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             }
         }
     }
-
     // This computes a sequence of appropriate pseudo output blindings, one for each
     // ring. For Signable rings, this will be a random number, but the last is
     // chosen so that the sum of all blinding factors is zero.
     // For pre-signed rings, we cannot change blinding, so we have to use what was
     // signed.
     let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
-
     // Create Range proofs for outputs and pseudo-outputs.
     let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
         .iter()
         .zip(pseudo_output_blindings.iter())
         .map(|(ring, blinding)| (ring.amount().value, *blinding))
         .collect();
-
     // Create a pedersen generator cache
     let mut generator_cache = GeneratorCache::default();
-
     // Range proof is present when mixed transactions are not supported, the set of
     // range proofs is present when they are.
     let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
         // The implicit fee output is omitted from the range proof because it is known.
         let generator = generator_cache.get(fee.token_id);
-
         let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
             .iter()
             .cloned()
@@ -561,11 +650,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             .unzip();
         let (range_proof, _commitments) =
             generate_range_proofs(&values, &blindings, generator, rng)?;
-
         (range_proof.to_bytes().to_vec(), vec![])
     } else {
         let mut range_proofs = Vec::default();
-
         // Collect list of of unique token ids
         let token_ids = {
             let mut token_ids = BTreeSet::default();
@@ -578,10 +665,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             }
             token_ids
         };
-
         for token_id in token_ids {
             let generator = generator_cache.get(token_id);
-
             // The input blinding is not the same as corresponding pseudo-output blinding
             let (values, blindings): (Vec<_>, Vec<_>) =
                 zip_exact(rings.iter(), pseudo_output_blindings.iter())?
@@ -600,20 +685,15 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
                         }
                     }))
                     .unzip();
-
             if values.is_empty() {
                 return Err(Error::NoCommitmentsForTokenId(token_id));
             }
-
             let (range_proof, _commitments) =
                 generate_range_proofs(&values, &blindings, generator, rng)?;
-
             range_proofs.push(range_proof.to_bytes());
         }
-
         (vec![], range_proofs)
     };
-
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
     let pseudo_output_commitments: Vec<RistrettoPoint> =
@@ -624,7 +704,6 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
                     .commit(Scalar::from(ring.amount().value), *blinding)
             })
             .collect();
-
     if check_value_is_preserved {
         let sum_of_output_commitments: RistrettoPoint = output_secrets
             .iter()
@@ -634,14 +713,11 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
                     .commit(Scalar::from(secret.amount.value), secret.blinding)
             })
             .sum();
-
         let sum_of_pseudo_output_commitments: RistrettoPoint =
             pseudo_output_commitments.iter().sum();
-
         // The implicit fee output.
         let generator = generator_cache.get(fee.token_id);
         let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
-
         let difference =
             sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
         // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
@@ -650,14 +726,12 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             return Err(Error::ValueNotConserved);
         }
     }
-
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
     let pseudo_output_commitments: Vec<CompressedCommitment> = pseudo_output_commitments
         .into_iter()
         .map(|point| CompressedCommitment::from(&point.compress()))
         .collect();
-
     // Extend the message with the range proof and pseudo_output_commitments.
     // This ensures that they are signed by each RingMLSAG.
     let extended_message_digest = compute_extended_message_either_version(
@@ -668,30 +742,12 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         &range_proofs,
     );
 
-    // Prove that the signer is allowed to spend a public key in each ring, and that
-    // the input's value equals the value of the pseudo_output.
-    let ring_signatures: Vec<RingMLSAG> = rings
-        .iter()
-        .zip(pseudo_output_blindings)
-        .map(
-            |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
-                Ok(match ring {
-                    InputRing::Signable(ring) => {
-                        signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
-                    }
-                    InputRing::Presigned(ring) => ring.mlsag.clone(),
-                })
-            },
-        )
-        .collect::<Result<_, _>>()?;
-
     let mut pseudo_output_token_ids: Vec<u64> =
         rings.iter().map(|ring| *ring.amount().token_id).collect();
     let mut output_token_ids: Vec<u64> = output_secrets
         .iter()
         .map(|secret| *secret.amount.token_id)
         .collect();
-
     if !block_version.mixed_transactions_are_supported() {
         pseudo_output_token_ids.clear();
         output_token_ids.clear();
@@ -702,8 +758,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         assert!(!range_proofs.is_empty());
     }
 
-    Ok(SignatureRctBulletproofs {
-        ring_signatures,
+    Ok(ViewOnlySigningData {
+        extended_message: extended_message_digest,
+        pseudo_output_blindings,
         pseudo_output_commitments,
         range_proof_bytes: range_proof,
         range_proofs,
@@ -765,7 +822,7 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
         .enumerate()
         .map(|(idx, ring)| {
             match ring {
-                InputRing::Signable(_ring) => {
+                InputRing::Signable(_) | InputRing::ViewOnly(_) => {
                     if idx == last_unsigned_ring_index {
                         // At this point, the running sum is the sum of all pseudo output blindings,
                         // except this one.
