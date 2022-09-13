@@ -4274,7 +4274,7 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-uri",
  "retry",
- "sha2 0.10.2",
+ "sha2 0.10.5",
  "tokio",
 ]
 
