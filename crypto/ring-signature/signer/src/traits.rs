@@ -40,7 +40,7 @@ pub struct ViewOnlyInputRing {
 
     /// The amount of the output
     pub amount: Amount,
-    
+
     /// The blinding factor of the output we are trying to spend
     pub blinding: Scalar,
 }

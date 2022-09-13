@@ -527,13 +527,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
     }
 
-    // pub fn build_view_only_signing_materials<RNG: CryptoRng + RngCore>(
-    //     self,
-    //     rng: &mut RNG,
-    // ) -> Result<ViewOnlySigningMaterials, TxBuilderError> {
-
-    // }
-
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).
     fn build_with_comparer_internal<
