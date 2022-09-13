@@ -372,8 +372,9 @@ commands:
       - run:
           name: Run wasm tests
           command: |
-            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-            wasm-pack test --node wasm-test
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | bash
+            apt-get install -y clang-10 nodejs
+            CC=clang-10 wasm-pack test --node wasm-test
       - run:
           command: |
             mkdir -p /tmp/core_dumps
