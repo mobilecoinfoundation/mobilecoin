@@ -67,6 +67,9 @@ pub struct TransactionViewOnlySigningData {
 
     /// rings
     pub signing_data: ViewOnlySigningData,
+
+    /// Output secrets
+    pub output_secrets: Vec<OutputSecret>,
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -178,14 +181,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Arguments
     /// * `input_view_only_materials` - Materials required to construct the
-    ///   onetime private key for the input, excluding the spend private
-    ///   key for the account.
+    ///   onetime private key for the input, excluding the spend private key for
+    ///   the account.
     ///
-    /// Using this method prevents you from fully building a transaction, since the spend key material is
-    /// unavailable. However, it allows you to call `get_signing_data` which returns all the information about
-    /// the transaction that allows it to later be signed by an external tool that have access to the spend private
-    /// key.
-    /// For an example of how this can be used to generate a fully valid and signed transaction, please see unit test below.
+    /// Using this method prevents you from fully building a transaction, since
+    /// the spend key material is unavailable. However, it allows you to
+    /// call `get_signing_data` which returns all the information about
+    /// the transaction that allows it to later be signed by an external tool
+    /// that have access to the spend private key.
+    /// For an example of how this can be used to generate a fully valid and
+    /// signed transaction, please see unit test below.
     pub fn add_view_only_input(&mut self, input_view_only_materials: InputViewOnlyMaterials) {
         self.input_materials
             .push(InputMaterials::ViewOnly(input_view_only_materials));
@@ -523,104 +528,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Return low level data to sign and construct transactions with external
     /// signers
-    pub fn get_signing_data<T: RngCore + CryptoRng>(
+    pub fn get_signing_data<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
         rng: &mut T,
     ) -> Result<TransactionViewOnlySigningData, TxBuilderError> {
-        let (inputs, outputs, output_secrets) =
-            self.prepare_for_signing::<DefaultTxOutputsOrdering>()?;
-
-        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
-
-        let input_rings = self
-            .input_materials
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<InputRing>, _>>()?;
-
-        let message = tx_prefix.hash().0;
-
-        let signing_data = SignatureRctBulletproofs::get_view_only_signing_data(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            rng,
-        )?;
-
-        Ok(TransactionViewOnlySigningData {
-            tx_prefix,
-            rings: input_rings,
-            signing_data,
-        })
-    }
-
-    /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer.
-    /// Used only in testing library.
-    #[cfg(feature = "test-only")]
-    pub fn build_with_sorter<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer
-    /// (internal usage only).
-    fn build_with_comparer_internal<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
-        mut self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        let (inputs, outputs, output_secrets) = self.prepare_for_signing::<O>().unwrap();
-
-        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
-
-        let input_rings = self
-            .input_materials
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<InputRing>, _>>()?;
-
-        let message = tx_prefix.hash().0;
-        let signature = SignatureRctBulletproofs::sign(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            ring_signer,
-            rng,
-        )?;
-
-        Ok(Tx {
-            prefix: tx_prefix,
-            signature,
-        })
-    }
-
-    fn prepare_for_signing<O: TxOutputsOrdering>(
-        &mut self,
-    ) -> Result<(Vec<TxIn>, Vec<TxOut>, Vec<OutputSecret>), TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -711,7 +622,91 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.outputs_and_secrets.drain(..).unzip();
 
-        Ok((inputs, outputs, output_secrets))
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
+
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<InputRing>, _>>()?;
+
+        let message = tx_prefix.hash().0;
+
+        let signing_data = SignatureRctBulletproofs::get_view_only_signing_data(
+            self.block_version,
+            &message,
+            &input_rings,
+            &output_secrets,
+            self.fee,
+            rng,
+        )?;
+
+        Ok(TransactionViewOnlySigningData {
+            tx_prefix,
+            rings: input_rings,
+            signing_data,
+            output_secrets,
+        })
+    }
+
+    /// Consume the builder and return the transaction.
+    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer.
+    /// Used only in testing library.
+    #[cfg(feature = "test-only")]
+    pub fn build_with_sorter<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer
+    /// (internal usage only).
+    fn build_with_comparer_internal<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        // TODO Maybe include these inside TransactionViewOnlySigningData?
+        let block_version = self.block_version;
+        let fee = self.fee;
+
+        let signing_data = self.get_signing_data::<RNG, O>(rng)?;
+
+        // Not very elegant, maybe add to TransactionViewOnlySigningData?
+        let message = signing_data.tx_prefix.hash().0;
+
+        let signature = SignatureRctBulletproofs::sign(
+            block_version,
+            &message,
+            &signing_data.rings,
+            &signing_data.output_secrets,
+            fee,
+            ring_signer,
+            rng,
+        )?;
+
+        Ok(Tx {
+            prefix: signing_data.tx_prefix,
+            signature,
+        })
     }
 }
 
