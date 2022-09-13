@@ -218,7 +218,7 @@ commands:
       - run:
           name: Install Homebrew dependencies
           command: |
-            rm '/usr/local/lib/python3.8/site-packages/six.py'
+            rm -f /usr/local/lib/python3.8/site-packages/six.py
             brew bundle --no-upgrade
 
   save-homebrew-cache:
