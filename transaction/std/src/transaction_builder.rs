@@ -17,7 +17,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs},
+    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, ViewOnlySigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -55,6 +55,18 @@ pub struct TxOutContext {
     /// Shared Secret that comes from a transaction builder
     /// add_output/add_change_output
     pub shared_secret: RistrettoPublic,
+}
+
+/// Signing data for external library
+#[derive(Debug)]
+pub struct TransactionViewOnlySigningData {
+    pub tx_prefix: TxPrefix,
+
+    /// rings
+    pub rings: Vec<InputRing>,
+
+    /// rings
+    pub signing_data: ViewOnlySigningData,
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -503,6 +515,41 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee.token_id
     }
 
+    /// Return low level data to sign and construct transactions with external
+    /// signers
+    pub fn get_signing_data<T: RngCore + CryptoRng>(
+        mut self,
+        rng: &mut T,
+    ) -> Result<TransactionViewOnlySigningData, TxBuilderError> {
+        let (inputs, outputs, output_secrets) =
+            self.prepare_for_signing::<DefaultTxOutputsOrdering>()?;
+
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
+
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<InputRing>, _>>()?;
+
+        let message = tx_prefix.hash().0;
+
+        let signing_data = SignatureRctBulletproofs::get_view_only_signing_data(
+            self.block_version,
+            &message,
+            &input_rings,
+            &output_secrets,
+            self.fee,
+            rng,
+        )?;
+
+        Ok(TransactionViewOnlySigningData {
+            tx_prefix,
+            rings: input_rings,
+            signing_data,
+        })
+    }
+
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
         self,
@@ -538,93 +585,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        // Note: Origin block has block version zero, so some clients like slam that
-        // start with a bootstrapped ledger will target block version 0. However,
-        // block version zero has no special rules and so targeting block version 0
-        // should be the same as targeting block version 1, for the transaction
-        // builder. This test is mainly here in case we decide that the
-        // transaction builder should stop supporting sufficiently old block
-        // versions in the future, then we can replace the zero here with
-        // something else.
-        if self.block_version < BlockVersion::default() {
-            return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 0));
-        }
-
-        if self.block_version > BlockVersion::MAX {
-            return Err(TxBuilderError::BlockVersionTooNew(
-                *self.block_version,
-                *BlockVersion::MAX,
-            ));
-        }
-
-        if !self.block_version.masked_token_id_feature_is_supported()
-            && self.fee.token_id != Mob::ID
-        {
-            return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
-                *self.block_version,
-                "nonzero token id",
-            ));
-        }
-
-        if self.input_materials.is_empty() {
-            return Err(TxBuilderError::NoInputs);
-        }
-
-        // All inputs must have rings of the same size.
-        if self
-            .input_materials
-            .windows(2)
-            .any(|win| win[0].ring_size() != win[1].ring_size())
-        {
-            return Err(TxBuilderError::InvalidRingSize);
-        }
-
-        for input in self.input_materials.iter() {
-            if !self.block_version.mixed_transactions_are_supported()
-                && input.amount().token_id != self.fee.token_id
-            {
-                return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                    self.fee.token_id,
-                    input.amount().token_id,
-                ));
-            }
-
-            match input {
-                InputMaterials::ViewOnly(_) => {
-                    return Err(TxBuilderError::RingContainsViewOnlyInputs);
-                }
-                InputMaterials::Presigned(input) => {
-                    if !self.block_version.signed_input_rules_are_supported() {
-                        return Err(TxBuilderError::SignedInputRulesNotAllowed);
-                    }
-                    // TODO: Also validate membership proofs?
-                    if input.tx_in.ring.len() != input.tx_in.proofs.len() {
-                        return Err(TxBuilderError::MissingMembershipProofs);
-                    }
-                }
-                InputMaterials::Signable(input) => {
-                    // TODO: Also validate membership proofs?
-                    if input.ring.len() != input.membership_proofs.len() {
-                        return Err(TxBuilderError::MissingMembershipProofs);
-                    }
-                }
-            }
-        }
-
-        // Construct a list of sorted inputs.
-        // Inputs are sorted by the first ring element's public key. Note that each ring
-        // is also sorted.
-        self.input_materials
-            .sort_by(|a, b| a.sort_key().cmp(b.sort_key()));
-
-        let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
-
-        // Outputs are sorted according to the rule (but generally by public key)
-        self.outputs_and_secrets
-            .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
-
-        let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_secrets.drain(..).unzip();
+        let (inputs, outputs, output_secrets) = self.prepare_for_signing::<O>().unwrap();
 
         let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
@@ -649,6 +610,92 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             prefix: tx_prefix,
             signature,
         })
+    }
+
+    fn prepare_for_signing<O: TxOutputsOrdering>(
+        &mut self,
+    ) -> Result<(Vec<TxIn>, Vec<TxOut>, Vec<OutputSecret>), TxBuilderError> {
+        // Note: Origin block has block version zero, so some clients like slam that
+        // start with a bootstrapped ledger will target block version 0. However,
+        // block version zero has no special rules and so targeting block version 0
+        // should be the same as targeting block version 1, for the transaction
+        // builder. This test is mainly here in case we decide that the
+        // transaction builder should stop supporting sufficiently old block
+        // versions in the future, then we can replace the zero here with
+        // something else.
+        if self.block_version < BlockVersion::default() {
+            return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 0));
+        }
+        if self.block_version > BlockVersion::MAX {
+            return Err(TxBuilderError::BlockVersionTooNew(
+                *self.block_version,
+                *BlockVersion::MAX,
+            ));
+        }
+        if !self.block_version.masked_token_id_feature_is_supported()
+            && self.fee.token_id != Mob::ID
+        {
+            return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
+                *self.block_version,
+                "nonzero token id",
+            ));
+        }
+        if self.input_materials.is_empty() {
+            return Err(TxBuilderError::NoInputs);
+        }
+        // All inputs must have rings of the same size.
+        if self
+            .input_materials
+            .windows(2)
+            .any(|win| win[0].ring_size() != win[1].ring_size())
+        {
+            return Err(TxBuilderError::InvalidRingSize);
+        }
+        for input in self.input_materials.iter() {
+            if !self.block_version.mixed_transactions_are_supported()
+                && input.amount().token_id != self.fee.token_id
+            {
+                return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                    self.fee.token_id,
+                    input.amount().token_id,
+                ));
+            }
+            match input {
+                InputMaterials::Presigned(input) => {
+                    if !self.block_version.signed_input_rules_are_supported() {
+                        return Err(TxBuilderError::SignedInputRulesNotAllowed);
+                    }
+                    // TODO: Also validate membership proofs?
+                    if input.tx_in.ring.len() != input.tx_in.proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+                InputMaterials::Signable(input) => {
+                    // TODO: Also validate membership proofs?
+                    if input.ring.len() != input.membership_proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+                InputMaterials::ViewOnly(input) => {
+                    if input.ring.len() != input.membership_proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+            }
+        }
+        // Construct a list of sorted inputs.
+        // Inputs are sorted by the first ring element's public key. Note that each ring
+        // is also sorted.
+        self.input_materials
+            .sort_by(|a, b| a.sort_key().cmp(b.sort_key()));
+        let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
+        // Outputs are sorted according to the rule (but generally by public key)
+        self.outputs_and_secrets
+            .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
+        let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
+            self.outputs_and_secrets.drain(..).unzip();
+
+        Ok((inputs, outputs, output_secrets))
     }
 }
 

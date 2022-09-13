@@ -208,6 +208,28 @@ impl SignatureRctBulletproofs {
         )
     }
 
+    /// Return low level signing data for signing in external signers
+    pub fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
+        block_version: BlockVersion,
+        message: &[u8; 32],
+        input_rings: &[InputRing],
+        output_secrets: &[OutputSecret],
+        fee: Amount,
+        rng: &mut CSPRNG,
+    ) -> Result<ViewOnlySigningData, Error> {
+        let signing_data = get_view_only_signing_data(
+            block_version,
+            message,
+            input_rings,
+            output_secrets,
+            fee,
+            true,
+            rng,
+        )?;
+
+        Ok(signing_data)
+    }
+
     /// Verify.
     ///
     /// # Arguments
@@ -500,7 +522,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
     let ViewOnlySigningData {
-        extended_message: extended_message_digest,
+        extended_message_digest,
         pseudo_output_blindings,
         pseudo_output_commitments,
         range_proofs,
