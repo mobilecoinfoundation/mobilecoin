@@ -7,8 +7,16 @@ use diesel::{prelude::*, PgConnection};
 use diesel_migrations::embed_migrations;
 use mc_common::logger::{log, Logger};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use retry::{
+    delay::{jitter, Fixed},
+    retry,
+};
+use std::time::Duration;
 
 embed_migrations!("migrations/");
+
+const DB_CONNECTION_SLEEP_PERIOD: Duration = Duration::from_secs(3);
+const TOTAL_RETRY_COUNT: usize = 5;
 
 /// Context for tests.
 pub struct SqlRecoveryDbTestContext {
@@ -36,13 +44,7 @@ impl SqlRecoveryDbTestContext {
         // database.
         let postgres_url = format!("{}/postgres", base_url);
         log::info!(&logger, "Connecting to root PG DB {}", postgres_url);
-        let conn = PgConnection::establish(&postgres_url).unwrap_or_else(|err| {
-            panic!(
-                "Cannot connect to PG database '{}': {:?}",
-                postgres_url, err
-            )
-        });
-
+        let conn = SqlRecoveryDbTestContext::establish_connection(&postgres_url);
         // Create a new database for the test
         let query = diesel::sql_query(format!("CREATE DATABASE {};", db_name).as_str());
         let _ = query
@@ -52,9 +54,8 @@ impl SqlRecoveryDbTestContext {
         // Now we can connect to the database and run the migrations
         let db_url = format!("{}/{}", base_url, db_name);
         log::info!(&logger, "Connecting to newly created PG DB '{}'", db_url);
-        let conn = PgConnection::establish(&db_url)
-            .unwrap_or_else(|err| panic!("Cannot connect to PG database '{}': {:?}", db_url, err));
 
+        let conn = SqlRecoveryDbTestContext::establish_connection(&db_url);
         embedded_migrations::run(&conn).expect("failed running migrations");
 
         // Success
@@ -90,6 +91,16 @@ impl SqlRecoveryDbTestContext {
         let db_url = self.db_url();
         PgConnection::establish(&db_url)
             .unwrap_or_else(|err| panic!("Cannot connect to database {}: {}", db_url, err))
+    }
+
+    fn establish_connection(url: &str) -> PgConnection {
+        retry(
+            Fixed::from(DB_CONNECTION_SLEEP_PERIOD)
+                .map(jitter)
+                .take(TOTAL_RETRY_COUNT),
+            || PgConnection::establish(url),
+        )
+        .unwrap_or_else(|_| panic!("Cannot connect to PG database '{}'", url))
     }
 }
 
