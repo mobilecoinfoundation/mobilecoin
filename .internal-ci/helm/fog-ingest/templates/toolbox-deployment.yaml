@@ -64,8 +64,9 @@ spec:
               fieldPath: metadata.namespace
         - name: MC_CHAIN_ID
           valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
         - name: RUST_LOG
           value: error
         - name: CLIENT_AUTH_TOKEN_SECRET
