@@ -80,7 +80,7 @@ pub struct TransactionSigningData {
 impl TransactionSigningData {
     /// Sign the transaction signing data with a given signer
     pub fn sign<RNG: CryptoRng + RngCore>(
-        self,
+        &self,
         signer: &impl RingSigner,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
