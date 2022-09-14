@@ -689,13 +689,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        // TODO Maybe include these inside TransactionViewOnlySigningData?
+        // TODO Maybe include these inside TransactionSigningData?
         let block_version = self.block_version;
         let fee = self.fee;
 
         let signing_data = self.get_signing_data::<RNG, O>(rng)?;
 
-        // Not very elegant, maybe add to TransactionViewOnlySigningData?
+        // Not very elegant, maybe add to TransactionSigningData?
         let message = signing_data.tx_prefix.hash().0;
 
         let signature = SignatureRctBulletproofs::sign(
