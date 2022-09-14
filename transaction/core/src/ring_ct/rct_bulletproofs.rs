@@ -98,7 +98,7 @@ pub struct SignedInputRing {
 /// Signature data that is required for any signer to produce signature
 /// and construct transaction
 #[derive(Clone, Debug, Digestible, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ViewOnlySigningData {
+pub struct SigningData {
     /// Transaction extended message.
     pub extended_message_digest: Vec<u8>,
 
@@ -212,7 +212,7 @@ impl SignatureRctBulletproofs {
         output_secrets: &[OutputSecret],
         fee: Amount,
         rng: &mut CSPRNG,
-    ) -> Result<ViewOnlySigningData, Error> {
+    ) -> Result<SigningData, Error> {
         let signing_data = get_view_only_signing_data(
             block_version,
             message,
@@ -518,7 +518,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     signer: &S,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
-    let ViewOnlySigningData {
+    let SigningData {
         extended_message_digest,
         pseudo_output_blindings,
         pseudo_output_commitments,
@@ -572,7 +572,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
     fee: Amount,
     check_value_is_preserved: bool,
     rng: &mut CSPRNG,
-) -> Result<ViewOnlySigningData, Error> {
+) -> Result<SigningData, Error> {
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
         return Err(Error::TokenIdNotAllowed);
     }
@@ -799,7 +799,7 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
         assert!(!range_proofs.is_empty());
     }
 
-    Ok(ViewOnlySigningData {
+    Ok(SigningData {
         extended_message_digest,
         pseudo_output_blindings,
         pseudo_output_commitments,

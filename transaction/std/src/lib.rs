@@ -34,7 +34,7 @@ pub use memo_builder::{
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{
-    DefaultTxOutputsOrdering, TransactionBuilder, TransactionViewOnlySigningData, TxOutContext,
+    DefaultTxOutputsOrdering, TransactionBuilder, TransactionSigningData, TxOutContext,
     TxOutputsOrdering,
 };
 

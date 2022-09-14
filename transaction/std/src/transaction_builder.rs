@@ -17,7 +17,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, ViewOnlySigningData},
+    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -60,7 +60,7 @@ pub struct TxOutContext {
 
 /// Signing data for external library
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactionViewOnlySigningData {
+pub struct TransactionSigningData {
     /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,
 
@@ -68,10 +68,36 @@ pub struct TransactionViewOnlySigningData {
     pub rings: Vec<InputRing>,
 
     /// rings
-    pub signing_data: ViewOnlySigningData,
+    pub signing_data: SigningData,
 
     /// Output secrets
     pub output_secrets: Vec<OutputSecret>,
+
+    /// Block version
+    pub block_version: BlockVersion,
+}
+
+impl TransactionSigningData {
+    /// Sign the transaction signing data with a given signer
+    pub fn sign<RNG: CryptoRng + RngCore>(
+        self,
+        signer: &impl RingSigner,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let prefix = self.tx_prefix.clone();
+        let message = prefix.hash().0;
+        let signature = SignatureRctBulletproofs::sign(
+            self.block_version,
+            &message,
+            self.rings.as_slice(),
+            self.output_secrets.as_slice(),
+            Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
+            signer,
+            rng,
+        )?;
+
+        Ok(Tx { prefix, signature })
+    }
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -514,7 +540,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn get_signing_data<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
         rng: &mut T,
-    ) -> Result<TransactionViewOnlySigningData, TxBuilderError> {
+    ) -> Result<TransactionSigningData, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -619,11 +645,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             rng,
         )?;
 
-        Ok(TransactionViewOnlySigningData {
+        Ok(TransactionSigningData {
             tx_prefix,
             rings: input_rings,
             signing_data,
             output_secrets,
+            block_version: self.block_version,
         })
     }
 
