@@ -11,6 +11,7 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
+mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
 mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }

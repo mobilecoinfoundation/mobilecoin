@@ -13,7 +13,7 @@ pub use error::{Error, Result};
 
 use alloc::vec::Vec;
 use core::hash::Hash;
-use mc_attest_core::{QuoteNonce, Report};
+use mc_attest_core::{IntelSealed, QuoteNonce, Report};
 use serde::{Deserialize, Serialize};
 
 macro_rules! impl_newtype_vec_inout {
@@ -79,6 +79,14 @@ pub struct EnclaveNonceMessage<S: Session> {
     pub data: Vec<u8>,
     /// The explicit nonce for this message.
     pub nonce: u64,
+}
+
+/// An EnclaveMessage<ClientSession> sealed for the current enclave
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SealedClientMessage {
+    pub aad: Vec<u8>,
+    pub channel_id: ClientSession,
+    pub data: IntelSealed,
 }
 
 /// The response to a request for a new report. The enclave will expect the
