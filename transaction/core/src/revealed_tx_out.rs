@@ -1,9 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{tx::TxOut, Amount, AmountError, TxOutConversionError};
-use alloc::{
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use prost::Message;

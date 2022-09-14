@@ -15,9 +15,8 @@ use crate::{
 };
 use mc_api::ConversionError;
 use mc_transaction_core::{
-    mint::MintValidationError,
-    validation::TransactionValidationError as Error, BlockVersion, InputRuleError,
-    RevealedTxOutError, TokenId,
+    mint::MintValidationError, validation::TransactionValidationError as Error, BlockVersion,
+    InputRuleError, RevealedTxOutError, TokenId,
 };
 
 /// Convert TransactionValidationError --> ProposeTxResult.
