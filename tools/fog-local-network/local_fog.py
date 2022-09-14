@@ -31,9 +31,6 @@ IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 
 FOG_SQL_DATABASE_NAME = 'fog_local'
-# Use env.DATABASE_URL if it exists, else use postgres://$PGHOST/fog_local,
-# falling back to postgres://localhost/fog_local.
-DATABASE_URL_ENV = 'DATABASE_URL=${DATABASE_URL:-postgres://${PGHOST:-localhost}/%s}' % FOG_SQL_DATABASE_NAME
 
 # Set a sane chain id if none is provided
 if 'MC_CHAIN_ID' not in os.environ:
