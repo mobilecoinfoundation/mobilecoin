@@ -36,7 +36,7 @@ impl FogViewRouterAdminService {
         }
     }
 
-    pub fn add_shard_impl(&mut self, shard_uri: &str, logger: &Logger) -> Result<Empty, RpcStatus> {
+    fn add_shard_impl(&mut self, shard_uri: &str, logger: &Logger) -> Result<Empty, RpcStatus> {
         let view_store_uri = FogViewStoreUri::from_str(shard_uri).map_err(|_| {
             rpc_invalid_arg_error(
                 "add_shard",

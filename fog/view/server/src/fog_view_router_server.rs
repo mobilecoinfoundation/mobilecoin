@@ -5,9 +5,8 @@
 //! stopping it
 
 use crate::{
-    config::FogViewRouterConfig, counters,
-    fog_view_router_admin_service::FogViewRouterAdminService,
-    fog_view_router_service::FogViewRouterService,
+    config::FogViewRouterConfig, counters, fog_view_router_service::FogViewRouterService,
+    router_admin_service::FogViewRouterAdminService,
 };
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
