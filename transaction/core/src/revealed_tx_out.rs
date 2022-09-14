@@ -2,7 +2,6 @@
 
 use crate::{tx::TxOut, Amount, AmountError, TxOutConversionError};
 use alloc::{
-    string::{String, ToString},
     vec::Vec,
 };
 use displaydoc::Display;
@@ -53,19 +52,19 @@ pub enum RevealedTxOutError {
     /// Invalid Amount Shared Secret
     InvalidAmountSharedSecret,
     /// TxOut conversion: {0}
-    TxOutConversion(String),
+    TxOutConversion(TxOutConversionError),
     /// Amount: {0}
-    Amount(String),
+    Amount(AmountError),
 }
 
 impl From<TxOutConversionError> for RevealedTxOutError {
     fn from(src: TxOutConversionError) -> Self {
-        Self::TxOutConversion(src.to_string())
+        Self::TxOutConversion(src)
     }
 }
 
 impl From<AmountError> for RevealedTxOutError {
     fn from(src: AmountError) -> Self {
-        Self::Amount(src.to_string())
+        Self::Amount(src)
     }
 }
