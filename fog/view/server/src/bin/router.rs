@@ -13,7 +13,12 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use std::{env, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    env,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -38,7 +43,7 @@ fn main() {
     );
 
     // TODO: Remove and get from a config.
-    let mut fog_view_store_grpc_clients = Vec::new();
+    let mut fog_view_store_grpc_clients = HashMap::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())
@@ -54,8 +59,9 @@ fn main() {
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
         );
-        fog_view_store_grpc_clients.push(fog_view_store_grpc_client);
+        fog_view_store_grpc_clients.insert(shard_uri, Arc::new(fog_view_store_grpc_client));
     }
+    let fog_view_store_grpc_clients = Arc::new(RwLock::new(fog_view_store_grpc_clients));
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
