@@ -60,15 +60,12 @@ pub struct TxOutContext {
 
 /// Signing data for external library
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactionSigningData {
+pub struct UnsignedTransaction {
     /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,
 
     /// rings
     pub rings: Vec<InputRing>,
-
-    /// rings
-    pub signing_data: SigningData,
 
     /// Output secrets
     pub output_secrets: Vec<OutputSecret>,
@@ -77,7 +74,7 @@ pub struct TransactionSigningData {
     pub block_version: BlockVersion,
 }
 
-impl TransactionSigningData {
+impl UnsignedTransaction {
     /// Sign the transaction signing data with a given signer
     pub fn sign<RNG: CryptoRng + RngCore>(
         &self,
@@ -97,6 +94,26 @@ impl TransactionSigningData {
         )?;
 
         Ok(Tx { prefix, signature })
+    }
+
+    /// Get extraneous signing data
+    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+        &self,
+        rng: &mut RNG,
+    ) -> Result<SigningData, TxBuilderError> {
+        let message = self.tx_prefix.hash().0;
+        let fee_amount = Amount::new(
+            self.tx_prefix.fee,
+            TokenId::from(self.tx_prefix.fee_token_id),
+        );
+        Ok(SignatureRctBulletproofs::get_view_only_signing_data(
+            self.block_version,
+            &message,
+            &self.rings,
+            &self.output_secrets,
+            fee_amount,
+            rng,
+        )?)
     }
 }
 
@@ -537,10 +554,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Return low level data to sign and construct transactions with external
     /// signers
-    pub fn get_signing_data<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
+    pub fn build_unsigned<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
-        rng: &mut T,
-    ) -> Result<TransactionSigningData, TxBuilderError> {
+    ) -> Result<UnsignedTransaction, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -634,21 +650,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<InputRing>, _>>()?;
 
-        let message = tx_prefix.hash().0;
-
-        let signing_data = SignatureRctBulletproofs::get_view_only_signing_data(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            rng,
-        )?;
-
-        Ok(TransactionSigningData {
+        Ok(UnsignedTransaction {
             tx_prefix,
             rings: input_rings,
-            signing_data,
             output_secrets,
             block_version: self.block_version,
         })
@@ -693,23 +697,23 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let block_version = self.block_version;
         let fee = self.fee;
 
-        let signing_data = self.get_signing_data::<RNG, O>(rng)?;
+        let unsigned_tx = self.build_unsigned::<RNG, O>()?;
 
         // Not very elegant, maybe add to TransactionSigningData?
-        let message = signing_data.tx_prefix.hash().0;
+        let message = unsigned_tx.tx_prefix.hash().0;
 
         let signature = SignatureRctBulletproofs::sign(
             block_version,
             &message,
-            &signing_data.rings,
-            &signing_data.output_secrets,
+            &unsigned_tx.rings,
+            &unsigned_tx.output_secrets,
             fee,
             ring_signer,
             rng,
         )?;
 
         Ok(Tx {
-            prefix: signing_data.tx_prefix,
+            prefix: unsigned_tx.tx_prefix,
             signature,
         })
     }

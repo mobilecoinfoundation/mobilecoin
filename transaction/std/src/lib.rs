@@ -34,8 +34,8 @@ pub use memo_builder::{
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{
-    DefaultTxOutputsOrdering, TransactionBuilder, TransactionSigningData, TxOutContext,
-    TxOutputsOrdering,
+    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
+    UnsignedTransaction,
 };
 
 // Re-export this to help the exported macros work
