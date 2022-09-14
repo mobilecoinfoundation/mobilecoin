@@ -27,6 +27,6 @@ pub enum AmountError {
     /// Token Id is not supported at this block version
     TokenIdNotSupportedAtBlockVersion,
 
-    /// Amount is too old to have amount shared secret
-    AmountTooOldForAmountSharedSecret,
+    /// Amount version is too old to have amount shared secret
+    AmountVersionTooOldForAmountSharedSecret,
 }
