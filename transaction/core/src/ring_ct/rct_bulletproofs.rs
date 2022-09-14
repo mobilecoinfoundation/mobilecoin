@@ -20,7 +20,7 @@ use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
-use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, ViewOnlyInputRing};
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -37,7 +37,7 @@ use crate::{
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
 /// signature
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PresignedInputRing {
     /// The mlsag signature authorizing the spending of an input
     pub mlsag: RingMLSAG,
@@ -50,11 +50,8 @@ pub struct PresignedInputRing {
 /// This enum is needed because all TxIn's are required to appear in sorted
 /// order, regardless of if they are presigned. This gives the signer a way to
 /// control the order in which they will appear.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum InputRing {
-    /// An input ring that contains the data needed to sign it with the onetime
-    /// private key
-    ViewOnly(ViewOnlyInputRing),
     /// A signable input ring
     Signable(SignableInputRing),
     /// A presigned input ring
@@ -65,7 +62,6 @@ impl InputRing {
     /// Get the amount of the pseudo-output of this ring
     pub fn amount(&self) -> &Amount {
         match self {
-            InputRing::ViewOnly(ring) => &ring.amount,
             InputRing::Signable(ring) => &ring.input_secret.amount,
             InputRing::Presigned(ring) => &ring.pseudo_output_secret.amount,
         }
@@ -74,7 +70,7 @@ impl InputRing {
 
 /// The secrets corresponding to an output that we are trying to authorize
 /// creation of
-#[derive(Clone, Debug, Zeroize)]
+#[derive(Clone, Debug, Zeroize, Deserialize, Serialize)]
 #[zeroize(drop)]
 pub struct OutputSecret {
     /// The amount of the output we are creating
@@ -84,7 +80,7 @@ pub struct OutputSecret {
 }
 
 /// The parts of a TxIn needed to validate a corresponding MLSAG
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SignedInputRing {
     /// A reduced representation of the TxOut's in the ring. For each ring
     /// member we have only:
@@ -101,7 +97,7 @@ pub struct SignedInputRing {
 
 /// Signature data that is required for any signer to produce signature
 /// and construct transaction
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Digestible, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ViewOnlySigningData {
     /// Transaction extended message.
     pub extended_message_digest: Vec<u8>,
@@ -549,9 +545,6 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         .map(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
-                    InputRing::ViewOnly(_) => {
-                        return Err(Error::ViewOnlyRingCannotBeSigned);
-                    }
                     InputRing::Signable(ring) => {
                         signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
                     }
@@ -610,7 +603,6 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
                     return Err(Error::SignedInputRulesNotAllowed);
                 }
                 InputRing::Signable(_) => {}
-                InputRing::ViewOnly(_) => {}
             };
         }
     }
@@ -871,7 +863,7 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
         .enumerate()
         .map(|(idx, ring)| {
             match ring {
-                InputRing::Signable(_) | InputRing::ViewOnly(_) => {
+                InputRing::Signable(_) => {
                     if idx == last_unsigned_ring_index {
                         // At this point, the running sum is the sum of all pseudo output blindings,
                         // except this one.

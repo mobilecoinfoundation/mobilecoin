@@ -10,7 +10,6 @@ extern crate core;
 mod error;
 mod input_credentials;
 mod input_materials;
-mod input_view_only_materials;
 mod memo;
 mod memo_builder;
 mod reserved_subaddresses;
@@ -22,7 +21,6 @@ pub mod test_utils;
 
 pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
-pub use input_view_only_materials::InputViewOnlyMaterials;
 pub use memo::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo,
     DestinationMemo, DestinationMemoError, GiftCodeCancellationMemo, GiftCodeFundingMemo,
@@ -36,7 +34,8 @@ pub use memo_builder::{
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{
-    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
+    DefaultTxOutputsOrdering, TransactionBuilder, TransactionViewOnlySigningData, TxOutContext,
+    TxOutputsOrdering,
 };
 
 // Re-export this to help the exported macros work

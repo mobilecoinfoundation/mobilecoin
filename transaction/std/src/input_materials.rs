@@ -9,7 +9,7 @@
 //! of the first element of the ring being signed, then hand them off to build
 //! the actual signatures. This enum makes it convenient to do this.
 
-use crate::{InputCredentials, InputViewOnlyMaterials, TxBuilderError};
+use crate::{InputCredentials, TxBuilderError};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput};
 
@@ -17,19 +17,10 @@ use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingent
 /// a transaction.
 #[derive(Debug, Clone)]
 pub enum InputMaterials {
-    /// View Only input materials, required to generate the onetime private key
-    /// along with the associated spend private key of the owning account.
-    ViewOnly(InputViewOnlyMaterials),
     /// Signable input materials
     Signable(InputCredentials),
     /// Presigned input materials
     Presigned(SignedContingentInput),
-}
-
-impl From<InputViewOnlyMaterials> for InputMaterials {
-    fn from(view_only: InputViewOnlyMaterials) -> Self {
-        InputMaterials::ViewOnly(view_only)
-    }
 }
 
 impl From<InputCredentials> for InputMaterials {
@@ -48,7 +39,6 @@ impl InputMaterials {
     /// Get the sort key for whichever type of input this is
     pub fn sort_key(&self) -> &CompressedRistrettoPublic {
         match self {
-            InputMaterials::ViewOnly(materials) => &materials.ring[0].public_key,
             InputMaterials::Signable(cred) => &cred.ring[0].public_key,
             InputMaterials::Presigned(input) => &input.tx_in.ring[0].public_key,
         }
@@ -57,7 +47,6 @@ impl InputMaterials {
     /// Get the amount for whichever type of input this is
     pub fn amount(&self) -> Amount {
         match self {
-            InputMaterials::ViewOnly(materials) => materials.amount,
             InputMaterials::Signable(cred) => cred.input_secret.amount,
             InputMaterials::Presigned(input) => Amount::from(&input.pseudo_output_amount),
         }
@@ -66,7 +55,6 @@ impl InputMaterials {
     /// Get the ring size for whichever type of input this is
     pub fn ring_size(&self) -> usize {
         match self {
-            InputMaterials::ViewOnly(materials) => materials.ring.len(),
             InputMaterials::Signable(cred) => cred.ring.len(),
             InputMaterials::Presigned(input) => input.tx_in.ring.len(),
         }
@@ -79,7 +67,6 @@ impl TryFrom<InputMaterials> for InputRing {
     type Error = TxBuilderError;
     fn try_from(src: InputMaterials) -> Result<InputRing, Self::Error> {
         Ok(match src {
-            InputMaterials::ViewOnly(materials) => InputRing::ViewOnly(materials.try_into()?),
             InputMaterials::Signable(creds) => InputRing::Signable(creds.try_into()?),
             InputMaterials::Presigned(input) => InputRing::Presigned(input.into()),
         })
@@ -91,7 +78,6 @@ impl TryFrom<InputMaterials> for InputRing {
 impl From<&InputMaterials> for TxIn {
     fn from(src: &InputMaterials) -> TxIn {
         match src {
-            InputMaterials::ViewOnly(materials) => materials.into(),
             InputMaterials::Signable(ref creds) => creds.into(),
             InputMaterials::Presigned(input) => input.tx_in.clone(),
         }

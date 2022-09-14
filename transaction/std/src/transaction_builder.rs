@@ -5,8 +5,8 @@
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
 use crate::{
-    input_materials::InputMaterials, InputCredentials, InputViewOnlyMaterials, MemoBuilder,
-    ReservedSubaddresses, TxBuilderError,
+    input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedSubaddresses,
+    TxBuilderError,
 };
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
@@ -25,6 +25,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 /// A trait used to compare the transaction outputs
@@ -58,8 +59,9 @@ pub struct TxOutContext {
 }
 
 /// Signing data for external library
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionViewOnlySigningData {
+    /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,
 
     /// rings
@@ -175,25 +177,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn add_input(&mut self, input_credentials: InputCredentials) {
         self.input_materials
             .push(InputMaterials::Signable(input_credentials));
-    }
-
-    /// Add a View Only Input to the transaction.
-    ///
-    /// # Arguments
-    /// * `input_view_only_materials` - Materials required to construct the
-    ///   onetime private key for the input, excluding the spend private key for
-    ///   the account.
-    ///
-    /// Using this method prevents you from fully building a transaction, since
-    /// the spend key material is unavailable. However, it allows you to
-    /// call `get_signing_data` which returns all the information about
-    /// the transaction that allows it to later be signed by an external tool
-    /// that have access to the spend private key.
-    /// For an example of how this can be used to generate a fully valid and
-    /// signed transaction, please see unit test below.
-    pub fn add_view_only_input(&mut self, input_view_only_materials: InputViewOnlyMaterials) {
-        self.input_materials
-            .push(InputMaterials::ViewOnly(input_view_only_materials));
     }
 
     /// Add a pre-signed Input to the transaction, also fulfilling any
@@ -595,11 +578,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 }
                 InputMaterials::Signable(input) => {
                     // TODO: Also validate membership proofs?
-                    if input.ring.len() != input.membership_proofs.len() {
-                        return Err(TxBuilderError::MissingMembershipProofs);
-                    }
-                }
-                InputMaterials::ViewOnly(input) => {
                     if input.ring.len() != input.membership_proofs.len() {
                         return Err(TxBuilderError::MissingMembershipProofs);
                     }

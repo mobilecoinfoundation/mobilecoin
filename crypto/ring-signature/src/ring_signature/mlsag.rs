@@ -32,7 +32,7 @@ pub trait CryptoRngCore: RngCore + CryptoRng {}
 impl<T> CryptoRngCore for T where T: RngCore + CryptoRng {}
 
 /// A reduced representation of a TxOut, appropriate for making MLSAG
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ReducedTxOut {
     /// The tx_out.public_key field
     pub public_key: CompressedRistrettoPublic,
