@@ -11,7 +11,9 @@ use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_keys::X25519Public;
@@ -199,12 +201,22 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn create_multi_view_store_query_data(
+    fn decrypt_and_seal_query(
         &self,
         client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        let inbuf =
+            mc_util_serial::serialize(&ViewEnclaveRequest::DecryptAndSealQuery(client_query))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn create_multi_view_store_query_data(
+        &self,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(
-            client_query,
+            sealed_query,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -212,11 +224,11 @@ impl ViewEnclaveApi for SgxViewEnclave {
 
     fn collate_shard_query_responses(
         &self,
-        client_query_request: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
         shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CollateQueryResponses(
-            client_query_request,
+            sealed_query,
             shard_query_responses,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;

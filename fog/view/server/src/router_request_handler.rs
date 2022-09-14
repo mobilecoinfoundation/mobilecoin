@@ -107,10 +107,19 @@ where
 {
     let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
+    let sealed_query = enclave
+        .decrypt_and_seal_query(query.into())
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: internal encryption error",
+                err.into(),
+                logger.clone(),
+            )
+        })?;
     // TODO: use retry crate?
     for _ in 0..RETRY_COUNT {
         let multi_view_store_query_request = enclave
-            .create_multi_view_store_query_data(query.clone().into())
+            .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal encryption error",
@@ -162,7 +171,7 @@ where
     }
 
     let query_response = enclave
-        .collate_shard_query_responses(query.into(), query_responses)
+        .collate_shard_query_responses(sealed_query, query_responses)
         .map_err(|err| {
             router_server_err_to_rpc_status(
                 "Query: shard response collation",

@@ -14,7 +14,9 @@ use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
 use alloc::vec::Vec;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -192,15 +194,25 @@ where
         Ok(())
     }
 
+    /// Decrypts a client query message and converts it into a
+    /// SealedClientMessage which can be unsealed multiple times to
+    /// construct the MultiViewStoreQuery.
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        Ok(self.ake.decrypt_client_message_for_enclave(client_query)?)
+    }
+
     /// Takes in a client's query request and returns a list of query requests
     /// to be sent off to each Fog View Store shard.
     fn create_multi_view_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
         Ok(self
             .ake
-            .reencrypt_client_message_for_backends(client_query)?)
+            .reencrypt_sealed_message_for_backends(&sealed_query)?)
     }
 
     fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
@@ -219,14 +231,14 @@ where
 
     fn collate_shard_query_responses(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
         shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
         }
-        let channel_id = client_query.channel_id.clone();
-        let client_query_plaintext = self.ake.client_decrypt(client_query.clone())?;
+        let channel_id = sealed_query.channel_id.clone();
+        let client_query_plaintext = self.ake.unseal(&sealed_query)?;
         let client_query_request: QueryRequest = mc_util_serial::decode(&client_query_plaintext)
             .map_err(|e| {
                 log::error!(self.logger, "Could not decode client query request: {}", e);
@@ -238,7 +250,7 @@ where
         let response_plaintext_bytes = mc_util_serial::encode(&client_query_response);
         let response =
             self.ake
-                .client_encrypt(&channel_id, &client_query.aad, &response_plaintext_bytes)?;
+                .client_encrypt(&channel_id, &sealed_query.aad, &response_plaintext_bytes)?;
 
         Ok(response)
     }
