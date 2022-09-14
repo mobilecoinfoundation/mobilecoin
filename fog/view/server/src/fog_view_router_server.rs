@@ -4,23 +4,30 @@
 //! Constructible from config (for testability) and with a mechanism for
 //! stopping it
 
-use crate::{config::FogViewRouterConfig, counters, fog_view_router_service::FogViewRouterService};
+use crate::{
+    config::FogViewRouterConfig, counters, fog_view_router_service::FogViewRouterService,
+    router_admin_service::FogViewRouterAdminService,
+};
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::view_grpc;
-use mc_fog_uri::ConnectionUri;
+use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 pub struct FogViewRouterServer<E, RC>
 where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
-    server: grpcio::Server,
+    router_server: grpcio::Server,
+    admin_server: grpcio::Server,
     enclave: E,
     config: FogViewRouterConfig,
     logger: Logger,
@@ -38,7 +45,7 @@ where
         config: FogViewRouterConfig,
         enclave: E,
         ra_client: RC,
-        shards: Vec<view_grpc::FogViewStoreApiClient>,
+        shards: Arc<RwLock<HashMap<FogViewStoreUri, Arc<view_grpc::FogViewStoreApiClient>>>>,
         logger: Logger,
     ) -> FogViewRouterServer<E, RC>
     where
@@ -53,9 +60,14 @@ where
         );
 
         let fog_view_router_service = view_grpc::create_fog_view_router_api(
-            FogViewRouterService::new(enclave.clone(), shards, logger.clone()),
+            FogViewRouterService::new(enclave.clone(), shards.clone(), logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router GRPC Service");
+
+        let fog_view_router_admin_service = view_grpc::create_fog_view_router_admin_api(
+            FogViewRouterAdminService::new(shards, logger.clone()),
+        );
+        log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
         // Health check service
         let health_service =
@@ -68,15 +80,21 @@ where
             "Starting Fog View Router server on {}",
             config.client_listen_uri.addr(),
         );
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let router_server_builder = grpcio::ServerBuilder::new(env.clone())
             .register_service(fog_view_router_service)
             .register_service(health_service)
             .bind_using_uri(&config.client_listen_uri, logger.clone());
 
-        let server = server_builder.build().unwrap();
+        let admin_server_builder = grpcio::ServerBuilder::new(env)
+            .register_service(fog_view_router_admin_service)
+            .bind_using_uri(&config.admin_listen_uri, logger.clone());
+
+        let router_server = router_server_builder.build().unwrap();
+        let admin_server = admin_server_builder.build().unwrap();
 
         Self {
-            server,
+            router_server,
+            admin_server,
             enclave,
             config,
             logger,
@@ -97,9 +115,18 @@ where
             )
             .expect("failed starting report cache thread"),
         );
-        self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
+        self.router_server.start();
+        for (host, port) in self.router_server.bind_addrs() {
+            log::info!(self.logger, "Router API listening on {}:{}", host, port);
+        }
+        self.admin_server.start();
+        for (host, port) in self.admin_server.bind_addrs() {
+            log::info!(
+                self.logger,
+                "Router Admin API listening on {}:{}",
+                host,
+                port
+            );
         }
     }
 
@@ -108,7 +135,8 @@ where
         if let Some(ref mut thread) = self.report_cache_thread.take() {
             thread.stop().expect("Could not stop report cache thread");
         }
-        block_on(self.server.shutdown()).expect("Could not stop grpc server");
+        block_on(self.router_server.shutdown()).expect("Could not stop router grpc server");
+        block_on(self.admin_server.shutdown()).expect("Could not stop admin router server");
     }
 }
 

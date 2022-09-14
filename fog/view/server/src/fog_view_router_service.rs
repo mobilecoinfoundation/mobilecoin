@@ -8,10 +8,14 @@ use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
     view_grpc::{FogViewRouterApi, FogViewStoreApiClient},
 };
+use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::rpc_logger;
 use mc_util_metrics::SVC_COUNTERS;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Clone)]
 pub struct FogViewRouterService<E>
@@ -19,7 +23,7 @@ where
     E: ViewEnclaveProxy,
 {
     enclave: E,
-    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
     logger: Logger,
 }
 
@@ -29,8 +33,11 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     ///
     /// TODO: Add a `view_store_clients` parameter of type FogApiClient, and
     /// perform view store authentication on each one.
-    pub fn new(enclave: E, shard_clients: Vec<FogViewStoreApiClient>, logger: Logger) -> Self {
-        let shard_clients = shard_clients.into_iter().map(Arc::new).collect();
+    pub fn new(
+        enclave: E,
+        shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        logger: Logger,
+    ) -> Self {
         Self {
             enclave,
             shard_clients,
@@ -55,8 +62,9 @@ where
             let logger = logger.clone();
             // TODO: Confirm that we don't need to perform the authenticator logic. I think
             // we don't  because of streaming...
+            let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
             let future = router_request_handler::handle_requests(
-                self.shard_clients.clone(),
+                shard_clients.values().cloned().collect(),
                 self.enclave.clone(),
                 requests,
                 responses,
