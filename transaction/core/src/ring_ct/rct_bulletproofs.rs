@@ -133,6 +133,42 @@ pub struct SigningData {
     pub output_token_ids: Vec<u64>,
 }
 
+impl SigningData {
+    /// Create a new [`SigningData`] instance.
+    ///
+    /// # Arguments
+    /// * `block_version` - Block version of transaction being signed. This may
+    ///   influence details of the signature.
+    /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
+    /// * `rings` - Input rings, each one describing a single input to the
+    ///   transaction.
+    /// * `output_secrets` - Outputs secret (amount and commitment) for the
+    ///   outputs we will be creating.
+    /// * `fee` - Value of the implicit fee output.
+    /// * `check_value_is_preserved` - If true, check that the value of inputs
+    ///   equals value of outputs.
+    /// * `rng` - randomness
+    pub fn new<CSPRNG: RngCore + CryptoRng>(
+        block_version: BlockVersion,
+        message: &[u8; 32],
+        rings: &[InputRing],
+        output_secrets: &[OutputSecret],
+        fee: Amount,
+        check_value_is_preserved: bool,
+        rng: &mut CSPRNG,
+    ) -> Result<Self, Error> {
+        get_view_only_signing_data(
+            block_version,
+            message,
+            rings,
+            output_secrets,
+            fee,
+            check_value_is_preserved,
+            rng,
+        )
+    }
+}
+
 /// An RCT_TYPE_BULLETPROOFS_2 signature
 #[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
 pub struct SignatureRctBulletproofs {
@@ -207,28 +243,6 @@ impl SignatureRctBulletproofs {
             signer,
             rng,
         )
-    }
-
-    /// Return low level signing data for signing in external signers
-    pub fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
-        block_version: BlockVersion,
-        message: &[u8; 32],
-        input_rings: &[InputRing],
-        output_secrets: &[OutputSecret],
-        fee: Amount,
-        rng: &mut CSPRNG,
-    ) -> Result<SigningData, Error> {
-        let signing_data = get_view_only_signing_data(
-            block_version,
-            message,
-            input_rings,
-            output_secrets,
-            fee,
-            true,
-            rng,
-        )?;
-
-        Ok(signing_data)
     }
 
     /// Verify.
@@ -512,6 +526,7 @@ impl SignatureRctBulletproofs {
 /// * `output_secrets` - Output secret for each output amount commitment.
 /// * `fee` - Amount of the implicit fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs
+///   equals value of outputs.
 /// * `rng` - randomness
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     block_version: BlockVersion,
@@ -532,7 +547,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         pseudo_output_token_ids,
         output_token_ids,
         ..
-    } = get_view_only_signing_data(
+    } = SigningData::new(
         block_version,
         message,
         rings,

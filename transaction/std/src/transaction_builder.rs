@@ -106,12 +106,13 @@ impl UnsignedTx {
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        Ok(SignatureRctBulletproofs::get_view_only_signing_data(
+        Ok(SigningData::new(
             self.block_version,
             &message,
             &self.rings,
             &self.output_secrets,
             fee_amount,
+            true,
             rng,
         )?)
     }
