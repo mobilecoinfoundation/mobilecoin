@@ -58,13 +58,14 @@ pub struct TxOutContext {
     pub shared_secret: RistrettoPublic,
 }
 
-/// A structure containing an unsigned transaction, together with the data required to sign it that does
-/// not involve the spend private key.
-/// The idea is that this can be generated without having the spend private key, and then transferred
-/// to an offline/hardware service that does have the spend private key, which can then be used together
-/// with the data here to produce a valid, signed Tx.
-/// Noet that whether the UnsignedTx can be signed on its own or requires the spend private key will depend
-/// on the contents of the InputRings.
+/// A structure containing an unsigned transaction, together with the data
+/// required to sign it that does not involve the spend private key.
+/// The idea is that this can be generated without having the spend private key,
+/// and then transferred to an offline/hardware service that does have the spend
+/// private key, which can then be used together with the data here to produce a
+/// valid, signed Tx. Noet that whether the UnsignedTx can be signed on its own
+/// or requires the spend private key will depend on the contents of the
+/// InputRings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnsignedTx {
     /// The fully constructed TxPrefix.
@@ -82,9 +83,9 @@ pub struct UnsignedTx {
 
 impl UnsignedTx {
     /// Sign the transaction signing data with a given signer
-    pub fn sign<RNG: CryptoRng + RngCore>(
+    pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
         &self,
-        signer: &impl RingSigner,
+        signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         let prefix = self.tx_prefix.clone();
@@ -700,29 +701,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        // TODO Maybe include these inside TransactionSigningData?
-        let block_version = self.block_version;
-        let fee = self.fee;
-
         let unsigned_tx = self.build_unsigned::<RNG, O>()?;
-
-        // Not very elegant, maybe add to TransactionSigningData?
-        let message = unsigned_tx.tx_prefix.hash().0;
-
-        let signature = SignatureRctBulletproofs::sign(
-            block_version,
-            &message,
-            &unsigned_tx.rings,
-            &unsigned_tx.output_secrets,
-            fee,
-            ring_signer,
-            rng,
-        )?;
-
-        Ok(Tx {
-            prefix: unsigned_tx.tx_prefix,
-            signature,
-        })
+        unsigned_tx.sign(ring_signer, rng)
     }
 }
 
