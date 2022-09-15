@@ -633,12 +633,9 @@ fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
 
     let ring_size = rings
         .iter()
-        .find_map(|ring| {
-            if let InputRing::Signable(ring) = ring {
-                Some(ring.members.len())
-            } else {
-                None
-            }
+        .find_map(|ring| match ring {
+            InputRing::Signable(ring) => Some(ring.members.len()),
+            InputRing::Presigned(_) => None,
         })
         .ok_or(Error::AllRingsPresigned)?;
 
