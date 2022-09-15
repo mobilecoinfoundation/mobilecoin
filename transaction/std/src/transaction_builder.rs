@@ -58,7 +58,13 @@ pub struct TxOutContext {
     pub shared_secret: RistrettoPublic,
 }
 
-/// Signing data for external library
+/// A structure containing an unsigned transaction, together with the data required to sign it that does
+/// not involve the spend private key.
+/// The idea is that this can be generated without having the spend private key, and then transferred
+/// to an offline/hardware service that does have the spend private key, which can then be used together
+/// with the data here to produce a valid, signed Tx.
+/// Noet that whether the UnsignedTx can be signed on its own or requires the spend private key will depend
+/// on the contents of the InputRings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnsignedTx {
     /// The fully constructed TxPrefix.
