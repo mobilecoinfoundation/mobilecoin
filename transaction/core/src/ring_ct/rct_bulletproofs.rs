@@ -880,7 +880,7 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
         .enumerate()
         .map(|(idx, ring)| {
             match ring {
-                InputRing::Signable(_) => {
+                InputRing::Signable(_ring) => {
                     if idx == last_unsigned_ring_index {
                         // At this point, the running sum is the sum of all pseudo output blindings,
                         // except this one.
