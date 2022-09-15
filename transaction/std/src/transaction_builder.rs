@@ -60,7 +60,7 @@ pub struct TxOutContext {
 
 /// Signing data for external library
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnsignedTransaction {
+pub struct UnsignedTx {
     /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,
 
@@ -74,7 +74,7 @@ pub struct UnsignedTransaction {
     pub block_version: BlockVersion,
 }
 
-impl UnsignedTransaction {
+impl UnsignedTx {
     /// Sign the transaction signing data with a given signer
     pub fn sign<RNG: CryptoRng + RngCore>(
         &self,
@@ -556,7 +556,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// signers
     pub fn build_unsigned<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
-    ) -> Result<UnsignedTransaction, TxBuilderError> {
+    ) -> Result<UnsignedTx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -650,7 +650,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<InputRing>, _>>()?;
 
-        Ok(UnsignedTransaction {
+        Ok(UnsignedTx {
             tx_prefix,
             rings: input_rings,
             output_secrets,
