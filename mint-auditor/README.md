@@ -1,4 +1,23 @@
-## mint-auditor
+## reserve-auditor
+
+DEPRECATION NOTE:
+
+The reserve-auditor has moved out of this repo to a new home.
+
+This code remains in mobilecoin.git because it supports an integration test which
+exercises minting and burning, and we don't otherwise have good CI testing around
+that functionality right now in mobilecoin.git
+
+This service should be stripped down over time to being a simple test harness that
+supports this test, without a web api or prometheus. (Similarly to how the historical
+SDK evolved into the fog-sample-paykit over time.)
+
+It is test code and SHOULD NOT be deployed.
+
+Any subsequent development of the reserve auditor should take place in
+https://github.com/mobilecoinofficial/reserve-auditor
+
+## Historical (mint-auditor)
 
 This is a service which provides a gRPC API for auditing mints and burns on the MobileCoin blockchain, and optionally correlating them with deposits and withdrawals on a [Gnosis Safe](https://gnosis-safe.io/).
 
