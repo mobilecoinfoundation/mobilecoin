@@ -87,9 +87,6 @@ pub enum Error {
 
     /// Signer: {0}
     Signer(SignerError),
-
-    /// View only rings cannot be signed
-    ViewOnlyRingCannotBeSigned,
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {
