@@ -17,7 +17,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs},
+    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -25,6 +25,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 /// A trait used to compare the transaction outputs
@@ -55,6 +56,73 @@ pub struct TxOutContext {
     /// Shared Secret that comes from a transaction builder
     /// add_output/add_change_output
     pub shared_secret: RistrettoPublic,
+}
+
+/// A structure containing an unsigned transaction, together with the data
+/// required to sign it that does not involve the spend private key.
+/// The idea is that this can be generated without having the spend private key,
+/// and then transferred to an offline/hardware service that does have the spend
+/// private key, which can then be used together with the data here to produce a
+/// valid, signed Tx. Noet that whether the UnsignedTx can be signed on its own
+/// or requires the spend private key will depend on the contents of the
+/// InputRings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnsignedTx {
+    /// The fully constructed TxPrefix.
+    pub tx_prefix: TxPrefix,
+
+    /// rings
+    pub rings: Vec<InputRing>,
+
+    /// Output secrets
+    pub output_secrets: Vec<OutputSecret>,
+
+    /// Block version
+    pub block_version: BlockVersion,
+}
+
+impl UnsignedTx {
+    /// Sign the transaction signing data with a given signer
+    pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+        &self,
+        signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let prefix = self.tx_prefix.clone();
+        let message = prefix.hash().0;
+        let signature = SignatureRctBulletproofs::sign(
+            self.block_version,
+            &message,
+            self.rings.as_slice(),
+            self.output_secrets.as_slice(),
+            Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
+            signer,
+            rng,
+        )?;
+
+        Ok(Tx { prefix, signature })
+    }
+
+    /// Get extraneous signing data
+    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+        &self,
+        rng: &mut RNG,
+    ) -> Result<SigningData, TxBuilderError> {
+        let message = self.tx_prefix.hash().0;
+        let fee_amount = Amount::new(
+            self.tx_prefix.fee,
+            TokenId::from(self.tx_prefix.fee_token_id),
+        );
+        Ok(SigningData::new(
+            self.block_version,
+            &message,
+            &self.rings,
+            &self.output_secrets,
+            fee_amount,
+            true,
+            rng,
+        )?)
+    }
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -492,41 +560,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee.token_id
     }
 
-    /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer.
-    /// Used only in testing library.
-    #[cfg(feature = "test-only")]
-    pub fn build_with_sorter<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer
-    /// (internal usage only).
-    fn build_with_comparer_internal<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
+    /// Return low level data to sign and construct transactions with external
+    /// signers
+    pub fn build_unsigned<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
+    ) -> Result<UnsignedTx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -620,21 +658,51 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<InputRing>, _>>()?;
 
-        let message = tx_prefix.hash().0;
-        let signature = SignatureRctBulletproofs::sign(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            ring_signer,
-            rng,
-        )?;
-
-        Ok(Tx {
-            prefix: tx_prefix,
-            signature,
+        Ok(UnsignedTx {
+            tx_prefix,
+            rings: input_rings,
+            output_secrets,
+            block_version: self.block_version,
         })
+    }
+
+    /// Consume the builder and return the transaction.
+    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer.
+    /// Used only in testing library.
+    #[cfg(feature = "test-only")]
+    pub fn build_with_sorter<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer
+    /// (internal usage only).
+    fn build_with_comparer_internal<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let unsigned_tx = self.build_unsigned::<RNG, O>()?;
+        unsigned_tx.sign(ring_signer, rng)
     }
 }
 

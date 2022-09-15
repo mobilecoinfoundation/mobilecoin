@@ -2,7 +2,7 @@
 
 //! Object containing subaddresses of MobileCoin reserved subaddress indices
 
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, ViewAccountKey};
 
 /// This is an API type for the transaction builder that helps name and organize
 /// data that is passed when creating outputs for reserved subaddresses
@@ -36,6 +36,16 @@ pub struct ReservedSubaddresses {
 
 impl From<&AccountKey> for ReservedSubaddresses {
     fn from(src: &AccountKey) -> Self {
+        Self {
+            primary_address: src.default_subaddress(),
+            change_subaddress: src.change_subaddress(),
+            gift_code_subaddress: src.gift_code_subaddress(),
+        }
+    }
+}
+
+impl From<&ViewAccountKey> for ReservedSubaddresses {
+    fn from(src: &ViewAccountKey) -> Self {
         Self {
             primary_address: src.default_subaddress(),
             change_subaddress: src.change_subaddress(),
