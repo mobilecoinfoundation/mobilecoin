@@ -231,6 +231,10 @@ pub enum Commands {
     /// Generate and submit a MintConfigTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintConfigTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -259,6 +263,10 @@ pub enum Commands {
     /// Submit json-encoded MintConfigTx(s). If multiple transactions are
     /// provided, signatures will be merged.
     SubmitMintConfigTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -277,6 +285,10 @@ pub enum Commands {
     /// Generate and submit a MintTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -305,6 +317,10 @@ pub enum Commands {
     /// Submit json-encoded MintTx(s). If multiple transactions are provided,
     /// signatures will be merged.
     SubmitMintTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,

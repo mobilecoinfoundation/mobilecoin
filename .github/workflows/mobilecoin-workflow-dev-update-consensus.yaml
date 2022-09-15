@@ -18,12 +18,12 @@ on:
       docker_image_org:
         description: "Docker Image Org"
         type: string
-        required: true
+        required: false
         default: docker.io/mobilecoin
       chart_repo:
         description: "Chart Repo URL"
         type: string
-        required: true
+        required: false
         default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
       minting_config_enabled:
         description: "Enable minting config"

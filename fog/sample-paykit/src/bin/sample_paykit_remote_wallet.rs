@@ -123,8 +123,12 @@ impl RemoteWalletService {
             ));
         };
 
+        // Get chain id if any. (Empty string is ignored and this is proto default)
+        let chain_id = request.get_chain_id();
+
         // Create client and perform balance check.
         let mut client = ClientBuilder::new(
+            chain_id.to_owned(),
             consensus_client_uri,
             fog_view_uri,
             fog_ledger_uri,

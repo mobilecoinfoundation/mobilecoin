@@ -73,6 +73,11 @@ spec:
           value: "full"
         - name: "RUST_LOG"
           value: "info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn"
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
         volumeMounts:
         - name: data
           mountPath: /data

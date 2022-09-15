@@ -17,6 +17,10 @@ use std::time::Duration;
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
 pub struct MobileAcctViewConfig {
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// The ID with which to respond to client attestation requests.
     ///
     /// This ID needs to match the host:port clients use in their URI when

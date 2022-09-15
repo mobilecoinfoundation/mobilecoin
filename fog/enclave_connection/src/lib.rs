@@ -19,7 +19,7 @@ use mc_common::{
 use mc_connection::{AttestedConnection, Connection};
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::McRng;
-use mc_util_grpc::{BasicCredentials, GrpcCookieStore};
+use mc_util_grpc::{BasicCredentials, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::ConnectionUri;
 use retry::OperationResult;
 use sha2::Sha512;
@@ -51,6 +51,8 @@ pub trait EnclaveGrpcChannel: Send + Sync {
 
 /// A generic object representing an attested connection to a remote enclave
 pub struct EnclaveConnection<U: ConnectionUri, G: EnclaveGrpcChannel> {
+    /// Chain id, ignored if empty
+    chain_id: String,
     /// The URI we are connecting to, and which provides the ResponderId
     uri: U,
     /// Abstraction of one or more grpc connections
@@ -137,11 +139,12 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
 }
 
 impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
-    pub fn new(uri: U, grpc: G, verifier: Verifier, logger: Logger) -> Self {
+    pub fn new(chain_id: String, uri: U, grpc: G, verifier: Verifier, logger: Logger) -> Self {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
         let cookies = CookieJar::default();
 
         Self {
+            chain_id,
             uri,
             grpc,
             attest_cipher: None,
@@ -167,6 +170,14 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
                 .add_str("Authorization", &self.creds.authorization_header())
                 .expect("Error setting authorization header");
         }
+
+        // Add the chain id header if we have a chain id specified
+        if !self.chain_id.is_empty() {
+            metadata_builder
+                .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
+                .expect("Could not add chain-id header");
+        }
+
         retval.headers(metadata_builder.build())
     }
 

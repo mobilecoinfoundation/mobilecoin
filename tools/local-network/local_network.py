@@ -43,6 +43,10 @@ if MOB_RELEASE == '0':
 if 'MC_LOG' not in os.environ:
     os.environ['MC_LOG'] = 'debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error'
 
+# Set a sane chain id if none is provided
+if 'MC_CHAIN_ID' not in os.environ:
+    os.environ['MC_CHAIN_ID'] = 'local'
+
 # Cloud logging-sepcific configuration
 LOG_BRANCH = os.getenv('LOG_BRANCH', None)
 LOGSTASH_HOST = os.getenv('LOGSTASH_HOST', None)
@@ -461,7 +465,9 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mint-auditor -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mint-auditor -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-mobilecoind --no-default-features {CARGO_FLAGS}',
+
             shell=True,
             check=True,
         )

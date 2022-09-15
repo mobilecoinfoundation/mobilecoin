@@ -3556,6 +3556,7 @@ dependencies = [
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
+ "mc-fog-enclave-connection",
  "mc-fog-ledger-connection",
  "mc-fog-ledger-enclave",
  "mc-fog-ledger-enclave-api",
