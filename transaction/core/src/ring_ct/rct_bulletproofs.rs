@@ -157,15 +157,238 @@ impl SigningData {
         check_value_is_preserved: bool,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
-        get_view_only_signing_data(
+        if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
+            return Err(Error::TokenIdNotAllowed);
+        }
+
+        // input and output token ids must match fee_token_id if mixed transactions is
+        // not enabled
+        if !block_version.mixed_transactions_are_supported() {
+            if rings
+                .iter()
+                .any(|ring| ring.amount().token_id != fee.token_id)
+            {
+                return Err(Error::MixedTransactionsNotAllowed);
+            }
+            if output_secrets
+                .iter()
+                .any(|sec| sec.amount.token_id != fee.token_id)
+            {
+                return Err(Error::MixedTransactionsNotAllowed);
+            }
+        }
+
+        // Presigned rings and input rules cannot be used if signed input rules are not
+        // enabled
+        if !block_version.signed_input_rules_are_supported() {
+            for ring in rings {
+                match ring {
+                    InputRing::Presigned(_) => {
+                        return Err(Error::SignedInputRulesNotAllowed);
+                    }
+                    InputRing::Signable(_) => {}
+                };
+            }
+        }
+
+        if rings.is_empty() {
+            return Err(Error::NoInputs);
+        }
+
+        let ring_size = rings
+            .iter()
+            .find_map(|ring| match ring {
+                InputRing::Signable(ring) => Some(ring.members.len()),
+                InputRing::Presigned(_) => None,
+            })
+            .ok_or(Error::AllRingsPresigned)?;
+
+        if ring_size == 0 {
+            return Err(Error::InvalidRingSize(0));
+        }
+
+        for ring in rings {
+            if let InputRing::Signable(ring) = ring {
+                // Each ring must have the same size.
+                if ring.members.len() != ring_size {
+                    return Err(Error::InvalidRingSize(ring.members.len()));
+                }
+
+                // Each `real_input_index` must be in [0,ring_size - 1].
+                if ring.real_input_index >= ring_size {
+                    return Err(Error::IndexOutOfBounds);
+                }
+            }
+        }
+
+        // This computes a sequence of appropriate pseudo output blindings, one for each
+        // ring. For Signable rings, this will be a random number, but the last is
+        // chosen so that the sum of all blinding factors is zero.
+        // For pre-signed rings, we cannot change blinding, so we have to use what was
+        // signed.
+        let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
+
+        // Create Range proofs for outputs and pseudo-outputs.
+        let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
+            .iter()
+            .zip(pseudo_output_blindings.iter())
+            .map(|(ring, blinding)| (ring.amount().value, *blinding))
+            .collect();
+
+        // Create a pedersen generator cache
+        let mut generator_cache = GeneratorCache::default();
+
+        // Range proof is present when mixed transactions are not supported, the set of
+        // range proofs is present when they are.
+        let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
+            // The implicit fee output is omitted from the range proof because it is known.
+            let generator = generator_cache.get(fee.token_id);
+
+            let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
+                .iter()
+                .cloned()
+                .chain(
+                    output_secrets
+                        .iter()
+                        .map(|secret| (secret.amount.value, secret.blinding)),
+                )
+                .unzip();
+            let (range_proof, _commitments) =
+                generate_range_proofs(&values, &blindings, generator, rng)?;
+
+            (range_proof.to_bytes().to_vec(), vec![])
+        } else {
+            let mut range_proofs = Vec::default();
+
+            // Collect list of of unique token ids
+            let token_ids = {
+                let mut token_ids = BTreeSet::default();
+                token_ids.insert(fee.token_id);
+                for ring in rings {
+                    token_ids.insert(ring.amount().token_id);
+                }
+                for secret in output_secrets {
+                    token_ids.insert(secret.amount.token_id);
+                }
+                token_ids
+            };
+
+            for token_id in token_ids {
+                let generator = generator_cache.get(token_id);
+
+                // The input blinding is not the same as corresponding pseudo-output blinding
+                let (values, blindings): (Vec<_>, Vec<_>) =
+                    zip_exact(rings.iter(), pseudo_output_blindings.iter())?
+                        .filter_map(|(ring, blinding)| {
+                            if ring.amount().token_id == token_id {
+                                Some((ring.amount().value, *blinding))
+                            } else {
+                                None
+                            }
+                        })
+                        .chain(output_secrets.iter().filter_map(|secret| {
+                            if secret.amount.token_id == token_id {
+                                Some((secret.amount.value, secret.blinding))
+                            } else {
+                                None
+                            }
+                        }))
+                        .unzip();
+
+                if values.is_empty() {
+                    return Err(Error::NoCommitmentsForTokenId(token_id));
+                }
+
+                let (range_proof, _commitments) =
+                    generate_range_proofs(&values, &blindings, generator, rng)?;
+
+                range_proofs.push(range_proof.to_bytes());
+            }
+
+            (vec![], range_proofs)
+        };
+
+        // The actual pseudo output commitments use the blindings from
+        // `pseudo_output_blinding` and not the original true input.
+        let pseudo_output_commitments: Vec<RistrettoPoint> =
+            zip_exact(rings.iter(), pseudo_output_blindings.iter())?
+                .map(|(ring, blinding)| {
+                    generator_cache
+                        .get(ring.amount().token_id)
+                        .commit(Scalar::from(ring.amount().value), *blinding)
+                })
+                .collect();
+
+        if check_value_is_preserved {
+            let sum_of_output_commitments: RistrettoPoint = output_secrets
+                .iter()
+                .map(|secret| {
+                    generator_cache
+                        .get(secret.amount.token_id)
+                        .commit(Scalar::from(secret.amount.value), secret.blinding)
+                })
+                .sum();
+
+            let sum_of_pseudo_output_commitments: RistrettoPoint =
+                pseudo_output_commitments.iter().sum();
+
+            // The implicit fee output.
+            let generator = generator_cache.get(fee.token_id);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+
+            let difference =
+                sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
+
+            // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
+            // same as generator.commit(Zero, Zero) and is faster.
+            if difference != RistrettoPoint::identity() {
+                return Err(Error::ValueNotConserved);
+            }
+        }
+
+        // The actual pseudo output commitments use the blindings from
+        // `pseudo_output_blinding` and not the original true input.
+        let pseudo_output_commitments: Vec<CompressedCommitment> = pseudo_output_commitments
+            .into_iter()
+            .map(|point| CompressedCommitment::from(&point.compress()))
+            .collect();
+
+        // Extend the message with the range proof and pseudo_output_commitments.
+        // This ensures that they are signed by each RingMLSAG.
+        let extended_message_digest = compute_extended_message_either_version(
             block_version,
             message,
-            rings,
-            output_secrets,
-            fee,
-            check_value_is_preserved,
-            rng,
-        )
+            &pseudo_output_commitments,
+            &range_proof,
+            &range_proofs,
+        );
+
+        let mut pseudo_output_token_ids: Vec<u64> =
+            rings.iter().map(|ring| *ring.amount().token_id).collect();
+        let mut output_token_ids: Vec<u64> = output_secrets
+            .iter()
+            .map(|secret| *secret.amount.token_id)
+            .collect();
+
+        if !block_version.mixed_transactions_are_supported() {
+            pseudo_output_token_ids.clear();
+            output_token_ids.clear();
+            assert!(!range_proof.is_empty());
+            assert!(range_proofs.is_empty());
+        } else {
+            assert!(range_proof.is_empty());
+            assert!(!range_proofs.is_empty());
+        }
+
+        Ok(Self {
+            extended_message_digest,
+            pseudo_output_blindings,
+            pseudo_output_commitments,
+            range_proof_bytes: range_proof,
+            range_proofs,
+            pseudo_output_token_ids,
+            output_token_ids,
+        })
     }
 }
 
@@ -578,249 +801,6 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         ring_signatures,
         pseudo_output_commitments,
         range_proof_bytes,
-        range_proofs,
-        pseudo_output_token_ids,
-        output_token_ids,
-    })
-}
-
-fn get_view_only_signing_data<CSPRNG: RngCore + CryptoRng>(
-    block_version: BlockVersion,
-    message: &[u8; 32],
-    rings: &[InputRing],
-    output_secrets: &[OutputSecret],
-    fee: Amount,
-    check_value_is_preserved: bool,
-    rng: &mut CSPRNG,
-) -> Result<SigningData, Error> {
-    if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
-        return Err(Error::TokenIdNotAllowed);
-    }
-
-    // input and output token ids must match fee_token_id if mixed transactions is
-    // not enabled
-    if !block_version.mixed_transactions_are_supported() {
-        if rings
-            .iter()
-            .any(|ring| ring.amount().token_id != fee.token_id)
-        {
-            return Err(Error::MixedTransactionsNotAllowed);
-        }
-        if output_secrets
-            .iter()
-            .any(|sec| sec.amount.token_id != fee.token_id)
-        {
-            return Err(Error::MixedTransactionsNotAllowed);
-        }
-    }
-
-    // Presigned rings and input rules cannot be used if signed input rules are not
-    // enabled
-    if !block_version.signed_input_rules_are_supported() {
-        for ring in rings {
-            match ring {
-                InputRing::Presigned(_) => {
-                    return Err(Error::SignedInputRulesNotAllowed);
-                }
-                InputRing::Signable(_) => {}
-            };
-        }
-    }
-
-    if rings.is_empty() {
-        return Err(Error::NoInputs);
-    }
-
-    let ring_size = rings
-        .iter()
-        .find_map(|ring| match ring {
-            InputRing::Signable(ring) => Some(ring.members.len()),
-            InputRing::Presigned(_) => None,
-        })
-        .ok_or(Error::AllRingsPresigned)?;
-
-    if ring_size == 0 {
-        return Err(Error::InvalidRingSize(0));
-    }
-
-    for ring in rings {
-        if let InputRing::Signable(ring) = ring {
-            // Each ring must have the same size.
-            if ring.members.len() != ring_size {
-                return Err(Error::InvalidRingSize(ring.members.len()));
-            }
-
-            // Each `real_input_index` must be in [0,ring_size - 1].
-            if ring.real_input_index >= ring_size {
-                return Err(Error::IndexOutOfBounds);
-            }
-        }
-    }
-
-    // This computes a sequence of appropriate pseudo output blindings, one for each
-    // ring. For Signable rings, this will be a random number, but the last is
-    // chosen so that the sum of all blinding factors is zero.
-    // For pre-signed rings, we cannot change blinding, so we have to use what was
-    // signed.
-    let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
-
-    // Create Range proofs for outputs and pseudo-outputs.
-    let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
-        .iter()
-        .zip(pseudo_output_blindings.iter())
-        .map(|(ring, blinding)| (ring.amount().value, *blinding))
-        .collect();
-
-    // Create a pedersen generator cache
-    let mut generator_cache = GeneratorCache::default();
-
-    // Range proof is present when mixed transactions are not supported, the set of
-    // range proofs is present when they are.
-    let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
-        // The implicit fee output is omitted from the range proof because it is known.
-        let generator = generator_cache.get(fee.token_id);
-
-        let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
-            .iter()
-            .cloned()
-            .chain(
-                output_secrets
-                    .iter()
-                    .map(|secret| (secret.amount.value, secret.blinding)),
-            )
-            .unzip();
-        let (range_proof, _commitments) =
-            generate_range_proofs(&values, &blindings, generator, rng)?;
-
-        (range_proof.to_bytes().to_vec(), vec![])
-    } else {
-        let mut range_proofs = Vec::default();
-
-        // Collect list of of unique token ids
-        let token_ids = {
-            let mut token_ids = BTreeSet::default();
-            token_ids.insert(fee.token_id);
-            for ring in rings {
-                token_ids.insert(ring.amount().token_id);
-            }
-            for secret in output_secrets {
-                token_ids.insert(secret.amount.token_id);
-            }
-            token_ids
-        };
-
-        for token_id in token_ids {
-            let generator = generator_cache.get(token_id);
-
-            // The input blinding is not the same as corresponding pseudo-output blinding
-            let (values, blindings): (Vec<_>, Vec<_>) =
-                zip_exact(rings.iter(), pseudo_output_blindings.iter())?
-                    .filter_map(|(ring, blinding)| {
-                        if ring.amount().token_id == token_id {
-                            Some((ring.amount().value, *blinding))
-                        } else {
-                            None
-                        }
-                    })
-                    .chain(output_secrets.iter().filter_map(|secret| {
-                        if secret.amount.token_id == token_id {
-                            Some((secret.amount.value, secret.blinding))
-                        } else {
-                            None
-                        }
-                    }))
-                    .unzip();
-
-            if values.is_empty() {
-                return Err(Error::NoCommitmentsForTokenId(token_id));
-            }
-
-            let (range_proof, _commitments) =
-                generate_range_proofs(&values, &blindings, generator, rng)?;
-
-            range_proofs.push(range_proof.to_bytes());
-        }
-
-        (vec![], range_proofs)
-    };
-
-    // The actual pseudo output commitments use the blindings from
-    // `pseudo_output_blinding` and not the original true input.
-    let pseudo_output_commitments: Vec<RistrettoPoint> =
-        zip_exact(rings.iter(), pseudo_output_blindings.iter())?
-            .map(|(ring, blinding)| {
-                generator_cache
-                    .get(ring.amount().token_id)
-                    .commit(Scalar::from(ring.amount().value), *blinding)
-            })
-            .collect();
-
-    if check_value_is_preserved {
-        let sum_of_output_commitments: RistrettoPoint = output_secrets
-            .iter()
-            .map(|secret| {
-                generator_cache
-                    .get(secret.amount.token_id)
-                    .commit(Scalar::from(secret.amount.value), secret.blinding)
-            })
-            .sum();
-
-        let sum_of_pseudo_output_commitments: RistrettoPoint =
-            pseudo_output_commitments.iter().sum();
-
-        // The implicit fee output.
-        let generator = generator_cache.get(fee.token_id);
-        let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
-
-        let difference =
-            sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
-
-        // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
-        // same as generator.commit(Zero, Zero) and is faster.
-        if difference != RistrettoPoint::identity() {
-            return Err(Error::ValueNotConserved);
-        }
-    }
-
-    // The actual pseudo output commitments use the blindings from
-    // `pseudo_output_blinding` and not the original true input.
-    let pseudo_output_commitments: Vec<CompressedCommitment> = pseudo_output_commitments
-        .into_iter()
-        .map(|point| CompressedCommitment::from(&point.compress()))
-        .collect();
-
-    // Extend the message with the range proof and pseudo_output_commitments.
-    // This ensures that they are signed by each RingMLSAG.
-    let extended_message_digest = compute_extended_message_either_version(
-        block_version,
-        message,
-        &pseudo_output_commitments,
-        &range_proof,
-        &range_proofs,
-    );
-
-    let mut pseudo_output_token_ids: Vec<u64> =
-        rings.iter().map(|ring| *ring.amount().token_id).collect();
-    let mut output_token_ids: Vec<u64> = output_secrets
-        .iter()
-        .map(|secret| *secret.amount.token_id)
-        .collect();
-
-    if !block_version.mixed_transactions_are_supported() {
-        pseudo_output_token_ids.clear();
-        output_token_ids.clear();
-        assert!(!range_proof.is_empty());
-        assert!(range_proofs.is_empty());
-    } else {
-        assert!(range_proof.is_empty());
-        assert!(!range_proofs.is_empty());
-    }
-
-    Ok(SigningData {
-        extended_message_digest,
-        pseudo_output_blindings,
-        pseudo_output_commitments,
-        range_proof_bytes: range_proof,
         range_proofs,
         pseudo_output_token_ids,
         output_token_ids,
