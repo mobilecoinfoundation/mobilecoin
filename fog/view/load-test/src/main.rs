@@ -140,7 +140,7 @@ fn build_fog_view_conn(
     let client_uri = FogViewUri::from_str(uri)
         .unwrap_or_else(|e| panic!("Could not parse client uri: {}: {:?}", uri, e));
 
-    // TODO: Supply network-id to the load-test binary?
+    // TODO: Supply chain-id to the load-test binary?
     FogViewGrpcClient::new(
         String::default(),
         client_uri,
