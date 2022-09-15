@@ -28,7 +28,7 @@ pub struct SignableInputRing {
 
 /// The secrets needed to create a signature that spends an existing output as
 /// an input
-#[derive(Clone, Debug, Zeroize, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Zeroize)]
 #[zeroize(drop)]
 pub struct InputSecret {
     /// Represents either the one-time private key, or data to derive it
@@ -50,7 +50,7 @@ pub struct InputSecret {
 /// ourselves.
 ///
 /// This enum selects which path to the one-time private key is taken.
-#[derive(Clone, Debug, Zeroize, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Zeroize)]
 #[zeroize(drop)]
 pub enum OneTimeKeyDeriveData {
     /// The one-time private key for the output

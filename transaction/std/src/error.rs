@@ -70,9 +70,6 @@ pub enum TxBuilderError {
 
     /// TxOut Conversion: {0}
     TxOutConversion(TxOutConversionError),
-
-    /// Cannot build InputRing from ViewOnly inputs
-    RingContainsViewOnlyInputs,
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {

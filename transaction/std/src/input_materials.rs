@@ -9,9 +9,11 @@
 //! of the first element of the ring being signed, then hand them off to build
 //! the actual signatures. This enum makes it convenient to do this.
 
-use crate::{InputCredentials, TxBuilderError};
+use crate::InputCredentials;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput};
+use mc_transaction_core::{
+    ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput, TxOutConversionError,
+};
 
 /// Material that can be used by the transaction builder to create an input to
 /// a transaction.
@@ -64,7 +66,7 @@ impl InputMaterials {
 // Helper which converts from InputMaterials (TransactionBuilder type) to
 // InputRing (rct_bulletproofs type)
 impl TryFrom<InputMaterials> for InputRing {
-    type Error = TxBuilderError;
+    type Error = TxOutConversionError;
     fn try_from(src: InputMaterials) -> Result<InputRing, Self::Error> {
         Ok(match src {
             InputMaterials::Signable(creds) => InputRing::Signable(creds.try_into()?),
