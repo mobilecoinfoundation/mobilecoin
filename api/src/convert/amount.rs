@@ -91,3 +91,18 @@ impl TryFrom<&external::TxOut_oneof_masked_amount> for MaskedAmount {
         }
     }
 }
+
+impl TryFrom<&external::Receipt_oneof_masked_amount> for MaskedAmount {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::Receipt_oneof_masked_amount) -> Result<Self, Self::Error> {
+        match source {
+            external::Receipt_oneof_masked_amount::masked_amount_v1(masked_amount) => {
+                Ok(MaskedAmount::V1(masked_amount.try_into()?))
+            }
+            external::Receipt_oneof_masked_amount::masked_amount_v2(masked_amount) => {
+                Ok(MaskedAmount::V2(masked_amount.try_into()?))
+            }
+        }
+    }
+}
