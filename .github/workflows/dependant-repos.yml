@@ -1,0 +1,24 @@
+name: Check that repositories submoduling us will still build after this PR
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Check that android-bindings still builds
+      uses: ./.github/actions/check-dependant-rust-repo
+      with:
+        remoteRepo: mobilecoinofficial/android-bindings
+        submodulePath: mobilecoin
+        id: android-bindings
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+        buildCmd: make build
