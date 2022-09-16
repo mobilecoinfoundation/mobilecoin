@@ -190,6 +190,7 @@ impl MintTxPrefixParams {
             spend_public_key: *self.recipient.spend_public_key(),
             nonce,
             tombstone_block,
+            e_fog_hint: None,
         })
     }
 }

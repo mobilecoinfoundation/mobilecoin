@@ -2,7 +2,7 @@
 
 //! Minting transactions.
 
-use crate::domain_separators::MINT_TX_PREFIX_DOMAIN_TAG;
+use crate::{domain_separators::MINT_TX_PREFIX_DOMAIN_TAG, encrypted_fog_hint::EncryptedFogHint};
 use alloc::vec::Vec;
 use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -40,6 +40,10 @@ pub struct MintTxPrefix {
     /// The block index at which this transaction is no longer valid.
     #[prost(uint64, tag = "6")]
     pub tombstone_block: u64,
+
+    /// Optional, encrypted fog hint, if you are trying to mint to a fog user.
+    #[prost(message, tag = "7")]
+    pub e_fog_hint: Option<EncryptedFogHint>,
 }
 
 impl MintTxPrefix {
