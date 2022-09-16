@@ -31,7 +31,7 @@ use sha2::{Sha256, Sha512};
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
 
-// Max number of auth pending requests.
+/// Max number of pending authentication requests.
 const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 
 /// Max number of peer sessions.
@@ -41,18 +41,19 @@ const MAX_PEER_SESSIONS: usize = 64;
 const MAX_FRONTEND_SESSIONS: usize = 10_000;
 
 /// Max number of backends that this enclave can connect to as a client.
-const MAX_BACKEND_CONNECTIONS: usize = 10000;
+const MAX_BACKEND_SESSIONS: usize = 10_000;
 
 /// Max number of client sessions.
-const MAX_CLIENT_SESSIONS: usize = 10000;
+const MAX_CLIENT_SESSIONS: usize = 10_000;
 
 /// Max number of auth requests for enclave backends.
-const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10000;
+const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10_000;
 
 /// Any additional "identities" (e.g. key material) for a given enclave that
 /// needs to become a part of the report. We provide some simple identities, and
 /// a trait to allow extensions
 mod identity;
+
 pub use identity::{EnclaveIdentity, NullIdentity};
 
 /// State associated to Attested Authenticated Key Exchange held by an enclave,
@@ -61,6 +62,7 @@ pub use identity::{EnclaveIdentity, NullIdentity};
 pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// ResponderId used for peer connections
     peer_self_id: Mutex<Option<ResponderId>>,
+
     /// ResponderId used for client connections
     client_self_id: Mutex<Option<ResponderId>>,
 
@@ -98,7 +100,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// A map of channel ID to connection state
     clients: Mutex<LruCache<ClientSession, Ready<Aes256Gcm>>>,
 
-    /// A map of inbound session IDs to  connection states, for use by a
+    /// A map of inbound session IDs to connection states, for use by a
     /// store/router backend
     frontends: Mutex<LruCache<NonceSession, Ready<Aes256Gcm>>>,
 
@@ -194,8 +196,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         }
     }
 
-    /// Accept an explicit-nonce session from a frontend service to our client
-    /// responder ID
+    /// Accept an explicit-nonce session from a frontend service (router) to
+    /// ourselves (acting as a store).
     pub fn frontend_accept(
         &self,
         req: NonceAuthRequest,
@@ -231,7 +233,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Ok((NonceAuthResponse::from(auth_response), session_id))
     }
 
-    /// Drops a session from the given frontend router enclave.
+    /// Drop the given session from the list of known frontend router sessions.
     pub fn frontend_close(&self, channel_id: NonceSession) -> Result<()> {
         self.frontends.lock()?.pop(&channel_id);
         Ok(())
