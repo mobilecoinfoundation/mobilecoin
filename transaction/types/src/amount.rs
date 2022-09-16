@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// An amount of some token, in the "base" (u64) denomination.
-#[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Digestible, Eq, Serialize, PartialEq, Zeroize)]
 pub struct Amount {
     /// The "raw" value of this amount as a u64
+    #[serde(with = "serde_str")]
     pub value: u64,
     /// The token-id which is the denomination of this amount
+    #[serde(with = "serde_str")]
     pub token_id: TokenId,
 }
 

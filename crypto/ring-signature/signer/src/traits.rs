@@ -56,6 +56,7 @@ pub enum OneTimeKeyDeriveData {
     /// The one-time private key for the output
     OneTimeKey(RistrettoPrivate),
     /// The subaddress index which owns the output
+    #[serde(with = "serde_str")]
     SubaddressIndex(u64),
 }
 

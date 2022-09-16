@@ -78,6 +78,7 @@ pub struct UnsignedTx {
     pub output_secrets: Vec<OutputSecret>,
 
     /// Block version
+    #[serde(with = "serde_str")]
     pub block_version: BlockVersion,
 }
 

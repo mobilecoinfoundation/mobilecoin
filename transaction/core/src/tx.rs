@@ -163,15 +163,18 @@ pub struct TxPrefix {
 
     /// Fee paid to the foundation for this transaction
     #[prost(uint64, tag = "3")]
+    #[serde(with = "serde_str")]
     pub fee: u64,
 
     /// The block index at which this transaction is no longer valid.
     #[prost(uint64, tag = "4")]
+    #[serde(with = "serde_str")]
     pub tombstone_block: u64,
 
     /// Token id for the fee output of this transaction
     #[prost(fixed64, tag = "5")]
     #[digestible(omit_when = 0)]
+    #[serde(with = "serde_str")]
     pub fee_token_id: u64,
 }
 

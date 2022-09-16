@@ -35,6 +35,7 @@ pub struct MaskedAmountV1 {
 
     /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
     #[prost(fixed64, required, tag = "2")]
+    #[serde(with = "serde_str")]
     pub masked_value: u64,
 
     /// `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
