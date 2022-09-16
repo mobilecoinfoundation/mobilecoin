@@ -10,17 +10,18 @@ use std::{
     fmt::{self, Formatter},
 };
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ConversionError {
-    NarrowingCastError,
     ArrayCastError,
-    KeyCastError,
-    Key(KeyError),
     FeeMismatch,
     IndexOutOfBounds,
-    ObjectMissing,
-    InvalidSignature,
     InvalidContents,
+    InvalidSignature,
+    Key(KeyError),
+    KeyCastError,
+    MissingField(String),
+    NarrowingCastError,
+    ObjectMissing,
     Other,
 }
 

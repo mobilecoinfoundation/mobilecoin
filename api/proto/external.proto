@@ -473,3 +473,31 @@ message SignedContingentInput {
     /// This helps the recipient of this payload construct proofs of membership for the ring
     repeated fixed64 tx_out_global_indices = 6;
 }
+
+// The amount of a Txout
+message Amount {
+    // The value of the amount
+    fixed64 value = 1;
+
+    // The token_id of the amount
+    fixed64 token_id = 2;
+}
+
+message Scalar {
+    bytes data = 1;
+}
+
+message OutputSecret {
+    Amount amount = 1;
+    Scalar blinding = 2;
+}
+
+message InputSecret {
+    oneof onetime_key_derive_data {
+        RistrettoPrivate onetime_private_key = 1;
+        fixed64 subaddress_index = 2;
+    }
+
+    Amount amount = 3;
+    Scalar blinding = 4;
+}

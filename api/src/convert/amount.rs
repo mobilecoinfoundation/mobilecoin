@@ -3,7 +3,9 @@
 //! Convert to/from external::Amount
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
+use mc_transaction_core::{
+    Amount, CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2, TokenId,
+};
 use mc_util_repr_bytes::ReprBytes;
 
 // Note:
@@ -116,6 +118,24 @@ impl TryFrom<&external::Receipt_oneof_masked_amount> for MaskedAmount {
             external::Receipt_oneof_masked_amount::masked_amount_v2(masked_amount) => {
                 Ok(MaskedAmount::V2(masked_amount.try_into()?))
             }
+        }
+    }
+}
+
+impl From<&Amount> for external::Amount {
+    fn from(source: &Amount) -> Self {
+        let mut amount = external::Amount::new();
+        amount.set_value(source.value);
+        amount.set_token_id(*source.token_id);
+        amount
+    }
+}
+
+impl From<&external::Amount> for Amount {
+    fn from(source: &external::Amount) -> Self {
+        Amount {
+            value: source.get_value(),
+            token_id: TokenId::from(source.get_token_id()),
         }
     }
 }
