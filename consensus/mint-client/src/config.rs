@@ -162,6 +162,9 @@ impl MintTxPrefixParams {
         self,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTxPrefix, String> {
+        if let Some(fog_url) = self.recipient.fog_report_url() {
+            return Err(format!("This recipient has a fog url, but minting to fog users is not supported right now: '{}'", fog_url));
+        }
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
