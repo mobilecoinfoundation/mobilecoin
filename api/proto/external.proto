@@ -528,3 +528,13 @@ message UnsignedTx {
     repeated OutputSecret output_secrets = 3;
     uint32 block_version = 4;
 }
+
+message SigningData {
+    bytes extended_message_digest = 1;
+    repeated CurveScalar pseudo_output_blindings = 2;
+    repeated CompressedRistretto pseudo_output_commitments = 3;
+    bytes range_proof_bytes = 4;
+    repeated bytes range_proofs = 5;
+    repeated fixed64 pseudo_output_token_ids = 6;
+    repeated fixed64 output_token_ids = 7;
+}

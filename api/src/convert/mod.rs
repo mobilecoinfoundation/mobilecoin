@@ -36,6 +36,7 @@ mod reduced_tx_out;
 mod ring_mlsag;
 mod ristretto_private;
 mod signature_rct_bulletproofs;
+mod signing_data;
 mod tx;
 mod tx_hash;
 mod tx_in;
