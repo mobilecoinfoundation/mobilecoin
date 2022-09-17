@@ -483,13 +483,9 @@ message Amount {
     fixed64 token_id = 2;
 }
 
-message Scalar {
-    bytes data = 1;
-}
-
 message OutputSecret {
     Amount amount = 1;
-    Scalar blinding = 2;
+    CurveScalar blinding = 2;
 }
 
 message InputSecret {
@@ -499,5 +495,36 @@ message InputSecret {
     }
 
     Amount amount = 3;
-    Scalar blinding = 4;
+    CurveScalar blinding = 4;
+}
+
+message ReducedTxOut {
+    CompressedRistretto public_key = 1;
+    CompressedRistretto target_key = 2;
+    CompressedRistretto commitment = 3;
+}
+
+message SignableInputRing {
+    repeated ReducedTxOut members = 1;
+    uint32 real_input_index = 2;
+    InputSecret input_secret = 3;
+}
+
+message PresignedInputRing {
+    RingMLSAG mlsag = 1;
+    OutputSecret pseudo_output_secret = 2;
+}
+
+message InputRing {
+    oneof ring {
+        SignableInputRing signable = 1;
+        PresignedInputRing presigned = 2;
+    }
+}
+
+message UnsignedTx {
+    TxPrefix tx_prefix = 1;
+    repeated InputRing rings = 2;
+    repeated OutputSecret output_secrets = 3;
+    uint32 block_version = 4;
 }
