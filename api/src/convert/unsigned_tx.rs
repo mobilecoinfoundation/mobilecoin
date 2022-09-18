@@ -1,6 +1,9 @@
+use std::convert::{TryFrom, TryInto};
+
+use mc_blockchain_types::BlockVersion;
 use mc_transaction_std::UnsignedTx;
 
-use crate::external;
+use crate::{external, ConversionError};
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {
@@ -18,5 +21,26 @@ impl From<&UnsignedTx> for external::UnsignedTx {
         ));
         unsigned_tx.set_block_version(*source.block_version);
         unsigned_tx
+    }
+}
+
+impl TryFrom<&external::UnsignedTx> for UnsignedTx {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::UnsignedTx) -> Result<Self, Self::Error> {
+        Ok(UnsignedTx {
+            tx_prefix: source.get_tx_prefix().try_into()?,
+            rings: source
+                .get_rings()
+                .iter()
+                .map(|input| input.try_into())
+                .collect::<Result<_, _>>()?,
+            output_secrets: source
+                .get_output_secrets()
+                .iter()
+                .map(|output| output.try_into())
+                .collect::<Result<_, _>>()?,
+            block_version: BlockVersion::try_from(source.get_block_version())?,
+        })
     }
 }

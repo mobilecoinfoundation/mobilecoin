@@ -14,19 +14,20 @@ impl From<&InputRing> for external::InputRing {
     }
 }
 
-impl TryFrom<external::InputRing> for InputRing {
+impl TryFrom<&external::InputRing> for InputRing {
     type Error = ConversionError;
 
-    fn try_from(source: external::InputRing) -> Result<Self, Self::Error> {
+    fn try_from(source: &external::InputRing) -> Result<Self, Self::Error> {
         match source
             .ring
+            .as_ref()
             .ok_or_else(|| ConversionError::MissingField("ring".to_string()))?
         {
             external::InputRing_oneof_ring::presigned(presigned) => {
-                Ok(InputRing::Presigned((&presigned).try_into()?))
+                Ok(InputRing::Presigned((presigned).try_into()?))
             }
             external::InputRing_oneof_ring::signable(signable) => {
-                Ok(InputRing::Signable((&signable).try_into()?))
+                Ok(InputRing::Signable((signable).try_into()?))
             }
         }
     }

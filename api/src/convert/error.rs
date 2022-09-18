@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_blockchain_types::ConvertError;
+use mc_blockchain_types::{BlockVersionError, ConvertError};
 use mc_crypto_keys::{KeyError, SignatureError};
 use mc_transaction_core::ring_signature::Error as RingSigError;
 use std::{
@@ -13,6 +13,7 @@ use std::{
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ConversionError {
     ArrayCastError,
+    BlockVersion(BlockVersionError),
     FeeMismatch,
     IndexOutOfBounds,
     InvalidContents,
@@ -63,6 +64,12 @@ impl From<KeyError> for ConversionError {
 impl From<SignatureError> for ConversionError {
     fn from(_: SignatureError) -> Self {
         Self::InvalidSignature
+    }
+}
+
+impl From<BlockVersionError> for ConversionError {
+    fn from(src: BlockVersionError) -> Self {
+        Self::BlockVersion(src)
     }
 }
 
