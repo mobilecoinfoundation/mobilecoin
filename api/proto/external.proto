@@ -483,38 +483,70 @@ message Amount {
     fixed64 token_id = 2;
 }
 
+/// The secrets corresponding to an output that we are trying to authorize
+/// creation of
 message OutputSecret {
+    /// The amount of the output we are creating
     Amount amount = 1;
+
+    /// The blinding factor of the output we are creating
     CurveScalar blinding = 2;
 }
 
+/// The secrets needed to create a signature that spends an existing output as
+/// an input
 message InputSecret {
+    /// Represents either the one-time private key, or data to derive it
     oneof onetime_key_derive_data {
         RistrettoPrivate onetime_private_key = 1;
         fixed64 subaddress_index = 2;
     }
 
+    /// The amount of the output we are spending
     Amount amount = 3;
+
+    /// The blinding factor of the output we are spending
     CurveScalar blinding = 4;
 }
 
+/// A reduced representation of the TxOut's in the ring. For each ring
+/// member we have only:
+/// * The onetime-address (tx_out.target_key)
+/// * The compressed commitment (tx_out.amount.commitment)
 message ReducedTxOut {
+    /// The tx_out.public_key field
     CompressedRistretto public_key = 1;
+
+    /// The tx_out.target_key field
     CompressedRistretto target_key = 2;
+
+    /// The tx_out.masked_amount.commitment field
     CompressedRistretto commitment = 3;
 }
 
+/// A representation of the part of the input ring needed to create an MLSAG
 message SignableInputRing {
+    /// A reduced representation of the TxOut's in the ring.
     repeated ReducedTxOut members = 1;
+
+    /// The index of the TxOut in the ring that we are spending
     uint32 real_input_index = 2;
+
+    /// The secrets needed to sign that input
     InputSecret input_secret = 3;
 }
 
+/// A presigned RingMLSAG and ancillary data needed to incorporate it into a
+/// signature
 message PresignedInputRing {
+    /// The mlsag signature authorizing the spending of an input
     RingMLSAG mlsag = 1;
+
+    /// The amount and blinding factor of the pseudo output
     OutputSecret pseudo_output_secret = 2;
 }
 
+/// An enum which is either a PresignedInputRing or a SignableInputRing
 message InputRing {
     oneof ring {
         SignableInputRing signable = 1;
@@ -522,19 +554,56 @@ message InputRing {
     }
 }
 
+/// A structure containing an unsigned transaction, together with the data
+/// required to sign it that does not involve the spend private key.
 message UnsignedTx {
+    /// The fully constructed TxPrefix.
     TxPrefix tx_prefix = 1;
+
+    /// A "ring" of transaction outputs.
     repeated InputRing rings = 2;
+
+    /// The amount and blinding factors of each of the outputs we are creating.
     repeated OutputSecret output_secrets = 3;
+
+    /// The block version that this transaction is valid for.
     uint32 block_version = 4;
 }
 
+/// A structure that contains all the data required to sign a transaction that
+/// does not rely on having the spend private key.
 message SigningData {
+    /// The message extended with the range proof and pseudo_output_commitments.
+    /// This ensures that they are signed by each RingMLSAG.
     bytes extended_message_digest = 1;
+
+    /// The actual pseudo output commitments use the blindings from
+    /// `pseudo_output_blinding` and not the original true input.
     repeated CurveScalar pseudo_output_blindings = 2;
+
+    /// Commitments of value equal to each real input.
     repeated CompressedRistretto pseudo_output_commitments = 3;
+
+    /// Before mixed transactions feature, there is one range proof for all pseudo-output
+    /// and output commitments, whose serialized bytes appear here.
+    /// After mixed transactions feature, this field is empty.
     bytes range_proof_bytes = 4;
+
+    /// Before mixed transactions feature, this field is empty.
+    /// After mixed transactions feature, this field contains one range proof for each
+    /// token id which appears in the transaction, in sorted order of token ids.
+    /// It range-proofs the pseudo-outputs and outputs with that token id, in the order
+    /// that they appear in the transaction.
     repeated bytes range_proofs = 5;
+
+    /// The token ids of each pseudo ouptut. There must be one of these for each TxIn.
+    /// Before mixed transactions feature, this field is empty, and the token ids of
+    /// all pseudo-outputs are inferred from the tx.prefix.fee_token_id.
     repeated fixed64 pseudo_output_token_ids = 6;
+
+    /// The token ids of each output. There must be one of these for each output of the Tx.
+    /// (tx.prefix.outputs).
+    /// Before mixed transactions feature, this field is empty, and the token ids of
+    /// all outputs are inferred from the tx.prefix.fee_token_id.
     repeated fixed64 output_token_ids = 7;
 }
