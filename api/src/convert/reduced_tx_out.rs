@@ -1,8 +1,9 @@
-use std::convert::TryFrom;
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_transaction_core::ring_signature::ReducedTxOut;
+//! Convert to/from mc_transaction_core::ring_signature::ReducedTxOut
 
 use crate::{external, ConversionError};
+use mc_transaction_core::ring_signature::ReducedTxOut;
 
 impl From<&ReducedTxOut> for external::ReducedTxOut {
     fn from(source: &ReducedTxOut) -> Self {

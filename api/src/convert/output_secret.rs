@@ -1,4 +1,6 @@
-use std::convert::{TryFrom, TryInto};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Convert to/from mc_transaction_core::ring_ct::OutputSecret.
 
 use crate::{external, ConversionError};
 use mc_transaction_core::ring_ct::OutputSecret;

@@ -1,9 +1,10 @@
-use std::convert::{TryFrom, TryInto};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_crypto_ring_signature_signer::SignableInputRing;
-use mc_transaction_core::ring_ct::{InputRing, PresignedInputRing};
+//! Convert to/from mc_transaction_core::ring_ct::InputRing.
 
 use crate::{external, ConversionError};
+use mc_crypto_ring_signature_signer::SignableInputRing;
+use mc_transaction_core::ring_ct::{InputRing, PresignedInputRing};
 
 impl From<&InputRing> for external::InputRing {
     fn from(source: &InputRing) -> Self {

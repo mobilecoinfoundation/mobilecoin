@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from blockchain::BlockContentsHash
 
 use crate::{blockchain, ConversionError};

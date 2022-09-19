@@ -1,9 +1,10 @@
-use std::convert::{TryFrom, TryInto};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_blockchain_types::BlockVersion;
-use mc_transaction_std::UnsignedTx;
+//! Convert to/from mc_transaction_std::UnsignedTx.
 
 use crate::{external, ConversionError};
+use mc_blockchain_types::BlockVersion;
+use mc_transaction_std::UnsignedTx;
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {

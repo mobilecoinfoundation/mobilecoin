@@ -4,7 +4,7 @@
 
 use crate::{external, ConversionError};
 use mc_transaction_core::{
-    Amount, CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2, TokenId,
+    Amount, CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2,
 };
 use mc_util_repr_bytes::ReprBytes;
 
@@ -133,9 +133,6 @@ impl From<&Amount> for external::Amount {
 
 impl From<&external::Amount> for Amount {
     fn from(source: &external::Amount) -> Self {
-        Amount {
-            value: source.get_value(),
-            token_id: TokenId::from(source.get_token_id()),
-        }
+        Amount::new(source.get_value(), source.get_token_id().into())
     }
 }

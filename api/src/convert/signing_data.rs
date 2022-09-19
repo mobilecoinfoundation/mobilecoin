@@ -1,8 +1,9 @@
-use std::convert::TryFrom;
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_transaction_core::ring_ct::SigningData;
+//! Convert to/from mc_transaction_core::ring_ct::SigningData.
 
 use crate::{external, ConversionError};
+use mc_transaction_core::ring_ct::SigningData;
 
 impl From<&SigningData> for external::SigningData {
     fn from(src: &SigningData) -> Self {

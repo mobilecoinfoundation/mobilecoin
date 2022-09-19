@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from watcher_api::*
 
 use crate::{watcher, ConversionError};

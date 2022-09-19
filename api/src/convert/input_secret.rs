@@ -1,8 +1,9 @@
-use std::convert::TryInto;
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData};
+//! Convert to/from mc_crypto_ring_signature_signer::InputSecret.
 
 use crate::{external, ConversionError};
+use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData};
 
 impl From<&InputSecret> for external::InputSecret {
     fn from(source: &InputSecret) -> Self {
