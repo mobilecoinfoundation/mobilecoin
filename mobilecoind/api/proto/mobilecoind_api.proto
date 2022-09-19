@@ -8,6 +8,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
+import "consensus_common.proto";
 
 package mobilecoind_api;
 
@@ -825,6 +826,9 @@ message GetNetworkStatusResponse {
 
     // Whether we are behind.
     bool is_behind = 4;
+
+    // The latest block info reported by a consensus node
+    consensus_common.LastBlockInfoResponse last_block_info = 5;
 }
 
 //
