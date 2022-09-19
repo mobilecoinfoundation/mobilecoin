@@ -141,3 +141,78 @@ impl Session for PeerSession {
     type Request = PeerAuthRequest;
     type Response = PeerAuthResponse;
 }
+
+/// An opaque bytestream used as a session ID for a session which uses explicit
+/// nonces.
+#[derive(Clone, Debug, Default, Deserialize, PartialOrd, Serialize)]
+pub struct NonceSession {
+    channel_id: Vec<u8>,
+    nonce: u64,
+}
+
+impl NonceSession {
+    /// Create a new nonce session from a vector and nonce.
+    ///
+    /// This takes a pre-created Vec in order to remove an extra allocation that
+    /// would be required when converting from a NonceMessage to an
+    /// [`EnclaveMessage`]`<`[`NonceSession`]`>`.
+    pub fn new(channel_id: Vec<u8>, nonce: u64) -> Self {
+        Self { channel_id, nonce }
+    }
+
+    /// Retrieves the nonce for this session
+    pub fn peek_nonce(&self) -> u64 {
+        self.nonce
+    }
+
+    /// Retrieves a copy of the nonce, and increments it for the next time.
+    pub fn get_nonce(&mut self) -> u64 {
+        let retval = self.nonce;
+        self.nonce += 1;
+        retval
+    }
+}
+
+impl AsRef<[u8]> for NonceSession {
+    fn as_ref(&self) -> &[u8] {
+        self.channel_id.as_ref()
+    }
+}
+
+impl<'bytes> From<&'bytes [u8]> for NonceSession {
+    fn from(src: &'bytes [u8]) -> Self {
+        Self::from(Vec::from(src))
+    }
+}
+
+impl From<Vec<u8>> for NonceSession {
+    fn from(channel_id: Vec<u8>) -> Self {
+        NonceSession {
+            channel_id,
+            nonce: 0,
+        }
+    }
+}
+
+impl From<NonceSession> for Vec<u8> {
+    fn from(src: NonceSession) -> Self {
+        src.channel_id
+    }
+}
+
+impl Hash for NonceSession {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.channel_id.hash(state)
+    }
+}
+
+impl PartialEq for NonceSession {
+    fn eq(&self, other: &Self) -> bool {
+        self.channel_id == other.channel_id
+    }
+}
+
+impl Session for NonceSession {
+    type Request = NonceAuthRequest;
+    type Response = NonceAuthResponse;
+}
