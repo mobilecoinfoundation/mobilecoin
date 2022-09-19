@@ -79,19 +79,6 @@ pub struct EnclaveMessage<S: Session> {
     pub data: Vec<u8>,
 }
 
-/// Inbound and outbound messages to/from an enclave with an explicit nonce.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct EnclaveNonceMessage<S: Session> {
-    /// Authenticated data, if any.
-    pub aad: Vec<u8>,
-    /// The channel ID of this message.
-    pub channel_id: S,
-    /// The encrypted payload data of this message.
-    pub data: Vec<u8>,
-    /// The explicit nonce for this message.
-    pub nonce: u64,
-}
-
 /// An EnclaveMessage<ClientSession> sealed for the current enclave
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SealedClientMessage {
@@ -157,7 +144,7 @@ impl Session for PeerSession {
 
 /// An opaque bytestream used as a session ID for a session which uses explicit
 /// nonces.
-#[derive(Clone, Debug, Default, Deserialize, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialOrd, Serialize)]
 pub struct NonceSession {
     channel_id: Vec<u8>,
     nonce: u64,
