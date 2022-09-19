@@ -132,7 +132,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             peer_inbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             clients: Mutex::new(LruCache::new(MAX_CLIENT_SESSIONS)),
             frontends: Mutex::new(LruCache::new(MAX_FRONTEND_SESSIONS)),
-            backends: Mutex::new(LruCache::new(MAX_BACKEND_CONNECTIONS)),
+            backends: Mutex::new(LruCache::new(MAX_BACKEND_SESSIONS)),
         }
     }
 
