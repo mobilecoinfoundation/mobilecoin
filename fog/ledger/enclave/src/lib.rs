@@ -27,7 +27,7 @@ use mc_sgx_types::{
     sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t, sgx_status_t,
 };
 use mc_sgx_urts::SgxEnclave;
-use std::{path, result::Result as StdResult, sync::Arc};
+use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the fog ledger's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libledger-enclave.signed.so";
@@ -239,6 +239,19 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..) - the router is handling a message from the client");
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateMultiKeyImageStoreQueryData(
             sealed_query,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CollateQueryResponses(
+            sealed_query,
+            shard_query_responses,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

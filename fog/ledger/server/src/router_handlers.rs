@@ -264,9 +264,18 @@ where
         ));
     }
 
-    // TODO: Collate the query_responses into one response for the client. Make an
-    // enclave  method for this.
-    let response = LedgerResponse::new();
+    let query_response = enclave
+        .collate_shard_query_responses(sealed_query, query_responses)
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: shard response collation",
+                RouterServerError::Enclave(err),
+                logger.clone(),
+            )
+        })?;
+
+    let mut response = LedgerResponse::new();
+    response.set_check_key_image_response(query_response.into());
     Ok(response)
 }
 

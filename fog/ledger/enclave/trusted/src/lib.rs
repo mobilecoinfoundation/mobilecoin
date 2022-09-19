@@ -78,6 +78,9 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::CreateMultiKeyImageStoreQueryData(msg) => {
             serialize(&ENCLAVE.create_multi_key_image_store_query_data(msg))
         }
+        EnclaveCall::CollateQueryResponses(sealed_query, shard_query_responses) => {
+            serialize(&ENCLAVE.collate_shard_query_responses(sealed_query, shard_query_responses))
+        }
         // Store-side
         EnclaveCall::HandleKeyImageStoreRequest(msg) => {
             serialize(&ENCLAVE.handle_key_image_store_request(msg))

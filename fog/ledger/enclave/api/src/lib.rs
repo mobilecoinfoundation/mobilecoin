@@ -13,7 +13,7 @@ pub use crate::{
     error::{AddRecordsError, Error},
     messages::{EnclaveCall, KeyImageData},
 };
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
@@ -134,6 +134,14 @@ pub trait LedgerEnclave: ReportableEnclave {
         &self,
         sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+
+    /// Receives all of the shards' query responses and collates them into one
+    /// query response for the client.
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
 
     /// Used by a Ledger Store to handle an inbound encrypted ledger.proto
     /// LedgerRequest. Generally, these come in from a router.

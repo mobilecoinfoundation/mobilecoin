@@ -2,7 +2,7 @@
 
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
@@ -131,6 +131,13 @@ pub enum EnclaveCall {
     /// The returned list is meant to be used to construct the
     /// MultiKeyImageStoreRequest, which is sent to each shard.
     CreateMultiKeyImageStoreQueryData(SealedClientMessage),
+
+    /// Collates shard query responses into a single query response for the
+    /// client.
+    CollateQueryResponses(
+        SealedClientMessage,
+        BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ),
 
     /// The [LedgerEnclave::handle_key_image_store_request()] method.
     ///

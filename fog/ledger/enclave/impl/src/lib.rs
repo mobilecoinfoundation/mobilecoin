@@ -13,12 +13,14 @@
 extern crate alloc;
 
 mod key_image_store;
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
 };
+use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -233,6 +235,84 @@ where
             .ake
             .reencrypt_sealed_message_for_backends(&sealed_query)?)
     }
+
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        if shard_query_responses.is_empty() {
+            return Ok(EnclaveMessage::default());
+        }
+        let channel_id = sealed_query.channel_id.clone();
+        let client_query_plaintext = self.ake.unseal(&sealed_query)?;
+        // TODO this will (possibly?) be used when we implement obliviousness
+        let _client_query_request: CheckKeyImagesRequest =
+            mc_util_serial::decode(&client_query_plaintext).map_err(|e| {
+                log::error!(self.logger, "Could not decode client query request: {}", e);
+                Error::ProstDecode
+            })?;
+
+        let shard_query_responses = shard_query_responses
+            .into_iter()
+            .map(|(responder_id, enclave_message)| {
+                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?; // TODO explicit nonces
+                let query_response: CheckKeyImagesResponse =
+                    mc_util_serial::decode(&plaintext_bytes)?;
+
+                Ok(query_response)
+            })
+            .collect::<Result<Vec<CheckKeyImagesResponse>>>()?;
+
+        // NOTES:
+        // num_blocks = min(responses.num_blocks)
+        // global_txo_count = min(global_txo_count) TODO CONFIRM
+        // results = cat(responses.results)
+        // latest_block_version = max(responses.latest_block_version)
+        // max_block_version = max(latest_block_version,
+        // mc_transaction_core::MAX_BLOCK_VERSION
+
+        // TODO no unwraps
+        let num_blocks = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.num_blocks)
+            .min()
+            .unwrap();
+        let global_txo_count = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.global_txo_count)
+            .min()
+            .unwrap();
+        let latest_block_version = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.latest_block_version)
+            .max()
+            .unwrap();
+        // TODO I believe this needs to be implemented in an oblivious way to meet the
+        // security requirements. I'm not 100% sure what an oblivious approach
+        // to this looks like, though. In general this kind of thing needs to be
+        // talked about.
+        let results = shard_query_responses
+            .into_iter()
+            .flat_map(|query_response| query_response.results)
+            .collect();
+        let max_block_version = max(latest_block_version, *MAX_BLOCK_VERSION);
+
+        let client_query_response = CheckKeyImagesResponse {
+            num_blocks,
+            global_txo_count,
+            results,
+            latest_block_version,
+            max_block_version,
+        };
+        let response_plaintext_bytes = mc_util_serial::encode(&client_query_response);
+        let response =
+            self.ake
+                .client_encrypt(&channel_id, &sealed_query.aad, &response_plaintext_bytes)?;
+
+        Ok(response)
+    }
+
     fn handle_key_image_store_request(
         &self,
         _: EnclaveMessage<ClientSession>,
