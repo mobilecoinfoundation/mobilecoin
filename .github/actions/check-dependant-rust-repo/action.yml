@@ -43,6 +43,7 @@ runs:
   - name: Build outside repo with current branch
     shell: bash
     run: |
+      set -x
       cd workdir-${{ inputs.id }}
 
       STATE_DIR=$GITHUB_WORKSPACE/state-${{ inputs.id }}
@@ -94,6 +95,7 @@ runs:
     if: env.UPREV_FAILED == '1' && env.NEW_FAILURE == '1'
     shell: bash
     run: |
+      set -x
       cd workdir-${{ inputs.id }}
 
       cd ${{ inputs.submodulePath }}
