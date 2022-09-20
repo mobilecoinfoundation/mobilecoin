@@ -20,6 +20,8 @@ inputs:
 runs:
   using: composite
   steps:
+  - name: Setup Rust
+    uses: ./.github/actions/setup-rust
 
   # Checkout the repository we are going to try upreving in
   - uses: actions/checkout@v3

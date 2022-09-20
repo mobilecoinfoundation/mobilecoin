@@ -9,7 +9,9 @@ env:
 
 jobs:
   android-bindings:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.17
+
     steps:
     - uses: actions/checkout@v3
     - name: Check that android-bindings still builds
@@ -22,7 +24,9 @@ jobs:
         buildCmd: make build
 
   full-service:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.17
+
     steps:
     - uses: actions/checkout@v3
     - name: Check that full-service still builds
