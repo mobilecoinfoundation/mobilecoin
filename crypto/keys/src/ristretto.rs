@@ -56,7 +56,7 @@ impl Eq for RistrettoPrivate {}
 
 impl PartialEq for RistrettoPrivate {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        self.ct_eq(other).unwrap_u8() == 1u8
     }
 }
 
