@@ -14,7 +14,7 @@ pub use mc_transaction_core::{
 };
 pub use mint::{
     create_mint_config_tx, create_mint_config_tx_and_signers,
-    create_mint_config_tx_and_signers_for_set_nonce, create_mint_tx, create_mint_tx_to_recipient,
+    create_mint_tx, create_mint_tx_to_recipient,
     mint_config_tx_to_validated,
 };
 

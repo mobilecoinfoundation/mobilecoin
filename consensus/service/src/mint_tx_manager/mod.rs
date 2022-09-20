@@ -253,7 +253,7 @@ mod mint_config_tx_tests {
     use mc_transaction_core::{ring_signature::KeyImage, Block, BlockContents};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers,
-        create_mint_config_tx_and_signers_for_set_nonce, create_test_tx_out, initialize_ledger,
+        create_test_tx_out, initialize_ledger,
         mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
@@ -584,7 +584,6 @@ mod mint_config_tx_tests {
     #[test_with_logger]
     fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
 
         let token_id_1 = TokenId::from(1);
         let token_id_2 = TokenId::from(2);
@@ -595,11 +594,13 @@ mod mint_config_tx_tests {
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
+        rng = SeedableRng::from_seed([77u8; 32]);
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+
         let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers_for_set_nonce(
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(
             token_id_2,
             &mut rng2,
-            mint_config_tx1.prefix.nonce.clone(),
         );
 
         assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
