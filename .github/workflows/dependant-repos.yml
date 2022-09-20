@@ -21,7 +21,7 @@ jobs:
         githubToken: ${{ secrets.GITHUB_TOKEN }}
         buildCmd: make build
 
- full-service:
+  full-service:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
