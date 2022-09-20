@@ -54,9 +54,8 @@ mod tests {
         };
 
         let reduced_tx_out_external: external::ReducedTxOut = (&reduced_tx_out).into();
-        let deserialized_reduced_tx_out: ReducedTxOut =
-            (&reduced_tx_out_external).try_into().unwrap();
+        let recovered_reduced_tx_out: ReducedTxOut = (&reduced_tx_out_external).try_into().unwrap();
 
-        assert_eq!(reduced_tx_out, deserialized_reduced_tx_out);
+        assert_eq!(reduced_tx_out, recovered_reduced_tx_out);
     }
 }

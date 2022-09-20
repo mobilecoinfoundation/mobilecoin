@@ -35,14 +35,14 @@ mod tests {
     use mc_transaction_core::{ring_ct::OutputSecret, Amount, TokenId};
     use rand::{rngs::StdRng, SeedableRng};
 
-    // Test converting between external::ReducedTxOut and
-    // mc_transaction_core::ring_signature::ReducedTxOut
+    // Test converting between external::OutputSecret and
+    // mc_transaction_core::ring_ct::OutputSecret
     #[test]
     fn test_output_secret_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
 
         let output_secret = OutputSecret {
-            amount: Amount::new(10000, TokenId::from(0)),
+            amount: Amount::new(10000, TokenId::from(10)),
             blinding: Scalar::random(&mut rng),
         };
 

@@ -55,3 +55,23 @@ impl TryFrom<&external::CurveScalar> for Scalar {
         Ok(Scalar::from_bits(bytes))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::CurveScalar and
+    // curve25519_dalek::Scalar
+    #[test]
+    fn test_scalar_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+
+        let scalar = Scalar::random(&mut rng);
+
+        let external_curve_scalar: external::CurveScalar = (&scalar).into();
+        let recovered_scalar: Scalar = (&external_curve_scalar).try_into().unwrap();
+
+        assert_eq!(scalar, recovered_scalar);
+    }
+}

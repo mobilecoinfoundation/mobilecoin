@@ -78,26 +78,26 @@ mod tests {
 
         let input_secret = InputSecret {
             onetime_key_derive_data: OneTimeKeyDeriveData::SubaddressIndex(10),
-            amount: Amount::new(10000, TokenId::from(0)),
+            amount: Amount::new(10000, TokenId::from(10)),
             blinding: Scalar::random(&mut rng),
         };
 
-        let input_secret_external: external::InputSecret = (&input_secret).into();
-        let input_secret_decrypted: InputSecret = (&input_secret_external).try_into().unwrap();
+        let external_input_secret: external::InputSecret = (&input_secret).into();
+        let recovered_input_secret: InputSecret = (&external_input_secret).try_into().unwrap();
 
-        assert_eq!(input_secret, input_secret_decrypted);
+        assert_eq!(input_secret, recovered_input_secret);
 
         let input_secret = InputSecret {
             onetime_key_derive_data: OneTimeKeyDeriveData::OneTimeKey(
                 RistrettoPrivate::from_random(&mut rng),
             ),
-            amount: Amount::new(10000, TokenId::from(0)),
+            amount: Amount::new(10000, TokenId::from(10)),
             blinding: Scalar::random(&mut rng),
         };
 
-        let input_secret_external: external::InputSecret = (&input_secret).into();
-        let input_secret_decrypted: InputSecret = (&input_secret_external).try_into().unwrap();
+        let external_input_secret: external::InputSecret = (&input_secret).into();
+        let recovered_input_secret: InputSecret = (&external_input_secret).try_into().unwrap();
 
-        assert_eq!(input_secret, input_secret_decrypted);
+        assert_eq!(input_secret, recovered_input_secret);
     }
 }

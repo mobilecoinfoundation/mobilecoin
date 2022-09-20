@@ -109,7 +109,7 @@ mod tests {
 
             let signing_data = unsigned_tx.get_signing_data(&mut rng).unwrap();
 
-            // Converting mc_transaction_core::ring_ct::SigningData -> external::UnsignedTx
+            // Converting mc_transaction_core::ring_ct::SigningData -> external::SigningData
             // -> mc_transaction_core::ring_ct::SigningData should be the identity
             // function.
             {
