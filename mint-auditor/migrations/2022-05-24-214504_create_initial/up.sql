@@ -37,7 +37,7 @@ CREATE TABLE mint_config_txs (
     -- The nonce, as hex-encoded bytes.
     nonce_hex VARCHAR(128) NOT NULL,
     -- The maximal amount that can be minted by configurations specified in
-    -- this tx. This amount is sharis_erred amongst all configs.
+    -- this tx. This amount is shared amongst all configs.
     total_mint_limit BIGINT NOT NULL,
     -- Tombstone block.
     tombstone_block BIGINT NOT NULL,
