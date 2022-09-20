@@ -27,3 +27,29 @@ impl TryFrom<&external::OutputSecret> for OutputSecret {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::external;
+    use curve25519_dalek::scalar::Scalar;
+    use mc_transaction_core::{ring_ct::OutputSecret, Amount, TokenId};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::ReducedTxOut and
+    // mc_transaction_core::ring_signature::ReducedTxOut
+    #[test]
+    fn test_output_secret_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+
+        let output_secret = OutputSecret {
+            amount: Amount::new(10000, TokenId::from(0)),
+            blinding: Scalar::random(&mut rng),
+        };
+
+        let output_secret_external: external::OutputSecret = (&output_secret).into();
+        let deserialized_output_secret: OutputSecret =
+            (&output_secret_external).try_into().unwrap();
+
+        assert_eq!(output_secret, deserialized_output_secret);
+    }
+}

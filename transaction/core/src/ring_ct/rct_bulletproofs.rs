@@ -37,7 +37,7 @@ use crate::{
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
 /// signature
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PresignedInputRing {
     /// The mlsag signature authorizing the spending of an input
     pub mlsag: RingMLSAG,
@@ -50,7 +50,7 @@ pub struct PresignedInputRing {
 /// This enum is needed because all TxIn's are required to appear in sorted
 /// order, regardless of if they are presigned. This gives the signer a way to
 /// control the order in which they will appear.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum InputRing {
     /// A signable input ring
     Signable(SignableInputRing),
@@ -70,7 +70,7 @@ impl InputRing {
 
 /// The secrets corresponding to an output that we are trying to authorize
 /// creation of
-#[derive(Clone, Debug, Deserialize, Serialize, Zeroize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Zeroize)]
 #[zeroize(drop)]
 pub struct OutputSecret {
     /// The amount of the output we are creating

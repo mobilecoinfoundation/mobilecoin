@@ -45,3 +45,66 @@ impl TryFrom<&external::UnsignedTx> for UnsignedTx {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_account_keys::AccountKey;
+    use mc_fog_report_validation_test_utils::MockFogResolver;
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_std::{
+        test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
+        TransactionBuilder, UnsignedTx,
+    };
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::UnsignedTx and
+    // mc_transaction_std::UnsignedTx
+    #[test]
+    fn test_unsigned_tx_conversion() {
+        // Generate an UnsignedTx to test with.
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
+
+            let fpr = MockFogResolver::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fpr.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            transaction_builder.add_input(get_input_credentials(
+                block_version,
+                Amount::new(65536 + Mob::MINIMUM_FEE, Mob::ID),
+                &alice,
+                &fpr,
+                &mut rng,
+            ));
+            transaction_builder
+                .add_output(
+                    Amount::new(65536, Mob::ID),
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let unsigned_tx = transaction_builder
+                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .unwrap();
+
+            // Converting mc_transaction_std::UnsignedTx -> external::UnsignedTx ->
+            // mc_transaction_std::UnsignedTx should be the identity function.
+            {
+                let external_unsigned_tx: external::UnsignedTx = (&unsigned_tx).into();
+                let recovered_unsigned_tx: UnsignedTx = (&external_unsigned_tx).try_into().unwrap();
+                assert_eq!(unsigned_tx, recovered_unsigned_tx);
+            }
+        }
+    }
+}

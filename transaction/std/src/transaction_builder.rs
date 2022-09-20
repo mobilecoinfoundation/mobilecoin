@@ -66,7 +66,7 @@ pub struct TxOutContext {
 /// valid, signed Tx. Noet that whether the UnsignedTx can be signed on its own
 /// or requires the spend private key will depend on the contents of the
 /// InputRings.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct UnsignedTx {
     /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,

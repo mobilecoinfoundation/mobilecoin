@@ -59,3 +59,45 @@ impl TryFrom<&external::InputSecret> for InputSecret {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::external;
+    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData};
+    use mc_transaction_core::{Amount, TokenId};
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::InputSecret and
+    // mc_crypto_ring_signature_signer::InputSecret
+    #[test]
+    fn test_input_secret_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+
+        let input_secret = InputSecret {
+            onetime_key_derive_data: OneTimeKeyDeriveData::SubaddressIndex(10),
+            amount: Amount::new(10000, TokenId::from(0)),
+            blinding: Scalar::random(&mut rng),
+        };
+
+        let input_secret_external: external::InputSecret = (&input_secret).into();
+        let input_secret_decrypted: InputSecret = (&input_secret_external).try_into().unwrap();
+
+        assert_eq!(input_secret, input_secret_decrypted);
+
+        let input_secret = InputSecret {
+            onetime_key_derive_data: OneTimeKeyDeriveData::OneTimeKey(
+                RistrettoPrivate::from_random(&mut rng),
+            ),
+            amount: Amount::new(10000, TokenId::from(0)),
+            blinding: Scalar::random(&mut rng),
+        };
+
+        let input_secret_external: external::InputSecret = (&input_secret).into();
+        let input_secret_decrypted: InputSecret = (&input_secret_external).try_into().unwrap();
+
+        assert_eq!(input_secret, input_secret_decrypted);
+    }
+}

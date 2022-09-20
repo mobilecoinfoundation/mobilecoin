@@ -26,3 +26,37 @@ impl TryFrom<&external::ReducedTxOut> for ReducedTxOut {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use curve25519_dalek::ristretto::CompressedRistretto;
+    use mc_crypto_keys::CompressedRistrettoPublic;
+    use mc_transaction_core::{ring_signature::ReducedTxOut, CompressedCommitment};
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    use crate::external;
+
+    // Test converting between external::ReducedTxOut and
+    // mc_transaction_core::ring_signature::ReducedTxOut
+    #[test]
+    fn test_reduced_tx_out_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+
+        let public_key = CompressedRistrettoPublic::from_random(&mut rng);
+        let target_key = CompressedRistrettoPublic::from_random(&mut rng);
+        let commitment = CompressedCommitment::from(&CompressedRistretto::default());
+
+        let reduced_tx_out = ReducedTxOut {
+            public_key,
+            target_key,
+            commitment,
+        };
+
+        let reduced_tx_out_external: external::ReducedTxOut = (&reduced_tx_out).into();
+        let deserialized_reduced_tx_out: ReducedTxOut =
+            (&reduced_tx_out_external).try_into().unwrap();
+
+        assert_eq!(reduced_tx_out, deserialized_reduced_tx_out);
+    }
+}
