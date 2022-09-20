@@ -100,3 +100,69 @@ impl TryFrom<&external::SignableInputRing> for SignableInputRing {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_account_keys::AccountKey;
+    use mc_fog_report_validation_test_utils::MockFogResolver;
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_std::{
+        test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
+        TransactionBuilder,
+    };
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::InputRing and
+    // mc_transaction_core::ring_signature::InputRing
+    #[test]
+    fn test_input_ring_conversion() {
+        // Generate an UnsignedTx to test with.
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
+
+            let fpr = MockFogResolver::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fpr.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            transaction_builder.add_input(get_input_credentials(
+                block_version,
+                Amount::new(65536 + Mob::MINIMUM_FEE, Mob::ID),
+                &alice,
+                &fpr,
+                &mut rng,
+            ));
+            transaction_builder
+                .add_output(
+                    Amount::new(65536, Mob::ID),
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let unsigned_tx = transaction_builder
+                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .unwrap();
+
+            let input_ring = unsigned_tx.rings[0].clone();
+
+            // Converting mc_transaction_core::ring_signature::InputRing ->
+            // external::InputRing -> mc_transaction_core::ring_signature::
+            // InputRing should be the identity function.
+            {
+                let external_input_ring: external::InputRing = (&input_ring).into();
+                let recovered_input_ring: InputRing = (&external_input_ring).try_into().unwrap();
+                assert_eq!(input_ring, recovered_input_ring);
+            }
+        }
+    }
+}
