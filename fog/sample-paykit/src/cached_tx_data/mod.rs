@@ -8,7 +8,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_account_keys::{
-    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
 use mc_blockchain_types::BlockIndex;

@@ -554,7 +554,6 @@ mod mint_config_tx_tests {
     #[test_with_logger]
     fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
 
         let token_id_1 = TokenId::from(1);
         let token_id_2 = TokenId::from(2);
@@ -565,67 +564,11 @@ mod mint_config_tx_tests {
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers_for_set_nonce(
-            token_id_2,
-            &mut rng2,
-            mint_config_tx1.prefix.nonce.clone(),
-        );
-
-        assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
-
-        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
-            (
-                token_id_1,
-                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-            ),
-            (
-                token_id_2,
-                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
-            ),
-        ])
-        .unwrap();
-        let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
-
-        let mut expected_result = vec![mint_config_tx1.clone(), mint_config_tx2.clone()];
-        expected_result.sort();
-
-        assert_eq!(
-            mint_tx_manager.combine_mint_config_txs(
-                &[
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx1,
-                    mint_config_tx2,
-                ],
-                100
-            ),
-            Ok(expected_result)
-        );
-    }
-
-    /// combine_mint_config_txs adequately caps the number of outputs.
-    #[test_with_logger]
-    fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        rng = SeedableRng::from_seed([77u8; 32]);
         let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
 
-        let token_id_1 = TokenId::from(1);
-        let token_id_2 = TokenId::from(2);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        let sender = AccountKey::random(&mut rng);
-        initialize_ledger(BLOCK_VERSION, &mut ledger, n_blocks, &sender, &mut rng);
-
         let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers_for_set_nonce(
-            token_id_2,
-            &mut rng2,
-            mint_config_tx1.prefix.nonce.clone(),
-        );
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng2);
 
         assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
 
@@ -1378,8 +1321,6 @@ mod mint_tx_tests {
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
 
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-
         let block_contents = BlockContents {
             validated_mint_config_txs: vec![
                 to_validated(&mint_config_tx),
@@ -1388,14 +1329,7 @@ mod mint_tx_tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        add_block_contents_to_ledger(&mut ledger, BLOCK_VERSION, block_contents, &mut rng).unwrap();
         let mut rng1: StdRng = SeedableRng::from_seed([77u8; 32]);
         let mint_tx1 = create_mint_tx(
             token_id_1,
