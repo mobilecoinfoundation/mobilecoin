@@ -69,10 +69,20 @@ impl AuditedMint {
                         eth_tx_hash, nonce_hex,
                     )));
                 }
+                let token = config
+                    .get_token_by_eth_contract_addr(deposit.token_addr())
+                    .ok_or_else(|| {
+                        Error::EthereumTokenNotAudited(
+                            deposit.token_addr().clone(),
+                            deposit.safe_addr().clone(),
+                            *deposit.eth_tx_hash(),
+                        )
+                    })?;
 
                 // See if we can find a MintTx that matches the expected nonce and has not been
                 // associated with a deposit.
-                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce(
+                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
+                    token.token_id,
                     deposit.expected_mc_mint_tx_nonce_hex(),
                     conn,
                 )?
