@@ -12,7 +12,7 @@ mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-fog-report-types = { path = "../../report/types", default-features = false }
 
 displaydoc = { version = "0.2", default-features = false }
-signature = { version = "1.6.1" }
+signature = { version = "1.6.3" }
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../../util/from-random" }
