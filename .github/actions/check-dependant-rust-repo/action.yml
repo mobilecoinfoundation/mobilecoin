@@ -23,17 +23,6 @@ runs:
   - name: Setup Rust
     uses: ./.github/actions/setup-rust
 
-  - name: Debugging...
-    uses: mshick/add-pr-comment@v1
-    with:
-      message: |
-        Test...
-      repo-token: ${{ inputs.githubToken }}
-      repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
-      allow-repeats: true # This is the default
-
-
-
   # Checkout the repository we are going to try upreving in
   - uses: actions/checkout@v3
     with:
@@ -47,9 +36,9 @@ runs:
     uses: actions/cache@v3
     with:
       path: state-${{ inputs.id }}
-      key: ${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-${{ github.sha }}
+      key: dep-v1-${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-${{ github.sha }}
       restore-keys: |
-        ${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-
+        dep-v1-${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-
 
   - name: Build outside repo with current branch
     shell: bash

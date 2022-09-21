@@ -9,7 +9,11 @@ env:
 
 jobs:
   android-bindings:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.17
+
+    permissions:
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v3
@@ -20,7 +24,7 @@ jobs:
         submodulePath: mobilecoin
         id: android-bindings
         githubToken: ${{ secrets.GITHUB_TOKEN }}
-        buildCmd: make build
+        buildCmd: cargo build
 
   full-service:
     runs-on: [self-hosted, Linux, large]
