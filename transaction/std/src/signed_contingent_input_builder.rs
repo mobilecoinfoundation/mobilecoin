@@ -15,7 +15,7 @@ use mc_transaction_core::{
     ring_ct::OutputSecret,
     ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
-    Amount, BlockVersion, InputRules, MaskedAmountV2, MemoContext, MemoPayload, NewMemoError,
+    Amount, BlockVersion, InputRules, MaskedAmount, MemoContext, MemoPayload, NewMemoError,
     RevealedTxOut, SignedContingentInput, TokenId, UnmaskedAmount,
 };
 use rand_core::{CryptoRng, RngCore};
@@ -429,7 +429,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         )?;
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        let amount_shared_secret = MaskedAmountV2::compute_amount_shared_secret(&shared_secret);
+        let amount_shared_secret = MaskedAmount::compute_amount_shared_secret(self.block_version, &shared_secret)?;
 
         let revealed_tx_out = RevealedTxOut {
             tx_out,

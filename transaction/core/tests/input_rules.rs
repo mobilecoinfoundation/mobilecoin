@@ -160,7 +160,7 @@ fn test_input_rules_verify_fractional_outputs() {
             let tx_out_shared_secret =
                 get_tx_out_shared_secret(alice.view_private_key(), &decompressed_tx_pub);
             let amount_shared_secret =
-                MaskedAmountV2::compute_amount_shared_secret(&tx_out_shared_secret);
+                MaskedAmount::compute_amount_shared_secret(block_version, &tx_out_shared_secret).unwrap();
             let (amount, _) = txo
                 .masked_amount
                 .as_ref()
@@ -320,13 +320,13 @@ fn test_input_rules_verify_fractional_outputs() {
         .as_mut()
         .unwrap()
         .tx_out
-        .masked_amount = Some(MaskedAmount::V2(
-        MaskedAmountV2::new_from_amount_shared_secret(
+        .masked_amount = Some(
+        MaskedAmount::new_from_amount_shared_secret(
+            block_version,
             Amount::new(1500, 0.into()),
             &amount_shared_secret,
         )
-        .unwrap(),
-    ));
+        .unwrap());
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RevealedTxOut(RevealedTxOutError::Amount(_)))
