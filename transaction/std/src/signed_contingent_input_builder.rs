@@ -429,7 +429,8 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         )?;
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        let amount_shared_secret = MaskedAmount::compute_amount_shared_secret(self.block_version, &shared_secret)?;
+        let amount_shared_secret =
+            MaskedAmount::compute_amount_shared_secret(self.block_version, &shared_secret)?;
 
         let revealed_tx_out = RevealedTxOut {
             tx_out,
@@ -450,9 +451,8 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `value` - The u64 value which the fractional change output in the
     ///   filled order must not exceed. This is denominated in the token id of
     ///   the fractional change output.
-    pub fn set_maximum_allowed_change_value(&mut self, value: u64) -> u64 {
+    pub fn set_maximum_allowed_change_value(&mut self, value: u64) {
         self.maximum_allowed_change_value = value;
-        self.maximum_allowed_change_value
     }
 
     /// Consume the builder and return the transaction.
