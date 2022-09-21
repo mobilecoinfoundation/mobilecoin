@@ -16,7 +16,6 @@ jobs:
       pull-requests: write
 
     steps:
-    - uses: actions/checkout@v3
     - name: Check that android-bindings still builds
       uses: ./.github/actions/check-dependant-rust-repo
       with:
@@ -34,7 +33,6 @@ jobs:
       pull-requests: write
 
     steps:
-    - uses: actions/checkout@v3
     - name: Check that full-service still builds
       uses: ./.github/actions/check-dependant-rust-repo
       with:
