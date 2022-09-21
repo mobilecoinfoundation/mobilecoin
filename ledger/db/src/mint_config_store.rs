@@ -27,8 +27,8 @@ use mc_util_serial::{decode, encode, Message};
 // LMDB Database names.
 pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
-pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
-    "mint_config_store:block_index_by_mint_config_tx_nonce";
+pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME: &str =
+    "mint_config_store:block_index_by_mint_config_tx_nonce_and_token_id";
 pub const VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str =
     "mint_config_store:validated_mint_config_txs_by_block";
 
@@ -189,7 +189,7 @@ pub struct MintConfigStore {
     active_mint_configs_by_token_id: Database,
 
     /// nonce -> block index
-    block_index_by_mint_config_tx_nonce: Database,
+    block_index_by_mint_config_tx_nonce_and_token_id: Database,
 
     /// block_index -> ValidatedMintConfigTxList
     validated_mint_config_txs_by_block: Database,
@@ -201,8 +201,9 @@ impl MintConfigStore {
         Ok(MintConfigStore {
             active_mint_configs_by_token_id: env
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
-            block_index_by_mint_config_tx_nonce: env
-                .open_db(Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME))?,
+            block_index_by_mint_config_tx_nonce_and_token_id: env.open_db(Some(
+                BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME,
+            ))?,
             validated_mint_config_txs_by_block: env
                 .open_db(Some(VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
@@ -215,7 +216,7 @@ impl MintConfigStore {
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME),
+            Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         env.create_db(
@@ -555,7 +556,8 @@ pub mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
-        let mut test_tx_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
+        let mut test_tx_2 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let mut test_tx_tkn_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -589,7 +591,7 @@ pub mod tests {
             assert_eq!(
                 mint_config_store.write_validated_mint_config_txs(
                     2,
-                    &[to_validated(&test_tx_1)],
+                    &[to_validated(&test_tx_2)],
                     &mut db_transaction
                 ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
@@ -617,7 +619,7 @@ pub mod tests {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
                 .write_validated_mint_config_txs(
-                    3,
+                    4,
                     &[to_validated(&test_tx_2)],
                     &mut db_transaction,
                 )
