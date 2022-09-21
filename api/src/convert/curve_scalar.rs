@@ -1,6 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::CurveScalar
 
 use crate::{external, ConversionError};
+use curve25519_dalek::scalar::Scalar;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_core::ring_signature::CurveScalar;
 
@@ -30,5 +33,45 @@ impl TryFrom<&external::CurveScalar> for CurveScalar {
     fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
         CurveScalar::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
+impl From<&Scalar> for external::CurveScalar {
+    fn from(source: &Scalar) -> Self {
+        let mut scalar = external::CurveScalar::new();
+        scalar.set_data(source.to_bytes().to_vec());
+        scalar
+    }
+}
+
+impl TryFrom<&external::CurveScalar> for Scalar {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
+        let bytes: [u8; 32] = source
+            .get_data()
+            .try_into()
+            .map_err(|_| ConversionError::ArrayCastError)?;
+        Ok(Scalar::from_bits(bytes))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    // Test converting between external::CurveScalar and
+    // curve25519_dalek::Scalar
+    #[test]
+    fn test_scalar_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+
+        let scalar = Scalar::random(&mut rng);
+
+        let external_curve_scalar: external::CurveScalar = (&scalar).into();
+        let recovered_scalar: Scalar = (&external_curve_scalar).try_into().unwrap();
+
+        assert_eq!(scalar, recovered_scalar);
     }
 }

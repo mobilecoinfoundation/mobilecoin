@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A representation of the part of the input ring needed to create an MLSAG
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SignableInputRing {
     /// A reduced representation of the TxOut's in the ring. For each ring
     /// member we have only:
@@ -28,7 +28,7 @@ pub struct SignableInputRing {
 
 /// The secrets needed to create a signature that spends an existing output as
 /// an input
-#[derive(Clone, Debug, Deserialize, Serialize, Zeroize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, Zeroize)]
 #[zeroize(drop)]
 pub struct InputSecret {
     /// Represents either the one-time private key, or data to derive it
@@ -50,7 +50,7 @@ pub struct InputSecret {
 /// ourselves.
 ///
 /// This enum selects which path to the one-time private key is taken.
-#[derive(Clone, Debug, Deserialize, Serialize, Zeroize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, Zeroize)]
 #[zeroize(drop)]
 pub enum OneTimeKeyDeriveData {
     /// The one-time private key for the output

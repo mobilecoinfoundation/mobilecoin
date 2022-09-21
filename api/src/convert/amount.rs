@@ -3,7 +3,9 @@
 //! Convert to/from external::Amount
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
+use mc_transaction_core::{
+    Amount, CompressedCommitment, MaskedAmount, MaskedAmountV1, MaskedAmountV2,
+};
 use mc_util_repr_bytes::ReprBytes;
 
 // Note:
@@ -117,5 +119,38 @@ impl TryFrom<&external::Receipt_oneof_masked_amount> for MaskedAmount {
                 Ok(MaskedAmount::V2(masked_amount.try_into()?))
             }
         }
+    }
+}
+
+impl From<&Amount> for external::Amount {
+    fn from(source: &Amount) -> Self {
+        let mut amount = external::Amount::new();
+        amount.set_value(source.value);
+        amount.set_token_id(*source.token_id);
+        amount
+    }
+}
+
+impl From<&external::Amount> for Amount {
+    fn from(source: &external::Amount) -> Self {
+        Amount::new(source.get_value(), source.get_token_id().into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_transaction_core::TokenId;
+
+    // Test converting between external::Amount and
+    // mc_transaction_types::Amount
+    #[test]
+    fn test_amount_conversion() {
+        let amount = Amount::new(10000, TokenId::from(10));
+
+        let external_amount: external::Amount = (&amount).into();
+        let recovered_amount: Amount = (&external_amount).try_into().unwrap();
+
+        assert_eq!(amount, recovered_amount);
     }
 }

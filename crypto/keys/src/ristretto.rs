@@ -52,6 +52,14 @@ use zeroize::Zeroize;
 #[derive(Clone, Copy, Default, Zeroize)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
 
+impl Eq for RistrettoPrivate {}
+
+impl PartialEq for RistrettoPrivate {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other).unwrap_u8() == 1u8
+    }
+}
+
 impl AsRef<[u8; 32]> for RistrettoPrivate {
     fn as_ref(&self) -> &[u8; 32] {
         self.0.as_bytes()
