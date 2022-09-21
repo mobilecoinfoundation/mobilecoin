@@ -666,7 +666,7 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE but an insufficient sw and config advisory allow-listing 
+    /// MRENCLAVE but an insufficient sw and config advisory allow-listing
     /// fails.
     #[test]
     fn mrenclave_multi_config_sw_fail_short() {
