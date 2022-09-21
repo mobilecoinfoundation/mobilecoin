@@ -157,11 +157,26 @@ impl AuditedMint {
                         nonce_hex, eth_tx_hash,
                     )));
                 }
+                let eth_tokens = config.get_tokens_by_token_id(&mint_tx.token_id());
+                if eth_tokens.is_empty() {
+                    return Err(Error::Other(format!(
+                        "No eth tokens found for token_id {}",
+                        mint_tx.token_id()
+                    )));
+                }
+                if eth_tokens.len() > 1 {
+                    return Err(Error::Other(format!(
+                        "Too many tokens found for token_id {}. Found tokens {:?}",
+                        mint_tx.token_id(),
+                        eth_tokens
+                    )));
+                }
+                let eth_token = eth_tokens[0];
 
                 // See if we can find a GnosisSafeDeposit that matches the nonce and has not
                 // been associated with a mint.
                 let deposit =
-                    GnosisSafeDeposit::find_unaudited_deposit_by_nonce(mint_tx.nonce_hex(), conn)?
+                    GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(&eth_token.eth_token_contract_addr, mint_tx.nonce_hex(), conn)?
                         .ok_or(Error::NotFound)?;
 
                 // See if the deposit we found is for a safe we are auditing.

@@ -50,6 +50,16 @@ impl AuditedSafeConfig {
             .iter()
             .find(|token| token.eth_token_contract_addr == *eth_contract_addr)
     }
+
+    /// Get an [AuditedToken] by its [TokenId].
+    pub fn get_token_by_token_id(
+        &self,
+        token_id: &TokenId,
+    ) -> Option<&AuditedToken> {
+        self.tokens
+            .iter()
+            .find(|token| token.token_id == *token_id)
+    }    
 }
 
 /// Configuration for Gnosis safe(s) auditing.
@@ -88,6 +98,16 @@ impl GnosisSafeConfig {
             .find(|safe| safe.safe_addr == *safe_addr)
             .cloned()
     }
+    /// Get an [AuditedToken] by its [TokenId].
+    pub fn get_tokens_by_token_id(
+        &self,
+        token_id: &TokenId,
+    ) -> Vec<&AuditedToken> {
+        self.safes
+            .iter()
+            .filter_map(|safe| safe.get_token_by_token_id(token_id))
+            .collect()
+    }   
 }
 
 #[cfg(test)]
