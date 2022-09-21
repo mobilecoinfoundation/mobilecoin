@@ -114,7 +114,6 @@ impl MintTxStore {
             db_transaction.put(
                 self.block_index_by_mint_tx_nonce_and_token_id,
                 &combined_nonce_and_token_id,
-                // &combined_nonce_and_token_id,
                 &block_index_bytes,
                 // do not overwrite a nonce that was already used
                 WriteFlags::NO_OVERWRITE,
@@ -474,7 +473,7 @@ mod tests {
         );
         drop(db_txn);
 
-        // Generate similar txs that have the same nonces token2.
+        // Generate similar tx as tx1 that have the same nonces for token2.
         rng = SeedableRng::from_seed([1u8; 32]);
         let mint_tx1_tkn2 = create_mint_tx(token_id2, &signers2, 1, &mut rng);
 

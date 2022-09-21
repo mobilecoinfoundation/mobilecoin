@@ -553,7 +553,7 @@ mod mint_config_tx_tests {
     }
 
     /// combine_mint_config_txs adequately sorts inputs and disposes of
-    /// duplicates.
+    /// duplicates when handling multiple token types.
     #[test_with_logger]
     fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);

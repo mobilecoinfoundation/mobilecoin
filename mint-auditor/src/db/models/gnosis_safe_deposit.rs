@@ -199,9 +199,6 @@ mod tests {
         let nonce3 = deposit3.expected_mc_mint_tx_nonce_hex().to_string();
         let nonce4 = deposit4.expected_mc_mint_tx_nonce_hex().to_string();
 
-        // assert_eq!(nonce1, nonce3);
-        // assert_eq!(nonce2, nonce4);
-
         // Create two MintTxs.
         let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);

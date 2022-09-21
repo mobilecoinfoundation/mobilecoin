@@ -390,7 +390,7 @@ impl Ledger for LedgerDB {
             .get_active_mint_configs_map(&db_transaction)
     }
 
-    /// Checks if the ledger contains a given MintConfigTx nonce.
+    /// Checks if the ledger contains a given MintConfigTx nonce for a given token id.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
     fn check_mint_config_tx_nonce(
@@ -403,7 +403,7 @@ impl Ledger for LedgerDB {
             .check_mint_config_tx_nonce(token_id, nonce, &db_transaction)
     }
 
-    /// Checks if the ledger contains a given MintTx nonce.
+    /// Checks if the ledger contains a given MintTx nonce for a given token id.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
     fn check_mint_tx_nonce(
