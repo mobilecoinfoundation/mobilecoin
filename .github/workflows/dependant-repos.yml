@@ -46,4 +46,11 @@ jobs:
         submodulePath: mobilecoin
         id: full-service
         githubToken: ${{ secrets.GITHUB_TOKEN }}
-        buildCmd: SGX_MODE=SW IAS_MODE=DEV cargo test
+        buildCmd: |
+          export CONSENSUS_ENCLAVE_CSS=$PWD/consensus-enclave.css
+          if [ ! -f "$CONSENSUS_ENCLAVE_CSS" ]; then
+            CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep consensus-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
+            curl -O https://enclave-distribution.test.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI}
+          fi
+
+          SGX_MODE=SW IAS_MODE=DEV cargo test
