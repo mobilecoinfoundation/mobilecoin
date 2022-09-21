@@ -18,6 +18,11 @@ is_set()
     fi
 }
 
+archive_curl()
+{
+    /usr/bin/curl -IfsSL --retry 3 "${1}00/00/00/00/00/00/00/0000000000000000.pb"
+}
+
 is_set MC_DEST
 is_set AWS_ACCESS_KEY_ID
 is_set AWS_SECRET_ACCESS_KEY
@@ -49,8 +54,17 @@ then
 
     export MC_START_FROM=last
 else
-    echo "mc.app:wrapper-ledger-distribution - no state file found MC_START_FROM=next"
-    export MC_START_FROM=next
+    echo "mc.app:wrapper-ledger-distribution - no state file found."
+    echo "mc.app:wrapper-ledger-distribution - checking for an existing block 0 in s3"
+
+    if archive_curl "${MC_TX_SOURCE_URL}"
+    then
+        echo "mc.app:wrapper-ledger-distribution - block 0 found in s3 MC_START_FROM=next"
+        export MC_START_FROM=next
+    else
+        echo "mc.app:wrapper-ledger-distribution - no s3 archive found MC_START_FROM=zero"
+        export MC_START_FROM=zero
+    fi
 fi
 
 /usr/bin/ledger-distribution
