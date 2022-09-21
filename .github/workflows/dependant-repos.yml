@@ -16,8 +16,10 @@ jobs:
       pull-requests: write
 
     steps:
+    - uses: actions/checkout@v3
+      path: mobilecoin
     - name: Check that android-bindings still builds
-      uses: ./.github/actions/check-dependant-rust-repo
+      uses: ./mobilecoin/.github/actions/check-dependant-rust-repo
       with:
         remoteRepo: mobilecoinofficial/android-bindings
         submodulePath: mobilecoin
@@ -33,6 +35,7 @@ jobs:
       pull-requests: write
 
     steps:
+    - uses: actions/checkout@v3
     - name: Check that full-service still builds
       uses: ./.github/actions/check-dependant-rust-repo
       with:
