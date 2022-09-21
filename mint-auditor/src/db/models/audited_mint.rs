@@ -175,9 +175,12 @@ impl AuditedMint {
 
                 // See if we can find a GnosisSafeDeposit that matches the nonce and has not
                 // been associated with a mint.
-                let deposit =
-                    GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(&eth_token.eth_token_contract_addr, mint_tx.nonce_hex(), conn)?
-                        .ok_or(Error::NotFound)?;
+                let deposit = GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                    &eth_token.eth_token_contract_addr,
+                    mint_tx.nonce_hex(),
+                    conn,
+                )?
+                .ok_or(Error::NotFound)?;
 
                 // See if the deposit we found is for a safe we are auditing.
                 let audited_safe_config = config

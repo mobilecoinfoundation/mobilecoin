@@ -168,7 +168,10 @@ mod tests {
     use super::*;
     use crate::db::{
         models::{AuditedMint, MintTx},
-        test_utils::{create_gnosis_safe_deposit, insert_gnosis_deposit, TestDbContext, create_gnosis_safe_deposit_alternative_address},
+        test_utils::{
+            create_gnosis_safe_deposit, create_gnosis_safe_deposit_alternative_address,
+            insert_gnosis_deposit, TestDbContext,
+        },
     };
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::TokenId;
@@ -208,60 +211,84 @@ mod tests {
         let mut mint_tx1_tkn2 = create_mint_tx(token_id2, &signers2, 100, &mut rng);
         let mut mint_tx2_tkn2 = create_mint_tx(token_id2, &signers2, 100, &mut rng);
 
-
         mint_tx1.prefix.nonce = hex::decode(&nonce1).unwrap();
         mint_tx2.prefix.nonce = hex::decode(&nonce2).unwrap();
         mint_tx1_tkn2.prefix.nonce = hex::decode(&nonce1).unwrap();
         mint_tx2_tkn2.prefix.nonce = hex::decode(&nonce2).unwrap();
 
-
         let sql_mint_tx1 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx1, &conn).unwrap();
         let sql_mint_tx2 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx2, &conn).unwrap();
-        let sql_mint_tx3 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx1_tkn2, &conn).unwrap();
-        let sql_mint_tx4 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx2_tkn2, &conn).unwrap();
+        let sql_mint_tx3 =
+            MintTx::insert_from_core_mint_tx(0, None, &mint_tx1_tkn2, &conn).unwrap();
+        let sql_mint_tx4 =
+            MintTx::insert_from_core_mint_tx(0, None, &mint_tx2_tkn2, &conn).unwrap();
 
         // Since they haven't been inserted yet, they should not be found.
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit1.token_addr(), &nonce1, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit1.token_addr(),
+                &nonce1,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit2.token_addr(),&nonce2, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit2.token_addr(),
+                &nonce2,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         // Insert the first deposit, it should now be found.
         insert_gnosis_deposit(&mut deposit1, &conn);
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit1.token_addr(), &nonce1, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit1.token_addr(),
+                &nonce1,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit1
         );
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit2.token_addr(), &nonce2, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit2.token_addr(),
+                &nonce2,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         // Insert the second deposit, they should both be found.
         insert_gnosis_deposit(&mut deposit2, &conn);
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit1.token_addr(), &nonce1, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit1.token_addr(),
+                &nonce1,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit1,
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit2.token_addr(), &nonce2, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit2.token_addr(),
+                &nonce2,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit2,
         );
 
@@ -269,19 +296,26 @@ mod tests {
         insert_gnosis_deposit(&mut deposit3, &conn);
         insert_gnosis_deposit(&mut deposit4, &conn);
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit3.token_addr(), &nonce3, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit3.token_addr(),
+                &nonce3,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit3,
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit4.token_addr(), &nonce4, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit4.token_addr(),
+                &nonce4,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit4,
         );
-
 
         // Insert a row to the `audited_mints` table marking the first deposit as
         // audited. We should no longer be able to find it.
@@ -293,28 +327,44 @@ mod tests {
         .unwrap();
 
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit1.token_addr(), &nonce1, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit1.token_addr(),
+                &nonce1,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit2.token_addr(), &nonce2, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit2.token_addr(),
+                &nonce2,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit2,
         );
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit3.token_addr(), &nonce3, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit3.token_addr(),
+                &nonce3,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit3,
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit4.token_addr(), &nonce4, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit4.token_addr(),
+                &nonce4,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit4,
         );
         // Mark the second deposit as audited. We should no longer be able to find it.
@@ -326,27 +376,43 @@ mod tests {
         .unwrap();
 
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit1.token_addr(), &nonce1, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit1.token_addr(),
+                &nonce1,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit2.token_addr(), &nonce2, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit2.token_addr(),
+                &nonce2,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit3.token_addr(), &nonce3, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit3.token_addr(),
+                &nonce3,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit3,
         );
 
         assert_eq!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit4.token_addr(), &nonce4, &conn)
-                .unwrap()
-                .unwrap(),
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit4.token_addr(),
+                &nonce4,
+                &conn
+            )
+            .unwrap()
+            .unwrap(),
             deposit4,
         );
 
@@ -365,14 +431,23 @@ mod tests {
         )
         .unwrap();
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit3.token_addr(), &nonce3, &conn)
-                .unwrap()
-                .is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit3.token_addr(),
+                &nonce3,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
 
         assert!(
-            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(deposit4.token_addr(), &nonce4, &conn)
-                .unwrap().is_none()
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
+                deposit4.token_addr(),
+                &nonce4,
+                &conn
+            )
+            .unwrap()
+            .is_none()
         );
     }
 }
