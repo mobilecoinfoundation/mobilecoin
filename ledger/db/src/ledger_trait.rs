@@ -131,7 +131,8 @@ pub trait Ledger: Send {
     /// Checks if the ledger contains a given MintTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
-    fn check_mint_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
+    fn check_mint_tx_nonce(&self, token_id: u64, nonce: &[u8])
+        -> Result<Option<BlockIndex>, Error>;
 
     /// Attempt to get an active mint configuration that is able to verify and
     /// accommodate a given MintTx.

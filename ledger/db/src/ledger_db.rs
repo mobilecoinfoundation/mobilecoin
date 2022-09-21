@@ -406,10 +406,14 @@ impl Ledger for LedgerDB {
     /// Checks if the ledger contains a given MintTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
-    fn check_mint_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+    fn check_mint_tx_nonce(
+        &self,
+        token_id: u64,
+        nonce: &[u8],
+    ) -> Result<Option<BlockIndex>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_tx_store
-            .check_mint_tx_nonce(nonce, &db_transaction)
+            .check_mint_tx_nonce(token_id, nonce, &db_transaction)
     }
 
     /// Attempt to get an active mint configuration that is able to verify and
@@ -768,7 +772,11 @@ impl LedgerDB {
         for mint_tx in block_contents.mint_txs.iter() {
             if self
                 .mint_tx_store
-                .check_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)?
+                .check_mint_tx_nonce(
+                    mint_tx.prefix.token_id,
+                    &mint_tx.prefix.nonce,
+                    db_transaction,
+                )?
                 .is_some()
             {
                 return Err(Error::DuplicateMintTx);

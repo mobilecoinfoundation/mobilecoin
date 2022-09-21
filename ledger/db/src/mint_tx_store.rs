@@ -126,12 +126,17 @@ impl MintTxStore {
 
     pub fn check_mint_tx_nonce(
         &self,
+        token_id: u64,
         nonce: &[u8],
         db_transaction: &impl Transaction,
     ) -> Result<Option<BlockIndex>, Error> {
-        match db_transaction.get(self.block_index_by_mint_tx_nonce_and_token_id, &nonce) {
+        let combined_nonce_and_token_id = [nonce, &u64_to_key_bytes(token_id)].concat();
+        match db_transaction.get(
+            self.block_index_by_mint_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+        ) {
             Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
-            Err(lmdb::Error::BadRslot) => Ok(None),
+            Err(lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(Error::Lmdb(e)),
         }
     }
@@ -673,26 +678,27 @@ mod tests {
 
         let db_txn = env.begin_ro_txn().unwrap();
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx1.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx2.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx3.prefix.nonce, &db_txn),
             Ok(None)
         );
         assert_eq!(
             mint_tx_store.check_mint_tx_nonce(
+                *token_id1,
                 &mint_tx1.prefix.nonce[..mint_tx1.prefix.nonce.len() - 2],
                 &db_txn
             ),
             Ok(None)
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&[1, 2, 3], &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &[1, 2, 3], &db_txn),
             Ok(None)
         );
         drop(db_txn);
@@ -705,15 +711,15 @@ mod tests {
 
         let db_txn = env.begin_ro_txn().unwrap();
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx1.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx2.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx3.prefix.nonce, &db_txn),
             Ok(Some(1))
         );
     }
