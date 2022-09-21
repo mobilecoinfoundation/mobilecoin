@@ -37,6 +37,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        path: mobilecoin
     - name: Check that full-service still builds
       uses: ./.github/actions/check-dependant-rust-repo
       with:
