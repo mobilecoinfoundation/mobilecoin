@@ -85,15 +85,16 @@ where
         self.reader.decrypt_with_ad(aad, ciphertext)
     }
 
-    /// Using the writer cipher, encrypt the given plaintext for the nonce.
+    /// Using the writer cipher, encrypt the given plaintext and return the
+    /// nonce.
     pub fn encrypt_with_nonce(
         &mut self,
         aad: &[u8],
         plaintext: &[u8],
-        nonce: u64,
-    ) -> Result<Vec<u8>, CipherError> {
-        self.writer.set_nonce(nonce);
-        self.encrypt(aad, plaintext)
+    ) -> Result<(Vec<u8>, u64), CipherError> {
+        let nonce = self.writer.next_nonce();
+        let ciphertext = self.encrypt(aad, plaintext)?;
+        Ok((ciphertext, nonce))
     }
 
     /// Using the reader cipher, decrypt the provided ciphertext for the nonce.
