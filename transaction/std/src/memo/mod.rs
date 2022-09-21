@@ -44,7 +44,6 @@
 //! | 0x0202          | Gift Code Cancellation Memo                       |
 
 pub use self::{
-    authenticated_common::compute_category1_hmac,
     authenticated_sender::AuthenticatedSenderMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,

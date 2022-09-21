@@ -5,7 +5,7 @@
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
 
 use super::{
-    authenticated_common::{compute_category1_hmac, validate_authenticated_sender},
+    authenticated_common::{validate_authenticated_sender},
     credential::SenderMemoCredential,
     RegisteredMemoType,
 };
@@ -14,6 +14,7 @@ use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
 };
+use mc_crypto_memo_mac::{compute_category1_hmac};
 use subtle::Choice;
 
 /// A memo that the sender writes to convey their identity in an authenticated
@@ -72,7 +73,7 @@ impl AuthenticatedSenderWithPaymentRequestIdMemo {
             shared_secret.as_ref(),
             tx_out_public_key,
             Self::MEMO_TYPE_BYTES,
-            &memo_data,
+            &memo_data[..48].try_into().unwrap(),
         );
         memo_data[48..].copy_from_slice(&hmac_value);
 

@@ -1,0 +1,19 @@
+[package]
+name = "mc-abstract-account-keys"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+# External dependencies
+displaydoc = { version = "0.2", default-features = false }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1", default-features = false }
+subtle = { version = "2", default-features = false }
+zeroize = { version = "1", default-features = false }
+
+# MobileCoin dependencies
+mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-crypto-ring-signature = { path = "../crypto/ring-signature", default-features = false }
+mc-transaction-types = { path = "../transaction/types", default-features = false }

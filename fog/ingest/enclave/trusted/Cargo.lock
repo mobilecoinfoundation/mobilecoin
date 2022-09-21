@@ -705,6 +705,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-abstract-account-keys"
+version = "2.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "rand_core",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-account-keys"
 version = "2.0.0"
 dependencies = [
@@ -1082,6 +1096,7 @@ dependencies = [
  "displaydoc",
  "generic-array",
  "hex_fmt",
+ "mc-abstract-account-keys",
  "mc-account-keys",
  "mc-crypto-dalek",
  "mc-crypto-keys",

@@ -13,5 +13,5 @@ pub use no_keys_ring_signer::NoKeysRingSigner;
 mod local_signer;
 pub use local_signer::LocalRingSigner;
 
-mod traits;
-pub use traits::{Error, InputSecret, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+// For now, re-export these
+pub use mc_abstract_account_keys::{Error, RingSigner, InputSecret, OneTimeKeyDeriveData, SignableInputRing};

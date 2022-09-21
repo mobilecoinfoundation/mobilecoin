@@ -1,0 +1,16 @@
+[package]
+name = "mc-crypto-memo-mac"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[features]
+test-only = []
+
+[dependencies]
+# External dependencies
+hmac = "0.12"
+sha2 = { version = "0.10", default-features = false }
+
+# MobileCoin dependencies
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }

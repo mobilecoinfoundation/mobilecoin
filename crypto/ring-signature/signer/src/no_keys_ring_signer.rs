@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+use mc_abstract_account_keys::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 

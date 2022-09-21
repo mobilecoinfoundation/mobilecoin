@@ -2168,6 +2168,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-abstract-account-keys"
+version = "2.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "rand_core 0.6.4",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-account-keys"
 version = "2.0.0"
 dependencies = [
@@ -3046,6 +3060,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-memo-mac"
+version = "2.0.0"
+dependencies = [
+ "hmac 0.12.1",
+ "mc-crypto-keys",
+ "sha2 0.10.5",
+]
+
+[[package]]
 name = "mc-crypto-message-cipher"
 version = "2.0.0"
 dependencies = [
@@ -3139,6 +3162,7 @@ dependencies = [
  "displaydoc",
  "generic-array",
  "hex_fmt",
+ "mc-abstract-account-keys",
  "mc-account-keys",
  "mc-crypto-dalek",
  "mc-crypto-digestible-test-utils",
@@ -5114,6 +5138,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-memo-mac",
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",

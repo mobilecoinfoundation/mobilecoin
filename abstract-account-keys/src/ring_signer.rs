@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use alloc::{string::String, vec::Vec};
-use displaydoc::Display;
-use mc_crypto_keys::{KeyError, RistrettoPrivate};
+use crate::Error;
+use alloc::{vec::Vec};
+use mc_crypto_keys::{RistrettoPrivate};
 use mc_crypto_ring_signature::{
-    CryptoRngCore, Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar,
+    CryptoRngCore, ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_transaction_types::Amount;
 use serde::{Deserialize, Serialize};
@@ -115,34 +115,5 @@ impl<S: RingSigner> RingSigner for &S {
         rng: &mut dyn CryptoRngCore,
     ) -> Result<RingMLSAG, Error> {
         (*self).sign(message, signable_ring, output_blinding, rng)
-    }
-}
-
-/// An error that can occur when using an abstract RingSigner
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum Error {
-    /// True input not owned by this subaddress
-    TrueInputNotOwned,
-    /// Connection failed: {0}
-    ConnectionFailed(String),
-    /// Invalid Ristretto key in TxOut: {0}
-    Keys(KeyError),
-    /// Real input index out of bounds
-    RealInputIndexOutOfBounds,
-    /// Ring Signature: {0}
-    RingSignature(RingSignatureError),
-    /// No path to spend key (logic error)
-    NoPathToSpendKey,
-}
-
-impl From<KeyError> for Error {
-    fn from(src: KeyError) -> Self {
-        Self::Keys(src)
-    }
-}
-
-impl From<RingSignatureError> for Error {
-    fn from(src: RingSignatureError) -> Self {
-        Self::RingSignature(src)
     }
 }

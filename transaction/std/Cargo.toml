@@ -24,6 +24,7 @@ zeroize = "1"
 mc-account-keys = { path = "../../account-keys" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-memo-mac = { path = "../../crypto/memo-mac" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core" }

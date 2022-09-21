@@ -17,6 +17,7 @@ subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
+mc-abstract-account-keys = { path = "../../../abstract-account-keys" }
 mc-account-keys = { path = "../../../account-keys", default-features = false }
 mc-crypto-dalek = { path = "../../dalek" }
 mc-crypto-keys = { path = "../../keys", default-features = false }
