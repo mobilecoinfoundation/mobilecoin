@@ -40,7 +40,7 @@ jobs:
       with:
         path: mobilecoin
     - name: Check that full-service still builds
-      uses: ./.github/actions/check-dependant-rust-repo
+      uses: ./mobilecoin/.github/actions/check-dependant-rust-repo
       with:
         remoteRepo: mobilecoinofficial/full-service
         submodulePath: mobilecoin
