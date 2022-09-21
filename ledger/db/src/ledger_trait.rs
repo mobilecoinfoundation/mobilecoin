@@ -119,9 +119,10 @@ pub trait Ledger: Send {
     /// Return the full map of TokenId -> ActiveMintConfigs.
     fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error>;
 
-    /// Checks if the ledger contains a given MintConfigTx nonce for a given token id.
-    /// If so, returns the index of the block in which it entered the ledger.
-    /// Ok(None) is returned when the nonce is not in the ledger.
+    /// Checks if the ledger contains a given MintConfigTx nonce for a given
+    /// token id. If so, returns the index of the block in which it entered
+    /// the ledger. Ok(None) is returned when the nonce is not in the
+    /// ledger.
     fn check_mint_config_tx_nonce(
         &self,
         token_id: u64,

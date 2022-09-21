@@ -468,7 +468,7 @@ mod tests {
         // Trying with the same nonce on the same token should fail.
         let mut db_txn = env.begin_rw_txn().unwrap();
         assert_eq!(
-            mint_tx_store.write_mint_txs(2, &[mint_tx1.clone()], &mint_config_store, &mut db_txn),
+            mint_tx_store.write_mint_txs(2, &[mint_tx1], &mint_config_store, &mut db_txn),
             Err(Error::Lmdb(lmdb::Error::KeyExist))
         );
         drop(db_txn);
