@@ -9,8 +9,7 @@ env:
 
 jobs:
   android-bindings:
-    runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
@@ -26,6 +25,9 @@ jobs:
   full-service:
     runs-on: [self-hosted, Linux, large]
     container: mobilecoin/builder-install:v0.0.17
+
+    permissions:
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v3
