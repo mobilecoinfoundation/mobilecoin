@@ -393,10 +393,14 @@ impl Ledger for LedgerDB {
     /// Checks if the ledger contains a given MintConfigTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
-    fn check_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+    fn check_mint_config_tx_nonce(
+        &self,
+        token_id: u64,
+        nonce: &[u8],
+    ) -> Result<Option<BlockIndex>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
-            .check_mint_config_tx_nonce(nonce, &db_transaction)
+            .check_mint_config_tx_nonce(token_id, nonce, &db_transaction)
     }
 
     /// Checks if the ledger contains a given MintTx nonce.
@@ -776,6 +780,7 @@ impl LedgerDB {
             if self
                 .mint_config_store
                 .check_mint_config_tx_nonce(
+                    validated_mint_config_tx.mint_config_tx.prefix.token_id,
                     &validated_mint_config_tx.mint_config_tx.prefix.nonce,
                     db_transaction,
                 )?
