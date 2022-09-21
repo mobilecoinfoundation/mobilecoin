@@ -72,7 +72,10 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         // Ensure that we have not seen this transaction before.
         if self
             .ledger_db
-            .check_mint_config_tx_nonce(&mint_config_tx.prefix.nonce)?
+            .check_mint_config_tx_nonce(
+                mint_config_tx.prefix.token_id,
+                &mint_config_tx.prefix.nonce,
+            )?
             .is_some()
         {
             return Err(MintTxManagerError::MintValidation(

@@ -411,10 +411,15 @@ impl MintConfigStore {
 
     pub fn check_mint_config_tx_nonce(
         &self,
+        token_id: u64,
         nonce: &[u8],
         db_transaction: &impl Transaction,
     ) -> Result<Option<BlockIndex>, Error> {
-        match db_transaction.get(self.block_index_by_mint_config_tx_nonce, &nonce) {
+        let combined_nonce_and_token_id = [nonce, &u64_to_key_bytes(token_id)].concat();
+        match db_transaction.get(
+            self.block_index_by_mint_config_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+        ) {
             Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
             Err(lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(Error::Lmdb(e)),
@@ -1327,8 +1332,9 @@ pub mod tests {
         let token_id2 = TokenId::from(2);
 
         let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
-        let test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
+        let mut test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
         let test_tx_3 = create_mint_config_tx(token_id2, &mut rng);
+        test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -1346,19 +1352,26 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
-                Ok(Some(0)),
-            );
-
-            assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &test_tx_1.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
                 mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_2.prefix.nonce,
+                    &db_transaction
+                ),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
                     &test_tx_2.prefix.nonce[0..test_tx_2.prefix.nonce.len() - 1],
                     &db_transaction
                 ),
@@ -1366,13 +1379,20 @@ pub mod tests {
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_3.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(None),
             );
 
             assert_eq!(
-                mint_config_store.check_mint_config_tx_nonce(&[1, 2, 3], &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &[1, 2, 3],
+                    &db_transaction
+                ),
                 Ok(None),
             );
         }
@@ -1393,20 +1413,29 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &test_tx_1.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_2.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_3.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(1)),
             );
         }
