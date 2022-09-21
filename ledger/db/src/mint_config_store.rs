@@ -573,7 +573,7 @@ pub mod tests {
         }
 
         //Using the same nonce with different token_id should succeed.
-        test_tx_tkn_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
+        test_tx_tkn_2.prefix.nonce = test_tx_1.prefix.nonce;
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
