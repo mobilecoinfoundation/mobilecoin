@@ -43,7 +43,6 @@ runs:
   - name: Build outside repo with current branch
     shell: bash
     run: |
-      sleep 600
       set -x
       cd workdir-${{ inputs.id }}
 
