@@ -1,5 +1,4 @@
 #![no_std]
-
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! HMAC code shared by all category 0x01 memos.
@@ -8,7 +7,7 @@
 //! mobilecoinfoundation/mcips/pull/4
 
 use hmac::{Hmac, Mac};
-use mc_crypto_keys::{CompressedRistrettoPublic};
+use mc_crypto_keys::CompressedRistrettoPublic;
 use sha2::Sha512;
 
 type HmacSha512 = Hmac<Sha512>;

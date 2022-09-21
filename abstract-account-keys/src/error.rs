@@ -1,7 +1,7 @@
 use alloc::string::String;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
-use mc_crypto_ring_signature::{Error as RingSignatureError};
+use mc_crypto_ring_signature::Error as RingSignatureError;
 use serde::{Deserialize, Serialize};
 
 /// An error that can occur when using an abstract account keys object

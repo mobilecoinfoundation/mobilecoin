@@ -14,4 +14,6 @@ mod local_signer;
 pub use local_signer::LocalRingSigner;
 
 // For now, re-export these
-pub use mc_abstract_account_keys::{Error, RingSigner, InputSecret, OneTimeKeyDeriveData, SignableInputRing};
+pub use mc_abstract_account_keys::{
+    Error, InputSecret, OneTimeKeyDeriveData, RingSigner, SignableInputRing,
+};

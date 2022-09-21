@@ -1,11 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::Error;
-use alloc::{vec::Vec};
-use mc_crypto_keys::{RistrettoPrivate};
-use mc_crypto_ring_signature::{
-    CryptoRngCore, ReducedTxOut, RingMLSAG, Scalar,
-};
+use alloc::vec::Vec;
+use mc_crypto_keys::RistrettoPrivate;
+use mc_crypto_ring_signature::{CryptoRngCore, ReducedTxOut, RingMLSAG, Scalar};
 use mc_transaction_types::Amount;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;

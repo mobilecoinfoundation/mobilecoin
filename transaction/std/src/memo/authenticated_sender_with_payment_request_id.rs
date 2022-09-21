@@ -5,8 +5,7 @@
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
 
 use super::{
-    authenticated_common::{validate_authenticated_sender},
-    credential::SenderMemoCredential,
+    authenticated_common::validate_authenticated_sender, credential::SenderMemoCredential,
     RegisteredMemoType,
 };
 use crate::impl_memo_type_conversions;
@@ -14,7 +13,7 @@ use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
 };
-use mc_crypto_memo_mac::{compute_category1_hmac};
+use mc_crypto_memo_mac::compute_category1_hmac;
 use subtle::Choice;
 
 /// A memo that the sender writes to convey their identity in an authenticated
