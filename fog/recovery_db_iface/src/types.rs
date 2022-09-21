@@ -6,6 +6,7 @@
 use core::{fmt, ops::Deref};
 use mc_attest_core::VerificationReport;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_types::{
     common::BlockRange,
     view::{DecommissionedIngestInvocation, RngRecord},
@@ -120,6 +121,19 @@ impl IngressPublicKeyRecord {
     }
 }
 
+/// Records pertaining to expired ingest invocations. An invocation's expiratoin
+/// status is determined by using its `last_active_at` timestamp, i.e. when it
+/// was last used.
+pub struct ExpiredInvocationRecord {
+    /// The id for the expired ingest invocation.
+    pub ingest_invocation_id: i64,
+
+    /// The expired egress key.
+    pub egress_public_key: KexRngPubkey,
+
+    /// The last time the expired key was active.
+    pub last_active_at: u64,
+}
 /// Possible user events to be returned to end users.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum FogUserEvent {
