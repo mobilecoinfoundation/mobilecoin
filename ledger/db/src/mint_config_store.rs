@@ -569,6 +569,7 @@ pub mod tests {
             db_transaction.commit().unwrap();
         }
 
+        // Retrying the same transaction should fail
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
@@ -581,7 +582,7 @@ pub mod tests {
             );
             db_transaction.commit().unwrap();
         }
-
+        // Retrying with the same nonce for the same token_id should fail.
         test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -593,6 +594,20 @@ pub mod tests {
                 ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
             );
+            db_transaction.commit().unwrap();
+        }
+
+        // Using the same nonce with different token_id should succeed.
+        test_tx_tkn_2.prefix.nonce = test_tx_1.prefix.nonce;
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    3,
+                    &[to_validated(&test_tx_tkn_2)],
+                    &mut db_transaction,
+                )
+                .unwrap();
             db_transaction.commit().unwrap();
         }
 
