@@ -19,6 +19,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
     pg::PgConnection,
@@ -48,10 +49,7 @@ use prost::Message;
 use proto_types::ProtoIngestedBlockData;
 use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
-use std::{
-    cmp::max,
-    time::{Duration, SystemTime},
-};
+use std::{cmp::max, time::Duration};
 
 /// Maximum number of parameters PostgreSQL allows in a single query.
 /// The actual limit is 65535. This value is more conservative, resulting on
@@ -269,16 +267,9 @@ impl SqlRecoveryDb {
     fn get_expired_invocations_impl(
         &self,
         conn: &PgConnection,
-        expired_epoch_timestamp_secs: u64,
+        expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
         use schema::ingest_invocations::dsl;
-        let duration_since_epoch = Duration::from_secs(expired_epoch_timestamp_secs);
-        // TODO: Consider creating a module to handle SystemTime conversions to unix timestamps.
-        // Using the UNIX_EPOCH as the default value means that no ingest keys will be
-        // considered expired.
-        let expired_timestamp = SystemTime::UNIX_EPOCH
-            .checked_add(duration_since_epoch)
-            .unwrap_or(SystemTime::UNIX_EPOCH);
         let query = schema::ingest_invocations::dsl::ingest_invocations
             .select((
                 dsl::id,
@@ -286,8 +277,8 @@ impl SqlRecoveryDb {
                 dsl::egress_public_key,
                 dsl::last_active_at,
             ))
-            .filter(dsl::last_active_at.lt(expired_timestamp));
-        let data = query.load::<(i64, i32, Vec<u8>, SystemTime)>(conn)?;
+            .filter(dsl::last_active_at.lt(expiration));
+        let data = query.load::<(i64, i32, Vec<u8>, NaiveDateTime)>(conn)?;
 
         let result = data
             .into_iter()
@@ -300,14 +291,10 @@ impl SqlRecoveryDb {
                     version: rng_version as u32,
                 };
 
-                let last_active_at_timestamp = last_active_at
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
                 ExpiredInvocationRecord {
                     ingest_invocation_id,
                     egress_public_key: egress_kex_rng_pubkey,
-                    last_active_at: last_active_at_timestamp,
+                    last_active_at,
                 }
             })
             .collect();
@@ -1205,10 +1192,10 @@ impl SqlRecoveryDb {
 
     fn get_expired_invocations_retriable(
         &self,
-        expired_epoch_timestamp_secs: u64,
+        expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
         let conn = self.pool.get()?;
-        self.get_expired_invocations_impl(&conn, expired_epoch_timestamp_secs)
+        self.get_expired_invocations_impl(&conn, expiration)
     }
 }
 
@@ -1466,10 +1453,10 @@ impl RecoveryDb for SqlRecoveryDb {
     /// `expired_timestamp`.
     fn get_expired_invocations(
         &self,
-        expired_epoch_timestamp_secs: u64,
+        expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
         our_retry(self.get_retries(), || {
-            self.get_expired_invocations_retriable(expired_epoch_timestamp_secs)
+            self.get_expired_invocations_retriable(expiration)
         })
     }
 }
@@ -1547,6 +1534,7 @@ fn unpack_retry_error(src: RetryError<Error>) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::prelude::*;
     use mc_common::{
         logger::{log, test_with_logger, Logger},
         HashSet,
@@ -3505,17 +3493,13 @@ mod tests {
             egress_keys.push(egress_key);
         }
 
-        let duration_since_epoch = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap();
         // This buffer allows us to be sure that the db entries will be before the
         // expiration.
-        let expiration_buffer = Duration::from_secs(1);
-        let expiration_epoch_timestamp = duration_since_epoch
-            .checked_add(expiration_buffer)
-            .unwrap()
-            .as_secs();
-        let result = db.get_expired_invocations(expiration_epoch_timestamp);
+        let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
+        let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
+        let expiration = NaiveDateTime::from_timestamp(expiration_timestamp, 0);
+
+        let result = db.get_expired_invocations(expiration);
 
         assert!(result.is_ok());
         let result = result.unwrap();
@@ -3540,16 +3524,11 @@ mod tests {
             .new_ingest_invocation(None, &ingress_key, &egress_key_1, 0)
             .unwrap();
 
-        let duration_since_epoch = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap();
         // This buffer allows us to be sure that the db entries will be before the
         // expiration.
-        let expiration_buffer = Duration::from_secs(1);
-        let expiration_epoch_timestamp = duration_since_epoch
-            .checked_add(expiration_buffer)
-            .unwrap()
-            .as_secs();
+        let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
+        let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
+        let expiration = NaiveDateTime::from_timestamp(expiration_timestamp, 0);
 
         // Sleep to ensure that this second ingest invocation is not expired.
         std::thread::sleep(Duration::from_secs(2));
@@ -3558,7 +3537,7 @@ mod tests {
             .new_ingest_invocation(None, &ingress_key, &egress_key_2, 0)
             .unwrap();
 
-        let result = db.get_expired_invocations(expiration_epoch_timestamp);
+        let result = db.get_expired_invocations(expiration);
 
         assert!(result.is_ok());
         let result = result.unwrap();

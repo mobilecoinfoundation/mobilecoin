@@ -3,6 +3,7 @@
 //! Database API types
 //! These are not user-facing, the user facing versions are in fog-types crate.
 
+use chrono::NaiveDateTime;
 use core::{fmt, ops::Deref};
 use mc_attest_core::VerificationReport;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -132,7 +133,7 @@ pub struct ExpiredInvocationRecord {
     pub egress_public_key: KexRngPubkey,
 
     /// The last time the expired key was active.
-    pub last_active_at: u64,
+    pub last_active_at: NaiveDateTime,
 }
 /// Possible user events to be returned to end users.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]

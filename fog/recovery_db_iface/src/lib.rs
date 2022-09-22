@@ -10,6 +10,7 @@ extern crate alloc;
 mod types;
 
 use alloc::{string::String, vec::Vec};
+use chrono::NaiveDateTime;
 use core::fmt::{Debug, Display};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
@@ -314,7 +315,7 @@ pub trait RecoveryDb {
     /// `expired_timestamp`.
     fn get_expired_invocations(
         &self,
-        expired_epoch_timestamp_secs: u64,
+        expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Self::Error>;
 }
 

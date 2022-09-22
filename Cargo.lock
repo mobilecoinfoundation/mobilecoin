@@ -3837,6 +3837,7 @@ dependencies = [
 name = "mc-fog-recovery-db-iface"
 version = "2.0.0"
 dependencies = [
+ "chrono",
  "displaydoc",
  "mc-attest-core",
  "mc-blockchain-types",
