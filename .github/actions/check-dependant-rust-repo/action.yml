@@ -62,10 +62,8 @@ runs:
       git log -1 --format='%H'
       cd ..
 
-      sleep 600
-
       # Try to build
-      { ${{ inputs.buildCmd }} } && {
+      { ${{ inputs.buildCmd }}; } && {
         # Build succeeded, lets see if this is a new development.
         if [ -f "$STATE_FILE" ]; then
           echo "We previously failed building, but this run succeeded :)"
@@ -73,7 +71,7 @@ runs:
 
           # This lets the steps below know that we fixed a previously failed build.
           echo "UPREV_FIXED=1" >> "$GITHUB_ENV"
-        fi
+        fi;
        } || {
         # We failed building, so  keep track of that in the env. This lets the steps below
         # take action based on whether we failed or not.
@@ -87,7 +85,7 @@ runs:
           echo "Detected a new failure, indicating by writing to $STATE_FILE"
           echo > $STATE_FILE
           echo "NEW_FAILURE=1" >> "$GITHUB_ENV"
-        fi
+        fi;
       }
 
   # A step that tries to build the remote repository with the upstream branch of the current PR.
