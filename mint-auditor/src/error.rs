@@ -14,7 +14,7 @@ use mc_api::display::Error as ApiDisplayError;
 use mc_blockchain_types::BlockIndex;
 use mc_crypto_keys::KeyError;
 use mc_ledger_db::Error as LedgerDbError;
-use mc_transaction_core::ViewKeyMatchError;
+use mc_transaction_core::{TokenId, ViewKeyMatchError};
 use mc_transaction_std::MemoDecodingError;
 use mc_util_serial::DecodeError;
 use std::io::Error as IoError;
@@ -39,6 +39,9 @@ pub enum Error {
 
     /// Ethereum token {0} not audited in safe {1} (tx hash: {2})
     EthereumTokenNotAudited(EthAddr, EthAddr, EthTxHash),
+
+    /// Token {0} not audited in safes
+    TokenHasNoCorrespondingEthereumAddress(TokenId),
 
     /// Gnosis safe {0} not audited
     GnosisSafeNotAudited(EthAddr),

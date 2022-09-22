@@ -112,7 +112,9 @@ impl AuditedMint {
             Err(Error::DepositAndMintMismatch(_)) => {
                 Counters::inc_num_mismatching_mints_and_deposits(conn)?;
             }
-
+            Err(Error::NotFound) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
                 Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
             }
@@ -159,10 +161,9 @@ impl AuditedMint {
                 }
                 let eth_tokens = config.get_tokens_by_token_id(&mint_tx.token_id());
                 if eth_tokens.is_empty() {
-                    return Err(Error::Other(format!(
-                        "No eth tokens found for token_id {}",
-                        mint_tx.token_id()
-                    )));
+                    return Err(Error::TokenHasNoCorrespondingEthereumAddress(
+                        mint_tx.token_id(),
+                    ));
                 }
                 if eth_tokens.len() > 1 {
                     return Err(Error::Other(format!(
@@ -216,7 +217,15 @@ impl AuditedMint {
                 Counters::inc_num_mismatching_mints_and_deposits(conn)?;
             }
 
+            Err(Error::NotFound) => {
+                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
+            }
+
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
+                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
+            }
+
+            Err(Error::TokenHasNoCorrespondingEthereumAddress(_)) => {
                 Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
             }
 
@@ -531,12 +540,9 @@ mod tests {
         insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.tokens[0].token_id = TokenId::from(123);
-
-        assert!(matches!(
-            AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn),
-            Err(Error::DepositAndMintMismatch(_))
-        ));
-
+        let result = AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(Error::NotFound)));
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
 
@@ -756,7 +762,7 @@ mod tests {
 
         assert!(matches!(
             AuditedMint::try_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
-            Err(Error::DepositAndMintMismatch(_))
+            Err(Error::TokenHasNoCorrespondingEthereumAddress(_))
         ));
 
         // Check that nothing was written to the `audited_mints` table
@@ -766,7 +772,7 @@ mod tests {
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
-                .num_mismatching_mints_and_deposits(),
+                .num_unknown_ethereum_token_deposits(),
             1
         );
     }
@@ -788,7 +794,7 @@ mod tests {
 
         assert!(matches!(
             AuditedMint::try_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
-            Err(Error::EthereumTokenNotAudited(_, _, _))
+            Err(Error::NotFound)
         ));
 
         // Check that nothing was written to the `audited_mints` table
@@ -797,7 +803,7 @@ mod tests {
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
-                .num_unknown_ethereum_token_deposits(),
+                .num_mismatching_mints_and_deposits(),
             1
         );
     }
