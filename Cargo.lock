@@ -369,7 +369,7 @@ version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cf849ee05b2ee5fba5e36f97ff8ec2533916700fc0758d40d92136a42f3388"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
 ]
 
 [[package]]
@@ -425,7 +425,7 @@ dependencies = [
  "byteorder",
  "clear_on_drop",
  "curve25519-dalek",
- "digest 0.10.3",
+ "digest 0.10.5",
  "merlin",
  "rand_core 0.6.4",
  "serde",
@@ -949,7 +949,7 @@ version = "4.0.0-pre.2"
 source = "git+https://github.com/mobilecoinfoundation/curve25519-dalek.git?rev=8791722e0273762552c9a056eaccb7df6baf44d7#8791722e0273762552c9a056eaccb7df6baf44d7"
 dependencies = [
  "byteorder",
- "digest 0.10.3",
+ "digest 0.10.5",
  "packed_simd_2",
  "rand_core 0.6.4",
  "serde",
@@ -1099,9 +1099,9 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2fb860ca6fafa5552fb6d0e816a69c8e49f0908bf524e30a90d97c85892d506"
+checksum = "adfbc57365a37acbd2ebf2b64d7e69bb766e2fea813521ed536f5d0520dcf86c"
 dependencies = [
  "block-buffer 0.10.0",
  "crypto-common",
@@ -1720,7 +1720,7 @@ version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
 ]
 
 [[package]]
@@ -2283,7 +2283,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "cargo-emit",
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
@@ -2307,7 +2307,7 @@ version = "2.0.0"
 dependencies = [
  "aead",
  "cargo-emit",
- "digest 0.10.3",
+ "digest 0.10.5",
  "futures",
  "grpcio",
  "mc-attest-ake",
@@ -2328,7 +2328,7 @@ dependencies = [
  "bitflags",
  "cargo-emit",
  "chrono",
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -2913,7 +2913,7 @@ name = "mc-crypto-ake-enclave"
 version = "2.0.0"
 dependencies = [
  "aes-gcm",
- "digest 0.10.3",
+ "digest 0.10.5",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -2933,7 +2933,7 @@ name = "mc-crypto-box"
 version = "2.0.0"
 dependencies = [
  "aead",
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "hkdf",
  "mc-crypto-hashes",
@@ -3005,7 +3005,7 @@ name = "mc-crypto-hashes"
 version = "2.0.0"
 dependencies = [
  "blake2",
- "digest 0.10.3",
+ "digest 0.10.5",
  "mc-crypto-digestible",
 ]
 
@@ -3015,7 +3015,7 @@ version = "2.0.0"
 dependencies = [
  "base64",
  "curve25519-dalek",
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
@@ -3079,7 +3079,7 @@ version = "2.0.0"
 dependencies = [
  "aead",
  "aes-gcm",
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "generic-array",
  "hkdf",
@@ -3525,7 +3525,7 @@ dependencies = [
 name = "mc-fog-kex-rng"
 version = "2.0.0"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
  "displaydoc",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -4169,7 +4169,7 @@ name = "mc-fog-test-infra"
 version = "2.0.0"
 dependencies = [
  "clap 3.2.22",
- "digest 0.10.3",
+ "digest 0.10.5",
  "hex",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -6032,7 +6032,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
 ]
 
 [[package]]
@@ -7371,7 +7371,7 @@ checksum = "cf9db03534dff993187064c4e0c05a5708d2a9728ace9a8959b77bedf415dac5"
 dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest 0.10.3",
+ "digest 0.10.5",
  "sha2-asm",
 ]
 
@@ -7390,7 +7390,7 @@ version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaedf34ed289ea47c2b741bb72e5357a209512d67bcd4bda44359e5bf0470f56"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
  "keccak",
 ]
 
@@ -7434,7 +7434,7 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0ea32af43239f0d353a7dd75a22d94c329c8cdaafdcb4c1c1335aa10c298a4a"
 dependencies = [
- "digest 0.10.3",
+ "digest 0.10.5",
 ]
 
 [[package]]
