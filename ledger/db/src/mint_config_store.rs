@@ -253,41 +253,38 @@ impl MintConfigStore {
         for validated_mint_config_tx in validated_mint_config_txs {
             let mint_config_tx = &validated_mint_config_tx.mint_config_tx;
 
-            // All mint configurations must have the same token id.
-            if mint_config_tx
-                .prefix
-                .configs
-                .iter()
-                .any(|mint_config| mint_config.token_id != mint_config_tx.prefix.token_id)
-            {
-                return Err(Error::InvalidMintConfig(
-                    "All mint configurations must have the same token id".to_string(),
-                ));
-            }
+            MintConfigStore::check_mint_config(mint_config_tx)?;
 
-            // MintConfigs -> ActiveMintConfigs
-            let active_mint_configs = ActiveMintConfigs::from(mint_config_tx);
-            let mut combined_nonce_and_token_id = mint_config_tx.prefix.nonce.clone();
-            combined_nonce_and_token_id
-                .extend_from_slice(&u64_to_key_bytes(mint_config_tx.prefix.token_id));
+            self.write_block_index_by_nonce_and_token_id(mint_config_tx, db_transaction, block_index_bytes)?;
 
-            // Store in database
-            db_transaction.put(
-                self.block_index_by_mint_config_tx_nonce_and_token_id,
-                &combined_nonce_and_token_id,
-                &block_index_bytes,
-                //  ensures we do not overwrite a nonce that was already used
-                WriteFlags::NO_OVERWRITE,
-            )?;
-
-            db_transaction.put(
-                self.active_mint_configs_by_token_id,
-                &u64_to_key_bytes(mint_config_tx.prefix.token_id),
-                &encode(&active_mint_configs),
-                WriteFlags::empty(),
-            )?;
+            self.write_active_mint_configs_by_token_id(mint_config_tx, db_transaction)?;
         }
 
+        Ok(())
+    }
+
+    pub fn write_block_index_by_nonce_and_token_id(&self, mint_config_tx: &MintConfigTx, db_transaction: &mut RwTransaction, block_index_bytes: [u8; 8]) -> Result<(), Error> {
+        let mut combined_nonce_and_token_id = mint_config_tx.prefix.nonce.clone();
+        combined_nonce_and_token_id
+            .extend_from_slice(&u64_to_key_bytes(mint_config_tx.prefix.token_id));
+        db_transaction.put(
+            self.block_index_by_mint_config_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+            &block_index_bytes,
+            //  ensures we do not overwrite a nonce that was already used
+            WriteFlags::NO_OVERWRITE,
+        )?;
+        Ok(())
+    }
+
+    fn write_active_mint_configs_by_token_id(&self, mint_config_tx: &MintConfigTx, db_transaction: &mut RwTransaction) -> Result<(), Error> {
+        let active_mint_configs = ActiveMintConfigs::from(mint_config_tx);
+        db_transaction.put(
+            self.active_mint_configs_by_token_id,
+            &u64_to_key_bytes(mint_config_tx.prefix.token_id),
+            &encode(&active_mint_configs),
+            WriteFlags::empty(),
+        )?;
         Ok(())
     }
 
@@ -430,7 +427,23 @@ impl MintConfigStore {
             Err(e) => Err(Error::Lmdb(e)),
         }
     }
+
+    pub fn check_mint_config(mint_config_tx: &MintConfigTx) -> Result<(), Error> {
+        if mint_config_tx
+            .prefix
+            .configs
+            .iter()
+            .any(|mint_config| mint_config.token_id != mint_config_tx.prefix.token_id)
+        {
+            return Err(Error::InvalidMintConfig(
+                "All mint configurations must have the same token id".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
+
+    
 
 #[cfg(test)]
 pub mod tests {

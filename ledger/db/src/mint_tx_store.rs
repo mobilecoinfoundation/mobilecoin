@@ -106,20 +106,23 @@ impl MintTxStore {
                 new_total_minted,
                 db_transaction,
             )?;
-            let mut combined_nonce_and_token_id = mint_tx.prefix.nonce.clone();
-            combined_nonce_and_token_id
-                .extend_from_slice(&u64_to_key_bytes(mint_tx.prefix.token_id));
-
-            // Ensure nonce uniqueness
-            db_transaction.put(
-                self.block_index_by_mint_tx_nonce_and_token_id,
-                &combined_nonce_and_token_id,
-                &block_index_bytes,
-                // do not overwrite a nonce that was already used
-                WriteFlags::NO_OVERWRITE,
-            )?;
+            self.write_block_index_by_mint_tx_nonce_and_token_id(mint_tx, db_transaction, block_index_bytes)?;
         }
 
+        Ok(())
+    }
+
+    pub fn write_block_index_by_mint_tx_nonce_and_token_id(&self, mint_tx: &MintTx, db_transaction: &mut RwTransaction, block_index_bytes: [u8; 8]) -> Result<(), Error> {
+        let mut combined_nonce_and_token_id = mint_tx.prefix.nonce.clone();
+        combined_nonce_and_token_id
+            .extend_from_slice(&u64_to_key_bytes(mint_tx.prefix.token_id));
+        db_transaction.put(
+            self.block_index_by_mint_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+            &block_index_bytes,
+            // do not overwrite a nonce that was already used
+            WriteFlags::NO_OVERWRITE,
+        )?;
         Ok(())
     }
 

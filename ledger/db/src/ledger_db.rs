@@ -64,7 +64,7 @@ impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
     // db opening for any incompatibilities, and either refuse to open or
     // perform a migration.
     #[allow(clippy::inconsistent_digit_grouping)]
-    const LATEST_VERSION: u64 = 2022_02_22;
+    const LATEST_VERSION: u64 = 2022_09_21;
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
