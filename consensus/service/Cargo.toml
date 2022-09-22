@@ -55,7 +55,7 @@ once_cell = "1.15"
 protobuf = "2.27.1"
 rand = "0.8"
 rayon = "1.5"
-retry = "1.3"
+retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
 
