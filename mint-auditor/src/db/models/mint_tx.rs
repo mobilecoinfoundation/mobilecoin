@@ -202,7 +202,6 @@ impl MintTx {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::db::{
         models::AuditedMint,
@@ -265,7 +264,7 @@ mod tests {
         mint_tx2_tkn2.prefix.nonce =
             hex::decode(&deposit4.expected_mc_mint_tx_nonce_hex()).unwrap();
 
-        //The nonces should be the same.
+        // The nonces should be the same.
         assert_eq!(mint_tx1.prefix.nonce, mint_tx1_tkn2.prefix.nonce);
         assert_eq!(mint_tx2.prefix.nonce, mint_tx2_tkn2.prefix.nonce);
 
@@ -315,7 +314,7 @@ mod tests {
             .unwrap(),
             sql_mint_tx1
         );
-        //This has not been inserted, and should not be found.
+        // This has not been inserted, and should not be found.
         assert!(MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
             token_id1,
             &hex::encode(&mint_tx2.prefix.nonce),
@@ -323,7 +322,7 @@ mod tests {
         )
         .unwrap()
         .is_none());
-        //This is for a different token_id, so should not be found even though it
+        // This is for a different token_id, so should not be found even though it
         // shares a nonce.
         assert!(MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
             token_id2,
@@ -332,7 +331,7 @@ mod tests {
         )
         .unwrap()
         .is_none());
-        //This is for a different token_id, so should not be found even though it
+        // This is for a different token_id, so should not be found even though it
         // shares a nonce.
         assert!(MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
             token_id2,
@@ -366,7 +365,7 @@ mod tests {
             .unwrap(),
             sql_mint_tx2
         );
-        //This is for a different token_id, so should not be found even though it
+        // This is for a different token_id, so should not be found even though it
         // shares a nonce.
         assert!(MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
             token_id2,
@@ -375,7 +374,7 @@ mod tests {
         )
         .unwrap()
         .is_none());
-        //This is for a different token_id, so should not be found even though it
+        // This is for a different token_id, so should not be found even though it
         // shares a nonce.
         assert!(MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
             token_id2,
