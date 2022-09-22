@@ -112,9 +112,7 @@ impl AuditedMint {
             Err(Error::DepositAndMintMismatch(_)) => {
                 Counters::inc_num_mismatching_mints_and_deposits(conn)?;
             }
-            Err(Error::NotFound) => {
-                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
-            }
+
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
                 Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
             }
@@ -159,29 +157,12 @@ impl AuditedMint {
                         nonce_hex, eth_tx_hash,
                     )));
                 }
-                let eth_tokens = config.get_tokens_by_token_id(&mint_tx.token_id());
-                if eth_tokens.is_empty() {
-                    return Err(Error::TokenHasNoCorrespondingEthereumAddress(
-                        mint_tx.token_id(),
-                    ));
-                }
-                if eth_tokens.len() > 1 {
-                    return Err(Error::Other(format!(
-                        "Too many tokens found for token_id {}. Found tokens {:?}",
-                        mint_tx.token_id(),
-                        eth_tokens
-                    )));
-                }
-                let eth_token = eth_tokens[0];
 
                 // See if we can find a GnosisSafeDeposit that matches the nonce and has not
                 // been associated with a mint.
-                let deposit = GnosisSafeDeposit::find_unaudited_deposit_by_nonce_and_token_address(
-                    &eth_token.eth_token_contract_addr,
-                    mint_tx.nonce_hex(),
-                    conn,
-                )?
-                .ok_or(Error::NotFound)?;
+                let deposit =
+                    GnosisSafeDeposit::find_unaudited_deposit_by_nonce(mint_tx.nonce_hex(), conn)?
+                        .ok_or(Error::NotFound)?;
 
                 // See if the deposit we found is for a safe we are auditing.
                 let audited_safe_config = config
@@ -217,15 +198,7 @@ impl AuditedMint {
                 Counters::inc_num_mismatching_mints_and_deposits(conn)?;
             }
 
-            Err(Error::NotFound) => {
-                Counters::inc_num_mismatching_mints_and_deposits(conn)?;
-            }
-
             Err(Error::EthereumTokenNotAudited(_, _, _)) => {
-                Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
-            }
-
-            Err(Error::TokenHasNoCorrespondingEthereumAddress(_)) => {
                 Counters::inc_num_unknown_ethereum_token_deposits(conn)?;
             }
 
@@ -430,7 +403,7 @@ mod tests {
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            3
+            0
         );
     }
 
@@ -547,12 +520,14 @@ mod tests {
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
 
-        // Mismatch counter was incremented
+        // Mismatch counter was not incremented. This results in an additional unaudited
+        // mint, but we cannot distinguish this as a mismatched mint or a nonce
+        // collision for a mint on a different token.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            1
+            0
         );
     }
 
@@ -644,13 +619,11 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // 3 attempts to match returned not found errors, which register as as a
-        // mismatch.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            3
+            0
         );
     }
 
@@ -764,7 +737,7 @@ mod tests {
 
         assert!(matches!(
             AuditedMint::try_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
-            Err(Error::TokenHasNoCorrespondingEthereumAddress(_))
+            Err(Error::DepositAndMintMismatch(_))
         ));
 
         // Check that nothing was written to the `audited_mints` table
@@ -774,7 +747,7 @@ mod tests {
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
-                .num_unknown_ethereum_token_deposits(),
+                .num_mismatching_mints_and_deposits(),
             1
         );
     }
@@ -796,7 +769,7 @@ mod tests {
 
         assert!(matches!(
             AuditedMint::try_match_mint_with_deposit(&sql_mint_tx, &config, &conn),
-            Err(Error::NotFound)
+            Err(Error::EthereumTokenNotAudited(_, _, _))
         ));
 
         // Check that nothing was written to the `audited_mints` table
@@ -805,7 +778,7 @@ mod tests {
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
-                .num_mismatching_mints_and_deposits(),
+                .num_unknown_ethereum_token_deposits(),
             1
         );
     }
