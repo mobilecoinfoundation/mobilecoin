@@ -424,12 +424,13 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
+        // 3 attempts to match returned not found errors, which register as as a
+        // mismatch.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            0
+            3
         );
     }
 
@@ -643,12 +644,13 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
+        // 3 attempts to match returned not found errors, which register as as a
+        // mismatch.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            0
+            3
         );
     }
 
