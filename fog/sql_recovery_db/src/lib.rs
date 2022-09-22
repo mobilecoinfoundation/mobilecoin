@@ -270,7 +270,7 @@ impl SqlRecoveryDb {
         expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
         use schema::ingest_invocations::dsl;
-        let query = schema::ingest_invocations::dsl::ingest_invocations
+        let query = dsl::ingest_invocations
             .select((
                 dsl::id,
                 dsl::rng_version,
@@ -479,7 +479,7 @@ impl SqlRecoveryDb {
 
             // Write new invocation.
             let now =
-                diesel::select(diesel::dsl::now).get_result::<chrono::NaiveDateTime>(&conn)?;
+                diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(&conn)?;
 
             let obj = models::NewIngestInvocation {
                 ingress_public_key: (*ingress_public_key).into(),
@@ -1450,7 +1450,7 @@ impl RecoveryDb for SqlRecoveryDb {
     }
 
     /// Returns all ingest invocations have not been active since the
-    /// `expired_timestamp`.
+    /// `expiration`.
     fn get_expired_invocations(
         &self,
         expiration: NaiveDateTime,

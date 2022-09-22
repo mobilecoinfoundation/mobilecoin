@@ -122,7 +122,7 @@ impl IngressPublicKeyRecord {
     }
 }
 
-/// Records pertaining to expired ingest invocations. An invocation's expiratoin
+/// Records pertaining to expired ingest invocations. An invocation's expiration
 /// status is determined by using its `last_active_at` timestamp, i.e. when it
 /// was last used.
 pub struct ExpiredInvocationRecord {
