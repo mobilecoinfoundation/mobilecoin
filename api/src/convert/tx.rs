@@ -268,7 +268,11 @@ mod tests {
 
             // Orignator requests an output worth amount2 destined to themselves
             sci_builder
-                .add_fractional_output(Amount::new(1000 * MILLIMOB_TO_PICOMOB, Mob::ID), &charlie.default_subaddress(), &mut rng)
+                .add_fractional_output(
+                    Amount::new(1000 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                    &charlie.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
             // Change amount matches the input value
@@ -301,7 +305,9 @@ mod tests {
                 &fpr,
                 &mut rng,
             ));
-            transaction_builder.add_presigned_partial_fill_input(sci, Amount::new(750, token2)).unwrap();
+            transaction_builder
+                .add_presigned_partial_fill_input(sci, Amount::new(750, token2))
+                .unwrap();
 
             transaction_builder
                 .add_output(
@@ -313,7 +319,10 @@ mod tests {
 
             transaction_builder
                 .add_change_output(
-                    Amount::new((475 + (1000-250)) * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE, Mob::ID),
+                    Amount::new(
+                        (475 + (1000 - 250)) * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE,
+                        Mob::ID,
+                    ),
                     &ReservedSubaddresses::from(&alice),
                     &mut rng,
                 )

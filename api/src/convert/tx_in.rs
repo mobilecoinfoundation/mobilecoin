@@ -149,11 +149,11 @@ impl TryFrom<&external::RevealedTxOut> for RevealedTxOut {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_account_keys::{PublicAddress};
-    use mc_crypto_keys::{RistrettoPrivate};
+    use mc_account_keys::PublicAddress;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_transaction_core::{
-        tokens::Mob, tx, Amount, BlockVersion, Token, RevealedTxOut,
-        onetime_keys::create_shared_secret, MaskedAmount,
+        onetime_keys::create_shared_secret, tokens::Mob, tx, Amount, BlockVersion, MaskedAmount,
+        RevealedTxOut, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -168,7 +168,7 @@ mod tests {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
-        
+
         let recipient = PublicAddress::from_random(&mut rng);
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let tx_out = tx::TxOut::new(
@@ -182,8 +182,8 @@ mod tests {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
 
-        let amount_shared_secret = MaskedAmount::compute_amount_shared_secret(block_version,
-            &shared_secret).unwrap();
+        let amount_shared_secret =
+            MaskedAmount::compute_amount_shared_secret(block_version, &shared_secret).unwrap();
 
         let rtxo = RevealedTxOut {
             tx_out,
@@ -195,5 +195,4 @@ mod tests {
         let recovered = RevealedTxOut::try_from(&converted).unwrap();
         assert_eq!(rtxo, recovered);
     }
-
 }
