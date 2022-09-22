@@ -478,8 +478,7 @@ impl SqlRecoveryDb {
             }
 
             // Write new invocation.
-            let now =
-                diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(&conn)?;
+            let now = diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(&conn)?;
 
             let obj = models::NewIngestInvocation {
                 ingress_public_key: (*ingress_public_key).into(),
