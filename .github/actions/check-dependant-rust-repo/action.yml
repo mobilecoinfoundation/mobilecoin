@@ -63,7 +63,7 @@ runs:
       cd ..
 
       # Try to build
-      ${{ inputs.buildCmd }} && {
+      { ${{ inputs.buildCmd }} } && {
         # Build succeeded, lets see if this is a new development.
         if [ -f "$STATE_FILE" ]; then
           echo "We previously failed building, but this run succeeded :)"
