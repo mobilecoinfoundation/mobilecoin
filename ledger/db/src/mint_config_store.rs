@@ -255,7 +255,11 @@ impl MintConfigStore {
 
             MintConfigStore::check_mint_config(mint_config_tx)?;
 
-            self.write_block_index_by_nonce_and_token_id(mint_config_tx, db_transaction, block_index_bytes)?;
+            self.write_block_index_by_nonce_and_token_id(
+                mint_config_tx,
+                db_transaction,
+                block_index_bytes,
+            )?;
 
             self.write_active_mint_configs_by_token_id(mint_config_tx, db_transaction)?;
         }
@@ -263,7 +267,12 @@ impl MintConfigStore {
         Ok(())
     }
 
-    pub fn write_block_index_by_nonce_and_token_id(&self, mint_config_tx: &MintConfigTx, db_transaction: &mut RwTransaction, block_index_bytes: [u8; 8]) -> Result<(), Error> {
+    pub fn write_block_index_by_nonce_and_token_id(
+        &self,
+        mint_config_tx: &MintConfigTx,
+        db_transaction: &mut RwTransaction,
+        block_index_bytes: [u8; 8],
+    ) -> Result<(), Error> {
         let mut combined_nonce_and_token_id = mint_config_tx.prefix.nonce.clone();
         combined_nonce_and_token_id
             .extend_from_slice(&u64_to_key_bytes(mint_config_tx.prefix.token_id));
@@ -277,7 +286,11 @@ impl MintConfigStore {
         Ok(())
     }
 
-    fn write_active_mint_configs_by_token_id(&self, mint_config_tx: &MintConfigTx, db_transaction: &mut RwTransaction) -> Result<(), Error> {
+    fn write_active_mint_configs_by_token_id(
+        &self,
+        mint_config_tx: &MintConfigTx,
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
         let active_mint_configs = ActiveMintConfigs::from(mint_config_tx);
         db_transaction.put(
             self.active_mint_configs_by_token_id,
@@ -442,8 +455,6 @@ impl MintConfigStore {
         Ok(())
     }
 }
-
-    
 
 #[cfg(test)]
 pub mod tests {

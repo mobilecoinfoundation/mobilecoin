@@ -277,8 +277,12 @@ fn backfill_empty_mint_stores(env: &Environment, logger: &Logger) -> Result<(), 
     Ok(db_txn.commit()?)
 }
 
-/// A utility function for converting nonces stored in mint_config_store and mint_tx_store to include token_id.
-fn update_mint_stores_to_store_nonce_with_token_id(env: &Environment, logger: &Logger) -> Result<(), Error> {
+/// A utility function for converting nonces stored in mint_config_store and
+/// mint_tx_store to include token_id.
+fn update_mint_stores_to_store_nonce_with_token_id(
+    env: &Environment,
+    logger: &Logger,
+) -> Result<(), Error> {
     // Open pre-existing databases that has data we need.
     let mint_config_store = MintConfigStore::new(env)?;
     let mint_tx_store = MintTxStore::new(env)?;
@@ -289,23 +293,32 @@ fn update_mint_stores_to_store_nonce_with_token_id(env: &Environment, logger: &L
     log::info!(
         logger,
         "Mint config store has {:?}",
-        mint_config_store.get_active_mint_configs_map(&mut db_txn)?;
+        mint_config_store.get_active_mint_configs_map(&db_txn)?;
     );
 
     let mut percents: u64 = 0;
     for block_index in 0..num_blocks {
         let block_index_bytes = u64_to_key_bytes(block_index);
-        let validated_mint_configs = mint_config_store.get_validated_mint_config_txs_by_block_index(block_index,&mut db_txn)?;
+        let validated_mint_configs =
+            mint_config_store.get_validated_mint_config_txs_by_block_index(block_index, &db_txn)?;
         for validated_mint_config_tx in validated_mint_configs {
             let mint_config_tx = &validated_mint_config_tx.mint_config_tx;
 
             MintConfigStore::check_mint_config(mint_config_tx)?;
-            
-            mint_config_store.write_block_index_by_nonce_and_token_id(mint_config_tx, &mut db_txn, block_index_bytes)?;
+
+            mint_config_store.write_block_index_by_nonce_and_token_id(
+                mint_config_tx,
+                &mut db_txn,
+                block_index_bytes,
+            )?;
         }
-        let mint_txs = mint_tx_store.get_mint_txs_by_block_index(block_index, &mut db_txn)?;
+        let mint_txs = mint_tx_store.get_mint_txs_by_block_index(block_index, &db_txn)?;
         for mint_tx in mint_txs {
-            mint_tx_store.write_block_index_by_mint_tx_nonce_and_token_id(&mint_tx, &mut db_txn, block_index_bytes)?;
+            mint_tx_store.write_block_index_by_mint_tx_nonce_and_token_id(
+                &mint_tx,
+                &mut db_txn,
+                block_index_bytes,
+            )?;
         }
 
         // Throttled logging.
