@@ -14,7 +14,7 @@ use mc_attest_verifier::Error as VerifierError;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use mc_util_metrics::IntGauge;
-use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
+use retry::{delay::Fibonacci, retry, OperationResult};
 use std::{
     io::Error as IOError,
     sync::{
@@ -140,19 +140,12 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     },
                 },
             )
-            .map_err(|e| match e {
-                RetryError::Operation {
-                    error,
-                    total_delay,
-                    tries,
-                } => match error {
-                    TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
-                        "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
-                        tries, total_delay
-                    )),
-                    other_ti_err => other_ti_err,
-                },
-                RetryError::Internal(s) => TargetInfoError::Retry(s),
+            .map_err(|e| match e.error {
+                TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
+                    "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
+                    e.tries, e.total_delay
+                )),
+                other_ti_err => other_ti_err,
             })?;
         log::debug!(self.logger, "Getting EREPORT from node enclave...");
         let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;

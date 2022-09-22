@@ -40,13 +40,6 @@ impl From<SqlRecoveryDbError> for OverseerError {
 
 impl From<RetryError<OverseerError>> for OverseerError {
     fn from(src: RetryError<OverseerError>) -> Self {
-        match src {
-            RetryError::Operation {
-                error,
-                total_delay: _,
-                tries: _,
-            } => error,
-            RetryError::Internal(s) => panic!("Internal retry error: {}", s),
-        }
+        src.error
     }
 }

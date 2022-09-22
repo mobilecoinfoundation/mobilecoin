@@ -289,13 +289,7 @@ impl TestClient {
         let fee = self
             .grpc_retry_config
             .retry(|| -> Result<Option<u64>, _> { source_client.get_minimum_fee(token_id) })
-            .map_err(|retry_error| {
-                if let retry::Error::Operation { error, .. } = retry_error {
-                    TestClientError::GetFee(error)
-                } else {
-                    panic!("other types of retry error are unreachable")
-                }
-            })?
+            .map_err(|retry_error| TestClientError::GetFee(retry_error.error))?
             .ok_or(TestClientError::TokenNotConfigured(token_id))?;
 
         // Scope for build operation
@@ -755,13 +749,7 @@ impl TestClient {
         let fee_value = self
             .grpc_retry_config
             .retry(|| -> Result<Option<u64>, _> { source_client.get_minimum_fee(token_id1) })
-            .map_err(|retry_error| {
-                if let retry::Error::Operation { error, .. } = retry_error {
-                    TestClientError::GetFee(error)
-                } else {
-                    panic!("other types of retry error are unreachable")
-                }
-            })?
+            .map_err(|retry_error| TestClientError::GetFee(retry_error.error))?
             .ok_or(TestClientError::TokenNotConfigured(token_id1))?;
         let fee = Amount::new(fee_value, token_id1);
 
