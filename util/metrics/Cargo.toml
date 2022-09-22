@@ -8,7 +8,7 @@ edition = "2021"
 mc-common = { path = "../../common", features = ["log"] }
 
 chrono = "0.4"
-grpcio = "0.10.3"
+grpcio = "0.11.0"
 lazy_static = "1.4"
 prometheus = "0.13"
 protobuf = "2.27.1"

@@ -26,7 +26,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.10.3"
+grpcio = "0.11.0"
 mockall = "0.11.2"
 protobuf = "2.27.1"
 rand = "0.8"
