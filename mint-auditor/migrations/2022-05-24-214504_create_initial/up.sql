@@ -44,7 +44,7 @@ CREATE TABLE mint_config_txs (
     -- The protobuf-serialized MintConfigTx.
     protobuf BLOB NOT NULL,
     -- Constraints
-    UNIQUE (block_index, token_id)
+    UNIQUE (block_index, token_id),
     UNIQUE (token_id, nonce_hex)
 );
 
@@ -82,7 +82,7 @@ CREATE TABLE mint_txs (
     -- The mint config, when we are able to match it with one.
     mint_config_id INT,
     -- Constraints
-    FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
+    FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id),
     UNIQUE (token_id, nonce_hex)
 );
 CREATE INDEX idx_mint_txs__block_index ON mint_txs(block_index);
