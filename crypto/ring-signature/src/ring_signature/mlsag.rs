@@ -364,6 +364,7 @@ mod mlsag_tests {
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
+    use rand_core::{RngCore, CryptoRng};
 
     #[derive(Clone)]
     struct RingMLSAGParameters {
