@@ -19,6 +19,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
     pg::PgConnection,
@@ -34,9 +35,9 @@ use mc_common::{
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{
-    AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
-    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, RecoveryDbError, ReportData,
-    ReportDb,
+    AddBlockDataStatus, ExpiredInvocationRecord, FogUserEvent, IngestInvocationId,
+    IngressPublicKeyRecord, IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb,
+    RecoveryDbError, ReportData, ReportDb,
 };
 use mc_fog_types::{
     common::BlockRange,
@@ -263,6 +264,44 @@ impl SqlRecoveryDb {
             .map(|val| val as u64))
     }
 
+    fn get_expired_invocations_impl(
+        &self,
+        conn: &PgConnection,
+        expiration: NaiveDateTime,
+    ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
+        use schema::ingest_invocations::dsl;
+        let query = dsl::ingest_invocations
+            .select((
+                dsl::id,
+                dsl::rng_version,
+                dsl::egress_public_key,
+                dsl::last_active_at,
+            ))
+            .filter(dsl::last_active_at.lt(expiration));
+        let data = query.load::<(i64, i32, Vec<u8>, NaiveDateTime)>(conn)?;
+
+        let result = data
+            .into_iter()
+            .map(|row| {
+                let (ingest_invocation_id, rng_version, egress_public_key_bytes, last_active_at) =
+                    row;
+
+                let egress_kex_rng_pubkey = KexRngPubkey {
+                    public_key: egress_public_key_bytes,
+                    version: rng_version as u32,
+                };
+
+                ExpiredInvocationRecord {
+                    ingest_invocation_id,
+                    egress_public_key: egress_kex_rng_pubkey,
+                    last_active_at,
+                }
+            })
+            .collect();
+
+        Ok(result)
+    }
+
     ////
     // RecoveryDb functions that are meant to be retriable (don't take a conn as
     // argument)
@@ -439,8 +478,7 @@ impl SqlRecoveryDb {
             }
 
             // Write new invocation.
-            let now =
-                diesel::select(diesel::dsl::now).get_result::<chrono::NaiveDateTime>(&conn)?;
+            let now = diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(&conn)?;
 
             let obj = models::NewIngestInvocation {
                 ingress_public_key: (*ingress_public_key).into(),
@@ -1150,6 +1188,14 @@ impl SqlRecoveryDb {
         .execute(&conn)?;
         Ok(())
     }
+
+    fn get_expired_invocations_retriable(
+        &self,
+        expiration: NaiveDateTime,
+    ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
+        let conn = self.pool.get()?;
+        self.get_expired_invocations_impl(&conn, expiration)
+    }
 }
 
 /// See trait `fog_recovery_db_iface::RecoveryDb` for documentation.
@@ -1401,6 +1447,17 @@ impl RecoveryDb for SqlRecoveryDb {
             self.get_highest_known_block_index_retriable()
         })
     }
+
+    /// Returns all ingest invocations have not been active since the
+    /// `expiration`.
+    fn get_expired_invocations(
+        &self,
+        expiration: NaiveDateTime,
+    ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
+        our_retry(self.get_retries(), || {
+            self.get_expired_invocations_retriable(expiration)
+        })
+    }
 }
 
 /// See trait `fog_recovery_db_iface::ReportDb` for documentation.
@@ -1476,6 +1533,7 @@ fn unpack_retry_error(src: RetryError<Error>) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::prelude::*;
     use mc_common::{
         logger::{log, test_with_logger, Logger},
         HashSet,
@@ -1483,7 +1541,7 @@ mod tests {
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
+    use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
     #[test_with_logger]
     fn test_new_ingest_invocation(logger: Logger) {
@@ -3414,5 +3472,76 @@ mod tests {
             last_scanned_block: Some(10),
         };
         assert_eq!(actual, vec![expected]);
+    }
+
+    #[test_with_logger]
+    fn get_expired_invocations_multiple_expired(logger: Logger) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger.clone());
+        let db = db_test_context.get_db_instance();
+
+        let mut rng = thread_rng();
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key, 0).unwrap();
+
+        let mut egress_keys = Vec::new();
+        for _ in 0..3 {
+            let egress_key = random_kex_rng_pubkey(&mut rng);
+            let _invoc_id = db
+                .new_ingest_invocation(None, &ingress_key, &egress_key, 0)
+                .unwrap();
+            egress_keys.push(egress_key);
+        }
+
+        // This buffer allows us to be sure that the db entries will be before the
+        // expiration.
+        let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
+        let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
+        let expiration = NaiveDateTime::from_timestamp(expiration_timestamp, 0);
+
+        let result = db.get_expired_invocations(expiration);
+
+        assert!(result.is_ok());
+        let result = result.unwrap();
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].egress_public_key, egress_keys[0]);
+        assert_eq!(result[1].egress_public_key, egress_keys[1]);
+        assert_eq!(result[2].egress_public_key, egress_keys[2]);
+    }
+
+    #[test_with_logger]
+    fn get_expired_invocations_mixed(logger: Logger) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger.clone());
+        let db = db_test_context.get_db_instance();
+
+        let mut rng = thread_rng();
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key, 0).unwrap();
+
+        let egress_key_1 = random_kex_rng_pubkey(&mut rng);
+        let _invoc_id = db
+            .new_ingest_invocation(None, &ingress_key, &egress_key_1, 0)
+            .unwrap();
+
+        // This buffer allows us to be sure that the db entries will be before the
+        // expiration.
+        let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
+        let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
+        let expiration = NaiveDateTime::from_timestamp(expiration_timestamp, 0);
+
+        // Sleep to ensure that this second ingest invocation is not expired.
+        std::thread::sleep(Duration::from_secs(2));
+        let egress_key_2 = random_kex_rng_pubkey(&mut rng);
+        let _invoc_id = db
+            .new_ingest_invocation(None, &ingress_key, &egress_key_2, 0)
+            .unwrap();
+
+        let result = db.get_expired_invocations(expiration);
+
+        assert!(result.is_ok());
+        let result = result.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].egress_public_key, egress_key_1);
     }
 }
