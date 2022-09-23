@@ -357,12 +357,10 @@ mod tests {
 
         let conn = mint_auditor_db.get_conn().unwrap();
         let mut rng = mc_util_test_helper::get_seeded_rng();
-        let mut rng2 = mc_util_test_helper::get_seeded_rng();
         let (mint_config_tx1, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (mint_config_tx1_tkn2, _signers) =
-            create_mint_config_tx_and_signers(token_id2, &mut rng2);
-
+        let mut mint_config_tx1_tkn2 = mint_config_tx1.clone();
+        mint_config_tx1_tkn2.prefix.token_id = *token_id2;
         // Store a mint config at block index 5.
         MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).unwrap();
 
