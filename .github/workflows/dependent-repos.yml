@@ -20,7 +20,7 @@ jobs:
       with:
         path: mobilecoin
     - name: Check that android-bindings still builds
-      uses: ./mobilecoin/.github/actions/check-dependant-rust-repo
+      uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
       with:
         remoteRepo: mobilecoinofficial/android-bindings
         submodulePath: mobilecoin
@@ -40,7 +40,7 @@ jobs:
       with:
         path: mobilecoin
     - name: Check that full-service still builds
-      uses: ./mobilecoin/.github/actions/check-dependant-rust-repo
+      uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
       with:
         remoteRepo: mobilecoinofficial/full-service
         submodulePath: mobilecoin
