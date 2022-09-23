@@ -83,14 +83,14 @@
                     $('#PN', template).text(t.PN).parent().show();
                     $('#CN', template).text(t.CN).parent().show();
                     $('#HN', template).text(t.HN).parent().show();
-                } else if (msg.topic.Prepare && msg.topic.Nominate) {
+                } else if (msg.topic.NominatePrepare) {
                     $('#topic', template).text("Prepare/Nominate");
 
-                    var t = msg.topic.Nominate;
+                    var t = msg.topic.NominatePrepare[0];
                     $('#X', template).html(format_values(t.X)).parent().show();
                     $('#Y', template).html(format_values(t.Y)).parent().show();
 
-                    var t = msg.topic.Prepare;
+                    var t = msg.topic.NominatePrepare[1];
                     $('#B', template).html(format_ballot(t.B)).parent().show();
                     $('#P', template).html(format_ballot(t.P)).parent().show();
                     $('#PP', template).html(format_ballot(t.PP)).parent().show();
@@ -126,7 +126,7 @@
                 $('#N', template).text(b.N);
                 $('#count', template).text(b.X.length);
                 $.each(b.X, function(idx, val) {
-                    $('#values', template).append($('<li></li>').text(to_hex_str(val).substr(0, 12)));
+                    $('#values', template).append($('<li></li>').text(format_value(val)));
                 })
                 return template;
             }
@@ -135,9 +135,16 @@
                 var template = $($('script[data-template="values"]').text());
                 $('#count', template).text(list.length);
                 $.each(list, function(idx, val) {
-                    $('#values', template).append($('<li></li>').text(to_hex_str(val).substr(0, 12)));
+                    $('#values', template).append($('<li></li>').text(format_value(val)));
                 })
                 return template;
+            }
+
+            function format_value(val) {
+                if (val.TxHash) {
+                    val.TxHash = to_hex_str(val.TxHash).substr(0, 12);
+                }
+                return JSON.stringify(val);
             }
 
             function to_hex_str(byteArray) {
@@ -188,6 +195,14 @@
         Phase: <span id="phase"></span><br>
         Nominate round: <span id="nominate-round"></span><br>
         Max priority peers: <span id="max-priority-peers"></span><br>
+        Message index: {% if msg_index > 0 %}
+            <a href="{{ url_for('slot_node_msg', slot_index=slot_index, node_id=node_id, msg_index=msg_index - 1) }}">&lt;</a>
+        {% endif %}
+        {{ msg_index }} / {{ highest_msg_index }}
+        {% if msg_index < highest_msg_index %}
+            <a href="{{ url_for('slot_node_msg', slot_index=slot_index, node_id=node_id, msg_index=msg_index + 1) }}">&gt;</a>
+        {% endif %}
+        <br>
 
         <h1>M (message map)</h1>
         <div id="M"></div>

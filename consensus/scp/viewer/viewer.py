@@ -23,10 +23,21 @@ def slot(slot_index):
 
 @app.route('/slot/<int:slot_index>/<node_id>')
 def slot_node(slot_index, node_id):
-    slot = app.config['slots_by_index'][slot_index][node_id]
+    slot_msgs = app.config['slots_by_index'][slot_index][node_id]
+    return redirect(url_for('slot_node_msg', slot_index=slot_index, node_id=node_id, msg_index=len(slot_msgs)-1))
+
+
+@app.route('/slot/<int:slot_index>/<node_id>/<int:msg_index>')
+def slot_node_msg(slot_index, node_id, msg_index):
+    slot_msgs = app.config['slots_by_index'][slot_index][node_id]
+    slot = slot_msgs[msg_index]
     return render_template(
         'slot.html',
         slot=slot,
+        slot_index=slot_index,
+        node_id=node_id,
+        msg_index=msg_index,
+        highest_msg_index=len(slot_msgs) - 1,
         available_nodes=list(sorted(app.config['slots_by_index'][slot_index].keys())),
     )
 
@@ -38,20 +49,22 @@ if __name__ == '__main__':
         print(f'Usage: {sys.argv[0]} [state jsons directory]')
         sys.exit(1)
 
-    slots_by_node_id = defaultdict(dict)
     slots_by_index = defaultdict(dict)
+    unique_node_ids = set()
     num_slots = 0
-    for filename in glob.glob(os.path.join(state_jsons_dir, '**/*.json'), recursive=True):
+    for filename in sorted(glob.glob(os.path.join(state_jsons_dir, '**/*.json'), recursive=True)):
         data = json.load(open(filename))
-        node_id = data['node_id']['responder_id']
-        slot_index = data['slot_index']
+        state = json.loads(data['state'])
 
-        slots_by_node_id[node_id][slot_index] = data
-        slots_by_index[slot_index][node_id] = data
+        node_id = state['node_id']['responder_id']
+        slot_index = state['slot_index']
+
+        slots_by_index[slot_index].setdefault(node_id, [])
+        slots_by_index[slot_index][node_id].append(state)
+        unique_node_ids.add(node_id)
         num_slots += 1
 
-    print(f'Loaded total of {num_slots} slot states from {len(slots_by_node_id)} nodes')
+    print(f'Loaded total of {num_slots} slot states from {len(unique_node_ids)} nodes')
 
-    app.config['slots_by_node_id'] = slots_by_node_id
     app.config['slots_by_index'] = slots_by_index
     app.run()
