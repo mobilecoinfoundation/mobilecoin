@@ -77,7 +77,7 @@ runs:
           echo "UPREV_FIXED=1" >> "$GITHUB_ENV"
         fi
        } || {
-        # We failed building, so  keep track of that in the env. This lets the steps below
+        # We failed building, so keep track of that in the env. This lets the steps below
         # take action based on whether we failed or not.
         echo "UPREV_FAILED=1" >> "$GITHUB_ENV"
 
@@ -121,7 +121,8 @@ runs:
     if: env.UPREV_FAILED == '1' && env.BASE_FAILED == '0' && env.NEW_FAILURE == '1'
     with:
       message: |
-        Heads up, I tried building ${{ inputs.id }} using this branch and it failed.
+        ❌ Heads up, I tried building ${{ inputs.id }} using this branch and it failed.
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}`
       repo-token: ${{ inputs.githubToken }}
       repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
       allow-repeats: true # This is the default
@@ -132,6 +133,7 @@ runs:
     with:
       message: |
         ✅ Good job, ${{ inputs.id }} was built successfully.
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}`
       repo-token: ${{ inputs.githubToken }}
       repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
       allow-repeats: true # This is the default

@@ -1,5 +1,4 @@
 #![no_std]
-break build on purpose
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
