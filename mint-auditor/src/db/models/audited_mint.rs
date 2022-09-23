@@ -69,10 +69,20 @@ impl AuditedMint {
                         eth_tx_hash, nonce_hex,
                     )));
                 }
+                let token = config
+                    .get_token_by_eth_contract_addr(deposit.token_addr())
+                    .ok_or_else(|| {
+                        Error::EthereumTokenNotAudited(
+                            deposit.token_addr().clone(),
+                            deposit.safe_addr().clone(),
+                            *deposit.eth_tx_hash(),
+                        )
+                    })?;
 
                 // See if we can find a MintTx that matches the expected nonce and has not been
                 // associated with a deposit.
-                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce(
+                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
+                    token.token_id,
                     deposit.expected_mc_mint_tx_nonce_hex(),
                     conn,
                 )?
@@ -387,7 +397,8 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
+        // 3 attempts to match returned not found errors, which register as as a
+        // mismatch.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
@@ -503,21 +514,20 @@ mod tests {
         insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.tokens[0].token_id = TokenId::from(123);
-
-        assert!(matches!(
-            AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn),
-            Err(Error::DepositAndMintMismatch(_))
-        ));
-
+        let result = AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(Error::NotFound)));
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
 
-        // Mismatch counter was incremented
+        // Mismatch counter was not incremented. This results in an additional unaudited
+        // mint, but we cannot distinguish this as a mismatched mint or a nonce
+        // collision for a mint on a different token.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            1
+            0
         );
     }
 
@@ -609,7 +619,6 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()

@@ -35,7 +35,7 @@ CREATE TABLE mint_config_txs (
     -- The token id this mint config tx is for.
     token_id BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL,
     -- The maximal amount that can be minted by configurations specified in
     -- this tx. This amount is shared amongst all configs.
     total_mint_limit BIGINT NOT NULL,
@@ -44,7 +44,8 @@ CREATE TABLE mint_config_txs (
     -- The protobuf-serialized MintConfigTx.
     protobuf BLOB NOT NULL,
     -- Constraints
-    UNIQUE (block_index, token_id)
+    UNIQUE (block_index, token_id),
+    UNIQUE (token_id, nonce_hex)
 );
 
 -- Mint configs
@@ -71,7 +72,7 @@ CREATE TABLE mint_txs (
     -- The amount that was minted.
     amount BIGINT NOT NULL,
     -- The nonce, as hex-encoded bytes.
-    nonce_hex VARCHAR(128) NOT NULL UNIQUE,
+    nonce_hex VARCHAR(128) NOT NULL,
     -- The recipient of the mint.
     recipient_b58_addr TEXT NOT NULL,
     -- Tombstone block.
@@ -81,10 +82,12 @@ CREATE TABLE mint_txs (
     -- The mint config, when we are able to match it with one.
     mint_config_id INT,
     -- Constraints
-    FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id)
+    FOREIGN KEY (mint_config_id) REFERENCES mint_configs(id),
+    UNIQUE (token_id, nonce_hex)
 );
 CREATE INDEX idx_mint_txs__block_index ON mint_txs(block_index);
 CREATE INDEX idx_mint_txs__nonce_hex ON mint_txs(nonce_hex);
+CREATE INDEX idx_mint_txs__token_id ON mint_txs(token_id);
 
 -- Burn TxOuts
 CREATE TABLE burn_tx_outs (

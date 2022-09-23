@@ -350,16 +350,17 @@ mod tests {
 
     #[test_with_logger]
     fn insert_enforces_uniqueness(logger: Logger) {
-        let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
 
         let conn = mint_auditor_db.get_conn().unwrap();
-
+        let mut rng = mc_util_test_helper::get_seeded_rng();
         let (mint_config_tx1, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-
+        let mut mint_config_tx1_tkn2 = mint_config_tx1.clone();
+        mint_config_tx1_tkn2.prefix.token_id = *token_id2;
         // Store a mint config at block index 5.
         MintConfigTx::insert_from_core_mint_config_tx(5, &mint_config_tx1, &conn).unwrap();
 
@@ -369,6 +370,11 @@ mod tests {
 
         // Trying for a different block but with the same nonce will fail.
         assert!(MintConfigTx::insert_from_core_mint_config_tx(6, &mint_config_tx1, &conn).is_err());
+        // Trying for a different block with the same nonce but different token_id
+        // should not fail
+        assert!(
+            MintConfigTx::insert_from_core_mint_config_tx(6, &mint_config_tx1_tkn2, &conn).is_ok()
+        );
 
         // Sanity, inserting a different mint config at block index 6 should succeed.
         assert!(MintConfigTx::insert_from_core_mint_config_tx(6, &mint_config_tx2, &conn).is_ok());

@@ -123,6 +123,21 @@ pub fn create_gnosis_safe_deposit(
     )
 }
 
+/// Create a GnosisSafeDeposit at a second address used for testing.
+pub fn create_gnosis_safe_deposit_alternative_address(
+    amount: u64,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> GnosisSafeDeposit {
+    GnosisSafeDeposit::new(
+        None,
+        EthTxHash::from_random(rng),
+        1,
+        EthAddr::from_str("0x0000000000000000000000000000000000000000").unwrap(),
+        EthAddr::from_str("0x1111111111111111111111111111111111111111").unwrap(),
+        amount,
+    )
+}
+
 /// Create a MintTx that matches a GnosisSafeDeposit.
 pub fn insert_mint_tx_from_deposit(
     deposit: &GnosisSafeDeposit,

@@ -208,11 +208,19 @@ impl Ledger for MockLedger {
         unimplemented!()
     }
 
-    fn check_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+    fn check_mint_config_tx_nonce(
+        &self,
+        _token_id: u64,
+        _nonce: &[u8],
+    ) -> Result<Option<BlockIndex>, Error> {
         unimplemented!()
     }
 
-    fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+    fn check_mint_tx_nonce(
+        &self,
+        _token_id: u64,
+        _nonce: &[u8],
+    ) -> Result<Option<BlockIndex>, Error> {
         unimplemented!()
     }
 

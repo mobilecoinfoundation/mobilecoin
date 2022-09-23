@@ -166,7 +166,10 @@ mod tests {
     use super::*;
     use crate::db::{
         models::{AuditedMint, MintTx},
-        test_utils::{create_gnosis_safe_deposit, insert_gnosis_deposit, TestDbContext},
+        test_utils::{
+            create_gnosis_safe_deposit, create_gnosis_safe_deposit_alternative_address,
+            insert_gnosis_deposit, TestDbContext,
+        },
     };
     use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core::TokenId;
@@ -174,29 +177,46 @@ mod tests {
 
     #[test_with_logger]
     fn test_find_unaudited_deposits_by_nonce(logger: Logger) {
-        let mut rng = mc_util_test_helper::get_seeded_rng();
         let test_db_context = TestDbContext::default();
         let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
         let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
         let conn = mint_auditor_db.get_conn().unwrap();
+
+        let mut rng = mc_util_test_helper::get_seeded_rng();
 
         // Create gnosis deposits.
         let mut deposit1 = create_gnosis_safe_deposit(100, &mut rng);
         let mut deposit2 = create_gnosis_safe_deposit(200, &mut rng);
+        let mut deposit3 = create_gnosis_safe_deposit_alternative_address(300, &mut rng);
+        let mut deposit4 = create_gnosis_safe_deposit_alternative_address(400, &mut rng);
 
         let nonce1 = deposit1.expected_mc_mint_tx_nonce_hex().to_string();
         let nonce2 = deposit2.expected_mc_mint_tx_nonce_hex().to_string();
+        let nonce3 = deposit3.expected_mc_mint_tx_nonce_hex().to_string();
+        let nonce4 = deposit4.expected_mc_mint_tx_nonce_hex().to_string();
 
         // Create two MintTxs.
         let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
         let mut mint_tx1 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
         let mut mint_tx2 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+        let mut mint_tx1_tkn2 = create_mint_tx(token_id2, &signers2, 100, &mut rng);
+        let mut mint_tx2_tkn2 = create_mint_tx(token_id2, &signers2, 100, &mut rng);
 
         mint_tx1.prefix.nonce = hex::decode(&nonce1).unwrap();
         mint_tx2.prefix.nonce = hex::decode(&nonce2).unwrap();
+        mint_tx1_tkn2.prefix.nonce = hex::decode(&nonce1).unwrap();
+        mint_tx2_tkn2.prefix.nonce = hex::decode(&nonce2).unwrap();
 
         let sql_mint_tx1 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx1, &conn).unwrap();
         let sql_mint_tx2 = MintTx::insert_from_core_mint_tx(0, None, &mint_tx2, &conn).unwrap();
+        let sql_mint_tx3 =
+            MintTx::insert_from_core_mint_tx(0, None, &mint_tx1_tkn2, &conn).unwrap();
+        let sql_mint_tx4 =
+            MintTx::insert_from_core_mint_tx(0, None, &mint_tx2_tkn2, &conn).unwrap();
 
         // Since they haven't been inserted yet, they should not be found.
         assert!(
@@ -243,6 +263,23 @@ mod tests {
             deposit2,
         );
 
+        // Insert the token 2 deposits, they should both be found.
+        insert_gnosis_deposit(&mut deposit3, &conn);
+        insert_gnosis_deposit(&mut deposit4, &conn);
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce3, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit3,
+        );
+
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce4, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit4,
+        );
+
         // Insert a row to the `audited_mints` table marking the first deposit as
         // audited. We should no longer be able to find it.
         AuditedMint::associate_deposit_with_mint(
@@ -264,7 +301,19 @@ mod tests {
                 .unwrap(),
             deposit2,
         );
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce3, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit3,
+        );
 
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce4, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit4,
+        );
         // Mark the second deposit as audited. We should no longer be able to find it.
         AuditedMint::associate_deposit_with_mint(
             deposit2.id().unwrap(),
@@ -281,6 +330,45 @@ mod tests {
 
         assert!(
             GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce2, &conn)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce3, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit3,
+        );
+
+        assert_eq!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce4, &conn)
+                .unwrap()
+                .unwrap(),
+            deposit4,
+        );
+
+        // Insert a row to the `audited_mints` table marking the token2 deposits as
+        // audited. We should no longer be able to find them.
+        AuditedMint::associate_deposit_with_mint(
+            deposit3.id().unwrap(),
+            sql_mint_tx3.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+        AuditedMint::associate_deposit_with_mint(
+            deposit4.id().unwrap(),
+            sql_mint_tx4.id().unwrap(),
+            &conn,
+        )
+        .unwrap();
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce3, &conn)
+                .unwrap()
+                .is_none()
+        );
+
+        assert!(
+            GnosisSafeDeposit::find_unaudited_deposit_by_nonce(&nonce4, &conn)
                 .unwrap()
                 .is_none()
         );
