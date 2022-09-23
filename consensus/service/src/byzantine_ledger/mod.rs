@@ -194,7 +194,7 @@ impl ByzantineLedger {
             match scp_debug_dir {
                 None => Box::new(node),
                 Some(path) => Box::new(
-                    LoggingScpNode::new(node, path, logger.clone())
+                    LoggingScpNode::new(node, path)
                         .expect("Failed creating LoggingScpNode"),
                 ),
             }

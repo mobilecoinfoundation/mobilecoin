@@ -3,36 +3,27 @@
 //! This crate provides a logging framework for recording and replaying SCP
 //! messages.
 use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
-use mc_common::{
-    logger::{log, Logger},
-    NodeID,
-};
+use mc_common::NodeID;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, VecDeque},
-    fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, rename, File},
+    fs::{create_dir_all, read, read_dir, File},
     io::Write,
     marker::PhantomData,
     path::{Path, PathBuf},
-    time::{Instant, SystemTime},
+    time::Instant,
 };
-
-/// Maximum number of slot state files to keep.
-const MAX_SLOT_STATE_FILES: usize = 10;
 
 /// A node specifically for logging SCP messages.
 pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
-    /// Output path for current slot log files.
-    cur_slot_out_path: PathBuf,
-
-    /// Output path for slot state files.
-    slot_states_out_path: PathBuf,
+    /// Output path for slot logs.
+    out_path: PathBuf,
 
     /// Highest slot number we've encountered so far.
     highest_slot_index: SlotIndex,
 
-    /// Message counter counting how many messages we logged since we cleaned
-    /// the directory.
+    /// Message counter counting how many messages we logged for the current
+    /// slot.
     msg_count: usize,
 
     /// Time when we started logging for current slot.
@@ -40,13 +31,6 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
 
     /// Underlying node implementation.
     node: N,
-
-    /// List of slot state filenames that make it easy to maintain
-    /// `MAX_SLOT_STATE_FILES` on disk.
-    slot_state_filenames: Vec<PathBuf>,
-
-    /// Logger
-    logger: Logger,
 
     _v: PhantomData<V>,
 }
@@ -81,88 +65,47 @@ pub struct StoredMsg<V: Value> {
 
     /// The message.
     pub msg: LoggedMsg<V>,
+
+    /// Current slot state.
+    pub state: String,
 }
 
 impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
     /// Create a new LoggingScpNode.
-    pub fn new(node: N, out_path: PathBuf, logger: Logger) -> Result<Self, String> {
-        if out_path.exists() {
-            let last_path_element = out_path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| format!("{:?} has no file name element", out_path))?;
-
-            let unix_timestamp = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .map_err(|e| format!("Failed getting unix timestamp: {:?}", e))?;
-
-            let mut renamed_out_path = out_path.clone();
-            renamed_out_path.set_file_name(format!(
-                "{}.{}",
-                last_path_element,
-                unix_timestamp.as_secs()
-            ));
-
-            log::info!(
-                logger,
-                "{:?} already exists, renaming it to {:?}",
-                out_path,
-                renamed_out_path
-            );
-
-            rename(&out_path, &renamed_out_path).map_err(|e| {
-                format!(
-                    "Failed renaming {:?} to {:?}: {:?}",
-                    out_path, renamed_out_path, e
-                )
-            })?;
+    pub fn new(node: N, out_path: PathBuf) -> Result<Self, String> {
+        // Create the output directory if it doesn't already exist
+        if !out_path.exists() {
+            create_dir_all(&out_path)
+                .map_err(|e| format!("Failed creating directory {:?}: {:?}", out_path, e))?;
         }
-
-        let mut cur_slot_out_path = out_path.clone();
-        cur_slot_out_path.push("cur-slot");
-        create_dir_all(cur_slot_out_path.clone())
-            .map_err(|e| format!("Failed creating directory {:?}: {:?}", cur_slot_out_path, e))?;
-
-        let mut slot_states_out_path = out_path;
-        slot_states_out_path.push("slot-states");
-        create_dir_all(slot_states_out_path.clone()).map_err(|e| {
-            format!(
-                "Failed creating directory {:?}: {:?}",
-                slot_states_out_path, e
-            )
-        })?;
 
         Ok(Self {
             node,
-            cur_slot_out_path,
-            slot_states_out_path,
+            out_path,
             highest_slot_index: 0,
             msg_count: 0,
             slot_start_time: Instant::now(),
-            slot_state_filenames: Vec::new(),
-            logger,
             _v: Default::default(),
         })
     }
 
     fn write(&mut self, msg: LoggedMsg<V>) -> Result<(), String> {
+        // Get current slot index based on the message being logged.
         let msg_slot_index = match &msg {
             LoggedMsg::IncomingMsg(msg) | LoggedMsg::OutgoingMsg(msg) => msg.slot_index,
             LoggedMsg::Nominate(slot_index, _) => *slot_index,
             _ => self.highest_slot_index,
         };
 
-        if msg_slot_index > self.highest_slot_index {
-            // Switched to a newer slot, clean the output directory.
-            remove_dir_all(&self.cur_slot_out_path)
-                .map_err(|e| format!("failed emptying {:?}: {:?}", self.cur_slot_out_path, e))?;
-            create_dir_all(&self.cur_slot_out_path).map_err(|e| {
-                format!(
-                    "Failed creating directory {:?}: {:?}",
-                    self.cur_slot_out_path, e
-                )
-            })?;
+        // Directory for writing messages.
+        let slot_out_path = self.out_path.join(format!("{:08}", msg_slot_index));
+        if !slot_out_path.exists() {
+            create_dir_all(&slot_out_path)
+                .map_err(|e| format!("Failed creating directory {:?}: {:?}", slot_out_path, e))?;
+        }
 
+        if msg_slot_index > self.highest_slot_index {
+            // Switched to a newer slot
             self.highest_slot_index = msg_slot_index;
             self.msg_count = 0;
             self.slot_start_time = Instant::now();
@@ -183,48 +126,21 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
         let data = StoredMsg {
             msec_since_start: (Instant::now() - self.slot_start_time).as_millis() as u64,
             msg,
+            state: self
+                .get_slot_debug_snapshot(msg_slot_index)
+                .unwrap_or_default(),
         };
-        let bytes =
-            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
+        let data_json = serde_json::to_string_pretty(&data)
+            .map_err(|e| format!("failed serialize: {:?}", e))?;
 
-        let mut file_path = self.cur_slot_out_path.clone();
-        file_path.push(format!("{:08}", self.msg_count));
+        let mut file_path = slot_out_path.clone();
+        file_path.push(format!("{:08}.json", self.msg_count));
         self.msg_count += 1;
 
         let mut file = File::create(&file_path)
             .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
-        file.write_all(&bytes)
+        file.write_all(&data_json.as_bytes())
             .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
-
-        // Write slot state into a file.
-        if let Some(slot_state) = self.get_slot_debug_snapshot(msg_slot_index) {
-            let slot_as_json = serde_json::to_vec(&slot_state)
-                .map_err(|e| format!("failed serializing slot state: {:?}", e))?;
-
-            let mut file_path = self.slot_states_out_path.clone();
-            file_path.push(format!("{:08}.json", msg_slot_index));
-
-            let mut file = File::create(&file_path)
-                .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
-            file.write_all(&slot_as_json)
-                .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
-
-            if !self.slot_state_filenames.contains(&file_path) {
-                self.slot_state_filenames.push(file_path);
-            }
-
-            if self.slot_state_filenames.len() > MAX_SLOT_STATE_FILES {
-                let file_path_to_remove = self.slot_state_filenames.remove(0);
-                if let Err(err) = remove_file(&file_path_to_remove) {
-                    log::warn!(
-                        self.logger,
-                        "Failed removing scp debug slot state file {:?}: {:?}",
-                        file_path_to_remove,
-                        err
-                    );
-                }
-            }
-        }
 
         Ok(())
     }
@@ -355,50 +271,5 @@ impl<V: serde::de::DeserializeOwned + Value> Iterator for ScpLogReader<V> {
         let data: Self::Item = mc_util_serial::deserialize(&bytes)
             .unwrap_or_else(|_| panic!("failed deserializing {:?}", path));
         Some(data)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{node::MockScpNode, scp_log::LoggingScpNode};
-    use mc_common::logger::{test_with_logger, Logger};
-    use std::fs::create_dir_all;
-    use tempdir::TempDir;
-
-    #[test_with_logger]
-    fn test_new(logger: Logger) {
-        // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
-        let out_path = dir.path().join("debug_output");
-
-        let node = MockScpNode::<&'static str>::new();
-        let _logging_scp_node = LoggingScpNode::new(node, out_path.clone(), logger).unwrap();
-
-        // test/debug_output/cur-slot directory should exist.
-        let cur_slot = out_path.join("cur-slot");
-        assert!(cur_slot.as_path().exists());
-
-        // test/debug_output/slot-states directory should exist.
-        let slot_states = out_path.join("slot-states");
-        assert!(slot_states.as_path().exists());
-    }
-
-    #[test_with_logger]
-    // Should not panic if `out_path` exists. This allows a node to restart.
-    fn test_new_outpath_exists(logger: Logger) {
-        // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
-        let out_path = dir.path().join("debug_output");
-
-        let cur_slot = out_path.join("cur-slot");
-        create_dir_all(cur_slot.as_path()).unwrap();
-
-        let slot_states = out_path.join("slot-states");
-        create_dir_all(slot_states.as_path()).unwrap();
-
-        assert!(out_path.exists());
-
-        let node = MockScpNode::<&'static str>::new();
-        let _logging_scp_node = LoggingScpNode::new(node, out_path, logger).unwrap();
     }
 }
