@@ -362,9 +362,8 @@ mod mlsag_tests {
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
+    use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
-    use rand_core::{RngCore, CryptoRng};
 
     #[derive(Clone)]
     struct RingMLSAGParameters {
