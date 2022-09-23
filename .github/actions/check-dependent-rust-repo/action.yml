@@ -115,7 +115,7 @@ runs:
       cd workdir-${{ inputs.id }}
 
       cd ${{ inputs.submodulePath }}
-      #git remote set-url origin ${{ github.repositoryUrl }} - this is git:// and GHA doesn't seem to like it
+      # NB: ${{ github.repositoryUrl }} is a git:// URL, GHA doesn't seem to like it
       git remote set-url origin https://github.com/${{ github.repository }}
       git fetch origin ${{ github.base_ref }}:gha-test-base
       git checkout gha-test-base
