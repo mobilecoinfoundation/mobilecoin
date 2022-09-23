@@ -1,0 +1,139 @@
+name: Pull an outside repo that submodules the current repo, try to uprev the submodule and see if it still builds.
+
+inputs:
+    remoteRepo:
+      description: The username/repository-name of the repository to check
+      required: true
+    id:
+      description: A unique identifier for this step
+      required: true
+    githubToken:
+      description: A GitHub token for API access.
+      required: true
+    submodulePath:
+      description: The path to the submodule we are going to try upreving
+      required: true
+    buildCmd:
+      description: The command to build the remote repo
+      required: true
+
+runs:
+  using: composite
+  steps:
+  - name: Setup Rust
+    uses: ./mobilecoin/.github/actions/setup-rust
+
+  # Checkout the repository we are going to try upreving in
+  - uses: actions/checkout@v3
+    with:
+      repository: ${{ inputs.remoteRepo }}
+      submodules: 'recursive'
+      path: workdir-${{ inputs.id }}
+
+  # We use the cache to store state about previous runs of this action
+  - name: Cache state
+    id: cache-state
+    uses: actions/cache@v3
+    with:
+      path: state-${{ inputs.id }}
+      key: dep-v1-${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-${{ github.sha }}
+      restore-keys: |
+        dep-v1-${{ runner.os }}-${{ github.ref }}-${{ inputs.id }}-
+
+  - name: Build outside repo with current branch
+    shell: bash
+    run: |
+      set -x
+      cd workdir-${{ inputs.id }}
+
+      STATE_DIR=$GITHUB_WORKSPACE/state-${{ inputs.id }}
+      mkdir -p $STATE_DIR
+      CUR_BRANCH=${GITHUB_REF//\//_}
+
+      # If this file exists, it means we have failed building this branch at least once.
+      STATE_FILE="$STATE_DIR/$CUR_BRANCH-failed"
+
+      # Attempt to uprev the submodule to the latest revision in the current PR this action is running in
+      cd ${{ inputs.submodulePath }}
+      #git remote set-url origin ${{ github.repositoryUrl }} - this is git:// and GHA doesn't seem to like it
+      git remote set-url origin https://github.com/${{ github.repository }}
+      git fetch origin ${{ github.ref }}:uprev-test
+      git checkout uprev-test
+      git log -1 --format='%H'
+      cd ..
+
+      # Try to build
+      cat <<'EOF' > build-cmd
+      ${{ inputs.buildCmd }}
+      EOF
+
+      if bash build-cmd; then
+        # Build succeeded, lets see if this is a new development.
+        if [ -f "$STATE_FILE" ]; then
+          echo "We previously failed building, but this run succeeded :)"
+          rm $STATE_FILE
+
+          # This lets the steps below know that we fixed a previously failed build.
+          echo "UPREV_FIXED=1" >> "$GITHUB_ENV"
+        fi
+       else
+        # We failed building, so keep track of that in the env. This lets the steps below
+        # take action based on whether we failed or not.
+        echo "UPREV_FAILED=1" >> "$GITHUB_ENV"
+
+        # If this a new failure?
+        if [ -f "$STATE_FILE" ]; then
+          echo "Not the first time this branch failed, so we won't be posting an update."
+          echo "NEW_FAILURE=0" >> "$GITHUB_ENV"
+        else
+          echo "Detected a new failure, indicating by writing to $STATE_FILE"
+          echo > $STATE_FILE
+          echo "NEW_FAILURE=1" >> "$GITHUB_ENV"
+        fi
+      fi
+
+  # A step that tries to build the remote repository with the upstream branch of the current PR.
+  # We do this since if it fails, we can't blame the failure on the changes in the current PR
+  # and there is no point in posting about the failure (but we will post if this PR fixes the build).
+  - name: Build with base branch (${{ github.base_ref }})
+    if: env.UPREV_FAILED == '1' && env.NEW_FAILURE == '1'
+    shell: bash
+    run: |
+      set -x
+      cd workdir-${{ inputs.id }}
+
+      cd ${{ inputs.submodulePath }}
+      # NB: ${{ github.repositoryUrl }} is a git:// URL, GHA doesn't seem to like it
+      git remote set-url origin https://github.com/${{ github.repository }}
+      git fetch origin ${{ github.base_ref }}:gha-test-base
+      git checkout gha-test-base
+      cd ..
+
+      cat <<'EOF' > build-cmd
+      ${{ inputs.buildCmd }}
+      EOF
+
+      bash build-cmd && echo "BASE_FAILED=0" >> "$GITHUB_ENV" || echo "BASE_FAILED=1" >> "$GITHUB_ENV"
+
+  # TODO it would be nice if this message included a link to the log with the failed build
+  - name: Comment on PR (failure)
+    uses: mshick/add-pr-comment@v1
+    if: env.UPREV_FAILED == '1' && env.BASE_FAILED == '0' && env.NEW_FAILURE == '1'
+    with:
+      message: |
+        ❌ Heads up, I tried building ${{ inputs.id }} using this branch and it failed.
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}` or by clicking [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+      repo-token: ${{ inputs.githubToken }}
+      repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
+      allow-repeats: true # This is the default
+
+  - name: Comment on PR (success)
+    uses: mshick/add-pr-comment@v1
+    if: env.UPREV_FIXED == '1'
+    with:
+      message: |
+        ✅ Good job, ${{ inputs.id }} was built successfully.
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}` or by clicking [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+      repo-token: ${{ inputs.githubToken }}
+      repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
+      allow-repeats: true # This is the default
