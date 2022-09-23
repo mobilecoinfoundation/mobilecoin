@@ -63,11 +63,9 @@ runs:
       cd ..
 
       # Try to build
-      cat <<EOF > build-cmd
+      cat <<'EOF' > build-cmd
       ${{ inputs.buildCmd }}
       EOF
-
-      sleep 600
 
       bash build-cmd && {
         # Build succeeded, lets see if this is a new development.
@@ -111,7 +109,7 @@ runs:
       git checkout gha-test-base
       cd ..
 
-      cat <<EOF > build-cmd
+      cat <<'EOF' > build-cmd
       ${{ inputs.buildCmd }}
       EOF
 
