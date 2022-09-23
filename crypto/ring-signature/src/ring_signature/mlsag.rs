@@ -8,7 +8,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use prost::Message;
-use rand_core::{CryptoRngCore};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 

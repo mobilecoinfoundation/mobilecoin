@@ -3,9 +3,7 @@
 use alloc::{string::String, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_keys::{KeyError, RistrettoPrivate};
-use mc_crypto_ring_signature::{
-    Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar,
-};
+use mc_crypto_ring_signature::{Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar};
 use mc_transaction_types::Amount;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
