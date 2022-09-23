@@ -67,6 +67,8 @@ runs:
       ${{ inputs.buildCmd }}
       EOF
 
+      sleep 600
+
       bash build-cmd && {
         # Build succeeded, lets see if this is a new development.
         if [ -f "$STATE_FILE" ]; then
