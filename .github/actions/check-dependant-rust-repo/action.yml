@@ -107,7 +107,7 @@ runs:
       cd ..
 
       echo '${{ inputs.buildCmd }}' > build-cmd
-      bash build-cmd && && echo "BASE_FAILED=0" >> "$GITHUB_ENV" || echo "BASE_FAILED=1" >> "$GITHUB_ENV"
+      bash build-cmd && echo "BASE_FAILED=0" >> "$GITHUB_ENV" || echo "BASE_FAILED=1" >> "$GITHUB_ENV"
 
   # TODO it would be nice if this message included a link to the log with the failed build
   - name: Comment on PR (failure)
