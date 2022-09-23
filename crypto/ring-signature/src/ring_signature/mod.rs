@@ -15,7 +15,7 @@ pub use self::{
     curve_scalar::CurveScalar,
     error::Error,
     key_image::KeyImage,
-    mlsag::{CryptoRngCore, ReducedTxOut, RingMLSAG},
+    mlsag::{ReducedTxOut, RingMLSAG},
 };
 
 use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
