@@ -50,7 +50,7 @@ jobs:
           export CONSENSUS_ENCLAVE_CSS=$PWD/consensus-enclave.css
           echo "CONSENSUS_ENCLAVE_CSS = $CONSENSUS_ENCLAVE_CSS"
           if [ ! -f "$CONSENSUS_ENCLAVE_CSS" ]; then
-            CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep consensus-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
+            CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | jq -r .consensus.sigstruct)
             curl -O https://enclave-distribution.test.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI}
           fi
 
