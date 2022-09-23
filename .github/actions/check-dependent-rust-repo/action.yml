@@ -30,6 +30,19 @@ runs:
       submodules: 'recursive'
       path: workdir-${{ inputs.id }}
 
+  - name: test
+    uses: mshick/add-pr-comment@v1
+    if: env.UPREV_FAILED == '1' && env.BASE_FAILED == '0' && env.NEW_FAILURE == '1'
+    with:
+      message: |
+        test
+        [view logs test](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      repo-token: ${{ inputs.githubToken }}
+      repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
+      allow-repeats: true # This is the default
+
+
+
   # We use the cache to store state about previous runs of this action
   - name: Cache state
     id: cache-state
