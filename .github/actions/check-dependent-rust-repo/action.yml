@@ -80,7 +80,7 @@ runs:
       ${{ inputs.buildCmd }}
       EOF
 
-      bash build-cmd && {
+      if bash build-cmd; then
         # Build succeeded, lets see if this is a new development.
         if [ -f "$STATE_FILE" ]; then
           echo "We previously failed building, but this run succeeded :)"
@@ -89,7 +89,7 @@ runs:
           # This lets the steps below know that we fixed a previously failed build.
           echo "UPREV_FIXED=1" >> "$GITHUB_ENV"
         fi
-       } || {
+       else
         # We failed building, so keep track of that in the env. This lets the steps below
         # take action based on whether we failed or not.
         echo "UPREV_FAILED=1" >> "$GITHUB_ENV"
@@ -103,7 +103,7 @@ runs:
           echo > $STATE_FILE
           echo "NEW_FAILURE=1" >> "$GITHUB_ENV"
         fi
-      }
+      fi
 
   # A step that tries to build the remote repository with the upstream branch of the current PR.
   # We do this since if it fails, we can't blame the failure on the changes in the current PR
