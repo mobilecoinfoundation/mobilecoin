@@ -30,18 +30,6 @@ runs:
       submodules: 'recursive'
       path: workdir-${{ inputs.id }}
 
-  - name: test
-    uses: mshick/add-pr-comment@v1
-    with:
-      message: |
-        test
-        [view logs test](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-      repo-token: ${{ inputs.githubToken }}
-      repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
-      allow-repeats: true # This is the default
-
-
-
   # We use the cache to store state about previous runs of this action
   - name: Cache state
     id: cache-state
@@ -134,7 +122,7 @@ runs:
     with:
       message: |
         ❌ Heads up, I tried building ${{ inputs.id }} using this branch and it failed.
-        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}`
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}` or by clicking [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
       repo-token: ${{ inputs.githubToken }}
       repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
       allow-repeats: true # This is the default
@@ -145,7 +133,7 @@ runs:
     with:
       message: |
         ✅ Good job, ${{ inputs.id }} was built successfully.
-        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}`
+        Build logs can be found by inspecting the github action run `Check that repositories submoduling us will still build after this PR / ${{ inputs.id }}` or by clicking [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
       repo-token: ${{ inputs.githubToken }}
       repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
       allow-repeats: true # This is the default
