@@ -133,13 +133,13 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
         let data_json = serde_json::to_string_pretty(&data)
             .map_err(|e| format!("failed serialize: {:?}", e))?;
 
-        let mut file_path = slot_out_path.clone();
+        let mut file_path = slot_out_path;
         file_path.push(format!("{:08}.json", self.msg_count));
         self.msg_count += 1;
 
         let mut file = File::create(&file_path)
             .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
-        file.write_all(&data_json.as_bytes())
+        file.write_all(data_json.as_bytes())
             .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
 
         Ok(())
