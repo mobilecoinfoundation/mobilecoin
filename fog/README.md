@@ -58,7 +58,7 @@ To run the unittest tests locally, you need to start a local postgres instance, 
 ./mob prompt
 
 # Start postgres
-supo service postgresql start
+sudo service postgresql start
 
 # create a postgres user
 sudo -u postgres createuser --superuser $USER
