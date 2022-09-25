@@ -78,10 +78,7 @@ impl InputRules {
                 .prefix
                 .outputs
                 .iter()
-                .find(|x| {
-                    x.public_key == fractional_change.tx_out.public_key
-                        && x.target_key == fractional_change.tx_out.target_key
-                })
+                .find(|x| fractional_change.tx_out.matches_ignoring_amount(x))
                 .ok_or(InputRuleError::MissingRealChangeOutput)?;
             // Let's try to unblind its amount.
             let real_change_amount =
@@ -117,10 +114,7 @@ impl InputRules {
                     .prefix
                     .outputs
                     .iter()
-                    .find(|x| {
-                        x.public_key == fractional_output.tx_out.public_key
-                            && x.target_key == fractional_output.tx_out.target_key
-                    })
+                    .find(|x| fractional_output.tx_out.matches_ignoring_amount(x))
                     .ok_or(InputRuleError::MissingRealOutput)?;
                 // Let's try to unblind its amount, using amount shared secret from the
                 // fractional output (which should be the same)
