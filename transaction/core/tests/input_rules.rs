@@ -205,7 +205,7 @@ fn test_input_rules_verify_fractional_outputs() {
 
     // Lets try imposing a limit on the change value
     // This is larger than 1000 so we should still be valid.
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 1010;
+    get_first_rules_mut(&mut tx).max_allowed_change_value = 1000;
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Lets try imposing a smaller limit that should cause things to fail
