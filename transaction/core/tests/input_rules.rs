@@ -119,11 +119,11 @@ fn change_committed_amount(r_txo: &RevealedTxOut, new_amount: Amount) -> Reveale
     result
 }
 
-// Test that input rules verification is working for fractional output rules
-#[test]
-fn test_input_rules_verify_fractional_outputs() {
-    let block_version = BlockVersion::THREE;
-
+// Get a tx with four outputs each worth 1000, and add (empty) input rules to it,
+// which we can modify to test the input rule verification code
+//
+// Returns the Tx, and a list of RevealedTxOut corresponding to its four outputs.
+fn get_input_rules_test_tx(block_version: BlockVersion) -> (Tx, Vec<RevealedTxOut>) {
     let mut rng: RngType = SeedableRng::from_seed([7u8; 32]);
     let alice = AccountKey::random(&mut rng);
     let alice_pub = alice.default_subaddress();
@@ -176,6 +176,25 @@ fn test_input_rules_verify_fractional_outputs() {
             }
         })
         .collect();
+   (tx, revealed_tx_outs)
+}
+
+// Test that max_allowed_change_value is working as expected
+#[test]
+fn test_input_rules_verify_fractional_max_allowed_change_value() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+
+    // Try setting max_allowed_change without any other factional rules
+    // This should be an error
+    get_first_rules_mut(&mut tx).max_allowed_change_value = 1;
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::MaxAllowedChangeValueNotExpected)
+    );
+    // Set it back, we should be good again.
+    get_first_rules_mut(&mut tx).max_allowed_change_value = 0;
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Add a fractional output, by doubling one of the revealed tx outs.
     // So this means we are filling the 1/2 of the request.
@@ -193,18 +212,16 @@ fn test_input_rules_verify_fractional_outputs() {
         Err(InputRuleError::FractionalOutputsNotExpected)
     );
 
-    // Add a fractional input, also by doubling one of the revealed tx outs.
+    // Add a fractional change, also by doubling one of the revealed tx outs.
     // This means the fill fraction is 1/2, which we are satisfying.
     get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
         &revealed_tx_outs[0],
         Amount::new(2000, 0.into()),
     ));
-
-    // Check that the Tx is following input rules
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Lets try imposing a limit on the change value
-    // This is larger than 1000 so we should still be valid.
+    // This is >= 1000 so we should still be valid.
     get_first_rules_mut(&mut tx).max_allowed_change_value = 1000;
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
@@ -214,68 +231,29 @@ fn test_input_rules_verify_fractional_outputs() {
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealChangeOutputAmountExceedsLimit)
     );
+}
 
-    // Remove limit altogether, we should be valid again
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 0;
-    get_first_rules(&tx).verify(block_version, &tx).unwrap();
-
-    // Change the frational change output to be 3000. This means the implied fill
-    // fraction is now 2/3, since the real change output only returns
-    // 1/3 of this. The tx should then be invalid because we are only filling 1/2 of
-    // the fractional output that was required and not 2/3 of it.
-    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
-        &revealed_tx_outs[0],
-        Amount::new(3000, 0.into()),
-    ));
-    assert_matches!(
-        get_first_rules(&tx).verify(block_version, &tx),
-        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
-    );
-
-    // Change the frational change output to be 500. This is less than the real
-    // change output, so that should be an error.
-    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
-        &revealed_tx_outs[0],
-        Amount::new(500, 0.into()),
-    ));
-    assert_matches!(
-        get_first_rules(&tx).verify(block_version, &tx),
-        Err(InputRuleError::RealOutputAmountExceedsFractional)
-    );
-
-    // Change the frational change output to be 1500. This means the implied fill
-    // fraction is now 1/3, since the real change output returns 2/3 of this.
-    // The tx should then be valid again.
-    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
-        &revealed_tx_outs[0],
-        Amount::new(1500, 0.into()),
-    ));
-    get_first_rules(&tx).verify(block_version, &tx).unwrap();
-
-    // Add another fractional output at 3000. Since fill fraction is 1/3 this is
-    // still a valid tx.
+// Test that fractional outputs and change without matching real outputs cause invalid transactions
+#[test]
+fn test_input_rules_verify_missing_real_outputs() {
+    let block_version = BlockVersion::THREE;
+    let mut rng: RngType = SeedableRng::from_seed([7u8; 32]);
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
     get_first_rules_mut(&mut tx)
         .fractional_outputs
         .push(change_committed_amount(
-            &revealed_tx_outs[3],
-            Amount::new(3000, 0.into()),
+            &revealed_tx_outs[1],
+            Amount::new(2000, 0.into()),
         ));
-    get_first_rules(&tx).verify(block_version, &tx).unwrap();
-
-    // Change the fractional change so that the fill fraction is 1/2 again. This
-    // should now be invalid again because the latest ouptut is only 1/3 filled.
     get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
         &revealed_tx_outs[0],
         Amount::new(2000, 0.into()),
     ));
-    assert_matches!(
-        get_first_rules(&tx).verify(block_version, &tx),
-        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
-    );
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Change that fractional output to 2000, so everything should be good again.
-    get_first_rules_mut(&mut tx).fractional_outputs[1] =
-        change_committed_amount(&revealed_tx_outs[3], Amount::new(2000, 0.into()));
+    get_first_rules_mut(&mut tx).fractional_outputs.push(
+        change_committed_amount(&revealed_tx_outs[3], Amount::new(2000, 0.into())));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out among the fractional
@@ -312,6 +290,34 @@ fn test_input_rules_verify_fractional_outputs() {
         Amount::new(1500, 0.into()),
     ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
+}
+
+
+// Test that invalid amount shared secrets cause invalid transactions
+#[test]
+fn test_input_rules_verify_invalid_amount_shared_secret() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Add a fractional output, by doubling one of the revealed tx outs.
+    // So this means we are filling the 1/2 of the request.
+    // Before we add a fractional change output, this is ill-formed, we can only
+    // verify fractional output rules if there is a fractional change output,
+    // because that is how we deduce the fill fraction.
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(2000, 0.into()),
+        ));
+    // Add a fractional change, also by doubling one of the revealed tx outs.
+    // This means the fill fraction is 1/2, which we are satisfying.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(2000, 0.into()),
+    ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Change the fractional change value so that the amount shared secret doesn't
     // match what is recorded
@@ -324,7 +330,7 @@ fn test_input_rules_verify_fractional_outputs() {
         .masked_amount = Some(
         MaskedAmount::new_from_amount_shared_secret(
             block_version,
-            Amount::new(1500, 0.into()),
+            Amount::new(2000, 0.into()),
             &amount_shared_secret,
         )
         .unwrap(),
@@ -357,5 +363,136 @@ fn test_input_rules_verify_fractional_outputs() {
         Err(InputRuleError::RevealedTxOut(
             RevealedTxOutError::InvalidAmountSharedSecret
         ))
+    );
+}
+
+// Test that input rules verification is working
+#[test]
+fn test_input_rules_verify_fractional_outputs() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+
+    // Add a fractional output, by tripling one of the revealed tx outs.
+    // So this means we are filling the 1/3 of the request.
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(3000, 0.into()),
+        ));
+
+    // Set the fractional change output to be 1500. This means the implied fill
+    // fraction is now 1/3. This should be valid.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(1500, 0.into()),
+    ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Try changing the fractional output to be 3001, so the sender requested
+    // slightly more than 1/3. The tx should now be invalid.
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs[0] = change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(3001, 0.into()),
+        );
+
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+
+    // Make fractional change slightly
+    // more, at 1501, so the counterparty gave back slightly less than 2/3.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(1501, 0.into()),
+    ));
+    // Set the fractional output to be 3000 again. This should now be invalid
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs[0] = change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(3000, 0.into()),
+        );
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+}
+
+// Test that input rules verification is working for Tx with multiple fractional outputs
+#[test]
+fn test_input_rules_verify_multiple_fractional_outputs() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+
+    // Add a fractional output, by doubling one of the revealed tx outs.
+    // So this means we are filling the 1/2 of the request.
+    // Before we add a fractional change output, this is ill-formed, we can only
+    // verify fractional output rules if there is a fractional change output,
+    // because that is how we deduce the fill fraction.
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(2000, 0.into()),
+        ));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::FractionalOutputsNotExpected)
+    );
+
+    // Set the fractional change output to be 3000. This means the implied fill
+    // fraction is now 2/3, since the real change output only returns
+    // 1/3 of this. The tx should then be invalid because we are only filling 1/2 of
+    // the fractional output that was required and not 2/3 of it.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(3000, 0.into()),
+    ));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+
+    // Change the fractional change output to be 500. This is less than the real
+    // change output, so that should be an error.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(500, 0.into()),
+    ));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountExceedsFractional)
+    );
+
+    // Change the frational change output to be 1500. This means the implied fill
+    // fraction is now 1/3, since the real change output returns 2/3 of this.
+    // The tx should then be valid again.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(1500, 0.into()),
+    ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Add another fractional output at 3000. Since fill fraction is 1/3 this is
+    // still a valid tx.
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[3],
+            Amount::new(3000, 0.into()),
+        ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Change the fractional change so that the fill fraction is 1/2 again. This
+    // should now be invalid again because the latest output is only 1/3 filled.
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(2000, 0.into()),
+    ));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
     );
 }

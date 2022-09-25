@@ -54,7 +54,7 @@ pub struct InputRules {
 
 impl InputRules {
     /// Verify that a Tx conforms to the rules.
-    pub fn verify(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
+    pub fn verify(&self, block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         // NOTE: If this function gets too busy, we should split it up
         // NOTE: The tests for this function are in
         // transaction/core/tests/input_rules.rs
@@ -69,7 +69,14 @@ impl InputRules {
                 return Err(InputRuleError::MissingRequiredOutput);
             }
         }
-        // Partial-Fill rules verification (MCIP #42)
+
+        self.verify_partial_fill_rules(block_version, tx)?;
+
+        Ok(())
+    }
+
+    // Partial-Fill rules verification (MCIP #42)
+    fn verify_partial_fill_rules(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         if let Some(fractional_change) = self.fractional_change.as_ref() {
             // There is a fractional change output. Let's try to unblind its amount.
             let fractional_change_amount = fractional_change.reveal_amount()?;
@@ -159,7 +166,6 @@ impl InputRules {
                 return Err(InputRuleError::MaxAllowedChangeValueNotExpected);
             }
         }
-
         Ok(())
     }
 }
