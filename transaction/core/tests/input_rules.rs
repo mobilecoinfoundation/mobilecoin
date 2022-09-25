@@ -209,7 +209,7 @@ fn test_input_rules_verify_fractional_outputs() {
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Lets try imposing a smaller limit that should cause things to fail
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 990;
+    get_first_rules_mut(&mut tx).max_allowed_change_value = 999;
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealChangeOutputAmountExceedsLimit)
