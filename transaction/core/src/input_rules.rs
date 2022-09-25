@@ -76,7 +76,11 @@ impl InputRules {
     }
 
     // Partial-Fill rules verification (MCIP #42)
-    fn verify_partial_fill_rules(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
+    fn verify_partial_fill_rules(
+        &self,
+        _block_version: BlockVersion,
+        tx: &Tx,
+    ) -> Result<(), InputRuleError> {
         if let Some(fractional_change) = self.fractional_change.as_ref() {
             // There is a fractional change output. Let's try to unblind its amount.
             let fractional_change_amount = fractional_change.reveal_amount()?;

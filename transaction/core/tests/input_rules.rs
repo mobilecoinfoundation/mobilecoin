@@ -119,10 +119,11 @@ fn change_committed_amount(r_txo: &RevealedTxOut, new_amount: Amount) -> Reveale
     result
 }
 
-// Get a tx with four outputs each worth 1000, and add (empty) input rules to it,
-// which we can modify to test the input rule verification code
+// Get a tx with four outputs each worth 1000, and add (empty) input rules to
+// it, which we can modify to test the input rule verification code
 //
-// Returns the Tx, and a list of RevealedTxOut corresponding to its four outputs.
+// Returns the Tx, and a list of RevealedTxOut corresponding to its four
+// outputs.
 fn get_input_rules_test_tx(block_version: BlockVersion) -> (Tx, Vec<RevealedTxOut>) {
     let mut rng: RngType = SeedableRng::from_seed([7u8; 32]);
     let alice = AccountKey::random(&mut rng);
@@ -176,7 +177,7 @@ fn get_input_rules_test_tx(block_version: BlockVersion) -> (Tx, Vec<RevealedTxOu
             }
         })
         .collect();
-   (tx, revealed_tx_outs)
+    (tx, revealed_tx_outs)
 }
 
 // Test that max_allowed_change_value is working as expected
@@ -233,7 +234,8 @@ fn test_input_rules_verify_fractional_max_allowed_change_value() {
     );
 }
 
-// Test that fractional outputs and change without matching real outputs cause invalid transactions
+// Test that fractional outputs and change without matching real outputs cause
+// invalid transactions
 #[test]
 fn test_input_rules_verify_missing_real_outputs() {
     let block_version = BlockVersion::THREE;
@@ -252,8 +254,12 @@ fn test_input_rules_verify_missing_real_outputs() {
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Change that fractional output to 2000, so everything should be good again.
-    get_first_rules_mut(&mut tx).fractional_outputs.push(
-        change_committed_amount(&revealed_tx_outs[3], Amount::new(2000, 0.into())));
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[3],
+            Amount::new(2000, 0.into()),
+        ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out among the fractional
@@ -291,7 +297,6 @@ fn test_input_rules_verify_missing_real_outputs() {
     ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 }
-
 
 // Test that invalid amount shared secrets cause invalid transactions
 #[test]
@@ -391,11 +396,8 @@ fn test_input_rules_verify_fractional_outputs() {
 
     // Try changing the fractional output to be 3001, so the sender requested
     // slightly more than 1/3. The tx should now be invalid.
-    get_first_rules_mut(&mut tx)
-        .fractional_outputs[0] = change_committed_amount(
-            &revealed_tx_outs[1],
-            Amount::new(3001, 0.into()),
-        );
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(3001, 0.into()));
 
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
@@ -409,18 +411,16 @@ fn test_input_rules_verify_fractional_outputs() {
         Amount::new(1501, 0.into()),
     ));
     // Set the fractional output to be 3000 again. This should now be invalid
-    get_first_rules_mut(&mut tx)
-        .fractional_outputs[0] = change_committed_amount(
-            &revealed_tx_outs[1],
-            Amount::new(3000, 0.into()),
-        );
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(3000, 0.into()));
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
     );
 }
 
-// Test that input rules verification is working for Tx with multiple fractional outputs
+// Test that input rules verification is working for Tx with multiple fractional
+// outputs
 #[test]
 fn test_input_rules_verify_multiple_fractional_outputs() {
     let block_version = BlockVersion::THREE;
