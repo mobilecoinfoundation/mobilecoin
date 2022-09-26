@@ -194,7 +194,7 @@ fn main() {
             TxFile::MintTx(tx) => {
                 println!("{}", hex::encode(&tx.prefix.hash()));
             }
-        }
+        },
 
         Commands::HashMintTx { params } => {
             let tx_prefix = params
