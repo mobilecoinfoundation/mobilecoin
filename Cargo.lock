@@ -4145,6 +4145,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-sql-recovery-db-cleanup"
+version = "2.0.0"
+dependencies = [
+ "chrono",
+ "clap 3.2.22",
+ "mc-common",
+ "mc-fog-recovery-db-iface",
+ "mc-fog-sql-recovery-db",
+ "serde",
+]
+
+[[package]]
 name = "mc-fog-test-client"
 version = "2.0.0"
 dependencies = [

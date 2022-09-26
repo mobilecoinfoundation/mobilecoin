@@ -87,6 +87,7 @@ members = [
     "fog/sig/authority",
     "fog/sig/report",
     "fog/sql_recovery_db",
+    "fog/sql_recovery_db/cleanup",
     "fog/test-client",
     "fog/test_infra",
     "fog/types",
