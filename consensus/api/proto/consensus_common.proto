@@ -94,7 +94,7 @@ enum ProposeTxResult {
     InputRuleMaxTombstoneBlockExceeded = 48;
     UnknownMaskedAmountVersion = 49;
     InputRuleFractionalOutputsNotExpected = 50;
-    InputRuleMaxAlowedChangeValueNotExpected = 51;
+    InputRuleMaxAllowedChangeValueNotExpected = 51;
     InputRuleMissingRealChangeOutput = 52;
     InputRuleMissingRealOutput = 53;
     InputRuleRealOutputTokenIdMismatch = 54;
