@@ -141,6 +141,9 @@ impl TryFrom<&external::RevealedTxOut> for RevealedTxOut {
         let tx_out =
             tx::TxOut::try_from(source.tx_out.as_ref().ok_or(Self::Error::ObjectMissing)?)?;
         let amount_shared_secret = source.get_amount_shared_secret().to_vec();
+        if amount_shared_secret.len() != 32 {
+            return Err(ConversionError::ArrayCastError);
+        }
         Ok(RevealedTxOut {
             tx_out,
             amount_shared_secret,
