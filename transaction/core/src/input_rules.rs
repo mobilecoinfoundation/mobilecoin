@@ -134,12 +134,12 @@ impl InputRules {
                     fractional_output.amount_shared_secret.as_ref(),
                 )?;
 
-                // Check the bounds of the real change amount
+                // Check the token id of the real amount
+                // (Note, we don't have to check if the real output amount exceeds fractional
+                // output amount, because as long as the real output is at least
+                // fill fraction times fractional amount, the originator is happy.)
                 if real_output_amount.token_id != fractional_output_amount.token_id {
                     return Err(InputRuleError::RealOutputTokenIdMismatch);
-                }
-                if real_output_amount.value > fractional_output_amount.value {
-                    return Err(InputRuleError::RealOutputAmountExceedsFractional);
                 }
 
                 // Check that the fill fraction is respected.
