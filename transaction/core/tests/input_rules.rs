@@ -466,7 +466,7 @@ fn test_input_rules_verify_multiple_fractional_outputs() {
         Err(InputRuleError::RealOutputAmountExceedsFractional)
     );
 
-    // Change the frational change output to be 1500. This means the implied fill
+    // Change the fractional change output to be 1500. This means the implied fill
     // fraction is now 1/3, since the real change output returns 2/3 of this.
     // The tx should then be valid again.
     get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
