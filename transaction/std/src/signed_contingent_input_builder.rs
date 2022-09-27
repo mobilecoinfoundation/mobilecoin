@@ -2563,7 +2563,7 @@ pub mod tests {
             )
             .unwrap();
 
-            // Orignator requests an output worth amount2 destined to themselves
+            // Originator requests an output worth amount2 destined to themselves
             builder
                 .add_fractional_output(amount2, &originator.default_subaddress(), &mut rng)
                 .unwrap();
