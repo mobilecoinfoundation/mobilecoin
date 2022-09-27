@@ -100,7 +100,7 @@ impl SqlRecoveryDbTestContext {
                 .take(TOTAL_RETRY_COUNT),
             || PgConnection::establish(url),
         )
-        .unwrap_or_else(|_| panic!("Cannot connect to PG database '{}'", url))
+        .unwrap_or_else(|err| panic!("Cannot connect to PG database '{}: {}'", url, err))
     }
 }
 
