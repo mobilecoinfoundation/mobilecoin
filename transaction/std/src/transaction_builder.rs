@@ -18,11 +18,11 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
     ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
+    ring_signature::Scalar,
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, AmountError, BlockVersion, MaskedAmount, MaskedAmountV2, MemoContext, MemoPayload,
-    NewMemoError, RevealedTxOut, RevealedTxOutError, SignedContingentInput,
-    SignedContingentInputError, Token, TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
+    RevealedTxOutError, SignedContingentInput, SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -308,7 +308,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .partial_fill_change
             .as_ref()
             .ok_or(SignedContingentInputError::MissingPartialFillChange)?;
-        let partial_fill_change_amount = partial_fill_change.reveal_amount()?;
+        let (partial_fill_change_amount, partial_fill_change_blinding) =
+            partial_fill_change.reveal_amount()?;
         if partial_fill_change_amount.value == 0 {
             return Err(SignedContingentInputError::ZeroPartialFillChange);
         }
@@ -318,21 +319,23 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         if partial_fill_change_amount.token_id != sci_change_amount.token_id {
             return Err(SignedContingentInputError::TokenIdMismatch);
         }
-        if partial_fill_change_amount.value - rules.min_partial_fill_value < sci_change_amount.value {
+        if partial_fill_change_amount.value - rules.min_partial_fill_value < sci_change_amount.value
+        {
             return Err(SignedContingentInputError::ChangeLimitExceeded);
         }
 
-        let fill_fraction_num = (partial_fill_change_amount.value - sci_change_amount.value) as u128;
+        let fill_fraction_num =
+            (partial_fill_change_amount.value - sci_change_amount.value) as u128;
         let fill_fraction_denom = partial_fill_change_amount.value as u128;
 
         // Ensure that we can reveal all amounts
-        let partial_fill_outputs_and_amounts: Vec<(&RevealedTxOut, Amount)> = rules
+        let partial_fill_outputs_and_amounts: Vec<(&RevealedTxOut, Amount, Scalar)> = rules
             .partial_fill_outputs
             .iter()
             .map(
-                |r_tx_out| -> Result<(&RevealedTxOut, Amount), RevealedTxOutError> {
-                    let amount = r_tx_out.reveal_amount()?;
-                    Ok((r_tx_out, amount))
+                |r_tx_out| -> Result<(&RevealedTxOut, Amount, Scalar), RevealedTxOutError> {
+                    let (amount, blinding) = r_tx_out.reveal_amount()?;
+                    Ok((r_tx_out, amount, blinding))
                 },
             )
             .collect::<Result<_, _>>()?;
@@ -346,66 +349,49 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ((num_128 + (denom - 1)) / denom) as u64
         }
 
-        // Add fractional outputs (corresponding to partial fill outputs) into the list which is
-        // added to tx prefix
+        // Add fractional outputs (corresponding to partial fill outputs) into the list
+        // which is added to tx prefix
         let fractional_amounts = partial_fill_outputs_and_amounts
             .into_iter()
-            .map(|(r_tx_out, amount)| -> Result<Amount, AmountError> {
-                let fractional_amount = Amount::new(
-                    division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
-                    amount.token_id,
-                );
-                let mut fractional_tx_out = r_tx_out.tx_out.clone();
+            .map(
+                |(r_tx_out, amount, blinding)| -> Result<Amount, RevealedTxOutError> {
+                    let fractional_amount = Amount::new(
+                        division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
+                        amount.token_id,
+                    );
+                    let fractional_tx_out = r_tx_out.change_committed_amount(fractional_amount)?;
 
-                // Take the original TxOut and overwrite the masked amount to use the lesser
-                // amount, but with the same amount shared secret as before.
-                let amount_shared_secret: &[u8; 32] = &r_tx_out.amount_shared_secret[..]
-                    .try_into()
-                    .expect("size was checked earlier");
-                let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
-                    fractional_amount,
-                    amount_shared_secret,
-                )?;
-                let (new_amount, blinding) =
-                    new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
-                debug_assert!(fractional_amount == new_amount);
+                    // Note: The blinding factor has to be the same as the blinding factor of the
+                    // partial fill output that this tx out came from. This
+                    // invariant of .change_committed_amount is checked by a debug assertion.
+                    let output_secret = OutputSecret {
+                        amount: fractional_amount,
+                        blinding,
+                    };
 
-                fractional_tx_out.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+                    self.outputs_and_secrets
+                        .push((fractional_tx_out, output_secret));
 
-                let output_secret = OutputSecret {
-                    amount: new_amount,
-                    blinding,
-                };
-
-                self.outputs_and_secrets.push((fractional_tx_out, output_secret));
-
-                Ok(fractional_amount)
-            })
+                    Ok(fractional_amount)
+                },
+            )
             .collect::<Result<Vec<_>, _>>()?;
 
         // Add the fractional change output
         {
-            let mut fractional_change = partial_fill_change.tx_out.clone();
+            let fractional_change =
+                partial_fill_change.change_committed_amount(sci_change_amount)?;
 
-            let amount_shared_secret: &[u8; 32] = &partial_fill_change.amount_shared_secret[..]
-                .try_into()
-                .expect("size was checked earlier");
-            let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
-                sci_change_amount,
-                amount_shared_secret,
-            )?;
-            let (new_amount, blinding) =
-                new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
-            debug_assert!(sci_change_amount == new_amount);
-
-            fractional_change.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
-
+            // Note: The blinding factor has to be the same as the blinding factor of the
+            // partial fill change that this txout came from. This invariant of
+            // .change_committed_amount is checked by a debug assertion.
             let output_secret = OutputSecret {
-                amount: new_amount,
-                blinding,
+                amount: sci_change_amount,
+                blinding: partial_fill_change_blinding,
             };
 
-            self.outputs_and_secrets.push((fractional_change, output_secret));
+            self.outputs_and_secrets
+                .push((fractional_change, output_secret));
         }
 
         self.add_presigned_input_helper(sci)?;

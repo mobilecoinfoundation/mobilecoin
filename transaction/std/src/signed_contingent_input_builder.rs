@@ -332,12 +332,12 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///
     /// This is required when using partial fill rules.
     ///
-    /// It's value should typically be equal to the value of the input being signed.
-    /// If it is less, then there should generally be another required change output
-    /// whose value is the difference.
+    /// It's value should typically be equal to the value of the input being
+    /// signed. If it is less, then there should generally be another
+    /// required change output whose value is the difference.
     /// If it is more, then it may be uneconomical to fill this offer.
-    /// If it is less and there is no required change output making up the difference,
-    /// then it may be uneconomical to sign this offer.
+    /// If it is less and there is no required change output making up the
+    /// difference, then it may be uneconomical to sign this offer.
     ///
     /// The change output is addressed to the dedicated change subaddress.
     ///

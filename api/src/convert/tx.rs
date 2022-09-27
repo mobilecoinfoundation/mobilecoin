@@ -268,7 +268,7 @@ mod tests {
 
             // Originator requests an output worth amount2 destined to themselves
             sci_builder
-                .add_fractional_output(
+                .add_partial_fill_output(
                     Amount::new(1000 * MILLIMOB_TO_PICOMOB, Mob::ID),
                     &charlie.default_subaddress(),
                     &mut rng,
@@ -277,7 +277,7 @@ mod tests {
 
             // Change amount matches the input value
             sci_builder
-                .add_fractional_change_output(
+                .add_partial_fill_change_output(
                     Amount::new(1000, token2),
                     &ReservedSubaddresses::from(&charlie),
                     &mut rng,

@@ -7,7 +7,7 @@ use mc_account_keys::AccountKey;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::{
     get_tx_out_shared_secret, tx::Tx, Amount, BlockVersion, InputRuleError, InputRules,
-    MaskedAmount, MaskedAmountV2, RevealedTxOut, RevealedTxOutError,
+    MaskedAmount, RevealedTxOut, RevealedTxOutError,
 };
 use mc_transaction_std::DefaultTxOutputsOrdering;
 use mc_util_from_random::FromRandom;
@@ -97,25 +97,7 @@ fn change_committed_amount(r_txo: &RevealedTxOut, new_amount: Amount) -> Reveale
     r_txo.reveal_amount().unwrap();
 
     let mut result = r_txo.clone();
-    let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
-        new_amount,
-        &r_txo.amount_shared_secret[..].try_into().unwrap(),
-    )
-    .unwrap();
-
-    // Confirm that the new masked amount can be decoded using this shared secret as
-    // expected
-    assert_eq!(
-        new_amount,
-        new_masked_amount
-            .get_value_from_amount_shared_secret(
-                &r_txo.amount_shared_secret[..].try_into().unwrap()
-            )
-            .unwrap()
-            .0
-    );
-
-    result.tx_out.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+    result.tx_out = r_txo.change_committed_amount(new_amount).unwrap();
     result
 }
 
@@ -260,8 +242,8 @@ fn test_input_rules_verify_missing_real_outputs() {
         ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
-    // Modify the input rules to refer to a non-existent tx out among the partial fill
-    // outputs
+    // Modify the input rules to refer to a non-existent tx out among the partial
+    // fill outputs
     get_first_rules_mut(&mut tx).partial_fill_outputs[1]
         .tx_out
         .target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -365,8 +347,8 @@ fn test_input_rules_verify_invalid_amount_shared_secret() {
     );
 }
 
-// Test that input rules verification is working for a Tx with partial fill outputs
-// and various fill fractions
+// Test that input rules verification is working for a Tx with partial fill
+// outputs and various fill fractions
 #[test]
 fn test_input_rules_verify_partial_fill_outputs() {
     let block_version = BlockVersion::THREE;
@@ -399,7 +381,8 @@ fn test_input_rules_verify_partial_fill_outputs() {
         Err(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction)
     );
 
-    // Make partial fill change slightly more, at 1501, so the counterparty gave back slightly less than 2/3.
+    // Make partial fill change slightly more, at 1501, so the counterparty gave
+    // back slightly less than 2/3.
     get_first_rules_mut(&mut tx).partial_fill_change = Some(change_committed_amount(
         &revealed_tx_outs[0],
         Amount::new(1501, 0.into()),
@@ -411,8 +394,8 @@ fn test_input_rules_verify_partial_fill_outputs() {
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction)
     );
-    // Set the partial fill output to be 2997. This should still be invalid but on the
-    // boundary
+    // Set the partial fill output to be 2997. This should still be invalid but on
+    // the boundary
     get_first_rules_mut(&mut tx).partial_fill_outputs[0] =
         change_committed_amount(&revealed_tx_outs[1], Amount::new(2997, 0.into()));
     assert_matches!(
@@ -425,8 +408,8 @@ fn test_input_rules_verify_partial_fill_outputs() {
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 }
 
-// Test that input rules verification is working for Tx with multiple partial fill
-// outputs
+// Test that input rules verification is working for Tx with multiple partial
+// fill outputs
 #[test]
 fn test_input_rules_verify_multiple_partial_fill_outputs() {
     let block_version = BlockVersion::THREE;

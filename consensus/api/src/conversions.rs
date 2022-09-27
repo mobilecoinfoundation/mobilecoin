@@ -71,14 +71,16 @@ impl From<InputRuleError> for ProposeTxResult {
         match src {
             InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
             InputRuleError::MaxTombstoneBlockExceeded => Self::InputRuleMaxTombstoneBlockExceeded,
-            InputRuleError::FractionalOutputsNotExpected
-            | InputRuleError::MinFillValueNotExpected
-            | InputRuleError::MissingRealChangeOutput
-            | InputRuleError::MissingRealOutput
-            | InputRuleError::RealOutputTokenIdMismatch
-            | InputRuleError::MinFillValueExceedsFractionalChange
-            | InputRuleError::RealOutputAmountDoesNotRespectFillFraction
-            | InputRuleError::RealChangeOutputAmountExceedsLimit => Self::InputRulePartialFill,
+            InputRuleError::PartialFillOutputsNotExpected
+            | InputRuleError::MinPartialFillValueNotExpected
+            | InputRuleError::MissingFractionalChangeOutput
+            | InputRuleError::MissingFractionalOutput
+            | InputRuleError::FractionalOutputTokenIdMismatch
+            | InputRuleError::MinPartialFillValueExceedsPartialFillChange
+            | InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction
+            | InputRuleError::FractionalChangeOutputAmountExceedsLimit => {
+                Self::InputRulePartialFill
+            }
             InputRuleError::RevealedTxOut(rtxo_err) => match rtxo_err {
                 RevealedTxOutError::InvalidAmountSharedSecret => {
                     Self::InputRuleInvalidAmountSharedSecret

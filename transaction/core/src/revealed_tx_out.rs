@@ -1,9 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{tx::TxOut, Amount, AmountError, TxOutConversionError};
+use crate::{tx::TxOut, Amount, AmountError, MaskedAmount, MaskedAmountV2, TxOutConversionError};
 use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_ring_signature::Scalar;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -23,8 +24,56 @@ pub struct RevealedTxOut {
 
 impl RevealedTxOut {
     /// Attempt to reveal the amount of this RevealedTxOut
-    pub fn reveal_amount(&self) -> Result<Amount, RevealedTxOutError> {
+    pub fn reveal_amount(&self) -> Result<(Amount, Scalar), RevealedTxOutError> {
         try_reveal_amount(&self.tx_out, self.amount_shared_secret.as_ref())
+    }
+
+    /// Make a new TxOut which matches this one, except with a different
+    /// committed amount. The new one will still be owned by the same person
+    /// and view key matching etc. will still work.
+    ///
+    /// Note: The masked value blinding, masked token id blinding, and
+    /// commitment blinding factor will all be the same for the original
+    /// TxOut and the new one. This is all checked by a debug assert in this
+    /// function.
+    ///
+    /// # Arguments
+    /// * amount that the new tx out should have.
+    ///
+    /// # Returns
+    /// * the new tx out, or an error
+    pub fn change_committed_amount(&self, new_amount: Amount) -> Result<TxOut, RevealedTxOutError> {
+        let mut result = self.tx_out.clone();
+
+        result.masked_amount = match self.tx_out.get_masked_amount()? {
+            MaskedAmount::V1(_) => {
+                return Err(AmountError::AmountVersionTooOldForAmountSharedSecret.into())
+            }
+            MaskedAmount::V2(_) => {
+                let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
+                    new_amount,
+                    self.amount_shared_secret[..]
+                        .try_into()
+                        .map_err(|_| RevealedTxOutError::InvalidAmountSharedSecret)?,
+                )?;
+
+                // Reality check: Confirm that the new masked amount can be decoded using this
+                // shared secret as expected
+                debug_assert_eq!(
+                    new_amount,
+                    new_masked_amount
+                        .get_value_from_amount_shared_secret(
+                            &self.amount_shared_secret[..].try_into().unwrap()
+                        )
+                        .unwrap()
+                        .0
+                );
+
+                Some(MaskedAmount::V2(new_masked_amount))
+            }
+        };
+
+        Ok(result)
     }
 }
 
@@ -33,14 +82,13 @@ impl RevealedTxOut {
 pub fn try_reveal_amount(
     tx_out: &TxOut,
     amount_shared_secret: &[u8],
-) -> Result<Amount, RevealedTxOutError> {
+) -> Result<(Amount, Scalar), RevealedTxOutError> {
     let ss: &[u8; 32] = amount_shared_secret
         .try_into()
         .map_err(|_| RevealedTxOutError::InvalidAmountSharedSecret)?;
-    let (amount, _) = tx_out
+    Ok(tx_out
         .get_masked_amount()?
-        .get_value_from_amount_shared_secret(ss)?;
-    Ok(amount)
+        .get_value_from_amount_shared_secret(ss)?)
 }
 
 /// An error that can occur when attempting to reveal a TxOut using its Amount

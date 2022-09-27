@@ -128,10 +128,12 @@ impl SignedContingentInput {
 
             // Check that partial fill rule specs look correct
             if let Some(partial_fill_change) = rules.partial_fill_change.as_ref() {
-                let amount = partial_fill_change.reveal_amount()?;
+                let (amount, _) = partial_fill_change.reveal_amount()?;
                 // If the min fill value exceeds the fractional change, the SCI is ill-formed
                 if rules.min_partial_fill_value > amount.value {
-                    return Err(SignedContingentInputError::MinPartialFillValueExceedsPartialChange);
+                    return Err(
+                        SignedContingentInputError::MinPartialFillValueExceedsPartialChange,
+                    );
                 }
 
                 if amount.value == 0 {

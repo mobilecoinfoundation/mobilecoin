@@ -83,7 +83,7 @@ impl InputRules {
     ) -> Result<(), InputRuleError> {
         if let Some(partial_fill_change) = self.partial_fill_change.as_ref() {
             // There is a partial fill change output. Let's try to unblind its amount.
-            let partial_fill_change_amount = partial_fill_change.reveal_amount()?;
+            let (partial_fill_change_amount, _) = partial_fill_change.reveal_amount()?;
             // If the min fill value exceeds the fractional change, then the SCI is
             // ill-formed
             if self.min_partial_fill_value > partial_fill_change_amount.value {
@@ -98,8 +98,10 @@ impl InputRules {
                 .find(|x| partial_fill_change.tx_out.matches_ignoring_amount(x))
                 .ok_or(InputRuleError::MissingFractionalChangeOutput)?;
             // Let's try to unblind its amount.
-            let fractional_change_amount =
-                try_reveal_amount(fractional_change, partial_fill_change.amount_shared_secret.as_ref())?;
+            let (fractional_change_amount, _) = try_reveal_amount(
+                fractional_change,
+                partial_fill_change.amount_shared_secret.as_ref(),
+            )?;
 
             // Check the bounds of the real change amount
             if fractional_change_amount.token_id != partial_fill_change_amount.token_id {
@@ -107,7 +109,9 @@ impl InputRules {
             }
             // Partial fill change amount - min fill value is an upper bound on how much
             // can be returned in the fractional change output.
-            if fractional_change_amount.value > partial_fill_change_amount.value - self.min_partial_fill_value {
+            if fractional_change_amount.value
+                > partial_fill_change_amount.value - self.min_partial_fill_value
+            {
                 return Err(InputRuleError::FractionalChangeOutputAmountExceedsLimit);
             }
 
@@ -122,7 +126,7 @@ impl InputRules {
             // Verify partial_fill_outputs
             for partial_fill_output in self.partial_fill_outputs.iter() {
                 // Try to unblind the partial fill output amount.
-                let partial_fill_output_amount = partial_fill_output.reveal_amount()?;
+                let (partial_fill_output_amount, _) = partial_fill_output.reveal_amount()?;
                 // Let's check if there is a corresponding fractional output.
                 let fractional_output = tx
                     .prefix
@@ -132,7 +136,7 @@ impl InputRules {
                     .ok_or(InputRuleError::MissingFractionalOutput)?;
                 // Let's try to unblind its amount, using amount shared secret from the
                 // fractional output (which should be the same)
-                let fractional_output_amount = try_reveal_amount(
+                let (fractional_output_amount, _) = try_reveal_amount(
                     fractional_output,
                     partial_fill_output.amount_shared_secret.as_ref(),
                 )?;
