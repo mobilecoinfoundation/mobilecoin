@@ -60,6 +60,7 @@ message MultiKeyImageStoreRequest {
     repeated attest.Message queries = 1;
 }
 
+
 /// The status associated with a MultiViewStoreQueryResponse
 enum MultiKeyImageStoreResponseStatus {
     /// The Fog Ledger Store successfully fulfilled the request.

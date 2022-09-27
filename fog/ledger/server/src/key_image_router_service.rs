@@ -62,7 +62,6 @@ where
                 self.logger,
                 "Streaming GRPC Ledger API only partially implemented."
             );
-
             let logger = logger.clone();
 
             let future = router_handlers::handle_requests(

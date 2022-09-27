@@ -75,7 +75,6 @@ pub struct LedgerServerConfig {
 
 /// A Fog Server can either fulfill client requests directly or fulfill Fog
 /// Ledger Router requests, and these types of servers use different URLs.
-///
 /// TODO - This is almost identical to Fog View's implementation of this
 /// combine it later?
 #[derive(Clone, Serialize)]

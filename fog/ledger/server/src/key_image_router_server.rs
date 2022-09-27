@@ -61,7 +61,6 @@ impl KeyImageRouterServer {
                     .register_service(ledger_router_service)
                     .register_service(health_service)
                     .bind_using_uri(&ledger_router_uri, logger.clone());
-
                 let server = server_builder.build().unwrap();
 
                 Self { server, logger }

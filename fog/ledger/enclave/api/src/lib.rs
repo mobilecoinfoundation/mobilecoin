@@ -117,7 +117,7 @@ pub trait LedgerEnclave: ReportableEnclave {
         ledger_store_id: ResponderId,
         ledger_store_auth_response: ClientAuthResponse,
     ) -> Result<()>;
-
+  
     /// Decrypts a client query message and converts it into a
     /// SealedClientMessage which can be unsealed multiple times to
     /// construct the MultiKeyImageStoreRequest.
