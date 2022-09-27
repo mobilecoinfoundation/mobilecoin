@@ -351,3 +351,37 @@ impl MealyInput for Ciphertext<'_, '_> {}
 
 /// Our outputs may be simple vectors for the proto-inside-grpc use case.
 impl MealyOutput for Vec<u8> {}
+
+/// A type similar to [`aead::Payload`] used to distinguish writer inputs from
+/// outputs when there's an explicit nonce.
+pub struct NoncePlaintext<'aad, 'msg> {
+    pub aad: &'aad [u8],
+    pub msg: &'msg [u8],
+    pub nonce: u64,
+}
+
+impl<'aad, 'msg> NoncePlaintext<'aad, 'msg> {
+    pub fn new(aad: &'aad [u8], msg: &'msg [u8], nonce: u64) -> Self {
+        Self { aad, msg, nonce }
+    }
+}
+
+/// Plaintext may be provided to an FST for encryption into a vector
+impl MealyInput for NoncePlaintext<'_, '_> {}
+
+/// A type similar to [`aead::Payload`] used to distinguish reader inputs from
+/// outputs when there's an explicit nonce.
+pub struct NonceCiphertext<'aad, 'msg> {
+    pub aad: &'aad [u8],
+    pub msg: &'msg [u8],
+    pub nonce: u64,
+}
+
+impl<'aad, 'msg> NonceCiphertext<'aad, 'msg> {
+    pub fn new(aad: &'aad [u8], msg: &'msg [u8], nonce: u64) -> Self {
+        Self { aad, msg, nonce }
+    }
+}
+
+/// Plaintext may be provided to an FST for encryption into a vector
+impl MealyInput for NonceCiphertext<'_, '_> {}

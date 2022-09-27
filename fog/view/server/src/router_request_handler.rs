@@ -7,6 +7,7 @@ use crate::{
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
+use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
 use mc_common::{logger::Logger, ResponderId};
 use mc_fog_api::{
     view::{
@@ -18,7 +19,8 @@ use mc_fog_api::{
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
-use std::{str::FromStr, sync::Arc};
+use mc_util_uri::ConnectionUri;
+use std::{collections::BTreeMap, sync::Arc};
 
 const RETRY_COUNT: usize = 3;
 
@@ -103,12 +105,21 @@ async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: Vec<attest::Message> = Vec::with_capacity(shard_clients.len());
+    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
+    let sealed_query = enclave
+        .decrypt_and_seal_query(query.into())
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: internal encryption error",
+                err.into(),
+                logger.clone(),
+            )
+        })?;
     // TODO: use retry crate?
     for _ in 0..RETRY_COUNT {
         let multi_view_store_query_request = enclave
-            .create_multi_view_store_query_data(query.clone().into())
+            .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Query: internal encryption error",
@@ -128,7 +139,7 @@ where
                     )
                 })?;
 
-        let mut processed_shard_response_data = shard_responses_processor::process_shard_responses(
+        let processed_shard_response_data = shard_responses_processor::process_shard_responses(
             clients_and_responses,
         )
         .map_err(|err| {
@@ -139,7 +150,13 @@ where
             )
         })?;
 
-        query_responses.append(&mut processed_shard_response_data.new_query_responses);
+        for (store_responder_id, new_query_response) in processed_shard_response_data
+            .new_query_responses
+            .into_iter()
+        {
+            query_responses.insert(store_responder_id, new_query_response.into());
+        }
+
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
         if shard_clients.is_empty() {
             break;
@@ -153,9 +170,18 @@ where
         .await?;
     }
 
-    // TODO: Collate the query_responses into one response for the client. Make an
-    // enclave  method for this.
-    let response = FogViewRouterResponse::new();
+    let query_response = enclave
+        .collate_shard_query_responses(sealed_query, query_responses)
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: shard response collation",
+                RouterServerError::Enclave(err),
+                logger.clone(),
+            )
+        })?;
+
+    let mut response = FogViewRouterResponse::new();
+    response.set_query(query_response.into());
     Ok(response)
 }
 
@@ -206,7 +232,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     view_store_url: FogViewStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let view_store_id = ResponderId::from_str(&view_store_url.to_string())?;
+    let view_store_id = view_store_url.responder_id()?;
     let client_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()

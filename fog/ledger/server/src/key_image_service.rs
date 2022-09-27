@@ -7,9 +7,9 @@ use mc_attest_api::{
 };
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{ 
-    ledger_grpc::{FogKeyImageApi, KeyImageStoreApi},
+use mc_fog_api::{
     ledger::{MultiKeyImageStoreRequest, MultiKeyImageStoreResponse},
+    ledger_grpc::{FogKeyImageApi, KeyImageStoreApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
@@ -172,12 +172,22 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<L, E> {
     #[allow(unused_variables)] //FIXME
-    fn auth(&mut self, ctx: grpcio::RpcContext, req: AuthMessage, sink: grpcio::UnarySink<AuthMessage>) {
+    fn auth(
+        &mut self,
+        ctx: grpcio::RpcContext,
+        req: AuthMessage,
+        sink: grpcio::UnarySink<AuthMessage>,
+    ) {
         todo!()
     }
 
     #[allow(unused_variables)] //FIXME
-    fn multi_key_image_store_query(&mut self, ctx: grpcio::RpcContext, req: MultiKeyImageStoreRequest, sink: grpcio::UnarySink<MultiKeyImageStoreResponse>) {
+    fn multi_key_image_store_query(
+        &mut self,
+        ctx: grpcio::RpcContext,
+        req: MultiKeyImageStoreRequest,
+        sink: grpcio::UnarySink<MultiKeyImageStoreResponse>,
+    ) {
         todo!()
     }
 }

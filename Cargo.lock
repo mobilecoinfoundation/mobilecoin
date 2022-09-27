@@ -3701,6 +3701,7 @@ dependencies = [
  "aligned-cmov",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-ake-enclave",
  "mc-crypto-keys",
@@ -4296,13 +4297,17 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "1.3.0-pre0"
 dependencies = [
+ "aes-gcm",
  "futures",
  "grpcio",
+ "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-types",
@@ -4311,7 +4316,9 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-telemetry",
+ "mc-util-uri",
  "retry",
+ "sha2 0.10.2",
  "tokio",
 ]
 
@@ -4325,6 +4332,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-verifier",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-fog-ocall-oram-storage-edl",
@@ -4358,6 +4366,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
@@ -4383,6 +4392,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
  "aligned-cmov",
+ "itertools",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -4468,6 +4478,7 @@ dependencies = [
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
  "mc-blockchain-types",

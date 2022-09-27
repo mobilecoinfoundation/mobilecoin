@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 
 [[bin]]
 name = "ledger_router_server"
-path = "src/bin/router.rs"
+path = "src/bin/key_image_router.rs"
 
 [dependencies]
 mc-attest-api = { path = "../../../attest/api" }

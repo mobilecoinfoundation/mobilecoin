@@ -13,9 +13,11 @@ pub use crate::{
     error::{AddRecordsError, Error},
     messages::{EnclaveCall, KeyImageData},
 };
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+};
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
 pub use mc_fog_types::ledger::{
@@ -99,12 +101,13 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Add a key image data to the oram Using thrm -rf targete key image
     fn add_key_image_data(&self, records: Vec<KeyImageData>) -> Result<()>;
 
-
     // LEDGER ROUTER / STORE SYSTEM
 
-    /// Begin a connection to a Fog Ledger Store. The enclave calling this method,
-    /// most likely a router, will act as a client to the Fog Ledger Store.
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<ClientAuthRequest>;
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this
+    /// method, most likely a router, will act as a client to the Fog Ledger
+    /// Store.
+    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId)
+        -> Result<ClientAuthRequest>;
 
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
@@ -114,22 +117,38 @@ pub trait LedgerEnclave: ReportableEnclave {
         ledger_store_id: ResponderId,
         ledger_store_auth_response: ClientAuthResponse,
     ) -> Result<()>;
-    
+  
+    /// Decrypts a client query message and converts it into a
+    /// SealedClientMessage which can be unsealed multiple times to
+    /// construct the MultiKeyImageStoreRequest.
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage>;
+
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
-    /// MultiLedgerStoreQuery, which is sent to each shard.
-    fn create_key_image_store_query(
+    /// MultiKeyImageStoreRequest, which is sent to each shard.
+    fn create_multi_key_image_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
 
-    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto LedgerRequest. 
-    /// Generally, these come in from a router. 
-    /// This could could be a key image request, a merkele proof 
+    /// Receives all of the shards' query responses and collates them into one
+    /// query response for the client.
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
+
+    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto
+    /// LedgerRequest. Generally, these come in from a router.
+    /// This could could be a key image request, a merkele proof
     /// request, and potentially in the future an untrusted tx out request.
     fn handle_key_image_store_request(
-        &self, 
+        &self,
         router_query: EnclaveMessage<ClientSession>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }

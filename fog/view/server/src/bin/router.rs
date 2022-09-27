@@ -3,6 +3,7 @@
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
+use mc_attest_net::{Client, RaClient};
 use mc_common::logger::log;
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_uri::FogViewStoreUri;
@@ -56,8 +57,14 @@ fn main() {
         fog_view_store_grpc_clients.push(fog_view_store_grpc_client);
     }
 
-    let mut router_server =
-        FogViewRouterServer::new(config, sgx_enclave, fog_view_store_grpc_clients, logger);
+    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
+    let mut router_server = FogViewRouterServer::new(
+        config,
+        sgx_enclave,
+        ias_client,
+        fog_view_store_grpc_clients,
+        logger,
+    );
     router_server.start();
 
     loop {

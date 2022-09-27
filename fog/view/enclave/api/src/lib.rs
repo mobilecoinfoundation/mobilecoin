@@ -8,13 +8,13 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
-    Error as AttestEnclaveError,
+    Error as AttestEnclaveError, SealedClientMessage,
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
@@ -84,15 +84,24 @@ pub enum ViewEnclaveRequest {
     Query(EnclaveMessage<ClientSession>, UntrustedQueryResponse),
     /// Request from untrusted to add encrypted tx out records to ORAM
     AddRecords(Vec<ETxOutRecord>),
-    /// Takes an encrypted fog_types::view::QueryRequest and returns a list of
+    /// Takes a client query message and returns a SealedClientMessage
+    /// sealed for the current enclave.
+    DecryptAndSealQuery(EnclaveMessage<ClientSession>),
+    /// Takes a sealed fog_types::view::QueryRequest and returns a list of
     /// fog_types::view::QueryRequest.
-    CreateMultiViewStoreQuery(EnclaveMessage<ClientSession>),
+    CreateMultiViewStoreQuery(SealedClientMessage),
     /// Begin a client connection to a Fog View Store discovered after
     /// initialization.
     ViewStoreInit(ResponderId),
     /// Complete the client connection to a Fog View store that accepted our
     /// client auth request. This is meant to be called after [ViewStoreInit].
     ViewStoreConnect(ResponderId, ClientAuthResponse),
+    /// Collates shard query responses into a single query response for the
+    /// client.
+    CollateQueryResponses(
+        SealedClientMessage,
+        BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -158,14 +167,30 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// enclave's ORAM
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()>;
 
+    /// Decrypts a client query message and converts it into a
+    /// SealedClientMessage which can be unsealed multiple times to
+    /// construct the MultiViewStoreQuery.
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage>;
+
     /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
     /// MultiViewStoreQuery, which is sent to each shard.
     fn create_multi_view_store_query_data(
         &self,
-        client_query: EnclaveMessage<ClientSession>,
+        sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+
+    /// Receives all of the shards' query responses and collates them into one
+    /// query response for the client.
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side
@@ -221,6 +246,8 @@ pub enum Error {
     EnclaveNotInitialized,
     /// Cipher encryption failed: {0}
     Cipher(CipherError),
+    /// Fog View Shard query response collation error.
+    QueryResponseCollation,
 }
 
 impl From<SgxError> for Error {

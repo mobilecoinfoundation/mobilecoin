@@ -12,6 +12,7 @@ license = "GPL-3.0"
 # mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
+mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", default-features = false }
 mc-crypto-ake-enclave = { path = "../../../../crypto/ake/enclave", default-features = false }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }

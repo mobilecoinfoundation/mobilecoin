@@ -11,7 +11,7 @@ use mc_fog_uri::{FogLedgerUri, KeyImageRouterUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, time::Duration, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 
 /// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
@@ -75,8 +75,7 @@ pub struct LedgerServerConfig {
 
 /// A Fog Server can either fulfill client requests directly or fulfill Fog
 /// Ledger Router requests, and these types of servers use different URLs.
-/// 
-/// TODO - This is almost identical to Fog View's implementation of this 
+/// TODO - This is almost identical to Fog View's implementation of this
 /// combine it later?
 #[derive(Clone, Serialize)]
 pub enum KeyImageClientListenUri {
@@ -96,7 +95,10 @@ impl FromStr for KeyImageClientListenUri {
             return Ok(KeyImageClientListenUri::Store(ledger_store_uri));
         }
 
-        Err(format!("Incorrect KeyImageClientListenUri string: {}.", input))
+        Err(format!(
+            "Incorrect KeyImageClientListenUri string: {}.",
+            input
+        ))
     }
 }
 

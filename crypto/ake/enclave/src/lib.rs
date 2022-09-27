@@ -11,14 +11,14 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
+    IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
     VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
-    PeerAuthResponse, PeerSession, Result,
+    PeerAuthResponse, PeerSession, Result, SealedClientMessage,
 };
-use mc_attest_trusted::EnclaveReport;
+use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
@@ -438,24 +438,50 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Transforms an incoming client message, i.e. a message sent from a client
-    /// to the current enclave, into a list of outbound  messages for
-    /// other enclaves that serve as backends to the current enclave.
-    ///
-    ///                               / --> Backend Enclave 1
-    ///   Client -> Current Enclave ---> Backend Enclave 2
-    ///                              \ --> Backend Enclave N
-    pub fn reencrypt_client_message_for_backends(
+    /// to the current enclave, into a sealed message which can be decrypted
+    /// later for use by this enclave without advancing the Noise nonce.
+    pub fn decrypt_client_message_for_enclave(
         &self,
         incoming_client_message: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        let aad = incoming_client_message.aad.clone();
+        let channel_id = incoming_client_message.channel_id.clone();
+        let client_query_bytes = self.client_decrypt(incoming_client_message)?;
+        let sealed_data = IntelSealed::seal_raw(&client_query_bytes, &[])?;
+
+        Ok(SealedClientMessage {
+            channel_id,
+            aad,
+            data: sealed_data,
+        })
+    }
+
+    /// Unseals the data component of a sealed client message and returns the
+    /// plaintext
+    pub fn unseal(&self, sealed_message: &SealedClientMessage) -> Result<Vec<u8>> {
+        Ok(sealed_message.data.unseal_raw()?.0)
+    }
+
+    /// Transforms a sealed client message, i.e. a message sent from a client
+    /// to the current enclave which has been sealed for this enclave, into a
+    /// list of outbound  messages for other enclaves that serve as backends to
+    /// the current enclave.
+    ///                              / --> Backend Enclave 1
+    ///   Client -> Current Enclave ---> Backend Enclave 2
+    ///                              \ --> Backend Enclave N
+    pub fn reencrypt_sealed_message_for_backends(
+        &self,
+        sealed_client_message: &SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        let client_query_bytes: Vec<u8> = self.client_decrypt(incoming_client_message.clone())?;
+        let (client_query_bytes, _) = sealed_client_message.data.unseal_raw()?;
+
         let mut backends = self.backends.lock()?;
         let backend_messages = backends
             .iter_mut()
             .map(|(_, encryptor)| {
-                let aad = incoming_client_message.aad.clone();
+                let aad = sealed_client_message.aad.clone();
                 let data = encryptor.encrypt(&aad, &client_query_bytes)?;
-                let channel_id = incoming_client_message.channel_id.clone();
+                let channel_id = sealed_client_message.channel_id.clone();
                 Ok(EnclaveMessage {
                     aad,
                     channel_id,
@@ -465,6 +491,19 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .collect::<Result<_>>()?;
 
         Ok(backend_messages)
+    }
+
+    pub fn backend_decrypt(
+        &self,
+        responder_id: ResponderId,
+        msg: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<u8>> {
+        // Ensure lock gets released as soon as we're done decrypting.
+        let mut backends = self.backends.lock()?;
+        backends
+            .get_mut(&responder_id)
+            .ok_or(Error::NotFound)
+            .and_then(|session| Ok(session.decrypt(&msg.aad, &msg.data)?))
     }
 
     //

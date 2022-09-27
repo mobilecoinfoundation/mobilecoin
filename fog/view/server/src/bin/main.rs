@@ -6,7 +6,7 @@ use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
-use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
+use mc_fog_view_server::{config, config::MobileAcctViewConfig, server::ViewServer};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
@@ -58,12 +58,15 @@ fn main() {
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
 
+    let config::ShardingStrategy::Epoch(sharding_strategy) = config.sharding_strategy.clone();
+
     let mut server = ViewServer::new(
         config.clone(),
         sgx_enclave,
         recovery_db,
         ias_client,
         SystemTimeProvider::default(),
+        sharding_strategy,
         logger.clone(),
     );
     server.start();

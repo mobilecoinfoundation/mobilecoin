@@ -34,8 +34,9 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
-    config::{ClientListenUri::ClientFacing, MobileAcctViewConfig as ViewConfig},
+    config::{ClientListenUri::ClientFacing, MobileAcctViewConfig as ViewConfig, ShardingStrategy},
     server::ViewServer,
+    sharding_strategy::EpochShardingStrategy,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
@@ -52,7 +53,7 @@ fn get_test_environment(
     logger: Logger,
 ) -> (
     SqlRecoveryDbTestContext,
-    ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb>,
+    ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>,
     FogViewGrpcClient,
 ) {
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
@@ -71,6 +72,7 @@ fn get_test_environment(
             ias_api_key: Default::default(),
             admin_listen_uri: Default::default(),
             client_auth_token_max_lifetime: Default::default(),
+            sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
             postgres_config: Default::default(),
         };
 
@@ -90,6 +92,7 @@ fn get_test_environment(
             db,
             ra_client,
             SystemTimeProvider::default(),
+            EpochShardingStrategy::default(),
             logger.clone(),
         );
         server.start();
