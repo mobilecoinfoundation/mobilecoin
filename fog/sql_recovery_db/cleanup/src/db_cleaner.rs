@@ -34,14 +34,13 @@ impl DbCleaner {
             .get_expired_invocations(expired_date_time)
             .expect("Could not retrieve expired ingest invocations.");
 
-        if is_dry_run {
+        log::info!(
+            self.logger,
+            "There are {} expired ingest invocations",
+            expired_ingest_invocations.len()
+        );
+        for (i, expired_ingest_invocation) in expired_ingest_invocations.iter().enumerate() {
             log::info!(
-                self.logger,
-                "There are {} expired ingest invocations",
-                expired_ingest_invocations.len()
-            );
-            for (i, expired_ingest_invocation) in expired_ingest_invocations.iter().enumerate() {
-                log::info!(
                     self.logger,
                     "Expired Egress key {}\n  ingest_invocation_id: {}\n  egress_public_key: {:?}\n  last_active_at: {:?}",
                     i + 1,
@@ -49,6 +48,26 @@ impl DbCleaner {
                     expired_ingest_invocation.egress_public_key,
                     expired_ingest_invocation.last_active_at,
                 );
+            if !is_dry_run {
+                match self.db.decommission_ingest_invocation(
+                    &expired_ingest_invocation.ingest_invocation_id.into(),
+                ) {
+                    Ok(_) => {
+                        log::info!(
+                            self.logger,
+                            "Expired Egress key {:?} with id {} has been deleted.",
+                            expired_ingest_invocation.egress_public_key,
+                            expired_ingest_invocation.ingest_invocation_id
+                        )
+                    }
+                    Err(err) => log::error!(
+                        self.logger,
+                        "Could not decommission expired egress key {:?} with id {}: {}",
+                        expired_ingest_invocation.egress_public_key,
+                        expired_ingest_invocation.ingest_invocation_id,
+                        err
+                    ),
+                }
             }
         }
     }
