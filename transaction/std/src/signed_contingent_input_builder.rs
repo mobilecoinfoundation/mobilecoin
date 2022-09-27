@@ -43,14 +43,14 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     /// input.)
     tombstone_block: u64,
     /// The fractional outputs required by the rules for this signed input.
-    fractional_outputs: Vec<RevealedTxOut>,
+    partial_fill_outputs: Vec<RevealedTxOut>,
     /// The fractional change output where any leftover from a partial fill is
     /// returned. This is required if partial fill rules are used (MCIP
     /// #42).
-    fractional_change: Option<RevealedTxOut>,
-    /// The minimum fill value, if any. This is in the token id of the
-    /// fractional change output. (See MCIP #42).
-    min_fill_value: u64,
+    partial_fill_change: Option<RevealedTxOut>,
+    /// The minimum partial fill value, if any. This is in the token id of the
+    /// partial fill change output. (See MCIP #42).
+    min_partial_fill_value: u64,
     /// The source of validated fog pubkeys used for this signed contingent
     /// input
     fog_resolver: FPR,
@@ -125,9 +125,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             input_credentials,
             required_outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fractional_outputs: Vec::new(),
-            fractional_change: None,
-            min_fill_value: 0u64,
+            partial_fill_outputs: Vec::new(),
+            partial_fill_change: None,
+            min_partial_fill_value: 0u64,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -291,7 +291,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         self.tombstone_block = min(self.fog_tombstone_block_limit, self.tombstone_block);
     }
 
-    /// Add a non-change fractional output to the input rules.
+    /// Add a non-change partial fill output to the input rules.
     ///
     /// If a sender memo credential has been set, this will create an
     /// authenticated sender memo for the TxOut. Otherwise the memo will be
@@ -301,7 +301,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_fractional_output<RNG: CryptoRng + RngCore>(
+    pub fn add_partial_fill_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -314,7 +314,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let result = self.make_fractional_output_with_fog_hint_address(
+        let result = self.make_partial_fill_output_with_fog_hint_address(
             amount,
             recipient,
             recipient,
@@ -324,25 +324,22 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         // Put the memo builder back, BEFORE question mark operator
         self.memo_builder = Some(mb);
         let (revealed_tx_out, confirmation_number) = result?;
-        self.fractional_outputs.push(revealed_tx_out.clone());
+        self.partial_fill_outputs.push(revealed_tx_out.clone());
         Ok((revealed_tx_out.tx_out, confirmation_number))
     }
 
-    /// Add a standard change required output to the input rules.
+    /// Add a partial fill change output to the input rules.
     ///
-    /// The change output is meant to send any value in the inputs not already
-    /// sent via outputs or fee, back to the sender's address.
-    /// The caller should ensure that the math adds up, and that
-    /// change_value + total_outlays + fee = total_input_value
+    /// This is required when using partial fill rules.
     ///
-    /// (Here, outlay means a non-change output).
+    /// It's value should typically be equal to the value of the input being signed.
+    /// If it is less, then there should generally be another required change output
+    /// whose value is the difference.
+    /// If it is more, then it may be uneconomical to fill this offer.
+    /// If it is less and there is no required change output making up the difference,
+    /// then it may be uneconomical to sign this offer.
     ///
-    /// A change output should be sent to the dedicated change subaddress of the
-    /// sender.
-    ///
-    /// The use of dedicated change subaddress for change outputs allows to
-    /// authenticate the contents of destination memos, which are otherwise
-    /// unauthenticated.
+    /// The change output is addressed to the dedicated change subaddress.
     ///
     /// # Arguments
     /// * `amount` - The amount of this change output.
@@ -352,14 +349,14 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///   change output. These can both be obtained from an account key, but
     ///   this API does not require the account key.
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_fractional_change_output<RNG: CryptoRng + RngCore>(
+    pub fn add_partial_fill_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        if self.fractional_change.is_some() {
-            return Err(TxBuilderError::AlreadyHaveFractionalChange);
+        if self.partial_fill_change.is_some() {
+            return Err(TxBuilderError::AlreadyHavePartialFillChange);
         }
 
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -369,7 +366,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let result = self.make_fractional_output_with_fog_hint_address(
+        let result = self.make_partial_fill_output_with_fog_hint_address(
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
@@ -379,21 +376,14 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         // Put the memo builder back, BEFORE question mark operator
         self.memo_builder = Some(mb);
         let (revealed_tx_out, confirmation_number) = result?;
-        self.fractional_change = Some(revealed_tx_out.clone());
+        self.partial_fill_change = Some(revealed_tx_out.clone());
         Ok((revealed_tx_out.tx_out, confirmation_number))
     }
 
-    /// Add a required output to the rules, using `fog_hint_address` to
+    /// Create a partial fill output for the rules, using `fog_hint_address` to
     /// construct the fog hint.
     ///
-    /// This is a private implementation detail, and generally, fog users expect
-    /// that the transactions that they receive from fog belong to the account
-    /// that they are using. The only known use-case where recipient and
-    /// fog_hint_address are different is when sending change transactions
-    /// to oneself, when oneself is a fog user. Sending the change to the
-    /// main subaddress means that you don't have to hit fog once for the
-    /// main subaddress and once for the change subaddress, so it cuts the
-    /// number of requests in half.
+    /// This is a private implementation detail.
     ///
     /// # Arguments
     /// * `amount` - The amount of this output
@@ -401,7 +391,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn make_fractional_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn make_partial_fill_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -442,18 +432,18 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         Ok((revealed_tx_out, confirmation))
     }
 
-    /// Sets the minimum fill value.
+    /// Sets the minimum partial fill value.
     ///
     /// This is present so that the signer can
     /// impose a minimum fill requirement on the counterparty, to prevent
     /// griefing, i.e. filling the order for a dust amount.
     ///
     /// # Arguments
-    /// * `value` - The u64 value, in the token id of the fractional change id,
+    /// * `value` - The u64 value, in the token id of the fractional change,
     ///   which must be used and cannot be returned by the counterparty who
     ///   consumes the SCI.
-    pub fn set_min_fill_value(&mut self, value: u64) {
-        self.min_fill_value = value;
+    pub fn set_min_partial_fill_value(&mut self, value: u64) {
+        self.min_partial_fill_value = value;
     }
 
     /// Consume the builder and return the transaction.
@@ -484,7 +474,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.required_outputs_and_secrets.drain(..).unzip();
 
-        self.fractional_outputs
+        self.partial_fill_outputs
             .sort_by(|a, b| a.tx_out.public_key.cmp(&b.tx_out.public_key));
 
         let input_rules = InputRules {
@@ -494,9 +484,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             } else {
                 self.tombstone_block
             },
-            fractional_outputs: self.fractional_outputs,
-            fractional_change: self.fractional_change,
-            min_fill_value: self.min_fill_value,
+            partial_fill_outputs: self.partial_fill_outputs,
+            partial_fill_change: self.partial_fill_change,
+            min_partial_fill_value: self.min_partial_fill_value,
         };
 
         // Get the tx out indices from the proofs in the input credentials,
@@ -2566,12 +2556,12 @@ pub mod tests {
 
             // Originator requests an output worth amount2 destined to themselves
             builder
-                .add_fractional_output(amount2, &originator.default_subaddress(), &mut rng)
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
                 .unwrap();
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(
+                .add_partial_fill_change_output(
                     amount,
                     &ReservedSubaddresses::from(&originator),
                     &mut rng,
@@ -2588,18 +2578,18 @@ pub mod tests {
             // The contingent input should have the correct key image.
             assert_eq!(sci.key_image(), key_image);
 
-            // The contingent input should have one fractional output.
+            // The contingent input should have one partial fill output.
             assert_eq!(
                 sci.tx_in
                     .input_rules
                     .as_ref()
                     .unwrap()
-                    .fractional_outputs
+                    .partial_fill_outputs
                     .len(),
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
                 .tx_out
                 .clone();
 
@@ -2840,12 +2830,12 @@ pub mod tests {
 
             // Originator requests an output worth amount2 destined to themselves
             builder
-                .add_fractional_output(amount2, &originator.default_subaddress(), &mut rng)
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
                 .unwrap();
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(
+                .add_partial_fill_change_output(
                     amount,
                     &ReservedSubaddresses::from(&originator),
                     &mut rng,
@@ -2862,18 +2852,18 @@ pub mod tests {
             // The contingent input should have the correct key image.
             assert_eq!(sci.key_image(), key_image);
 
-            // The contingent input should have one fractional output.
+            // The contingent input should have one partial fill output.
             assert_eq!(
                 sci.tx_in
                     .input_rules
                     .as_ref()
                     .unwrap()
-                    .fractional_outputs
+                    .partial_fill_outputs
                     .len(),
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
                 .tx_out
                 .clone();
 
@@ -3118,12 +3108,12 @@ pub mod tests {
 
             // Originator requests an output worth amount2 destined to themselves
             builder
-                .add_fractional_output(amount2, &originator.default_subaddress(), &mut rng)
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
                 .unwrap();
 
             // Change amount matches the input value
             builder
-                .add_fractional_change_output(
+                .add_partial_fill_change_output(
                     amount,
                     &ReservedSubaddresses::from(&originator),
                     &mut rng,
@@ -3140,18 +3130,18 @@ pub mod tests {
             // The contingent input should have the correct key image.
             assert_eq!(sci.key_image(), key_image);
 
-            // The contingent input should have one fractional output.
+            // The contingent input should have one partial fill output.
             assert_eq!(
                 sci.tx_in
                     .input_rules
                     .as_ref()
                     .unwrap()
-                    .fractional_outputs
+                    .partial_fill_outputs
                     .len(),
                 1
             );
 
-            let output = sci.tx_in.input_rules.as_ref().unwrap().fractional_outputs[0]
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
                 .tx_out
                 .clone();
 
@@ -3398,12 +3388,12 @@ pub mod tests {
 
             // Originator requests an output worth amount2 destined to themselves
             builder
-                .add_fractional_output(amount2, &originator.default_subaddress(), &mut rng)
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
                 .unwrap();
 
             // Change amount is input value - 200, so they are only offering 800 millimob
             builder
-                .add_fractional_change_output(
+                .add_partial_fill_change_output(
                     Amount::new(800 * MILLIMOB_TO_PICOMOB, Mob::ID),
                     &ReservedSubaddresses::from(&originator),
                     &mut rng,
@@ -3420,7 +3410,7 @@ pub mod tests {
                 .unwrap();
 
             // Set a minimum fill requirement of 2 millimob
-            builder.set_min_fill_value(2 * MILLIMOB_TO_PICOMOB);
+            builder.set_min_partial_fill_value(2 * MILLIMOB_TO_PICOMOB);
 
             builder.set_tombstone_block(2000);
 
@@ -3500,8 +3490,8 @@ pub mod tests {
             // The transaction should have two inputs.
             assert_eq!(tx.prefix.inputs.len(), 2);
 
-            // The transaction should have four outputs (output and change for both parties,
-            // plus required change)
+            // The transaction should have five outputs (output and change for both parties,
+            // plus another required change output for originator)
             assert_eq!(tx.prefix.outputs.len(), 5);
 
             // The tombstone block should be what sci limits it to

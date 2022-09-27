@@ -250,9 +250,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         if let Some(rules) = sci.tx_in.input_rules.as_ref() {
             // Check for any partial fill elements. These cannot be used with this API,
             // the caller must use add_presigned_partial_fill_input instead.
-            if rules.fractional_change.is_some()
-                || !rules.fractional_outputs.is_empty()
-                || rules.min_fill_value != 0
+            if rules.partial_fill_change.is_some()
+                || !rules.partial_fill_outputs.is_empty()
+                || rules.min_partial_fill_value != 0
             {
                 return Err(SignedContingentInputError::PartialFillInputNotAllowedHere);
             }
@@ -304,30 +304,30 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .input_rules
             .as_ref()
             .ok_or(SignedContingentInputError::MissingRules)?;
-        let fractional_change = rules
-            .fractional_change
+        let partial_fill_change = rules
+            .partial_fill_change
             .as_ref()
-            .ok_or(SignedContingentInputError::MissingFractionalChange)?;
-        let fractional_change_amount = fractional_change.reveal_amount()?;
-        if fractional_change_amount.value == 0 {
-            return Err(SignedContingentInputError::ZeroFractionalChange);
+            .ok_or(SignedContingentInputError::MissingPartialFillChange)?;
+        let partial_fill_change_amount = partial_fill_change.reveal_amount()?;
+        if partial_fill_change_amount.value == 0 {
+            return Err(SignedContingentInputError::ZeroPartialFillChange);
         }
-        if rules.min_fill_value > fractional_change_amount.value {
-            return Err(SignedContingentInputError::MinFillValueExceedsFractionalChange);
+        if rules.min_partial_fill_value > partial_fill_change_amount.value {
+            return Err(SignedContingentInputError::MinPartialFillValueExceedsPartialChange);
         }
-        if fractional_change_amount.token_id != sci_change_amount.token_id {
+        if partial_fill_change_amount.token_id != sci_change_amount.token_id {
             return Err(SignedContingentInputError::TokenIdMismatch);
         }
-        if fractional_change_amount.value - rules.min_fill_value < sci_change_amount.value {
+        if partial_fill_change_amount.value - rules.min_partial_fill_value < sci_change_amount.value {
             return Err(SignedContingentInputError::ChangeLimitExceeded);
         }
 
-        let fill_fraction_num = (fractional_change_amount.value - sci_change_amount.value) as u128;
-        let fill_fraction_denom = fractional_change_amount.value as u128;
+        let fill_fraction_num = (partial_fill_change_amount.value - sci_change_amount.value) as u128;
+        let fill_fraction_denom = partial_fill_change_amount.value as u128;
 
         // Ensure that we can reveal all amounts
-        let fractional_outputs_and_amounts: Vec<(&RevealedTxOut, Amount)> = rules
-            .fractional_outputs
+        let partial_fill_outputs_and_amounts: Vec<(&RevealedTxOut, Amount)> = rules
+            .partial_fill_outputs
             .iter()
             .map(
                 |r_tx_out| -> Result<(&RevealedTxOut, Amount), RevealedTxOutError> {
@@ -337,25 +337,25 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             )
             .collect::<Result<_, _>>()?;
 
-        // Fill all fractional outputs to precisely the smallest degree required
-        // This helper function function takes a fractional output value, and returns
-        // num / denom * fractional_output_value, rounded up
-        fn division_helper(fractional_output_value: u64, num: u128, denom: u128) -> u64 {
-            let num_128 = fractional_output_value as u128 * num;
+        // Fill all partial fill outputs to precisely the smallest degree required
+        // This helper function function takes a partial fill output value, and returns
+        // num / denom * partial_fill_output_value, rounded up
+        fn division_helper(partial_fill_output_value: u64, num: u128, denom: u128) -> u64 {
+            let num_128 = partial_fill_output_value as u128 * num;
             // Divide by fill_fraction_denom, rounding up, and truncate to u64
             ((num_128 + (denom - 1)) / denom) as u64
         }
 
-        // Add real outputs corresponding to fractional outputs to the list which is
+        // Add fractional outputs (corresponding to partial fill outputs) into the list which is
         // added to tx prefix
-        let real_fractional_amounts = fractional_outputs_and_amounts
+        let fractional_amounts = partial_fill_outputs_and_amounts
             .into_iter()
             .map(|(r_tx_out, amount)| -> Result<Amount, AmountError> {
-                let real_amount = Amount::new(
+                let fractional_amount = Amount::new(
                     division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
                     amount.token_id,
                 );
-                let mut real_tx_out = r_tx_out.tx_out.clone();
+                let mut fractional_tx_out = r_tx_out.tx_out.clone();
 
                 // Take the original TxOut and overwrite the masked amount to use the lesser
                 // amount, but with the same amount shared secret as before.
@@ -363,31 +363,31 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                     .try_into()
                     .expect("size was checked earlier");
                 let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
-                    real_amount,
+                    fractional_amount,
                     amount_shared_secret,
                 )?;
                 let (new_amount, blinding) =
                     new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
-                debug_assert!(real_amount == new_amount);
+                debug_assert!(fractional_amount == new_amount);
 
-                real_tx_out.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+                fractional_tx_out.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
 
                 let output_secret = OutputSecret {
                     amount: new_amount,
                     blinding,
                 };
 
-                self.outputs_and_secrets.push((real_tx_out, output_secret));
+                self.outputs_and_secrets.push((fractional_tx_out, output_secret));
 
-                Ok(real_amount)
+                Ok(fractional_amount)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Add the real fractional change output
+        // Add the fractional change output
         {
-            let mut real_change = fractional_change.tx_out.clone();
+            let mut fractional_change = partial_fill_change.tx_out.clone();
 
-            let amount_shared_secret: &[u8; 32] = &fractional_change.amount_shared_secret[..]
+            let amount_shared_secret: &[u8; 32] = &partial_fill_change.amount_shared_secret[..]
                 .try_into()
                 .expect("size was checked earlier");
             let new_masked_amount = MaskedAmountV2::new_from_amount_shared_secret(
@@ -398,18 +398,18 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 new_masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)?;
             debug_assert!(sci_change_amount == new_amount);
 
-            real_change.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
+            fractional_change.masked_amount = Some(MaskedAmount::V2(new_masked_amount));
 
             let output_secret = OutputSecret {
                 amount: new_amount,
                 blinding,
             };
 
-            self.outputs_and_secrets.push((real_change, output_secret));
+            self.outputs_and_secrets.push((fractional_change, output_secret));
         }
 
         self.add_presigned_input_helper(sci)?;
-        Ok(real_fractional_amounts)
+        Ok(fractional_amounts)
     }
 
     /// Add a pre-signed input to the transaction, fulfilling the MCIP 31 rules

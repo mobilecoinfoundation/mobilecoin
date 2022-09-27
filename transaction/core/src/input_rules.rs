@@ -38,18 +38,18 @@ pub struct InputRules {
 
     /// Outputs permitted to be filled fractionally instead of fully (MCIP #42)
     #[prost(message, repeated, tag = "3")]
-    pub fractional_outputs: Vec<RevealedTxOut>,
+    pub partial_fill_outputs: Vec<RevealedTxOut>,
 
     /// A change output for any leftover from this input, if a fractional fill
     /// occurs (MCIP #42)
     #[prost(message, tag = "4")]
-    pub fractional_change: Option<RevealedTxOut>,
+    pub partial_fill_change: Option<RevealedTxOut>,
 
     /// A maximum allowed value for the real change output. (MCIP #42)
     /// This can be used to impose a minimum traded amount on the counterparty
     /// to an SCI. This limit is ignored if set to zero.
     #[prost(fixed64, tag = "5")]
-    pub min_fill_value: u64,
+    pub min_partial_fill_value: u64,
 }
 
 impl InputRules {
@@ -81,34 +81,34 @@ impl InputRules {
         _block_version: BlockVersion,
         tx: &Tx,
     ) -> Result<(), InputRuleError> {
-        if let Some(fractional_change) = self.fractional_change.as_ref() {
-            // There is a fractional change output. Let's try to unblind its amount.
-            let fractional_change_amount = fractional_change.reveal_amount()?;
+        if let Some(partial_fill_change) = self.partial_fill_change.as_ref() {
+            // There is a partial fill change output. Let's try to unblind its amount.
+            let partial_fill_change_amount = partial_fill_change.reveal_amount()?;
             // If the min fill value exceeds the fractional change, then the SCI is
             // ill-formed
-            if self.min_fill_value > fractional_change_amount.value {
-                return Err(InputRuleError::MinFillValueExceedsFractionalChange);
+            if self.min_partial_fill_value > partial_fill_change_amount.value {
+                return Err(InputRuleError::MinPartialFillValueExceedsPartialFillChange);
             }
 
-            // Let's check if there is a corresponding real change output.
-            let real_change = tx
+            // Let's check if there is a corresponding fractional change output.
+            let fractional_change = tx
                 .prefix
                 .outputs
                 .iter()
-                .find(|x| fractional_change.tx_out.matches_ignoring_amount(x))
-                .ok_or(InputRuleError::MissingRealChangeOutput)?;
+                .find(|x| partial_fill_change.tx_out.matches_ignoring_amount(x))
+                .ok_or(InputRuleError::MissingFractionalChangeOutput)?;
             // Let's try to unblind its amount.
-            let real_change_amount =
-                try_reveal_amount(real_change, fractional_change.amount_shared_secret.as_ref())?;
+            let fractional_change_amount =
+                try_reveal_amount(fractional_change, partial_fill_change.amount_shared_secret.as_ref())?;
 
             // Check the bounds of the real change amount
-            if real_change_amount.token_id != fractional_change_amount.token_id {
-                return Err(InputRuleError::RealOutputTokenIdMismatch);
+            if fractional_change_amount.token_id != partial_fill_change_amount.token_id {
+                return Err(InputRuleError::FractionalOutputTokenIdMismatch);
             }
-            // Fractional change amount - min fill value is an upper bound on how much
-            // partial fil change can be returned.
-            if real_change_amount.value > fractional_change_amount.value - self.min_fill_value {
-                return Err(InputRuleError::RealChangeOutputAmountExceedsLimit);
+            // Partial fill change amount - min fill value is an upper bound on how much
+            // can be returned in the fractional change output.
+            if fractional_change_amount.value > partial_fill_change_amount.value - self.min_partial_fill_value {
+                return Err(InputRuleError::FractionalChangeOutputAmountExceedsLimit);
             }
 
             // Compute fill-fraction num and denom. This is the fraction of the maximum
@@ -116,61 +116,63 @@ impl InputRules {
             // calculation is used later when checking if real output amounts respected the
             // fill fraction.
             let fill_fraction_num =
-                (fractional_change_amount.value - real_change_amount.value) as u128;
-            let fill_fraction_denom = fractional_change_amount.value as u128;
+                (partial_fill_change_amount.value - fractional_change_amount.value) as u128;
+            let fill_fraction_denom = partial_fill_change_amount.value as u128;
 
-            // Verify fractional_outputs
-            for fractional_output in self.fractional_outputs.iter() {
-                // Try to unblind the fractional output amount.
-                let fractional_output_amount = fractional_output.reveal_amount()?;
-                // Let's check if there is a corresponding real output.
-                let real_output = tx
+            // Verify partial_fill_outputs
+            for partial_fill_output in self.partial_fill_outputs.iter() {
+                // Try to unblind the partial fill output amount.
+                let partial_fill_output_amount = partial_fill_output.reveal_amount()?;
+                // Let's check if there is a corresponding fractional output.
+                let fractional_output = tx
                     .prefix
                     .outputs
                     .iter()
-                    .find(|x| fractional_output.tx_out.matches_ignoring_amount(x))
-                    .ok_or(InputRuleError::MissingRealOutput)?;
+                    .find(|x| partial_fill_output.tx_out.matches_ignoring_amount(x))
+                    .ok_or(InputRuleError::MissingFractionalOutput)?;
                 // Let's try to unblind its amount, using amount shared secret from the
                 // fractional output (which should be the same)
-                let real_output_amount = try_reveal_amount(
-                    real_output,
-                    fractional_output.amount_shared_secret.as_ref(),
+                let fractional_output_amount = try_reveal_amount(
+                    fractional_output,
+                    partial_fill_output.amount_shared_secret.as_ref(),
                 )?;
 
                 // Check the token id of the real amount
                 // (Note, we don't have to check if the real output amount exceeds fractional
                 // output amount, because as long as the real output is at least
                 // fill fraction times fractional amount, the originator is happy.)
-                if real_output_amount.token_id != fractional_output_amount.token_id {
-                    return Err(InputRuleError::RealOutputTokenIdMismatch);
+                if fractional_output_amount.token_id != partial_fill_output_amount.token_id {
+                    return Err(InputRuleError::FractionalOutputTokenIdMismatch);
                 }
 
                 // Check that the fill fraction is respected.
                 // Intuitively, what we are doing is checking that:
                 //
-                // real_output_value >= n/d * fractional_output_value,
+                // fractional_output_value >= n/d * partial_fill_output_value,
                 //
                 // where n/d is the fill fraction. The fill fraction is 1 if
-                // real_change_amount = 0, and proportionally less as more of
+                // fractional_change_amount = 0, and proportionally less as more of
                 // the input is returned as change.
                 // However, to avoid numerical issues, we multiply this out and
                 // verify this as a comparison of u128 values:
                 //
-                // real_output_value * d >= n * fractional_output_value
-                if (real_output_amount.value as u128 * fill_fraction_denom)
-                    < (fractional_output_amount.value as u128 * fill_fraction_num)
+                // fractional_output_value * d >= n * partial_fill_output_value
+                //
+                // Note: This should be constant time ideally
+                if (fractional_output_amount.value as u128 * fill_fraction_denom)
+                    < (partial_fill_output_amount.value as u128 * fill_fraction_num)
                 {
-                    return Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction);
+                    return Err(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction);
                 }
             }
         } else {
-            // If there is no fractional change output specified, then none of the related
-            // fractional output rules or rule verification data should be present.
-            if !self.fractional_outputs.is_empty() {
-                return Err(InputRuleError::FractionalOutputsNotExpected);
+            // If there is no partial fill change output specified, then none of the related
+            // partial fill output rules or rule verification data should be present.
+            if !self.partial_fill_outputs.is_empty() {
+                return Err(InputRuleError::PartialFillOutputsNotExpected);
             }
-            if self.min_fill_value != 0 {
-                return Err(InputRuleError::MinFillValueNotExpected);
+            if self.min_partial_fill_value != 0 {
+                return Err(InputRuleError::MinPartialFillValueNotExpected);
             }
         }
         Ok(())
@@ -184,22 +186,22 @@ pub enum InputRuleError {
     MissingRequiredOutput,
     /// The tombstone block exceeds the limit
     MaxTombstoneBlockExceeded,
-    /// Fractional outputs are not expected
-    FractionalOutputsNotExpected,
-    /// Max fill value is not expected
-    MinFillValueNotExpected,
-    /// Missing real change output corresponding to fractional change
-    MissingRealChangeOutput,
-    /// Missing real output corresponding to fractional output
-    MissingRealOutput,
-    /// Real output token id did not match fraction output token id
-    RealOutputTokenIdMismatch,
-    /// Min fill value exceeds fractional change
-    MinFillValueExceedsFractionalChange,
-    /// Real output amount does not respect fill fraction
-    RealOutputAmountDoesNotRespectFillFraction,
-    /// Real change output exceeds limit
-    RealChangeOutputAmountExceedsLimit,
+    /// Partial fill outputs are not expected
+    PartialFillOutputsNotExpected,
+    /// Min partial fill value is not expected
+    MinPartialFillValueNotExpected,
+    /// Missing fractional change output corresponding to partial fill change
+    MissingFractionalChangeOutput,
+    /// Missing fractional output corresponding to partial fill output
+    MissingFractionalOutput,
+    /// Fractional output token id did not match fraction output token id
+    FractionalOutputTokenIdMismatch,
+    /// Min partial fill value exceeds partial fill change
+    MinPartialFillValueExceedsPartialFillChange,
+    /// Fractional output amount does not respect fill fraction
+    FractionalOutputAmountDoesNotRespectFillFraction,
+    /// Fractional change output exceeds limit
+    FractionalChangeOutputAmountExceedsLimit,
     /// Revealed Tx Out: {0}
     RevealedTxOut(RevealedTxOutError),
 }

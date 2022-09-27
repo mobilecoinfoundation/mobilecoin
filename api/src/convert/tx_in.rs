@@ -74,18 +74,18 @@ impl From<&InputRules> for external::InputRules {
 
         input_rules.set_max_tombstone_block(source.max_tombstone_block);
 
-        let fractional_outputs = source
-            .fractional_outputs
+        let partial_fill_outputs = source
+            .partial_fill_outputs
             .iter()
             .map(external::RevealedTxOut::from)
             .collect();
-        input_rules.set_fractional_outputs(fractional_outputs);
+        input_rules.set_partial_fill_outputs(partial_fill_outputs);
 
-        if let Some(fractional_change) = source.fractional_change.as_ref() {
-            input_rules.set_fractional_change(fractional_change.into());
+        if let Some(partial_fill_change) = source.partial_fill_change.as_ref() {
+            input_rules.set_partial_fill_change(partial_fill_change.into());
         }
 
-        input_rules.set_min_fill_value(source.min_fill_value);
+        input_rules.set_min_partial_fill_value(source.min_partial_fill_value);
 
         input_rules
     }
@@ -102,23 +102,23 @@ impl TryFrom<&external::InputRules> for InputRules {
             .map(tx::TxOut::try_from)
             .collect::<Result<Vec<_>, _>>()?;
         let max_tombstone_block = source.max_tombstone_block;
-        let fractional_outputs = source
-            .fractional_outputs
+        let partial_fill_outputs = source
+            .partial_fill_outputs
             .iter()
             .map(RevealedTxOut::try_from)
             .collect::<Result<Vec<_>, _>>()?;
-        let fractional_change = source
-            .fractional_change
+        let partial_fill_change = source
+            .partial_fill_change
             .as_ref()
             .map(RevealedTxOut::try_from)
             .transpose()?;
-        let min_fill_value = source.min_fill_value;
+        let min_partial_fill_value = source.min_partial_fill_value;
         Ok(InputRules {
             required_outputs,
             max_tombstone_block,
-            fractional_outputs,
-            fractional_change,
-            min_fill_value,
+            partial_fill_outputs,
+            partial_fill_change,
+            min_partial_fill_value,
         })
     }
 }

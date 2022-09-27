@@ -71,8 +71,8 @@ pub enum TxBuilderError {
     /// TxOut Conversion: {0}
     TxOutConversion(TxOutConversionError),
 
-    /// Already have fractional change
-    AlreadyHaveFractionalChange,
+    /// Already have partial fill change
+    AlreadyHavePartialFillChange,
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {

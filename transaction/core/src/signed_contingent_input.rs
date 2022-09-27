@@ -127,24 +127,22 @@ impl SignedContingentInput {
             }
 
             // Check that partial fill rule specs look correct
-            if let Some(fractional_change) = rules.fractional_change.as_ref() {
-                let amount = fractional_change.reveal_amount()?;
+            if let Some(partial_fill_change) = rules.partial_fill_change.as_ref() {
+                let amount = partial_fill_change.reveal_amount()?;
                 // If the min fill value exceeds the fractional change, the SCI is ill-formed
-                if rules.min_fill_value > amount.value {
-                    return Err(SignedContingentInputError::MinFillValueExceedsFractionalChange);
+                if rules.min_partial_fill_value > amount.value {
+                    return Err(SignedContingentInputError::MinPartialFillValueExceedsPartialChange);
                 }
 
                 if amount.value == 0 {
-                    return Err(SignedContingentInputError::ZeroFractionalChange);
+                    return Err(SignedContingentInputError::ZeroPartialFillChange);
                 }
-                for fractional_output in rules.fractional_outputs.iter() {
-                    let amount = fractional_output.reveal_amount()?;
-                    if amount.value == 0 {
-                        return Err(SignedContingentInputError::ZeroFractionalOutput);
-                    }
+                // Check that each output can actually be revealed
+                for partial_fill_output in rules.partial_fill_outputs.iter() {
+                    partial_fill_output.reveal_amount()?;
                 }
-            } else if !rules.fractional_outputs.is_empty() || rules.min_fill_value != 0 {
-                return Err(SignedContingentInputError::MissingFractionalChange);
+            } else if !rules.partial_fill_outputs.is_empty() || rules.min_partial_fill_value != 0 {
+                return Err(SignedContingentInputError::MissingPartialFillChange);
             }
         }
 
@@ -208,16 +206,14 @@ pub enum SignedContingentInputError {
     TxOutConversion(TxOutConversionError),
     /// Partial fill input not allowed with this API
     PartialFillInputNotAllowedHere,
-    /// Missing fractional change output
-    MissingFractionalChange,
+    /// Missing partial fill change output
+    MissingPartialFillChange,
     /// Index out of bounds
     IndexOutOfBounds,
     /// Fractional change amount was zero
-    ZeroFractionalChange,
-    /// Fractional output amount was zero
-    ZeroFractionalOutput,
-    /// Min fill value exceeds fractional change amount
-    MinFillValueExceedsFractionalChange,
+    ZeroPartialFillChange,
+    /// Min partial fill value exceeds partial fill change
+    MinPartialFillValueExceedsPartialChange,
     /// Token id mismatch
     TokenIdMismatch,
     /// Change value exceeded limit imposed by input rules
