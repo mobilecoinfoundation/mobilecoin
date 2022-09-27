@@ -71,24 +71,14 @@ impl From<InputRuleError> for ProposeTxResult {
         match src {
             InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
             InputRuleError::MaxTombstoneBlockExceeded => Self::InputRuleMaxTombstoneBlockExceeded,
-            InputRuleError::FractionalOutputsNotExpected => {
-                Self::InputRuleFractionalOutputsNotExpected
-            }
-            InputRuleError::MaxAllowedChangeValueNotExpected => {
-                Self::InputRuleMaxAllowedChangeValueNotExpected
-            }
-            InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
-            InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
-            InputRuleError::RealOutputTokenIdMismatch => Self::InputRuleRealOutputTokenIdMismatch,
-            InputRuleError::RealOutputAmountExceedsFractional => {
-                Self::InputRuleRealOutputAmountExceedsFractional
-            }
-            InputRuleError::RealOutputAmountDoesNotRespectFillFraction => {
-                Self::InputRuleRealOutputAmountDoesNotRespectFillFraction
-            }
-            InputRuleError::RealChangeOutputAmountExceedsLimit => {
-                Self::InputRuleRealChangeOutputAmountExceedsLimit
-            }
+            InputRuleError::FractionalOutputsNotExpected
+            | InputRuleError::MinFillValueNotExpected
+            | InputRuleError::MissingRealChangeOutput
+            | InputRuleError::MissingRealOutput
+            | InputRuleError::RealOutputTokenIdMismatch
+            | InputRuleError::MinFillValueExceedsFractionalChange
+            | InputRuleError::RealOutputAmountDoesNotRespectFillFraction
+            | InputRuleError::RealChangeOutputAmountExceedsLimit => Self::InputRulePartialFill,
             InputRuleError::RevealedTxOut(rtxo_err) => match rtxo_err {
                 RevealedTxOutError::InvalidAmountSharedSecret => {
                     Self::InputRuleInvalidAmountSharedSecret

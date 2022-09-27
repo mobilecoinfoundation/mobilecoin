@@ -129,6 +129,11 @@ impl SignedContingentInput {
             // Check that partial fill rule specs look correct
             if let Some(fractional_change) = rules.fractional_change.as_ref() {
                 let amount = fractional_change.reveal_amount()?;
+                // If the min fill value exceeds the fractional change, the SCI is ill-formed
+                if rules.min_fill_value > amount.value {
+                    return Err(SignedContingentInputError::MinFillValueExceedsFractionalChange);
+                }
+
                 if amount.value == 0 {
                     return Err(SignedContingentInputError::ZeroFractionalChange);
                 }
@@ -138,7 +143,7 @@ impl SignedContingentInput {
                         return Err(SignedContingentInputError::ZeroFractionalOutput);
                     }
                 }
-            } else if !rules.fractional_outputs.is_empty() || rules.max_allowed_change_value != 0 {
+            } else if !rules.fractional_outputs.is_empty() || rules.min_fill_value != 0 {
                 return Err(SignedContingentInputError::MissingFractionalChange);
             }
         }
@@ -211,10 +216,10 @@ pub enum SignedContingentInputError {
     ZeroFractionalChange,
     /// Fractional output amount was zero
     ZeroFractionalOutput,
+    /// Min fill value exceeds fractional change amount
+    MinFillValueExceedsFractionalChange,
     /// Token id mismatch
     TokenIdMismatch,
-    /// Change value exceeded offer
-    ChangeExceededOffer,
     /// Change value exceeded limit imposed by input rules
     ChangeLimitExceeded,
     /// Revealing TxOut: {0}

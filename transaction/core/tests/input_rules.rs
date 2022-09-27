@@ -188,13 +188,13 @@ fn test_input_rules_verify_fractional_max_allowed_change_value() {
 
     // Try setting max_allowed_change without any other factional rules
     // This should be an error
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 1;
+    get_first_rules_mut(&mut tx).min_fill_value = 1;
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
-        Err(InputRuleError::MaxAllowedChangeValueNotExpected)
+        Err(InputRuleError::MinFillValueNotExpected)
     );
     // Set it back, we should be good again.
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 0;
+    get_first_rules_mut(&mut tx).min_fill_value = 0;
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Add a fractional output, by doubling one of the revealed tx outs.
@@ -222,12 +222,12 @@ fn test_input_rules_verify_fractional_max_allowed_change_value() {
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Lets try imposing a limit on the change value
-    // This is >= 1000 so we should still be valid.
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 1000;
+    // This is <= 1000 so we should still be valid.
+    get_first_rules_mut(&mut tx).min_fill_value = 1000;
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
-    // Lets try imposing a smaller limit that should cause things to fail
-    get_first_rules_mut(&mut tx).max_allowed_change_value = 999;
+    // Lets try imposing a higher limit that should cause things to fail
+    get_first_rules_mut(&mut tx).min_fill_value = 1001;
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealChangeOutputAmountExceedsLimit)
@@ -468,14 +468,14 @@ fn test_input_rules_verify_multiple_fractional_outputs() {
     );
 
     // Change the fractional change output to be 500. This is less than the real
-    // change output, so that should be an error.
+    // change output value, so that should be an error.
     get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
         &revealed_tx_outs[0],
         Amount::new(500, 0.into()),
     ));
     assert_matches!(
         get_first_rules(&tx).verify(block_version, &tx),
-        Err(InputRuleError::RealOutputAmountExceedsFractional)
+        Err(InputRuleError::RealChangeOutputAmountExceedsLimit)
     );
 
     // Change the fractional change output to be 1500. This means the implied fill

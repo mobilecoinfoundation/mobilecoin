@@ -252,7 +252,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             // the caller must use add_presigned_partial_fill_input instead.
             if rules.fractional_change.is_some()
                 || !rules.fractional_outputs.is_empty()
-                || rules.max_allowed_change_value != 0
+                || rules.min_fill_value != 0
             {
                 return Err(SignedContingentInputError::PartialFillInputNotAllowedHere);
             }
@@ -280,7 +280,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Returns
     /// * A list of all outlay amounts deduced to fulfill the fractional output
-    ///   rules
+    ///   rules, in the cheapest way possible.
     pub fn add_presigned_partial_fill_input(
         &mut self,
         sci: SignedContingentInput,
@@ -312,15 +312,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         if fractional_change_amount.value == 0 {
             return Err(SignedContingentInputError::ZeroFractionalChange);
         }
+        if rules.min_fill_value > fractional_change_amount.value {
+            return Err(SignedContingentInputError::MinFillValueExceedsFractionalChange);
+        }
         if fractional_change_amount.token_id != sci_change_amount.token_id {
             return Err(SignedContingentInputError::TokenIdMismatch);
         }
-        if fractional_change_amount.value < sci_change_amount.value {
-            return Err(SignedContingentInputError::ChangeExceededOffer);
-        }
-        if rules.max_allowed_change_value != 0
-            && rules.max_allowed_change_value < sci_change_amount.value
-        {
+        if fractional_change_amount.value - rules.min_fill_value < sci_change_amount.value {
             return Err(SignedContingentInputError::ChangeLimitExceeded);
         }
 

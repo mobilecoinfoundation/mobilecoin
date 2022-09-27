@@ -48,9 +48,9 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     /// returned. This is required if partial fill rules are used (MCIP
     /// #42).
     fractional_change: Option<RevealedTxOut>,
-    /// The maximum allowed change value, if any. This can be used to create a
-    /// minimum fill amount. (See MCIP #42).
-    maximum_allowed_change_value: u64,
+    /// The minimum fill value, if any. This is in the token id of the
+    /// fractional change output. (See MCIP #42).
+    min_fill_value: u64,
     /// The source of validated fog pubkeys used for this signed contingent
     /// input
     fog_resolver: FPR,
@@ -127,7 +127,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             tombstone_block: u64::max_value(),
             fractional_outputs: Vec::new(),
             fractional_change: None,
-            maximum_allowed_change_value: 0u64,
+            min_fill_value: 0u64,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -442,17 +442,18 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         Ok((revealed_tx_out, confirmation))
     }
 
-    /// Sets the max allowed change value. This ensures that at least some
-    /// minimum amount of the original input is used, so the signer can
-    /// impose a minimum fill requirement on the counterparty (to prevent
-    /// griefing).
+    /// Sets the minimum fill value.
+    ///
+    /// This is present so that the signer can
+    /// impose a minimum fill requirement on the counterparty, to prevent
+    /// griefing, i.e. filling the order for a dust amount.
     ///
     /// # Arguments
-    /// * `value` - The u64 value which the fractional change output in the
-    ///   filled order must not exceed. This is denominated in the token id of
-    ///   the fractional change output.
-    pub fn set_maximum_allowed_change_value(&mut self, value: u64) {
-        self.maximum_allowed_change_value = value;
+    /// * `value` - The u64 value, in the token id of the fractional change id,
+    ///   which must be used and cannot be returned by the counterparty who
+    ///   consumes the SCI.
+    pub fn set_min_fill_value(&mut self, value: u64) {
+        self.min_fill_value = value;
     }
 
     /// Consume the builder and return the transaction.
@@ -495,7 +496,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             },
             fractional_outputs: self.fractional_outputs,
             fractional_change: self.fractional_change,
-            max_allowed_change_value: self.maximum_allowed_change_value,
+            min_fill_value: self.min_fill_value,
         };
 
         // Get the tx out indices from the proofs in the input credentials,
@@ -3417,6 +3418,9 @@ pub mod tests {
                     &mut rng,
                 )
                 .unwrap();
+
+            // Set a minimum fill requirement of 2 millimob
+            builder.set_min_fill_value(2 * MILLIMOB_TO_PICOMOB);
 
             builder.set_tombstone_block(2000);
 

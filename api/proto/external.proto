@@ -253,10 +253,13 @@ message InputRules {
     // A change output for any leftover from this input, if a fractional fill occurs (MCIP #42)
     RevealedTxOut fractional_change = 4;
 
-    // A maximum allowed value for the real change output corresponding to fractional (MCIP #42)
-    // This can be used to enforce a "minimum fill" limit for a swap.
-    // This value is ignored if set to zero.
-    fixed64 max_allowed_change_value = 5;
+    // A minimum fill value for the partial fill rules. (MCIP #42)
+    // A counterparty who fills an SCI must keep at least this much of the offer
+    // and can't return all of it as change if this is set.
+    // This can be used to prevent griefing where someone fills your offer in exchange
+    // for dust.
+    // This minimum has no effect if set to 0
+    fixed64 min_fill_value = 5;
 }
 
 // A TxOut together with its amount shared secret. This is sometimes needed to

@@ -85,7 +85,7 @@ impl From<&InputRules> for external::InputRules {
             input_rules.set_fractional_change(fractional_change.into());
         }
 
-        input_rules.set_max_allowed_change_value(source.max_allowed_change_value);
+        input_rules.set_min_fill_value(source.min_fill_value);
 
         input_rules
     }
@@ -112,13 +112,13 @@ impl TryFrom<&external::InputRules> for InputRules {
             .as_ref()
             .map(RevealedTxOut::try_from)
             .transpose()?;
-        let max_allowed_change_value = source.max_allowed_change_value;
+        let min_fill_value = source.min_fill_value;
         Ok(InputRules {
             required_outputs,
             max_tombstone_block,
             fractional_outputs,
             fractional_change,
-            max_allowed_change_value,
+            min_fill_value,
         })
     }
 }

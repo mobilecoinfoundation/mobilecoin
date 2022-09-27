@@ -49,7 +49,7 @@ pub struct InputRules {
     /// This can be used to impose a minimum traded amount on the counterparty
     /// to an SCI. This limit is ignored if set to zero.
     #[prost(fixed64, tag = "5")]
-    pub max_allowed_change_value: u64,
+    pub min_fill_value: u64,
 }
 
 impl InputRules {
@@ -84,6 +84,12 @@ impl InputRules {
         if let Some(fractional_change) = self.fractional_change.as_ref() {
             // There is a fractional change output. Let's try to unblind its amount.
             let fractional_change_amount = fractional_change.reveal_amount()?;
+            // If the min fill value exceeds the fractional change, then the SCI is
+            // ill-formed
+            if self.min_fill_value > fractional_change_amount.value {
+                return Err(InputRuleError::MinFillValueExceedsFractionalChange);
+            }
+
             // Let's check if there is a corresponding real change output.
             let real_change = tx
                 .prefix
@@ -99,12 +105,9 @@ impl InputRules {
             if real_change_amount.token_id != fractional_change_amount.token_id {
                 return Err(InputRuleError::RealOutputTokenIdMismatch);
             }
-            if real_change_amount.value > fractional_change_amount.value {
-                return Err(InputRuleError::RealOutputAmountExceedsFractional);
-            }
-            if self.max_allowed_change_value != 0
-                && real_change_amount.value > self.max_allowed_change_value
-            {
+            // Fractional change amount - min fill value is an upper bound on how much
+            // partial fil change can be returned.
+            if real_change_amount.value > fractional_change_amount.value - self.min_fill_value {
                 return Err(InputRuleError::RealChangeOutputAmountExceedsLimit);
             }
 
@@ -166,8 +169,8 @@ impl InputRules {
             if !self.fractional_outputs.is_empty() {
                 return Err(InputRuleError::FractionalOutputsNotExpected);
             }
-            if self.max_allowed_change_value != 0 {
-                return Err(InputRuleError::MaxAllowedChangeValueNotExpected);
+            if self.min_fill_value != 0 {
+                return Err(InputRuleError::MinFillValueNotExpected);
             }
         }
         Ok(())
@@ -183,16 +186,16 @@ pub enum InputRuleError {
     MaxTombstoneBlockExceeded,
     /// Fractional outputs are not expected
     FractionalOutputsNotExpected,
-    /// Max allowed change value is not expected
-    MaxAllowedChangeValueNotExpected,
+    /// Max fill value is not expected
+    MinFillValueNotExpected,
     /// Missing real change output corresponding to fractional change
     MissingRealChangeOutput,
     /// Missing real output corresponding to fractional output
     MissingRealOutput,
     /// Real output token id did not match fraction output token id
     RealOutputTokenIdMismatch,
-    /// Real output amount exceeds corresponding fractional output amount
-    RealOutputAmountExceedsFractional,
+    /// Min fill value exceeds fractional change
+    MinFillValueExceedsFractionalChange,
     /// Real output amount does not respect fill fraction
     RealOutputAmountDoesNotRespectFillFraction,
     /// Real change output exceeds limit
