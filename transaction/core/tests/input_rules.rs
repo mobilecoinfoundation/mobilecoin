@@ -417,6 +417,18 @@ fn test_input_rules_verify_fractional_outputs() {
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
     );
+    // Set the fractional output to be 2997. This should still be invalid but on the
+    // boundary
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(2997, 0.into()));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+    // Set the fractional output to be 2996. This should be valid again.
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(2996, 0.into()));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
 }
 
 // Test that input rules verification is working for Tx with multiple fractional
@@ -495,4 +507,78 @@ fn test_input_rules_verify_multiple_fractional_outputs() {
         get_first_rules(&tx).verify(block_version, &tx),
         Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
     );
+}
+
+// Test that input rules verification is working for Tx with a mix of required
+// and fractional outputs
+#[test]
+fn test_input_rules_verify_mixed_required_and_fractional_outputs() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+
+    // Set the fractional change output to be 1200, so fill fraction is 1/6
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(1200, 0.into()),
+    ));
+
+    // Add a fractional output, by going to 6x the revealed tx out
+    get_first_rules_mut(&mut tx)
+        .fractional_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(6000, 0.into()),
+        ));
+
+    // Everything should be okay right now
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Add a required output, using the last tx out
+    get_first_rules_mut(&mut tx)
+        .required_outputs
+        .push(revealed_tx_outs[3].tx_out.clone());
+
+    // Everything should be okay right now
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Try changing the fractional output by increasing the ask slightly, the Tx
+    // should be invalid
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(6001, 0.into()));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+
+    // Reduce fractional change offer slightly, things should be okay now
+    get_first_rules_mut(&mut tx).fractional_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(1199, 0.into()),
+    ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Things should still be okay on the ask up to 6025, but bad at 6026
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(6026, 0.into()));
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::RealOutputAmountDoesNotRespectFillFraction)
+    );
+    get_first_rules_mut(&mut tx).fractional_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[1], Amount::new(6025, 0.into()));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Try tweaking the required output
+    get_first_rules_mut(&mut tx).required_outputs[0] =
+        change_committed_amount(&revealed_tx_outs[3], Amount::new(987, 0.into())).tx_out;
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::MissingRequiredOutput)
+    );
+
+    // Change the output in the tx prefix to match
+    tx.prefix.outputs[3] =
+        change_committed_amount(&revealed_tx_outs[3], Amount::new(987, 0.into())).tx_out;
+    // Should now all be okay
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
 }
