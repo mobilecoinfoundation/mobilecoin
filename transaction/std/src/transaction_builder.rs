@@ -247,44 +247,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         &mut self,
         sci: SignedContingentInput,
     ) -> Result<(), SignedContingentInputError> {
-        if *self.block_version != sci.block_version {
-            return Err(SignedContingentInputError::BlockVersionMismatch(
-                *self.block_version,
-                sci.block_version,
-            ));
-        }
-        // Check if the sci already has membership proofs, the caller is supposed to do
-        // that
-        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
-            return Err(SignedContingentInputError::MissingProofs);
-        }
         if let Some(rules) = sci.tx_in.input_rules.as_ref() {
-            // Enforce all rules so that our transaction will be valid
-            if rules.required_outputs.len() != sci.required_output_amounts.len() {
-                return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
-            }
-            // 1. Required outputs
-            for (required_output, unmasked_amount) in rules
-                .required_outputs
-                .iter()
-                .zip(sci.required_output_amounts.iter())
-            {
-                // Check if the required output is already there
-                if !self
-                    .outputs_and_secrets
-                    .iter()
-                    .any(|(output, _sec)| output == required_output)
-                {
-                    // If not, add it
-                    self.outputs_and_secrets
-                        .push((required_output.clone(), unmasked_amount.clone().into()));
-                }
-            }
-            // 2. Max tombstone block
-            if rules.max_tombstone_block != 0 {
-                self.impose_tombstone_block_limit(rules.max_tombstone_block);
-            }
-            // 3. Check for any partial fill elements. These cannot be used with this API,
+            // Check for any partial fill elements. These cannot be used with this API,
             // the caller must use add_presigned_partial_fill_input instead.
             if rules.fractional_change.is_some()
                 || !rules.fractional_outputs.is_empty()
@@ -294,8 +258,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             }
         }
 
-        self.add_presigned_input_raw(sci);
-        Ok(())
+        self.add_presigned_input_helper(sci)
     }
 
     /// Add a pre-signed Input with partial fill rules to the transaction, also
@@ -323,12 +286,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         sci: SignedContingentInput,
         sci_change_amount: Amount,
     ) -> Result<Vec<Amount>, SignedContingentInputError> {
-        if *self.block_version != sci.block_version {
-            return Err(SignedContingentInputError::BlockVersionMismatch(
-                *self.block_version,
-                sci.block_version,
-            ));
-        }
         if !self.block_version.masked_amount_v2_is_supported() {
             return Err(
                 SignedContingentInputError::FeatureNotSupportedAtBlockVersion(
@@ -453,6 +410,36 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             self.outputs_and_secrets.push((real_change, output_secret));
         }
 
+        self.add_presigned_input_helper(sci)?;
+        Ok(real_fractional_amounts)
+    }
+
+    /// Add a pre-signed input to the transaction, fulfilling the MCIP 31 rules
+    /// (but not checking any of the MCIP 42 rules).
+    /// This is extracted to reduce code duplication between add_presigned_input
+    /// and add_presigned_partial_fill_input.
+    fn add_presigned_input_helper(
+        &mut self,
+        sci: SignedContingentInput,
+    ) -> Result<(), SignedContingentInputError> {
+        if *self.block_version != sci.block_version {
+            return Err(SignedContingentInputError::BlockVersionMismatch(
+                *self.block_version,
+                sci.block_version,
+            ));
+        }
+        // Check if the sci already has membership proofs, the caller is supposed to do
+        // that
+        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
+            return Err(SignedContingentInputError::MissingProofs);
+        }
+
+        let rules = sci
+            .tx_in
+            .input_rules
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingRules)?;
+
         // Enforce all non-partial fill rules so that our transaction will be valid
         if rules.required_outputs.len() != sci.required_output_amounts.len() {
             return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
@@ -479,8 +466,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             self.impose_tombstone_block_limit(rules.max_tombstone_block);
         }
 
+        // Don't do anything about partial fill rules, caller was supposed to do
+        // that if they are present.
+        // Now just add the sci to the list of inputs.
         self.add_presigned_input_raw(sci);
-        Ok(real_fractional_amounts)
+        Ok(())
     }
 
     /// Add a pre-signed Input to the transaction, without also fulfilling
