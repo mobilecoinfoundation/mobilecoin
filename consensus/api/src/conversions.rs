@@ -75,7 +75,7 @@ impl From<InputRuleError> for ProposeTxResult {
                 Self::InputRuleFractionalOutputsNotExpected
             }
             InputRuleError::MaxAllowedChangeValueNotExpected => {
-                Self::InputRuleMaxAlowedChangeValueNotExpected
+                Self::InputRuleMaxAllowedChangeValueNotExpected
             }
             InputRuleError::MissingRealChangeOutput => Self::InputRuleMissingRealChangeOutput,
             InputRuleError::MissingRealOutput => Self::InputRuleMissingRealOutput,
