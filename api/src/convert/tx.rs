@@ -266,7 +266,7 @@ mod tests {
             )
             .unwrap();
 
-            // Orignator requests an output worth amount2 destined to themselves
+            // Originator requests an output worth amount2 destined to themselves
             sci_builder
                 .add_fractional_output(
                     Amount::new(1000 * MILLIMOB_TO_PICOMOB, Mob::ID),
