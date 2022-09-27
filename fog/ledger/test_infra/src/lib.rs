@@ -85,7 +85,10 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn connect_to_key_image_store(&self, _ledger_store_id: ResponderId) -> EnclaveResult<ClientAuthRequest> {
+    fn connect_to_key_image_store(
+        &self,
+        _ledger_store_id: ResponderId,
+    ) -> EnclaveResult<ClientAuthRequest> {
         unimplemented!()
     }
 
@@ -105,7 +108,7 @@ impl LedgerEnclave for MockEnclave {
     }
 
     fn handle_key_image_store_request(
-        &self, 
+        &self,
         _router_query: EnclaveMessage<ClientSession>,
     ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
         unimplemented!()

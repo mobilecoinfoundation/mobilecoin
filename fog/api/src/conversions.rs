@@ -2,7 +2,9 @@
 //
 // Contains helper methods that enable conversions for Fog Api types.
 
-use crate::{fog_common, ingest_common, view::MultiViewStoreQueryRequest};
+use crate::{
+    fog_common, ingest_common, ledger::MultiKeyImageStoreRequest, view::MultiViewStoreQueryRequest,
+};
 use mc_api::ConversionError;
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
@@ -28,6 +30,15 @@ impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
         multi_view_store_query_request.set_queries(vec![].into());
 
         multi_view_store_query_request
+    }
+}
+
+impl From<Vec<attest::Message>> for MultiKeyImageStoreRequest {
+    fn from(attested_query_messages: Vec<attest::Message>) -> MultiKeyImageStoreRequest {
+        let mut multi_key_image_store_request = MultiKeyImageStoreRequest::new();
+        multi_key_image_store_request.set_queries(attested_query_messages.into());
+
+        multi_key_image_store_request
     }
 }
 

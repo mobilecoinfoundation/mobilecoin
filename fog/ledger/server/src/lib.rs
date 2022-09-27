@@ -11,9 +11,10 @@ mod router_handlers;
 mod server;
 mod untrusted_tx_out_service;
 
-//Router & store system. KeyImageService can function as a Store but the router is implemented as a different GRPC server struct.
-mod key_image_router_service;
+//Router & store system. KeyImageService can function as a Store but the router
+// is implemented as a different GRPC server struct.
 mod key_image_router_server;
+mod key_image_router_service;
 
 pub use block_service::BlockService;
 pub use config::LedgerServerConfig;

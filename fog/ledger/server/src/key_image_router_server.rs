@@ -7,9 +7,9 @@ use mc_common::logger::{log, Logger};
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::ConnectionUri;
-use mc_util_grpc::{ReadinessIndicator, ConnectionUriGrpcioServer};
+use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 
-use crate::{key_image_router_service::KeyImageRouterService, config::LedgerRouterConfig};
+use crate::{config::LedgerRouterConfig, key_image_router_service::KeyImageRouterService};
 
 #[allow(dead_code)] // FIXME
 pub struct KeyImageRouterServer {
@@ -20,7 +20,7 @@ pub struct KeyImageRouterServer {
 impl KeyImageRouterServer {
     /// Creates a new ledger router server instance
     #[allow(dead_code)] // FIXME
-    pub fn new<E> (
+    pub fn new<E>(
         config: LedgerRouterConfig,
         enclave: E,
         shards: Vec<ledger_grpc::KeyImageStoreApiClient>,
@@ -39,14 +39,12 @@ impl KeyImageRouterServer {
 
         // Health check service - will be used in both cases
         let health_service =
-            mc_util_grpc::HealthService::new(
-                Some(readiness_indicator.into()), logger.clone()
-            ).into_service();
+            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
+                .into_service();
 
         match config.client_listen_uri {
             // Router server
             crate::config::KeyImageClientListenUri::ClientFacing(ledger_router_uri) => {
-
                 // Init ledger router service.
                 let ledger_router_service = ledger_grpc::create_ledger_api(
                     KeyImageRouterService::new(enclave, shards, logger.clone()),
@@ -63,15 +61,14 @@ impl KeyImageRouterServer {
                     .register_service(ledger_router_service)
                     .register_service(health_service)
                     .bind_using_uri(&ledger_router_uri, logger.clone());
-        
                 let server = server_builder.build().unwrap();
-        
+
                 Self { server, logger }
-            },
-            // Store server. 
+            }
+            // Store server.
             crate::config::KeyImageClientListenUri::Store(_ledger_store_uri) => {
                 todo!()
-            },
+            }
         }
     }
 

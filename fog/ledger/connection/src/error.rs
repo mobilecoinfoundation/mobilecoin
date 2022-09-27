@@ -8,6 +8,7 @@ use mc_api::ConversionError;
 
 use mc_fog_enclave_connection::Error as EnclaveConnectionError;
 use mc_fog_uri::FogLedgerUri;
+use mc_util_uri::UriConversionError;
 
 /// Error type returned by LedgerServerConn
 #[derive(Debug, Display)]
@@ -33,5 +34,11 @@ impl From<ProtobufError> for Error {
 impl From<ConversionError> for Error {
     fn from(err: ConversionError) -> Self {
         Error::Conversion(err)
+    }
+}
+
+impl From<UriConversionError> for Error {
+    fn from(err: UriConversionError) -> Self {
+        Self::UriConversionError(err)
     }
 }
