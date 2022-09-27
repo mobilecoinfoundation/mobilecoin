@@ -86,7 +86,7 @@ impl InputRules {
             let (partial_fill_change_amount, _) = partial_fill_change.reveal_amount()?;
             // If the min fill value exceeds the fractional change, then the SCI is
             // ill-formed
-            if self.min_partial_fill_value > partial_fill_change_amount.value {
+            if partial_fill_change_amount.value < self.min_partial_fill_value {
                 return Err(InputRuleError::MinPartialFillValueExceedsPartialFillChange);
             }
 
@@ -95,7 +95,7 @@ impl InputRules {
                 .prefix
                 .outputs
                 .iter()
-                .find(|x| partial_fill_change.tx_out.matches_ignoring_amount(x))
+                .find(|x| partial_fill_change.tx_out.eq_ignoring_amount(x))
                 .ok_or(InputRuleError::MissingFractionalChangeOutput)?;
             // Let's try to unblind its amount.
             let (fractional_change_amount, _) = try_reveal_amount(
@@ -132,7 +132,7 @@ impl InputRules {
                     .prefix
                     .outputs
                     .iter()
-                    .find(|x| partial_fill_output.tx_out.matches_ignoring_amount(x))
+                    .find(|x| partial_fill_output.tx_out.eq_ignoring_amount(x))
                     .ok_or(InputRuleError::MissingFractionalOutput)?;
                 // Let's try to unblind its amount, using amount shared secret from the
                 // fractional output (which should be the same)
