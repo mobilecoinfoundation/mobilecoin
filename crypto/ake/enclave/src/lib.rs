@@ -239,12 +239,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Ok(())
     }
 
-    /// Constructs a ClientAuthRequest to be sent to an enclave backend.
+    /// Constructs a NonceAuthRequest to be sent to an enclave backend.
     ///
     /// Differs from peer_init in that this enclave does not establish a peer
     /// connection to the enclave described by `backend_id`. Rather, this
     /// enclave serves as a client to this other backend enclave.
-    pub fn backend_init(&self, backend_id: ResponderId) -> Result<ClientAuthRequest> {
+    pub fn backend_init(&self, backend_id: ResponderId) -> Result<NonceAuthRequest> {
         let mut csprng = McRng::default();
 
         let initiator = Start::new(backend_id.to_string());
@@ -264,7 +264,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     pub fn backend_connect(
         &self,
         backend_id: ResponderId,
-        backend_auth_response: ClientAuthResponse,
+        backend_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         let initiator = self
             .backend_auth_pending
@@ -530,7 +530,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     pub fn reencrypt_sealed_message_for_backends(
         &self,
         sealed_client_message: &SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         let (client_query_bytes, _) = sealed_client_message.data.unseal_raw()?;
 
         let mut backends = self.backends.lock()?;
@@ -538,8 +538,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .iter_mut()
             .map(|(_, encryptor)| {
                 let aad = sealed_client_message.aad.clone();
-                let data = encryptor.encrypt(&aad, &client_query_bytes)?;
-                let channel_id = sealed_client_message.channel_id.clone();
+                let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_query_bytes)?;
+                let channel_id =
+                    NonceSession::new(sealed_client_message.channel_id.clone().into(), nonce);
                 Ok(EnclaveMessage {
                     aad,
                     channel_id,
@@ -554,14 +555,16 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     pub fn backend_decrypt(
         &self,
         responder_id: ResponderId,
-        msg: EnclaveMessage<ClientSession>,
+        msg: EnclaveMessage<NonceSession>,
     ) -> Result<Vec<u8>> {
         // Ensure lock gets released as soon as we're done decrypting.
         let mut backends = self.backends.lock()?;
         backends
             .get_mut(&responder_id)
             .ok_or(Error::NotFound)
-            .and_then(|session| Ok(session.decrypt(&msg.aad, &msg.data)?))
+            .and_then(|session| {
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.peek_nonce())?)
+            })
     }
 
     //
