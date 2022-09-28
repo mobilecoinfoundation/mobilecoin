@@ -24,7 +24,7 @@ use mc_util_grpc::{
     rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
-use mc_util_telemetry::{tracer, Tracer};
+use mc_util_telemetry::{tracer, BoxedTracer, Tracer};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -119,52 +119,61 @@ where
         }
     }
 
+    pub fn create_untrusted_query_response(
+        &mut self,
+        aad: &[u8],
+        tracer: &BoxedTracer,
+    ) -> Result<UntrustedQueryResponse, RpcStatus> {
+        // Attempt and deserialize the untrusted portion of this request.
+        let query_request_aad: QueryRequestAAD = mc_util_serial::decode(aad).map_err(|err| {
+            RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                format!("AAD deserialization error: {}", err),
+            )
+        })?;
+
+        let (user_events, next_start_from_user_event_id) =
+            tracer.in_span("search_user_events", |_cx| {
+                self.db
+                    .search_user_events(query_request_aad.start_from_user_event_id)
+                    .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))
+            })?;
+
+        let (
+            highest_processed_block_count,
+            highest_processed_block_signature_timestamp,
+            last_known_block_count,
+            last_known_block_cumulative_txo_count,
+        ) = tracer.in_span("get_shared_state", |_cx_| {
+            let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
+            (
+                shared_state.highest_processed_block_count,
+                shared_state.highest_processed_block_signature_timestamp,
+                shared_state.last_known_block_count,
+                shared_state.last_known_block_cumulative_txo_count,
+            )
+        });
+
+        let untrusted_query_response = UntrustedQueryResponse {
+            user_events,
+            next_start_from_user_event_id,
+            highest_processed_block_count,
+            highest_processed_block_signature_timestamp,
+            last_known_block_count,
+            last_known_block_cumulative_txo_count,
+        };
+
+        Ok(untrusted_query_response)
+    }
+
     /// Unwrap and forward to enclave
     pub fn query_impl(&mut self, request: attest::Message) -> Result<attest::Message, RpcStatus> {
         log::trace!(self.logger, "Getting encrypted request");
         let tracer = tracer!();
 
         tracer.in_span("query_impl", |_cx| {
-            // Attempt and deserialize the untrusted portion of this request.
-            let query_request_aad: QueryRequestAAD = mc_util_serial::decode(request.get_aad())
-                .map_err(|err| {
-                    RpcStatus::with_message(
-                        RpcStatusCode::INVALID_ARGUMENT,
-                        format!("AAD deserialization error: {}", err),
-                    )
-                })?;
-
-            let (user_events, next_start_from_user_event_id) =
-                tracer.in_span("search_user_events", |_cx| {
-                    self.db
-                        .search_user_events(query_request_aad.start_from_user_event_id)
-                        .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))
-                })?;
-
-            let (
-                highest_processed_block_count,
-                highest_processed_block_signature_timestamp,
-                last_known_block_count,
-                last_known_block_cumulative_txo_count,
-            ) = tracer.in_span("get_shared_state", |_cx_| {
-                let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
-                (
-                    shared_state.highest_processed_block_count,
-                    shared_state.highest_processed_block_signature_timestamp,
-                    shared_state.last_known_block_count,
-                    shared_state.last_known_block_cumulative_txo_count,
-                )
-            });
-
-            let untrusted_query_response = UntrustedQueryResponse {
-                user_events,
-                next_start_from_user_event_id,
-                highest_processed_block_count,
-                highest_processed_block_signature_timestamp,
-                last_known_block_count,
-                last_known_block_cumulative_txo_count,
-            };
-
+            let untrusted_query_response =
+                self.create_untrusted_query_response(request.get_aad(), &tracer)?;
             let result_blob = tracer.in_span("enclave_query", |_cx| {
                 self.enclave
                     .query(request.into(), untrusted_query_response)
@@ -177,15 +186,39 @@ where
         })
     }
 
+    /// Unwrap and forward to enclave
+    pub fn query_nonce_impl(
+        &mut self,
+        request: attest::NonceMessage,
+    ) -> Result<attest::NonceMessage, RpcStatus> {
+        log::trace!(self.logger, "Getting encrypted request");
+        let tracer = tracer!();
+
+        tracer.in_span("query_impl", |_cx| {
+            // TODO: Create query_nonce enclave method that does what query currently does
+            // but for NonceMessage. It should produce data and a nonce that is
+            // then set on the nonce_message.
+            let _untrusted_query_response =
+                self.create_untrusted_query_response(request.get_aad(), &tracer)?;
+            let data = vec![0; 0];
+            let nonce = 0;
+
+            let mut nonce_message = attest::NonceMessage::new();
+            nonce_message.set_data(data);
+            nonce_message.set_nonce(nonce);
+            Ok(nonce_message)
+        })
+    }
+
     fn process_queries(
         &mut self,
         fog_view_store_uri: FogViewStoreUri,
-        queries: Vec<attest::Message>,
+        queries: Vec<attest::NonceMessage>,
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
         response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
         for query in queries.into_iter() {
-            let result = self.query_impl(query);
+            let result = self.query_nonce_impl(query);
             // Only one of the query messages in an MVSQR is intended for this store
             if let Ok(attested_message) = result {
                 {

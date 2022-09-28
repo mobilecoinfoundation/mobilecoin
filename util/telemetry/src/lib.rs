@@ -8,10 +8,12 @@ pub use opentelemetry::{
 };
 
 use opentelemetry::{
-    global::{tracer_provider, BoxedTracer},
+    global::tracer_provider,
     trace::{SpanBuilder, TraceId, TracerProvider},
 };
 use std::borrow::Cow;
+
+pub use opentelemetry::global::BoxedTracer;
 
 #[macro_export]
 macro_rules! tracer {

@@ -24,14 +24,14 @@ pub struct ProcessedShardResponseData {
     pub view_store_uris_for_authentication: Vec<FogViewStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<(ResponderId, attest::Message)>,
+    pub new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
         view_store_uris_for_authentication: Vec<FogViewStoreUri>,
-        new_query_responses: Vec<(ResponderId, attest::Message)>,
+        new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
