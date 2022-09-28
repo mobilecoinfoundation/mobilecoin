@@ -36,32 +36,33 @@ pub struct InputRules {
     #[prost(fixed64, tag = "2")]
     pub max_tombstone_block: u64,
 
-    // Outputs required to appear in the TxPrefix, but which are permitted to be
-    // filled partially instead of fully, according to the "fill fraction" which
-    // is inferred using the "partial fill change" output (MCIP #42)
+    /// Outputs required to appear in the TxPrefix, but which are permitted to
+    /// be filled partially instead of fully, according to the "fill
+    /// fraction" which is inferred using the "partial fill change" output
+    /// (MCIP #42)
     #[prost(message, repeated, tag = "3")]
     pub partial_fill_outputs: Vec<RevealedTxOut>,
 
-    // A change output for any leftover from this input, which may occur during
-    // a partial fill (MCIP #42).
-    //
-    // This field must be present whenever partial fills are used, because the
-    // comparison of this "idealized" output and the corresponding "fractional"
-    // change which appears in the TxPrefix is what determines the "fill fraction",
-    // that is, the degree to which a counterparty is obliged to fill every
-    // partial fill output in these rules.
-    //
-    // It is an error to use any of the partial fill options without also
-    // setting this.
+    /// A change output for any leftover from this input, which may occur during
+    /// a partial fill (MCIP #42).
+    ///
+    /// This field must be present whenever partial fills are used, because the
+    /// comparison of this "idealized" output and the corresponding "fractional"
+    /// change which appears in the TxPrefix is what determines the "fill
+    /// fraction", that is, the degree to which a counterparty is obliged to
+    /// fill every partial fill output in these rules.
+    ///
+    /// It is an error to use any of the partial fill options without also
+    /// setting this.
     #[prost(message, tag = "4")]
     pub partial_fill_change: Option<RevealedTxOut>,
 
-    // A minimum fill value for the partial fill rules. (MCIP #42)
-    // A counterparty who fills an SCI must keep at least this much of the offer
-    // and can't return all of it as change if this is set.
-    // This can be used to prevent griefing where someone fills your offer in exchange
-    // for dust.
-    // This minimum has no effect if set to 0.
+    /// A minimum fill value for the partial fill rules. (MCIP #42)
+    /// A counterparty who fills an SCI must keep at least this much of the
+    /// offer and can't return all of it as change if this is set.
+    /// This can be used to prevent griefing where someone fills your offer in
+    /// exchange for dust.
+    /// This minimum has no effect if set to 0.
     #[prost(fixed64, tag = "5")]
     pub min_partial_fill_value: u64,
 }
