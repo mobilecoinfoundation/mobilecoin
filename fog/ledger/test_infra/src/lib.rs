@@ -100,16 +100,31 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn create_key_image_store_query(
+    fn handle_key_image_store_request(
+        &self,
+        _router_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
+        unimplemented!()
+    }
+
+    fn decrypt_and_seal_query(
         &self,
         _client_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<mc_attest_enclave_api::SealedClientMessage> {
+        unimplemented!()
+    }
+
+    fn create_multi_key_image_store_query_data(
+        &self,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
     ) -> EnclaveResult<Vec<EnclaveMessage<ClientSession>>> {
         unimplemented!()
     }
 
-    fn handle_key_image_store_request(
+    fn collate_shard_query_responses(
         &self,
-        _router_query: EnclaveMessage<ClientSession>,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
+        _shard_query_responses: std::collections::BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
     ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
         unimplemented!()
     }

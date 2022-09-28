@@ -17,6 +17,10 @@ path = "src/bin/main.rs"
 name = "ledger_router_server"
 path = "src/bin/key_image_router.rs"
 
+[[bin]]
+name = "ledger_store_server"
+path = "src/bin/key_image_store.rs"
+
 [dependencies]
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
