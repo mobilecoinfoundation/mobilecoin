@@ -168,7 +168,7 @@ fn test_input_rules_verify_min_partial_fill_value() {
     let block_version = BlockVersion::THREE;
     let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
 
-    // Try setting min_partial_fil_value without any other factional rules
+    // Try setting min_partial_fill_value without any other fractional rules
     // This should be an error
     get_first_rules_mut(&mut tx).min_partial_fill_value = 1;
     assert_matches!(
