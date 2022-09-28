@@ -174,8 +174,18 @@ if __name__ == '__main__':
         args.fee,
         args.token_id,
     )
-    logging.info("Submitting burn transaction")
+    logging.info("Constructed burn transaction")
     print(tx_proposal)
+
+    # Search for the burn txout. mobilecoind will create one "outlay" which is
+    # the burn, and there is a map in the TxProposal that tells you which TxOut it is.
+    if len(tx_proposal.outlay_index_to_tx_out_index) != 1:
+        logging.warning(f"Unexpected number of outlays: {tx_proposal.outlay_index_to_tx_out_index}")
+    tx_out_public_key_bytes = tx_proposal.tx.prefix.outputs[tx_proposal.outlay_index_to_tx_out_index[0]].public_key.data
+    tx_out_public_key_hex = tx_out_public_key_bytes.hex()
+    logging.info("The hex bytes of burn TxOut public key are: {tx_out_public_key_hex}")
+
+    logging.info("Submitting burn transaction")
     submit_response = client2.submit_tx(tx_proposal)
     print(submit_response)
 
@@ -186,3 +196,5 @@ if __name__ == '__main__':
 
     if new_balance == balance - args.value - args.fee:
         logging.info("Burn transaction was successful")
+    else:
+        logging.error("Burn transaction appears to be unsuccessful")
