@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
-use alloc::{string::ToString, vec::Vec};
+use alloc::{borrow::ToOwned, string::ToString, vec::Vec};
 use digest::Digest;
 use mc_attest_ake::{
     AuthPending, AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientAuthRequestInput,
@@ -15,8 +15,9 @@ use mc_attest_core::{
     VerificationReport,
 };
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
-    PeerAuthResponse, PeerSession, Result, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, PeerAuthRequest, PeerAuthResponse, PeerSession, Result,
+    SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
@@ -35,6 +36,9 @@ const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 
 /// Max number of peer sessions.
 const MAX_PEER_SESSIONS: usize = 64;
+
+/// Maximum number of concurrent sessions to this enclave from router enclaves.
+const MAX_FRONTEND_SESSIONS: usize = 10_000;
 
 /// Max number of backends that this enclave can connect to as a client.
 const MAX_BACKEND_CONNECTIONS: usize = 10000;
@@ -94,6 +98,10 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// A map of channel ID to connection state
     clients: Mutex<LruCache<ClientSession, Ready<Aes256Gcm>>>,
 
+    /// A map of inbound session IDs to  connection states, for use by a
+    /// store/router backend
+    frontends: Mutex<LruCache<NonceSession, Ready<Aes256Gcm>>>,
+
     /// A map of ResponderIds for each enclave that serves as a backend to the
     /// current enclave.
     backends: Mutex<LruCache<ResponderId, Ready<Aes256Gcm>>>,
@@ -121,6 +129,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             peer_outbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             peer_inbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             clients: Mutex::new(LruCache::new(MAX_CLIENT_SESSIONS)),
+            frontends: Mutex::new(LruCache::new(MAX_FRONTEND_SESSIONS)),
             backends: Mutex::new(LruCache::new(MAX_BACKEND_CONNECTIONS)),
         }
     }
@@ -183,6 +192,49 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         } else {
             Err(Error::AlreadyInit)
         }
+    }
+
+    /// Accept an explicit-nonce session from a frontend service to our client
+    /// responder ID
+    pub fn frontend_accept(
+        &self,
+        req: NonceAuthRequest,
+    ) -> Result<(NonceAuthResponse, NonceSession)> {
+        let local_identity = self.kex_identity.clone();
+        let ias_report = self.get_ias_report()?;
+
+        // Create the state machine
+        let responder = Start::new(self.get_client_self_id()?.to_string());
+
+        // Massage the request message into state machine input
+        let auth_request = {
+            let req: Vec<u8> = req.into();
+            ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
+                AuthRequestOutput::from(req),
+                local_identity,
+                ias_report,
+            )
+        };
+
+        // Advance the state machine
+        let mut csprng = McRng::default();
+        let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
+        // For the first message, nonce is a zero
+        let session_id = NonceSession::new(responder.binding().to_owned(), 0);
+
+        // This session is established as far as we are concerned.
+        self.frontends.lock()?.put(session_id.clone(), responder);
+
+        // Massage the state machine output into the response message
+        let auth_response: Vec<u8> = auth_response.into();
+
+        Ok((NonceAuthResponse::from(auth_response), session_id))
+    }
+
+    /// Drops a session from the given frontend router enclave.
+    pub fn frontend_close(&self, channel_id: NonceSession) -> Result<()> {
+        self.frontends.lock()?.pop(&channel_id);
+        Ok(())
     }
 
     /// Constructs a ClientAuthRequest to be sent to an enclave backend.
