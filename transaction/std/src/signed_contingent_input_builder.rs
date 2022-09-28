@@ -15,8 +15,8 @@ use mc_transaction_core::{
     ring_ct::OutputSecret,
     ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
-    Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
-    SignedContingentInput, TokenId, UnmaskedAmount,
+    Amount, BlockVersion, InputRules, MaskedAmount, MemoContext, MemoPayload, NewMemoError,
+    RevealedTxOut, SignedContingentInput, TokenId, UnmaskedAmount,
 };
 use rand_core::{CryptoRng, RngCore};
 
@@ -42,6 +42,15 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     /// on the tombstone block for any transaction which incorporates the signed
     /// input.)
     tombstone_block: u64,
+    /// The fractional outputs required by the rules for this signed input.
+    partial_fill_outputs: Vec<RevealedTxOut>,
+    /// The fractional change output where any leftover from a partial fill is
+    /// returned. This is required if partial fill rules are used (MCIP
+    /// #42).
+    partial_fill_change: Option<RevealedTxOut>,
+    /// The minimum partial fill value, if any. This is in the token id of the
+    /// partial fill change output. (See MCIP #42).
+    min_partial_fill_value: u64,
     /// The source of validated fog pubkeys used for this signed contingent
     /// input
     fog_resolver: FPR,
@@ -116,6 +125,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             input_credentials,
             required_outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
+            partial_fill_outputs: Vec::new(),
+            partial_fill_change: None,
+            min_partial_fill_value: 0u64,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -168,9 +180,6 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///
     /// A change output should be sent to the dedicated change subaddress of the
     /// sender.
-    ///
-    /// If provided, a Destination memo is attached to this output, which allows
-    /// for recoverable transaction history.
     ///
     /// The use of dedicated change subaddress for change outputs allows to
     /// authenticate the contents of destination memos, which are otherwise
@@ -282,6 +291,161 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         self.tombstone_block = min(self.fog_tombstone_block_limit, self.tombstone_block);
     }
 
+    /// Add a non-change partial fill output to the input rules.
+    ///
+    /// If a sender memo credential has been set, this will create an
+    /// authenticated sender memo for the TxOut. Otherwise the memo will be
+    /// unused.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this output
+    /// * `recipient` - The recipient's public address
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_partial_fill_output<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        // Taking self.memo_builder here means that we can call functions on &mut self,
+        // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
+        let mut mb = self
+            .memo_builder
+            .take()
+            .expect("memo builder is missing, this is a logic error");
+        let result = self.make_partial_fill_output_with_fog_hint_address(
+            amount,
+            recipient,
+            recipient,
+            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
+            rng,
+        );
+        // Put the memo builder back, BEFORE question mark operator
+        self.memo_builder = Some(mb);
+        let (revealed_tx_out, confirmation_number) = result?;
+        self.partial_fill_outputs.push(revealed_tx_out.clone());
+        Ok((revealed_tx_out.tx_out, confirmation_number))
+    }
+
+    /// Add a partial fill change output to the input rules.
+    ///
+    /// This is required when using partial fill rules.
+    ///
+    /// It's value should typically be equal to the value of the input being
+    /// signed. If it is less, then there should generally be another
+    /// required change output whose value is the difference.
+    /// If it is more, then it may be uneconomical to fill this offer.
+    /// If it is less and there is no required change output making up the
+    /// difference, then it may be uneconomical to sign this offer.
+    ///
+    /// The change output is addressed to the dedicated change subaddress.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this change output.
+    /// * `change_destination` - An object including both a primary address and
+    ///   a change subaddress to use to create this change output. The primary
+    ///   address is used for the fog hint, the change subaddress owns the
+    ///   change output. These can both be obtained from an account key, but
+    ///   this API does not require the account key.
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_partial_fill_change_output<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        change_destination: &ReservedSubaddresses,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        if self.partial_fill_change.is_some() {
+            return Err(TxBuilderError::AlreadyHavePartialFillChange);
+        }
+
+        // Taking self.memo_builder here means that we can call functions on &mut self,
+        // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
+        let mut mb = self
+            .memo_builder
+            .take()
+            .expect("memo builder is missing, this is a logic error");
+        let result = self.make_partial_fill_output_with_fog_hint_address(
+            amount,
+            &change_destination.change_subaddress,
+            &change_destination.primary_address,
+            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
+            rng,
+        );
+        // Put the memo builder back, BEFORE question mark operator
+        self.memo_builder = Some(mb);
+        let (revealed_tx_out, confirmation_number) = result?;
+        self.partial_fill_change = Some(revealed_tx_out.clone());
+        Ok((revealed_tx_out.tx_out, confirmation_number))
+    }
+
+    /// Create a partial fill output for the rules, using `fog_hint_address` to
+    /// construct the fog hint.
+    ///
+    /// This is a private implementation detail.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this output
+    /// * `recipient` - The recipient's public address
+    /// * `fog_hint_address` - The public address used to create the fog hint
+    /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
+    /// * `rng` - RNG used to generate blinding for commitment
+    fn make_partial_fill_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        fog_hint_address: &PublicAddress,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+        rng: &mut RNG,
+    ) -> Result<(RevealedTxOut, TxOutConfirmationNumber), TxBuilderError> {
+        if !self.block_version.masked_amount_v2_is_supported() {
+            return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
+                *self.block_version,
+                "partial fills",
+            ));
+        }
+
+        let (hint, pubkey_expiry) =
+            crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
+
+        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
+            self.block_version,
+            amount,
+            recipient,
+            hint,
+            memo_fn,
+            rng,
+        )?;
+        self.impose_tombstone_block_limit(pubkey_expiry);
+
+        let amount_shared_secret =
+            MaskedAmount::compute_amount_shared_secret(self.block_version, &shared_secret)?;
+
+        let revealed_tx_out = RevealedTxOut {
+            tx_out,
+            amount_shared_secret: amount_shared_secret.to_vec(),
+        };
+
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+        Ok((revealed_tx_out, confirmation))
+    }
+
+    /// Sets the minimum partial fill value.
+    ///
+    /// This is present so that the signer can
+    /// impose a minimum fill requirement on the counterparty, to prevent
+    /// griefing, i.e. filling the order for a dust amount.
+    ///
+    /// # Arguments
+    /// * `value` - The u64 value, in the token id of the fractional change,
+    ///   which must be used and cannot be returned by the counterparty who
+    ///   consumes the SCI.
+    pub fn set_min_partial_fill_value(&mut self, value: u64) {
+        self.min_partial_fill_value = value;
+    }
+
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(
         mut self,
@@ -310,6 +474,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.required_outputs_and_secrets.drain(..).unzip();
 
+        self.partial_fill_outputs
+            .sort_by(|a, b| a.tx_out.public_key.cmp(&b.tx_out.public_key));
+
         let input_rules = InputRules {
             required_outputs: outputs,
             max_tombstone_block: if self.tombstone_block == u64::max_value() {
@@ -317,6 +484,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             } else {
                 self.tombstone_block
             },
+            partial_fill_outputs: self.partial_fill_outputs,
+            partial_fill_change: self.partial_fill_change,
+            min_partial_fill_value: self.min_partial_fill_value,
         };
 
         // Get the tx out indices from the proofs in the input credentials,
@@ -2348,6 +2518,1145 @@ pub mod tests {
                 validate_signature(block_version, &tx, &mut rng),
                 Err(TransactionValidationError::InvalidTransactionSignature(_))
             );
+        }
+    }
+
+    #[test]
+    // Test that a "simple" partial fill signed contingent input is fully spendable
+    fn test_simple_partial_fill_signed_contingent_input_fully_spendable() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+
+            let originator = AccountKey::random(&mut rng);
+            let counterparty = AccountKey::random(&mut rng);
+
+            let fog_resolver = MockFogResolver(Default::default());
+
+            let token2 = TokenId::from(2);
+
+            let value = 1000 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount::new(value, Mob::ID);
+            let amount2 = Amount::new(100_000, token2);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount, &originator, &fog_resolver, &mut rng);
+
+            let proofs = input_credentials.membership_proofs.clone();
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
+
+            let mut builder = SignedContingentInputBuilder::new(
+                block_version,
+                input_credentials,
+                fog_resolver.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Originator requests an output worth amount2 destined to themselves
+            builder
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
+                .unwrap();
+
+            // Change amount matches the input value
+            builder
+                .add_partial_fill_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
+                .unwrap();
+
+            builder.set_tombstone_block(2000);
+
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // The contingent input should have a valid signature.
+            sci.validate().unwrap();
+
+            // The contingent input should have the correct key image.
+            assert_eq!(sci.key_image(), key_image);
+
+            // The contingent input should have one partial fill output.
+            assert_eq!(
+                sci.tx_in
+                    .input_rules
+                    .as_ref()
+                    .unwrap()
+                    .partial_fill_outputs
+                    .len(),
+                1
+            );
+
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
+                .tx_out
+                .clone();
+
+            validate_tx_out(block_version, &output).unwrap();
+
+            // The output should belong to the originator
+            assert!(
+                subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+            );
+
+            // Counterparty has 3x worth of token id 2
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(300_000, token2),
+                &counterparty,
+                &fog_resolver,
+                &mut rng,
+            );
+
+            let mut builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Counterparty supplies his (excess) token id 2
+            builder.add_input(input_credentials);
+
+            // Counterparty adds the presigned input, which also adds the fractional outputs
+            // Returns 0 fractional change, so the entire offer is consumed.
+            sci.tx_in.proofs = proofs;
+            builder
+                .add_presigned_partial_fill_input(sci, Amount::new(0, Mob::ID))
+                .unwrap();
+
+            // Counterparty keeps the change from token id 2
+            builder
+                .add_change_output(
+                    Amount::new(200_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Counterparty keeps the Mob that Originator supplies, less fees
+            builder
+                .add_output(
+                    Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
+                    &counterparty.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // tx should have a valid signature, and pass all input rule checks
+            validate_signature(block_version, &tx, &mut rng).unwrap();
+            validate_all_input_rules(block_version, &tx).unwrap();
+
+            // tx inputs and outputs should be sorted
+            validate_inputs_are_sorted(&tx.prefix).unwrap();
+            validate_ring_elements_are_sorted(&tx.prefix).unwrap();
+            validate_outputs_are_sorted(&tx.prefix).unwrap();
+
+            // The transaction should have two inputs.
+            assert_eq!(tx.prefix.inputs.len(), 2);
+
+            // The transaction should have four outputs (output and change for both parties)
+            assert_eq!(tx.prefix.outputs.len(), 4);
+
+            // The tombstone block should be what sci limits it to
+            assert_eq!(tx.prefix.tombstone_block, 2000);
+
+            let counterparty_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's MOB output");
+
+            let counterparty_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's T2 output");
+
+            let originator_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            let originator_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            validate_tx_out(block_version, counterparty_output).unwrap();
+            validate_tx_out(block_version, counterparty_change).unwrap();
+            validate_tx_out(block_version, originator_output).unwrap();
+            validate_tx_out(block_version, originator_change).unwrap();
+
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_output.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(value - Mob::MINIMUM_FEE, Mob::ID));
+
+                let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_change.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(200_000, token2));
+
+                let memo = counterparty_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_output.public_key).unwrap(),
+                );
+                let (amount, _) = originator_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, amount2);
+
+                let memo = originator_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's change should belong to the correct recipient and have correct
+            // amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_change.public_key).unwrap(),
+                );
+                let (amount, _) = originator_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(0, Mob::ID));
+
+                let memo = originator_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+        }
+    }
+
+    #[test]
+    // Test that a "simple" partial fill signed contingent input is half spendable
+    fn test_simple_partial_fill_signed_contingent_input_half_spendable() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+
+            let originator = AccountKey::random(&mut rng);
+            let counterparty = AccountKey::random(&mut rng);
+
+            let fog_resolver = MockFogResolver(Default::default());
+
+            let token2 = TokenId::from(2);
+
+            let value = 1000 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount::new(value, Mob::ID);
+            let amount2 = Amount::new(100_000, token2);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount, &originator, &fog_resolver, &mut rng);
+
+            let proofs = input_credentials.membership_proofs.clone();
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
+
+            let mut builder = SignedContingentInputBuilder::new(
+                block_version,
+                input_credentials,
+                fog_resolver.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Originator requests an output worth amount2 destined to themselves
+            builder
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
+                .unwrap();
+
+            // Change amount matches the input value
+            builder
+                .add_partial_fill_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
+                .unwrap();
+
+            builder.set_tombstone_block(2000);
+
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // The contingent input should have a valid signature.
+            sci.validate().unwrap();
+
+            // The contingent input should have the correct key image.
+            assert_eq!(sci.key_image(), key_image);
+
+            // The contingent input should have one partial fill output.
+            assert_eq!(
+                sci.tx_in
+                    .input_rules
+                    .as_ref()
+                    .unwrap()
+                    .partial_fill_outputs
+                    .len(),
+                1
+            );
+
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
+                .tx_out
+                .clone();
+
+            validate_tx_out(block_version, &output).unwrap();
+
+            // The output should belong to the originator
+            assert!(
+                subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+            );
+
+            // Counterparty has 100,000 of token id 2, but only wants to give half of it
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(100_000, token2),
+                &counterparty,
+                &fog_resolver,
+                &mut rng,
+            );
+
+            let mut builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Counterparty supplies his (excess) token id 2
+            builder.add_input(input_credentials);
+
+            // Counterparty adds the presigned input, which also adds the fractional outputs
+            // Returns 500 millimob fractional change, so half the offer is consumed.
+            sci.tx_in.proofs = proofs;
+            builder
+                .add_presigned_partial_fill_input(
+                    sci,
+                    Amount::new(500 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                )
+                .unwrap();
+
+            // Counterparty keeps the change from token id 2
+            builder
+                .add_change_output(
+                    Amount::new(50_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Counterparty keeps the Mob that Originator supplies, less fees
+            builder
+                .add_output(
+                    Amount::new(value / 2 - Mob::MINIMUM_FEE, Mob::ID),
+                    &counterparty.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // tx should have a valid signature, and pass all input rule checks
+            validate_signature(block_version, &tx, &mut rng).unwrap();
+            validate_all_input_rules(block_version, &tx).unwrap();
+
+            // tx inputs and outputs should be sorted
+            validate_inputs_are_sorted(&tx.prefix).unwrap();
+            validate_ring_elements_are_sorted(&tx.prefix).unwrap();
+            validate_outputs_are_sorted(&tx.prefix).unwrap();
+
+            // The transaction should have two inputs.
+            assert_eq!(tx.prefix.inputs.len(), 2);
+
+            // The transaction should have four outputs (output and change for both parties)
+            assert_eq!(tx.prefix.outputs.len(), 4);
+
+            // The tombstone block should be what sci limits it to
+            assert_eq!(tx.prefix.tombstone_block, 2000);
+
+            let counterparty_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's MOB output");
+
+            let counterparty_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's T2 output");
+
+            let originator_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            let originator_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            validate_tx_out(block_version, counterparty_output).unwrap();
+            validate_tx_out(block_version, counterparty_change).unwrap();
+            validate_tx_out(block_version, originator_output).unwrap();
+            validate_tx_out(block_version, originator_change).unwrap();
+
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_output.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(value / 2 - Mob::MINIMUM_FEE, Mob::ID));
+
+                let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_change.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(50_000, token2));
+
+                let memo = counterparty_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_output.public_key).unwrap(),
+                );
+                let (amount, _) = originator_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(50_000, token2));
+
+                let memo = originator_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's change should belong to the correct recipient and have correct
+            // amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_change.public_key).unwrap(),
+                );
+                let (amount, _) = originator_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(value / 2, Mob::ID));
+
+                let memo = originator_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+        }
+    }
+
+    #[test]
+    // Test that a "simple" partial fill signed contingent input is quarter
+    // spendable
+    fn test_simple_partial_fill_signed_contingent_input_quarter_spendable() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+
+            let originator = AccountKey::random(&mut rng);
+            let counterparty = AccountKey::random(&mut rng);
+
+            let fog_resolver = MockFogResolver(Default::default());
+
+            let token2 = TokenId::from(2);
+
+            let value = 1000 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount::new(value, Mob::ID);
+            let amount2 = Amount::new(100_000, token2);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount, &originator, &fog_resolver, &mut rng);
+
+            let proofs = input_credentials.membership_proofs.clone();
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
+
+            let mut builder = SignedContingentInputBuilder::new(
+                block_version,
+                input_credentials,
+                fog_resolver.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Originator requests an output worth amount2 destined to themselves
+            builder
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
+                .unwrap();
+
+            // Change amount matches the input value
+            builder
+                .add_partial_fill_change_output(
+                    amount,
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
+                .unwrap();
+
+            builder.set_tombstone_block(2000);
+
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // The contingent input should have a valid signature.
+            sci.validate().unwrap();
+
+            // The contingent input should have the correct key image.
+            assert_eq!(sci.key_image(), key_image);
+
+            // The contingent input should have one partial fill output.
+            assert_eq!(
+                sci.tx_in
+                    .input_rules
+                    .as_ref()
+                    .unwrap()
+                    .partial_fill_outputs
+                    .len(),
+                1
+            );
+
+            let output = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
+                .tx_out
+                .clone();
+
+            validate_tx_out(block_version, &output).unwrap();
+
+            // The output should belong to the originator
+            assert!(
+                subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+            );
+
+            // Counterparty has 100,000 of token id 2, but only wants to give one quarter of
+            // it
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(100_000, token2),
+                &counterparty,
+                &fog_resolver,
+                &mut rng,
+            );
+
+            let mut builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Counterparty supplies his (excess) token id 2
+            builder.add_input(input_credentials);
+
+            // Counterparty adds the presigned input, which also adds the fractional outputs
+            // Returns 750 millimob fractional change, so one quarter of the offer is
+            // consumed.
+            sci.tx_in.proofs = proofs;
+            builder
+                .add_presigned_partial_fill_input(
+                    sci,
+                    Amount::new(750 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                )
+                .unwrap();
+
+            // Counterparty keeps the change from token id 2
+            builder
+                .add_change_output(
+                    Amount::new(75_000, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Counterparty keeps the Mob that Originator supplies, less fees
+            builder
+                .add_output(
+                    Amount::new(value / 4 - Mob::MINIMUM_FEE, Mob::ID),
+                    &counterparty.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // tx should have a valid signature, and pass all input rule checks
+            validate_signature(block_version, &tx, &mut rng).unwrap();
+            validate_all_input_rules(block_version, &tx).unwrap();
+
+            // tx inputs and outputs should be sorted
+            validate_inputs_are_sorted(&tx.prefix).unwrap();
+            validate_ring_elements_are_sorted(&tx.prefix).unwrap();
+            validate_outputs_are_sorted(&tx.prefix).unwrap();
+
+            // The transaction should have two inputs.
+            assert_eq!(tx.prefix.inputs.len(), 2);
+
+            // The transaction should have four outputs (output and change for both parties)
+            assert_eq!(tx.prefix.outputs.len(), 4);
+
+            // The tombstone block should be what sci limits it to
+            assert_eq!(tx.prefix.tombstone_block, 2000);
+
+            let counterparty_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's MOB output");
+
+            let counterparty_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's T2 output");
+
+            let originator_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            let originator_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            validate_tx_out(block_version, counterparty_output).unwrap();
+            validate_tx_out(block_version, counterparty_change).unwrap();
+            validate_tx_out(block_version, originator_output).unwrap();
+            validate_tx_out(block_version, originator_change).unwrap();
+
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_output.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(value / 4 - Mob::MINIMUM_FEE, Mob::ID));
+
+                let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_change.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(75_000, token2));
+
+                let memo = counterparty_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_output.public_key).unwrap(),
+                );
+                let (amount, _) = originator_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(25_000, token2));
+
+                let memo = originator_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's change should belong to the correct recipient and have correct
+            // amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_change.public_key).unwrap(),
+                );
+                let (amount, _) = originator_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(value / 4 * 3, Mob::ID));
+
+                let memo = originator_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+        }
+    }
+
+    #[test]
+    // Test that a partial fill signed contingent input with required outputs is
+    // spendable
+    fn test_complex_partial_fill_signed_contingent_input_spendable() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+
+            let originator = AccountKey::random(&mut rng);
+            let counterparty = AccountKey::random(&mut rng);
+
+            let fog_resolver = MockFogResolver(Default::default());
+
+            let token2 = TokenId::from(2);
+
+            let value = 1000 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount::new(value, Mob::ID);
+            let amount2 = Amount::new(100_000, token2);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount, &originator, &fog_resolver, &mut rng);
+
+            let proofs = input_credentials.membership_proofs.clone();
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
+
+            let mut builder = SignedContingentInputBuilder::new(
+                block_version,
+                input_credentials,
+                fog_resolver.clone(),
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Originator requests an output worth amount2 destined to themselves
+            builder
+                .add_partial_fill_output(amount2, &originator.default_subaddress(), &mut rng)
+                .unwrap();
+
+            // Change amount is input value - 200, so they are only offering 800 millimob
+            builder
+                .add_partial_fill_change_output(
+                    Amount::new(800 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Extra 200 Mob returned to originator as change
+            let (originator_required_change, _) = builder
+                .add_required_change_output(
+                    Amount::new(200 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                    &ReservedSubaddresses::from(&originator),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Set a minimum fill requirement of 2 millimob
+            builder.set_min_partial_fill_value(2 * MILLIMOB_TO_PICOMOB);
+
+            builder.set_tombstone_block(2000);
+
+            let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // The contingent input should have a valid signature.
+            sci.validate().unwrap();
+
+            // The contingent input should have the correct key image.
+            assert_eq!(sci.key_image(), key_image);
+
+            // Counterparty has 100,000 of token id 2, but only wants to give one quarter of
+            // it
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(100_000, token2),
+                &counterparty,
+                &fog_resolver,
+                &mut rng,
+            );
+
+            let mut builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
+
+            // Counterparty supplies his (excess) token id 2
+            builder.add_input(input_credentials);
+
+            // Counterparty adds the presigned input, which also adds the fractional outputs
+            // Returns 641 millimob fractional change, so slightly less than one fifth of
+            // the offer (800) is consumed.
+            sci.tx_in.proofs = proofs;
+            let fractional_output_amounts = builder
+                .add_presigned_partial_fill_input(
+                    sci,
+                    Amount::new(641 * MILLIMOB_TO_PICOMOB, Mob::ID),
+                )
+                .unwrap();
+
+            // We should be on the hook for slightly less than 1/5 of amount2 (100,000)
+            assert_eq!(fractional_output_amounts.len(), 1);
+            assert_eq!(fractional_output_amounts[0], Amount::new(19_875, token2));
+
+            // Counterparty keeps the change from token id 2
+            builder
+                .add_change_output(
+                    Amount::new(80_125, token2),
+                    &ReservedSubaddresses::from(&counterparty),
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Counterparty keeps the Mob that Originator supplies, less fees
+            builder
+                .add_output(
+                    Amount::new(159 * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE, Mob::ID),
+                    &counterparty.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+            // tx should have a valid signature, and pass all input rule checks
+            validate_signature(block_version, &tx, &mut rng).unwrap();
+            validate_all_input_rules(block_version, &tx).unwrap();
+
+            // tx inputs and outputs should be sorted
+            validate_inputs_are_sorted(&tx.prefix).unwrap();
+            validate_ring_elements_are_sorted(&tx.prefix).unwrap();
+            validate_outputs_are_sorted(&tx.prefix).unwrap();
+
+            // The transaction should have two inputs.
+            assert_eq!(tx.prefix.inputs.len(), 2);
+
+            // The transaction should have five outputs (output and change for both parties,
+            // plus another required change output for originator)
+            assert_eq!(tx.prefix.outputs.len(), 5);
+
+            // The tombstone block should be what sci limits it to
+            assert_eq!(tx.prefix.tombstone_block, 2000);
+
+            let counterparty_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's MOB output");
+
+            let counterparty_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&counterparty, CHANGE_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find counterparty's T2 output");
+
+            let originator_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&originator, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                        .unwrap()
+                })
+                .expect("Didn't find originator's output");
+
+            let originator_change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    *tx_out != &originator_required_change
+                        && subaddress_matches_tx_out(&originator, CHANGE_SUBADDRESS_INDEX, tx_out)
+                            .unwrap()
+                })
+                .expect("Didn't find originator's fractional change output");
+
+            tx.prefix
+                .outputs
+                .iter()
+                .find(|tx_out| *tx_out == &originator_required_change)
+                .expect("Didnt find originators required change output");
+
+            validate_tx_out(block_version, counterparty_output).unwrap();
+            validate_tx_out(block_version, counterparty_change).unwrap();
+            validate_tx_out(block_version, originator_output).unwrap();
+            validate_tx_out(block_version, originator_change).unwrap();
+            validate_tx_out(block_version, &originator_required_change).unwrap();
+
+            // Counterparty's MOB output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_output.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(
+                    amount,
+                    Amount::new(159 * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE, Mob::ID)
+                );
+
+                let memo = counterparty_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Counterparty's T2 change should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    counterparty.view_private_key(),
+                    &RistrettoPublic::try_from(&counterparty_change.public_key).unwrap(),
+                );
+                let (amount, _) = counterparty_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(80_125, token2));
+
+                let memo = counterparty_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's T2 output should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_output.public_key).unwrap(),
+                );
+                let (amount, _) = originator_output
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(19_875, token2));
+
+                let memo = originator_output.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's change should belong to the correct recipient and have correct
+            // amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_change.public_key).unwrap(),
+                );
+                let (amount, _) = originator_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(641 * MILLIMOB_TO_PICOMOB, Mob::ID));
+
+                let memo = originator_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
+
+            // Originator's required change should belong to the correct recipient and have
+            // correct amount and have correct memo
+            {
+                let ss = get_tx_out_shared_secret(
+                    originator.view_private_key(),
+                    &RistrettoPublic::try_from(&originator_required_change.public_key).unwrap(),
+                );
+                let (amount, _) = originator_required_change
+                    .get_masked_amount()
+                    .unwrap()
+                    .get_value(&ss)
+                    .unwrap();
+                assert_eq!(amount, Amount::new(200 * MILLIMOB_TO_PICOMOB, Mob::ID));
+
+                let memo = originator_required_change.e_memo.unwrap().decrypt(&ss);
+                assert_matches!(
+                    MemoType::try_from(&memo).expect("Couldn't decrypt memo"),
+                    MemoType::Unused(_)
+                );
+            }
         }
     }
 }

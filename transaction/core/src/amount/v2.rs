@@ -64,8 +64,16 @@ impl MaskedAmountV2 {
         amount: Amount,
         tx_out_shared_secret: &RistrettoPublic,
     ) -> Result<Self, AmountError> {
-        let amount_shared_secret = get_amount_shared_secret(tx_out_shared_secret);
-        let (value_mask, token_id_mask, blinding) = get_blinding_factors(&amount_shared_secret);
+        let amount_shared_secret = Self::compute_amount_shared_secret(tx_out_shared_secret);
+        Self::new_from_amount_shared_secret(amount, &amount_shared_secret)
+    }
+
+    /// Create a new masked amount from an amount and an amount shared secret
+    pub fn new_from_amount_shared_secret(
+        amount: Amount,
+        amount_shared_secret: &[u8; 32],
+    ) -> Result<Self, AmountError> {
+        let (value_mask, token_id_mask, blinding) = get_blinding_factors(amount_shared_secret);
 
         // Pedersen generators
         let generator = generators(*amount.token_id);
@@ -98,8 +106,17 @@ impl MaskedAmountV2 {
         &self,
         tx_out_shared_secret: &RistrettoPublic,
     ) -> Result<(Amount, Scalar), AmountError> {
-        let amount_shared_secret = get_amount_shared_secret(tx_out_shared_secret);
+        let amount_shared_secret = Self::compute_amount_shared_secret(tx_out_shared_secret);
         self.get_value_from_amount_shared_secret(&amount_shared_secret)
+    }
+
+    /// Get the amount shared secret from the tx out shared secret
+    pub fn compute_amount_shared_secret(tx_out_shared_secret: &RistrettoPublic) -> [u8; 32] {
+        let mut hasher = Sha512::new();
+        hasher.update(&AMOUNT_SHARED_SECRET_DOMAIN_TAG);
+        hasher.update(&tx_out_shared_secret.to_bytes());
+        // Safety: Sha512 is a 512-bit (64-byte) hash.
+        hasher.finalize()[0..32].try_into().unwrap()
     }
 
     /// Returns the amount underlying the masked amount, given the amount shared
@@ -163,7 +180,7 @@ impl MaskedAmountV2 {
         masked_token_id: &[u8],
         tx_out_shared_secret: &RistrettoPublic,
     ) -> Result<(Self, Amount), AmountError> {
-        let amount_shared_secret = get_amount_shared_secret(tx_out_shared_secret);
+        let amount_shared_secret = Self::compute_amount_shared_secret(tx_out_shared_secret);
 
         let (expected_commitment, amount, _) =
             Self::compute_commitment(masked_value, masked_token_id, &amount_shared_secret)?;
@@ -210,15 +227,6 @@ impl MaskedAmountV2 {
     fn compute_commitment_crc32(commitment: &CompressedCommitment) -> u32 {
         Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(commitment.point.as_bytes())
     }
-}
-
-/// Computes the amount shared secret from the tx_out shared secret
-fn get_amount_shared_secret(tx_out_shared_secret: &RistrettoPublic) -> [u8; 32] {
-    let mut hasher = Sha512::new();
-    hasher.update(&AMOUNT_SHARED_SECRET_DOMAIN_TAG);
-    hasher.update(&tx_out_shared_secret.to_bytes());
-    // Safety: Sha512 is a 512-bit (64-byte) hash.
-    hasher.finalize()[0..32].try_into().unwrap()
 }
 
 /// Computes the value mask, token id mask, and blinding factor for the
@@ -286,7 +294,7 @@ mod amount_tests {
                 let amount = Amount { value, token_id: token_id.into() };
                 let amount = MaskedAmountV2::new(amount, &tx_out_shared_secret).unwrap();
 
-                let amount_shared_secret = get_amount_shared_secret(&tx_out_shared_secret);
+                let amount_shared_secret = MaskedAmountV2::compute_amount_shared_secret(&tx_out_shared_secret);
                 let (_, _, blinding) = get_blinding_factors(&amount_shared_secret);
                 let expected_commitment = CompressedCommitment::new(value, blinding, &generators(token_id));
                 assert_eq!(amount.commitment, expected_commitment);
@@ -302,7 +310,7 @@ mod amount_tests {
             let masked_amount = MaskedAmountV2::new(amount, &tx_out_shared_secret).unwrap();
             let result = masked_amount.get_value(&tx_out_shared_secret);
 
-                let amount_shared_secret = get_amount_shared_secret(&tx_out_shared_secret);
+                let amount_shared_secret = MaskedAmountV2::compute_amount_shared_secret(&tx_out_shared_secret);
                 let (_, _, blinding) = get_blinding_factors(&amount_shared_secret);
             let expected = Ok((amount, blinding));
             assert_eq!(result, expected);

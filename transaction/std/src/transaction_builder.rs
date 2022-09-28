@@ -18,10 +18,11 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
     ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
+    ring_signature::Scalar,
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
-    SignedContingentInputError, Token, TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
+    RevealedTxOutError, SignedContingentInput, SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -246,42 +247,215 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         &mut self,
         sci: SignedContingentInput,
     ) -> Result<(), SignedContingentInputError> {
-        // TODO: If there is a block version change that could cause an incompatibility,
-        // we should check for it here, e.g. if sci.block_version differs from
-        // self.block_version
+        if let Some(rules) = sci.tx_in.input_rules.as_ref() {
+            // Check for any partial fill elements. These cannot be used with this API,
+            // the caller must use add_presigned_partial_fill_input instead.
+            if rules.partial_fill_change.is_some()
+                || !rules.partial_fill_outputs.is_empty()
+                || rules.min_partial_fill_value != 0
+            {
+                return Err(SignedContingentInputError::PartialFillInputNotAllowedHere);
+            }
+        }
+
+        self.add_presigned_input_helper(sci)
+    }
+
+    /// Add a pre-signed Input with partial fill rules to the transaction, also
+    /// fulfilling any requirements imposed by the signed rules, so that our
+    /// transaction will be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appeared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    /// * `sci_change_amount` - The amount of value of the SCI which we are
+    ///   returning to the signer. This determines the "fill fraction" for the
+    ///   partial-fill rules. This will be equal to the
+    ///   real_change_output_amount.
+    ///
+    /// # Returns
+    /// * A list of all outlay amounts deduced to fulfill the fractional output
+    ///   rules, in the cheapest way possible.
+    pub fn add_presigned_partial_fill_input(
+        &mut self,
+        sci: SignedContingentInput,
+        sci_change_amount: Amount,
+    ) -> Result<Vec<Amount>, SignedContingentInputError> {
+        if !self.block_version.masked_amount_v2_is_supported() {
+            return Err(
+                SignedContingentInputError::FeatureNotSupportedAtBlockVersion(
+                    *self.block_version,
+                    "partial fills",
+                ),
+            );
+        }
         // Check if the sci already has membership proofs, the caller is supposed to do
         // that
         if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
             return Err(SignedContingentInputError::MissingProofs);
         }
-        if let Some(rules) = sci.tx_in.input_rules.as_ref() {
-            // Enforce all rules so that our transaction will be valid
-            if rules.required_outputs.len() != sci.required_output_amounts.len() {
-                return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
-            }
-            // 1. Required outputs
-            for (required_output, unmasked_amount) in rules
-                .required_outputs
-                .iter()
-                .zip(sci.required_output_amounts.iter())
-            {
-                // Check if the required output is already there
-                if !self
-                    .outputs_and_secrets
-                    .iter()
-                    .any(|(output, _sec)| output == required_output)
-                {
-                    // If not, add it
-                    self.outputs_and_secrets
-                        .push((required_output.clone(), unmasked_amount.clone().into()));
-                }
-            }
-            // 2. Max tombstone block
-            if rules.max_tombstone_block != 0 {
-                self.impose_tombstone_block_limit(rules.max_tombstone_block);
-            }
+        let rules = sci
+            .tx_in
+            .input_rules
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingRules)?;
+        let partial_fill_change = rules
+            .partial_fill_change
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingPartialFillChange)?;
+        let (partial_fill_change_amount, partial_fill_change_blinding) =
+            partial_fill_change.reveal_amount()?;
+        if partial_fill_change_amount.value == 0 {
+            return Err(SignedContingentInputError::ZeroPartialFillChange);
+        }
+        if rules.min_partial_fill_value > partial_fill_change_amount.value {
+            return Err(SignedContingentInputError::MinPartialFillValueExceedsPartialChange);
+        }
+        if partial_fill_change_amount.token_id != sci_change_amount.token_id {
+            return Err(SignedContingentInputError::TokenIdMismatch);
+        }
+        // Check if the user-provided amont of change would violate the
+        // min_partial_fill_value rule imposed by the originator. (This is the
+        // same check performed by input rules validation.)
+        if partial_fill_change_amount.value - rules.min_partial_fill_value < sci_change_amount.value
+        {
+            return Err(SignedContingentInputError::ChangeLimitExceeded);
         }
 
+        let fill_fraction_num =
+            (partial_fill_change_amount.value - sci_change_amount.value) as u128;
+        let fill_fraction_denom = partial_fill_change_amount.value as u128;
+
+        // Ensure that we can reveal all amounts
+        let partial_fill_outputs_and_amounts: Vec<(&RevealedTxOut, Amount, Scalar)> = rules
+            .partial_fill_outputs
+            .iter()
+            .map(
+                |r_tx_out| -> Result<(&RevealedTxOut, Amount, Scalar), RevealedTxOutError> {
+                    let (amount, blinding) = r_tx_out.reveal_amount()?;
+                    Ok((r_tx_out, amount, blinding))
+                },
+            )
+            .collect::<Result<_, _>>()?;
+
+        // Fill all partial fill outputs to precisely the smallest degree required
+        // This helper function function takes a partial fill output value, and returns
+        // num / denom * partial_fill_output_value, rounded up
+        fn division_helper(partial_fill_output_value: u64, num: u128, denom: u128) -> u64 {
+            let num_128 = partial_fill_output_value as u128 * num;
+            // Divide by fill_fraction_denom, rounding up, and truncate to u64
+            ((num_128 + (denom - 1)) / denom) as u64
+        }
+
+        // Add fractional outputs (corresponding to partial fill outputs) into the list
+        // which is added to tx prefix
+        let fractional_amounts = partial_fill_outputs_and_amounts
+            .into_iter()
+            .map(
+                |(r_tx_out, amount, blinding)| -> Result<Amount, RevealedTxOutError> {
+                    let fractional_amount = Amount::new(
+                        division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
+                        amount.token_id,
+                    );
+                    let fractional_tx_out = r_tx_out.change_committed_amount(fractional_amount)?;
+
+                    // Note: The blinding factor has to be the same as the blinding factor of the
+                    // partial fill output that this tx out came from. This
+                    // invariant of .change_committed_amount is checked by a debug assertion.
+                    let output_secret = OutputSecret {
+                        amount: fractional_amount,
+                        blinding,
+                    };
+
+                    self.outputs_and_secrets
+                        .push((fractional_tx_out, output_secret));
+
+                    Ok(fractional_amount)
+                },
+            )
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Add the fractional change output
+        {
+            let fractional_change =
+                partial_fill_change.change_committed_amount(sci_change_amount)?;
+
+            // Note: The blinding factor has to be the same as the blinding factor of the
+            // partial fill change that this txout came from. This invariant of
+            // .change_committed_amount is checked by a debug assertion.
+            let output_secret = OutputSecret {
+                amount: sci_change_amount,
+                blinding: partial_fill_change_blinding,
+            };
+
+            self.outputs_and_secrets
+                .push((fractional_change, output_secret));
+        }
+
+        self.add_presigned_input_helper(sci)?;
+        Ok(fractional_amounts)
+    }
+
+    /// Add a pre-signed input to the transaction, fulfilling the MCIP 31 rules
+    /// (but not checking any of the MCIP 42 rules).
+    /// This is extracted to reduce code duplication between add_presigned_input
+    /// and add_presigned_partial_fill_input.
+    fn add_presigned_input_helper(
+        &mut self,
+        sci: SignedContingentInput,
+    ) -> Result<(), SignedContingentInputError> {
+        if *self.block_version != sci.block_version {
+            return Err(SignedContingentInputError::BlockVersionMismatch(
+                *self.block_version,
+                sci.block_version,
+            ));
+        }
+        // Check if the sci already has membership proofs, the caller is supposed to do
+        // that
+        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
+            return Err(SignedContingentInputError::MissingProofs);
+        }
+
+        let rules = sci
+            .tx_in
+            .input_rules
+            .as_ref()
+            .ok_or(SignedContingentInputError::MissingRules)?;
+
+        // Enforce all non-partial fill rules so that our transaction will be valid
+        if rules.required_outputs.len() != sci.required_output_amounts.len() {
+            return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
+        }
+        // 1. Required outputs
+        for (required_output, unmasked_amount) in rules
+            .required_outputs
+            .iter()
+            .zip(sci.required_output_amounts.iter())
+        {
+            // Check if the required output is already there
+            if !self
+                .outputs_and_secrets
+                .iter()
+                .any(|(output, _sec)| output == required_output)
+            {
+                // If not, add it
+                self.outputs_and_secrets
+                    .push((required_output.clone(), unmasked_amount.clone().into()));
+            }
+        }
+        // 2. Max tombstone block
+        if rules.max_tombstone_block != 0 {
+            self.impose_tombstone_block_limit(rules.max_tombstone_block);
+        }
+
+        // Don't do anything about partial fill rules, caller was supposed to do
+        // that if they are present.
+        // Now just add the sci to the list of inputs.
         self.add_presigned_input_raw(sci);
         Ok(())
     }

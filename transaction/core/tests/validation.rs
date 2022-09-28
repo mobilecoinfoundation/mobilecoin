@@ -837,6 +837,7 @@ fn test_input_rules_validation() {
     tx.prefix.inputs[0].input_rules = Some(InputRules {
         required_outputs: vec![first_tx_out],
         max_tombstone_block: 0,
+        ..Default::default()
     });
 
     // Check that the Tx is following input rules (the required output is there)

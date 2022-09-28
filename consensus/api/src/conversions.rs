@@ -16,7 +16,7 @@ use crate::{
 use mc_api::ConversionError;
 use mc_transaction_core::{
     mint::MintValidationError, validation::TransactionValidationError as Error, BlockVersion,
-    InputRuleError, TokenId,
+    InputRuleError, RevealedTxOutError, TokenId,
 };
 
 /// Convert TransactionValidationError --> ProposeTxResult.
@@ -60,13 +60,34 @@ impl From<Error> for ProposeTxResult {
             Error::MaskedTokenIdNotAllowed => Self::MaskedTokenIdNotAllowed,
             Error::UnsortedOutputs => Self::UnsortedOutputs,
             Error::InputRulesNotAllowed => Self::InputRulesNotAllowed,
-            Error::InputRule(InputRuleError::MissingRequiredOutput) => {
-                Self::InputRuleMissingRequiredOutput
-            }
-            Error::InputRule(InputRuleError::MaxTombstoneBlockExceeded) => {
-                Self::InputRuleMaxTombstoneBlockExceeded
-            }
+            Error::InputRule(ir) => ir.into(),
             Error::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
+        }
+    }
+}
+
+impl From<InputRuleError> for ProposeTxResult {
+    fn from(src: InputRuleError) -> Self {
+        match src {
+            InputRuleError::MissingRequiredOutput => Self::InputRuleMissingRequiredOutput,
+            InputRuleError::MaxTombstoneBlockExceeded => Self::InputRuleMaxTombstoneBlockExceeded,
+            InputRuleError::PartialFillOutputsNotExpected
+            | InputRuleError::MinPartialFillValueNotExpected
+            | InputRuleError::MissingFractionalChangeOutput
+            | InputRuleError::MissingFractionalOutput
+            | InputRuleError::FractionalOutputTokenIdMismatch
+            | InputRuleError::MinPartialFillValueExceedsPartialFillChange
+            | InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction
+            | InputRuleError::FractionalChangeOutputAmountExceedsLimit => {
+                Self::InputRulePartialFill
+            }
+            InputRuleError::RevealedTxOut(rtxo_err) => match rtxo_err {
+                RevealedTxOutError::InvalidAmountSharedSecret => {
+                    Self::InputRuleInvalidAmountSharedSecret
+                }
+                RevealedTxOutError::TxOutConversion(_) => Self::InputRuleTxOutConversion,
+                RevealedTxOutError::Amount(_) => Self::InputRuleAmount,
+            },
         }
     }
 }

@@ -6,7 +6,7 @@ use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur when handling an amount commitment.
-#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum AmountError {
     /**
      * The masked value, token id, or shared secret are not consistent with
@@ -26,4 +26,7 @@ pub enum AmountError {
 
     /// Token Id is not supported at this block version
     TokenIdNotSupportedAtBlockVersion,
+
+    /// Amount version is too old to have amount shared secret
+    AmountVersionTooOldForAmountSharedSecret,
 }
