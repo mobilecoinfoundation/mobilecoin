@@ -15,13 +15,14 @@ mod untrusted_tx_out_service;
 // is implemented as a different GRPC server struct.
 mod key_image_router_server;
 mod key_image_router_service;
+mod key_image_store_server;
 
 pub use block_service::BlockService;
-pub use config::LedgerServerConfig;
+pub use config::{LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig};
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;
 pub use server::LedgerServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
 
-pub use config::LedgerRouterConfig;
 pub use key_image_router_server::KeyImageRouterServer;
+pub use key_image_store_server::KeyImageStoreServer;

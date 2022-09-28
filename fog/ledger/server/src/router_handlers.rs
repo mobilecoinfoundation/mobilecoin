@@ -65,7 +65,7 @@ where
 {
     if request.has_auth() {
         handle_auth_request(enclave, request.take_auth(), logger)
-    } else if request.has_check_key_images() 
+    } else if request.has_check_key_images() {
         handle_query_request(
             request.take_check_key_images(),
             enclave,
@@ -318,7 +318,6 @@ async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
             logger.clone(),
         )
     })
-    Ok(())
 }
 
 // Authenticates a Fog Ledger Store that has previously not been authenticated.
