@@ -292,7 +292,7 @@ fn test_input_rules_verify_invalid_amount_shared_secret() {
             &revealed_tx_outs[1],
             Amount::new(2000, 0.into()),
         ));
-    // Add a parital fill change, also by doubling one of the revealed tx outs.
+    // Add a partial fill change, also by doubling one of the revealed tx outs.
     // This means the fill fraction is 1/2, which we are satisfying.
     get_first_rules_mut(&mut tx).partial_fill_change = Some(change_committed_amount(
         &revealed_tx_outs[0],
