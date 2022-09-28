@@ -235,6 +235,15 @@ fn test_input_rules_verify_missing_real_outputs() {
     ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
+    // Add another partial fill output, also at 2000. Everything should still be good.
+    get_first_rules_mut(&mut tx)
+        .partial_fill_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[2],
+            Amount::new(2000, 0.into()),
+        ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
     // Modify the input rules to refer to a non-existent tx out among the partial
     // fill outputs
     get_first_rules_mut(&mut tx).partial_fill_outputs[1]
@@ -247,7 +256,7 @@ fn test_input_rules_verify_missing_real_outputs() {
 
     // Change it back to another value that should still be okay
     get_first_rules_mut(&mut tx).partial_fill_outputs[1] =
-        change_committed_amount(&revealed_tx_outs[3], Amount::new(1500, 0.into()));
+        change_committed_amount(&revealed_tx_outs[2], Amount::new(1500, 0.into()));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out for the partial fill
