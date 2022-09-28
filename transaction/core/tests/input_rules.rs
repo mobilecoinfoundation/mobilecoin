@@ -221,6 +221,8 @@ fn test_input_rules_verify_missing_real_outputs() {
     let block_version = BlockVersion::THREE;
     let mut rng: RngType = SeedableRng::from_seed([7u8; 32]);
     let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+
+    // Add a partial fill output and change, at 2000 of token id 0
     get_first_rules_mut(&mut tx)
         .partial_fill_outputs
         .push(change_committed_amount(
@@ -228,18 +230,9 @@ fn test_input_rules_verify_missing_real_outputs() {
             Amount::new(2000, 0.into()),
         ));
     get_first_rules_mut(&mut tx).partial_fill_change = Some(change_committed_amount(
-        &revealed_tx_outs[0],
+        &revealed_tx_outs[3],
         Amount::new(2000, 0.into()),
     ));
-    get_first_rules(&tx).verify(block_version, &tx).unwrap();
-
-    // Change that partial fill output to 2000, so everything should be good again.
-    get_first_rules_mut(&mut tx)
-        .partial_fill_outputs
-        .push(change_committed_amount(
-            &revealed_tx_outs[3],
-            Amount::new(2000, 0.into()),
-        ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out among the partial

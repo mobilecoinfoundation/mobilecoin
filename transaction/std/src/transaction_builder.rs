@@ -319,6 +319,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         if partial_fill_change_amount.token_id != sci_change_amount.token_id {
             return Err(SignedContingentInputError::TokenIdMismatch);
         }
+        // Check if the user-provided amont of change would violate the
+        // min_partial_fill_value rule imposed by the originator. (This is the
+        // same check performed by input rules validation.)
         if partial_fill_change_amount.value - rules.min_partial_fill_value < sci_change_amount.value
         {
             return Err(SignedContingentInputError::ChangeLimitExceeded);

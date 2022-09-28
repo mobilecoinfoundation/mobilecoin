@@ -288,7 +288,7 @@ mod tests {
             // Alice adds proofs to the SCI
             sci.tx_in.proofs = proofs;
 
-            // Alice sends this token2 amount to Bob from Charlie, paying Charlie 1 MOB
+            // Alice sends 250 token2 to Bob from Charlie, paying Charlie .25 MOB
             // as he desires, and returning .475 MOB as change to herself.
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
