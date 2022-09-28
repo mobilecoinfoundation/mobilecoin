@@ -14,7 +14,8 @@ use displaydoc::Display;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
-    Error as AttestEnclaveError, SealedClientMessage,
+    Error as AttestEnclaveError, NonceAuthRequest, NonceAuthResponse, NonceSession,
+    SealedClientMessage,
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
@@ -95,12 +96,12 @@ pub enum ViewEnclaveRequest {
     ViewStoreInit(ResponderId),
     /// Complete the client connection to a Fog View store that accepted our
     /// client auth request. This is meant to be called after [ViewStoreInit].
-    ViewStoreConnect(ResponderId, ClientAuthResponse),
+    ViewStoreConnect(ResponderId, NonceAuthResponse),
     /// Collates shard query responses into a single query response for the
     /// client.
     CollateQueryResponses(
         SealedClientMessage,
-        BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ),
 }
 
@@ -143,7 +144,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
 
     /// Begin a connection to a Fog View Store. The enclave calling this method
     /// will act as a client to the Fog View Store.
-    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest>;
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<NonceAuthRequest>;
 
     /// Complete the connection to a Fog View Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
@@ -151,7 +152,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     fn view_store_connect(
         &self,
         view_store_id: ResponderId,
-        view_store_auth_response: ClientAuthResponse,
+        view_store_auth_response: NonceAuthResponse,
     ) -> Result<()>;
 
     /// Service a user's encrypted QueryRequest
@@ -182,14 +183,14 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     fn create_multi_view_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>>;
 
     /// Receives all of the shards' query responses and collates them into one
     /// query response for the client.
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 

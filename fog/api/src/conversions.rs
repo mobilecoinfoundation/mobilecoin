@@ -5,26 +5,27 @@
 use crate::{fog_common, ingest_common, view::MultiViewStoreQueryRequest};
 use mc_api::ConversionError;
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_types::common;
 
-impl From<Vec<mc_attest_enclave_api::EnclaveMessage<mc_attest_enclave_api::ClientSession>>>
-    for MultiViewStoreQueryRequest
-{
-    fn from(enclave_messages: Vec<EnclaveMessage<ClientSession>>) -> MultiViewStoreQueryRequest {
+impl From<Vec<EnclaveMessage<NonceSession>>> for MultiViewStoreQueryRequest {
+    fn from(enclave_messages: Vec<EnclaveMessage<NonceSession>>) -> MultiViewStoreQueryRequest {
         enclave_messages
             .into_iter()
             .map(|enclave_message| enclave_message.into())
-            .collect::<Vec<attest::Message>>()
+            .collect::<Vec<attest::NonceMessage>>()
             .into()
     }
 }
 
-impl From<Vec<attest::Message>> for MultiViewStoreQueryRequest {
-    fn from(attested_query_messages: Vec<attest::Message>) -> MultiViewStoreQueryRequest {
+impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
+    fn from(_attested_query_messages: Vec<attest::NonceMessage>) -> MultiViewStoreQueryRequest {
         let mut multi_view_store_query_request = MultiViewStoreQueryRequest::new();
-        multi_view_store_query_request.set_queries(attested_query_messages.into());
+        // TODO: Once MultiViewStoreQueryRequest.queries is modified to be a
+        // Vec<attest::NonceMessage> change this to use the
+        // _attested_query_messages_field.
+        multi_view_store_query_request.set_queries(vec![].into());
 
         multi_view_store_query_request
     }
