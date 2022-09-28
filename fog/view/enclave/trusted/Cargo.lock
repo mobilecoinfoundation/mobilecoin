@@ -60,8 +60,7 @@ dependencies = [
 [[package]]
 name = "aligned-cmov"
 version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac09d3ea1089af7eb2784eca92ed14a41168352d47565f1eb1bdd23460909ba1"
+source = "git+https://github.com/wjuan-mob/mc-oblivious?rev=3437ebad33904040b48308a45e34a141163b416e#3437ebad33904040b48308a45e34a141163b416e"
 dependencies = [
  "aligned-array",
  "generic-array",
@@ -123,8 +122,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "balanced-tree-index"
 version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31868e43a6cb114c4924fdf682ca8caa4649f2e1968e38951d2ee9e9087a35c1"
+source = "git+https://github.com/wjuan-mob/mc-oblivious?rev=3437ebad33904040b48308a45e34a141163b416e#3437ebad33904040b48308a45e34a141163b416e"
 dependencies = [
  "aligned-cmov",
  "rand_core",
@@ -1150,6 +1148,8 @@ dependencies = [
  "blake2",
  "displaydoc",
  "lazy_static",
+ "mc-oblivious-map",
+ "mc-oblivious-ram",
  "mc-oblivious-traits",
  "mc-sgx-compat",
  "rand_core",
@@ -1297,8 +1297,7 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-map"
 version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a5d3ec41e27ef685e5aa261d3de25c42354771015865af874a5fbb0ceb1a87"
+source = "git+https://github.com/wjuan-mob/mc-oblivious?rev=3437ebad33904040b48308a45e34a141163b416e#3437ebad33904040b48308a45e34a141163b416e"
 dependencies = [
  "aligned-array",
  "aligned-cmov",
@@ -1311,8 +1310,7 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-ram"
 version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85056a9110ea75a46f1d3ae58b67d90c70bed41b42509814cf4533673fe98d17"
+source = "git+https://github.com/wjuan-mob/mc-oblivious?rev=3437ebad33904040b48308a45e34a141163b416e#3437ebad33904040b48308a45e34a141163b416e"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
@@ -1323,8 +1321,7 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-traits"
 version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3282b221fd65da0ce7c0749c21c41a73db062a1bde1bd57eafb3cdd2ac5ab848"
+source = "git+https://github.com/wjuan-mob/mc-oblivious?rev=3437ebad33904040b48308a45e34a141163b416e#3437ebad33904040b48308a45e34a141163b416e"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",

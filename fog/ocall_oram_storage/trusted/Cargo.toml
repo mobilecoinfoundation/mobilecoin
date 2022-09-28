@@ -10,9 +10,11 @@ license = "GPL-3.0"
 mc-sgx-compat = { path = "../../../sgx/compat" }
 
 # mc-oblivious
-aligned-cmov = "2.2"
-balanced-tree-index = "2.2"
-mc-oblivious-traits = "2.2"
+aligned-cmov = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+balanced-tree-index = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-map = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-ram = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-traits = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e"}
 
 # third-party
 aes = { version = "0.7.5", default-features = false, features = ["ctr"] }

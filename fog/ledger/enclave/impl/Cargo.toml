@@ -23,10 +23,10 @@ mc-util-serial = { path = "../../../../util/serial" }
 mc-watcher-api = { path = "../../../../watcher/api" }
 
 # mc-oblivious
-aligned-cmov = "2.2"
-mc-oblivious-map = "2.2"
-mc-oblivious-ram = "2.2"
-mc-oblivious-traits = "2.2"
+aligned-cmov = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-map = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-ram = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-traits = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e"}
 
 # fog
 mc-fog-ledger-enclave-api = { path = "../api", default-features = false }

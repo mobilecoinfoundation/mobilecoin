@@ -18,7 +18,7 @@ mc-fog-ingest-enclave-api = { path = "../../fog/ingest/enclave/api" }
 mc-fog-ingest-enclave-impl = { path = "../../fog/ingest/enclave/impl" }
 mc-fog-types = { path = "../../fog/types" }
 mc-fog-view-protocol = { path = "../../fog/view/protocol" }
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e"}
 mc-test-vectors-definitions = { path = "../definitions" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
