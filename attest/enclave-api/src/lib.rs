@@ -144,7 +144,7 @@ impl Session for PeerSession {
 
 /// An opaque bytestream used as a session ID for a session which uses explicit
 /// nonces.
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Default, Eq, Deserialize, PartialOrd, Serialize)]
 pub struct NonceSession {
     channel_id: Vec<u8>,
     nonce: u64,
