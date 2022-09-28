@@ -6,6 +6,10 @@ edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
+aes-gcm = "0.9.4"
+cookie = "0.16"
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.11.0"
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
@@ -18,10 +22,5 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
-
-aes-gcm = "0.9.4"
-cookie = "0.16"
-displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.11.0"
 retry = "1.3"
 sha2 = { version = "0.10", default-features = false }
