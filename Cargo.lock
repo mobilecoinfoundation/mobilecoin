@@ -27,16 +27,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "aead"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c192eb8f11fc081b0fe4259ba5af04217d4e0faddd02417310a927911abd7c8"
+dependencies = [
+ "crypto-common",
+ "generic-array",
+]
+
+[[package]]
 name = "aes"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e8b47f52ea9bae42228d07ec09eb676433d7c4ed1ebdf0f1d1c29ed446f1ab8"
 dependencies = [
  "cfg-if",
- "cipher",
+ "cipher 0.3.0",
  "cpufeatures",
- "ctr",
+ "ctr 0.8.0",
  "opaque-debug",
+]
+
+[[package]]
+name = "aes"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfe0133578c0986e1fe3dfcd4af1cc5b2dd6c3dbf534d69916ce16a2701d40ba"
+dependencies = [
+ "cfg-if",
+ "cipher 0.4.3",
+ "cpufeatures",
 ]
 
 [[package]]
@@ -45,11 +66,25 @@ version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df5f85a83a7d8b0442b6aa7b504b8212c1733da07b98aae43d4bc21b2cb3cdf6"
 dependencies = [
- "aead",
- "aes",
- "cipher",
- "ctr",
- "ghash",
+ "aead 0.4.3",
+ "aes 0.7.5",
+ "cipher 0.3.0",
+ "ctr 0.8.0",
+ "ghash 0.4.4",
+ "subtle",
+]
+
+[[package]]
+name = "aes-gcm"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82e1366e0c69c9f927b1fa5ce2c7bf9eafc8f9268c0b9800729e8b267612447c"
+dependencies = [
+ "aead 0.5.1",
+ "aes 0.8.1",
+ "cipher 0.4.3",
+ "ctr 0.9.1",
+ "ghash 0.5.0",
  "subtle",
 ]
 
@@ -305,7 +340,7 @@ dependencies = [
  "cexpr 0.6.0",
  "clang-sys",
  "clap 2.34.0",
- "env_logger 0.9.0",
+ "env_logger 0.9.1",
  "lazy_static",
  "lazycell",
  "log",
@@ -509,11 +544,7 @@ checksum = "3abb7553d5b9b8421c6de7cb02606ff15e0c6eea7d8eadd75ef013fd636bec36"
 dependencies = [
  "camino",
  "cargo-platform",
-<<<<<<< HEAD
- "semver 1.0.14",
-=======
  "semver",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "serde",
  "serde_json",
 ]
@@ -586,10 +617,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "clang-sys"
-version = "1.3.3"
+name = "cipher"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a050e2153c5be08febd6734e29298e844fdb0fa21aeddd63b4eb7baa106c69b"
+checksum = "d1873270f8f7942c191139cb8a40fd228da6c3fd2fc376d7e92d47aa14aeb59e"
+dependencies = [
+ "crypto-common",
+ "inout",
+]
+
+[[package]]
+name = "clang-sys"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa2e27ae6ab525c3d369ded447057bca5438d86dc3a68f6faafb8269ba82ebf3"
 dependencies = [
  "glob",
  "libc",
@@ -613,15 +654,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-<<<<<<< HEAD
 version = "3.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86447ad904c7fb335a790c9d7fe3d0d971dc523b8ccd1561a520de9a85302750"
-=======
-version = "3.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ed5341b2301a26ab80be5cbdced622e80ed808483c52e45e3310a877d3b37d7"
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 dependencies = [
  "atty",
  "bitflags",
@@ -694,11 +729,11 @@ dependencies = [
 
 [[package]]
 name = "cookie"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d4706de1b0fa5b132270cddffa8585166037822e260a944fe161acd137ca05"
+checksum = "344adc371239ef32293cb1c4fe519592fcf21206c79c02854320afcdf3ab4917"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.10.1",
  "base64",
  "hkdf",
  "hmac 0.12.1",
@@ -853,6 +888,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
+ "rand_core 0.6.4",
  "typenum",
 ]
 
@@ -894,7 +930,16 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "049bb91fb4aaf0e3c7efa6cd5ef877dbbbd15b39dad06d9948de4ec8a75761ea"
 dependencies = [
- "cipher",
+ "cipher 0.3.0",
+]
+
+[[package]]
+name = "ctr"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d14f329cfbaf5d0e06b5e87fff7e265d2673c5ea7d2c27691a2c107db1442a0"
+dependencies = [
+ "cipher 0.4.3",
 ]
 
 [[package]]
@@ -978,13 +1023,14 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.3.4"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
+checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
 dependencies = [
- "cfg-if 1.0.0",
- "hashbrown 0.12.3",
+ "cfg-if",
+ "hashbrown",
  "lock_api",
+ "once_cell",
  "parking_lot_core 0.9.3",
 ]
 
@@ -1222,9 +1268,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+checksum = "c90bf5f19754d10198ccb95b70664fc925bd1fc090a0fd9a6ebc54acc8cd6272"
 dependencies = [
  "atty",
  "humantime",
@@ -1540,7 +1586,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1583cc1656d7839fd3732b80cf4f38850336cdb9b8ded1cd399ca62958de3c99"
 dependencies = [
  "opaque-debug",
- "polyval",
+ "polyval 0.5.3",
+]
+
+[[package]]
+name = "ghash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d930750de5717d2dd0b8c0d42c076c0e884c81a73e6cab859bbd2339c71e3e40"
+dependencies = [
+ "opaque-debug",
+ "polyval 0.6.0",
 ]
 
 [[package]]
@@ -1559,11 +1615,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 name = "go-grpc-gateway-testing"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -1805,14 +1857,13 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.48"
+version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "237a0714f28b1ee39ccec0770ccb544eb02c9ef2c82bb096230eefcffa6468b0"
+checksum = "fd911b35d940d2bd0bea0f9100068e5b97b51a1cbe13d13382f132e0365257a0"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "js-sys",
- "once_cell",
  "wasm-bindgen",
  "winapi",
 ]
@@ -1871,6 +1922,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8fae54786f62fb2918dcfae3d568594e50eb9b5c25bf04371af6fe7516452fb"
 
 [[package]]
+name = "inout"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1918,15 +1978,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-<<<<<<< HEAD
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
-=======
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8bf247779e67a9082a4790b45e71ac7cfd1321331a5c856a74a9faebdab78d0"
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 dependencies = [
  "either",
 ]
@@ -2062,9 +2116,9 @@ dependencies = [
 
 [[package]]
 name = "lock_api"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f80bf5aacaf25cbfc8210d1cfb718f2bf3b11c4c54e5afe36c236853a8ec390"
+checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -2207,11 +2261,7 @@ dependencies = [
 name = "mc-admin-http-gateway"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2267,8 +2317,8 @@ dependencies = [
 name = "mc-attest-ake"
 version = "2.0.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.4.3",
+ "aes-gcm 0.9.4",
  "cargo-emit",
  "digest 0.10.5",
  "displaydoc",
@@ -2292,7 +2342,7 @@ dependencies = [
 name = "mc-attest-api"
 version = "2.0.0"
 dependencies = [
- "aead",
+ "aead 0.4.3",
  "cargo-emit",
  "digest 0.10.5",
  "futures",
@@ -2535,7 +2585,7 @@ dependencies = [
 name = "mc-connection"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "cookie",
  "displaydoc",
  "grpcio",
@@ -2727,11 +2777,7 @@ dependencies = [
 name = "mc-consensus-mint-client"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "grpcio",
  "hex",
@@ -2784,11 +2830,7 @@ dependencies = [
 name = "mc-consensus-scp-play"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
@@ -2818,11 +2860,7 @@ version = "2.0.0"
 dependencies = [
  "base64",
  "chrono",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -2886,11 +2924,7 @@ name = "mc-consensus-service-config"
 version = "2.0.0"
 dependencies = [
  "base64",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "hex",
  "mc-attest-core",
@@ -2915,7 +2949,7 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "digest 0.10.5",
  "mc-attest-ake",
  "mc-attest-core",
@@ -2935,7 +2969,7 @@ dependencies = [
 name = "mc-crypto-box"
 version = "2.0.0"
 dependencies = [
- "aead",
+ "aead 0.4.3",
  "digest 0.10.5",
  "displaydoc",
  "hkdf",
@@ -3036,11 +3070,7 @@ dependencies = [
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
  "schnorrkel-og",
-<<<<<<< HEAD
- "semver 1.0.14",
-=======
  "semver",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -3056,7 +3086,7 @@ dependencies = [
 name = "mc-crypto-message-cipher"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "displaydoc",
  "generic-array",
  "mc-util-serial",
@@ -3084,8 +3114,8 @@ dependencies = [
 name = "mc-crypto-noise"
 version = "2.0.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.4.3",
+ "aes-gcm 0.9.4",
  "digest 0.10.5",
  "displaydoc",
  "generic-array",
@@ -3105,12 +3135,7 @@ dependencies = [
 name = "mc-crypto-rand"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
- "cfg-if 1.0.0",
-=======
  "cfg-if",
- "getrandom 0.2.7",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "rand 0.8.5",
  "rand_core 0.6.4",
 ]
@@ -3175,11 +3200,7 @@ name = "mc-crypto-x509-test-vectors"
 version = "2.0.0"
 dependencies = [
  "cargo-emit",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3245,11 +3266,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3282,7 +3299,7 @@ dependencies = [
 name = "mc-fog-enclave-connection"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "cookie",
  "displaydoc",
  "grpcio",
@@ -3307,11 +3324,7 @@ name = "mc-fog-ingest-client"
 version = "2.0.0"
 dependencies = [
  "assert_cmd",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "grpcio",
  "hex",
@@ -3467,11 +3480,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "dirs",
  "displaydoc",
  "futures",
@@ -3683,11 +3692,7 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -3760,11 +3765,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -3810,7 +3811,7 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-trusted"
 version = "2.0.0"
 dependencies = [
- "aes",
+ "aes 0.7.5",
  "aligned-cmov",
  "balanced-tree-index",
  "blake2",
@@ -3835,11 +3836,7 @@ dependencies = [
 name = "mc-fog-overseer-server"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -3923,11 +3920,7 @@ name = "mc-fog-report-cli"
 version = "2.0.0"
 dependencies = [
  "base64",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "hex",
  "mc-account-keys",
@@ -3982,11 +3975,7 @@ dependencies = [
 name = "mc-fog-report-server"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -4054,11 +4043,7 @@ name = "mc-fog-sample-paykit"
 version = "2.0.0"
 dependencies = [
  "cargo-emit",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -4156,11 +4141,7 @@ name = "mc-fog-sql-recovery-db"
 version = "2.0.0"
 dependencies = [
  "chrono",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
@@ -4205,11 +4186,7 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "grpcio",
  "hex_fmt",
@@ -4242,13 +4219,8 @@ dependencies = [
 name = "mc-fog-test-infra"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
  "digest 0.10.5",
-=======
- "clap 3.2.21",
- "digest 0.10.3",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -4308,7 +4280,7 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "futures",
  "grpcio",
  "mc-attest-ake",
@@ -4329,7 +4301,7 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-uri",
  "retry",
- "sha2 0.10.5",
+ "sha2 0.10.6",
  "tokio",
 ]
 
@@ -4401,7 +4373,7 @@ dependencies = [
 name = "mc-fog-view-enclave-impl"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.9.4",
  "aligned-cmov",
  "itertools",
  "mc-attest-ake",
@@ -4439,11 +4411,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4485,11 +4453,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -4572,11 +4536,7 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "dirs",
  "displaydoc",
  "mc-api",
@@ -4599,11 +4559,7 @@ dependencies = [
 name = "mc-ledger-from-archive"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "mc-api",
  "mc-common",
  "mc-ledger-db",
@@ -4614,11 +4570,7 @@ dependencies = [
 name = "mc-ledger-migration"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
@@ -4665,11 +4617,7 @@ dependencies = [
 name = "mc-mint-auditor"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "diesel",
  "diesel_migrations",
  "displaydoc",
@@ -4727,12 +4675,8 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "2.0.0"
 dependencies = [
- "aes-gcm",
-<<<<<<< HEAD
+ "aes-gcm 0.9.4",
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4820,11 +4764,7 @@ name = "mc-mobilecoind-dev-faucet"
 version = "2.0.0"
 dependencies = [
  "async-channel",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "grpcio",
  "hex",
@@ -4855,11 +4795,7 @@ dependencies = [
 name = "mc-mobilecoind-json"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "hex",
  "mc-api",
@@ -4885,11 +4821,11 @@ version = "0.9.5-pre1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d530bc1c22cc6b8e315cbe565a951c69b475542fd499a25d04f0a478c17ca6b"
 dependencies = [
- "aead",
- "aes",
- "cipher",
- "ctr",
- "ghash",
+ "aead 0.4.3",
+ "aes 0.7.5",
+ "cipher 0.3.0",
+ "ctr 0.8.0",
+ "ghash 0.4.4",
  "subtle",
  "zeroize",
 ]
@@ -5027,11 +4963,7 @@ dependencies = [
 name = "mc-sgx-css-dump"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex_fmt",
  "mc-sgx-css",
 ]
@@ -5181,7 +5113,7 @@ dependencies = [
 name = "mc-transaction-core"
 version = "2.0.0"
 dependencies = [
- "aes",
+ "aes 0.7.5",
  "assert_matches",
  "bulletproofs-og",
  "crc",
@@ -5283,11 +5215,7 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex",
  "mc-api",
 ]
@@ -5350,11 +5278,7 @@ dependencies = [
 name = "mc-util-cli"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "mc-util-build-info",
 ]
 
@@ -5362,11 +5286,7 @@ dependencies = [
 name = "mc-util-dump-ledger"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "mc-blockchain-types",
  "mc-common",
@@ -5401,11 +5321,7 @@ dependencies = [
 name = "mc-util-generate-sample-ledger"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -5425,11 +5341,7 @@ name = "mc-util-grpc"
 version = "2.0.0"
 dependencies = [
  "base64",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "cookie",
  "displaydoc",
  "futures",
@@ -5462,11 +5374,7 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -5477,11 +5385,7 @@ dependencies = [
 name = "mc-util-grpc-token-generator"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex",
  "mc-common",
  "mc-util-grpc",
@@ -5497,11 +5401,7 @@ name = "mc-util-keyfile"
 version = "2.0.0"
 dependencies = [
  "base64",
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "hex",
  "mc-account-keys",
@@ -5587,11 +5487,7 @@ dependencies = [
 name = "mc-util-seeded-ed25519-key-gen"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "hex",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -5626,11 +5522,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "itertools",
  "lazy_static",
  "mc-account-keys",
@@ -5700,11 +5592,7 @@ dependencies = [
 name = "mc-watcher"
 version = "2.0.0"
 dependencies = [
-<<<<<<< HEAD
  "clap 3.2.22",
-=======
- "clap 3.2.21",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
  "displaydoc",
  "futures",
  "grpcio",
@@ -5879,9 +5767,9 @@ checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
 
 [[package]]
 name = "multer"
-version = "2.0.3"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a30ba6d97eb198c5e8a35d67d5779d6680cca35652a60ee90fc23dc431d4fde8"
+checksum = "6ed4198ce7a4cbd2a57af78d28c6fbb57d81ac5f1d6ad79ac6c5587419cbdf22"
 dependencies = [
  "bytes",
  "encoding_rs",
@@ -6007,9 +5895,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.75"
+version = "0.9.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5f9bd0c2710541a3cda73d6f9ac4f1b240de4ae261065d309dbe73d9dceb42f"
+checksum = "5230151e44c0f05157effb743e8d517472843121cf9243e8b81393edb5acd9ce"
 dependencies = [
  "autocfg",
  "cc",
@@ -6073,9 +5961,9 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96bcbab4bfea7a59c2c0fe47211a1ac4e3e96bea6eb446d704f310bc5c732ae2"
+checksum = "98ffdb14730ed2ef599c65810c15b000896e21e8776b512de0db0c3d7335cc2a"
 dependencies = [
  "num-traits",
 ]
@@ -6098,9 +5986,9 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.2.0"
+version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e2a2f8720963771740976525da4bb7f20544b4d5e2ef5356322b81dbb0d07b3"
+checksum = "366e44391a8af4cfd6002ef6ba072bae071a96aafca98d7d448a34c5dca38b6a"
 dependencies = [
  "arrayvec",
  "bitvec",
@@ -6318,7 +6206,19 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "opaque-debug",
- "universal-hash",
+ "universal-hash 0.4.1",
+]
+
+[[package]]
+name = "polyval"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ef234e08c11dfcb2e56f79fd70f6f2eb7f025c0ce2333e82f4f0518ecad30c6"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "opaque-debug",
+ "universal-hash 0.5.0",
 ]
 
 [[package]]
@@ -6423,9 +6323,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.43"
+version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a2ca2c61bc9f3d74d2886294ab7b9853abd9c1ad903a3ac7815c58989bb7bab"
+checksum = "7bd7356a8122b6c4a24a82b278680c73357984ca2fc79a0f9fa6dea7dced7c58"
 dependencies = [
  "unicode-ident",
 ]
@@ -6503,24 +6403,24 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.27.1"
+version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf7e6d18738ecd0902d30d1ad232c9125985a3422929b16c65517b38adc14f96"
+checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
 name = "protobuf-codegen"
-version = "2.27.1"
+version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aec1632b7c8f2e620343439a7dfd1f3c47b18906c4be58982079911482b5d707"
+checksum = "033460afb75cf755fcfc16dfaed20b86468082a2ea24e05ac35ab4a099a017d6"
 dependencies = [
  "protobuf",
 ]
 
 [[package]]
 name = "protoc"
-version = "2.27.1"
+version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2ef1dc036942fac2470fdb8a911f125404ee9129e9e807f3d12d8589001a38f"
+checksum = "a0218039c514f9e14a5060742ecd50427f8ac4f85a6dc58f2ddb806e318c55ee"
 dependencies = [
  "log",
  "which 4.3.0",
@@ -7082,11 +6982,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
-<<<<<<< HEAD
- "semver 1.0.14",
-=======
  "semver",
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 ]
 
 [[package]]
@@ -7251,21 +7147,7 @@ dependencies = [
 
 [[package]]
 name = "semver"
-<<<<<<< HEAD
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
-dependencies = [
- "semver-parser",
- "serde",
-]
-
-[[package]]
-name = "semver"
 version = "1.0.14"
-=======
-version = "1.0.13"
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e25dfac463d778e353db5be2449d1cce89bd6fd23c9f1ea21310ce6e5a1b29c4"
 dependencies = [
@@ -7378,15 +7260,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-<<<<<<< HEAD
 version = "1.0.145"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b"
-=======
-version = "1.0.144"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 dependencies = [
  "serde_derive",
 ]
@@ -7420,15 +7296,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-<<<<<<< HEAD
 version = "1.0.145"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81fa1584d3d1bcacd84c277a0dfe21f5b0f6accf4a23d04d4c6d61f1af522b4c"
-=======
-version = "1.0.144"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94ed3a816fb1d101812f83e789f888322c34e291f894f19590dc310963e87a00"
->>>>>>> bb9d75c1 (Sealed messages for clients with backends (#2449))
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7542,9 +7412,9 @@ dependencies = [
 
 [[package]]
 name = "sha3"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaedf34ed289ea47c2b741bb72e5357a209512d67bcd4bda44359e5bf0470f56"
+checksum = "e2904bea16a1ae962b483322a1c7b81d976029203aea1f461e51cd7705db7ba9"
 dependencies = [
  "digest 0.10.5",
  "keccak",
@@ -7586,9 +7456,9 @@ dependencies = [
 
 [[package]]
 name = "signature"
-version = "1.6.1"
+version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e90531723b08e4d6d71b791108faf51f03e1b4a7784f96b2b87f852ebc247228"
+checksum = "deb766570a2825fa972bceff0d195727876a9cdf2460ab2e52d455dc2de47fd9"
 dependencies = [
  "digest 0.10.5",
 ]
@@ -7823,9 +7693,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.100"
+version = "1.0.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52205623b1b0f064a4e71182c3b18ae902267282930c6d5462c91b859668426e"
+checksum = "e90cde112c4b9690b8cbe810cba9ddd8bc1d7472e2cae317b69e9438c1cba7d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7923,18 +7793,18 @@ checksum = "949517c0cf1bf4ee812e2e07e08ab448e3ae0d23472aee8a06c985f0c8815b16"
 
 [[package]]
 name = "thiserror"
-version = "1.0.35"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c53f98874615aea268107765aa1ed8f6116782501d18e53d08b471733bea6c85"
+checksum = "10deb33631e3c9018b9baf9dcbbc4f737320d2b576bac10f6aefa048fa407e3e"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.35"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8b463991b4eab2d801e724172285ec4195c650e8ec79b149e6c2a8e6dd3f783"
+checksum = "982d17546b47146b28f7c22e3d08465f6b8903d0ea13c1660d9d84a6e7adcdbb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8046,9 +7916,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.21.1"
+version = "1.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0020c875007ad96677dcc890298f4b942882c5d4eb7cc8f439fc3bf813dc9c95"
+checksum = "a9e03c497dc955702ba729190dc4aac6f2a0ce97f913e5b1b5912fc5039d9099"
 dependencies = [
  "autocfg",
  "bytes",
@@ -8056,7 +7926,6 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
- "once_cell",
  "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
@@ -8089,9 +7958,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df54d54117d6fdc4e4fea40fe1e4e566b3505700e148a6827e59b34b0d2600d9"
+checksum = "f6edf2d6bc038a43d31353570e27270603f4648d18f5ed10c0e179abe43255af"
 dependencies = [
  "futures-core",
  "pin-project-lite",
@@ -8223,9 +8092,9 @@ dependencies = [
 
 [[package]]
 name = "uint"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f03af7ccf01dd611cc450a0d10dbc9b745770d096473e2faf0ca6e2d66d1e0"
+checksum = "a45526d29728d135c2900b0d30573fe3ee79fceb12ef534c7bb30e810a91b601"
 dependencies = [
  "byteorder",
  "crunchy",
@@ -8269,15 +8138,15 @@ checksum = "099b7128301d285f79ddd55b9a83d5e6b9e97c92e0ea0daebee7263e932de992"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4f5b37a154999a8f3f98cc23a628d850e154479cd94decf3414696e12e31aaf"
+checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.21"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "854cbdc4f7bc6ae19c820d44abdc3277ac3e1b2b93db20a636825d9322fb60e6"
+checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]
@@ -8290,9 +8159,9 @@ checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
 
 [[package]]
 name = "unicode-xid"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "957e51f3646910546462e67d5f7599b9e4fb8acdd304b087a6494730f9eebf04"
+checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
 name = "universal-hash"
@@ -8301,6 +8170,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f214e8f697e925001e66ec2c6e37a4ef93f0f78c2eed7814394e10c62025b05"
 dependencies = [
  "generic-array",
+ "subtle",
+]
+
+[[package]]
+name = "universal-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d3160b73c9a19f7e2939a2fdad446c57c1bbbbf4d919d3213ff1267a580d8b5"
+dependencies = [
+ "crypto-common",
  "subtle",
 ]
 
@@ -8528,9 +8407,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.22.4"
+version = "0.22.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1c760f0d366a6c24a02ed7816e23e691f5d92291f94d15e836006fd11b04daf"
+checksum = "368bfe657969fb01238bb756d351dcade285e0f6fcbd36dcb23359a5169975be"
 dependencies = [
  "webpki",
 ]
