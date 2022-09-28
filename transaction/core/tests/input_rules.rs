@@ -235,7 +235,8 @@ fn test_input_rules_verify_missing_real_outputs() {
     ));
     get_first_rules(&tx).verify(block_version, &tx).unwrap();
 
-    // Add another partial fill output, also at 2000. Everything should still be good.
+    // Add another partial fill output, also at 2000. Everything should still be
+    // good.
     get_first_rules_mut(&mut tx)
         .partial_fill_outputs
         .push(change_committed_amount(
