@@ -39,7 +39,7 @@ mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-from-random = { path = "../../../util/from-random" }
 
-criterion = "0.3"
+criterion = "0.4"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
