@@ -17,6 +17,7 @@ Example setup and usage:
 import argparse
 import glob
 import grpc
+import json
 import logging
 import os
 import sys
