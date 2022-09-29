@@ -28,7 +28,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (SW/IAS dev)
-        run: cargo build --locked -j 4
+        run: cargo --version && cargo build --locked -j 4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -45,7 +45,7 @@ jobs:
         env:
           SGX_MODE: HW
           IAS_MODE: PROD
-        run: cargo build --locked
+        run: cargo --version && cargo build --locked -j 4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
