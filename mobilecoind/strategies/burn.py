@@ -201,3 +201,4 @@ if __name__ == '__main__':
         logging.info("Burn transaction was successful")
     else:
         logging.error("Burn transaction appears to be unsuccessful")
+        sys.exit(1)
