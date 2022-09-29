@@ -84,11 +84,11 @@ class MobilecoindClient:
         # Generate an account key from this root entropy
         if 'mnemonic' in key_data:
             resp = self.stub.GetAccountKeyFromMnemonic(
-                mobilecoind_api_pb2.GetAccountKeyFromMnemonicRequest(
+                GetAccountKeyFromMnemonicRequest(
                     mnemonic=key_data['mnemonic']))
         elif 'root_entropy' in key_data:
             resp = self.stub.GetAccountKeyFromRootEntropy(
-                mobilecoind_api_pb2.GetAccountKeyFromRootEntropyRequest(
+                GetAccountKeyFromRootEntropyRequest(
                     root_entropy=bytes(key_data['root_entropy'])))
         else:
             raise Exception('unknown key format')
@@ -97,7 +97,7 @@ class MobilecoindClient:
 
         # Add this account to the wallet
         resp = self.stub.AddMonitor(
-            mobilecoind_api_pb2.AddMonitorRequest(account_key=account_key, first_subaddress=0, num_subaddresses=1))
+            AddMonitorRequest(account_key=account_key, first_subaddress=0, num_subaddresses=1))
         return resp.monitor_id
 
     def remove_monitor(self, monitor_id):
