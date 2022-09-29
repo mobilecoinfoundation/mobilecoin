@@ -83,11 +83,11 @@ class MobilecoindClient:
 
         # Generate an account key from this root entropy
         if 'mnemonic' in key_data:
-            resp = stub.GetAccountKeyFromMnemonic(
+            resp = self.stub.GetAccountKeyFromMnemonic(
                 mobilecoind_api_pb2.GetAccountKeyFromMnemonicRequest(
                     mnemonic=key_data['mnemonic']))
         elif 'root_entropy' in key_data:
-            resp = stub.GetAccountKeyFromRootEntropy(
+            resp = self.stub.GetAccountKeyFromRootEntropy(
                 mobilecoind_api_pb2.GetAccountKeyFromRootEntropyRequest(
                     root_entropy=bytes(key_data['root_entropy'])))
         else:
@@ -96,7 +96,7 @@ class MobilecoindClient:
         account_key = resp.account_key
 
         # Add this account to the wallet
-        resp = stub.AddMonitor(
+        resp = self.stub.AddMonitor(
             mobilecoind_api_pb2.AddMonitorRequest(account_key=account_key, first_subaddress=0, num_subaddresses=1))
         return resp.monitor_id
 
