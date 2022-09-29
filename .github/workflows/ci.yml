@@ -410,6 +410,20 @@ jobs:
           # Give it time to spin up
           sleep 20
 
+          # Authorize minters
+          python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
+          sleep 5
+
+          # Mint 1 million token1's to the first 4 accounts
+          for ACCOUNT_NUM in $(seq 0 4); do
+              "$BIN_DIR/mc-consensus-mint-client generate-and-submit-mint-tx" \
+                  --node insecure-mc://localhost:3200/ \
+                  --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
+                  --recipient $(cat keys/account_keys_${ACCOUNT_NUM}.b58pub) \
+                  --token-id 1 \
+                  --amount 1000000
+          done
+
           # Run fog-distribution client to exercise Fog
           "$BIN_DIR/fog-distribution" \
               --sample-data-dir . \
@@ -434,6 +448,7 @@ jobs:
               --num-transactions 200 \
               --consensus-wait 300 \
               --transfer-amount 20 \
+              --token-ids 0,1 \
               --fog-view insecure-fog-view://localhost:8200 \
               --fog-ledger insecure-fog-ledger://localhost:8200 \
               --key-dir "$PWD/fog_keys"
