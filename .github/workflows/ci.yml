@@ -549,7 +549,8 @@ jobs:
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
           for ACCOUNT_NUM in $(seq 0 4); do
-              "$BIN_DIR/mc-consensus-mint-client generate-and-submit-mint-tx" \
+              "$BIN_DIR/mc-consensus-mint-client" \
+                  "generate-and-submit-mint-tx" \
                   --node insecure-mc://localhost:3200/ \
                   --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
                   --recipient $(cat keys/account_keys_${ACCOUNT_NUM}.b58pub) \
