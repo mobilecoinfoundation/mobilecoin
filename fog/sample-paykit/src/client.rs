@@ -375,6 +375,7 @@ impl Client {
         &mut self,
         offered: Amount,
         requested: Amount,
+        allow_partial_fill: bool,
         rng: &mut T,
     ) -> Result<SignedContingentInput> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.build_swap_proposal");
@@ -435,11 +436,20 @@ impl Client {
             EmptyMemoBuilder::default(),
         )?;
 
-        sci_builder
-            .add_required_output(requested, &self.account_key.default_subaddress(), rng)
-            .map_err(Error::AddOutput)?;
-
         let change_destination = ReservedSubaddresses::from(&self.account_key);
+
+        if allow_partial_fill {
+            sci_builder
+                .add_partial_fill_output(requested, &self.account_key.default_subaddress(), rng)
+                .map_err(Error::AddOutput)?;
+            sci_builder
+                .add_partial_fill_change_output(offered, &change_destination, rng)
+                .map_err(Error::AddOutput)?;
+        } else {
+            sci_builder
+                .add_required_output(requested, &self.account_key.default_subaddress(), rng)
+                .map_err(Error::AddOutput)?;
+        }
 
         sci_builder
             .add_required_change_output(change, &change_destination, rng)
@@ -459,11 +469,16 @@ impl Client {
     ///
     /// # Arguments
     /// * `sci` - The swap request we are fulfilling.
+    /// * `fill_amount` - The amount of the SCI we are taking, if it is a partial fill SCI.
+    ///                   This ranges from 0 up to the value of the fractional change output,
+    ///                   and in the latter case means we fully consume the SCI.
+    ///                   This must be None if this is not a partial fill SCI.
     /// * `fee` - The transaction fee to use.
     /// * `rng` - Randomness.
     pub fn build_swap_transaction<T: RngCore + CryptoRng>(
         &mut self,
         mut sci: SignedContingentInput,
+        fill_amount: Option<Amount>,
         fee: Amount,
         rng: &mut T,
     ) -> Result<Tx> {
@@ -532,55 +547,6 @@ impl Client {
             }
         }
 
-        // Aggregate total required outlay
-        let mut outlay: HashMap<TokenId, u64> = Default::default();
-        outlay.insert(fee.token_id, fee.value);
-        for req_amount in sci.required_output_amounts.iter() {
-            *outlay
-                .entry(TokenId::from(req_amount.token_id))
-                .or_default() += req_amount.value;
-        }
-
-        // Compute the leftover from the signed input.
-        // For example, the signed input may provide some amount of token_id1,
-        // but it may also have required outputs in token_id1 (for example as change)
-        // If present that is the "matching outlay".
-        // The remainder of subtracting the matching output from the signed input
-        // value is the leftover, which is the incentive to us to fill the order.
-        //
-        // If the leftover would be negative, then this is returned as an error
-        // SciUnprofitable. To make this concrete, this means that an order e.g.
-        // offers an input worth 10 MOB, but requires an output worth 20 MOB, so
-        // net, they not offering you anything and just asking for MOB. We could
-        // implement support for filling such orders, but since it seems uninteresting
-        // we decided to skip this and write less code for ourselves to maintain,
-        // and just return an error instead.
-        let leftover = {
-            let token_id = TokenId::from(sci.pseudo_output_amount.token_id);
-
-            // The matching outlay is how much required outlay there is in the
-            // token id of the signed input.
-            //
-            // We will use outlay list later to search our own wallet for required amounts,
-            // but we don't need to do that for this token id -- the "outlay" is
-            // actually negative taking into accoun the SCI input value, we have
-            // leftover value instead which we will add to ourselves as an
-            // output.
-            let matching_outlay = outlay.remove(&token_id).unwrap_or(0);
-
-            // If the offered amount is less than the matching outlay, then the
-            // leftover would be negative, and it is unprofitable to fill this
-            // order, since they aren't actually offering any value.
-            if sci.pseudo_output_amount.value < matching_outlay {
-                return Err(Error::SciUnprofitable);
-            }
-
-            // This is the amount that will be leftover which we can send to ourselves,
-            // and is our incentive to fill the order
-            let value = sci.pseudo_output_amount.value - matching_outlay;
-            Amount::new(value, token_id)
-        };
-
         // Make fog resolver
         let fog_uris = self
             .account_key
@@ -606,8 +572,85 @@ impl Client {
         )?;
         tx_builder.set_tombstone_block(tombstone_block);
 
-        // Add the presigned input
-        tx_builder.add_presigned_input(sci)?;
+        // Aggregate total required outlay due to the SCI
+        // (Note: In the partial fill case, there will be more outlays later)
+        let mut outlay: HashMap<TokenId, u64> = Default::default();
+        outlay.insert(fee.token_id, fee.value);
+        for req_amount in sci.required_output_amounts.iter() {
+            *outlay
+                .entry(TokenId::from(req_amount.token_id))
+                .or_default() += req_amount.value;
+        }
+
+        let sci_token_id = TokenId::from(sci.pseudo_output_amount.token_id);
+        let sci_value = sci.pseudo_output_amount.value;
+
+        // Now we have to case out on the partial-fill vs. non-partial fill flow
+        if let Some(fill_amount) = fill_amount {
+            // Compute the parameter that we need to pass to the sci builder
+            // FIXME: Don't unwrap here
+            let (partial_fill_change, _) = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_change.as_ref().unwrap().reveal_amount().unwrap();
+
+            if partial_fill_change.token_id != fill_amount.token_id {
+                return Err(Error::SciTokenIdMismatch);
+            }
+
+            let sci_change_amount = Amount::new(partial_fill_change.value - fill_amount.value, fill_amount.token_id);
+
+            // Add the SCI to the tx builder, it will return the fractional amounts it computed for each
+            // fractional output that was required.
+            let fractional_amounts = tx_builder.add_presigned_partial_fill_input(sci, sci_change_amount)?;
+
+            // Record the outlays that came from the fractional outputs
+            for fractional_amount in fractional_amounts {
+                *outlay.entry(fractional_amount.token_id)
+                .or_default() += fractional_amount.value;
+            }
+
+            // Record the outlay that came from the fractional change
+            *outlay.entry(sci_change_amount.token_id).or_default() += sci_change_amount.value;
+        } else {
+            // Add the presigned input
+            // There's nothing else to do if there's no partial fill component.
+            tx_builder.add_presigned_input(sci)?;
+        }
+
+        // Compute the leftover from the signed input.
+        // For example, the signed input may provide some amount of token_id1,
+        // but it may also have required outputs in token_id1 (for example as change)
+        // If present that is the "matching outlay".
+        // The remainder of subtracting the matching output from the signed input
+        // value is the leftover, which is the incentive to us to fill the order.
+        //
+        // If the leftover would be negative, then this is returned as an error
+        // SciUnprofitable. To make this concrete, this means that an order e.g.
+        // offers an input worth 10 MOB, but requires an output worth 20 MOB, so
+        // net, they not offering you anything and just asking for MOB. We could
+        // implement support for filling such orders, but since it seems uninteresting
+        // we decided to skip this and write less code for ourselves to maintain,
+        // and just return an error instead.
+        let leftover = {
+            // The matching outlay is how much required outlay there is in the
+            // token id of the signed input.
+            //
+            // We will use outlay list later to search our own wallet for required amounts,
+            // but we don't need to do that for this token id -- the "outlay" is
+            // actually negative taking into accoun the SCI input value, we have
+            // leftover value instead which we will add to ourselves as an
+            // output.
+            let matching_outlay = outlay.remove(&sci_token_id).unwrap_or(0);
+
+            // If the offered amount is less than the matching outlay, then the
+            // leftover would be negative, and it is unprofitable to fill this
+            // order, since they aren't actually offering any value.
+            if sci_value < matching_outlay {
+                return Err(Error::SciUnprofitable);
+            }
+
+            // This is the amount that will be leftover which we can send to ourselves,
+            // and is our incentive to fill the order
+            Amount::new(sci_value - matching_outlay, sci_token_id)
+        };
 
         // Pay the leftover to ourselves
         tx_builder.add_change_output(leftover, &change_destination, rng)?;

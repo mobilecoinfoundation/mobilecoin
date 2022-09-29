@@ -26,6 +26,7 @@ use mc_util_telemetry::{
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
+use rand::{Rng, thread_rng};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -76,6 +77,20 @@ struct TransferData {
     /// The block count at which the transaction was submitted.
     block_count: u64,
     /// The fee associated with the transaction.
+    fee: Amount,
+}
+
+/// Data associated with a test client swap.
+struct SwapTransferData {
+    /// The transaction that represents the transfer.
+    transaction: Tx,
+    /// The block count at which the transaction was submitted.
+    block_count: u64,
+    /// The amount of token1 which target pays to source
+    value1: u64,
+    /// The amount of token2 which source pays to target
+    value2: u64,
+    /// The fee associated with the transaction (paid by target)
     fee: Amount,
 }
 
@@ -669,33 +684,46 @@ impl TestClient {
     }
 
     /// Conduct an atomic swap transfer between two clients
-    /// Returns the transaction and the block count of the node it was submitted
-    /// to.
     ///
-    /// The target client builds a signed contingent input, then the source
-    /// client incorporates this into a Tx and submits it.
+    /// The source client builds an SCI, and the target client builds the swap
+    /// transaction. This only builds and submits the transactions, it does not
+    /// confirm it.
+    ///
+    /// The source client's balance is expected to go down by result.value2 of tok2,
+    /// and go up by result.value1 of tok1.
+    ///
+    /// The target client's balance is expected to go down by result.value1 + result.fee
+    /// of tok1, and go up by result.value2 of tok2.
+    ///
     /// This only builds and submits the transaction, it does not confirm it.
     ///
     /// Returns:
-    /// * TransferData: The Tx we submitted, the block count at which we
-    ///   submitted it, and the fee paid
+    /// * SwapTransferData: The Tx we submitted, the block count at which we
+    ///   submitted it, the actual transfer amounts, and the fee paid
     fn atomic_swap(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
         token_id1: TokenId,
         token_id2: TokenId,
-    ) -> Result<TransferData, TestClientError> {
+        is_partial_fill: bool,
+    ) -> Result<SwapTransferData, TestClientError> {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
+
+        let mut rng = McRng::default();
+
+        let tok1_val = 1 + thread_rng().gen_range(0, self.policy.transfer_amount);
+        let tok2_val = 1 + thread_rng().gen_range(0, self.policy.transfer_amount);
+
         log::debug!(
             self.logger,
-            "Attempting to swap ({} + fee) of {} and ({}) of {} ({})",
-            self.policy.transfer_amount,
+            "Attempting to {} swap ({}) of {} and ({}) of {}",
+            if is_partial_fill { "partial-fill" } else { "fully" },
+            tok1_val,
             token_id1,
-            self.policy.transfer_amount,
+            tok2_val,
             token_id2,
-            source_client.consensus_service_address()
         );
 
         // First do a balance check to flush out any spent txos
@@ -711,7 +739,6 @@ impl TestClient {
                 .map_err(TestClientError::CheckBalance)
         })?;
 
-        let mut rng = McRng::default();
         assert!(target_address.fog_report_url().is_some());
 
         // Get the current minimum fee from consensus
@@ -730,30 +757,54 @@ impl TestClient {
         let fee = Amount::new(fee_value, token_id1);
 
         // Build swap proposal
-        // Note: We are adding fee-value here to avoid "SCI Unprofitable" errors,
-        // when transfer_amount is very small
-        let signed_input = target_client
+        let signed_input = source_client
             .build_swap_proposal(
-                Amount::new(self.policy.transfer_amount + fee_value, token_id1),
-                Amount::new(self.policy.transfer_amount, token_id2),
+                Amount::new(tok2_val, token_id2),
+                Amount::new(tok1_val, token_id1),
+                is_partial_fill,
                 &mut rng,
             )
             .map_err(TestClientError::BuildSwapProposal)?;
 
+        // In the partial fill case, counter-party decides how much to fill it
+        // We'll choose a random number in the range [0, self.tok1_val].
+        let (fill_amount, fractional_tok2_val) = if is_partial_fill {
+            let fractional_tok1_val = thread_rng().gen_range(0, tok1_val + 1);
+            // Because of the partial fill, the actual amount of tok1 transfered
+            // to the source is going to be fractional_tok1_val, not tok1_val.
+            // Similarly, the actual amount of tok2 transfered to target is less.
+            // We need to compute how much less.
+            // Multiply tok2_val by fraction fill_amount.value / tok1_val, rounding up.
+            let fractional_tok2_val = ((tok2_val as u128 * fractional_tok1_val as u128 + (tok1_val - 1) as u128) / (tok1_val as u128)) as u64;
+
+            (Some(Amount::new(fractional_tok1_val, token_id1)), fractional_tok2_val)
+        } else {
+            (None, 0)
+        };
+
         // Build swap tx
-        let transaction = source_client
-            .build_swap_transaction(signed_input, fee, &mut rng)
+        let transaction = target_client
+            .build_swap_transaction(signed_input, fill_amount, fee, &mut rng)
             .map_err(TestClientError::BuildTx)?;
         self.tx_info.set_tx(&transaction);
 
         // Submit swap tx
-        let block_count = source_client
+        let block_count = target_client
             .send_transaction(&transaction)
             .map_err(TestClientError::SubmitTx)?;
         self.tx_info.set_tx_propose_block_count(block_count);
-        Ok(TransferData {
+
+        let (value1, value2) = if is_partial_fill {
+            (fill_amount.unwrap().value, fractional_tok2_val)
+        } else {
+            (tok1_val, tok2_val)
+        };
+
+        Ok(SwapTransferData {
             transaction,
             block_count,
+            value1,
+            value2,
             fee,
         })
     }
@@ -764,6 +815,7 @@ impl TestClient {
     /// Arguments:
     /// * token_id1: The first token id to swap
     /// * token_id2: The second token id to swap
+    /// * is_partial_fill: Whether this is a partial fill swap
     /// * source_client: The client to send from
     /// * source_client_index: The index of this client in the list of clients
     ///   (for debugging info)
@@ -774,6 +826,7 @@ impl TestClient {
         &self,
         token_id1: TokenId,
         token_id2: TokenId,
+        is_partial_fill: bool,
         source_client: Arc<Mutex<Client>>,
         _source_client_index: usize,
         target_client: Arc<Mutex<Client>>,
@@ -806,6 +859,7 @@ impl TestClient {
             &mut target_client_lk,
             token_id1,
             token_id2,
+            is_partial_fill,
         )?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
@@ -819,8 +873,8 @@ impl TestClient {
         let expected_tgt_balances = {
             let mut result = tgt_balances.clone();
             *result.entry(token_id1).or_default() -=
-                self.policy.transfer_amount + transfer_data.fee.value;
-            *result.entry(token_id2).or_default() += self.policy.transfer_amount;
+                transfer_data.value1 + transfer_data.fee.value;
+            *result.entry(token_id2).or_default() += transfer_data.value2;
             result
         };
 
@@ -849,8 +903,8 @@ impl TestClient {
 
         let expected_src_balance = {
             let mut result = src_balances;
-            *result.entry(token_id1).or_default() += self.policy.transfer_amount;
-            *result.entry(token_id2).or_default() -= self.policy.transfer_amount;
+            *result.entry(token_id1).or_default() += transfer_data.value1;
+            *result.entry(token_id2).or_default() -= transfer_data.value2;
             result
         };
 
@@ -943,9 +997,14 @@ impl TestClient {
                 let token_id1 = self.policy.token_ids[alternating];
                 let token_id2 = self.policy.token_ids[1 - alternating];
 
+                // Every two rounds through all the clients, we switch whether we are doing
+                // partial fills or non-partial fills.
+                let is_partial_fill = ((ti / (2 * client_count)) % 2) == 0;
+
                 self.test_atomic_swap(
                     token_id1,
                     token_id2,
+                    is_partial_fill,
                     source_client,
                     source_index,
                     target_client,
