@@ -16,13 +16,15 @@ Example setup and usage:
 """
 import argparse
 import glob
+import grpc
 import logging
-import mobilecoind_api_pb2
 import os
 import sys
 import time
 from accounts import load_key_and_register
-from google.protobuf.empty_pb2 import Empty
+from google.protobuf import empty_pb2
+from mobilecoind_api_pb2 import *
+from mobilecoind_api_pb2_grpc import *
 
 logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
 
@@ -69,9 +71,9 @@ class MobilecoindClient:
             self.channel = grpc.insecure_channel(address)
         self.stub = MobilecoindAPIStub(self.channel)
 
-    def new_monitor_from_key_file(self, file):
-        """Create a new monitor from a key file"""
-        return load_key_and_register(file, stub)
+    def new_monitor_from_keyfile(self, file):
+        """Create a new monitor from a key file, returns AccountData"""
+        return load_key_and_register(file, self.stub)
 
     def remove_monitor(self, monitor_id):
         self.stub.RemoveMonitor(RemoveMonitorRequest(monitor_id=monitor_id))
@@ -157,7 +159,8 @@ if __name__ == '__main__':
     logging.debug(args)
 
     client = MobilecoindClient(f"{args.mobilecoind_host}:{args.mobilecoind_port}")
-    monitor = client.new_monitor_from_keyfile(args.key)
+    account_data = client.new_monitor_from_keyfile(args.key)
+    monitor = account_data.monitor_id
 
     client.wait_for_monitor_to_sync(monitor)
 
@@ -166,16 +169,16 @@ if __name__ == '__main__':
     if balance < args.value + args.fee:
         raise Exception(f"Insufficient balance: {balance} < {args.value} + {args.fee}")
 
-    utxos = client2.get_utxos(monitor_id, args.token_id)
-    tx_proposal = client2.generate_burn_redemption_tx(
-        monitor_id,
+    utxos = client.get_utxos(monitor, args.token_id)
+    tx_proposal = client.generate_burn_redemption_tx(
+        monitor,
         utxos,
         args.value,
         args.fee,
         args.token_id,
     )
     logging.info("Constructed burn transaction")
-    print(tx_proposal)
+    logging.debug(tx_proposal)
 
     # Search for the burn txout. mobilecoind will create one "outlay" which is
     # the burn, and there is a map in the TxProposal that tells you which TxOut it is.
@@ -183,10 +186,10 @@ if __name__ == '__main__':
         logging.warning(f"Unexpected number of outlays: {tx_proposal.outlay_index_to_tx_out_index}")
     tx_out_public_key_bytes = tx_proposal.tx.prefix.outputs[tx_proposal.outlay_index_to_tx_out_index[0]].public_key.data
     tx_out_public_key_hex = tx_out_public_key_bytes.hex()
-    logging.info("The hex bytes of burn TxOut public key are: {tx_out_public_key_hex}")
+    logging.info(f"*** The hex bytes of burn TxOut public key are: {tx_out_public_key_hex}")
 
     logging.info("Submitting burn transaction")
-    submit_response = client2.submit_tx(tx_proposal)
+    submit_response = client.submit_tx(tx_proposal)
     print(submit_response)
 
     time.sleep(3)
