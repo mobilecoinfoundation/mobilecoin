@@ -107,8 +107,6 @@ members = [
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
-    "mint-auditor",
-    "mint-auditor/api",
     "mobilecoind",
     "mobilecoind-dev-faucet",
     "mobilecoind-json",
