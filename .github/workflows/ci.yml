@@ -28,7 +28,11 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (SW/IAS dev)
-        run: cargo --version && cargo build --locked -j 4
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          # This build dies with linker OOM, so limit the number of concurrent jobs.
+          args: --locked -j4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -45,7 +49,11 @@ jobs:
         env:
           SGX_MODE: HW
           IAS_MODE: PROD
-        run: cargo --version && cargo build --locked -j 4
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          # This build dies with linker OOM, so limit the number of concurrent jobs.
+          args: --locked -j 4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -401,7 +409,11 @@ jobs:
           LEDGER_BASE="$PWD/ledger" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
           # Give it time to spin up
-          sleep 60
+          for PORT in 3200 3201 3202 3203 3204 4444; do
+            for i in $(seq 0 60); do
+              if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
+            done
+          done
 
           # Run fog-distribution client to exercise Fog
           "$BIN_DIR/fog-distribution" \
@@ -442,7 +454,9 @@ jobs:
             --peer insecure-mc://localhost:3204/ &
 
           # Give it time to spin up
-          sleep 60
+          for i in $(seq 0 60); do
+            if ss -l | grep -q ":9090"; then break; else sleep 1; fi;
+          done
 
           # Try hitting the faucet
           curl -s localhost:9090/status
@@ -539,7 +553,11 @@ jobs:
           MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
           # Give it time to spin up
-          sleep 60
+          for PORT in 3200 3201 3202 3203 3204 4444; do
+            for i in $(seq 0 60); do
+              if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
+            done
+          done
 
           # Authorize minters
           echo "Authorizing minters"

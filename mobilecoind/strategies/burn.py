@@ -21,7 +21,6 @@ import logging
 import os
 import sys
 import time
-from accounts import load_key_and_register
 from google.protobuf import empty_pb2
 from mobilecoind_api_pb2 import *
 from mobilecoind_api_pb2_grpc import *
@@ -73,7 +72,32 @@ class MobilecoindClient:
 
     def new_monitor_from_keyfile(self, file):
         """Create a new monitor from a key file, returns AccountData"""
-        return load_key_and_register(file, self.stub)
+
+        # Load the account key from file
+        with open(file, 'r') as f:
+            key_data = json.load(f)
+
+        # Remove discovery fqdn, as this causes InvalidTxOutMembershipProof
+        key_data['acct_fqdn'] = None
+
+        # Generate an account key from this root entropy
+        if 'mnemonic' in key_data:
+            resp = stub.GetAccountKeyFromMnemonic(
+                mobilecoind_api_pb2.GetAccountKeyFromMnemonicRequest(
+                    mnemonic=key_data['mnemonic']))
+        elif 'root_entropy' in key_data:
+            resp = stub.GetAccountKeyFromRootEntropy(
+                mobilecoind_api_pb2.GetAccountKeyFromRootEntropyRequest(
+                    root_entropy=bytes(key_data['root_entropy'])))
+        else:
+            raise Exception('unknown key format')
+
+        account_key = resp.account_key
+
+        # Add this account to the wallet
+        resp = stub.AddMonitor(
+            mobilecoind_api_pb2.AddMonitorRequest(account_key=account_key, first_subaddress=0, num_subaddresses=1))
+        return resp.monitor_id
 
     def remove_monitor(self, monitor_id):
         self.stub.RemoveMonitor(RemoveMonitorRequest(monitor_id=monitor_id))
@@ -159,8 +183,7 @@ if __name__ == '__main__':
     logging.debug(args)
 
     client = MobilecoindClient(f"{args.mobilecoind_host}:{args.mobilecoind_port}")
-    account_data = client.new_monitor_from_keyfile(args.key)
-    monitor = account_data.monitor_id
+    monitor = client.new_monitor_from_keyfile(args.key)
 
     client.wait_for_monitor_to_sync(monitor)
 
