@@ -401,7 +401,7 @@ jobs:
           LEDGER_BASE="$PWD/ledger" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
           # Give it time to spin up
-          sleep 20
+          sleep 60
 
           # Run fog-distribution client to exercise Fog
           "$BIN_DIR/fog-distribution" \
@@ -414,7 +414,7 @@ jobs:
               --peer insecure-mc://localhost:3204/ \
               --num-tx-to-send 10
           # Give it time to spin up
-          sleep 20
+          sleep 60
 
           # Run test-client
           "$BIN_DIR/test_client" \
@@ -442,7 +442,7 @@ jobs:
             --peer insecure-mc://localhost:3204/ &
 
           # Give it time to spin up
-          sleep 20
+          sleep 60
 
           # Try hitting the faucet
           curl -s localhost:9090/status
@@ -539,12 +539,12 @@ jobs:
           MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
           # Give it time to spin up
-          sleep 20
+          sleep 60
 
           # Authorize minters
           echo "Authorizing minters"
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
-          sleep 5
+          sleep 20
 
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
@@ -557,7 +557,7 @@ jobs:
                   --amount 1000000
           done
 
-          sleep 10
+          sleep 60
 
           # Use burn.py to burn some token1
           cd "$STRATEGIES_DIR"
