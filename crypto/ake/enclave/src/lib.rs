@@ -196,6 +196,36 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         }
     }
 
+    pub fn frontend_encrypt(
+        &self,
+        session_id: &NonceSession,
+        aad: &[u8],
+        data: &[u8],
+    ) -> Result<EnclaveMessage<NonceSession>> {
+        let mut frontends = self.frontends.lock()?;
+        let session = frontends.get_mut(session_id).ok_or(Error::NotFound)?;
+        let (data, nonce) = session.encrypt_with_nonce(aad, data)?;
+        let channel_id = NonceSession::new(session.binding().to_owned(), nonce);
+
+        // Return message
+        Ok(EnclaveMessage {
+            aad: aad.to_vec(),
+            channel_id,
+            data,
+        })
+    }
+
+    pub fn frontend_decrypt(&self, msg: EnclaveMessage<NonceSession>) -> Result<Vec<u8>> {
+        // Ensure lock gets released as soon as we're done decrypting.
+        let mut frontends = self.frontends.lock()?;
+        frontends
+            .get_mut(&msg.channel_id)
+            .ok_or(Error::NotFound)
+            .and_then(|session| {
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.nonce())?)
+            })
+    }
+
     /// Accept an explicit-nonce session from a frontend service (router) to
     /// ourselves (acting as a store).
     pub fn frontend_accept(
