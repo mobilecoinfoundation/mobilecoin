@@ -26,7 +26,7 @@ use mc_util_telemetry::{
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -689,11 +689,11 @@ impl TestClient {
     /// transaction. This only builds and submits the transactions, it does not
     /// confirm it.
     ///
-    /// The source client's balance is expected to go down by result.value2 of tok2,
-    /// and go up by result.value1 of tok1.
+    /// The source client's balance is expected to go down by result.value2 of
+    /// tok2, and go up by result.value1 of tok1.
     ///
-    /// The target client's balance is expected to go down by result.value1 + result.fee
-    /// of tok1, and go up by result.value2 of tok2.
+    /// The target client's balance is expected to go down by result.value1 +
+    /// result.fee of tok1, and go up by result.value2 of tok2.
     ///
     /// This only builds and submits the transaction, it does not confirm it.
     ///
@@ -719,7 +719,11 @@ impl TestClient {
         log::debug!(
             self.logger,
             "Attempting to {} swap ({}) of {} and ({}) of {}",
-            if is_partial_fill { "partial-fill" } else { "fully" },
+            if is_partial_fill {
+                "partial-fill"
+            } else {
+                "fully"
+            },
             tok1_val,
             token_id1,
             tok2_val,
@@ -775,11 +779,16 @@ impl TestClient {
             // Similarly, the actual amount of tok2 transfered to target is less.
             // We need to compute how much less.
             // Multiply tok2_val by fraction fill_amount.value / tok1_val, rounding up.
-            let fractional_tok2_val = ((tok2_val as u128 * fractional_tok1_val as u128 + (tok1_val - 1) as u128) / (tok1_val as u128)) as u64;
+            let fractional_tok2_val = ((tok2_val as u128 * fractional_tok1_val as u128
+                + (tok1_val - 1) as u128)
+                / (tok1_val as u128)) as u64;
 
-            (Some(Amount::new(fractional_tok1_val, token_id1)), fractional_tok2_val)
+            (
+                Some(Amount::new(fractional_tok1_val, token_id1)),
+                fractional_tok2_val,
+            )
         } else {
-            (None, 0)
+            (None, tok2_val)
         };
 
         // Build swap tx
@@ -872,8 +881,7 @@ impl TestClient {
 
         let expected_tgt_balances = {
             let mut result = tgt_balances.clone();
-            *result.entry(token_id1).or_default() -=
-                transfer_data.value1 + transfer_data.fee.value;
+            *result.entry(token_id1).or_default() -= transfer_data.value1 + transfer_data.fee.value;
             *result.entry(token_id2).or_default() += transfer_data.value2;
             result
         };

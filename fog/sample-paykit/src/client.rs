@@ -469,10 +469,10 @@ impl Client {
     ///
     /// # Arguments
     /// * `sci` - The swap request we are fulfilling.
-    /// * `fill_amount` - The amount of the SCI we are taking, if it is a partial fill SCI.
-    ///                   This ranges from 0 up to the value of the fractional change output,
-    ///                   and in the latter case means we fully consume the SCI.
-    ///                   This must be None if this is not a partial fill SCI.
+    /// * `fill_amount` - The amount of the SCI we are taking, if it is a
+    ///   partial fill SCI. This ranges from 0 up to the value of the fractional
+    ///   change output, and in the latter case means we fully consume the SCI.
+    ///   This must be None if this is not a partial fill SCI.
     /// * `fee` - The transaction fee to use.
     /// * `rng` - Randomness.
     pub fn build_swap_transaction<T: RngCore + CryptoRng>(
@@ -589,22 +589,34 @@ impl Client {
         if let Some(fill_amount) = fill_amount {
             // Compute the parameter that we need to pass to the sci builder
             // FIXME: Don't unwrap here
-            let (partial_fill_change, _) = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_change.as_ref().unwrap().reveal_amount().unwrap();
+            let (partial_fill_change, _) = sci
+                .tx_in
+                .input_rules
+                .as_ref()
+                .unwrap()
+                .partial_fill_change
+                .as_ref()
+                .unwrap()
+                .reveal_amount()
+                .unwrap();
 
             if partial_fill_change.token_id != fill_amount.token_id {
                 return Err(Error::SciTokenIdMismatch);
             }
 
-            let sci_change_amount = Amount::new(partial_fill_change.value - fill_amount.value, fill_amount.token_id);
+            let sci_change_amount = Amount::new(
+                partial_fill_change.value - fill_amount.value,
+                fill_amount.token_id,
+            );
 
-            // Add the SCI to the tx builder, it will return the fractional amounts it computed for each
-            // fractional output that was required.
-            let fractional_amounts = tx_builder.add_presigned_partial_fill_input(sci, sci_change_amount)?;
+            // Add the SCI to the tx builder, it will return the fractional amounts it
+            // computed for each fractional output that was required.
+            let fractional_amounts =
+                tx_builder.add_presigned_partial_fill_input(sci, sci_change_amount)?;
 
             // Record the outlays that came from the fractional outputs
             for fractional_amount in fractional_amounts {
-                *outlay.entry(fractional_amount.token_id)
-                .or_default() += fractional_amount.value;
+                *outlay.entry(fractional_amount.token_id).or_default() += fractional_amount.value;
             }
 
             // Record the outlay that came from the fractional change
