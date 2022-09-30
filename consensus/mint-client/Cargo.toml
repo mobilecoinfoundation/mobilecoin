@@ -26,7 +26,7 @@ mc-util-grpc = { path = "../../util/grpc" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.11.0"
 hex = "0.4"
