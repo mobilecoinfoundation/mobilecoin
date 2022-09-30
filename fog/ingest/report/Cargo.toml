@@ -1,0 +1,14 @@
+[package]
+name = "mc-fog-ingest-report"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[dependencies]
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-util-encodings = { path = "../../../util/encodings" }
+
+displaydoc = { version = "0.2", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

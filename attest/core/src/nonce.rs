@@ -13,9 +13,9 @@ use core::{
     write,
 };
 use hex_fmt::HexFmt;
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_sgx_types::sgx_quote_nonce_t;
 use mc_util_encodings::{Error as EncodingError, FromHex, ToHex};
+use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConstantTimeEq};
 

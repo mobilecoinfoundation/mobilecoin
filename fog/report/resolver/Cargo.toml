@@ -1,0 +1,21 @@
+[package]
+name = "mc-fog-report-resolver"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[features]
+default = []
+automock = ["mockall"]
+
+[dependencies]
+mc-account-keys = { path = "../../../account-keys" }
+mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
+mc-fog-ingest-report = { path = "../../ingest/report" }
+mc-fog-report-types = { path = "../types" }
+mc-fog-report-validation = { path = "../validation" }
+mc-fog-sig = { path = "../../sig", default-features = false }
+mc-util-uri = { path = "../../../util/uri" }
+
+mockall = { version = "0.11.2", optional = true }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

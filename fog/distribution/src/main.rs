@@ -34,7 +34,7 @@ use mc_connection::{
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
@@ -451,7 +451,8 @@ fn build_fog_resolver(
     // XXX: This retry should possibly be in the GrpcFogPubkeyResolver object itself
     // instead 15'th fibonacci is 987, so the last delay should be ~100
     // seconds
-    let conn = GrpcFogReportConnection::new(env.clone(), logger.clone());
+    // TODO: Supply a chain id to fog-distribution?
+    let conn = GrpcFogReportConnection::new(String::default(), env.clone(), logger.clone());
     let responses = retry(
         delay::Fibonacci::from_millis(100)
             .map(delay::jitter)

@@ -26,7 +26,7 @@ spec:
       - name: grpc-gateway
         image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: IfNotPresent
-        command: 
+        command:
         - /usr/bin/go-grpc-gateway
         - -grpc-server-endpoint={{ include "consensusNode.clientHostname" . }}:443
         - -http-server-listen=:8000
@@ -34,3 +34,14 @@ spec:
         ports:
         - name: gateway
           containerPort: 8000
+        env:
+        - name: MC_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network

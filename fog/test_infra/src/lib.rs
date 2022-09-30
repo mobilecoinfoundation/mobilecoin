@@ -29,28 +29,35 @@ use std::{convert::TryFrom, env, path::PathBuf};
 /// sense for our infrastructure.
 pub fn get_enclave_path(filename: &str) -> PathBuf {
     // First try searching right next to the target, this is for circle-ci
-    let maybe_result = env::current_exe()
-        .expect("Could not get current exe")
-        .with_file_name(filename);
+    let current_exe = env::current_exe().expect("Could not get current exe");
+    let maybe_result = current_exe.with_file_name(filename);
     // Try statting the file
     if std::fs::metadata(maybe_result.clone()).is_ok() {
         return maybe_result;
     }
 
-    // During cargo test, the enclave.so won't be there, so we search in target
-    // instead as a fallback
-    let project_root = {
-        let mut result = env::current_exe().expect("Could not get current exe");
-        while result.file_name().expect("No Filename for result") != "target" {
-            result = result.parent().expect("No parent for result").to_path_buf();
+    // When building in the container, CARGO_TARGET_DIR is set to e.g.
+    // `/target/docker/debug`, and we should respect this. Otherwise, we can
+    // attempt to find it, assuming that current exe
+    let target_dir = match env::var("CARGO_TARGET_DIR") {
+        Ok(target_dir) => PathBuf::from(target_dir),
+        Err(_) => {
+            let mut result = current_exe;
+            while result
+                .file_name()
+                .expect("No Filename for result, could not find target directory")
+                != "target"
+            {
+                result = result
+                    .parent()
+                    .expect("No parent for result, could not find target directory")
+                    .to_path_buf();
+            }
+            result
         }
-        result
-            .parent()
-            .expect("Now no parent for result")
-            .to_path_buf()
     };
-    project_root
-        .join("target")
+
+    target_dir
         .join(mc_util_build_info::profile())
         .join(filename)
 }

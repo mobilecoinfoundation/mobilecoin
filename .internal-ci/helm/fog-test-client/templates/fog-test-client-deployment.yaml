@@ -35,6 +35,11 @@ spec:
             - all
           readOnlyRootFilesystem: true
         env:
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
         - name: MC_FOG_VIEW
           valueFrom:
             configMapKeyRef:

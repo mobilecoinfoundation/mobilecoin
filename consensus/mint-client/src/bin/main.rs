@@ -3,7 +3,7 @@
 //! Entrypoint for the consensus mint client.
 
 use clap::Parser;
-use grpcio::{ChannelBuilder, EnvBuilder};
+use grpcio::{CallOption, ChannelBuilder, EnvBuilder, MetadataBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
@@ -17,16 +17,34 @@ use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
     mint::{MintConfigTx, MintTx},
 };
-use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
 use protobuf::ProtobufEnum;
 use std::{fs, process::exit, sync::Arc};
+
+// Make a "call option" object which includes appropriate grpc headers
+fn call_option(chain_id: &str) -> CallOption {
+    let mut metadata_builder = MetadataBuilder::new();
+
+    // Add the chain id header if we have a chain id specified
+    if !chain_id.is_empty() {
+        metadata_builder
+            .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
+            .expect("Could not add chain-id header");
+    }
+
+    CallOption::default().headers(metadata_builder.build())
+}
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = Config::parse();
 
     match config.command {
-        Commands::GenerateAndSubmitMintConfigTx { node, params } => {
+        Commands::GenerateAndSubmitMintConfigTx {
+            node,
+            params,
+            chain_id,
+        } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
@@ -46,7 +64,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_config_tx(&(&tx).into())
+                .propose_mint_config_tx_opt(&(&tx).into(), call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -79,7 +97,11 @@ fn main() {
             println!("Hash: {}", hex::encode(hash));
         }
 
-        Commands::SubmitMintConfigTx { node, tx_filenames } => {
+        Commands::SubmitMintConfigTx {
+            node,
+            tx_filenames,
+            chain_id,
+        } => {
             // Load all txs.
             let txs =
                 TxFile::load_multiple::<MintConfigTx>(&tx_filenames).expect("failed loading txs");
@@ -111,7 +133,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_config_tx(&(&merged_tx).into())
+                .propose_mint_config_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -121,7 +143,11 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::GenerateAndSubmitMintTx { node, params } => {
+        Commands::GenerateAndSubmitMintTx {
+            node,
+            params,
+            chain_id,
+        } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
@@ -141,7 +167,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_tx(&(&tx).into())
+                .propose_mint_tx_opt(&(&tx).into(), call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -161,6 +187,15 @@ fn main() {
                 .expect("failed writing output file");
         }
 
+        Commands::HashTxFile { tx_file } => match tx_file {
+            TxFile::MintConfigTx(tx) => {
+                println!("{}", hex::encode(&tx.prefix.hash()));
+            }
+            TxFile::MintTx(tx) => {
+                println!("{}", hex::encode(&tx.prefix.hash()));
+            }
+        }
+
         Commands::HashMintTx { params } => {
             let tx_prefix = params
                 .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
@@ -174,7 +209,11 @@ fn main() {
             println!("Hash: {}", hex::encode(hash));
         }
 
-        Commands::SubmitMintTx { node, tx_filenames } => {
+        Commands::SubmitMintTx {
+            node,
+            tx_filenames,
+            chain_id,
+        } => {
             // Load all txs.
             let txs = TxFile::load_multiple::<MintTx>(&tx_filenames).expect("failed loading txs");
 
@@ -205,7 +244,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_tx(&(&merged_tx).into())
+                .propose_mint_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 

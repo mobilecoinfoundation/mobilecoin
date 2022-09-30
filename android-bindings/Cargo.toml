@@ -29,6 +29,7 @@ mc-crypto-box = { path = "../crypto/box" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand", features = ["std"] }
+mc-fog-report-resolver = { path = "../fog/report/resolver" }
 mc-fog-report-types = { path = "../fog/report/types" }
 mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-transaction-core = { path = "../transaction/core" }

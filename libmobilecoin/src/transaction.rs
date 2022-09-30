@@ -12,7 +12,7 @@ use crc::Crc;
 use generic_array::{typenum::U66, GenericArray};
 use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes, RistrettoPrivate, RistrettoPublic};
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},

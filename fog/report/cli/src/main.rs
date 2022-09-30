@@ -22,9 +22,9 @@ use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
 use mc_fog_report_connection::{Error, GrpcFogReportConnection};
-use mc_fog_report_validation::{
-    FogPubkeyResolver, FogReportResponses, FogResolver, FullyValidatedFogPubkey,
-};
+use mc_fog_report_resolver::FogResolver;
+use mc_fog_report_types::FogReportResponses;
+use mc_fog_report_validation::{FogPubkeyResolver, FullyValidatedFogPubkey};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use std::{
@@ -54,6 +54,10 @@ use std::{
 #[derive(Debug, clap::Parser)]
 #[clap(version)]
 struct Config {
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// Path to mobilecoin public address. Fog url and spki will be extracted,
     /// and fog signature will be checked, unless no-validate is passed.
     #[clap(long, short, env = "MC_PUBLIC_ADDRESS")]
@@ -94,6 +98,7 @@ struct Config {
 
 /// Get fog response with retries, retrying if NoReports error occurs
 fn get_fog_response_with_retries(
+    chain_id: &str,
     fog_uri: FogUri,
     retry_duration: Duration,
     logger: &Logger,
@@ -101,7 +106,7 @@ fn get_fog_response_with_retries(
     // Create the grpc object and report verifier
     let grpc_env = Arc::new(EnvBuilder::new().name_prefix("cli").build());
 
-    let conn = GrpcFogReportConnection::new(grpc_env, logger.clone());
+    let conn = GrpcFogReportConnection::new(chain_id.to_owned(), grpc_env, logger.clone());
 
     let deadline = Instant::now() + retry_duration;
     loop {
@@ -234,6 +239,7 @@ fn main() {
 
         // Try to make request
         let responses = get_fog_response_with_retries(
+            &config.chain_id,
             fog_uri.clone(),
             Duration::from_secs(config.retry_seconds),
             &logger,
@@ -261,6 +267,7 @@ fn main() {
 
         // Try to make request
         let responses = get_fog_response_with_retries(
+            &config.chain_id,
             fog_uri,
             Duration::from_secs(config.retry_seconds),
             &logger,

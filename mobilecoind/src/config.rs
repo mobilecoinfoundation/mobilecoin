@@ -10,7 +10,7 @@ use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};
@@ -200,7 +200,7 @@ impl Config {
                 .build(),
         );
 
-        let conn = GrpcFogReportConnection::new(env, logger);
+        let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
 
         let verifier = self.get_fog_ingest_verifier();
 
@@ -282,6 +282,10 @@ impl Config {
 /// Wrapper for configuring and parsing peer URIs.
 #[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// Validator nodes to connect to.
     /// Sample usages:
     ///     --peer mc://foo:123 --peer mc://bar:456
@@ -324,6 +328,7 @@ impl PeersConfig {
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
+                    self.chain_id.to_owned(),
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),

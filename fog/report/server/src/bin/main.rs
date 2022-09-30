@@ -27,7 +27,13 @@ fn main() {
     )
     .expect("Failed connecting to database");
 
-    let mut server = Server::new(db, &config.client_listen_uri, materials, logger.clone());
+    let mut server = Server::new(
+        db,
+        config.chain_id.clone(),
+        &config.client_listen_uri,
+        materials,
+        logger.clone(),
+    );
     server.start();
 
     let config2 = config.clone();

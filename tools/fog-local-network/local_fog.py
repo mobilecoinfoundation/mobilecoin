@@ -32,6 +32,10 @@ IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 
 FOG_SQL_DATABASE_NAME = 'fog_local'
 
+# Set a sane chain id if none is provided
+if 'MC_CHAIN_ID' not in os.environ:
+    os.environ['MC_CHAIN_ID'] = 'local'
+
 def target_dir(release):
     return os.path.join(PROJECT_DIR, 'target', 'release' if release else 'debug')
 

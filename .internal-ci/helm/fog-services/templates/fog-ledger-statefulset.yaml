@@ -83,8 +83,14 @@ spec:
         # Maps to Sentry Environment
         - name: MC_BRANCH
           valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
         - name: CLIENT_AUTH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:

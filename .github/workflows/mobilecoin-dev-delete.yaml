@@ -8,28 +8,44 @@ on:
   delete: {}
 
 jobs:
-  delete:
-    if: startsWith(github.ref, 'refs/branch/feature/')
+  metadata:
+    if: startsWith(github.event.ref, 'feature/') || startsWith(github.event.ref, 'release/')
     runs-on: [self-hosted, Linux, small]
+    outputs:
+      namespace: ${{ steps.meta.outputs.namespace }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
 
     - name: Generate version metadata
       id: meta
+      env:
+        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "master"
+        DELETE_REF_NAME: ${{ github.event.ref }}
       run: |
         .internal-ci/util/metadata.sh
 
-    - name: Delete branch namespace
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-delete
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "namespace": "${{ steps.meta.outputs.namespace }}"
-          }
+  delete:
+    needs:
+    - metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+
+  why-was-this-skipped:
+    if: always() && needs.metadata.result == 'skipped'
+    needs:
+      - metadata
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: details
+      run: |
+        echo "Deleted branch: ${{ github.event.ref }} did not match feature/* or release/*"

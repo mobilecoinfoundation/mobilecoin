@@ -13,7 +13,9 @@ use mc_fog_api::{
 use mc_fog_recovery_db_iface::{RecoveryDbError, ReportDb};
 use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_sig_report::Signer as ReportSigner;
-use mc_util_grpc::{rpc_database_err, rpc_internal_error, rpc_logger, send_result};
+use mc_util_grpc::{
+    check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_logger, send_result,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use prost::DecodeError;
 use signature::{Error as SignatureError, Signature};
@@ -26,6 +28,10 @@ pub struct Service<R: ReportDb + Clone + Send + Sync> {
 
     /// Cryptographic materials used in response construction
     materials: Materials,
+
+    /// Chain id to check against the user-provided chain id (if present in
+    /// request)
+    chain_id: String,
 
     /// Slog logger object
     logger: Logger,
@@ -69,8 +75,9 @@ impl<E: RecoveryDbError> Error<E> {
 impl<R: ReportDb + Clone + Send + Sync> Service<R> {
     /// Creates a new report service node (but does not create sockets and start
     /// it etc.)
-    pub fn new(report_db: R, materials: Materials, logger: Logger) -> Self {
+    pub fn new(chain_id: String, report_db: R, materials: Materials, logger: Logger) -> Self {
         Self {
+            chain_id,
             report_db,
             materials,
             logger,
@@ -120,6 +127,10 @@ impl<R: ReportDb + Clone + Send + Sync> ReportApi for Service<R> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             // Build a prost response, then convert it to rpc/protobuf types and the errors
             // to rpc status codes.
             send_result(

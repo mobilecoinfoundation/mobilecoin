@@ -52,6 +52,7 @@ members = [
     "fog/ingest/enclave/edl",
     "fog/ingest/enclave/impl",
     "fog/ingest/enclave/measurement",
+    "fog/ingest/report",
     "fog/ingest/server",
     "fog/kex_rng",
     "fog/ledger/connection",
@@ -71,6 +72,7 @@ members = [
     "fog/report/api",
     "fog/report/cli",
     "fog/report/connection",
+    "fog/report/resolver",
     "fog/report/server",
     "fog/report/types",
     "fog/report/validation",
@@ -149,6 +151,7 @@ members = [
     "util/test-helper",
     "util/test-vector",
     "util/uri",
+    "wasm-test",
     "watcher",
     "watcher/api",
 ]

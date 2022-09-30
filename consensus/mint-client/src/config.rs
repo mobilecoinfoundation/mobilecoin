@@ -162,6 +162,9 @@ impl MintTxPrefixParams {
         self,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTxPrefix, String> {
+        if let Some(fog_url) = self.recipient.fog_report_url() {
+            return Err(format!("This recipient has a fog url, but minting to fog users is not supported right now: '{}'", fog_url));
+        }
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
@@ -231,6 +234,10 @@ pub enum Commands {
     /// Generate and submit a MintConfigTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintConfigTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -256,9 +263,21 @@ pub enum Commands {
         params: MintConfigTxPrefixParams,
     },
 
+    /// Produce a hash of a MintConfigTx or MintTx tranasaction from a JSON tx-file.
+    /// This is useful for offline/HSM signing.
+    HashTxFile {
+        /// The file to load
+        #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
+        tx_file: TxFile,
+    },
+
     /// Submit json-encoded MintConfigTx(s). If multiple transactions are
     /// provided, signatures will be merged.
     SubmitMintConfigTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -277,6 +296,10 @@ pub enum Commands {
     /// Generate and submit a MintTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
@@ -305,6 +328,10 @@ pub enum Commands {
     /// Submit json-encoded MintTx(s). If multiple transactions are provided,
     /// signatures will be merged.
     SubmitMintTx {
+        /// The chain id of the network we expect to connect to
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: String,
+
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,

@@ -9,12 +9,12 @@ use mc_crypto_box::{AeadError, Error as CryptoBoxError};
 use mc_crypto_keys::KeyError;
 use mc_crypto_noise::CipherError;
 use mc_fog_kex_rng::Error as FogKexRngError;
-use mc_fog_report_validation::{ingest_report::Error as IngestReportError, FogPubkeyError};
+use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{AmountError, BlockVersionError};
 use mc_transaction_std::TxBuilderError;
 use mc_util_serial::DecodeError;
 use protobuf::ProtobufError;
-use std::os::raw::c_int;
+use std::{os::raw::c_int, sync::PoisonError};
 
 impl From<LibMcError> for McError {
     fn from(err: LibMcError) -> Self {
@@ -52,6 +52,15 @@ pub enum LibMcError {
 
     /// Fog pubkey error: {0},
     FogPubkey(String),
+
+    /// Poison
+    Poison,
+}
+
+impl<T> From<PoisonError<T>> for LibMcError {
+    fn from(_src: PoisonError<T>) -> Self {
+        Self::Poison
+    }
 }
 
 mod error_codes {
@@ -59,6 +68,7 @@ mod error_codes {
 
     pub const LIB_MC_ERROR_CODE_UNKNOWN: c_int = -1;
     pub const LIB_MC_ERROR_CODE_PANIC: c_int = -2;
+    pub const LIB_MC_ERROR_CODE_POISON: c_int = -3;
 
     pub const LIB_MC_ERROR_CODE_INVALID_INPUT: c_int = 100;
     pub const LIB_MC_ERROR_CODE_INVALID_OUTPUT: c_int = 101;
@@ -92,6 +102,7 @@ impl LibMcError {
             }
             LibMcError::TransactionCrypto(_) => LIB_MC_ERROR_CODE_TRANSACTION_CRYPTO,
             LibMcError::FogPubkey(_) => LIB_MC_ERROR_CODE_FOG_PUBKEY,
+            LibMcError::Poison => LIB_MC_ERROR_CODE_POISON,
         }
     }
 
@@ -184,11 +195,8 @@ impl From<ProtobufError> for LibMcError {
 
 impl From<TxBuilderError> for LibMcError {
     fn from(err: TxBuilderError) -> Self {
-        if let TxBuilderError::FogPublicKey(FogPubkeyError::IngestReport(
-            IngestReportError::Verifier(VerifierError::Verification(_)),
-        )) = err
-        {
-            LibMcError::AttestationVerificationFailed(format!("{:?}", err))
+        if let TxBuilderError::FogPublicKey(fog_pub_key_err) = err {
+            LibMcError::from(fog_pub_key_err)
         } else {
             LibMcError::InvalidInput(format!("{:?}", err))
         }
@@ -201,10 +209,6 @@ impl From<FogPubkeyError> for LibMcError {
             FogPubkeyError::NoFogReportUrl
             | FogPubkeyError::Url(_)
             | FogPubkeyError::Deserialization(_) => LibMcError::InvalidInput(err.to_string()),
-
-            FogPubkeyError::IngestReport(IngestReportError::Verifier(
-                VerifierError::Verification(_),
-            )) => LibMcError::AttestationVerificationFailed(err.to_string()),
 
             _ => LibMcError::FogPubkey(err.to_string()),
         }

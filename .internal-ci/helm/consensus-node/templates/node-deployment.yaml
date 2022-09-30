@@ -123,6 +123,11 @@ spec:
             configMapKeyRef:
               name: mobilecoin-network
               key: network
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
         volumeMounts:
         - name: sealed-signing-key
           mountPath: /sealed

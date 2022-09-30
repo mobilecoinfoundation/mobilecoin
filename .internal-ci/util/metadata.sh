@@ -35,6 +35,12 @@ namespace_prefix="mc"
 branch="${GITHUB_REF_NAME}"
 sha="sha-${GITHUB_SHA:0:8}"
 
+# Override branch with delete ref if set.
+if [[ -n "${DELETE_REF_NAME}" ]]
+then
+    branch="${DELETE_REF_NAME}"
+fi
+
 case "${GITHUB_REF_TYPE}" in
     tag)
         # check for valid tag and set outputs
