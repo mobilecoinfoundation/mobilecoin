@@ -46,9 +46,6 @@ kubectl -n ${NAMESPACE} port-forward service/mobilecoind 3229:3229
 # mobilecoind json
 kubectl -n ${NAMESPACE} port-forward service/mobilecoind-json 9090:9090
 
-# mint-auditor server grpc
-kubectl -n ${NAMESPACE} port-forward service/mint-auditor 7774:7774
-
 Then Connect to localhost:<port>
 
 --- mobilecoind config options ---
