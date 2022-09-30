@@ -809,7 +809,7 @@ dependencies = [
  "atty",
  "cast",
  "ciborium",
- "clap 3.2.20",
+ "clap 3.2.22",
  "criterion-plot",
  "itertools",
  "lazy_static",
@@ -959,41 +959,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "darling"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a01d95850c592940db9b8194bc39f4bc0e89dee5c4265e4b1807c34a9aba453c"
-dependencies = [
- "darling_core",
- "darling_macro",
-]
-
-[[package]]
-name = "darling_core"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "859d65a907b6852c9361e3185c862aae7fafd2887876799fa55f5f99dc40d610"
-dependencies = [
- "fnv",
- "ident_case",
- "proc-macro2",
- "quote",
- "strsim 0.10.0",
- "syn",
-]
-
-[[package]]
-name = "darling_macro"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
-dependencies = [
- "darling_core",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "dashmap"
 version = "5.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1057,7 +1022,6 @@ dependencies = [
  "byteorder",
  "chrono",
  "diesel_derives",
- "libsqlite3-sys",
  "pq-sys",
  "r2d2",
 ]
@@ -1846,12 +1810,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ident_case"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
-
-[[package]]
 name = "idna"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2022,17 +1980,6 @@ name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
-
-[[package]]
-name = "libsqlite3-sys"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "898745e570c7d0453cc1fbc4a701eb6c662ed54e8fec8b7d14be137ebeeb9d14"
-dependencies = [
- "cc",
- "pkg-config",
- "vcpkg",
-]
 
 [[package]]
 name = "libz-sys"
@@ -4567,64 +4514,6 @@ dependencies = [
  "serde",
  "tempdir",
  "url",
-]
-
-[[package]]
-name = "mc-mint-auditor"
-version = "2.0.0"
-dependencies = [
- "clap 3.2.22",
- "diesel",
- "diesel_migrations",
- "displaydoc",
- "grpcio",
- "hex",
- "hostname",
- "lazy_static",
- "mc-account-keys",
- "mc-api",
- "mc-blockchain-test-utils",
- "mc-blockchain-types",
- "mc-common",
- "mc-crypto-keys",
- "mc-ledger-db",
- "mc-mint-auditor-api",
- "mc-transaction-core",
- "mc-transaction-core-test-utils",
- "mc-transaction-std",
- "mc-util-from-random",
- "mc-util-grpc",
- "mc-util-metrics",
- "mc-util-parse",
- "mc-util-serial",
- "mc-util-test-helper",
- "mc-util-uri",
- "prost",
- "protobuf",
- "rayon",
- "reqwest",
- "rocket",
- "serde",
- "serde_json",
- "serde_with",
- "tempfile",
- "toml",
- "url",
-]
-
-[[package]]
-name = "mc-mint-auditor-api"
-version = "2.0.0"
-dependencies = [
- "cargo-emit",
- "futures",
- "grpcio",
- "mc-api",
- "mc-util-build-grpc",
- "mc-util-build-script",
- "mc-util-serial",
- "mc-util-uri",
- "protobuf",
 ]
 
 [[package]]
@@ -7325,19 +7214,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
 dependencies = [
  "serde",
- "serde_with_macros",
-]
-
-[[package]]
-name = "serde_with_macros"
-version = "1.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e182d6ec6f05393cc0e5ed1bf81ad6db3a8feedf8ee515ecdd369809bcce8082"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
