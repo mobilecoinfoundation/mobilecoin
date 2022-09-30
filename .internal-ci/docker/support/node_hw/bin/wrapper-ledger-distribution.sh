@@ -20,7 +20,7 @@ is_set()
 
 archive_curl()
 {
-    /usr/bin/curl -IfsSL --retry 3 "${1}00/00/00/00/00/00/00/0000000000000000.pb"
+    /usr/bin/curl -IfsSL --retry 3 "${1}00/00/00/00/00/00/00/0000000000000000.pb" -o /dev/null
 }
 
 is_set MC_DEST

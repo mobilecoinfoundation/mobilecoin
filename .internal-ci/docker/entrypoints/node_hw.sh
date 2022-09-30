@@ -146,18 +146,8 @@ then
         cp /ledger/data.mdb "/ledger/data.mdb.$(date +%y%m%d-%H%M%S)"
         /usr/bin/mc-ledger-migration --ledger-db "${MC_LEDGER_PATH}"
     else
-        # Look for wallet keys seed - development and CD deploys
-        if [[ -n "${INITIAL_KEYS_SEED}" ]]
-        then
-            echo "INITIAL_KEYS_SEED found - populating origin data"
-            export INITIALIZE_LEDGER="true"
-
-            /usr/local/bin/generate_origin_data.sh
-
-            cp /tmp/sample_data/ledger/data.mdb "${MC_LEDGER_PATH}"
-
         # Try to find origin block from s3 archive - preserve existing data, testnet/mainnet
-        elif archive_curl "${MC_TX_SOURCE_URL}"
+        if archive_curl "${MC_TX_SOURCE_URL}"
         then
             echo "Remote archive ledger found - restore with ledger-from-archive"
             echo "  Note: RUST_LOG=warn so we don't get 1m+ lines of logs"
@@ -170,6 +160,17 @@ then
         then
             echo "Found origin ledger at ${ORIGIN_LEDGER_PATH}"
             cp "${ORIGIN_LEDGER_PATH}" "${MC_LEDGER_PATH}"
+
+        # Look for wallet keys seed - development and CD deploys
+        elif [[ -n "${INITIAL_KEYS_SEED}" ]]
+        then
+            echo "INITIAL_KEYS_SEED found - populating origin data"
+            export INITIALIZE_LEDGER="true"
+
+            /usr/local/bin/generate_origin_data.sh
+
+            cp /tmp/sample_data/ledger/data.mdb "${MC_LEDGER_PATH}"
+
         else
             # We ain't found nothin, bail out!
             echo "INITIAL_KEYS_SEED not set, no remote ledger and cannot find origin ledger file"
