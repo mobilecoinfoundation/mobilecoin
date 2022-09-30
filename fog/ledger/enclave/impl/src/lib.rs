@@ -312,13 +312,6 @@ where
 
         Ok(response)
     }
-
-    fn handle_key_image_store_request(
-        &self,
-        _: EnclaveMessage<ClientSession>,
-    ) -> Result<EnclaveMessage<ClientSession>> {
-        todo!()
-    }
 }
 
 #[cfg(test)]

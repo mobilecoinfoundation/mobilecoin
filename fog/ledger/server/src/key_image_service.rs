@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::server::DbPollSharedState;
+use crate::{server::DbPollSharedState, config::KeyImageClientListenUri};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::{
     attest,
@@ -8,11 +8,12 @@ use mc_attest_api::{
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    ledger::{MultiKeyImageStoreRequest, MultiKeyImageStoreResponse},
+    ledger::{MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus},
     ledger_grpc::{FogKeyImageApi, KeyImageStoreApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
+use mc_fog_uri::{KeyImageStoreUri, ConnectionUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
@@ -24,6 +25,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
+    /// The ClientListenUri for this FogViewService.
+    client_listen_uri: KeyImageClientListenUri,
     ledger: L,
     watcher: WatcherDB,
     enclave: E,
@@ -35,6 +38,7 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     pub fn new(
+        client_listen_uri: KeyImageClientListenUri,
         ledger: L,
         watcher: WatcherDB,
         enclave: E,
@@ -43,6 +47,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         logger: Logger,
     ) -> Self {
         Self {
+            client_listen_uri,
             ledger,
             watcher,
             enclave,
@@ -62,6 +67,34 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
 
     pub fn get_db_poll_shared_state(&mut self) -> Arc<Mutex<DbPollSharedState>> {
         self.db_poll_shared_state.clone()
+    }
+
+    pub fn auth_impl(&mut self,
+        mut req: AuthMessage,
+        logger: &Logger) 
+            -> Result<attest::AuthMessage, RpcStatus> { 
+        // TODO: Use the prost message directly, once available
+        match self.enclave.client_accept(req.take_data().into()) {
+            Ok((response, _)) => {
+                let mut result = attest::AuthMessage::new();
+                result.set_data(response.into());
+                Ok(result)
+            }
+            Err(client_error) => {
+                // There's no requirement on the remote party to trigger this, so it's debug.
+                log::debug!(
+                    logger,
+                    "KeyImageStoreApi::client_accept failed: {}",
+                    client_error
+                );
+                let rpc_permissions_error = rpc_permissions_error(
+                    "client_auth",
+                    format!("Permission denied: {}", client_error),
+                    logger,
+                );
+                Err(rpc_permissions_error)
+            }
+        }
     }
 
     /// Unwrap and forward to enclave
@@ -119,6 +152,31 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             other => rpc_internal_error(context, format!("{}", &other), &self.logger),
         }
     }
+
+    /// Handle MultiKeyImageStoreRequest contents sent by a router to this store.
+    fn process_queries(&mut self, fog_ledger_store_uri: KeyImageStoreUri, 
+        queries: Vec<attest::Message>) -> MultiKeyImageStoreResponse { 
+        let mut response = MultiKeyImageStoreResponse::new();
+        // The router needs our own URI, in case auth fails / hasn't been started yet.
+        response.set_fog_ledger_store_uri(fog_ledger_store_uri.url().to_string());
+
+        for query in queries.into_iter() {
+            // Only one of the query messages in the multi-store query is intended for this store.
+            // It's a bit of a broadcast model - all queries are sent to all stores, and then 
+            // the stores evaluate which message is meant for them.
+            if let Ok(attested_message) = self.check_key_images_auth(query) {
+                response.set_query_response(attested_message);
+                response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
+
+                return response;
+            }
+        }
+
+        // TODO: different response code for "none found matching" from "authentication error," potentially?
+
+        response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+        response
+    }
 }
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageService<L, E> {
@@ -140,9 +198,8 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            // TODO: Use the prost message directly, once available
-            match self.enclave.client_accept(request.into()) {
-                Ok((response, _session_id)) => {
+            match self.auth_impl(request.into(), &logger) {
+                Ok(response) => {
                     send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(client_error) => {
@@ -157,11 +214,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                     send_result(
                         ctx,
                         sink,
-                        Err(rpc_permissions_error(
-                            "client_auth",
-                            "Permission denied",
-                            logger,
-                        )),
+                        Err(client_error),
                         logger,
                     );
                 }
@@ -178,7 +231,34 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
         req: AuthMessage,
         sink: grpcio::UnarySink<AuthMessage>,
     ) {
-        todo!()
+        let _timer = SVC_COUNTERS.req(&ctx);
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), logger);
+            }
+
+            match self.auth_impl(req.into(), &logger) {
+                Ok(response) => {
+                    send_result(ctx, sink, Ok(response.into()), logger);
+                }
+                Err(client_error) => {
+                    // This is debug because there's no requirement on the remote party to trigger
+                    // it.
+                    log::info!(
+                        logger,
+                        "LedgerEnclave::client_accept failed: {}",
+                        client_error
+                    );
+                    // TODO: increment failed inbound peering counter.
+                    send_result(
+                        ctx,
+                        sink,
+                        Err(client_error),
+                        logger,
+                    );
+                }
+            }
+        });
     }
 
     #[allow(unused_variables)] //FIXME
@@ -188,6 +268,23 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
         req: MultiKeyImageStoreRequest,
         sink: grpcio::UnarySink<MultiKeyImageStoreResponse>,
     ) {
-        todo!()
+        let _timer = SVC_COUNTERS.req(&ctx);
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), logger);
+            }
+            if let KeyImageClientListenUri::Store(store_uri) = self.client_listen_uri.clone() {
+                let response = self.process_queries(store_uri, req.queries.into_vec());
+                send_result(ctx, sink, Ok(response), logger)
+            } else {
+                let rpc_permissions_error = rpc_permissions_error(
+                    "multi_key_image_store_query",
+                    "Permission denied: the multi_key_image_store_query is not accessible to clients"
+                        .to_string(),
+                    logger,
+                );
+                send_result(ctx, sink, Err(rpc_permissions_error), logger)
+            }
+        });
     }
 }

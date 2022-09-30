@@ -2,7 +2,7 @@
 
 use crate::{
     config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService, KeyImageService,
-    MerkleProofService, UntrustedTxOutService,
+    MerkleProofService, UntrustedTxOutService, KeyImageClientListenUri,
 };
 use displaydoc::Display;
 use futures::executor::block_on;
@@ -103,6 +103,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let key_image_service = KeyImageService::new(
+            KeyImageClientListenUri::ClientFacing(config.client_listen_uri.clone()),
             ledger.clone(),
             watcher.clone(),
             enclave.clone(),

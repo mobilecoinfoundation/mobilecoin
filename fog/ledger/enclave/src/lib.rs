@@ -258,19 +258,6 @@ impl LedgerEnclave for LedgerSgxEnclave {
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
-
-    fn handle_key_image_store_request(
-        &self,
-        router_query: EnclaveMessage<ClientSession>,
-    ) -> Result<EnclaveMessage<ClientSession>> {
-        mc_sgx_debug::eprintln!("Called handle_key_image_store_request(..) - the store is handling a message from the router.");
-
-        let inbuf =
-            mc_util_serial::serialize(&EnclaveCall::HandleKeyImageStoreRequest(router_query))?;
-
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
 }
 
 extern "C" {

@@ -7,7 +7,7 @@
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
-use mc_fog_uri::{FogLedgerUri, KeyImageRouterUri, KeyImageStoreUri};
+use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -86,7 +86,7 @@ pub struct LedgerRouterConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: KeyImageRouterUri,
+    pub client_listen_uri: FogLedgerUri,
 
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
@@ -162,4 +162,16 @@ pub struct LedgerStoreConfig {
     /// to disk by linux kernel.
     #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
+}
+
+/// Uri for any node in the key image store system.
+/// Old-style single-node servers and routers are both referred to with 
+/// a KeyImageClientListenUri::ClientFacing(FogLedgerUri), whereas ledger
+/// store shard Uris will be KeyImageClientListenUri::Store(KeyImageStoreUri).
+#[derive(Clone, Serialize)]
+pub enum KeyImageClientListenUri {
+    /// URI used by the KeyImageStoreServer when fulfilling direct client requests.
+    ClientFacing(FogLedgerUri),
+    /// URI used by the KeyImageStoreServer when fulfilling Fog Ledger Router requests.
+    Store(KeyImageStoreUri),
 }
