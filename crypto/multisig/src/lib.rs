@@ -9,12 +9,12 @@
 //! a signing group of size n.
 
 #![cfg_attr(not(test), no_std)]
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 extern crate alloc;
 
 use alloc::vec::Vec;
-use core::hash::Hash;
+use core::{fmt::Debug, hash::Hash};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Signature, PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
@@ -22,6 +22,37 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// The maximum number of signatures that can be included in a multi-signature.
 pub const MAX_SIGNATURES: usize = 10;
+
+pub trait BaseTraits:
+    Clone
+    + Debug
+    + Default
+    + DeserializeOwned
+    + Digestible
+    + Eq
+    + PartialEq
+    + Ord
+    + PartialOrd
+    + Hash
+    + Message
+    + Serialize
+{
+}
+impl<T> BaseTraits for T where
+    T: Clone
+        + Debug
+        + Default
+        + DeserializeOwned
+        + Digestible
+        + Eq
+        + PartialEq
+        + Ord
+        + PartialOrd
+        + Hash
+        + Message
+        + Serialize
+{
+}
 
 /*
 /// A marker trait for obejcts that can sign a multi-sig.
@@ -295,37 +326,43 @@ impl<P: Signer> SignerSet<P> {
 }
     */
 
-trait Signer {}
+pub trait Signer: BaseTraits {}
 
-#[derive(Clone, Default)]
-struct SignerSet<P: Signer> {
-    pub signer_set: Vec<P>,
-    pub threshold: u8,
+#[derive(
+    Clone, Deserialize, Digestible, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize,
+)]
+#[serde(bound = "")]
+pub struct SignerSet<P: Signer> {
+    #[prost(message, repeated, tag = "1")]
+    pub signers: Vec<P>,
+
+    #[prost(uint32, tag = "2")]
+    pub threshold: u32,
 }
 impl<P: Signer> SignerSet<P> {
-    fn new(signer_set: Vec<P>, threshold: u8) -> Self {
-        Self {
-            signer_set,
-            threshold,
-        }
+    fn new(signers: Vec<P>, threshold: u32) -> Self {
+        Self { signers, threshold }
     }
 }
 
-//impl Signer for Ed2Pub {}
-impl<T> Signer for T where T: PublicKey {}
+impl<T> Signer for T where T: BaseTraits + PublicKey {}
 impl<P: Signer> Signer for SignerSet<P> {}
 
-trait Sig {}
+pub trait Sig: BaseTraits {}
 
-#[derive(Default)]
-struct MultiSig<S: Sig> {
+#[derive(
+    Clone, Deserialize, Digestible, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize,
+)]
+#[serde(bound = "")]
+pub struct MultiSig<S: Sig> {
+    #[prost(message, repeated, tag = "1")]
     pub sigs: Vec<S>,
 }
 
-impl<T> Sig for T where T: Signature {}
+impl<T> Sig for T where T: BaseTraits + Signature {}
 impl<S: Sig> Sig for MultiSig<S> {}
 
-trait MultiSigVerifier<S: Sig> {
+pub trait MultiSigVerifier<S: Sig> {
     fn verify(&self, msg: &[u8], sig: &S) -> Result<(), ()> {
         todo!()
     }
@@ -344,7 +381,7 @@ where
     PK: MultiSigVerifier<S>,
 {
     fn verify(&self, msg: &[u8], sig: &MultiSig<S>) -> Result<(), ()> {
-        for signer in self.signer_set.iter() {
+        for signer in self.signers.iter() {
             signer.verify(msg, &sig.sigs[0])?;
         }
         Ok(())
