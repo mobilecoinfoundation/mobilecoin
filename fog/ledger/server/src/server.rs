@@ -2,7 +2,7 @@
 
 use crate::{
     config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService, KeyImageService,
-    MerkleProofService, UntrustedTxOutService,
+    MerkleProofService, UntrustedTxOutService, KeyImageClientListenUri,
 };
 use displaydoc::Display;
 use futures::executor::block_on;

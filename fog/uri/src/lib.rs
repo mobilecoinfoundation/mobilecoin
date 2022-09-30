@@ -134,6 +134,8 @@ impl UriScheme for IngestPeerScheme {
 pub type FogIngestUri = Uri<FogIngestScheme>;
 /// Uri used when talking to fog-ledger service, with the right default ports
 /// and scheme.
+/// FogLedgerUri is also used for the router / client-facing part of the
+/// router & store system.
 pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// Uri used when talking to fog view router admin service.
 pub type FogViewRouterAdminUri = Uri<FogViewRouterAdminScheme>;

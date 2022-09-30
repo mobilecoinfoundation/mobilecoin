@@ -142,15 +142,6 @@ pub trait LedgerEnclave: ReportableEnclave {
         sealed_query: SealedClientMessage,
         shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
     ) -> Result<EnclaveMessage<ClientSession>>;
-
-    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto
-    /// LedgerRequest. Generally, these come in from a router.
-    /// This could could be a key image request, a merkele proof
-    /// request, and potentially in the future an untrusted tx out request.
-    fn handle_key_image_store_request(
-        &self,
-        router_query: EnclaveMessage<ClientSession>,
-    ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side

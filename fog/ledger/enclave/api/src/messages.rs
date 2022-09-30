@@ -140,13 +140,5 @@ pub enum EnclaveCall {
     CollateQueryResponses(
         SealedClientMessage,
         BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
-    ),
-
-    /// The [LedgerEnclave::handle_key_image_store_request()] method.
-    ///
-    /// Used by a Ledger Store to handle an inbound encrypted ledger.proto
-    /// LedgerRequest. Generally, these come in from a router.
-    /// This could could be a key image request, a merkele proof
-    /// request, and potentially in the future an untrusted tx out request.
-    HandleKeyImageStoreRequest(EnclaveMessage<ClientSession>),
+    )
 }

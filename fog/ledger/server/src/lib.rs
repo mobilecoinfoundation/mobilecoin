@@ -18,7 +18,7 @@ mod key_image_router_service;
 mod key_image_store_server;
 
 pub use block_service::BlockService;
-pub use config::{LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig};
+pub use config::{KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig};
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;
 pub use server::LedgerServer;

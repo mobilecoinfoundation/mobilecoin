@@ -100,13 +100,6 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn handle_key_image_store_request(
-        &self,
-        _router_query: EnclaveMessage<ClientSession>,
-    ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
-        unimplemented!()
-    }
-
     fn decrypt_and_seal_query(
         &self,
         _client_query: EnclaveMessage<ClientSession>,

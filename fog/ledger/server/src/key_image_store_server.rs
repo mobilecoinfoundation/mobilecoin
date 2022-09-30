@@ -11,7 +11,7 @@ use mc_ledger_db::LedgerDB;
 use mc_util_grpc::{ReadinessIndicator, Authenticator, TokenAuthenticator, AnonymousAuthenticator, ConnectionUriGrpcioServer};
 use mc_watcher::watcher_db::WatcherDB;
 
-use crate::{KeyImageService, server::DbPollSharedState, config::LedgerStoreConfig};
+use crate::{KeyImageService, server::DbPollSharedState, config::LedgerStoreConfig, KeyImageClientListenUri};
 
 #[allow(dead_code)] // FIXME
 pub struct KeyImageStoreServer {
@@ -46,6 +46,7 @@ impl KeyImageStoreServer {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let key_image_service = KeyImageService::new(
+            KeyImageClientListenUri::Store(config.client_listen_uri.clone()),
             ledger.clone(),
             watcher.clone(),
             enclave,
