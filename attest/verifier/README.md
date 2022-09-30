@@ -15,7 +15,7 @@ use mc_util_encodings::FromHex;
 let mut enclave_verifier = MrEnclaveVerifier::new(MrEnclave::from_hex("BEEFCAFEDEADBEEFCAFEBEEF"));
 // Whitelist the LVI hardening advisory (assume the BEEF... enclave is hardened)
 // Whitelist the MMIO hardening advisory (assume the enclave uses [out] and 8-byte aligned writes)
-enclave_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+enclave_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]);
 
 // Construct a new verifier using hard-coded IAS signing certificates
 let mut verifier = Verifier::default();

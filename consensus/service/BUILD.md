@@ -97,7 +97,7 @@ Recommended SDK and package installation:
 (
 	. /etc/os-release
 
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.17/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.17.100.3.bin"
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.17.1/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.17.101.1.bin"
 	wget "https://download.01.org/intel-sgx/sgx-linux/2.17/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.054c9c4c.bin"
 
 	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
@@ -112,8 +112,8 @@ chmod +x ./sgx_linux_x64_driver_2.11.054c9c4c.bin
 ./sgx_linux_x64_driver_2.11.054c9c4c.bin
 
 # Install the SDK to /opt/intel/sgxsdk
-chmod +x ./sgx_linux_x64_sdk_2.17.100.3.bin
-./sgx_linux_x64_sdk_2.17.100.3.bin --prefix=/opt/intel
+chmod +x ./sgx_linux_x64_sdk_2.17.101.1.bin
+./sgx_linux_x64_sdk_2.17.101.1.bin --prefix=/opt/intel
 
 apt install libsgx-uae-service sgx-aesm-service
 
