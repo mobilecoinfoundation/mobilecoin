@@ -57,7 +57,7 @@ def parse_args() -> argparse.ArgumentParser:
                         type=int,
                         default=20,
                         help="Amount of this token id to use as a fee")
-    parse.add_argument("--burn-redemption-memo",
+    parser.add_argument("--burn-redemption-memo",
                         type=str,
                         help="Burn redemption memo to use. This utf8 string will be padded up to 64 bytes with null characters. Typically it would be expected to be an ethereum address e.g. 0xaaaaa...")
 
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     # The memo bytes are expected to be exactly 64 in length.
     # We are just utf-8 encoding whatever the user gives us and padding it up,
     # mobilecoind returns an error if this is too long.
-    memo_bytes = args.burn_redemption_memo.encode("utf-8").ljust(64, '\0')
+    memo_bytes = args.burn_redemption_memo.encode("utf-8").ljust(64, b'\0')
 
     client = MobilecoindClient(f"{args.mobilecoind_host}:{args.mobilecoind_port}")
     monitor = client.new_monitor_from_keyfile(args.key)
