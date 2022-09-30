@@ -772,23 +772,23 @@ impl TestClient {
 
         // In the partial fill case, counter-party decides how much to fill it
         // We'll choose a random number in the range [0, self.tok1_val].
-        let (fill_amount, fractional_tok2_val) = if is_partial_fill {
-            let fractional_tok1_val = thread_rng().gen_range(0, tok1_val + 1);
+        let (fill_amount, fractional_tok1_val) = if is_partial_fill {
+            let fractional_tok2_val = thread_rng().gen_range(0, tok2_val + 1);
             // Because of the partial fill, the actual amount of tok1 transfered
             // to the source is going to be fractional_tok1_val, not tok1_val.
             // Similarly, the actual amount of tok2 transfered to target is less.
             // We need to compute how much less.
-            // Multiply tok2_val by fraction fill_amount.value / tok1_val, rounding up.
-            let fractional_tok2_val = ((tok2_val as u128 * fractional_tok1_val as u128
-                + (tok1_val - 1) as u128)
-                / (tok1_val as u128)) as u64;
+            // Multiply tok1_val by fraction fill_amount.value / tok2_val, rounding up.
+            let fractional_tok1_val = ((tok1_val as u128 * fractional_tok2_val as u128
+                + (tok2_val - 1) as u128)
+                / (tok2_val as u128)) as u64;
 
             (
                 Some(Amount::new(fractional_tok1_val, token_id1)),
-                fractional_tok2_val,
+                fractional_tok1_val,
             )
         } else {
-            (None, tok2_val)
+            (None, tok1_val)
         };
 
         // Build swap tx
@@ -804,7 +804,7 @@ impl TestClient {
         self.tx_info.set_tx_propose_block_count(block_count);
 
         let (value1, value2) = if is_partial_fill {
-            (fill_amount.unwrap().value, fractional_tok2_val)
+            (fractional_tok1_val, fill_amount.unwrap().value)
         } else {
             (tok1_val, tok2_val)
         };
