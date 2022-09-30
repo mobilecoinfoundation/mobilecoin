@@ -587,7 +587,8 @@ jobs:
                --key "$LEDGER_BASE/../keys/account_keys_2.json" \
                --value 550000 \
                --token-id 1 \
-               --fee 10000
+               --fee 10000 \
+               --burn-redemption-memo "0xf43f5e8C04519efE0f54d7eBAEab20E86b235114"
 
       - name: Upload core dumps
         uses: ./.github/actions/upload-core-dumps
