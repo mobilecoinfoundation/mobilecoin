@@ -29,7 +29,7 @@ mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-uri = { path = "../../../util/uri" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
 grpcio = "0.11.0"
