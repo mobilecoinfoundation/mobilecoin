@@ -126,7 +126,7 @@ impl From<EnclaveMessage<NonceSession>> for NonceMessage {
         retval.set_aad(src.aad);
         // it doesn't matter if we don't bump the nonce when retrieving it,
         // src.channel_id will be discarded anyways.
-        retval.set_nonce(src.channel_id.peek_nonce());
+        retval.set_nonce(src.channel_id.nonce());
         retval.set_channel_id(src.channel_id.into());
         retval.set_data(src.data);
         retval

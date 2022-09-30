@@ -161,15 +161,8 @@ impl NonceSession {
     }
 
     /// Retrieves the nonce for this session
-    pub fn peek_nonce(&self) -> u64 {
+    pub fn nonce(&self) -> u64 {
         self.nonce
-    }
-
-    /// Retrieves a copy of the nonce, and increments it for the next time.
-    pub fn get_nonce(&mut self) -> u64 {
-        let retval = self.nonce;
-        self.nonce += 1;
-        retval
     }
 }
 
