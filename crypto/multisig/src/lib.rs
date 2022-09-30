@@ -16,13 +16,14 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
+use mc_crypto_keys::{Ed25519Signature, PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// The maximum number of signatures that can be included in a multi-signature.
 pub const MAX_SIGNATURES: usize = 10;
 
+/*
 /// A marker trait for obejcts that can sign a multi-sig.
 pub trait Signer:
     Clone
@@ -85,7 +86,9 @@ pub trait MultiSigVerifier<T: Sig> {
 
 /// Blanket implementation of MultiSigVerifier for any type that implements
 /// Verifier.
-impl<T, S: Sig + Signature> MultiSigVerifier<S> for T
+*/
+
+/*impl<T, S: Sig + Signature> MultiSigVerifier<S> for T
 where
     T: Verifier<S>,
 {
@@ -93,6 +96,7 @@ where
         self.verify(message, sig)
     }
 }
+*/
 
 /*impl MultiSigVerifier<MultiSig<Ed25519Signature>> for SignerSet<Ed25519Public> {
     /// Verify a multi-signature.
@@ -105,7 +109,7 @@ where
     }
 }*/
 
-impl<S: Sig + Signature, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
+/*impl<S: Sig + Signature, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
 where
     PK: Verifier<S>,
 {
@@ -113,7 +117,33 @@ where
     fn verify(&self, message: &[u8], sig: &MultiSig<S>) -> Result<(), SignatureError> {
         self.verify(message, sig).map(|_| ())
     }
+}*/
+/*
+
+impl<S: Sig + Signature, PK: Signer> MultiSigVerifier<MultiSig<MultiSig<S>>>
+    for SignerSet<SignerSet<PK>>
+where
+    PK: Verifier<S>,
+{
+    /// Verify a multi-signature.
+    fn verify(&self, message: &[u8], sig: &MultiSig<MultiSig<S>>) -> Result<(), SignatureError> {
+        self.verify(message, sig).map(|_| ())
+    }
 }
+*/
+
+/*
+impl<S: Sig + Signature, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
+where
+    PK: MultiSigVerifier<MultiSig<S>>,
+{
+    /// Verify a multi-signature.
+    fn verify(&self, message: &[u8], sig: &MultiSig<S>) -> Result<(), SignatureError> {
+        self.verify(message, sig).map(|_| ())
+    }
+}*/
+
+/*
 
 /// A multi-signature: a collection of one or more signatures.
 #[derive(
@@ -161,13 +191,22 @@ pub struct VecMultiSig<S: Sig> {
     multisigs: Vec<MultiSig<S>>,
 }
 
-use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 /// TODO
-pub struct Meh {
+pub trait ThresholdVerifier<T: Sig> {
     /// TODO
-    pub a: SignerSet<SignerSet<Ed25519Public>>,
-    /// TODO
-    pub v: MultiSig<VecMultiSig<Ed25519Signature>>,
+    fn verify(&self, message: &[u8], sigs: &[T]) -> Result<(), SignatureError>;
+}
+
+impl<T: Sig + Signature, PK: Verifier<T>> ThresholdVerifier<T> for PK {
+    fn verify(&self, message: &[u8], sigs: &[T]) -> Result<(), SignatureError> {
+        todo!()
+    }
+}
+
+impl<T: Sig+ Signature, P: Signer + Verifier<T>> ThresholdVerifier<T> for SignerSet<P> {
+    fn verify(&self, message: &[u8], sigs: &[T]) -> Result<(), SignatureError> {
+        todo!()
+    }
 }
 
 impl<P: Signer> SignerSet<P> {
@@ -198,6 +237,8 @@ impl<P: Signer> SignerSet<P> {
         self.signers[0].verify(message, &multi_sig.signatures[0]);
         todo!()
     }
+*/
+/*
 
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
@@ -252,17 +293,87 @@ impl<P: Signer> SignerSet<P> {
         Ok(matched_signers)
     }
 }
+    */
+
+trait Signer {}
+
+#[derive(Clone, Default)]
+struct SignerSet<P: Signer> {
+    pub signer_set: Vec<P>,
+    pub threshold: u8,
+}
+impl<P: Signer> SignerSet<P> {
+    fn new(signer_set: Vec<P>, threshold: u8) -> Self {
+        Self {
+            signer_set,
+            threshold,
+        }
+    }
+}
+
+//impl Signer for Ed2Pub {}
+impl<T> Signer for T where T: PublicKey {}
+impl<P: Signer> Signer for SignerSet<P> {}
+
+trait Sig {}
+
+#[derive(Default)]
+struct MultiSig<S: Sig> {
+    pub sigs: Vec<S>,
+}
+
+impl<T> Sig for T where T: Signature {}
+impl<S: Sig> Sig for MultiSig<S> {}
+
+trait MultiSigVerifier<S: Sig> {
+    fn verify(&self, msg: &[u8], sig: &S) -> Result<(), ()> {
+        todo!()
+    }
+}
+
+//impl Verifier<Ed2Sig> for Ed2Pub {}
+impl<S: Sig + Signature, T: Verifier<S>> MultiSigVerifier<S> for T {
+    fn verify(&self, msg: &[u8], sig: &S) -> Result<(), ()> {
+        self.verify(msg, sig);
+        todo!()
+    }
+}
+
+impl<S: Sig, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
+where
+    PK: MultiSigVerifier<S>,
+{
+    fn verify(&self, msg: &[u8], sig: &MultiSig<S>) -> Result<(), ()> {
+        for signer in self.signer_set.iter() {
+            signer.verify(msg, &sig.sigs[0])?;
+        }
+        Ok(())
+    }
+}
 
 /// TODO
 pub fn testz() {
     use alloc::vec;
+    use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 
     let ss1 = SignerSet::new(vec![Ed25519Public::default()], 1);
     let ss2 = SignerSet::new(vec![Ed25519Public::default()], 1);
 
     let multi_ss = SignerSet::new(vec![ss1.clone(), ss2.clone()], 1);
+
+    let ms1: MultiSig<Ed25519Signature> = MultiSig::default();
+    ss1.verify(&[], &ms1).unwrap();
+
+    let ms2: MultiSig<MultiSig<Ed25519Signature>> = MultiSig::default();
+    let ss2: SignerSet<SignerSet<Ed25519Public>> = SignerSet::default();
+    ss2.verify(&[], &ms2).unwrap();
+
+    let ms3: MultiSig<MultiSig<MultiSig<Ed25519Signature>>> = MultiSig::default();
+    let ss3: SignerSet<SignerSet<SignerSet<Ed25519Public>>> = SignerSet::default();
+    ss3.verify(&[], &ms3).unwrap();
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -326,9 +437,13 @@ mod test {
         let ss2 = SignerSet::new(vec![signer_set, signer_set2], 1);
         let ms2 = MultiSig::new(vec![multi_sig, multi_sig2]);
 
-        panic!("AAA {:?}", ss2.verify(message.as_ref(), &ms2));
+        let ss3 = SignerSet::new(vec![ss2], 1);
+        let ms3 = MultiSig::new(vec![ms2]);
+
+        panic!("AAA {:?}", ss3.verify(message.as_ref(), &ms3));
     }
 }
+*/
 
 /*
 #[cfg(test)]
