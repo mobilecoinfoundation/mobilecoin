@@ -58,7 +58,7 @@ def parse_args() -> argparse.ArgumentParser:
                         default=20,
                         help="Amount of this token id to use as a fee")
     parse.add_argument("--burn-redemption-memo",
-                        type=str
+                        type=str,
                         help="Burn redemption memo to use. This utf8 string will be padded up to 64 bytes with null characters. Typically it would be expected to be an ethereum address e.g. 0xaaaaa...")
 
     return parser.parse_args()
