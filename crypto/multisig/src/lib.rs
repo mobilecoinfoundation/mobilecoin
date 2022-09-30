@@ -371,25 +371,37 @@ impl<T> Sig for T where T: BaseTraits + Signature {}
 impl<S: Sig> Sig for MultiSig<S> {}
 
 pub trait MultiSigVerifier<S: Sig> {
-    fn verify(&self, message: &[u8], sig: &S) -> Result<(), SignatureError> {
+    type SignerIdentity: Eq + PartialEq;
+
+    fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError> {
         todo!()
     }
 }
 
 /// Verifier for underlying mc_crypto_keys types.
-impl<S: Sig + Signature, T: Clone + Verifier<S>> MultiSigVerifier<S> for T {
-    fn verify(&self, message: &[u8], sig: &S) -> Result<(), SignatureError> {
-        self.verify(message, sig)
+impl<S: Sig + Signature, T: Clone + Eq + PartialEq + Verifier<S>> MultiSigVerifier<S> for T {
+    type SignerIdentity = Self;
+
+    fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError> {
+        self.verify(message, sig).map(|_| self.clone())
     }
 }
 
-impl<S: Sig, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
+impl<'a, S: Sig, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
 where
     PK: MultiSigVerifier<S>,
+    //    <PK as MultiSigVerifier<S>>::SignerIdentity: From<PK>,
 {
-    fn verify(&self, message: &[u8], multi_sig: &MultiSig<S>) -> Result<(), SignatureError> {
-        // If the signature contains less than the threshold number of signers or more
-        // than the hardcoded limit, there's no point in trying.
+    type SignerIdentity = Vec<<PK as MultiSigVerifier<S>>::SignerIdentity>;
+
+    fn verify(
+        &self,
+        message: &[u8],
+        multi_sig: &MultiSig<S>,
+    ) -> Result<Self::SignerIdentity, SignatureError> {
+        // If the signature contains less than the threshold number of
+        // signers or more  than the hardcoded limit, there's no point
+        // in trying.
         if multi_sig.signatures.len() < self.threshold as usize
             || multi_sig.signatures.len() > MAX_SIGNATURES
         {
@@ -397,9 +409,9 @@ where
         }
 
         // Sort and dedup the list of signers and signatures.
-        // While the verification code below should be immune to duplicate signers or
-        // signatures, the overhead of deduping them is negligible and being
-        // extra-safe is a good idea.
+        // While the verification code below should be immune to duplicate
+        // signers or  signatures, the overhead of deduping them is
+        // negligible and being  extra-safe is a good idea.
         let mut potential_signers = self.signers.clone();
         potential_signers.sort();
         potential_signers.dedup();
@@ -415,7 +427,6 @@ where
                 signer
                     .verify(message, signature)
                     .ok()
-                    .map(|_| signer.clone())
             });
             if let Some(matched_signer) = matched_signer {
                 potential_signers.retain(|signer| signer != &matched_signer);
@@ -428,8 +439,7 @@ where
             return Err(SignatureError::new());
         }
 
-        //Ok(matched_signers)
-        Ok(())
+        Ok(matched_signers)
     }
 }
 
@@ -527,6 +537,7 @@ mod test {
 }
 */
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -852,3 +863,5 @@ mod test {
         );
     }
 }
+
+*/
