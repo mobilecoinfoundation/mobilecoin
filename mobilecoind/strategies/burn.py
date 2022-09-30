@@ -48,7 +48,6 @@ def parse_args() -> argparse.ArgumentParser:
                         help="Number of seconds to wait for a tx to clear")
     parser.add_argument("--token-id",
                         type=int,
-                        default=0,
                         help="Token id to burn")
     parser.add_argument("--value",
                         type=int,
@@ -58,7 +57,9 @@ def parse_args() -> argparse.ArgumentParser:
                         type=int,
                         default=20,
                         help="Amount of this token id to use as a fee")
-
+    parse.add_argument("--burn-redemption-memo",
+                        type=str
+                        help="Burn redemption memo to use. This utf8 string will be padded up to 64 bytes with null characters. Typically it would be expected to be an ethereum address e.g. 0xaaaaa...")
 
     return parser.parse_args()
 
@@ -183,6 +184,11 @@ if __name__ == '__main__':
     args = parse_args()
     logging.debug(args)
 
+    # The memo bytes are expected to be exactly 64 in length.
+    # We are just utf-8 encoding whatever the user gives us and padding it up,
+    # mobilecoind returns an error if this is too long.
+    memo_bytes = args.burn_redemption_memo.encode("utf-8").ljust(64, '\0')
+
     client = MobilecoindClient(f"{args.mobilecoind_host}:{args.mobilecoind_port}")
     monitor = client.new_monitor_from_keyfile(args.key)
 
@@ -195,11 +201,12 @@ if __name__ == '__main__':
 
     utxos = client.get_utxos(monitor, args.token_id)
     tx_proposal = client.generate_burn_redemption_tx(
-        monitor,
-        utxos,
-        args.value,
-        args.fee,
-        args.token_id,
+        monitor_id = monitor,
+        input_list = utxos,
+        burn_amount = args.value,
+        fee = args.fee,
+        token_id = args.token_id,
+        redemption_memo = memo_bytes,
     )
     logging.info("Constructed burn transaction")
     logging.debug(tx_proposal)
@@ -208,6 +215,7 @@ if __name__ == '__main__':
     # the burn, and there is a map in the TxProposal that tells you which TxOut it is.
     if len(tx_proposal.outlay_index_to_tx_out_index) != 1:
         logging.warning(f"Unexpected number of outlays: {tx_proposal.outlay_index_to_tx_out_index}")
+        raise Exception("Couldn't determine burn output")
     tx_out_public_key_bytes = tx_proposal.tx.prefix.outputs[tx_proposal.outlay_index_to_tx_out_index[0]].public_key.data
     tx_out_public_key_hex = tx_out_public_key_bytes.hex()
     logging.info(f"*** The hex bytes of burn TxOut public key are: {tx_out_public_key_hex}")
