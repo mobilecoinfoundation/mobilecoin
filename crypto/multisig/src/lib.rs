@@ -13,7 +13,7 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::{fmt::Debug, hash::Hash};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Signature, PublicKey, Signature, SignatureError, Verifier};
@@ -241,21 +241,6 @@ impl<T: Sig+ Signature, P: Signer + Verifier<T>> ThresholdVerifier<T> for Signer
 }
 
 impl<P: Signer> SignerSet<P> {
-    /// Construct a new `SignerSet` from a list of public keys and threshold.
-    pub fn new(signers: Vec<P>, threshold: u32) -> Self {
-        Self { signers, threshold }
-    }
-
-    /// Get the list of potential signers.
-    pub fn signers(&self) -> &[P] {
-        &self.signers
-    }
-
-    /// Get the threshold.
-    pub fn threshold(&self) -> u32 {
-        self.threshold
-    }
-
     /// TODO
     pub fn verify2<S: Sig>(
         &self,
@@ -340,8 +325,19 @@ pub struct SignerSet<P: Signer> {
     pub threshold: u32,
 }
 impl<P: Signer> SignerSet<P> {
-    fn new(signers: Vec<P>, threshold: u32) -> Self {
+    /// Construct a new `SignerSet` from a list of public keys and threshold.
+    pub fn new(signers: Vec<P>, threshold: u32) -> Self {
         Self { signers, threshold }
+    }
+
+    /// Get the list of potential signers.
+    pub fn signers(&self) -> &[P] {
+        &self.signers
+    }
+
+    /// Get the threshold.
+    pub fn threshold(&self) -> u32 {
+        self.threshold
     }
 }
 
@@ -356,23 +352,34 @@ pub trait Sig: BaseTraits {}
 #[serde(bound = "")]
 pub struct MultiSig<S: Sig> {
     #[prost(message, repeated, tag = "1")]
-    pub sigs: Vec<S>,
+    pub signatures: Vec<S>,
+}
+
+impl<S: Sig> MultiSig<S> {
+    /// Construct a new multi-signature from a collection of signatures.
+    pub fn new(signatures: Vec<S>) -> Self {
+        Self { signatures }
+    }
+
+    /// Get signatures
+    pub fn signatures(&self) -> &[S] {
+        &self.signatures
+    }
 }
 
 impl<T> Sig for T where T: BaseTraits + Signature {}
 impl<S: Sig> Sig for MultiSig<S> {}
 
 pub trait MultiSigVerifier<S: Sig> {
-    fn verify(&self, msg: &[u8], sig: &S) -> Result<(), ()> {
+    fn verify(&self, message: &[u8], sig: &S) -> Result<(), SignatureError> {
         todo!()
     }
 }
 
-//impl Verifier<Ed2Sig> for Ed2Pub {}
-impl<S: Sig + Signature, T: Verifier<S>> MultiSigVerifier<S> for T {
-    fn verify(&self, msg: &[u8], sig: &S) -> Result<(), ()> {
-        self.verify(msg, sig);
-        todo!()
+/// Verifier for underlying mc_crypto_keys types.
+impl<S: Sig + Signature, T: Clone + Verifier<S>> MultiSigVerifier<S> for T {
+    fn verify(&self, message: &[u8], sig: &S) -> Result<(), SignatureError> {
+        self.verify(message, sig)
     }
 }
 
@@ -380,10 +387,48 @@ impl<S: Sig, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
 where
     PK: MultiSigVerifier<S>,
 {
-    fn verify(&self, msg: &[u8], sig: &MultiSig<S>) -> Result<(), ()> {
-        for signer in self.signers.iter() {
-            signer.verify(msg, &sig.sigs[0])?;
+    fn verify(&self, message: &[u8], multi_sig: &MultiSig<S>) -> Result<(), SignatureError> {
+        // If the signature contains less than the threshold number of signers or more
+        // than the hardcoded limit, there's no point in trying.
+        if multi_sig.signatures.len() < self.threshold as usize
+            || multi_sig.signatures.len() > MAX_SIGNATURES
+        {
+            return Err(SignatureError::new());
         }
+
+        // Sort and dedup the list of signers and signatures.
+        // While the verification code below should be immune to duplicate signers or
+        // signatures, the overhead of deduping them is negligible and being
+        // extra-safe is a good idea.
+        let mut potential_signers = self.signers.clone();
+        potential_signers.sort();
+        potential_signers.dedup();
+
+        let mut signatures = multi_sig.signatures.clone();
+        signatures.sort_by(|a, b| a.cmp(b));
+        signatures.dedup();
+
+        // See which signatures which match signers.
+        let mut matched_signers = Vec::new();
+        for signature in signatures.iter() {
+            let matched_signer = potential_signers.iter().find_map(|signer| {
+                signer
+                    .verify(message, signature)
+                    .ok()
+                    .map(|_| signer.clone())
+            });
+            if let Some(matched_signer) = matched_signer {
+                potential_signers.retain(|signer| signer != &matched_signer);
+                matched_signers.push(matched_signer);
+            }
+        }
+
+        // Did we pass the threshold of verified signatures?
+        if matched_signers.len() < self.threshold as usize {
+            return Err(SignatureError::new());
+        }
+
+        //Ok(matched_signers)
         Ok(())
     }
 }
@@ -482,7 +527,6 @@ mod test {
 }
 */
 
-/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -808,5 +852,3 @@ mod test {
         );
     }
 }
-
-*/
