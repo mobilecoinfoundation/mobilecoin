@@ -32,7 +32,7 @@ jobs:
         with:
           command: build
           # This build dies with linker OOM, so limit the number of concurrent jobs.
-          args: --locked -j4
+          args: --locked -j 4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
