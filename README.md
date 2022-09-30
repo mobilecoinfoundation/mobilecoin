@@ -1,3 +1,4 @@
+spurious!
 ![](./img/mobilecoin_logo.png)
 
 ### Testing your first payment
