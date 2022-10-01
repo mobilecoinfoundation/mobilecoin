@@ -514,6 +514,7 @@ jobs:
               -p mc-admin-http-gateway \
               -p mc-consensus-mint-client \
               -p mc-consensus-service \
+              -p mc-consensus-tool \
               -p mc-crypto-x509-test-vectors \
               -p mc-fog-distribution \
               -p mc-fog-ingest-client \
