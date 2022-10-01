@@ -409,12 +409,14 @@ jobs:
           MC_LOG="debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           LEDGER_BASE="$PWD/ledger" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
+
           # Give it time to spin up
           for PORT in 3200 3201 3202 3203 3204 4444; do
             for i in $(seq 0 60); do
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
+          sleep 20
 
           # Run fog-distribution client to exercise Fog
           "$BIN_DIR/fog-distribution" \
@@ -426,7 +428,8 @@ jobs:
               --peer insecure-mc://localhost:3203/ \
               --peer insecure-mc://localhost:3204/ \
               --num-tx-to-send 10
-          # Give it time to spin up
+
+          # Give it time to quiet down
           "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
               insecure-mc://localhost:3200/ \
               insecure-mc://localhost:3201/ \
@@ -566,12 +569,14 @@ jobs:
           # Run local network in background.
           MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
+
           # Give it time to spin up
           for PORT in 3200 3201 3202 3203 3204 4444; do
             for i in $(seq 0 60); do
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
+          sleep 20
 
           # Authorize minters
           echo "Authorizing minters"
