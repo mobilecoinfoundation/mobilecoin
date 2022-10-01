@@ -784,7 +784,7 @@ impl TestClient {
                 / (tok2_val as u128)) as u64;
 
             (
-                Some(Amount::new(fractional_tok1_val, token_id1)),
+                Some(Amount::new(fractional_tok2_val, token_id2)),
                 fractional_tok1_val,
             )
         } else {
@@ -803,6 +803,8 @@ impl TestClient {
             .map_err(TestClientError::SubmitTx)?;
         self.tx_info.set_tx_propose_block_count(block_count);
 
+        // If it's a partial fill, the expected delta is fractional_tok1_val and
+        // fractional_tok2_val, else it's tok1_val and tok2_val
         let (value1, value2) = if is_partial_fill {
             (fractional_tok1_val, fill_amount.unwrap().value)
         } else {
