@@ -416,7 +416,6 @@ jobs:
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
-          sleep 20
 
           # Run fog-distribution client to exercise Fog
           "$BIN_DIR/fog-distribution" \
@@ -576,7 +575,6 @@ jobs:
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
-          sleep 20
 
           # Authorize minters
           echo "Authorizing minters"

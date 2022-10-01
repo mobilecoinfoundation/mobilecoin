@@ -38,11 +38,13 @@ pub enum ToolCommand {
     /// Wait-for-quiet: Blocks until the network is 'quiet'. This means that the
     /// block count doesn't move for some time.
     WaitForQuiet {
-        /// Number of seconds the network must stop moving for. Defaults to 5.
+        /// Number of seconds the network must stop moving for. Defaults to 20.
         #[clap(long)]
         period: Option<u64>,
     },
 }
+
+const DEFAULT_PERIOD_SECONDS: u64 = 20;
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -72,7 +74,7 @@ fn main() {
         ToolCommand::WaitForQuiet { period } => {
             let mut last_block_index = 0u64;
             let mut was_updated = true;
-            let period = period.unwrap_or(5u64);
+            let period = period.unwrap_or(DEFAULT_PERIOD_SECONDS);
 
             while was_updated {
                 std::thread::sleep(Duration::from_secs(period));
