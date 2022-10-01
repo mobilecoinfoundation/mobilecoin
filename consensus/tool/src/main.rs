@@ -56,7 +56,7 @@ fn main() {
        BlockchainApiClient::new(ch)
     }).collect();
 
-    match &config.tool_command {
+    match config.tool_command {
         ToolCommand::Status => {
             for conn in &blockchain_conns {
                 let last_block_info = conn
@@ -68,7 +68,7 @@ fn main() {
         ToolCommand::WaitForQuiet { period } => {
             let mut last_block_index = 0u64;
             let mut was_updated = true;
-            let period = period.clone().unwrap_or(5u64);
+            let period = period.unwrap_or(5u64);
             
             while was_updated {
                 std::thread::sleep(Duration::from_secs(period));
