@@ -2867,6 +2867,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-consensus-tool"
+version = "2.0.0"
+dependencies = [
+ "clap 3.2.22",
+ "grpcio",
+ "mc-common",
+ "mc-consensus-api",
+ "mc-util-grpc",
+ "mc-util-uri",
+]
+
+[[package]]
 name = "mc-crypto-ake-enclave"
 version = "2.0.0"
 dependencies = [

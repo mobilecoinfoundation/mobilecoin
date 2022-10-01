@@ -359,6 +359,7 @@ jobs:
               -p mc-admin-http-gateway \
               -p mc-consensus-mint-client \
               -p mc-consensus-service \
+              -p mc-consensus-tool \
               -p mc-crypto-x509-test-vectors \
               -p mc-fog-distribution \
               -p mc-fog-ingest-client \
@@ -426,7 +427,12 @@ jobs:
               --peer insecure-mc://localhost:3204/ \
               --num-tx-to-send 10
           # Give it time to spin up
-          sleep 60
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
+              insecure-mc://localhost:3200/ \
+              insecure-mc://localhost:3201/ \
+              insecure-mc://localhost:3202/ \
+              insecure-mc://localhost:3203/ \
+              insecure-mc://localhost:3204/
 
           # Run test-client
           "$BIN_DIR/test_client" \
@@ -465,7 +471,14 @@ jobs:
 
           # Try triggering slam twice and see that it doesn't get stuck
           curl -s localhost:9090/slam -X POST
-          sleep 20
+
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
+              insecure-mc://localhost:3200/ \
+              insecure-mc://localhost:3201/ \
+              insecure-mc://localhost:3202/ \
+              insecure-mc://localhost:3203/ \
+              insecure-mc://localhost:3204/
+
           curl -s localhost:9090/slam -X POST
 
       - name: Upload core dumps
@@ -562,7 +575,13 @@ jobs:
           # Authorize minters
           echo "Authorizing minters"
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
-          sleep 20
+
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
+              insecure-mc://localhost:3200/ \
+              insecure-mc://localhost:3201/ \
+              insecure-mc://localhost:3202/ \
+              insecure-mc://localhost:3203/ \
+              insecure-mc://localhost:3204/
 
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
@@ -576,7 +595,12 @@ jobs:
                   --amount 1000000
           done
 
-          sleep 60
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
+              insecure-mc://localhost:3200/ \
+              insecure-mc://localhost:3201/ \
+              insecure-mc://localhost:3202/ \
+              insecure-mc://localhost:3203/ \
+              insecure-mc://localhost:3204/
 
           # Use burn.py to burn some token1
           cd "$STRATEGIES_DIR"

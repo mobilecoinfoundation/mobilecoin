@@ -1,0 +1,14 @@
+[package]
+name = "mc-consensus-tool"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[dependencies]
+mc-common = { path = "../../common", features = ["log"] }
+mc-consensus-api = { path = "../../consensus/api" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-uri = { path = "../../util/uri" }
+
+clap = { version = "3.2", features = ["derive", "env"] }
+grpcio = "0.11.0"
