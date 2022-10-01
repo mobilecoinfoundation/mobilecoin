@@ -17,7 +17,7 @@ use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
     mint::{MintConfigTx, MintTx},
 };
-use mc_util_grpc::{ConnectionUriGrpcioChannel, common_headers_call_option};
+use mc_util_grpc::{common_headers_call_option, ConnectionUriGrpcioChannel};
 use protobuf::ProtobufEnum;
 use std::{fs, process::exit, sync::Arc};
 
@@ -119,7 +119,10 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_config_tx_opt(&(&merged_tx).into(), common_headers_call_option(&chain_id))
+                .propose_mint_config_tx_opt(
+                    &(&merged_tx).into(),
+                    common_headers_call_option(&chain_id),
+                )
                 .expect("propose tx");
             println!("response: {:?}", resp);
 

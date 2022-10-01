@@ -73,7 +73,6 @@ pub fn common_headers_call_option(chain_id: &str) -> CallOption {
     CallOption::default().headers(metadata_builder.build())
 }
 
-
 /// Helper which reduces boilerplate when implementing grpc API traits.
 #[inline]
 pub fn send_result<T>(
