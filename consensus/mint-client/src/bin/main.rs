@@ -3,7 +3,7 @@
 //! Entrypoint for the consensus mint client.
 
 use clap::Parser;
-use grpcio::{CallOption, ChannelBuilder, EnvBuilder, MetadataBuilder};
+use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
@@ -17,23 +17,9 @@ use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
     mint::{MintConfigTx, MintTx},
 };
-use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, common_headers_call_option};
 use protobuf::ProtobufEnum;
 use std::{fs, process::exit, sync::Arc};
-
-// Make a "call option" object which includes appropriate grpc headers
-fn call_option(chain_id: &str) -> CallOption {
-    let mut metadata_builder = MetadataBuilder::new();
-
-    // Add the chain id header if we have a chain id specified
-    if !chain_id.is_empty() {
-        metadata_builder
-            .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
-            .expect("Could not add chain-id header");
-    }
-
-    CallOption::default().headers(metadata_builder.build())
-}
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -64,7 +50,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_config_tx_opt(&(&tx).into(), call_option(&chain_id))
+                .propose_mint_config_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -133,7 +119,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_config_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
+                .propose_mint_config_tx_opt(&(&merged_tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -167,7 +153,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_tx_opt(&(&tx).into(), call_option(&chain_id))
+                .propose_mint_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -244,7 +230,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
+                .propose_mint_tx_opt(&(&merged_tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 

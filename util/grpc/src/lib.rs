@@ -50,7 +50,7 @@ pub use crate::{
 };
 
 use futures::prelude::*;
-use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
+use grpcio::{CallOption, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, o, Level, Logger};
 use mc_util_metrics::SVC_COUNTERS;
 use rand::Rng;
@@ -58,6 +58,21 @@ use std::{
     fmt::Display,
     sync::atomic::{AtomicU64, Ordering},
 };
+
+/// Helper which creates a grpcio CallOption with "common" headers attached
+pub fn common_headers_call_option(chain_id: &str) -> CallOption {
+    let mut metadata_builder = MetadataBuilder::new();
+
+    // Add the chain id header if we have a chain id specified
+    if !chain_id.is_empty() {
+        metadata_builder
+            .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
+            .expect("Could not add chain-id header");
+    }
+
+    CallOption::default().headers(metadata_builder.build())
+}
+
 
 /// Helper which reduces boilerplate when implementing grpc API traits.
 #[inline]
