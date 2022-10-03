@@ -271,13 +271,12 @@ where
         // highest_processed_block_count fields will be set based on all of the
         // shard query responses.
         let shard_query_response = shard_query_responses
-            .clone()
-            .into_iter()
+            .iter()
             .next()
             .expect("Shard query responses must have at least one response.");
         let shard_query_response_plaintext = self
             .ake
-            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
+            .backend_decrypt(&shard_query_response.0, shard_query_response.1)?;
         let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
@@ -287,7 +286,7 @@ where
         let shard_query_responses = shard_query_responses
             .into_iter()
             .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?;
+                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
                 Ok(query_response)

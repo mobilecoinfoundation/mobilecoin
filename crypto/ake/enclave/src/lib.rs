@@ -554,8 +554,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     pub fn backend_decrypt(
         &self,
-        responder_id: ResponderId,
-        msg: EnclaveMessage<NonceSession>,
+        responder_id: &ResponderId,
+        msg: &EnclaveMessage<NonceSession>,
     ) -> Result<Vec<u8>> {
         // Ensure lock gets released as soon as we're done decrypting.
         let mut backends = self.backends.lock()?;
