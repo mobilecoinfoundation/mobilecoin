@@ -14,7 +14,7 @@ mc-ledger-db = { path = "../../ledger/db", features = ["migration_support"] }
 mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-serial = { path = "../../util/serial" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 lmdb-rkv = "0.14.0"
 
 [build-dependencies]

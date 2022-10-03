@@ -11,5 +11,5 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-api = { path = "../../api" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 hex = "0.4"
