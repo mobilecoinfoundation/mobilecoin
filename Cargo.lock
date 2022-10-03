@@ -2876,6 +2876,7 @@ dependencies = [
  "mc-consensus-api",
  "mc-util-grpc",
  "mc-util-uri",
+ "serde_json",
 ]
 
 [[package]]
