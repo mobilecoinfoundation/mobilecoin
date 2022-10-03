@@ -16,7 +16,7 @@ extern crate alloc;
 use alloc::{vec, vec::Vec};
 use core::{fmt::Debug, hash::Hash};
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Ed25519Signature, PublicKey, Signature, SignatureError, Verifier};
+use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -116,9 +116,7 @@ impl<S: Sig> Sig for MultiSig<S> {}
 pub trait MultiSigVerifier<S: Sig> {
     type SignerIdentity: Eq + PartialEq;
 
-    fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError> {
-        todo!()
-    }
+    fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError>;
 }
 
 /// Verifier for underlying mc_crypto_keys types.
@@ -188,7 +186,6 @@ where
 
 /// TODO
 pub fn testz() {
-    use alloc::vec;
     use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 
     let ss1 = SignerSet::new(vec![Ed25519Public::default()], 1);
@@ -205,11 +202,12 @@ pub fn testz() {
 
     let ms3: MultiSig<MultiSig<MultiSig<Ed25519Signature>>> = MultiSig::default();
     let ss3: SignerSet<SignerSet<SignerSet<Ed25519Public>>> = SignerSet::default();
-    ss3.verify(&[], &ms3).unwrap();
+    let sux = ss3.verify(&[], &ms3).unwrap();
 }
 
+/// Tests for non-nested k-out-of-n multisig
 #[cfg(test)]
-mod test {
+mod test_single_level {
     use super::*;
     use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Signer};
@@ -530,6 +528,134 @@ mod test {
         assert_eq!(
             multi_sig,
             mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap(),
+        );
+    }
+}
+
+/// Tests for nested k-out-of-n multisigs
+#[cfg(test)]
+mod test_nested_multisigs {
+    use super::*;
+    use alloc::vec;
+    use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Signer};
+    use mc_util_from_random::FromRandom;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    /// Helper method for comparing two signers list.
+    /// In other places in the code we might convert to a HashSet first and then
+    /// compare, but that would hide duplicate elements and we want to catch
+    /// that.
+    fn assert_eq_ignore_order(mut a: Vec<Vec<Ed25519Public>>, mut b: Vec<Vec<Ed25519Public>>) {
+        for signer in a.iter_mut() {
+            signer.sort();
+        }
+
+        for signer in b.iter_mut() {
+            signer.sort();
+        }
+
+        a.sort();
+        b.sort();
+
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn ed25519_verify_signers_sanity_one_of_two_orgs() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let message = b"this is a test";
+
+        // Org 1 requires 2-of-3 signatures
+        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org1_signerset = SignerSet::new(
+            vec![
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
+                org1_signer3.public_key(),
+            ],
+            2,
+        );
+
+        // Org 2 requires 3-of-3 signatures
+        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org2_signerset = SignerSet::new(
+            vec![
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
+            ],
+            3,
+        );
+
+        // Sign the message with all of our signers.
+        let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
+        let org1_signer2_sig = org1_signer2.try_sign(message.as_ref()).unwrap();
+        let org1_signer3_sig = org1_signer3.try_sign(message.as_ref()).unwrap();
+
+        let org2_signer1_sig = org2_signer1.try_sign(message.as_ref()).unwrap();
+        let org2_signer2_sig = org2_signer2.try_sign(message.as_ref()).unwrap();
+        let org2_signer3_sig = org2_signer3.try_sign(message.as_ref()).unwrap();
+
+        // Some signatures to test with
+        let org1_valid_multisig = MultiSig::new(vec![org1_signer1_sig, org1_signer3_sig]);
+        let org1_invalid_multisig1 = MultiSig::new(vec![org1_signer1_sig]);
+        let org1_invalid_multisig2 = MultiSig::new(vec![org1_signer1_sig, org2_signer1_sig]);
+
+        let org2_valid_multisig =
+            MultiSig::new(vec![org2_signer1_sig, org2_signer2_sig, org2_signer3_sig]);
+        let org2_invalid_multisig1 =
+            MultiSig::new(vec![org2_signer1_sig, org2_signer2_sig, org1_signer1_sig]);
+        let org2_invalid_multisig2 =
+            MultiSig::new(vec![org2_signer1_sig, org2_signer2_sig, org2_signer2_sig]);
+
+        // The top-level multisig requires 1-of-2 signatures
+        let signer_set = SignerSet::new(vec![org1_signerset, org2_signerset], 1);
+
+        // With not signatures, the multisig should not verify.
+        let multi_sig = MultiSig::new(vec![]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Happy flow - org1 satisfies the threshold, no org2 signatures.
+        let multi_sig = MultiSig::new(vec![org1_valid_multisig.clone()]);
+        let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
+        assert_eq_ignore_order(
+            signers,
+            vec![vec![org1_signer1.public_key(), org1_signer3.public_key()]],
+        );
+
+        // Happy flow - org2 satisfies the threshold, no org1 signatures.
+        let multi_sig = MultiSig::new(vec![org2_valid_multisig.clone()]);
+        let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
+        assert_eq_ignore_order(
+            signers,
+            vec![vec![
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
+            ]],
+        );
+
+        // Happy flow - both orgs satisfy the threshold.
+        let multi_sig = MultiSig::new(vec![
+            org1_valid_multisig.clone(),
+            org2_valid_multisig.clone(),
+        ]);
+        let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                vec![org1_signer1.public_key(), org1_signer3.public_key()],
+                vec![
+                    org2_signer1.public_key(),
+                    org2_signer2.public_key(),
+                    org2_signer3.public_key(),
+                ],
+            ],
         );
     }
 }
