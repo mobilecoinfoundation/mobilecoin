@@ -101,6 +101,9 @@ spec:
             name: ias
         - configMapRef:
             name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
+        - secretRef:
+            name: sample-keys-seeds
+            optional: true
         env:
         - name: PATH
           value: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64'
@@ -141,6 +144,9 @@ spec:
           mountPath: /keys
         - name: node-cert
           mountPath: /certs
+          readOnly: true
+        - name: wallet-seeds
+          mountPath: /wallet-seeds
           readOnly: true
         resources:
           {{- toYaml .Values.node.resources | nindent 10}}
@@ -197,6 +203,10 @@ spec:
       - name: node-cert
         secret:
           secretName: {{ include "consensusNode.fullname" . }}-internal-tls
+      - name: wallet-seeds
+        secret:
+          secretName: sample-keys-seeds
+          optional: true
       - name: ledger-db-dir
         {{- if eq .Values.node.persistence.enabled true }}
         persistentVolumeClaim:
