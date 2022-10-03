@@ -19,6 +19,7 @@ mc-blockchain-test-utils = { path = "../../blockchain/test-utils", optional = tr
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils", optional = true }
 mc-transaction-std = { path = "../../transaction/std" }

@@ -192,7 +192,7 @@ where
         potential_signers.dedup();
 
         let mut signatures = multi_sig.signatures.clone();
-        signatures.sort_by(|a, b| a.cmp(b));
+        signatures.sort();
         signatures.dedup();
 
         // See which signatures match which signers.
@@ -658,10 +658,7 @@ mod test_nested_multisigs {
         );
 
         // Both orgs satisfy the threshold.
-        let multi_sig = MultiSig::new(vec![
-            org1_valid_multisig.clone(),
-            org2_valid_multisig.clone(),
-        ]);
+        let multi_sig = MultiSig::new(vec![org1_valid_multisig.clone(), org2_valid_multisig]);
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
             signers,
@@ -677,7 +674,7 @@ mod test_nested_multisigs {
 
         // One org satisfies the threshold and one org does not.
         let multi_sig = MultiSig::new(vec![
-            org1_valid_multisig.clone(),
+            org1_valid_multisig,
             org2_invalid_multisig1.clone(),
             org2_invalid_multisig2.clone(),
         ]);
@@ -689,10 +686,10 @@ mod test_nested_multisigs {
 
         // Neither orgs provides a valid signature
         let multi_sig = MultiSig::new(vec![
-            org1_invalid_multisig1.clone(),
-            org1_invalid_multisig2.clone(),
-            org2_invalid_multisig1.clone(),
-            org2_invalid_multisig2.clone(),
+            org1_invalid_multisig1,
+            org1_invalid_multisig2,
+            org2_invalid_multisig1,
+            org2_invalid_multisig2,
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
     }
@@ -766,10 +763,7 @@ mod test_nested_multisigs {
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         // Both orgs satisfy the threshold.
-        let multi_sig = MultiSig::new(vec![
-            org1_valid_multisig.clone(),
-            org2_valid_multisig.clone(),
-        ]);
+        let multi_sig = MultiSig::new(vec![org1_valid_multisig.clone(), org2_valid_multisig]);
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
             signers,
@@ -785,7 +779,7 @@ mod test_nested_multisigs {
 
         // One org satisfies the threshold and one org does not.
         let multi_sig = MultiSig::new(vec![
-            org1_valid_multisig.clone(),
+            org1_valid_multisig,
             org2_invalid_multisig1.clone(),
             org2_invalid_multisig2.clone(),
         ]);
@@ -793,10 +787,10 @@ mod test_nested_multisigs {
 
         // Neither orgs provides a valid signature
         let multi_sig = MultiSig::new(vec![
-            org1_invalid_multisig1.clone(),
-            org1_invalid_multisig2.clone(),
-            org2_invalid_multisig1.clone(),
-            org2_invalid_multisig2.clone(),
+            org1_invalid_multisig1,
+            org1_invalid_multisig2,
+            org2_invalid_multisig1,
+            org2_invalid_multisig2,
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
     }

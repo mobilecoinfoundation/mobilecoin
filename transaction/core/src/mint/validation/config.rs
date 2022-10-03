@@ -15,7 +15,7 @@ use crate::{
     BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::{MultiSigVerifier, SignerSet};
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
