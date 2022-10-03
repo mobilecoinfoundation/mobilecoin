@@ -7,10 +7,10 @@ description = "Digestible Signatures"
 readme = "README.md"
 
 [features]
-alloc = [ "mc-crypto-digestible/alloc" ]
-dalek = [ "mc-crypto-digestible/dalek" ]
-derive = [ "mc-crypto-digestible/derive" ]
-default = [ "alloc", "derive", "dalek" ]
+alloc = ["mc-crypto-digestible/alloc"]
+dalek = ["mc-crypto-digestible/dalek"]
+derive = ["mc-crypto-digestible/derive"]
+default = ["alloc", "derive", "dalek"]
 
 [dependencies]
 mc-crypto-digestible = { path = "..", default_features = false }
