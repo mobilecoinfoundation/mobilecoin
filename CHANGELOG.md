@@ -8,12 +8,27 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## Unreleased
 
+## [2.1.0]
+
 ### Added
 
-- Support env overrides for ~all command-line flags.
-  - Flags that take multiple values can be repeated on the command line,
-    or passed as comma-separated values via environment or command-line args.
-- Update CI deployments to use zerossl instead of letsencrypt
+- Add `Chain-ID` gRPC metadata ([MCIP #49](https://github.com/mobilecoinfoundation/mcips/pull/49)) to provide additional runtime disambiguation between clients and servers.
+- Add a required `--chain-id` command-line arguments to consensus and fog servers.
+- Add an optional `--chain-id` command-line argument to `mobilecoind`.
+- Support env overrides and overlays (for multi-value items) for nearly all command-line arguments.
+- Update CI deployments to use zerossl instead of letsencrypt.
+- Add a `--hash-tx-file` subcommand to print the hash of a `mint-tx` or `mint-config-tx` file.
+- Add the current block info (fee map, block version, etc.) to the response message for `mobilecoind_api.GetNetworkStatus`.
+
+### Fixes
+
+- Update `mc-consensus-mint-client` to check that public addresses for minting targets do not have a configured fog server.
+- Update to `android-bindings` and `libmobilecoin` RNG APIs to assist in idempotent transactions.
+
+### Security
+
+- TOB-MCCT-4: Make minting nonces unique per-token.
+
 
 ## [2.0.0] - 2022-07-25
 
