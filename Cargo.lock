@@ -2528,6 +2528,7 @@ dependencies = [
  "rand_hc 0.3.1",
  "retry",
  "secrecy",
+ "serde",
  "sha2 0.10.6",
  "tempdir",
 ]
@@ -2873,6 +2874,7 @@ dependencies = [
  "clap 3.2.22",
  "grpcio",
  "mc-common",
+ "mc-connection",
  "mc-consensus-api",
  "mc-util-grpc",
  "mc-util-uri",

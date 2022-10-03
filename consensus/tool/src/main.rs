@@ -7,26 +7,33 @@
 use clap::{Parser, Subcommand};
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
+use mc_connection::BlockInfo;
 use mc_consensus_api::{consensus_common_grpc::BlockchainApiClient, empty::Empty};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
-use serde_json::{json, to_string_pretty, Map, Value};
+use serde_json::{to_string_pretty};
 use std::{sync::Arc, time::Duration};
 
-/// Command line config, set with defaults that will work with
-/// a standard mobilecoind instance
+/// A cli tool for interrogating one or more consensus nodes.
+///
+/// Example usage:
+///
+/// $ mc-consensus-tool status mc://localhost:3200 | jq .index
+///
+/// $ mc-consensus-tool status mc://localhost:3200 | jq .network_block_version
+///
+/// $ mc-consensus-tool wait-for-quiet mc://localhost:3200 mc://localhost:3201 mc://localhost:3202
+///
+/// $ MC_PEERS=mc://localhost:3200,mc://localhost:3201 mc-consensus-tool wait-for-block --index=5005
 #[derive(Clone, Debug, Parser)]
-#[clap(
-    name = "mc-consensus-tool",
-    about = "A cli tool for interrogating one or more consensus nodes"
-)]
+#[clap(name = "mc-consensus-tool")]
 pub struct Config {
     /// Command to use
     #[clap(subcommand)]
     pub tool_command: ToolCommand,
 
     /// Consensus_uri's to connect to
-    #[clap(global = true)]
+    #[clap(global = true, env = "MC_PEERS")]
     pub consensus_uris: Vec<ConsensusClientUri>,
 }
 
@@ -34,20 +41,21 @@ pub struct Config {
 #[derive(Clone, Debug, Subcommand)]
 pub enum ToolCommand {
     /// Status: Prints the network status, including block count and block
-    /// version
+    /// version, in json format on STDOUT.
     Status,
     /// Wait-for-block: Blocks until all specified nodes have externalized the
     /// given block index.
     WaitForBlock {
         /// Block index which must appear
         index: u64,
+
         /// Polling period in seconds
         #[clap(long, default_value = "1")]
         period: u64,
     },
     /// Wait-for-quiet: Blocks until the network is 'quiet'. This means that the
     /// block count doesn't move for some time. Prints the final
-    /// last_block_index on STDOUT and a human-friendly message on STDERR
+    /// block_index on STDOUT.
     WaitForQuiet {
         /// Number of seconds the network must stop moving for.
         #[clap(long, default_value = "20")]
@@ -85,11 +93,9 @@ fn main() {
                     .get_last_block_info(&Empty::new())
                     .expect("get last block info");
 
-                println!("{}", to_string_pretty(&json!({
-                    "index": last_block_info.index,
-                    "minimum_fees": Map::<String, Value>::from_iter(last_block_info.minimum_fees.into_iter().map(|(token_id, fee)| (token_id.to_string(), fee.into()))),
-                    "network_block_version": last_block_info.network_block_version,
-                })).expect("json error"))
+                let block_info = BlockInfo::from(last_block_info);
+
+                println!("{}", to_string_pretty(&block_info).expect("json error"))
             }
         }
         ToolCommand::WaitForBlock { index, period } => loop {
@@ -146,10 +152,7 @@ fn main() {
                 }
                 std::thread::sleep(Duration::from_secs(period));
             };
-            eprintln!(
-                "Network quiet for {} seconds at block index: {}",
-                period, last_block_index
-            );
+            // Print the stopping point on STDOUT so that scripts can capture this easily
             print!("{}", last_block_index)
         }
     }
