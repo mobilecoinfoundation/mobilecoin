@@ -560,7 +560,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // Ensure lock gets released as soon as we're done decrypting.
         let mut backends = self.backends.lock()?;
         backends
-            .get_mut(&responder_id)
+            .get_mut(responder_id)
             .ok_or(Error::NotFound)
             .and_then(|session| {
                 Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.peek_nonce())?)

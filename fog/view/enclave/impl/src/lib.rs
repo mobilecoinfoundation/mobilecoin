@@ -276,7 +276,7 @@ where
             .expect("Shard query responses must have at least one response.");
         let shard_query_response_plaintext = self
             .ake
-            .backend_decrypt(&shard_query_response.0, shard_query_response.1)?;
+            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
         let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
