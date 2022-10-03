@@ -9,20 +9,21 @@
 //! a signing group of size n.
 
 #![cfg_attr(not(test), no_std)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 use core::{fmt::Debug, hash::Hash};
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
+use mc_crypto_keys::{PublicKey, SignatureError, Verifier};
 use prost::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// The maximum number of signatures that can be included in a multi-signature.
 pub const MAX_SIGNATURES: usize = 10;
 
+/// Useful base traits we want objects provided by this crate to implement.
 pub trait BaseTraits:
     Clone
     + Debug
@@ -54,27 +55,31 @@ impl<T> BaseTraits for T where
 {
 }
 
+/// A marker trait for types that can be used as a signer in multi-signatures.
 pub trait Signer: BaseTraits {}
 
+/// A set of M-out-of-N signers.
 #[derive(
     Clone, Deserialize, Digestible, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize,
 )]
 #[serde(bound = "")]
-pub struct SignerSet<P: Signer> {
+pub struct SignerSet<S: Signer> {
+    /// List of potential signers.
     #[prost(message, repeated, tag = "1")]
-    pub signers: Vec<P>,
+    signers: Vec<S>,
 
+    /// Minimum number of signers required.
     #[prost(uint32, tag = "2")]
-    pub threshold: u32,
+    threshold: u32,
 }
-impl<P: Signer> SignerSet<P> {
+impl<S: Signer> SignerSet<S> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
-    pub fn new(signers: Vec<P>, threshold: u32) -> Self {
+    pub fn new(signers: Vec<S>, threshold: u32) -> Self {
         Self { signers, threshold }
     }
 
     /// Get the list of potential signers.
-    pub fn signers(&self) -> &[P] {
+    pub fn signers(&self) -> &[S] {
         &self.signers
     }
 
@@ -84,21 +89,28 @@ impl<P: Signer> SignerSet<P> {
     }
 }
 
+// Blanket implementation of Signer for all public key types.
 impl<T> Signer for T where T: BaseTraits + PublicKey {}
+
+// SignerSets can be used as signers - this allows the nested multi-sig
+// scenario.
 impl<P: Signer> Signer for SignerSet<P> {}
 
-pub trait Sig: BaseTraits {}
+/// A marker trait for individual signatures that can be used in
+/// multi-signatures.
+pub trait Signature: BaseTraits {}
 
+/// A multi-signature: a collection of one or more signatures.
 #[derive(
     Clone, Deserialize, Digestible, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize,
 )]
 #[serde(bound = "")]
-pub struct MultiSig<S: Sig> {
+pub struct MultiSig<S: Signature> {
     #[prost(message, repeated, tag = "1")]
-    pub signatures: Vec<S>,
+    signatures: Vec<S>,
 }
 
-impl<S: Sig> MultiSig<S> {
+impl<S: Signature> MultiSig<S> {
     /// Construct a new multi-signature from a collection of signatures.
     pub fn new(signatures: Vec<S>) -> Self {
         Self { signatures }
@@ -110,17 +122,37 @@ impl<S: Sig> MultiSig<S> {
     }
 }
 
-impl<T> Sig for T where T: BaseTraits + Signature {}
-impl<S: Sig> Sig for MultiSig<S> {}
+// Blanket implementation of Signature for all mc_crypto_keys::Signature types,
+// allowing them to be used in multi-sigs.
+impl<T> Signature for T where T: BaseTraits + mc_crypto_keys::Signature {}
 
-pub trait MultiSigVerifier<S: Sig> {
+// A multi-sig can be used as a signature, as is the case when doing nested
+// multi-sigs.
+impl<S: Signature> Signature for MultiSig<S> {}
+
+/// A trait for objects that can verify a signature.
+/// Note that we are not using the `Verifier` trait from mc-crypto-keys here,
+/// for two reasons: 1) It requires the signature to implement
+/// `mc_crypto_keys::Signature`, which is not    possible since that requires an
+/// as_bytes() implementation, which is not possible    since there is no
+/// well-established over-the-wire format for our multisigs. 2) We want the
+/// verifier to return information about the signing identity that matched the
+/// signature.    This allows the high-level multisig verification method to
+/// return us a list of the identities    that satisfied the threshold
+/// requirement.
+pub trait MultiSigVerifier<S: Signature> {
+    /// A type that can be used to identify the signer.
     type SignerIdentity: Eq + PartialEq;
 
+    /// Verify a signature `sig` over `message` and if successful return the
+    /// signer identity who produced a valig signature.
     fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError>;
 }
 
 /// Verifier for underlying mc_crypto_keys types.
-impl<S: Sig + Signature, T: Clone + Eq + PartialEq + Verifier<S>> MultiSigVerifier<S> for T {
+impl<S: Signature + mc_crypto_keys::Signature, T: Clone + Eq + PartialEq + Verifier<S>>
+    MultiSigVerifier<S> for T
+{
     type SignerIdentity = Self;
 
     fn verify(&self, message: &[u8], sig: &S) -> Result<Self::SignerIdentity, SignatureError> {
@@ -128,11 +160,14 @@ impl<S: Sig + Signature, T: Clone + Eq + PartialEq + Verifier<S>> MultiSigVerifi
     }
 }
 
-impl<'a, S: Sig, PK: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<PK>
+/// Verifier for SignerSets.
+impl<'a, S: Signature, P: Signer> MultiSigVerifier<MultiSig<S>> for SignerSet<P>
 where
-    PK: MultiSigVerifier<S>,
+    P: MultiSigVerifier<S>,
 {
-    type SignerIdentity = Vec<<PK as MultiSigVerifier<S>>::SignerIdentity>;
+    // In a signer-set verification we will have a list of identities that satisfied
+    // the threshold.
+    type SignerIdentity = Vec<<P as MultiSigVerifier<S>>::SignerIdentity>;
 
     fn verify(
         &self,
@@ -140,7 +175,7 @@ where
         multi_sig: &MultiSig<S>,
     ) -> Result<Self::SignerIdentity, SignatureError> {
         // If the signature contains less than the threshold number of
-        // signers or more  than the hardcoded limit, there's no point
+        // signers or more than the hardcoded limit, there's no point
         // in trying.
         if multi_sig.signatures.len() < self.threshold as usize
             || multi_sig.signatures.len() > MAX_SIGNATURES
@@ -150,8 +185,8 @@ where
 
         // Sort and dedup the list of signers and signatures.
         // While the verification code below should be immune to duplicate
-        // signers or  signatures, the overhead of deduping them is
-        // negligible and being  extra-safe is a good idea.
+        // signers or signatures, the overhead of deduping them is
+        // negligible and being extra-safe is a good idea.
         let mut potential_signers = self.signers.clone();
         potential_signers.sort();
         potential_signers.dedup();
@@ -160,16 +195,18 @@ where
         signatures.sort_by(|a, b| a.cmp(b));
         signatures.dedup();
 
-        // See which signatures which match signers.
+        // See which signatures match which signers.
         let mut all_matched_identities = Vec::new();
         for signature in signatures.iter() {
-            let matched_signer = potential_signers.iter().find_map(|signer| {
+            let matched_signer_and_identities = potential_signers.iter().find_map(|signer| {
                 signer
                     .verify(message, signature)
                     .ok()
-                    .map(|matched_signers| (signer.clone(), matched_signers))
+                    .map(|matched_signer_identities| (signer.clone(), matched_signer_identities))
             });
-            if let Some((matched_signer, matched_identities)) = matched_signer {
+            if let Some((matched_signer, matched_identities)) = matched_signer_and_identities {
+                // Removing the matched signer from the list of potential signers means the same
+                // signer cannot be used twice.
                 potential_signers.retain(|signer| signer != &matched_signer);
                 all_matched_identities.push(matched_identities);
             }
