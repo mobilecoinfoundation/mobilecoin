@@ -564,6 +564,118 @@ mod mint_config_tx_tests {
         );
     }
 
+    /// combine_mint_config_txs adequately sorts inputs and disposes of
+    /// duplicates.
+    #[test_with_logger]
+    fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let token_id_1 = TokenId::from(1);
+        let token_id_2 = TokenId::from(2);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers_for_set_nonce(
+            token_id_2,
+            &mut rng2,
+            mint_config_tx1.prefix.nonce.clone(),
+        );
+
+        assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
+
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
+            (
+                token_id_1,
+                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+            (
+                token_id_2,
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+        ])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+
+        let mut expected_result = vec![mint_config_tx1.clone(), mint_config_tx2.clone()];
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_config_txs(
+                &[
+                    mint_config_tx1.clone(),
+                    mint_config_tx2.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
+    /// combine_mint_config_txs adequately caps the number of outputs.
+    #[test_with_logger]
+    fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let token_id_1 = TokenId::from(1);
+        let token_id_2 = TokenId::from(2);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, n_blocks, &sender, &mut rng);
+
+        let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers_for_set_nonce(
+            token_id_2,
+            &mut rng2,
+            mint_config_tx1.prefix.nonce.clone(),
+        );
+
+        assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
+
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
+            (
+                token_id_1,
+                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+            (
+                token_id_2,
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+        ])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+
+        let mut expected_result = vec![mint_config_tx1.clone(), mint_config_tx2.clone()];
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_config_txs(
+                &[
+                    mint_config_tx1.clone(),
+                    mint_config_tx2.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
     /// combine_mint_config_txs adequately caps the number of outputs.
     #[test_with_logger]
     fn combine_mint_config_txs_caps_num_of_outputs(logger: Logger) {
