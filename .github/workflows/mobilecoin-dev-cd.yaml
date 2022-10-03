@@ -408,7 +408,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-deploy
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -437,7 +437,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-test
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -468,7 +468,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-deploy
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -497,7 +497,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-test
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -527,7 +527,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-update-consensus
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -554,7 +554,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-test
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -586,7 +586,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-deploy
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -615,7 +615,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-test
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -645,7 +645,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-update-consensus
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |
@@ -672,7 +672,7 @@ jobs:
         workflow: mobilecoin-dispatch-dev-test
         token: ${{ secrets.ACTIONS_TOKEN }}
         wait-for-completion: true
-        wait-for-completion-timeout: 30m
+        wait-for-completion-timeout: 60m
         wait-for-completion-interval: 30s
         display-workflow-run-url-interval: 30s
         inputs: |

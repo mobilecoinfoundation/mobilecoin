@@ -4130,6 +4130,7 @@ dependencies = [
  "mc-util-uri",
  "more-asserts",
  "once_cell",
+ "rand 0.8.5",
  "retry",
  "serde",
  "serde_json",
