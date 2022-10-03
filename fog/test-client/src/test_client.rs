@@ -685,6 +685,9 @@ impl TestClient {
 
     /// Conduct an atomic swap transfer between two clients
     ///
+    /// The source client is conceptually the originator.
+    /// The target client is conceptually the counterparty.
+    ///
     /// The source client builds an SCI, and the target client builds the swap
     /// transaction. This only builds and submits the transactions, it does not
     /// confirm it.
@@ -713,8 +716,10 @@ impl TestClient {
 
         let mut rng = McRng::default();
 
-        let tok1_val = 1 + thread_rng().gen_range(0, self.policy.transfer_amount);
-        let tok2_val = 1 + thread_rng().gen_range(0, self.policy.transfer_amount);
+        // Note: McRng does not implement rand::Rng because rand historically
+        // has not been no_std
+        let tok1_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
+        let tok2_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
 
         log::debug!(
             self.logger,
@@ -773,7 +778,7 @@ impl TestClient {
         // In the partial fill case, counter-party decides how much to fill it
         // We'll choose a random number in the range [0, self.tok1_val].
         let (fill_amount, fractional_tok1_val) = if is_partial_fill {
-            let fractional_tok2_val = thread_rng().gen_range(0, tok2_val + 1);
+            let fractional_tok2_val = thread_rng().gen_range(0..tok2_val + 1);
             // Because of the partial fill, the actual amount of tok1 transfered
             // to the source is going to be fractional_tok1_val, not tok1_val.
             // Similarly, the actual amount of tok2 transfered to target is less.
