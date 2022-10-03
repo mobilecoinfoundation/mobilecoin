@@ -15,10 +15,6 @@ COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
 COPY ${RUST_BIN_PATH}/libingest-enclave.css /enclaves/libingest-enclave.css
 
-# mint-auditor
-# CBB: maybe a standalone service with a embedded mobilecoind?
-COPY ${RUST_BIN_PATH}/mc-mint-auditor /usr/bin
-
 # Add attest test_certs
 COPY attest/test_certs/ /var/lib/mobilecoin/attest/test_certs
 
@@ -43,6 +39,3 @@ ENV MC_FOG_INGEST_ENCLAVE_CSS="/enclaves/libingest-enclave.css"
 EXPOSE 3229
 # JSON Client
 EXPOSE 9090
-
-# mint-auditor grpc client
-EXPOSE 7774

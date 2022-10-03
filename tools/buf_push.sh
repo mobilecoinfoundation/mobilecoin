@@ -23,7 +23,6 @@ DIRS=(
     consensus/api/proto
     fog/api/proto
     fog/report/api/proto
-    mint-auditor/api/proto
     mobilecoind/api/proto
     util/grpc/proto
 )

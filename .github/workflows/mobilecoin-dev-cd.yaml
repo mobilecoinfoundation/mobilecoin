@@ -128,7 +128,6 @@ jobs:
           -p mc-ledger-distribution \
           -p mc-ledger-from-archive \
           -p mc-ledger-migration \
-          -p mc-mint-auditor \
           -p mc-mobilecoind \
           -p mc-mobilecoind-json \
           -p mc-util-generate-sample-ledger \
