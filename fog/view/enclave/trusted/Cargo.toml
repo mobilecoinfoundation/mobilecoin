@@ -20,14 +20,11 @@ ias-dev = [
 ]
 
 [dependencies]
-# fog
-mc-fog-ocall-oram-storage-edl = { path = "../../../ocall_oram_storage/edl" }
-mc-fog-ocall-oram-storage-trusted = { path = "../../../ocall_oram_storage/trusted" }
-mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
-mc-fog-types = { path = "../../../types" }
-mc-fog-view-enclave-api = { path = "../api" }
-mc-fog-view-enclave-edl = { path = "../edl" }
-mc-fog-view-enclave-impl = { path = "../impl" }
+
+# third-party
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
+mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
 
 # mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
@@ -36,6 +33,14 @@ mc-attest-verifier = { path = "../../../../attest/verifier", default-features = 
 mc-crypto-keys = { path = "../../../../crypto/keys" }
 mc-crypto-rand = { path = "../../../../crypto/rand" }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
+# fog
+mc-fog-ocall-oram-storage-edl = { path = "../../../ocall_oram_storage/edl" }
+mc-fog-ocall-oram-storage-trusted = { path = "../../../ocall_oram_storage/trusted" }
+mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
+mc-fog-types = { path = "../../../types" }
+mc-fog-view-enclave-api = { path = "../api" }
+mc-fog-view-enclave-edl = { path = "../edl" }
+mc-fog-view-enclave-impl = { path = "../impl" }
 mc-sgx-compat = { path = "../../../../sgx/compat", features = ["sgx"] }
 mc-sgx-compat-edl = { path = "../../../../sgx/compat-edl" }
 mc-sgx-debug-edl = { path = "../../../../sgx/debug-edl" }
@@ -46,18 +51,13 @@ mc-sgx-slog = { path = "../../../../sgx/slog", features = ["sgx"] }
 mc-sgx-slog-edl = { path = "../../../../sgx/slog-edl" }
 mc-sgx-types = { path = "../../../../sgx/types" }
 mc-util-serial = { path = "../../../../util/serial", default-features = false }
-
-# third-party
-lazy_static = { version = "1.4", features = ["spin_no_std"] }
-mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
-mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
 sha2 = { version = "0.10", default-features = false }
 
 [build-dependencies]
-mc-util-build-script = { path = "../../../../util/build/script" }
-mc-util-build-sgx = { path = "../../../../util/build/sgx" }
 
 cargo-emit = "0.2"
+mc-util-build-script = { path = "../../../../util/build/script" }
+mc-util-build-sgx = { path = "../../../../util/build/sgx" }
 pkg-config = "0.3"
 
 [profile.dev]
