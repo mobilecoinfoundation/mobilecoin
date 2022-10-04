@@ -132,9 +132,9 @@ impl<S: Signer> SignerSetV2<S> {
     /// 1) A, B, C (threshold 2)
     /// 2) A, D, E (threshold 3)
     /// If we are passed signatures A, B, C, D, E we could in theory satisfy the
-    /// threshold of both groups but since A gets "consumed" when matching the first group,
-    /// leaving the second group with only D and E, it will not be
-    /// considered a match. We say we could match all 5 signatures
+    /// threshold of both groups but since A gets "consumed" when matching the
+    /// first group, leaving the second group with only D and E, it will not
+    /// be considered a match. We say we could match all 5 signatures
     /// in theory, because if we ignored A for the first set, it could still be
     /// used to match the 2nd set. Such algorithm would require a more
     /// complex (and slower) implementation, and is not currently supported.
