@@ -183,6 +183,12 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)> {
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::FrontendAccept(req))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn query(
         &self,
         payload: EnclaveMessage<ClientSession>,

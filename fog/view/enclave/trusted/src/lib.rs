@@ -121,6 +121,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         ViewEnclaveRequest::ViewStoreConnect(view_store_id, msg) => {
             serialize(&ENCLAVE.view_store_connect(view_store_id, msg))
         }
+        ViewEnclaveRequest::FrontendAccept(msg) => serialize(&ENCLAVE.frontend_accept(msg)),
         ViewEnclaveRequest::ClientClose(session) => serialize(&ENCLAVE.client_close(session)),
         ViewEnclaveRequest::Query(req, untrusted_query_response) => {
             serialize(&ENCLAVE.query(req, untrusted_query_response))
