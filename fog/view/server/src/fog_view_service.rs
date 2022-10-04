@@ -194,7 +194,7 @@ where
         log::trace!(self.logger, "Getting encrypted request");
         let tracer = tracer!();
 
-        tracer.in_span("query_impl", |_cx| {
+        tracer.in_span("query_nonce_impl", |_cx| {
             // TODO: Create query_nonce enclave method that does what query currently does
             // but for NonceMessage. It should produce data and a nonce that is
             // then set on the nonce_message.

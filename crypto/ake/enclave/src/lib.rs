@@ -563,7 +563,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .get_mut(responder_id)
             .ok_or(Error::NotFound)
             .and_then(|session| {
-                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.peek_nonce())?)
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.nonce())?)
             })
     }
 
