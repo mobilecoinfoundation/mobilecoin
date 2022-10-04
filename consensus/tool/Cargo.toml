@@ -11,6 +11,6 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 grpcio = "0.11.0"
 serde_json = "1"

@@ -13,7 +13,7 @@ mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log", "loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 serde_json = "1.0"
 

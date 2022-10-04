@@ -51,7 +51,7 @@ mc-fog-view-connection = { path = "../view/connection" }
 mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.11.0"
