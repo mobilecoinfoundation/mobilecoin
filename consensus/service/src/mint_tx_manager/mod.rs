@@ -1497,6 +1497,7 @@ mod mint_tx_tests {
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         // Create a mint configuration and append it to the ledger.
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
@@ -1509,8 +1510,14 @@ mod mint_tx_tests {
             ],
             ..Default::default()
         };
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
 
-        add_block_contents_to_ledger(&mut ledger, BLOCK_VERSION, block_contents, &mut rng).unwrap();
+        ledger.append_block(&block, &block_contents, None).unwrap();
         let mut rng1: StdRng = SeedableRng::from_seed([77u8; 32]);
         let mint_tx1 = create_mint_tx(
             token_id_1,
