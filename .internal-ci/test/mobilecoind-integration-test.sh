@@ -45,6 +45,15 @@ then
         --python_out=. "/proto/api/blockchain.proto"
 fi
 
+if [[ -f "/proto/consensus/consensus_common.proto" ]]
+then
+    python3 -m grpc_tools.protoc \
+        -I"/proto/api" -I"/proto/consensus" \
+        --python_out=. \
+        --grpc_python_out=. \
+        "/proto/consensus/consensus_common.proto"
+fi
+
 if [[ -f "/proto/mobilecoind/mobilecoind_api.proto" ]]
 then
     python3 -m grpc_tools.protoc \
