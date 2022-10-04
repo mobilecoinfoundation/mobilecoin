@@ -254,6 +254,10 @@ where
             .backend_connect(view_store_id, view_store_auth_response)?)
     }
 
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)> {
+        Ok(self.ake.frontend_accept(req)?)
+    }
+
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,

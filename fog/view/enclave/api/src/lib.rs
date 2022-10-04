@@ -100,6 +100,8 @@ pub enum ViewEnclaveRequest {
     /// Complete the client connection to a Fog View store that accepted our
     /// client auth request. This is meant to be called after [ViewStoreInit].
     ViewStoreConnect(ResponderId, NonceAuthResponse),
+    /// Accept a connection to a frontend.
+    FrontendAccept(NonceAuthRequest),
     /// Collates shard query responses into a single query response for the
     /// client.
     CollateQueryResponses(
@@ -148,6 +150,10 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// Begin a connection to a Fog View Store. The enclave calling this method
     /// will act as a client to the Fog View Store.
     fn view_store_init(&self, view_store_id: ResponderId) -> Result<NonceAuthRequest>;
+
+    /// Accept a connection to a Fog View Router instance acting as a frontend
+    /// to the Fog View Store.
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)>;
 
     /// Complete the connection to a Fog View Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
