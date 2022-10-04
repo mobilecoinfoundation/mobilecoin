@@ -1,8 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! TODO
+//! A multi-signature implementations that perment nesting.
+//! This allows us to accommodate a requirement, where for example we want to
+//! have 2-out-of-3 organizations signing a transaction, and having each
+//! organization require 2-out-of-3 members to sign.
 
-use super::MultiSig;
+use super::{MultiSig, MAX_SIGNATURES};
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
@@ -10,36 +13,28 @@ use mc_crypto_keys::{Signature, SignatureError, Verifier};
 use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
-/// The maximum number of signatures that can be included in a multi-signature.
-pub const MAX_SIGNATURES: usize = 10;
-
+/// A marker traint for indicating that a type is able to produce signatures.
 pub trait Signer:
-    Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd + Serialize
-// TODO why is this here
+    Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd
 {
 }
 
 impl<T> Signer for T where
-    T: Clone
-        + Default
-        + Digestible
-        + Eq
-        + Hash
-        + Message
-        + Ord
-        + PartialEq
-        + PartialOrd
-        + Serialize
+    T: Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd
 {
 }
 
+/// A single entity in a group of signers - can either be a single signer, or a
+/// group of m-out-of-n signers.
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum SignerEntity<S: Signer> {
+    /// A single signer identity (such as a public key)
     #[prost(message, tag = "1")]
     Single(S),
 
+    /// A m-out-of-n group of signers
     #[prost(message, tag = "2")]
     Multi(SignerSetV2<S>),
 }
@@ -56,10 +51,16 @@ impl<S: Signer> From<SignerSetV2<S>> for SignerEntity<S> {
     }
 }
 
+/// A wrapper object to hold a `SignerEntity`, required because protobuf does
+/// not allow repeated `oneof` fields. As such, they need to be wrapped in a
+/// message.
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct SignerContainer<S: Signer> {
+    /// The underlying signer entity.
+    /// This is made optional because of how Prost works. It will be None for
+    /// unsupported tags.
     #[prost(oneof = "SignerEntity", tags = "1, 2")]
     pub entity: Option<SignerEntity<S>>,
 }
@@ -88,22 +89,55 @@ impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
     }
 }
 
+/// A set of M-out-of-N signers (either individual signers or m-out-of-n groups
+/// of signers).
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct SignerSetV2<S: Signer> {
     #[prost(message, repeated, tag = "1")]
-    pub signers: Vec<SignerContainer<S>>,
+    signers: Vec<SignerContainer<S>>,
 
     #[prost(uint32, tag = "2")]
-    pub threshold: u32,
+    threshold: u32,
 }
 
 impl<S: Signer> SignerSetV2<S> {
+    /// Construct a new `SignerSetV2` from a list of signers and threshold.
     pub fn new(signers: Vec<SignerContainer<S>>, threshold: u32) -> Self {
         Self { signers, threshold }
     }
 
+    /// Get the list of potential signers.
+    pub fn signers(&self) -> &[SignerContainer<S>] {
+        &self.signers
+    }
+
+    /// Get the threshold.
+    pub fn threshold(&self) -> u32 {
+        self.threshold
+    }
+
+    /// Verify a message against a multi-signature, returning the list of
+    /// signers that signed it.
+    ///
+    /// NOTE: If a signer appears in multiple groups, it will only be matched
+    /// once, and for the first group it appears in that passed the signing
+    /// threshold (and the ordering of the groups and signatures depends on
+    /// their byte representation since we always sort them). Here is an
+    /// example that demonstrates the implications of this: Assume a signer set,
+    /// that requires 1-of-2 and is sorted, and where each member is a
+    /// m-of-n group where the first requires 2/3 and the second requires
+    /// 3/3:
+    /// 1) A, B, C (threshold 2)
+    /// 2) A, D, E (threshold 3)
+    /// If we are passed signatures A, B, C, D, E we could in theory satisfy the
+    /// threshold of both groups but since A gets "consumed" when matching the first group,
+    /// leaving the second group with only D and E, it will not be
+    /// considered a match. We say we could match all 5 signatures
+    /// in theory, because if we ignored A for the first set, it could still be
+    /// used to match the 2nd set. Such algorithm would require a more
+    /// complex (and slower) implementation, and is not currently supported.
     pub fn verify<
         SIG: Clone
             + Default
@@ -128,7 +162,7 @@ impl<S: Signer> SignerSetV2<S> {
             return Err(SignatureError::new());
         }
 
-        // Sort and dedup the list of signers.
+        // Sort and dedup the list of signatures..
         let mut signatures = multi_sig.signatures.clone();
         signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
         signatures.dedup();
@@ -159,19 +193,11 @@ impl<S: Signer> SignerSetV2<S> {
         S: Verifier<SIG>,
     {
         // Sort and dedup the list of signers.
-        // While the verification code below should be immune to duplicate signers or
-        // signatures, the overhead of deduping them is negligible and being
-        // extra-safe is a good idea.
-        // TODO --^
+        // While the verification code below should be immune to duplicate signers, the
+        // overhead of deduping them is negligible and being extra-safe is a good idea.
         let mut signers = self.signers.clone();
         signers.sort();
         signers.dedup();
-
-        println!("verify_helper ---------------------------------");
-        println!("signer set: {:#?}", signers);
-        println!("threshold: {}", self.threshold);
-        println!("signatures: {:?}", signatures);
-        println!("seen_signers: {:?}", seen_signers);
 
         // See which signers are satisfied by which signatures.
         let mut matched_signers = Vec::new();
@@ -211,17 +237,9 @@ impl<S: Signer> SignerSetV2<S> {
 
         // Did we pass the threshold of verified signatures?
         if num_matched_entities < self.threshold as usize {
-            println!(
-                "no match ---------- {} {}",
-                num_matched_entities, self.threshold
-            );
             return Err(SignatureError::new());
         }
 
-        println!(
-            "---- match {} {} {:?}",
-            num_matched_entities, self.threshold, matched_signers
-        );
         Ok(matched_signers.to_vec())
     }
 }
@@ -433,8 +451,7 @@ mod test_single_level {
                 signer3.public_key().into(),
                 signer1.public_key().into(),
                 signer2.public_key().into(),
-            ]
-            .into(),
+            ],
             1,
         );
         let message = b"this is a test";
@@ -812,7 +829,6 @@ mod test_nested_multisigs {
             ],
         );
 
-        println!("A");
         // One org satisfies the threshold and one org does not.
         let multi_sig = MultiSig::new(vec![
             org1_signer1_sig,
@@ -823,7 +839,6 @@ mod test_nested_multisigs {
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
-        println!("B");
         // Neither orgs provides a valid signature
         let multi_sig = MultiSig::new(vec![
             org1_signer1_sig,
@@ -833,7 +848,7 @@ mod test_nested_multisigs {
             org2_signer2_sig,
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-        println!("C");
+
         // Trying to pass the same org twice doesn't get us to the threshold
         let multi_sig = MultiSig::new(vec![
             org1_signer1_sig,
@@ -845,7 +860,6 @@ mod test_nested_multisigs {
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
-        println!("D");
         // Passing multiple valid signatures only matches them once.
         let multi_sig = MultiSig::new(vec![
             org1_signer1_sig,
@@ -857,7 +871,6 @@ mod test_nested_multisigs {
             org1_signer1_sig,
             org1_signer3_sig,
         ]);
-        println!("E");
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
             signers,
@@ -867,6 +880,141 @@ mod test_nested_multisigs {
                 org2_signer1.public_key(),
                 org2_signer2.public_key(),
                 org2_signer3.public_key(),
+            ],
+        );
+    }
+
+    #[test]
+    fn ed25519_duplicate_signers_ignored() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let message = b"this is a test";
+
+        let common_signer = Ed25519Pair::from_random(&mut rng);
+
+        // Org 1 requires 2-of-3 signatures
+        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org1_signerset = SignerSetV2::new(
+            vec![
+                org1_signer1.public_key().into(),
+                org1_signer2.public_key().into(),
+                org1_signer3.public_key().into(),
+                common_signer.public_key().into(),
+            ],
+            3,
+        );
+
+        // Org 2 requires 3-of-3 signatures
+        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org2_signerset = SignerSetV2::new(
+            vec![
+                org2_signer1.public_key().into(),
+                org2_signer2.public_key().into(),
+                org2_signer3.public_key().into(),
+                common_signer.public_key().into(),
+            ],
+            3,
+        );
+
+        // Sign the message with all of our signers.
+        let common_signer_sig = common_signer.try_sign(message).unwrap();
+
+        let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
+        let org1_signer2_sig = org1_signer2.try_sign(message.as_ref()).unwrap();
+        let org1_signer3_sig = org1_signer3.try_sign(message.as_ref()).unwrap();
+
+        let org2_signer1_sig = org2_signer1.try_sign(message.as_ref()).unwrap();
+        let org2_signer2_sig = org2_signer2.try_sign(message.as_ref()).unwrap();
+        let org2_signer3_sig = org2_signer3.try_sign(message.as_ref()).unwrap();
+
+        // The top-level multisig requires 1-of-2 signatures
+        let signer_set = SignerSetV2::new(vec![org1_signerset.into(), org2_signerset.into()], 1);
+
+        // If we use the common signer only once, we meet the threshold and see it in
+        // the matches list.
+        let multi_sig = MultiSig::new(vec![common_signer_sig, org1_signer1_sig, org1_signer2_sig]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                common_signer.public_key(),
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
+            ],
+        );
+
+        let multi_sig = MultiSig::new(vec![common_signer_sig, org2_signer1_sig, org2_signer2_sig]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                common_signer.public_key(),
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+            ],
+        );
+
+        // However, if we try to use the common signer for both orgs, it would only
+        // satisfy one group.
+        // Note that the result of this test depends on the sorting order of the
+        // signatures and keys. What is happening here is the org2 set is being
+        // looked at first, and matches the 3 org2 signers and the common
+        // signer. This removes the common signer from the list of signers to
+        // check, and when org1 gets checked we do not exceed the threshold of
+        // 3.
+        let multi_sig = MultiSig::new(vec![
+            common_signer_sig,
+            org1_signer1_sig,
+            org1_signer2_sig,
+            org2_signer1_sig,
+            org2_signer2_sig,
+            org2_signer3_sig,
+        ]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                common_signer.public_key(),
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
+            ],
+        );
+
+        // Adding a third signer to org1 causes it to be added into the list of matches.
+        let multi_sig = MultiSig::new(vec![
+            common_signer_sig,
+            org1_signer1_sig,
+            org1_signer2_sig,
+            org1_signer3_sig,
+            org2_signer1_sig,
+            org2_signer2_sig,
+            org2_signer3_sig,
+        ]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                common_signer.public_key(),
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
+                org1_signer3.public_key(),
             ],
         );
     }
