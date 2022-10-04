@@ -88,6 +88,12 @@ python3 -m grpc_tools.protoc \
     "/proto/api/blockchain.proto"
 
 python3 -m grpc_tools.protoc \
+    -I"/proto/api" -I"/proto/consensus" \
+    --python_out=. \
+    --grpc_python_out=. \
+    "/proto/consensus/consensus_common.proto"
+
+python3 -m grpc_tools.protoc \
     -I"/proto/api" \
     -I"/proto/mobilecoind" \
     -I"/proto/consensus" \

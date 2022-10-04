@@ -188,6 +188,7 @@ jobs:
         mkdir -p .tmp/seeds
         echo -n "${FOG_REPORT_SIGNING_CA_CERT}" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT
         echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT_PATH
+        echo -n "fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" > .tmp/seeds/FOG_REPORT_URL
 
     - name: Create wallet key secrets
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
