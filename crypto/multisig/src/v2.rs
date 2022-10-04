@@ -1,39 +1,26 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Multi-signature implementation: A multi-signature is a protocol that allows
-//! a group of signers, each possessing a distinct private/public keypair, to
-//! produce a joint signature on a common message. The simplest multi-signature
-//! of a message is just a set of signatures containing one signature over the
-//! message from each member of the signing group. We say that a multi-signature
-//! is a m-of-n threshold signature if only k valid signatures are required from
-//! a signing group of size n.
+//! TODO
 
-#![cfg_attr(not(test), no_std)]
-//#![deny(missing_docs)]
-
-extern crate alloc;
-
-mod v2;
-
-// TODO
-pub use v2::*;
-
+use super::MultiSig;
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
-use prost::Message;
+use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 /// The maximum number of signatures that can be included in a multi-signature.
 pub const MAX_SIGNATURES: usize = 10;
 
-/// A multi-signature: a collection of one or more signatures.
-#[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
-)]
-pub struct MultiSig<
-    S: Clone
+pub trait Signer:
+    Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd + Serialize
+// TODO why is this here
+{
+}
+
+impl<T> Signer for T where
+    T: Clone
         + Default
         + Digestible
         + Eq
@@ -43,72 +30,82 @@ pub struct MultiSig<
         + PartialEq
         + PartialOrd
         + Serialize
-        + Signature,
-> {
-    #[prost(message, repeated, tag = "1")]
-    signatures: Vec<S>,
-}
-
-impl<
-        S: Clone
-            + Default
-            + Digestible
-            + Eq
-            + Hash
-            + Message
-            + Ord
-            + PartialEq
-            + PartialOrd
-            + Serialize
-            + Signature,
-    > MultiSig<S>
 {
-    /// Construct a new multi-signature from a collection of signatures.
-    pub fn new(signatures: Vec<S>) -> Self {
-        Self { signatures }
-    }
+}
 
-    /// Get signatures
-    pub fn signatures(&self) -> &[S] {
-        &self.signatures
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub enum SignerEntity<S: Signer> {
+    #[prost(message, tag = "1")]
+    Single(S),
+
+    #[prost(message, tag = "2")]
+    Multi(SignerSetV2<S>),
+}
+
+impl<S: Signer> From<S> for SignerEntity<S> {
+    fn from(signer: S) -> Self {
+        Self::Single(signer)
     }
 }
 
-/// A set of M-out-of-N public keys.
+impl<S: Signer> From<SignerSetV2<S>> for SignerEntity<S> {
+    fn from(signer_set: SignerSetV2<S>) -> Self {
+        Self::Multi(signer_set)
+    }
+}
+
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
-#[serde(bound = "")]
-pub struct SignerSet<P: Default + PublicKey + Message> {
-    /// List of potential signers.
-    #[prost(message, repeated, tag = "1")]
-    signers: Vec<P>,
-
-    /// Minimum number of signers required.
-    #[prost(uint32, tag = "2")]
-    threshold: u32,
+pub struct SignerContainer<S: Signer> {
+    #[prost(oneof = "SignerEntity", tags = "1, 2")]
+    pub entity: Option<SignerEntity<S>>,
 }
 
-impl<P: Default + PublicKey + Message> SignerSet<P> {
-    /// Construct a new `SignerSet` from a list of public keys and threshold.
-    pub fn new(signers: Vec<P>, threshold: u32) -> Self {
+impl<S: Signer> From<SignerEntity<S>> for SignerContainer<S> {
+    fn from(entity: SignerEntity<S>) -> Self {
+        Self {
+            entity: Some(entity),
+        }
+    }
+}
+
+impl<S: Signer> From<S> for SignerContainer<S> {
+    fn from(signer: S) -> Self {
+        Self {
+            entity: Some(SignerEntity::Single(signer)),
+        }
+    }
+}
+
+impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
+    fn from(signer_set: SignerSetV2<S>) -> Self {
+        Self {
+            entity: Some(SignerEntity::Multi(signer_set)),
+        }
+    }
+}
+
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub struct SignerSetV2<S: Signer> {
+    #[prost(message, repeated, tag = "1")]
+    pub signers: Vec<SignerContainer<S>>,
+
+    #[prost(uint32, tag = "2")]
+    pub threshold: u32,
+}
+
+impl<S: Signer> SignerSetV2<S> {
+    pub fn new(signers: Vec<SignerContainer<S>>, threshold: u32) -> Self {
         Self { signers, threshold }
     }
 
-    /// Get the list of potential signers.
-    pub fn signers(&self) -> &[P] {
-        &self.signers
-    }
-
-    /// Get the threshold.
-    pub fn threshold(&self) -> u32 {
-        self.threshold
-    }
-
-    /// Verify a message against a multi-signature, returning the list of
-    /// signers that signed it.
     pub fn verify<
-        S: Clone
+        SIG: Clone
             + Default
             + Digestible
             + Eq
@@ -122,52 +119,91 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     >(
         &self,
         message: &[u8],
-        multi_sig: &MultiSig<S>,
-    ) -> Result<Vec<P>, SignatureError>
+        multi_sig: &MultiSig<SIG>,
+    ) -> Result<Vec<S>, SignatureError>
     where
-        P: Verifier<S>,
+        S: Verifier<SIG>,
     {
-        // If the signature contains less than the threshold number of signers or more
-        // than the hardcoded limit, there's no point in trying.
-        if multi_sig.signatures.len() < self.threshold as usize
-            || multi_sig.signatures.len() > MAX_SIGNATURES
-        {
-            return Err(SignatureError::new());
-        }
-
-        // Sort and dedup the list of signers and signatures.
-        // While the verification code below should be immune to duplicate signers or
-        // signatures, the overhead of deduping them is negligible and being
-        // extra-safe is a good idea.
-        let mut potential_signers = self.signers.clone();
-        potential_signers.sort();
-        potential_signers.dedup();
-
+        // Sort and dedup the list of signers.
         let mut signatures = multi_sig.signatures.clone();
         signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
         signatures.dedup();
 
-        // See which signatures which match signers.
+        // Verify signatures.
+        self.verify_helper(message, &signatures, &[])
+    }
+
+    fn verify_helper<
+        SIG: Clone
+            + Default
+            + Digestible
+            + Eq
+            + Hash
+            + Message
+            + Ord
+            + PartialEq
+            + PartialOrd
+            + Serialize
+            + Signature,
+    >(
+        &self,
+        message: &[u8],
+        signatures: &[SIG],
+        seen_signers: &[S],
+    ) -> Result<Vec<S>, SignatureError>
+    where
+        S: Verifier<SIG>,
+    {
+        // Sort and dedup the list of signers.
+        // While the verification code below should be immune to duplicate signers or
+        // signatures, the overhead of deduping them is negligible and being
+        // extra-safe is a good idea.
+        // TODO --^
+        let mut signers = self.signers.clone();
+        signers.sort();
+        signers.dedup();
+
+        // See which signers are satisfied by which signatures.
         let mut matched_signers = Vec::new();
-        for signature in signatures.iter() {
-            let matched_signer = potential_signers.iter().find_map(|signer| {
-                signer
-                    .verify(message, signature)
-                    .ok()
-                    .map(|_| signer.clone())
-            });
-            if let Some(matched_signer) = matched_signer {
-                potential_signers.retain(|signer| signer != &matched_signer);
-                matched_signers.push(matched_signer);
+        let mut num_matched_entities = 0;
+
+        for signer in signers.iter() {
+            match signer.entity {
+                Some(SignerEntity::Single(ref s)) => {
+                    // If we already encountered this signer, we cannot use it again.
+                    if seen_signers.contains(s) {
+                        continue;
+                    }
+
+                    for signature in signatures.iter() {
+                        if s.verify(message, signature).is_ok() {
+                            matched_signers.push(s.clone());
+                            num_matched_entities += 1;
+                            break;
+                        }
+                    }
+                }
+                Some(SignerEntity::Multi(ref s)) => {
+                    let mut seen_signers = seen_signers.to_vec();
+                    seen_signers.extend(matched_signers.clone());
+
+                    if let Ok(signers) = s.verify_helper(message, signatures, &seen_signers) {
+                        seen_signers.extend(signers);
+                        num_matched_entities += 1;
+                        break;
+                    }
+                }
+                None => {}
             }
         }
 
         // Did we pass the threshold of verified signatures?
-        if matched_signers.len() < self.threshold as usize {
+        if num_matched_entities < self.threshold as usize {
             return Err(SignatureError::new());
         }
 
-        Ok(matched_signers)
+        matched_signers.extend(seen_signers.to_vec());
+        Ok(matched_signers.to_vec())
     }
 }
 
@@ -184,6 +220,7 @@ mod test {
     /// In other places in the code we might convert to a HashSet first and then
     /// compare, but that would hide duplicate elements and we want to catch
     /// that.
+    #[track_caller]
     fn assert_eq_ignore_order(mut a: Vec<Ed25519Public>, mut b: Vec<Ed25519Public>) {
         a.sort();
         b.sort();
@@ -200,11 +237,11 @@ mod test {
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV2::new(
             vec![
-                signer1.public_key(),
-                signer2.public_key(),
-                signer3.public_key(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
             ],
             2,
         );
@@ -291,11 +328,11 @@ mod test {
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV2::new(
             vec![
-                signer1.public_key(),
-                signer2.public_key(),
-                signer3.public_key(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
             ],
             1,
         );
@@ -368,16 +405,17 @@ mod test {
 
         // This signer set contains duplicate public keys but when verifying we should
         // not see the same key twice.
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV2::new(
             vec![
-                signer1.public_key(),
-                signer2.public_key(),
-                signer1.public_key(),
-                signer2.public_key(),
-                signer3.public_key(),
-                signer1.public_key(),
-                signer2.public_key(),
-            ],
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+            ]
+            .into(),
             1,
         );
         let message = b"this is a test";
@@ -445,11 +483,11 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV2::new(
             vec![
-                signer1.public_key(),
-                signer2.public_key(),
-                signer3.public_key(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
             ],
             2,
         );
@@ -474,11 +512,11 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV2::new(
             vec![
-                signer1.public_key(),
-                signer2.public_key(),
-                signer3.public_key(),
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
             ],
             2,
         );
