@@ -5,18 +5,17 @@
 //! produce a joint signature on a common message. The simplest multi-signature
 //! of a message is just a set of signatures containing one signature over the
 //! message from each member of the signing group. We say that a multi-signature
-//! is a m-of-n threshold signature if only k valid signatures are required from
+//! is a m-of-n threshold signature if only m valid signatures are required from
 //! a signing group of size n.
 
 #![cfg_attr(not(test), no_std)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate alloc;
 
 mod v2;
 
-// TODO
-pub use v2::*;
+pub use v2::{Signer, SignerContainer, SignerEntity, SignerSetV2};
 
 use alloc::vec::Vec;
 use core::hash::Hash;
