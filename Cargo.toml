@@ -33,6 +33,7 @@ members = [
     "consensus/scp/types",
     "consensus/service",
     "consensus/service/config",
+    "consensus/tool",
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",

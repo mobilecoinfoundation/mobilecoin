@@ -2528,6 +2528,7 @@ dependencies = [
  "rand_hc 0.3.1",
  "retry",
  "secrecy",
+ "serde",
  "sha2 0.10.6",
  "tempdir",
 ]
@@ -2864,6 +2865,20 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+]
+
+[[package]]
+name = "mc-consensus-tool"
+version = "2.0.0"
+dependencies = [
+ "clap 3.2.22",
+ "grpcio",
+ "mc-common",
+ "mc-connection",
+ "mc-consensus-api",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "serde_json",
 ]
 
 [[package]]
