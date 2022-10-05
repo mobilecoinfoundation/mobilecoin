@@ -8,70 +8,13 @@
 //! is a m-of-n threshold signature if only m valid signatures are required from
 //! a signing group of size n.
 
-#![cfg_attr(not(test), no_std)]
-#![deny(missing_docs)]
-
-extern crate alloc;
-
-mod signer_set;
-
-pub use signer_set::v2::{Signer, SignerContainer, SignerEntity, SignerSetV2};
-
+use crate::{MultiSig, MAX_SIGNATURES};
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
-
-/// The maximum number of signatures that can be included in a multi-signature.
-pub const MAX_SIGNATURES: usize = 10;
-
-/// A multi-signature: a collection of one or more signatures.
-#[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
-)]
-pub struct MultiSig<
-    S: Clone
-        + Default
-        + Digestible
-        + Eq
-        + Hash
-        + Message
-        + Ord
-        + PartialEq
-        + PartialOrd
-        + Serialize
-        + Signature,
-> {
-    #[prost(message, repeated, tag = "1")]
-    signatures: Vec<S>,
-}
-
-impl<
-        S: Clone
-            + Default
-            + Digestible
-            + Eq
-            + Hash
-            + Message
-            + Ord
-            + PartialEq
-            + PartialOrd
-            + Serialize
-            + Signature,
-    > MultiSig<S>
-{
-    /// Construct a new multi-signature from a collection of signatures.
-    pub fn new(signatures: Vec<S>) -> Self {
-        Self { signatures }
-    }
-
-    /// Get signatures
-    pub fn signatures(&self) -> &[S] {
-        &self.signatures
-    }
-}
 
 /// A set of M-out-of-N public keys.
 #[derive(
@@ -128,8 +71,8 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     {
         // If the signature contains less than the threshold number of signers or more
         // than the hardcoded limit, there's no point in trying.
-        if multi_sig.signatures.len() < self.threshold as usize
-            || multi_sig.signatures.len() > MAX_SIGNATURES
+        if multi_sig.signatures().len() < self.threshold as usize
+            || multi_sig.signatures().len() > MAX_SIGNATURES
         {
             return Err(SignatureError::new());
         }
@@ -142,7 +85,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         potential_signers.sort();
         potential_signers.dedup();
 
-        let mut signatures = multi_sig.signatures.clone();
+        let mut signatures = multi_sig.signatures().to_vec();
         signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
         signatures.dedup();
 
