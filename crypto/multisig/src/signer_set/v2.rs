@@ -5,7 +5,7 @@
 //! have 2-out-of-3 organizations signing a transaction, and having each
 //! organization require 2-out-of-3 members to sign.
 
-use super::{MultiSig, MAX_SIGNATURES};
+use crate::{MultiSig, MAX_SIGNATURES};
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
