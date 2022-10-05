@@ -8,9 +8,18 @@ env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_1X_TAG: v1.1.3-dev
-  RELEASE_2X_TAG: v2.0.0-dev
+  RELEASE_2X_TAG: v2.0.2-dev
 
 on:
+  pull_request:
+    types:
+    - opened
+    branches:
+    - master
+    - main
+    - release/*
+    paths-ignore:
+    - '**.md'
   push:
     branches:
     - master
@@ -19,6 +28,8 @@ on:
     - release/*
     tags:
       - v[0-9]+*
+    paths-ignore:
+    - '**.md'
 
 # don't run more than one at a time for a branch/tag
 concurrency: mobilecoin-dev-cd-${{ github.ref }}
@@ -521,7 +532,7 @@ jobs:
     - generate-metadata
     steps:
     - name: Update consensus config
-      if: "! contains(github.event.head_commit.message, '[skip update-v2-to-bv3-release]')"
+      if: "! contains(github.event.head_commit.message, '[skip update-v2-to-bv2-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-update-consensus
@@ -548,7 +559,7 @@ jobs:
     - generate-metadata
     steps:
     - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip test-v2-bv3-release]')"
+      if: "! contains(github.event.head_commit.message, '[skip test-v2-bv2-release]')"
       uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
       with:
         workflow: mobilecoin-dispatch-dev-test
