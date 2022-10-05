@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[digestible(name = "SignerSet")]
 #[serde(bound = "")]
 pub struct SignerSetV1<P: Default + PublicKey + Message> {
     /// List of potential signers.
