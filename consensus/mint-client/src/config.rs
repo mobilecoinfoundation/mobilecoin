@@ -230,6 +230,23 @@ impl MintTxParams {
 }
 #[derive(Subcommand)]
 pub enum Commands {
+    #[clap(arg_required_else_help = true)]
+    CheckSig {
+        #[clap(
+            long = "signature",
+            use_value_delimiter = true,
+            parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURE"
+        )]
+        signature: Ed25519Signature,
+
+        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_CONTENTS")]
+        contents: Option<[u8; 32]>,
+
+        #[clap(long = "public-key", parse(try_from_str = load_pub_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
+         pubkey: Ed25519Public,
+    },
+
+
     /// Generate and submit a MintConfigTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintConfigTx {
@@ -408,6 +425,17 @@ pub enum Commands {
 pub struct Config {
     #[clap(subcommand)]
     pub command: Commands,
+}
+
+pub fn load_pub_key_from_pem(filename: &str) -> Result<Ed25519Public, String> {
+    let bytes =
+        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+
+    let parsed_pem = pem::parse(&bytes)
+        .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
+
+    Ed25519Public::try_from_der(&parsed_pem.contents[..])
+        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
 }
 
 pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {

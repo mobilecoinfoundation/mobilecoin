@@ -11,7 +11,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Signer};
+use mc_crypto_keys::{Ed25519Pair, Signer, Verifier};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -26,6 +26,16 @@ fn main() {
     let config = Config::parse();
 
     match config.command {
+        Commands::CheckSig {
+            signature,
+	    contents,
+	    pubkey,
+	} => {
+	    println!("\x1b[33m NOW VERIFYING\x1b[0m");
+	    let result = pubkey.verify(&contents.unwrap(), &signature);
+	    println!("\x1b[32m RESULT = {:?}", result);
+        }
+
         Commands::GenerateAndSubmitMintConfigTx {
             node,
             params,
