@@ -23,7 +23,7 @@ pub struct Config {
     #[clap(
         long,
         default_value = "/tmp/watcher-db",
-        parse(from_os_str),
+        value_parser,
         env = "MC_WATCHER_DB"
     )]
     pub watcher_db: PathBuf,

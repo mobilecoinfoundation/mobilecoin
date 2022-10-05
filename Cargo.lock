@@ -3650,7 +3650,6 @@ dependencies = [
  "displaydoc",
  "futures",
  "grpcio",
- "hex",
  "lazy_static",
  "mc-account-keys",
  "mc-api",
@@ -4194,6 +4193,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
+ "mc-util-parse",
  "mc-watcher",
  "mc-watcher-api",
  "rand_core 0.6.4",
@@ -4397,7 +4397,6 @@ dependencies = [
  "displaydoc",
  "futures",
  "grpcio",
- "hex",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
@@ -5203,7 +5202,6 @@ name = "mc-util-generate-sample-ledger"
 version = "2.0.0"
 dependencies = [
  "clap 4.0.10",
- "hex",
  "mc-account-keys",
  "mc-blockchain-test-utils",
  "mc-common",
@@ -5212,6 +5210,7 @@ dependencies = [
  "mc-util-build-info",
  "mc-util-from-random",
  "mc-util-keyfile",
+ "mc-util-parse",
  "rand 0.8.5",
  "rand_hc 0.3.1",
  "tempfile",
@@ -5267,9 +5266,9 @@ name = "mc-util-grpc-token-generator"
 version = "2.0.0"
 dependencies = [
  "clap 4.0.10",
- "hex",
  "mc-common",
  "mc-util-grpc",
+ "mc-util-parse",
  "percent-encoding",
 ]
 
@@ -5291,6 +5290,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-crypto-x509-test-vectors",
  "mc-util-from-random",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
  "pem",
@@ -5349,6 +5349,7 @@ dependencies = [
 name = "mc-util-parse"
 version = "2.0.0"
 dependencies = [
+ "hex",
  "itertools",
  "mc-sgx-css",
 ]
@@ -5369,9 +5370,9 @@ name = "mc-util-seeded-ed25519-key-gen"
 version = "2.0.0"
 dependencies = [
  "clap 4.0.10",
- "hex",
  "mc-crypto-keys",
  "mc-util-from-random",
+ "mc-util-parse",
  "pem",
  "rand 0.8.5",
  "rand_hc 0.3.1",

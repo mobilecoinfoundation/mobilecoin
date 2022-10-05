@@ -17,7 +17,7 @@ pub struct IngestConfig {
     pub uri: String,
 
     /// How long to retry if unavailable, this is useful for tests
-    #[clap(long, short, default_value = "10", parse(try_from_str = parse_duration_in_seconds), env = "MC_RETRY_SECONDS")]
+    #[clap(long, short, default_value = "10", value_parser = parse_duration_in_seconds, env = "MC_RETRY_SECONDS")]
     pub retry_seconds: Duration,
 
     /// The command to run.
@@ -69,7 +69,7 @@ pub enum IngestConfigCommand {
     /// Report a lost ingress key, with pubkey bytes specified in hex
     ReportLostIngressKey {
         /// The lost key.
-        #[clap(long, short, parse(try_from_str = parse_ristretto_hex), env = "MC_KEY")]
+        #[clap(long, short, value_parser = parse_ristretto_hex, env = "MC_KEY")]
         key: CompressedRistrettoPublic,
     },
 

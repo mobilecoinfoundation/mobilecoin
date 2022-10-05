@@ -29,6 +29,7 @@ mc-account-keys-slip10 = { path = "../../account-keys/slip10" }
 mc-api = { path = "../../api" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
+mc-util-parse = { path = "../../util/parse", features = [ "hex" ] }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
 base64 = "0.13"

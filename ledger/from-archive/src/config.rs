@@ -16,7 +16,7 @@ pub struct LedgerFromArchiveConfig {
     #[clap(
         long,
         default_value = "/tmp/ledgerdb",
-        parse(from_os_str),
+        value_parser,
         env = "MC_LEDGER_DB"
     )]
     pub ledger_db: PathBuf,
@@ -27,7 +27,7 @@ pub struct LedgerFromArchiveConfig {
     #[clap(
         long = "tx-source-url",
         required = true,
-        min_values = 1,
+        num_args = 1..,
         use_value_delimiter = true,
         env = "MC_TX_SOURCE_URL"
     )]

@@ -30,7 +30,7 @@ pub struct Config {
     #[clap(
         long,
         default_value = "/tmp/ledgerdb",
-        parse(from_os_str),
+        value_parser,
         env = "MC_LEDGER_DB"
     )]
     pub ledger_db: PathBuf,
@@ -41,7 +41,7 @@ pub struct Config {
     pub ledger_db_bootstrap: Option<String>,
 
     /// Path to watcher db (lmdb).
-    #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
+    #[clap(long, value_parser, env = "MC_WATCHER_DB")]
     pub watcher_db: Option<PathBuf>,
 
     /// Peers config.
@@ -54,7 +54,7 @@ pub struct Config {
     /// The quorum set is represented in JSON. For example:
     /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
     /// com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
-    #[clap(long, parse(try_from_str = parse_quorum_set_from_json), env = "MC_QUORUM_SET")]
+    #[clap(long, value_parser = parse_quorum_set_from_json, env = "MC_QUORUM_SET")]
     quorum_set: Option<QuorumSet<ResponderId>>,
 
     /// URLs to use for transaction data.
@@ -69,12 +69,12 @@ pub struct Config {
     pub tx_source_urls: Option<Vec<String>>,
 
     /// How many seconds to wait between polling.
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_POLL_INTERVAL")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_POLL_INTERVAL")]
     pub poll_interval: Duration,
 
     // Mobilecoind specific arguments
     /// Path to mobilecoind database used to store transactions and accounts.
-    #[clap(long, parse(from_os_str), env = "MC_MOBILECOIND_DB")]
+    #[clap(long, value_parser, env = "MC_MOBILECOIND_DB")]
     pub mobilecoind_db: Option<PathBuf>,
 
     /// URI to listen on and serve requests from.
@@ -92,7 +92,7 @@ pub struct Config {
 
     /// Fog ingest enclave CSS file (needed in order to enable sending
     /// transactions to fog recipients).
-    #[clap(long, parse(try_from_str = load_css_file), env = "MC_FOG_INGEST_ENCLAVE_CSS")]
+    #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
     pub fog_ingest_enclave_css: Option<Signature>,
 
     /// Automatically migrate the ledger db (if it exists) into the most recent

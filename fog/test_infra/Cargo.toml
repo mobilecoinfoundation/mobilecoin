@@ -29,6 +29,7 @@ mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }
 mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-parse = { path = "../../util/parse", features = ["hex"] }
 mc-watcher = { path = "../../watcher" }
 mc-watcher-api = { path = "../../watcher/api" }
 

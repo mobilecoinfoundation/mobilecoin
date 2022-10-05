@@ -4,7 +4,6 @@
 //! for testing purposes.
 
 use clap::Parser;
-use hex::FromHex;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair};
 use mc_util_from_random::FromRandom;
 use pem::{encode, Pem};
@@ -17,7 +16,7 @@ use rand_hc::Hc128Rng;
     about = "A utility for generating a predictable Ed25519 private key from a seed, used for testing purposes."
 )]
 pub struct Config {
-    #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED")]
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_SEED")]
     seed: [u8; 32],
 }
 

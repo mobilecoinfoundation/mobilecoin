@@ -23,7 +23,7 @@ mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-grpc = { path = "../../util/grpc" }
-mc-util-parse = { path = "../../util/parse" }
+mc-util-parse = { path = "../../util/parse", features = ["hex"] }
 mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "4.0", features = ["derive", "env"] }
