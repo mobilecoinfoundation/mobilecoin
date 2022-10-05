@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[serde(bound = "")]
-pub struct SignerSet<P: Default + PublicKey + Message> {
+pub struct SignerSetV1<P: Default + PublicKey + Message> {
     /// List of potential signers.
     #[prost(message, repeated, tag = "1")]
     signers: Vec<P>,
@@ -31,7 +31,7 @@ pub struct SignerSet<P: Default + PublicKey + Message> {
     threshold: u32,
 }
 
-impl<P: Default + PublicKey + Message> SignerSet<P> {
+impl<P: Default + PublicKey + Message> SignerSetV1<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
     pub fn new(signers: Vec<P>, threshold: u32) -> Self {
         Self { signers, threshold }
@@ -142,7 +142,7 @@ mod test {
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -233,7 +233,7 @@ mod test {
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -310,7 +310,7 @@ mod test {
 
         // This signer set contains duplicate public keys but when verifying we should
         // not see the same key twice.
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -387,7 +387,7 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -416,7 +416,7 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),

@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 use mc_util_serial::Message;
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ pub struct MintConfig {
 
     /// The set of keys that can sign a minting transaction.
     #[prost(message, required, tag = "2")]
-    pub signer_set: SignerSet<Ed25519Public>,
+    pub signer_set: SignerSetV1<Ed25519Public>,
 
     /// The maximal amount this configuration can mint from the moment it has
     /// been applied.
@@ -99,5 +99,5 @@ pub struct ValidatedMintConfigTx {
 
     /// The signer set used to validate the transaction's signature.
     #[prost(message, required, tag = "2")]
-    pub signer_set: SignerSet<Ed25519Public>,
+    pub signer_set: SignerSetV1<Ed25519Public>,
 }

@@ -7,7 +7,7 @@ use alloc::collections::BTreeMap;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::SignerSetV1;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
@@ -18,21 +18,21 @@ pub struct GovernorsMap {
     /// Since we hash this map, it is important to use a BTreeMap as it
     /// guarantees iterating over the map is in sorted and predictable
     /// order.
-    map: BTreeMap<TokenId, SignerSet<Ed25519Public>>,
+    map: BTreeMap<TokenId, SignerSetV1<Ed25519Public>>,
 }
 
-impl TryFrom<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for GovernorsMap {
+impl TryFrom<BTreeMap<TokenId, SignerSetV1<Ed25519Public>>> for GovernorsMap {
     type Error = Error;
 
-    fn try_from(map: BTreeMap<TokenId, SignerSet<Ed25519Public>>) -> Result<Self, Self::Error> {
+    fn try_from(map: BTreeMap<TokenId, SignerSetV1<Ed25519Public>>) -> Result<Self, Self::Error> {
         Self::is_valid_map(&map)?;
 
         Ok(Self { map })
     }
 }
 
-impl AsRef<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for GovernorsMap {
-    fn as_ref(&self) -> &BTreeMap<TokenId, SignerSet<Ed25519Public>> {
+impl AsRef<BTreeMap<TokenId, SignerSetV1<Ed25519Public>>> for GovernorsMap {
+    fn as_ref(&self) -> &BTreeMap<TokenId, SignerSetV1<Ed25519Public>> {
         &self.map
     }
 }
@@ -40,7 +40,7 @@ impl AsRef<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for GovernorsMap {
 impl GovernorsMap {
     /// Create a map from an unsorted iterator.
     pub fn try_from_iter(
-        iter: impl IntoIterator<Item = (TokenId, SignerSet<Ed25519Public>)>,
+        iter: impl IntoIterator<Item = (TokenId, SignerSetV1<Ed25519Public>)>,
     ) -> Result<Self, Error> {
         let map = BTreeMap::from_iter(iter);
         Self::try_from(map)
@@ -48,7 +48,10 @@ impl GovernorsMap {
 
     /// Get the governors for a given token id, or None if the token has no
     /// governors.
-    pub fn get_governors_for_token(&self, token_id: &TokenId) -> Option<SignerSet<Ed25519Public>> {
+    pub fn get_governors_for_token(
+        &self,
+        token_id: &TokenId,
+    ) -> Option<SignerSetV1<Ed25519Public>> {
         self.map.get(token_id).cloned()
     }
 
@@ -56,7 +59,7 @@ impl GovernorsMap {
     /// default.
     pub fn update_or_default(
         &mut self,
-        map: Option<BTreeMap<TokenId, SignerSet<Ed25519Public>>>,
+        map: Option<BTreeMap<TokenId, SignerSetV1<Ed25519Public>>>,
     ) -> Result<(), Error> {
         if let Some(map) = map {
             Self::is_valid_map(&map)?;
@@ -70,7 +73,7 @@ impl GovernorsMap {
     }
 
     /// Check if a given map is valid.
-    pub fn is_valid_map(map: &BTreeMap<TokenId, SignerSet<Ed25519Public>>) -> Result<(), Error> {
+    pub fn is_valid_map(map: &BTreeMap<TokenId, SignerSetV1<Ed25519Public>>) -> Result<(), Error> {
         // Can never mint MOB.
         if map.contains_key(&Mob::ID) {
             return Err(Error::MobTokenNotAllowed);
@@ -94,7 +97,7 @@ impl GovernorsMap {
     }
 
     /// Iterate over all entries in the map.
-    pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &SignerSet<Ed25519Public>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &SignerSetV1<Ed25519Public>)> {
         self.map.iter()
     }
 
@@ -125,11 +128,11 @@ mod test {
         let map1 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default()], 1),
             ),
             (
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default()], 1),
             ),
         ])
         .unwrap();
@@ -141,11 +144,11 @@ mod test {
         let map2 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default()], 1),
             ),
             (
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 2),
+                SignerSetV1::new(vec![Ed25519Public::default(), Ed25519Public::default()], 2),
             ),
         ])
         .unwrap();
@@ -169,7 +172,7 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 Mob::ID,
-                SignerSet::new(vec![Ed25519Public::default()], 1)
+                SignerSetV1::new(vec![Ed25519Public::default()], 1)
             )])),
             Err(Error::MobTokenNotAllowed),
         );
@@ -178,14 +181,14 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![], 0)
+                SignerSetV1::new(vec![], 0)
             )])),
             Err(Error::InsufficientSigners(test_token_id)),
         );
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![], 1)
+                SignerSetV1::new(vec![], 1)
             )])),
             Err(Error::InsufficientSigners(test_token_id)),
         );
@@ -194,7 +197,7 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![Ed25519Public::default()], 2)
+                SignerSetV1::new(vec![Ed25519Public::default()], 2)
             )])),
             Err(Error::InsufficientSigners(test_token_id)),
         );

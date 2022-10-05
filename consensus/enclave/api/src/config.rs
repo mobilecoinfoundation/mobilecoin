@@ -89,7 +89,7 @@ mod test {
     use super::*;
     use alloc::{string::ToString, vec};
     use mc_crypto_keys::Ed25519Public;
-    use mc_crypto_multisig::SignerSet;
+    use mc_crypto_multisig::SignerSetV1;
     use mc_transaction_core::{tokens::Mob, Token, TokenId};
 
     /// Different block_version/fee maps/responder ids should result in
@@ -172,7 +172,7 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
             governors_signature: None,
@@ -183,7 +183,7 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
             governors_signature: None,
@@ -194,7 +194,7 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+                SignerSetV1::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
             )])
             .unwrap(),
             governors_signature: None,

@@ -3,7 +3,7 @@
 //! Convert between the Rust and Protobuf versions of [ValidatedMintConfigTx]
 
 use crate::{external, ConversionError};
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::SignerSetV1;
 use mc_transaction_core::mint::{MintConfigTx, ValidatedMintConfigTx};
 
 /// Convert ValidatedMintConfigTx --> external::ValidatedMintConfigTx.
@@ -22,7 +22,7 @@ impl TryFrom<&external::ValidatedMintConfigTx> for ValidatedMintConfigTx {
 
     fn try_from(source: &external::ValidatedMintConfigTx) -> Result<Self, Self::Error> {
         let mint_config_tx = MintConfigTx::try_from(source.get_mint_config_tx())?;
-        let signer_set = SignerSet::try_from(source.get_signer_set())?;
+        let signer_set = SignerSetV1::try_from(source.get_signer_set())?;
         Ok(Self {
             mint_config_tx,
             signer_set,

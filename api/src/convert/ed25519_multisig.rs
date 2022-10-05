@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from external::Ed25519SignerSet/Ed25519MultiSig.
+//! Convert to/from external::Ed25519SignerSetV1/Ed25519MultiSig.
 
 use crate::{external, ConversionError};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 
 /// Convert MultiSig<Ed25519Signature> --> external::Ed25519MultiSig.
 impl From<&MultiSig<Ed25519Signature>> for external::Ed25519MultiSig {
@@ -35,10 +35,10 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
     }
 }
 
-/// Convert SignerSet<Ed25519Public> --> external::Ed25519SignerSet.
-impl From<&SignerSet<Ed25519Public>> for external::Ed25519SignerSet {
-    fn from(src: &SignerSet<Ed25519Public>) -> Self {
-        let mut dst = external::Ed25519SignerSet::new();
+/// Convert SignerSet<Ed25519Public> --> external::Ed25519SignerSetV1.
+impl From<&SignerSetV1<Ed25519Public>> for external::Ed25519SignerSetV1 {
+    fn from(src: &SignerSetV1<Ed25519Public>) -> Self {
+        let mut dst = external::Ed25519SignerSetV1::new();
         dst.set_signers(
             src.signers()
                 .iter()
@@ -50,11 +50,11 @@ impl From<&SignerSet<Ed25519Public>> for external::Ed25519SignerSet {
     }
 }
 
-/// Convert external::Ed25519SignerSet --> SignerSet<Ed25519Public>.
-impl TryFrom<&external::Ed25519SignerSet> for SignerSet<Ed25519Public> {
+/// Convert external::Ed25519SignerSetV1 --> SignerSet<Ed25519Public>.
+impl TryFrom<&external::Ed25519SignerSetV1> for SignerSetV1<Ed25519Public> {
     type Error = ConversionError;
 
-    fn try_from(source: &external::Ed25519SignerSet) -> Result<Self, Self::Error> {
+    fn try_from(source: &external::Ed25519SignerSetV1) -> Result<Self, Self::Error> {
         let signers: Vec<Ed25519Public> = source
             .get_signers()
             .iter()
@@ -78,13 +78,13 @@ pub mod tests {
     use rand_hc::Hc128Rng;
 
     // Generate a signer set for testing purposes.
-    pub fn test_signer_set() -> SignerSet<Ed25519Public> {
+    pub fn test_signer_set() -> SignerSetV1<Ed25519Public> {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let signer1 = Ed25519Pair::from_random(&mut rng);
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        SignerSet::new(
+        SignerSetV1::new(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -110,8 +110,8 @@ pub mod tests {
     }
 
     #[test]
-    // SignerSet<Ed25519Public> -> external::Ed25519SignerSet ->
-    // SignerSet<Ed25519Public> should be the identity function.
+    // SignerSetV1<Ed25519Public> -> external::Ed25519SignerSetV1 ->
+    // SignerSetV1<Ed25519Public> should be the identity function.
     fn test_convert_ed25519_signer_set() {
         let source = test_signer_set();
 
@@ -122,11 +122,11 @@ pub mod tests {
             assert_eq!(source, recovered);
         }
 
-        // SignerSet<Ed25519Public> -> external::Ed25519SignerSet ->
+        // SignerSet<Ed25519Public> -> external::Ed25519SignerSetV1 ->
         // SignerSet<Ed25519Public> should be the identity function.
         {
-            let external = external::Ed25519SignerSet::from(&source);
-            let recovered = SignerSet::try_from(&external).unwrap();
+            let external = external::Ed25519SignerSetV1::from(&source);
+            let recovered = SignerSetV1::try_from(&external).unwrap();
             assert_eq!(source, recovered);
         }
 
@@ -134,15 +134,15 @@ pub mod tests {
         // function.
         {
             let bytes = encode(&source);
-            let recovered = external::Ed25519SignerSet::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, external::Ed25519SignerSet::from(&source));
+            let recovered = external::Ed25519SignerSetV1::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, external::Ed25519SignerSetV1::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
-            let external = external::Ed25519SignerSet::from(&source);
+            let external = external::Ed25519SignerSetV1::from(&source);
             let bytes = external.write_to_bytes().unwrap();
-            let recovered: SignerSet<Ed25519Public> = decode(&bytes).unwrap();
+            let recovered: SignerSetV1<Ed25519Public> = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }
     }

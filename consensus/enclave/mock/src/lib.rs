@@ -20,7 +20,7 @@ use mc_attest_enclave_api::{
 use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::SignerSetV1;
 use mc_crypto_rand::{McRng, RngCore};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
@@ -310,7 +310,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             .into_iter()
             .map(|mint_config_tx| ValidatedMintConfigTx {
                 mint_config_tx,
-                signer_set: SignerSet::default(),
+                signer_set: SignerSetV1::default(),
             })
             .collect();
 

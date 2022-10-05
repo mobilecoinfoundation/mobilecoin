@@ -13,13 +13,13 @@
 
 extern crate alloc;
 
-mod signer_set;
-mod multi_sig;
 mod constants;
+mod multi_sig;
+mod signer_set;
 
+pub use constants::MAX_SIGNATURES;
+pub use multi_sig::MultiSig;
 pub use signer_set::{
-    v1::SignerSet,
+    v1::SignerSetV1,
     v2::{Signer, SignerContainer, SignerEntity, SignerSetV2},
 };
-pub use multi_sig::MultiSig;
-pub use constants::MAX_SIGNATURES;
