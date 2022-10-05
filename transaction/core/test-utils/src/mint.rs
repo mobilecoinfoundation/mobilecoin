@@ -3,7 +3,7 @@
 
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
     mint::{
@@ -38,17 +38,17 @@ pub fn create_mint_config_tx_and_signers(
     let configs = vec![
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
+            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
+            signer_set: SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(
+            signer_set: SignerSetV1::new(
                 vec![
                     signer_3.public_key(),
                     signer_4.public_key(),
@@ -94,7 +94,7 @@ pub fn create_mint_config_tx(
 pub fn mint_config_tx_to_validated(mint_config_tx: &MintConfigTx) -> ValidatedMintConfigTx {
     ValidatedMintConfigTx {
         mint_config_tx: mint_config_tx.clone(),
-        signer_set: SignerSet::default(),
+        signer_set: SignerSetV1::default(),
     }
 }
 

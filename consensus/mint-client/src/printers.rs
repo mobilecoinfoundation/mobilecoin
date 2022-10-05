@@ -5,7 +5,7 @@
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 use mc_transaction_core::mint::{
     MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
 };
@@ -81,7 +81,7 @@ pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
     println!("{}Tombstone block: {}", indent_str, prefix.tombstone_block);
 }
 
-pub fn print_signer_set(signer_set: &SignerSet<Ed25519Public>, indent: usize) {
+pub fn print_signer_set(signer_set: &SignerSetV1<Ed25519Public>, indent: usize) {
     let mut indent_str = INDENT_STR.repeat(indent);
     println!(
         "{}Signer set ({} signer(s)):",

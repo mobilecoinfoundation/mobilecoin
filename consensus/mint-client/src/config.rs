@@ -10,7 +10,7 @@ use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
     DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
 };
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 use mc_transaction_core::{
     mint::{
         constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
@@ -64,7 +64,7 @@ pub struct MintConfigTxPrefixParams {
     /// out of 3 signers.
     #[clap(long = "config", value_parser = parse_mint_config, required = true, use_value_delimiter = true, env = "MC_MINTING_CONFIGS")]
     // Tuple of (mint limit, SignerSet)
-    pub configs: Vec<(u64, SignerSet<Ed25519Public>)>,
+    pub configs: Vec<(u64, SignerSetV1<Ed25519Public>)>,
 
     /// Total mint limit, shared amongst all configs.
     #[clap(long, env = "MC_MINTING_TOTAL_LIMIT")]
@@ -494,7 +494,7 @@ fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
 
 /// Parses a minting limit and signer set from a string in the format:
 /// mint limit:threshold:keyfile1.pem[:keyfile2.pem...]
-fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), String> {
+fn parse_mint_config(src: &str) -> Result<(u64, SignerSetV1<Ed25519Public>), String> {
     let parts = src.split(':').collect::<Vec<_>>();
 
     // At the minimum we should have 3 parts: mint limit, signing threshold, one
@@ -539,7 +539,7 @@ fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), Strin
     }
 
     // Success.
-    Ok((mint_limit, SignerSet::new(public_keys, threshold)))
+    Ok((mint_limit, SignerSetV1::new(public_keys, threshold)))
 }
 
 /// Parse a tokens file from the command line

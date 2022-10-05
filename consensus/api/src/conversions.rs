@@ -254,7 +254,7 @@ impl TryFrom<&consensus_config::ActiveMintConfigs> for mc_ledger_db::ActiveMintC
 #[cfg(test)]
 mod conversion_tests {
     use super::*;
-    use mc_crypto_multisig::SignerSet;
+    use mc_crypto_multisig::SignerSetV1;
     use mc_transaction_core::mint::MintConfig;
     use mc_transaction_core_test_utils::create_mint_config_tx_and_signers;
     use mc_util_serial::{decode, encode};
@@ -266,7 +266,7 @@ mod conversion_tests {
     fn test_convert_active_mint_config() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
-        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set = SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1);
 
         let source = mc_ledger_db::ActiveMintConfig {
             mint_config: MintConfig {
@@ -314,7 +314,7 @@ mod conversion_tests {
     fn test_convert_active_mint_configs() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
-        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set = SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1);
 
         let source = mc_ledger_db::ActiveMintConfigs {
             configs: vec![mc_ledger_db::ActiveMintConfig {

@@ -16,7 +16,7 @@ use crate::{
     BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::SignerSetV1;
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
@@ -76,7 +76,7 @@ pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Re
 /// # Arguments
 /// * `tx` - A pending transaction that is being validated.
 /// * `signer_set` - The signer set that is permitted to sign the transaction.
-fn validate_signature(tx: &MintTx, signer_set: &SignerSet<Ed25519Public>) -> Result<(), Error> {
+fn validate_signature(tx: &MintTx, signer_set: &SignerSetV1<Ed25519Public>) -> Result<(), Error> {
     let message = tx.prefix.hash();
 
     signer_set
@@ -104,7 +104,7 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSet::new(
+            signer_set: SignerSetV1::new(
                 vec![
                     signer_1.public_key(),
                     signer_2.public_key(),
@@ -143,7 +143,7 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSet::new(
+            signer_set: SignerSetV1::new(
                 vec![
                     signer_1.public_key(),
                     signer_2.public_key(),
@@ -185,7 +185,7 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSet::new(
+            signer_set: SignerSetV1::new(
                 vec![
                     signer_1.public_key(),
                     signer_2.public_key(),
@@ -227,7 +227,7 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSet::new(
+            signer_set: SignerSetV1::new(
                 vec![
                     signer_1.public_key(),
                     signer_2.public_key(),
@@ -276,7 +276,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSet::new(vec![signer_1.public_key()], 1);
+        let signer_set = SignerSetV1::new(vec![signer_1.public_key()], 1);
 
         assert_eq!(validate_signature(&tx, &signer_set), Ok(()));
     }
@@ -300,7 +300,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSet::new(vec![signer_2.public_key()], 1);
+        let signer_set = SignerSetV1::new(vec![signer_2.public_key()], 1);
 
         assert_eq!(
             validate_signature(&tx, &signer_set),
@@ -324,7 +324,7 @@ mod tests {
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-        let signer_set = SignerSet::new(vec![signer_1.public_key()], 1);
+        let signer_set = SignerSetV1::new(vec![signer_1.public_key()], 1);
 
         let tx = MintTx {
             prefix: prefix.clone(),

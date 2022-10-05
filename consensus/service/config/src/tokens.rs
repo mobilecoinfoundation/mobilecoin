@@ -6,7 +6,7 @@ use crate::error::Error;
 use mc_common::HashSet;
 use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsVerifier};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::SignerSet;
+use mc_crypto_multisig::SignerSetV1;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, ops::Range, path::Path};
@@ -28,7 +28,7 @@ mod pem_signer_set {
 
     /// Helper method for serializing a SignerSet<Ed25519Public> into PEM.
     pub fn serialize<S: Serializer>(
-        signer_set: &Option<SignerSet<Ed25519Public>>,
+        signer_set: &Option<SignerSetV1<Ed25519Public>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let pem_signer_set = signer_set.as_ref().map(|signer_set| {
@@ -53,7 +53,7 @@ mod pem_signer_set {
     /// Helper method for deserializing a PEM-encoded SignerSet<Ed25519Public>.
     pub fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<Option<SignerSet<Ed25519Public>>, D::Error> {
+    ) -> Result<Option<SignerSetV1<Ed25519Public>>, D::Error> {
         let pem_signer_set: Option<PemSignerSet> = Deserialize::deserialize(deserializer)?;
         match pem_signer_set {
             None => Ok(None),
@@ -70,7 +70,7 @@ mod pem_signer_set {
                     // Return the keys.
                     .collect::<Result<_, D::Error>>()?;
 
-                Ok(Some(SignerSet::new(signers, pem_signer_set.threshold)))
+                Ok(Some(SignerSetV1::new(signers, pem_signer_set.threshold)))
             }
         }
     }
@@ -125,7 +125,7 @@ pub struct TokenConfig {
     /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default, with = "pem_signer_set")]
-    governors: Option<SignerSet<Ed25519Public>>,
+    governors: Option<SignerSetV1<Ed25519Public>>,
 }
 
 impl TokenConfig {
@@ -142,7 +142,7 @@ impl TokenConfig {
     }
 
     /// Governors config, when available.
-    pub fn governors(&self) -> Option<&SignerSet<Ed25519Public>> {
+    pub fn governors(&self) -> Option<&SignerSetV1<Ed25519Public>> {
         // Can never have governors for MOB
         if self.token_id == TokenId::MOB {
             return None;
@@ -681,7 +681,7 @@ mod tests {
             token_id: TokenId::from(123),
             minimum_fee: Some(456),
             allow_any_fee: false,
-            governors: Some(SignerSet::new(
+            governors: Some(SignerSetV1::new(
                 vec![
                     Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
                     Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),

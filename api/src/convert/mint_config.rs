@@ -3,7 +3,7 @@
 //! Convert to/from external:MintConfig/MintConfigTxPrefix/MintConfigTx.
 
 use crate::{external, ConversionError};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::{MultiSig, SignerSetV1};
 use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
 
 /// Convert MintConfig --> external::MintConfig.
@@ -22,7 +22,7 @@ impl TryFrom<&external::MintConfig> for MintConfig {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintConfig) -> Result<Self, Self::Error> {
-        let signer_set = SignerSet::try_from(source.get_signer_set())?;
+        let signer_set = SignerSetV1::try_from(source.get_signer_set())?;
         Ok(Self {
             token_id: source.get_token_id(),
             signer_set,
