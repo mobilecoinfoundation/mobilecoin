@@ -1,0 +1,31 @@
+name: Mobilecoin Cargo Package Cache
+description: Standardized rust cargo package cache setup
+
+inputs:
+  cache_buster:
+    description: "string to make cache unique"
+    required: false
+  path:
+    description: "path to mount cache"
+    required: false
+    default: |
+      /opt/cargo/git
+      /opt/cargo/registry/index
+      /opt/cargo/registry/cache
+
+outputs:
+  cache-hit:
+    description: "did we get a cache hit?"
+    value: ${{ steps.rust_artifact_cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+  - name: Cache rust build binaries
+    id: rust_artifact_cache
+    uses: actions/cache@v3
+    with:
+      path: ${{ inputs.path }}
+      # Key is a hash of all the Cargo.toml and Cargo.lock files.
+      # if packages change, invalidate cache and rebuild
+      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}-cargo-cache

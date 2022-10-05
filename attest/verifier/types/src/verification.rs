@@ -6,7 +6,7 @@ use alloc::{string::String, vec::Vec};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
-use mc_util_encodings::{Error as EncodingError, FromHex};
+use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
@@ -101,6 +101,14 @@ impl FromHex for VerificationSignature {
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
         // 2 hex chars per byte
         Ok(hex::decode(s)?.into())
+    }
+}
+
+impl FromBase64 for VerificationSignature {
+    type Error = EncodingError;
+
+    fn from_base64(s: &str) -> Result<Self, EncodingError> {
+        Ok(base64::decode(s)?.into())
     }
 }
 

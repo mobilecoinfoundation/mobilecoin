@@ -1,0 +1,159 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- range .Values.watcher.instances }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .watchername }}-{{ include "chart.fullname" $ }}
+  labels:
+    app: watcher
+    instance: {{ .watchername }}
+    {{- include "chart.labels" $ | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: watcher
+      instance: {{ .watchername }}
+      {{- include "chart.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml $.Values.watcher.podAnnotations | nindent 8 }}
+      labels:
+        app: watcher
+        instance: {{ .watchername }}
+        {{- include "chart.labels" $ | nindent 8 }}
+    spec:
+      nodeSelector:
+        {{- toYaml $.Values.watcherNodeSelector | nindent 8 }}
+      imagePullSecrets:
+        {{- toYaml $.Values.imagePullSecrets | nindent 8 }}
+{{- if eq $.Values.watcher.backupEnabled true }}
+      initContainers:
+        - name: watcherdb-restore
+          image: "amazon/aws-cli:2.0.19"
+          imagePullPolicy: Always
+          command: [ "/bin/bash" ]
+          env:
+{{- if .s3EndpointUrl }}
+            - name: AWS_ENDPOINT_URL
+              value: {{ .s3EndpointUrl }}
+{{- end }}
+            - name: AWS_REGION
+              value: {{ .s3Region }}
+            - name: AWS_BUCKET
+              value: {{ .s3Bucket }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .watchername }}-{{ include "chart.fullname" $ }}-s3-bucket-credentials
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .watchername }}-{{ include "chart.fullname" $ }}-s3-bucket-credentials
+                  key: aws-secret-access-key
+            - name: WATCHER_INSTANCE_NAME
+              value: {{ .watchername }}
+            - name: WATCHER_NETWORK
+              value: {{ $.Values.networkname }}
+            - name: WATCHER_REGION_ID
+              value: {{ .watcherRegionId }}
+          args:
+            - -c
+            - |
+              set -ex
+              if [ ! -f /watcher/data.mdb ]; then
+                /scripts/restore.sh
+              fi
+          volumeMounts:
+            - name: watcher-db-dir
+              mountPath: /watcher
+            - name: watcher-backup-scripts
+              mountPath: /scripts
+{{- end}}
+      containers:
+        - name: watcher
+          image: '{{ $.Values.image.org | default $.Values.image.org }}/{{ $.Values.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}'
+          imagePullPolicy: Always
+          command: ["/usr/bin/mc-watcher", "--watcher-db", "/watcher", "--sources-path", "/config/sources.toml", "--store-block-data"]
+          ports:
+            - name: watcher-mgmt
+              containerPort: 8000
+          env:
+            - name: "RUST_BACKTRACE"
+              value: "full"
+            - name: "RUST_LOG"
+              value: "info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error"
+          volumeMounts:
+            - name: watcher-db-dir
+              mountPath: /watcher
+            - name: config
+              mountPath: /config
+{{- if eq $.Values.watcher.backupEnabled true }}
+        - name: watcherdb-backup
+          image: "amazon/aws-cli:2.0.19"
+          imagePullPolicy: Always
+          command: [ "/bin/bash" ]
+          env:
+{{- if .s3EndpointUrl }}
+            - name: AWS_ENDPOINT_URL
+              value: {{ .s3EndpointUrl }}
+{{- end }}
+            - name: AWS_REGION
+              value: {{ .s3Region }}
+            - name: AWS_BUCKET
+              value: {{ .s3Bucket }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .watchername }}-{{ include "chart.fullname" $ }}-s3-bucket-credentials
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .watchername }}-{{ include "chart.fullname" $ }}-s3-bucket-credentials
+                  key: aws-secret-access-key
+            - name: WATCHER_INSTANCE_NAME
+              value: {{ .watchername }}
+            - name: WATCHER_NETWORK
+              value: {{ $.Values.networkname }}
+            - name: WATCHER_REGION_ID
+              value: {{ .watcherRegionId }}
+          args:
+            - -c
+            - |
+              set -e
+              while true; do /scripts/backup.sh ; sleep 3600; done
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","/scripts/backup.sh"]
+          volumeMounts:
+            - name: watcher-db-dir
+              mountPath: /watcher
+            - name: watcher-backup-scripts
+              mountPath: /scripts
+{{- end }}
+      volumes:
+        - name: watcher-db-dir
+{{- if eq $.Values.watcher.persistenceEnabled true }}
+          persistentVolumeClaim:
+            claimName: {{ .watchername }}-{{ include "chart.fullname" $ }}-data
+{{- else }}
+          emptyDir: {}
+{{- end }}
+        - name: config
+          configMap:
+            name: {{ include "chart.fullname" $ }}-config-watcher
+{{- if eq $.Values.watcher.backupEnabled true }}
+        - name: watcher-backup-scripts
+          configMap:
+            name: {{ include "chart.fullname" $ }}-watcher-backup-scripts
+            defaultMode: 0755
+{{- end }}
+---
+{{- end }}
+

@@ -1,0 +1,5 @@
+version: v1
+name: buf.build/mobilecoin/attest-api
+breaking:
+  use:
+    - FILE

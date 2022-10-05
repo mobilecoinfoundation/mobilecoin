@@ -24,4 +24,4 @@ done
 
 # Compile the go program, using mod=readonly
 # If the mod file needs to updated, just type `go build` instead.
-go build -mod=readonly
+go build -mod=readonly -buildvcs=false

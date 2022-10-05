@@ -24,7 +24,8 @@ use mc_fog_ledger_connection::{
     FogUntrustedLedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_report_connection::GrpcFogReportConnection;
-use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
+use mc_fog_report_resolver::FogResolver;
+use mc_fog_report_validation::FogPubkeyResolver;
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
@@ -1076,7 +1077,7 @@ mod test_build_transaction_helper {
                 let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
                     .into_iter()
                     .map(|tx_out| {
-                        let fog_tx_out = FogTxOut::from(&tx_out);
+                        let fog_tx_out = FogTxOut::try_from(&tx_out).unwrap();
                         let meta = FogTxOutMetadata::default();
                         let txo_record = TxOutRecord::new(fog_tx_out, meta);
 

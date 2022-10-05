@@ -22,6 +22,10 @@ use x509_signature::X509Certificate;
     version
 )]
 pub struct Config {
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogUri,

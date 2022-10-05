@@ -1,0 +1,10 @@
+[package]
+name = "mc-account-keys-types"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+# MobileCoin dependencies
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }

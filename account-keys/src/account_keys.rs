@@ -23,6 +23,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_account_keys_types::RingCtAddress;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
@@ -187,12 +188,31 @@ impl PublicAddress {
     }
 }
 
+impl RingCtAddress for PublicAddress {
+    fn view_public_key(&self) -> &RistrettoPublic {
+        &self.view_public_key
+    }
+
+    fn spend_public_key(&self) -> &RistrettoPublic {
+        &self.spend_public_key
+    }
+}
+
 impl AuthorityVerifier for PublicAddress {
     type Sig = <RistrettoPublic as AuthorityVerifier>::Sig;
     type Error = <RistrettoPublic as AuthorityVerifier>::Error;
 
     fn verify_authority(&self, spki_bytes: &[u8], sig: &Self::Sig) -> Result<(), Self::Error> {
         self.view_public_key.verify_authority(spki_bytes, sig)
+    }
+}
+
+impl FromRandom for PublicAddress {
+    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        PublicAddress::new(
+            &RistrettoPublic::from_random(rng),
+            &RistrettoPublic::from_random(rng),
+        )
     }
 }
 

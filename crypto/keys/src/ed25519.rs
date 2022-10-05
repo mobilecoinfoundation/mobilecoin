@@ -7,7 +7,6 @@ use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
     Signature as SignatureTrait, SignatureError, Signer, Verifier,
 };
-use alloc::{vec, vec::Vec};
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
@@ -21,12 +20,22 @@ use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_into_vec_from_repr_bytes, derive_prost_message_from_repr_bytes,
     derive_repr_bytes_from_as_ref_and_try_from,
 };
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+
+#[cfg(feature = "serde")]
+use serde::{self as serde, Deserialize, Serialize};
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
 // a detached signature -- use https://lapo.it/asn1js/
@@ -65,6 +74,8 @@ const ED25519_SIG_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const ED25519_SIG_DER_LEN: usize = 0x02 + 0x4A;
 
+static_assertions::const_assert!(ED25519_SIG_DER_LEN <= super::DER_MAX_LEN);
+
 impl DistinguishedEncoding for Ed25519Signature {
     fn der_size() -> usize {
         ED25519_SIG_DER_LEN
@@ -86,18 +97,20 @@ impl DistinguishedEncoding for Ed25519Signature {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der(&self) -> Vec<u8> {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.to_bytes();
-        let mut retval = vec![0u8; ED25519_SIG_DER_LEN];
+        buff[..ED25519_SIG_DER_LEN].iter_mut().for_each(|b| *b = 0);
+
         let prefix_len = ED25519_SIG_DER_PREFIX.len();
-        retval[..prefix_len].copy_from_slice(&ED25519_SIG_DER_PREFIX);
-        retval[prefix_len..].copy_from_slice(&data[..]);
-        retval
+        buff[..prefix_len].copy_from_slice(&ED25519_SIG_DER_PREFIX);
+        buff[prefix_len..ED25519_SIG_DER_LEN].copy_from_slice(&data[..]);
+        &buff[..ED25519_SIG_DER_LEN]
     }
 }
 
 /// An Ed25519 public key.
-#[derive(Copy, Clone, Default, Deserialize, Serialize, Digestible)]
+#[derive(Copy, Clone, Default, Digestible)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Ed25519Public(DalekPublicKey);
 
 impl AsRef<[u8]> for Ed25519Public {
@@ -122,10 +135,11 @@ impl TryFrom<&[u8]> for Ed25519Public {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Public {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Public {
     type Error = KeyError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
@@ -133,7 +147,11 @@ impl TryFrom<Vec<u8>> for Ed25519Public {
 derive_core_cmp_from_as_ref!(Ed25519Public, [u8; PUBLIC_KEY_LENGTH]);
 derive_debug_and_display_hex_from_as_ref!(Ed25519Public);
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(Ed25519Public);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(Ed25519Public);
 
 // ASN.1 DER SubjectPublicKeyInfo Bytes -- this is a set of nested TLVs
@@ -154,6 +172,8 @@ const ED25519_SPKI_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const ED25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
+static_assertions::const_assert!(ED25519_SPKI_DER_LEN <= super::DER_MAX_LEN);
+
 impl DistinguishedEncoding for Ed25519Public {
     fn der_size() -> usize {
         ED25519_SPKI_DER_LEN
@@ -173,13 +193,14 @@ impl DistinguishedEncoding for Ed25519Public {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der(&self) -> Vec<u8> {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.as_ref();
-        let mut retval = vec![0u8; ED25519_SPKI_DER_LEN];
+        buff[..ED25519_SPKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
+
         let prefix_len = ED25519_SPKI_DER_PREFIX.len();
-        retval[..prefix_len].copy_from_slice(&ED25519_SPKI_DER_PREFIX);
-        retval[prefix_len..].copy_from_slice(data);
-        retval
+        buff[..prefix_len].copy_from_slice(&ED25519_SPKI_DER_PREFIX);
+        buff[prefix_len..ED25519_SPKI_DER_LEN].copy_from_slice(data);
+        &buff[..ED25519_SPKI_DER_LEN]
     }
 }
 
@@ -212,7 +233,7 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
 }
 
 /// An Ed25519 private key
-#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Ed25519Private(SecretKey);
 
 impl AsRef<[u8]> for Ed25519Private {
@@ -248,6 +269,8 @@ const ED25519_PKI_DER_PREFIX: [u8; 16] = [
 
 const ED25519_PKI_DER_LEN: usize = 0x02 + 0x2E;
 
+static_assertions::const_assert!(ED25519_PKI_DER_LEN <= super::DER_MAX_LEN);
+
 impl DistinguishedEncoding for Ed25519Private {
     fn der_size() -> usize {
         ED25519_PKI_DER_LEN
@@ -267,14 +290,15 @@ impl DistinguishedEncoding for Ed25519Private {
         Self::try_from(&src[prefix_len..]).map_err(|_err| KeyError::InternalError)
     }
 
-    fn to_der(&self) -> Vec<u8> {
-        let mut retval = vec![0u8; ED25519_PKI_DER_LEN];
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let mut key = self.0.to_bytes();
+        buff[..ED25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
+
         let prefix_len = ED25519_PKI_DER_PREFIX.len();
-        retval[..prefix_len].copy_from_slice(&ED25519_PKI_DER_PREFIX);
-        retval[prefix_len..].copy_from_slice(&key);
+        buff[..prefix_len].copy_from_slice(&ED25519_PKI_DER_PREFIX);
+        buff[prefix_len..ED25519_PKI_DER_LEN].copy_from_slice(&key);
         key.zeroize();
-        retval
+        &buff[..ED25519_PKI_DER_LEN]
     }
 }
 
@@ -298,15 +322,17 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Private {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Private {
     type Error = SignatureError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Ed25519Pair(Keypair);
 
 impl Ed25519Pair {
@@ -375,6 +401,7 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl TryFrom<Vec<u8>> for Ed25519Pair {
     type Error = SignatureError;
 
@@ -395,7 +422,8 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 }
 
 /// An Ed25519 signature.
-#[derive(Copy, Clone, Deserialize, Serialize)]
+#[derive(Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Ed25519Signature(Signature);
 
 impl Ed25519Signature {
@@ -450,18 +478,21 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
     }
 }
 
-impl TryFrom<Vec<u8>> for Ed25519Signature {
+#[cfg(feature = "alloc")]
+impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Signature {
     type Error = SignatureError;
 
-    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from(src: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
         src.as_slice().try_into()
     }
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
-derive_prost_message_from_repr_bytes!(Ed25519Signature);
 derive_core_cmp_from_as_ref!(Ed25519Signature);
 derive_debug_and_display_hex_from_as_ref!(Ed25519Signature);
+
+#[cfg(feature = "prost")]
+derive_prost_message_from_repr_bytes!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {
@@ -511,7 +542,7 @@ mod ed25519_tests {
         let pair = Ed25519Pair::from_random(&mut rng);
         let data = YoloStruct {
             a: 12345,
-            b: vec![0x31, 0x33, 0x70],
+            b: alloc::vec![0x31, 0x33, 0x70],
             c: 54321,
         };
 

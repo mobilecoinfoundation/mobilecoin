@@ -110,6 +110,7 @@ where
         let server_builder = match config.client_listen_uri {
             ClientListenUri::ClientFacing(ref fog_view_uri) => {
                 let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
+                    config.clone(),
                     enclave.clone(),
                     Arc::new(recovery_db),
                     db_poll_thread.get_shared_state(),
@@ -128,6 +129,7 @@ where
             }
             ClientListenUri::Store(ref fog_view_store_uri) => {
                 let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+                    config.clone(),
                     enclave.clone(),
                     Arc::new(recovery_db),
                     db_poll_thread.get_shared_state(),

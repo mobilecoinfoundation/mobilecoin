@@ -15,7 +15,8 @@ use mc_util_serial::{decode, encode, Message};
 
 // LMDB Database names.
 pub const MINT_TXS_BY_BLOCK_DB_NAME: &str = "mint_tx_store:set_txs_by_block";
-pub const BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME: &str = "mint_tx_store:block_index_by_mint_tx_nonce";
+pub const BLOCK_INDEX_BY_MINT_TX_NONCE_AND_TOKEN_ID_DB_NAME: &str =
+    "mint_tx_store:block_index_by_mint_tx_nonce_and_token_id";
 
 /// A list of mint-txs that can be prost-encoded. This is needed since that's
 /// the only way to encode a Vec<MintTx>.
@@ -31,7 +32,7 @@ pub struct MintTxStore {
     mint_txs_by_block: Database,
 
     /// block index by MintTx nonce.
-    block_index_by_mint_tx_nonce: Database,
+    block_index_by_mint_tx_nonce_and_token_id: Database,
 }
 
 impl MintTxStore {
@@ -39,8 +40,8 @@ impl MintTxStore {
     pub fn new(env: &Environment) -> Result<Self, Error> {
         Ok(MintTxStore {
             mint_txs_by_block: env.open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?,
-            block_index_by_mint_tx_nonce: env
-                .open_db(Some(BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME))?,
+            block_index_by_mint_tx_nonce_and_token_id: env
+                .open_db(Some(BLOCK_INDEX_BY_MINT_TX_NONCE_AND_TOKEN_ID_DB_NAME))?,
         })
     }
 
@@ -48,7 +49,7 @@ impl MintTxStore {
     pub fn create(env: &Environment) -> Result<(), Error> {
         env.create_db(Some(MINT_TXS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(
-            Some(BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME),
+            Some(BLOCK_INDEX_BY_MINT_TX_NONCE_AND_TOKEN_ID_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         Ok(())
@@ -105,26 +106,45 @@ impl MintTxStore {
                 new_total_minted,
                 db_transaction,
             )?;
-
-            // Ensure nonce uniqueness
-            db_transaction.put(
-                self.block_index_by_mint_tx_nonce,
-                &mint_tx.prefix.nonce,
-                &block_index_bytes,
-                // do not overwrite a nonce that was already used
-                WriteFlags::NO_OVERWRITE,
+            self.write_block_index_by_mint_tx_nonce_and_token_id(
+                mint_tx,
+                db_transaction,
+                block_index_bytes,
             )?;
         }
 
         Ok(())
     }
 
+    pub fn write_block_index_by_mint_tx_nonce_and_token_id(
+        &self,
+        mint_tx: &MintTx,
+        db_transaction: &mut RwTransaction,
+        block_index_bytes: [u8; 8],
+    ) -> Result<(), Error> {
+        let mut combined_nonce_and_token_id = mint_tx.prefix.nonce.clone();
+        combined_nonce_and_token_id.extend_from_slice(&u64_to_key_bytes(mint_tx.prefix.token_id));
+        db_transaction.put(
+            self.block_index_by_mint_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+            &block_index_bytes,
+            // do not overwrite a nonce that was already used
+            WriteFlags::NO_OVERWRITE,
+        )?;
+        Ok(())
+    }
+
     pub fn check_mint_tx_nonce(
         &self,
+        token_id: u64,
         nonce: &[u8],
         db_transaction: &impl Transaction,
     ) -> Result<Option<BlockIndex>, Error> {
-        match db_transaction.get(self.block_index_by_mint_tx_nonce, &nonce) {
+        let combined_nonce_and_token_id = [nonce, &u64_to_key_bytes(token_id)].concat();
+        match db_transaction.get(
+            self.block_index_by_mint_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+        ) {
             Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
             Err(lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(Error::Lmdb(e)),
@@ -407,6 +427,75 @@ mod tests {
     }
 
     #[test]
+    fn write_mint_txs_duplicate_nonce() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        // Generate and store a mint configurations.
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_validated_mint_config_txs(
+                0,
+                &[
+                    to_validated(&mint_config_tx1),
+                    to_validated(&mint_config_tx2),
+                ],
+                &mut db_txn,
+            )
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token on block 0
+        rng = SeedableRng::from_seed([1u8; 32]);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Trying again on block 0 should fail.
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(0, &[mint_tx2.clone()], &mint_config_store, &mut db_txn),
+            Err(Error::Lmdb(lmdb::Error::KeyExist))
+        );
+        drop(db_txn);
+
+        // But will succeed on block 1.
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(1, &[mint_tx2], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Trying with the same nonce on the same token should fail.
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(2, &[mint_tx1], &mint_config_store, &mut db_txn),
+            Err(Error::Lmdb(lmdb::Error::KeyExist))
+        );
+        drop(db_txn);
+
+        // Generate similar tx as tx1 that have the same nonces for token2.
+        rng = SeedableRng::from_seed([1u8; 32]);
+        let mint_tx1_tkn2 = create_mint_tx(token_id2, &signers2, 1, &mut rng);
+
+        //Trying with the same nonce on a different token should succeed.
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(2, &[mint_tx1_tkn2], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+    }
+    #[test]
     fn write_mint_txs_works_when_some_signers_are_unknown() {
         let (mint_config_store, mint_tx_store, env) = init_test_stores();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -599,26 +688,27 @@ mod tests {
 
         let db_txn = env.begin_ro_txn().unwrap();
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx1.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx2.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx3.prefix.nonce, &db_txn),
             Ok(None)
         );
         assert_eq!(
             mint_tx_store.check_mint_tx_nonce(
+                *token_id1,
                 &mint_tx1.prefix.nonce[..mint_tx1.prefix.nonce.len() - 2],
                 &db_txn
             ),
             Ok(None)
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&[1, 2, 3], &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &[1, 2, 3], &db_txn),
             Ok(None)
         );
         drop(db_txn);
@@ -631,15 +721,15 @@ mod tests {
 
         let db_txn = env.begin_ro_txn().unwrap();
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx1.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx2.prefix.nonce, &db_txn),
             Ok(Some(0))
         );
         assert_eq!(
-            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            mint_tx_store.check_mint_tx_nonce(*token_id1, &mint_tx3.prefix.nonce, &db_txn),
             Ok(Some(1))
         );
     }

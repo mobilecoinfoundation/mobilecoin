@@ -120,6 +120,12 @@ impl BlockVersion {
         self.0 >= 3
     }
 
+    /// Masked amount V2 derivation introduced with block version 3.
+    /// [MCIP #42](https://github.com/mobilecoinfoundation/mcips/pull/42)
+    pub fn masked_amount_v2_is_supported(&self) -> bool {
+        self.0 >= 3
+    }
+
     /// `BlockData.metadata` is required starting from v3.
     /// [MCIP #43](https://github.com/mobilecoinfoundation/mcips/pull/43)
     pub fn require_block_metadata(&self) -> bool {

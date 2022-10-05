@@ -16,8 +16,8 @@ use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryRes
 use mc_fog_uri::{KeyImageStoreUri, ConnectionUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
-    Authenticator,
+    check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_watcher::watcher_db::WatcherDB;
@@ -25,8 +25,9 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
-    /// The ClientListenUri for this FogViewService.
+    /// The ClientListenUri for this Fog Ledger Service.
     client_listen_uri: KeyImageClientListenUri,
+    chain_id: String,
     ledger: L,
     watcher: WatcherDB,
     enclave: E,
@@ -39,6 +40,7 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     pub fn new(
         client_listen_uri: KeyImageClientListenUri,
+        chain_id: String,
         ledger: L,
         watcher: WatcherDB,
         enclave: E,
@@ -48,6 +50,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     ) -> Self {
         Self {
             client_listen_uri,
+            chain_id,
             ledger,
             watcher,
             enclave,
@@ -183,6 +186,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
     fn check_key_images(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -194,6 +201,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }

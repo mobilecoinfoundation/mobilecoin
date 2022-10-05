@@ -161,12 +161,19 @@ impl<Cipher: NoiseCipher> CipherState<Cipher> {
         self.cipher.is_some()
     }
 
+    /// Retrieve the nonce value which will be used in the next operation.
+    ///
+    /// This is an extension of the noise protocol to allow for implicit-nonce
+    /// writers with explicit-nonce readers to co-exist in the same stream.
+    pub fn next_nonce(&self) -> u64 {
+        self.nonce
+    }
+
     /// The noise protocol `SetNonce()` operation.
     ///
     /// This will irrevocably override the current nonce value.
     pub fn set_nonce(&mut self, nonce: u64) {
         self.nonce = nonce;
-        // TODO: return current nonce? We don't provide any access otherwise...
     }
 
     /// The noise protocol `EncryptWithAd()` operation.
@@ -392,5 +399,15 @@ mod test {
 
         assert_eq!(encryptor.nonce, 2);
         assert_eq!(encryptor.bytes_sent, key.len() as u64);
+    }
+
+    /// Try to set the nonce, and retrieve it.
+    #[test]
+    fn set_nonce() {
+        let mut encryptor = CipherState::<Aes256Gcm>::default();
+        let expected = 1234;
+        encryptor.set_nonce(expected);
+        let actual = encryptor.next_nonce();
+        assert_eq!(expected, actual);
     }
 }

@@ -1,0 +1,25 @@
+[package]
+name = "mc-wasm-test"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[lib]
+name = "mc_wasm_test"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+# These are crates that we want to ensure build successfully for the wasm target
+mc-account-keys = { path = "../account-keys" }
+mc-api = { path = "../api" }
+mc-crypto-keys = { path = "../crypto/keys" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-std = { path = "../transaction/std" }
+
+# These are required since they enable feature flags needed for wasm builds
+getrandom = { version = "0.2", features = ["js"] }
+rand = { version = "0.8", features = ["getrandom"] }
+
+# Used for very basic testing
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"

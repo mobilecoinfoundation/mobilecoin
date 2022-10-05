@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v2
+name: fog-ingest
+description: MobileCoin Fog Ingest service.
+type: application
+version: 0.0.0
+appVersion: 0.0.0
+dependencies:
+- name: mc-core-common-config
+  repository: file://../mc-core-common-config
+  version: 0.0.0
+  condition: mcCoreCommonConfig.enabled
+  alias: mcCoreCommonConfig
+- name: fog-ingest-config
+  repository: file://../fog-ingest-config
+  version: 0.0.0
+  condition: fogIngestConfig.enabled
+  alias: fogIngestConfig

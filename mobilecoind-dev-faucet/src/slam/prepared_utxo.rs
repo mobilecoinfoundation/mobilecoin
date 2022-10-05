@@ -6,7 +6,7 @@ use mc_api::ConversionError;
 use mc_attest_verifier::Verifier;
 use mc_common::logger::{log, Logger};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData};
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
 use mc_transaction_core::{
     constants::RING_SIZE,

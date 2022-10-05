@@ -89,7 +89,9 @@ pub trait IngestEnclave: ReportableEnclave {
     fn get_kex_rng_pubkey(&self) -> Result<KexRngPubkey>;
 
     /// Consume all the transactions and emit corresponding rows for the
-    /// recovery database
+    /// recovery database. If this caused our ORAM to fill up, then the egress
+    /// key will be rotated, resulting in a new KexRngPubkey. This will be
+    /// written to the database and the previous one should be retired.
     fn ingest_txs(&self, chunk: TxsForIngest) -> Result<(Vec<ETxOutRecord>, Option<KexRngPubkey>)>;
 
     /// Retrieve the public identity of the enclave, for peering

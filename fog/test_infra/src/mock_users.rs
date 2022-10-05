@@ -11,7 +11,9 @@ use mc_fog_types::{
     BlockCount,
 };
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
-use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, MaskedAmount, Token};
+use mc_transaction_core::{
+    fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, BlockVersion, MaskedAmount, Token,
+};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
@@ -75,7 +77,7 @@ pub fn test_block_to_inputs_and_expected_outputs(
             .entry(upriv.clone())
             .or_insert_with(HashSet::default);
 
-        let fog_tx_out = FogTxOut::from(txo);
+        let fog_tx_out = FogTxOut::try_from(txo).unwrap();
         let meta = FogTxOutMetadata {
             global_index: global_tx_out_index as u64,
             block_index,
@@ -103,6 +105,7 @@ pub fn test_block_to_pairs(test_block: &TestBlock) -> Vec<(UserPrivate, TxOut)> 
 }
 
 /// Make a random transaction targeted at a specific user via fog
+// FIXME: This should use TxOut::new instead
 pub fn make_random_tx<T: RngCore + CryptoRng>(
     rng: &mut T,
     acct_server_pubkey: &RistrettoPublic,
@@ -115,7 +118,10 @@ pub fn make_random_tx<T: RngCore + CryptoRng>(
         token_id: Mob::ID,
     };
     TxOut {
-        masked_amount: MaskedAmount::new(amount, &public_key).expect("amount failed unexpectedly"),
+        masked_amount: Some(
+            MaskedAmount::new(BlockVersion::ZERO, amount, &public_key)
+                .expect("amount failed unexpectedly"),
+        ),
         target_key: target_key.into(),
         public_key: public_key.into(),
         e_fog_hint: recipient.encrypt(acct_server_pubkey, rng),

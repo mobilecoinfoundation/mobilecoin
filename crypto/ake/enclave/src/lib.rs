@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
-use alloc::{string::ToString, vec::Vec};
+use alloc::{borrow::ToOwned, string::ToString, vec::Vec};
 use digest::Digest;
 use mc_attest_ake::{
     AuthPending, AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientAuthRequestInput,
@@ -15,8 +15,9 @@ use mc_attest_core::{
     VerificationReport,
 };
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
-    PeerAuthResponse, PeerSession, Result, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, PeerAuthRequest, PeerAuthResponse, PeerSession, Result,
+    SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
@@ -30,17 +31,23 @@ use sha2::{Sha256, Sha512};
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
 
-// Max number of auth pending requests.
+/// Max number of pending authentication requests.
 const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 
 /// Max number of peer sessions.
 const MAX_PEER_SESSIONS: usize = 64;
 
+/// Maximum number of concurrent sessions to this enclave from router enclaves.
+const MAX_FRONTEND_SESSIONS: usize = 10_000;
+
 /// Max number of backends that this enclave can connect to as a client.
-const MAX_BACKEND_CONNECTIONS: usize = 10000;
+const MAX_BACKEND_SESSIONS: usize = 10_000;
 
 /// Max number of client sessions.
-const MAX_CLIENT_SESSIONS: usize = 10000;
+const MAX_CLIENT_SESSIONS: usize = 10_000;
+
+/// Max number of auth requests for enclave backends.
+const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10_000;
 
 /// Max number of auth requests for enclave backends.
 const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10000;
@@ -49,6 +56,7 @@ const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10000;
 /// needs to become a part of the report. We provide some simple identities, and
 /// a trait to allow extensions
 mod identity;
+
 pub use identity::{EnclaveIdentity, NullIdentity};
 
 /// State associated to Attested Authenticated Key Exchange held by an enclave,
@@ -57,6 +65,7 @@ pub use identity::{EnclaveIdentity, NullIdentity};
 pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// ResponderId used for peer connections
     peer_self_id: Mutex<Option<ResponderId>>,
+
     /// ResponderId used for client connections
     client_self_id: Mutex<Option<ResponderId>>,
 
@@ -94,6 +103,10 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// A map of channel ID to connection state
     clients: Mutex<LruCache<ClientSession, Ready<Aes256Gcm>>>,
 
+    /// A map of inbound session IDs to connection states, for use by a
+    /// store/router backend
+    frontends: Mutex<LruCache<NonceSession, Ready<Aes256Gcm>>>,
+
     /// A map of ResponderIds for each enclave that serves as a backend to the
     /// current enclave.
     backends: Mutex<LruCache<ResponderId, Ready<Aes256Gcm>>>,
@@ -121,7 +134,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             peer_outbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             peer_inbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
             clients: Mutex::new(LruCache::new(MAX_CLIENT_SESSIONS)),
-            backends: Mutex::new(LruCache::new(MAX_BACKEND_CONNECTIONS)),
+            frontends: Mutex::new(LruCache::new(MAX_FRONTEND_SESSIONS)),
+            backends: Mutex::new(LruCache::new(MAX_BACKEND_SESSIONS)),
         }
     }
 
@@ -149,7 +163,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut mr_enclave_verifier = MrEnclaveVerifier::new(report_body.mr_enclave());
         // INTEL-SA-00334: LVI hardening is handled via rustc arguments set in
         // mc-util-build-enclave
-        mr_enclave_verifier.allow_hardening_advisory("INTEL-SA-00334");
+        //
+        // INTEL-SA-00615: MMIO Stale Data is handled by using [out] parameters
+        // in our ECALL/OCALL definitions (EDLs), and only performing direct
+        // writes aligned to quadword (8B) boundaries (e.g. in ORAMStorage)
+        mr_enclave_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
 
         verifier
             .mr_enclave(mr_enclave_verifier)
@@ -181,12 +199,55 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         }
     }
 
-    /// Constructs a ClientAuthRequest to be sent to an enclave backend.
+    /// Accept an explicit-nonce session from a frontend service (router) to
+    /// ourselves (acting as a store).
+    pub fn frontend_accept(
+        &self,
+        req: NonceAuthRequest,
+    ) -> Result<(NonceAuthResponse, NonceSession)> {
+        let local_identity = self.kex_identity.clone();
+        let ias_report = self.get_ias_report()?;
+
+        // Create the state machine
+        let responder = Start::new(self.get_client_self_id()?.to_string());
+
+        // Massage the request message into state machine input
+        let auth_request = {
+            let req: Vec<u8> = req.into();
+            ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
+                AuthRequestOutput::from(req),
+                local_identity,
+                ias_report,
+            )
+        };
+
+        // Advance the state machine
+        let mut csprng = McRng::default();
+        let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
+        // For the first message, nonce is a zero
+        let session_id = NonceSession::new(responder.binding().to_owned(), 0);
+
+        // This session is established as far as we are concerned.
+        self.frontends.lock()?.put(session_id.clone(), responder);
+
+        // Massage the state machine output into the response message
+        let auth_response: Vec<u8> = auth_response.into();
+
+        Ok((NonceAuthResponse::from(auth_response), session_id))
+    }
+
+    /// Drop the given session from the list of known frontend router sessions.
+    pub fn frontend_close(&self, channel_id: NonceSession) -> Result<()> {
+        self.frontends.lock()?.pop(&channel_id);
+        Ok(())
+    }
+
+    /// Constructs a NonceAuthRequest to be sent to an enclave backend.
     ///
     /// Differs from peer_init in that this enclave does not establish a peer
     /// connection to the enclave described by `backend_id`. Rather, this
     /// enclave serves as a client to this other backend enclave.
-    pub fn backend_init(&self, backend_id: ResponderId) -> Result<ClientAuthRequest> {
+    pub fn backend_init(&self, backend_id: ResponderId) -> Result<NonceAuthRequest> {
         let mut csprng = McRng::default();
 
         let initiator = Start::new(backend_id.to_string());
@@ -206,7 +267,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     pub fn backend_connect(
         &self,
         backend_id: ResponderId,
-        backend_auth_response: ClientAuthResponse,
+        backend_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         let initiator = self
             .backend_auth_pending
@@ -472,7 +533,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     pub fn reencrypt_sealed_message_for_backends(
         &self,
         sealed_client_message: &SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         let (client_query_bytes, _) = sealed_client_message.data.unseal_raw()?;
 
         let mut backends = self.backends.lock()?;
@@ -480,8 +541,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .iter_mut()
             .map(|(_, encryptor)| {
                 let aad = sealed_client_message.aad.clone();
-                let data = encryptor.encrypt(&aad, &client_query_bytes)?;
-                let channel_id = sealed_client_message.channel_id.clone();
+                let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_query_bytes)?;
+                let channel_id =
+                    NonceSession::new(sealed_client_message.channel_id.clone().into(), nonce);
                 Ok(EnclaveMessage {
                     aad,
                     channel_id,
@@ -495,15 +557,17 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     pub fn backend_decrypt(
         &self,
-        responder_id: ResponderId,
-        msg: EnclaveMessage<ClientSession>,
+        responder_id: &ResponderId,
+        msg: &EnclaveMessage<NonceSession>,
     ) -> Result<Vec<u8>> {
         // Ensure lock gets released as soon as we're done decrypting.
         let mut backends = self.backends.lock()?;
         backends
-            .get_mut(&responder_id)
+            .get_mut(responder_id)
             .ok_or(Error::NotFound)
-            .and_then(|session| Ok(session.decrypt(&msg.aad, &msg.data)?))
+            .and_then(|session| {
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.peek_nonce())?)
+            })
     }
 
     //

@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::Ed25519Signature
 
 use crate::{external, ConversionError};

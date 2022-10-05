@@ -1,0 +1,35 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.fog-ledger
+#
+# Runtime image for MobileCoin fog-ledger nodes.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+# Copy binaries
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/libledger-enclave.signed.so /usr/bin/
+COPY ${RUST_BIN_PATH}/ledger_server /usr/bin/
+COPY ${RUST_BIN_PATH}/mobilecoind /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-admin-http-gateway /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
+
+# Entrypoint
+# COPY docker/entrypoints/fog-ledger.sh /usr/bin/entrypoint.sh
+# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+# Rust defaults
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn"
+ENV RUST_LOG_STYLE="never"
+
+# Default Ports
+# HTTP Management
+EXPOSE 8000
+# GRPC Ledger API
+EXPOSE 3228
+
+# App Defaults
+ENV MC_OMAP_CAPACITY=4194304

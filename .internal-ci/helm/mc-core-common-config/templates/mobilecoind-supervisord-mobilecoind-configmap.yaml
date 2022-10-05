@@ -1,0 +1,27 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mobilecoind-supervisord-mobilecoind
+  labels:
+    {{- include "mcCoreCommonConfig.labels" . | nindent 4 }}
+data:
+  mobilecoind.conf: |
+    [program:mobilecoind-sync]
+    command=/usr/bin/mobilecoind
+{{- range .Values.mobilecoind.nodes }}
+      --peer mc://{{ tpl .client $ }}/
+      --tx-source-url {{ tpl .txSourceUrl $ }}
+{{- end }}
+      --poll-interval 1
+      --quorum-set {{ include "mcCoreCommonConfig.mobilecoindQuorum" . | squote }}
+      --ledger-db /data/ledger
+      --watcher-db /data/watcher
+      --mobilecoind-db /data/mobilecoind
+      --listen-uri insecure-mobilecoind://0.0.0.0:3229/
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

@@ -25,4 +25,5 @@ pub use crate::{
 };
 
 pub use mc_common::trace_time as _trace_time;
+pub use mc_consensus_api::consensus_common::ProposeTxResult;
 pub use retry as _retry;

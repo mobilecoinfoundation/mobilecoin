@@ -31,19 +31,36 @@ pub struct Counters {
     /// Number of mismatching MintTxs and Gnosis deposits.
     num_mismatching_mints_and_deposits: i64,
 
+    /// Number of mismatching BurnTxOuts and Gnosis withdrawals.
+    num_mismatching_burns_and_withdrawals: i64,
+
     /// Number of times we encountered deposits to an unknown Ethereum token
     /// contract address.
     num_unknown_ethereum_token_deposits: i64,
 
+    /// Number of times we encountered withdrawals from an unknown Ethereum
+    /// token contract address.
+    num_unknown_ethereum_token_withdrawals: i64,
+
     /// Number of times we encountered a mint that is associated with an
     /// unaudited safe.
     num_mints_to_unknown_safe: i64,
+
+    /// Number of times we encountered a burn that is associated with an
+    /// unaudited safe.
+    num_burns_from_unknown_safe: i64,
 
     /// Number of unexpected errors attempting to match deposits to mints.
     num_unexpected_errors_matching_deposits_to_mints: i64,
 
     // Number of unexpected errors attempting to match mints to deposits.
     num_unexpected_errors_matching_mints_to_deposits: i64,
+
+    // Number of unexpected errors attempting to match withdrawals to burns.
+    num_unexpected_errors_matching_withdrawals_to_burns: i64,
+
+    // Number of unexpected errors attempting to match burns to withdrawals.
+    num_unexpected_errors_matching_burns_to_withdrawals: i64,
 }
 
 // A helper macro for DRYing up get/inc methods for each counter.
@@ -87,10 +104,15 @@ impl_get_and_inc! {
     num_burns_exceeding_balance inc_num_burns_exceeding_balance,
     num_mint_txs_without_matching_mint_config inc_num_mint_txs_without_matching_mint_config,
     num_mismatching_mints_and_deposits inc_num_mismatching_mints_and_deposits,
+    num_mismatching_burns_and_withdrawals inc_num_mismatching_burns_and_withdrawals
     num_unknown_ethereum_token_deposits inc_num_unknown_ethereum_token_deposits,
+    num_unknown_ethereum_token_withdrawals inc_num_unknown_ethereum_token_withdrawals,
     num_mints_to_unknown_safe inc_num_mints_to_unknown_safe,
+    num_burns_from_unknown_safe inc_num_burns_from_unknown_safe,
     num_unexpected_errors_matching_deposits_to_mints inc_num_unexpected_errors_matching_deposits_to_mints,
     num_unexpected_errors_matching_mints_to_deposits inc_num_unexpected_errors_matching_mints_to_deposits,
+    num_unexpected_errors_matching_withdrawals_to_burns inc_num_unexpected_errors_matching_withdrawals_to_burns
+    num_unexpected_errors_matching_burns_to_withdrawals inc_num_unexpected_errors_matching_burns_to_withdrawals
 }
 
 impl Counters {
@@ -120,16 +142,39 @@ impl Counters {
     /// Update prometheus counters.
     pub fn update_prometheus(&self) {
         prom_counters::NUM_BLOCKS_SYNCED.set(self.num_blocks_synced);
+
         prom_counters::NUM_BURNS_EXCEEDING_BALANCE.set(self.num_burns_exceeding_balance);
+
         prom_counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
             .set(self.num_mint_txs_without_matching_mint_config);
+
         prom_counters::NUM_MISMATCHING_MINTS_AND_DEPOSITS
             .set(self.num_mismatching_mints_and_deposits);
+
+        prom_counters::NUM_MISMATCHING_BURNS_AND_WITHDRAWALS
+            .set(self.num_mismatching_burns_and_withdrawals);
+
+        prom_counters::NUM_UNKNOWN_ETHEREUM_TOKEN_DEPOSITS
+            .set(self.num_unknown_ethereum_token_deposits);
+
+        prom_counters::NUM_UNKNOWN_ETHEREUM_TOKEN_WITHDRAWALS
+            .set(self.num_unknown_ethereum_token_withdrawals);
+
         prom_counters::NUM_MINTS_TO_UNKNOWN_SAFE.set(self.num_mints_to_unknown_safe);
+
+        prom_counters::NUM_BURNS_FROM_UNKNOWN_SAFE.set(self.num_burns_from_unknown_safe);
+
         prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_DEPOSITS_TO_MINTS
             .set(self.num_unexpected_errors_matching_deposits_to_mints);
+
         prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_MINTS_TO_DEPOSITS
             .set(self.num_unexpected_errors_matching_mints_to_deposits);
+
+        prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_WITHDRAWALS_TO_BURNS
+            .set(self.num_unexpected_errors_matching_withdrawals_to_burns);
+
+        prom_counters::NUM_UNEXPECTED_ERRORS_MATCHING_BURNS_TO_WITHDRAWALS
+            .set(self.num_unexpected_errors_matching_burns_to_withdrawals);
     }
 }
 

@@ -8,16 +8,14 @@ pub use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
 mod curve_scalar;
 mod error;
-mod generator_cache;
 mod key_image;
 mod mlsag;
 
 pub use self::{
     curve_scalar::CurveScalar,
     error::Error,
-    generator_cache::GeneratorCache,
     key_image::KeyImage,
-    mlsag::{CryptoRngCore, ReducedTxOut, RingMLSAG},
+    mlsag::{ReducedTxOut, RingMLSAG},
 };
 
 use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;

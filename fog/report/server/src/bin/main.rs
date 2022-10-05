@@ -32,7 +32,13 @@ fn main() {
         )
     });
 
-    let mut server = Server::new(db, &config.client_listen_uri, materials, logger.clone());
+    let mut server = Server::new(
+        db,
+        config.chain_id.clone(),
+        &config.client_listen_uri,
+        materials,
+        logger.clone(),
+    );
     server.start();
 
     let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");

@@ -1,7 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    config::ClientListenUri, server::DbPollSharedState, sharding_strategy::ShardingStrategy,
+    config::{ClientListenUri, MobileAcctViewConfig},
+    server::DbPollSharedState,
+    sharding_strategy::ShardingStrategy,
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
@@ -18,8 +20,8 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
-    Authenticator,
+    check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    rpc_permissions_error, send_result, Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_telemetry::{tracer, Tracer};
@@ -32,6 +34,9 @@ where
     DB: RecoveryDb + Send + Sync,
     SS: ShardingStrategy,
 {
+    /// Server Config
+    config: MobileAcctViewConfig,
+
     /// Enclave providing access to the Recovery DB
     enclave: E,
 
@@ -63,6 +68,7 @@ where
     /// Creates a new fog-view-service node (but does not create sockets and
     /// start it etc.)
     pub fn new(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: Arc<DB>,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
@@ -72,6 +78,7 @@ where
         logger: Logger,
     ) -> Self {
         Self {
+            config,
             enclave,
             db,
             db_poll_shared_state,
@@ -233,6 +240,10 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
@@ -249,6 +260,10 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }

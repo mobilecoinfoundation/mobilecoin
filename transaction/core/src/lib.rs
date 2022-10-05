@@ -37,7 +37,7 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{AmountError, MaskedAmount};
+pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use signed_contingent_input::{
@@ -45,7 +45,7 @@ pub use signed_contingent_input::{
 };
 pub use token::{tokens, Token};
 pub use tx::MemoContext;
-pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
+pub use tx_error::{NewMemoError, NewTxError, TxOutConversionError, ViewKeyMatchError};
 pub use tx_out_gift_code::TxOutGiftCode;
 
 // Re-export from transaction-types, and some from RingSignature crate.
@@ -60,8 +60,9 @@ pub mod ring_signature {
 // Re-export the one-time keys module which historically lived in this crate
 pub use mc_crypto_ring_signature::onetime_keys;
 
-use core::convert::TryFrom;
-use mc_account_keys::AccountKey;
+// Re-export some dependent types from mc-account-keys
+pub use mc_account_keys::{AccountKey, PublicAddress};
+
 use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 use onetime_keys::{create_shared_secret, recover_public_subaddress_spend_key};
 use tx::TxOut;

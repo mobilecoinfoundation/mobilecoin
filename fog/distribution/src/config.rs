@@ -99,7 +99,8 @@ impl Config {
     ) -> ConnectionResult<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>> {
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+        mr_signer_verifier
+            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -117,6 +118,8 @@ impl Config {
                 );
                 let logger = logger.new(o!("mc.cxn" => uri.addr()));
                 ThickClient::new(
+                    // TODO: Supply a chain-id to fog distribution?
+                    String::default(),
                     uri.clone(),
                     verifier.clone(),
                     env,

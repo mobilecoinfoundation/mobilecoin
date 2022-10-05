@@ -15,8 +15,8 @@ pub mod schema;
 pub use self::{
     conn::{Conn, ConnectionOptions},
     models::{
-        AuditedMint, BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
-        GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
+        AuditedBurn, AuditedMint, BlockAuditData, BlockBalance, BurnTxOut, Counters,
+        GnosisSafeDeposit, GnosisSafeTx, GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
     },
     transaction::{transaction, TransactionRetriableError},
 };
@@ -27,13 +27,12 @@ use diesel::{
     SqliteConnection,
 };
 use diesel_migrations::embed_migrations;
-use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_transaction_core::{tx::TxOut, TokenId};
+use mc_transaction_core::TokenId;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 
@@ -58,7 +57,7 @@ pub struct SyncBlockData {
     pub mint_txs: Vec<MintTx>,
 
     /// Burn TxOuts in the block.
-    pub burn_tx_outs: Vec<TxOut>,
+    pub burn_tx_outs: Vec<BurnTxOut>,
 }
 
 /// Mint Auditor Database.
@@ -196,44 +195,45 @@ impl MintAuditorDb {
                 )?);
             }
 
-            // Count burns.
+            // Process burns.
             log::trace!(self.logger, "Processing burns");
-            let (burn_tx_outs, burn_amounts): (Vec<_>, Vec<_>) = block_contents
+
+            let mut burn_tx_outs: Vec<_> = block_contents
                 .outputs
                 .par_iter()
-                .filter_map(|tx_out| {
-                    tx_out
-                        .view_key_match(&burn_address_view_private())
-                        .ok()
-                        .map(|(amount, _shared_secret)| (tx_out.clone(), amount))
-                })
-                .unzip();
+                .filter_map(|tx_out| BurnTxOut::from_core_tx_out(block_index, tx_out).ok())
+                .collect();
 
-            for amount in burn_amounts {
-                let burn_balance = balance_map.entry(amount.token_id).or_default();
+            for burn_tx_out in burn_tx_outs.iter_mut() {
+                // Balance accounting.
+                let (amount, token_id) = (burn_tx_out.amount(), burn_tx_out.token_id());
+                let burn_balance = balance_map.entry(token_id).or_default();
 
-                if amount.value > *burn_balance {
+                if amount > *burn_balance {
                     log::crit!(
                         self.logger,
                         "Block {}: Burned {} of token id {} but only had {}. Setting balance to 0",
                         block_index,
-                        amount.value,
-                        amount.token_id,
+                        amount,
+                        token_id,
                         burn_balance
                     );
                     *burn_balance = 0;
                     Counters::inc_num_burns_exceeding_balance(conn)?;
                 } else {
-                    *burn_balance -= amount.value;
+                    *burn_balance -= amount;
                     log::info!(
                         self.logger,
                         "Block {}: Burned {} of token id {}, balance is now {}",
                         block_index,
-                        amount.value,
-                        amount.token_id,
+                        amount,
+                        token_id,
                         burn_balance,
                     );
                 }
+
+                // Store the BurnTxOut.
+                burn_tx_out.insert(conn)?;
             }
 
             Counters::inc_num_blocks_synced(conn)?;
@@ -473,15 +473,26 @@ mod tests {
             ..Default::default()
         };
 
-        let (sync_block_data, block_index) =
+        let (mut sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
                 block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 41), (token_id2, 2)]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
+                ],
             }
         );
 
@@ -516,8 +527,16 @@ mod tests {
             ..Default::default()
         };
 
-        let (sync_block_data, block_index) =
+        let (mut sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
@@ -528,7 +547,10 @@ mod tests {
                     (token_id3, 20000)
                 ]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
+                ],
             }
         );
 
@@ -742,15 +764,26 @@ mod tests {
             ..Default::default()
         };
 
-        let (sync_block_data, block_index) =
+        let (mut sync_block_data, block_index) =
             append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        //
+        // Strip out ids to make comparison easier.
+        sync_block_data.burn_tx_outs = sync_block_data
+            .burn_tx_outs
+            .iter()
+            .map(BurnTxOut::without_id)
+            .collect();
+
         assert_eq!(
             sync_block_data,
             SyncBlockData {
                 block_audit: BlockAuditData::new(block_index),
                 balance_map: HashMap::from_iter([(token_id1, 0), (token_id2, 0)]),
                 mint_txs: MintTx::get_mint_txs_by_block_index(block_index, &conn).unwrap(),
-                burn_tx_outs: vec![tx_out1, tx_out2],
+                burn_tx_outs: vec![
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out1).unwrap(),
+                    BurnTxOut::from_core_tx_out(block_index, &tx_out2).unwrap()
+                ],
             }
         );
 

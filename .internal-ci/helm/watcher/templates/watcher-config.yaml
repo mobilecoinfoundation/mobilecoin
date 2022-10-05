@@ -1,0 +1,19 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- $peers := $.Values.consensusPeers }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart.fullname" . }}-config-watcher
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+data:
+  sources.toml: |
+{{- range $peers }}
+    [[sources]]
+    tx_source_url = "{{ .ledgerArchiveLocation }}"
+{{- if .loadBalanced }}
+    consensus_client_url = "mc://{{ .clientHostname }}:{{ .clientPort }}/?responder-id={{ $.Values.loadBalancedConsensusHostname }}:{{ $.Values.loadBalancedConsensusPort }}"
+{{- else }}
+    consensus_client_url = "mc://{{ .clientHostname }}:{{ .clientPort }}/"
+{{- end }}
+{{- end }}

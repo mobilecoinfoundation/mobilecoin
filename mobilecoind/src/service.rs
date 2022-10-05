@@ -592,7 +592,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
         let (amount, _blinding) = tx_out
-            .masked_amount
+            .get_masked_amount()
+            .map_err(|err| rpc_internal_error("tx_out.get_masked_amount", err, &self.logger))?
             .get_value(&shared_secret)
             .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
 
@@ -2142,7 +2143,7 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder, TxOutContext};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -3051,7 +3052,11 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, tx_confirmation) = transaction_builder
+        let TxOutContext {
+            tx_out,
+            confirmation,
+            ..
+        } = transaction_builder
             .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
 
@@ -3066,7 +3071,7 @@ mod test {
             receipt.set_tx_public_key(api::external::CompressedRistretto::from(&tx_out.public_key));
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(10);
-            receipt.set_confirmation_number(tx_confirmation.to_vec());
+            receipt.set_confirmation_number(confirmation.to_vec());
 
             let mut request = api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -3721,7 +3726,11 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                        tx_out
+                            .get_masked_amount()
+                            .unwrap()
+                            .get_value(&shared_secret)
+                            .ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
@@ -3806,7 +3815,11 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                        tx_out
+                            .get_masked_amount()
+                            .unwrap()
+                            .get_value(&shared_secret)
+                            .ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
@@ -4257,7 +4270,11 @@ mod test {
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret =
             get_tx_out_shared_secret(data.account_key.view_private_key(), &tx_public_key);
-        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        let (amount, _blinding) = tx_out
+            .get_masked_amount()
+            .unwrap()
+            .get_value(&shared_secret)
+            .unwrap();
         assert_eq!(amount.value, tx_proposal.outlays[0].value);
         assert_eq!(amount.token_id, Mob::ID);
 
@@ -4334,7 +4351,11 @@ mod test {
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
-        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        let (amount, _blinding) = tx_out
+            .get_masked_amount()
+            .unwrap()
+            .get_value(&shared_secret)
+            .unwrap();
         assert_eq!(amount.value, expected_value);
         assert_eq!(amount.token_id, Mob::ID);
     }
@@ -5282,7 +5303,8 @@ mod test {
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
 
                         let (amount, _blinding) = tx_out
-                            .masked_amount
+                            .get_masked_amount()
+                            .unwrap()
                             .get_value(&shared_secret)
                             .expect("Malformed amount");
 
@@ -5443,7 +5465,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
@@ -5556,7 +5578,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),

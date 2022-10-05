@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
-// The fallback code needs the unstable [thread_local] attribute
-#![cfg_attr(not(target_feature = "rdrand"), feature(thread_local))]
 
 pub extern crate rand_core;
 
@@ -10,12 +8,15 @@ pub use rand_core::{CryptoRng, RngCore};
 
 use cfg_if::cfg_if;
 
-// Not using cfg_attr( ..., path = fallback.rs) because it appears to confused
+// Not using cfg_attr( ..., path = fallback.rs) because it appears to confuse
 // rustfmt
 cfg_if! {
     if #[cfg(target_feature = "rdrand")] {
         mod rdrandrng;
         pub use rdrandrng::McRng;
+    } else if #[cfg(all(target_arch = "wasm32", target_os = "unknown"))] {
+        mod wasm;
+        pub use wasm::McRng;
     } else {
         mod fallback;
         pub use fallback::McRng;

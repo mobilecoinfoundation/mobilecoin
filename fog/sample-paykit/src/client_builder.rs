@@ -24,6 +24,7 @@ use std::sync::Arc;
 /// Builder object which helps to initialize the sample paykit
 pub struct ClientBuilder {
     // Required
+    chain_id: String,
     uri: ConsensusClientUri,
     key: AccountKey,
     logger: Logger,
@@ -51,6 +52,7 @@ pub struct ClientBuilder {
 impl ClientBuilder {
     /// Create a new client builder object
     pub fn new(
+        chain_id: String,
         uri: ConsensusClientUri,
         fog_view_address: FogViewUri,
         ledger_server_address: FogLedgerUri,
@@ -58,6 +60,7 @@ impl ClientBuilder {
         logger: Logger,
     ) -> Self {
         Self {
+            chain_id,
             uri,
             key,
             logger,
@@ -149,6 +152,7 @@ impl ClientBuilder {
         );
 
         let consensus_service_conn = ThickClient::new(
+            self.chain_id.clone(),
             self.uri.clone(),
             verifier,
             grpc_env.clone(),
@@ -165,7 +169,8 @@ impl ClientBuilder {
             fog_ingest_verifier
         );
 
-        let fog_report_conn = GrpcFogReportConnection::new(grpc_env, self.logger.clone());
+        let fog_report_conn =
+            GrpcFogReportConnection::new(self.chain_id.clone(), grpc_env, self.logger.clone());
 
         Client::new(
             consensus_service_conn,
@@ -191,6 +196,7 @@ impl ClientBuilder {
         log::debug!(self.logger, "Fog view attestation verifier: {:?}", verifier);
 
         FogViewGrpcClient::new(
+            self.chain_id.clone(),
             self.fog_view_address.clone(),
             self.grpc_retry_config,
             verifier,
@@ -219,6 +225,7 @@ impl ClientBuilder {
 
         (
             FogMerkleProofGrpcClient::new(
+                self.chain_id.clone(),
                 self.ledger_server_address.clone(),
                 self.grpc_retry_config,
                 verifier.clone(),
@@ -226,6 +233,7 @@ impl ClientBuilder {
                 self.logger.clone(),
             ),
             FogKeyImageGrpcClient::new(
+                self.chain_id.clone(),
                 self.ledger_server_address.clone(),
                 self.grpc_retry_config,
                 verifier,
@@ -255,7 +263,8 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+                .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_consensus_enclave_measurement::get_mr_signer_verifier(None)
@@ -274,7 +283,9 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier.allow_hardening_advisories(
+                mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES,
+            );
             mr_signer_verifier
         } else {
             mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None)
@@ -293,7 +304,9 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier.allow_hardening_advisories(
+                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
+            );
             mr_signer_verifier
         } else {
             mc_fog_ledger_enclave_measurement::get_mr_signer_verifier(None)
@@ -312,7 +325,8 @@ impl ClientBuilder {
                 signature.product_id(),
                 signature.version(),
             );
-            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+                .allow_hardening_advisories(mc_fog_view_enclave_measurement::HARDENING_ADVISORIES);
             mr_signer_verifier
         } else {
             mc_fog_view_enclave_measurement::get_mr_signer_verifier(None)

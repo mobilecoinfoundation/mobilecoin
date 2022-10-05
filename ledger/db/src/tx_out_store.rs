@@ -783,14 +783,13 @@ pub mod tx_out_store_tests {
     use lmdb::{Environment, RoTransaction, RwTransaction, Transaction};
     use mc_account_keys::AccountKey;
     use mc_common::Hash;
-    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
     use mc_transaction_core::{
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::{hash_leaf, hash_nodes, Range, NIL_HASH},
-        onetime_keys::*,
         tokens::Mob,
         tx::TxOut,
-        Amount, MaskedAmount, MemoPayload, Token,
+        Amount, BlockVersion, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -827,23 +826,16 @@ pub mod tx_out_store_tests {
         let token_id = Mob::ID;
 
         for _i in 0..num_tx_outs {
-            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-            let target_key =
-                create_tx_out_target_key(&tx_private_key, &recipient_account.default_subaddress());
-            let public_key = create_tx_out_public_key(
-                &tx_private_key,
-                recipient_account.default_subaddress().spend_public_key(),
-            );
-            let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_private_key);
             let amount = Amount { value, token_id };
-            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
-            let tx_out = TxOut {
-                masked_amount,
-                target_key: target_key.into(),
-                public_key: public_key.into(),
-                e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
-                e_memo: Some(MemoPayload::default().encrypt(&shared_secret)),
-            };
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let tx_out = TxOut::new(
+                BlockVersion::MAX,
+                amount,
+                &recipient_account.default_subaddress(),
+                &tx_private_key,
+                EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
+            )
+            .unwrap();
             tx_outs.push(tx_out);
         }
         tx_outs

@@ -52,6 +52,7 @@ use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
     derive_serde_from_repr_bytes,
 };
+use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use zeroize::Zeroize;
 
@@ -224,7 +225,7 @@ derive_prost_message_from_repr_bytes!(MemoPayload);
 derive_debug_and_display_hex_from_as_ref!(MemoPayload);
 
 /// An error which can occur when handling memos
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
 pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),

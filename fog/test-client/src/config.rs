@@ -23,6 +23,10 @@ use std::{path::PathBuf, time::Duration};
     version
 )]
 pub struct TestClientConfig {
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// A URI to host the prometheus data at.
     ///
     /// Prometheus data includes number of successes and failure, and histograms

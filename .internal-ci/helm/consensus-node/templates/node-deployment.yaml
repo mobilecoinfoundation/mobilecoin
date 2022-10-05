@@ -1,0 +1,206 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "consensusNode.fullname" . }}
+  labels:
+    app: consensus-node
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: consensus-node
+      {{- include "consensusNode.selectorLabels" . | nindent 6 }}
+      {{- if .Values.loadBalancedNode }}
+      client-load-balanced: 'true'
+      {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.node.podAnnotations | nindent 8 }}
+      labels:
+        app: consensus-node
+        {{- include "consensusNode.labels" . | nindent 8 }}
+        {{- if .Values.loadBalancedNode }}
+        client-load-balanced: 'true'
+        {{- end }}
+    spec:
+      # Try to balance pods across zones
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match app and helm chart version
+            app: consensus-node
+            helm.sh/chart: {{ include "consensusNode.chart" . }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                # match all consensus-nodes deployed by the same chart version
+                app: consensus-node
+                helm.sh/chart: {{ include "consensusNode.chart" . }}
+      nodeSelector:
+        {{- toYaml .Values.node.nodeSelector | nindent 8 }}
+      tolerations:
+      {{- toYaml .Values.node.tolerations | nindent 6 }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      {{- if .Values.node.initContainers }}
+      initContainers:
+      {{- tpl (toYaml .Values.node.initContainers) . | nindent 6 }}
+      {{- end }}
+      containers:
+      - name: node
+        image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        ports:
+        - name: cns-client
+          containerPort: 3223
+        - name: cns-port
+          containerPort: 8443
+        - name: cns-mgmt
+          containerPort: 8000
+        livenessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 3
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 2
+          periodSeconds: 10
+        startupProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 120
+          periodSeconds: 30
+          initialDelaySeconds: 30
+        envFrom:
+        - secretRef:
+            name: {{ include "consensusNode.ledgerDistribution.secret.name" . }}
+        - secretRef:
+            name: {{ include "consensusNode.msgSignerKey.secret.name" . }}
+        - secretRef:
+            name: ias
+        - configMapRef:
+            name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
+        env:
+        - name: PATH
+          value: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64'
+        - name: RUST_BACKTRACE
+          value: '1'
+        - name: RUST_LOG
+          value: 'info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn'
+        - name: CONSENSUS_SERVICE_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: consensus-sentry-dsn
+        - name: LEDGER_DISTRIBUTION_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: ledger-distribution-sentry-dsn
+        - name: MC_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: MC_CHAIN_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        volumeMounts:
+        - name: sealed-signing-key
+          mountPath: /sealed
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: config-dir
+          mountPath: /config
+        - name: ledger-db-dir
+          mountPath: /ledger
+        - name: keys-dir
+          mountPath: /keys
+        - name: node-cert
+          mountPath: /certs
+          readOnly: true
+        resources:
+          {{- toYaml .Values.node.resources | nindent 10}}
+      {{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5775
+          name: zk-compact-trft
+          protocol: UDP
+        - containerPort: 5778
+          name: config-rest
+          protocol: TCP
+        - containerPort: 6831
+          name: jg-compact-trft
+          protocol: UDP
+        - containerPort: 6832
+          name: jg-binary-trft
+          protocol: UDP
+        - containerPort: 14271
+          name: admin-http
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        args:
+        - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+        - --reporter.type=grpc
+        - --agent.tags=cluster=undefined,container.name=node,deployment.name={{ include "consensusNode.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+      {{- end }}
+      volumes:
+      - name: sealed-signing-key
+        emptyDir: {}
+      - name: keys-dir
+        emptyDir: {}
+      - name: aesm-socket-dir
+        emptyDir: {}
+      - name: config-dir
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "consensusNode.networkConfig.configMap.name" . }}
+          - configMap:
+              name: {{ include "consensusNode.tokensConfig.configMap.name" . }}
+      - name: node-cert
+        secret:
+          secretName: {{ include "consensusNode.fullname" . }}-internal-tls
+      - name: ledger-db-dir
+        {{- if eq .Values.node.persistence.enabled true }}
+        persistentVolumeClaim:
+          claimName: {{ include "consensusNode.fullname" . }}-data
+        {{- else }}
+        emptyDir: {}
+        {{- end }}

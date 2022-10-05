@@ -8,7 +8,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
@@ -20,19 +20,8 @@ use crate::{
     Commitment, CompressedCommitment,
 };
 
-/// A trait which implies RNGCore and CryptoRng
-///
-/// This is needed because &mut (dyn RngCore + CryptoRng) is not valid in rust
-/// right now and we need this to make the ring signer trait work as desired
-//
-// Note: This trait can go away if it is upstreamed to rand-core:
-// https://github.com/rust-random/rand/pull/1230
-pub trait CryptoRngCore: RngCore + CryptoRng {}
-
-impl<T> CryptoRngCore for T where T: RngCore + CryptoRng {}
-
 /// A reduced representation of a TxOut, appropriate for making MLSAG
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ReducedTxOut {
     /// The tx_out.public_key field
     pub public_key: CompressedRistrettoPublic,
@@ -373,7 +362,7 @@ mod mlsag_tests {
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
+    use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
 
     #[derive(Clone)]

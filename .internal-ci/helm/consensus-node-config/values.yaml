@@ -1,0 +1,61 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+### Set fullnameOverride to match the consensus-node release name.
+#   example consensus-node-1
+fullnameOverride: ''
+
+### This node's specific values
+node:
+  ### This node's client fully qualified domain name.
+  client:
+    hostname: ''
+  ### This node's peer fully qualified domain name.
+  #   maps to
+  peer:
+    hostname: ''
+
+  ### S3 bucket for thin node's ledger
+  txSourceUrl: ''
+
+  ### This nodes's Message Signing Key
+  msgSignerKey:
+     privateKey: ''
+
+### Values that will be shared by all nodes, but generate a unique k8s objects per node.
+global:
+  node:
+    ### Node configuration settings
+    nodeConfig:
+      ### Block version - set to upgrade block version.
+      blockVersion: 0
+
+    ### Ledger distribution settings. The default for awsPath is auto-generated based on
+    #   this values, but can be overridden.
+    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/master/ledger/distribution
+    ledgerDistribution:
+      awsAccessKeyId: ''
+      awsSecretAccessKey: ''
+      awsRegion: ''
+      s3Bucket: ''
+      awsPath: '{{ include "consensusNodeConfig.ledgerDistributionAWSPath" . }}'
+      startFrom: last
+
+    ### Network config list of settings to generate the network.toml file.
+    #   You can list all the peers here. When we generate the node's config we
+    #   will skip the the local node.
+    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/master/consensus/service
+    networkConfig:
+      threshold: ''
+      peers: {}
+      ### Needs to be a map so we can override a specific entry.
+      #   The keys names don't really matter.
+      # 1:
+      #   peer:
+      #     hostname: peer1.test.example.com
+      #     port: '443'
+      #   signerPublicKey: public-key
+      #   ledgerArchiveLocation: https://s3-location-hostname/ledger/peer1.test.example.com
+
+    # json formatted tokens configuration file. see consensus/service/config/src/tokens.rs
+    # Add signed tokens.json with --set-file=global.node.tokensConfig.tokensSignedJson=tokens.signed.json
+    # tokensConfig:
+    #   tokensSignedJson: |-

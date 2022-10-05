@@ -10,6 +10,14 @@ use std::path::PathBuf;
 /// Configuration.
 #[derive(Debug, Parser)]
 struct Config {
+    /// Output path.
+    #[clap(long, short, default_value = "ledger", env = "MC_OUTPUT_DIR")]
+    pub output_dir: PathBuf,
+
+    /// Keys path.
+    #[clap(long, default_value = "keys", env = "MC_KEYS_DIR")]
+    pub keys_dir: PathBuf,
+
     /// Number of transactions per key to generate
     #[clap(long, short, default_value = "100", env = "MC_TXS")]
     pub txs: usize,
@@ -37,19 +45,24 @@ struct Config {
 }
 
 fn main() {
-    let config = Config::parse();
-
     mc_common::setup_panic_handler();
     let logger = create_root_logger();
 
+    let config = Config::parse();
+
     // Read user public keys from disk
-    let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
-        .expect("Could not read default pubfiles from ./keys");
+    let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles(&config.keys_dir)
+        .unwrap_or_else(|err| {
+            panic!(
+                "Could not read default pubfiles from {:?}: {:?}",
+                config.keys_dir, err
+            )
+        });
     assert!(!pub_addrs.is_empty());
 
     // Bootstrap the ledger db
     mc_util_generate_sample_ledger::bootstrap_ledger(
-        &PathBuf::from("ledger"),
+        &config.output_dir,
         &pub_addrs,
         config.txs,
         config.blocks,

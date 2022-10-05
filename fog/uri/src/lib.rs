@@ -139,8 +139,6 @@ pub type FogIngestUri = Uri<FogIngestScheme>;
 pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// Uri used when talking to fog view router admin service.
 pub type FogViewRouterAdminUri = Uri<FogViewRouterAdminScheme>;
-/// Uri used when talking to fog ledger store service.
-pub type KeyImageStoreUri = Uri<KeyImageStoreScheme>;
 /// Uri used when talking to fog view router service.
 pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
 /// Uri used when talking to fog view store service.

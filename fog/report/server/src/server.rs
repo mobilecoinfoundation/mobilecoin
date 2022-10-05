@@ -22,6 +22,7 @@ impl Server {
     /// Construct a new server object.
     pub fn new(
         db: impl ReportDb + Clone + Send + Sync + 'static,
+        chain_id: String,
         client_listen_uri: &FogUri,
         materials: Materials,
         logger: Logger,
@@ -33,7 +34,7 @@ impl Server {
         );
 
         let report_service =
-            report_grpc::create_report_api(Service::new(db, materials, logger.clone()));
+            report_grpc::create_report_api(Service::new(chain_id, db, materials, logger.clone()));
         log::debug!(logger, "Constructed Report GRPC Service");
 
         // Health check service

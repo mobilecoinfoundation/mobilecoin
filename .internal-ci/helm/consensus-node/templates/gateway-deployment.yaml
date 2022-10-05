@@ -1,0 +1,36 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-gateway-{{ include "consensusNode.fullname" . }}
+  labels:
+    app: grpc-gateway
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grpc-gateway
+      {{- include "consensusNode.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: grpc-gateway
+        {{- include "consensusNode.labels" . | nindent 8 }}
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.grpcGateway.nodeSelector | nindent 8 }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      containers:
+      - name: grpc-gateway
+        image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: IfNotPresent
+        command: 
+        - /usr/bin/go-grpc-gateway
+        - -grpc-server-endpoint={{ include "consensusNode.clientHostname" . }}:443
+        - -http-server-listen=:8000
+        - -logtostderr
+        ports:
+        - name: gateway
+          containerPort: 8000

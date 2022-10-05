@@ -151,7 +151,7 @@ fn generate_tx_out_record_data() -> TxOutRecordData {
         );
         assert_eq!(
             tx_out_record.get_fog_tx_out().unwrap(),
-            FogTxOut::from(&tx_outs_for_recipient[idx])
+            FogTxOut::try_from(&tx_outs_for_recipient[idx]).unwrap()
         );
         tx_out_records.push(tx_out_record);
     }

@@ -87,6 +87,9 @@ pub enum Error {
 
     /// Block metadata is required at this block version
     BlockMetadataRequired,
+
+    /// Missing masked amonut
+    MissingMaskedAmount,
 }
 
 impl From<lmdb::Error> for Error {

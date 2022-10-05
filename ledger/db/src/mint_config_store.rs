@@ -28,8 +28,8 @@ use mc_util_serial::{decode, encode, Message};
 // LMDB Database names.
 pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
-pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
-    "mint_config_store:block_index_by_mint_config_tx_nonce";
+pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME: &str =
+    "mint_config_store:block_index_by_mint_config_tx_nonce_and_token_id";
 pub const VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str =
     "mint_config_store:validated_mint_config_txs_by_block";
 
@@ -190,7 +190,7 @@ pub struct MintConfigStore {
     active_mint_configs_by_token_id: Database,
 
     /// nonce -> block index
-    block_index_by_mint_config_tx_nonce: Database,
+    block_index_by_mint_config_tx_nonce_and_token_id: Database,
 
     /// block_index -> ValidatedMintConfigTxList
     validated_mint_config_txs_by_block: Database,
@@ -202,8 +202,9 @@ impl MintConfigStore {
         Ok(MintConfigStore {
             active_mint_configs_by_token_id: env
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
-            block_index_by_mint_config_tx_nonce: env
-                .open_db(Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME))?,
+            block_index_by_mint_config_tx_nonce_and_token_id: env.open_db(Some(
+                BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME,
+            ))?,
             validated_mint_config_txs_by_block: env
                 .open_db(Some(VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
@@ -216,7 +217,7 @@ impl MintConfigStore {
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME),
+            Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_AND_TOKEN_ID_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         env.create_db(
@@ -252,38 +253,51 @@ impl MintConfigStore {
         for validated_mint_config_tx in validated_mint_config_txs {
             let mint_config_tx = &validated_mint_config_tx.mint_config_tx;
 
-            // All mint configurations must have the same token id.
-            if mint_config_tx
-                .prefix
-                .configs
-                .iter()
-                .any(|mint_config| mint_config.token_id != mint_config_tx.prefix.token_id)
-            {
-                return Err(Error::InvalidMintConfig(
-                    "All mint configurations must have the same token id".to_string(),
-                ));
-            }
+            MintConfigStore::check_mint_config(mint_config_tx)?;
 
-            // MintConfigs -> ActiveMintConfigs
-            let active_mint_configs = ActiveMintConfigs::from(mint_config_tx);
-
-            // Store in database
-            db_transaction.put(
-                self.block_index_by_mint_config_tx_nonce,
-                &mint_config_tx.prefix.nonce,
-                &block_index_bytes,
-                //  ensures we do not overwrite a nonce that was already used
-                WriteFlags::NO_OVERWRITE,
+            self.write_block_index_by_nonce_and_token_id(
+                mint_config_tx,
+                db_transaction,
+                block_index_bytes,
             )?;
 
-            db_transaction.put(
-                self.active_mint_configs_by_token_id,
-                &u64_to_key_bytes(mint_config_tx.prefix.token_id),
-                &encode(&active_mint_configs),
-                WriteFlags::empty(),
-            )?;
+            self.write_active_mint_configs_by_token_id(mint_config_tx, db_transaction)?;
         }
 
+        Ok(())
+    }
+
+    pub fn write_block_index_by_nonce_and_token_id(
+        &self,
+        mint_config_tx: &MintConfigTx,
+        db_transaction: &mut RwTransaction,
+        block_index_bytes: [u8; 8],
+    ) -> Result<(), Error> {
+        let mut combined_nonce_and_token_id = mint_config_tx.prefix.nonce.clone();
+        combined_nonce_and_token_id
+            .extend_from_slice(&u64_to_key_bytes(mint_config_tx.prefix.token_id));
+        db_transaction.put(
+            self.block_index_by_mint_config_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+            &block_index_bytes,
+            //  ensures we do not overwrite a nonce that was already used
+            WriteFlags::NO_OVERWRITE,
+        )?;
+        Ok(())
+    }
+
+    fn write_active_mint_configs_by_token_id(
+        &self,
+        mint_config_tx: &MintConfigTx,
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        let active_mint_configs = ActiveMintConfigs::from(mint_config_tx);
+        db_transaction.put(
+            self.active_mint_configs_by_token_id,
+            &u64_to_key_bytes(mint_config_tx.prefix.token_id),
+            &encode(&active_mint_configs),
+            WriteFlags::empty(),
+        )?;
         Ok(())
     }
 
@@ -412,14 +426,33 @@ impl MintConfigStore {
 
     pub fn check_mint_config_tx_nonce(
         &self,
+        token_id: u64,
         nonce: &[u8],
         db_transaction: &impl Transaction,
     ) -> Result<Option<BlockIndex>, Error> {
-        match db_transaction.get(self.block_index_by_mint_config_tx_nonce, &nonce) {
+        let combined_nonce_and_token_id = [nonce, &u64_to_key_bytes(token_id)].concat();
+        match db_transaction.get(
+            self.block_index_by_mint_config_tx_nonce_and_token_id,
+            &combined_nonce_and_token_id,
+        ) {
             Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
             Err(lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(Error::Lmdb(e)),
         }
+    }
+
+    pub fn check_mint_config(mint_config_tx: &MintConfigTx) -> Result<(), Error> {
+        if mint_config_tx
+            .prefix
+            .configs
+            .iter()
+            .any(|mint_config| mint_config.token_id != mint_config_tx.prefix.token_id)
+        {
+            return Err(Error::InvalidMintConfig(
+                "All mint configurations must have the same token id".to_string(),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -522,7 +555,8 @@ pub mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
-        let mut test_tx_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
+        let mut test_tx_2 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let mut test_tx_tkn_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -536,6 +570,7 @@ pub mod tests {
             db_transaction.commit().unwrap();
         }
 
+        // Retrying the same transaction should fail
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
@@ -548,18 +583,32 @@ pub mod tests {
             );
             db_transaction.commit().unwrap();
         }
-
+        // Retrying with the same nonce for the same token_id should fail.
         test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
                 mint_config_store.write_validated_mint_config_txs(
                     2,
-                    &[to_validated(&test_tx_1)],
+                    &[to_validated(&test_tx_2)],
                     &mut db_transaction
                 ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
             );
+            db_transaction.commit().unwrap();
+        }
+
+        // Using the same nonce with different token_id should succeed.
+        test_tx_tkn_2.prefix.nonce = test_tx_1.prefix.nonce;
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    3,
+                    &[to_validated(&test_tx_tkn_2)],
+                    &mut db_transaction,
+                )
+                .unwrap();
             db_transaction.commit().unwrap();
         }
 
@@ -569,7 +618,7 @@ pub mod tests {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
                 .write_validated_mint_config_txs(
-                    3,
+                    4,
                     &[to_validated(&test_tx_2)],
                     &mut db_transaction,
                 )
@@ -1326,8 +1375,9 @@ pub mod tests {
         let token_id2 = TokenId::from(2);
 
         let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
-        let test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
+        let mut test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
         let test_tx_3 = create_mint_config_tx(token_id2, &mut rng);
+        test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -1345,19 +1395,26 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
-                Ok(Some(0)),
-            );
-
-            assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &test_tx_1.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
                 mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_2.prefix.nonce,
+                    &db_transaction
+                ),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
                     &test_tx_2.prefix.nonce[0..test_tx_2.prefix.nonce.len() - 1],
                     &db_transaction
                 ),
@@ -1365,13 +1422,20 @@ pub mod tests {
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_3.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(None),
             );
 
             assert_eq!(
-                mint_config_store.check_mint_config_tx_nonce(&[1, 2, 3], &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &[1, 2, 3],
+                    &db_transaction
+                ),
                 Ok(None),
             );
         }
@@ -1392,20 +1456,29 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id1,
+                    &test_tx_1.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_2.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(0)),
             );
 
             assert_eq!(
-                mint_config_store
-                    .check_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                mint_config_store.check_mint_config_tx_nonce(
+                    *token_id2,
+                    &test_tx_3.prefix.nonce,
+                    &db_transaction
+                ),
                 Ok(Some(1)),
             );
         }

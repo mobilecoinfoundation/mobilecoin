@@ -94,6 +94,8 @@ pub fn bootstrap_ledger(
         });
     }
 
+    log::info!(logger, "Wrote LedgerDB to {:?}", path);
+
     // Write conf.json
     let mut file = std::fs::File::create("conf.json").expect("File creation");
     use std::io::Write;

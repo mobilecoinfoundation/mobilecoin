@@ -1,0 +1,50 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fogServices.fullname" . }}-fog-ledger-http
+  labels:
+    app: fog-ledger
+    {{- include "fogServices.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.global.certManagerClusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
+    {{- end }}
+    {{ toYaml (tpl .Values.fogLedger.ingress.http.annotations . | fromYaml)| nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ include "fogServices.fogPublicFQDN" . }}
+    secretName: {{ include "fogServices.fogPublicFQDN" . }}-fog-tls
+  rules:
+  - host: {{ include "fogServices.fogPublicFQDN" . }}
+    http:
+      paths:
+      - path: /gw/fog_ledger.FogBlockAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" . }}-fog-ledger
+            port:
+              number: 8228
+      - path: /gw/fog_ledger.FogKeyImageAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" . }}-fog-ledger
+            port:
+              number: 8228
+      - path: /gw/fog_ledger.FogMerkleProofAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" . }}-fog-ledger
+            port:
+              number: 8228
+      - path: /gw/fog_ledger.FogUntrustedTxOutApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" . }}-fog-ledger
+            port:
+              number: 8228

@@ -7,7 +7,7 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
-use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -17,6 +17,10 @@ use std::{str::FromStr, time::Duration};
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
 pub struct MobileAcctViewConfig {
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// The ID with which to respond to client attestation requests.
     ///
     /// This ID needs to match the host:port clients use in their URI when
@@ -94,6 +98,72 @@ impl FromStr for ShardingStrategy {
 
         Err("Invalid sharding strategy config.".to_string())
     }
+}
+
+/// A FogViewServer can either fulfill client requests directly or fulfill Fog
+/// View Router requests, and these types of servers use different URLs.
+#[derive(Clone, Serialize)]
+pub enum ClientListenUri {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    ClientFacing(FogViewUri),
+    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    Store(FogViewStoreUri),
+}
+
+impl FromStr for ClientListenUri {
+    type Err = String;
+    fn from_str(input: &str) -> Result<Self, String> {
+        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
+            return Ok(ClientListenUri::ClientFacing(fog_view_uri));
+        }
+        if let Ok(fog_view_store_uri) = FogViewStoreUri::from_str(input) {
+            return Ok(ClientListenUri::Store(fog_view_store_uri));
+        }
+
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
+    }
+}
+
+/// Configuration parameters for the Fog View Router.
+#[derive(Clone, Parser, Serialize)]
+#[clap(version)]
+pub struct FogViewRouterConfig {
+    /// The ID with which to respond to client attestation requests.
+    ///
+    /// This ID needs to match the host:port clients use in their URI when
+    /// referencing this node.
+    #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
+    pub client_responder_id: ResponderId,
+
+    /// gRPC listening URI for client requests.
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
+    pub client_listen_uri: FogViewRouterUri,
+
+    /// PEM-formatted keypair to send with an Attestation Request.
+    #[clap(long, env = "MC_IAS_API_KEY")]
+    pub ias_api_key: String,
+
+    /// The IAS SPID to use when getting a quote
+    #[clap(long, env = "MC_IAS_SPID")]
+    pub ias_spid: ProviderId,
+
+    // TODO: Add shard uris which are of type Vec<FogViewStoreUri>.
+    /// The capacity to build the OMAP (ORAM hash table) with.
+    /// About 75% of this capacity can be used.
+    /// The hash table will overflow when there are more TxOut's than this,
+    /// and the server will have to be restarted with a larger number.
+    ///
+    /// Note: At time of writing, the hash table will be allocated to use all
+    /// available SGX EPC memory, and then beyond that it will be allocated on
+    /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
+    /// you will either get killed by OOM killer, or it will start being swapped
+    /// to disk by linux kernel.
+    #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
+    pub omap_capacity: u64,
+
+    /// Router admin listening URI.
+    #[clap(long)]
+    pub admin_listen_uri: FogViewRouterAdminUri,
 }
 
 /// A FogViewServer can either fulfill client requests directly or fulfill Fog

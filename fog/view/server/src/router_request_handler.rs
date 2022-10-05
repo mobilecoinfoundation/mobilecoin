@@ -7,7 +7,7 @@ use crate::{
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_common::{logger::Logger, ResponderId};
 use mc_fog_api::{
     view::{
@@ -105,7 +105,7 @@ async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>> = BTreeMap::new();
+    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
@@ -233,7 +233,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     logger: Logger,
 ) -> Result<(), RouterServerError> {
     let view_store_id = view_store_url.responder_id()?;
-    let client_auth_request = enclave.view_store_init(view_store_id.clone())?;
+    let nonce_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("authenticate-view-store".to_string())
@@ -243,10 +243,10 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
         ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_store_url, &logger),
     );
 
-    let auth_unary_receiver = view_store_client.auth_async(&client_auth_request.into())?;
-    let auth_response = auth_unary_receiver.await?;
+    let auth_unary_receiver = view_store_client.auth_async(&nonce_auth_request.into())?;
+    let nonce_auth_response = auth_unary_receiver.await?;
 
-    let result = enclave.view_store_connect(view_store_id, auth_response.into())?;
+    let result = enclave.view_store_connect(view_store_id, nonce_auth_response.into())?;
 
     Ok(result)
 }

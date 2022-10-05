@@ -1,0 +1,48 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.mobilecoind
+#
+# Runtime image for mobilecoind service.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+# Copy binaries
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/mobilecoind /usr/bin/
+COPY ${RUST_BIN_PATH}/mobilecoind-json /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
+COPY ${RUST_BIN_PATH}/libingest-enclave.css /enclaves/libingest-enclave.css
+
+# mint-auditor
+# CBB: maybe a standalone service with a embedded mobilecoind?
+COPY ${RUST_BIN_PATH}/mc-mint-auditor /usr/bin
+
+# Add attest test_certs
+COPY attest/test_certs/ /var/lib/mobilecoin/attest/test_certs
+
+# Entrypoint
+# COPY docker/entrypoints/mobilecoind.sh /usr/bin/entrypoint.sh
+# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+# Rust defaults
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn"
+ENV RUST_LOG_STYLE="never"
+
+# App paths (TODO make volumes and clean up)
+ARG NODE_LEDGER_DIR="/var/lib/mobilecoin/ledger"
+ARG MOBILECOIND_DB_DIR="/var/lib/mobilecoin/mobilecoind_db"
+ENV NODE_LEDGER_DIR=${NODE_LEDGER_DIR}
+ENV MOBILECOIND_DB_DIR=${MOBILECOIND_DB_DIR}
+ENV MC_FOG_INGEST_ENCLAVE_CSS="/enclaves/libingest-enclave.css"
+
+# Default Ports
+# GRPC Client
+EXPOSE 3229
+# JSON Client
+EXPOSE 9090
+
+# mint-auditor grpc client
+EXPOSE 7774

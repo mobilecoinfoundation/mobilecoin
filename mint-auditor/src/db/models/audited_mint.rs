@@ -69,10 +69,20 @@ impl AuditedMint {
                         eth_tx_hash, nonce_hex,
                     )));
                 }
+                let token = config
+                    .get_token_by_eth_contract_addr(deposit.token_addr())
+                    .ok_or_else(|| {
+                        Error::EthereumTokenNotAudited(
+                            deposit.token_addr().clone(),
+                            deposit.safe_addr().clone(),
+                            *deposit.eth_tx_hash(),
+                        )
+                    })?;
 
                 // See if we can find a MintTx that matches the expected nonce and has not been
                 // associated with a deposit.
-                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce(
+                let mint_tx = MintTx::find_unaudited_mint_tx_by_nonce_and_token_id(
+                    token.token_id,
                     deposit.expected_mc_mint_tx_nonce_hex(),
                     conn,
                 )?
@@ -134,14 +144,17 @@ impl AuditedMint {
             transaction(conn, |conn| -> Result<GnosisSafeDeposit, Error> {
                 // Currently we only support 1:1 mapping between deposits and mints, so ensure
                 // that there isn't already a match for this mint.
-                let existing_match = audited_mints::table
+                let existing_match: Option<(String, String)> = audited_mints::table
+                    .inner_join(mint_txs::table)
+                    .inner_join(gnosis_safe_deposits::table)
+                    .select((mint_txs::nonce_hex, gnosis_safe_deposits::eth_tx_hash))
                     .filter(audited_mints::mint_tx_id.eq(mint_tx_id))
-                    .first::<AuditedMint>(conn)
+                    .first(conn)
                     .optional()?;
-                if let Some(existing_match) = existing_match {
+                if let Some((nonce_hex, eth_tx_hash)) = existing_match {
                     return Err(Error::AlreadyExists(format!(
-                        "MintTx id={} already matched with gnosis_safe_deposit_id={}",
-                        existing_match.mint_tx_id, existing_match.gnosis_safe_deposit_id,
+                        "MintTx nonce={} already matched with GnosisSafeDeposit eth_tx_hash={}",
+                        nonce_hex, eth_tx_hash,
                     )));
                 }
 
@@ -273,6 +286,35 @@ impl AuditedMint {
 
         Ok(())
     }
+
+    /// Get paginated list of audited mints
+    pub fn list_with_mint_and_deposit(
+        offset: Option<u64>,
+        limit: Option<u64>,
+        conn: &Conn,
+    ) -> Result<Vec<(AuditedMint, MintTx, GnosisSafeDeposit)>, Error> {
+        let mut query = audited_mints::table
+            .into_boxed()
+            .inner_join(mint_txs::table)
+            .inner_join(gnosis_safe_deposits::table);
+
+        if let Some(o) = offset {
+            query = query.offset(o as i64);
+        }
+
+        if let Some(l) = limit {
+            query = query.limit(l as i64);
+        }
+
+        Ok(query
+            .order_by(audited_mints::id)
+            .select((
+                audited_mints::all_columns,
+                mint_txs::all_columns,
+                gnosis_safe_deposits::all_columns,
+            ))
+            .load(conn)?)
+    }
 }
 
 #[cfg(test)]
@@ -355,7 +397,8 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
+        // 3 attempts to match returned not found errors, which register as as a
+        // mismatch.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
@@ -471,21 +514,20 @@ mod tests {
         insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
 
         config.tokens[0].token_id = TokenId::from(123);
-
-        assert!(matches!(
-            AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn),
-            Err(Error::DepositAndMintMismatch(_))
-        ));
-
+        let result = AuditedMint::try_match_deposit_with_mint(&deposit, &config, &conn);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(Error::NotFound)));
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
 
-        // Mismatch counter was incremented
+        // Mismatch counter was not incremented. This results in an additional unaudited
+        // mint, but we cannot distinguish this as a mismatched mint or a nonce
+        // collision for a mint on a different token.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
                 .num_mismatching_mints_and_deposits(),
-            1
+            0
         );
     }
 
@@ -577,7 +619,6 @@ mod tests {
             Err(Error::AlreadyExists(_))
         ));
 
-        // No mismatching pairs were found.
         assert_eq!(
             Counters::get(&conn)
                 .unwrap()
@@ -645,6 +686,13 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(
+            Counters::get(&conn)
+                .unwrap()
+                .num_unexpected_errors_matching_mints_to_deposits(),
+            1
+        );
     }
 
     #[test_with_logger]
@@ -669,6 +717,8 @@ mod tests {
 
         // Check that nothing was written to the `audited_mints` table
         assert_audited_mints_table_is_empty(&conn);
+
+        assert_eq!(Counters::get(&conn).unwrap().num_mints_to_unknown_safe(), 1);
     }
 
     #[test_with_logger]
@@ -731,5 +781,41 @@ mod tests {
                 .num_unknown_ethereum_token_deposits(),
             1
         );
+    }
+
+    #[test_with_logger]
+    fn test_list_audited_mints(logger: Logger) {
+        let config = &test_gnosis_config();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
+        let test_db_context = TestDbContext::default();
+        let mint_auditor_db = test_db_context.get_db_instance(logger.clone());
+        let conn = mint_auditor_db.get_conn().unwrap();
+
+        let mut deposits: Vec<GnosisSafeDeposit> = vec![];
+        let mut mints: Vec<MintTx> = vec![];
+
+        for _ in 0..10 {
+            let mut deposit = create_gnosis_safe_deposit(100, &mut rng);
+            deposits.push(deposit.clone());
+            insert_gnosis_deposit(&mut deposit, &conn);
+            let mint = insert_mint_tx_from_deposit(&deposit, &conn, &mut rng);
+            mints.push(mint.clone());
+            AuditedMint::try_match_mint_with_deposit(&mint, config, &conn).unwrap();
+        }
+
+        let all_audited_mints = AuditedMint::list_with_mint_and_deposit(None, None, &conn).unwrap();
+        assert_eq!(all_audited_mints.len(), 10);
+
+        let (_audited_mint, mint_tx, deposit) = &all_audited_mints[0];
+        assert_eq!(*mint_tx, mints[0]);
+        assert_eq!(deposit.eth_tx_hash(), deposits[0].eth_tx_hash());
+
+        let paginated_mints =
+            AuditedMint::list_with_mint_and_deposit(Some(4), Some(3), &conn).unwrap();
+        assert_eq!(paginated_mints.len(), 3);
+        let (audited_mint, _mint_tx, _deposit) = &paginated_mints[0];
+        assert_eq!(audited_mint.id.unwrap(), 5);
+        let (audited_mint, _mint_tx, _deposit) = &paginated_mints[2];
+        assert_eq!(audited_mint.id.unwrap(), 7);
     }
 }

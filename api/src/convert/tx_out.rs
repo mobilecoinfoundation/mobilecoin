@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::TxOut
 
 use crate::{external, ConversionError};
@@ -9,8 +11,7 @@ impl From<&tx::TxOut> for external::TxOut {
     fn from(source: &tx::TxOut) -> Self {
         let mut tx_out = external::TxOut::new();
 
-        let masked_amount = external::MaskedAmount::from(&source.masked_amount);
-        tx_out.set_masked_amount(masked_amount);
+        tx_out.masked_amount = source.masked_amount.as_ref().map(Into::into);
 
         let target_key_bytes = source.target_key.as_bytes().to_vec();
         tx_out.mut_target_key().set_data(target_key_bytes);
@@ -36,7 +37,11 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
-        let masked_amount = MaskedAmount::try_from(source.get_masked_amount())?;
+        let oneof_masked_amount = source
+            .masked_amount
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?;
+        let masked_amount = Some(MaskedAmount::try_from(oneof_masked_amount)?);
 
         let target_key_bytes: &[u8] = source.get_target_key().get_data();
         let target_key: CompressedRistrettoPublic = RistrettoPublic::try_from(target_key_bytes)
@@ -75,11 +80,8 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use generic_array::GenericArray;
-    use mc_crypto_keys::RistrettoPublic;
-    use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, MaskedAmount, Token,
-    };
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, PublicAddress, Token};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -92,14 +94,14 @@ mod tests {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
-        let source = tx::TxOut {
-            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
-                .unwrap(),
-            target_key: RistrettoPublic::from_random(&mut rng).into(),
-            public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
-            e_memo: None,
-        };
+        let source = tx::TxOut::new(
+            BlockVersion::ZERO,
+            amount,
+            &PublicAddress::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+        )
+        .unwrap();
 
         let converted = external::TxOut::from(&source);
 
@@ -116,14 +118,14 @@ mod tests {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
-        let source = tx::TxOut {
-            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
-                .unwrap(),
-            target_key: RistrettoPublic::from_random(&mut rng).into(),
-            public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
-            e_memo: Some((*GenericArray::from_slice(&[9u8; 66])).into()),
-        };
+        let source = tx::TxOut::new(
+            BlockVersion::MAX,
+            amount,
+            &PublicAddress::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+        )
+        .unwrap();
 
         let converted = external::TxOut::from(&source);
 

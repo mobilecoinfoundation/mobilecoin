@@ -75,17 +75,7 @@ impl Hash for EthAddr {
 
 /// Ethereum 32 byte transaction hash.
 #[derive(
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    DeserializeFromStr,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    SerializeDisplay,
+    Copy, Clone, Default, DeserializeFromStr, Eq, Hash, Ord, PartialEq, PartialOrd, SerializeDisplay,
 )]
 pub struct EthTxHash(pub [u8; Self::LEN]);
 
@@ -122,6 +112,12 @@ impl FromStr for EthTxHash {
 impl fmt::Display for EthTxHash {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
+
+impl fmt::Debug for EthTxHash {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EthTxHash(\"{}\")", self)
     }
 }
 

@@ -1,0 +1,25 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "consensusNode.fullname" . }}
+  labels:
+    app: consensus-node
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: consensus-node
+    {{- include "consensusNode.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: cns-port
+    port: 8443
+    targetPort: cns-port
+  - name: cns-mgmt
+    port: 8000
+    targetPort: cns-mgmt
+  {{- if .Values.acceptClientConnections }}
+  - name: cns-client
+    port: 3223
+    targetPort: cns-client
+  {{- end }}

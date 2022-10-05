@@ -60,13 +60,22 @@ impl<L: Ledger> MintTxManagerImpl<L> {
     }
 }
 
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct NonceByTokenId {
+    nonce: Vec<u8>,
+    token_id: u64,
+}
+
 impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
     /// Validate a MintConfigTx transaction against the current ledger.
     fn validate_mint_config_tx(&self, mint_config_tx: &MintConfigTx) -> MintTxManagerResult<()> {
         // Ensure that we have not seen this transaction before.
         if self
             .ledger_db
-            .check_mint_config_tx_nonce(&mint_config_tx.prefix.nonce)?
+            .check_mint_config_tx_nonce(
+                mint_config_tx.prefix.token_id,
+                &mint_config_tx.prefix.nonce,
+            )?
             .is_some()
         {
             return Err(MintTxManagerError::MintValidation(
@@ -107,13 +116,17 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         let mut seen_nonces = HashSet::default();
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            let nonce_with_token_id = NonceByTokenId {
+                nonce: tx.prefix.nonce.clone(),
+                token_id: tx.prefix.token_id,
+            };
             if seen_nonces.len() >= max_elements {
                 return false;
             }
-            if seen_nonces.contains(&tx.prefix.nonce) {
+            if seen_nonces.contains(&nonce_with_token_id) {
                 return false;
             }
-            seen_nonces.insert(tx.prefix.nonce.clone());
+            seen_nonces.insert(nonce_with_token_id);
             true
         });
 
@@ -124,7 +137,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         // Ensure that we have not seen this transaction before.
         if self
             .ledger_db
-            .check_mint_tx_nonce(&mint_tx.prefix.nonce)?
+            .check_mint_tx_nonce(mint_tx.prefix.token_id, &mint_tx.prefix.nonce)?
             .is_some()
         {
             return Err(MintTxManagerError::MintValidation(
@@ -172,10 +185,14 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         let mut seen_nonces = HashSet::default();
         let mut seen_mint_configs = HashSet::default();
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            let nonce_with_token_id = NonceByTokenId {
+                nonce: tx.prefix.nonce.clone(),
+                token_id: tx.prefix.token_id,
+            };
             if seen_nonces.len() >= max_elements {
                 return false;
             }
-            if seen_nonces.contains(&tx.prefix.nonce) {
+            if seen_nonces.contains(&nonce_with_token_id) {
                 return false;
             }
 
@@ -197,7 +214,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 return false;
             }
 
-            seen_nonces.insert(tx.prefix.nonce.clone());
+            seen_nonces.insert(nonce_with_token_id);
             seen_mint_configs.insert(active_mint_config.mint_config);
             true
         });
@@ -524,6 +541,61 @@ mod mint_config_tx_tests {
                     mint_config_tx1.clone(),
                     mint_config_tx3.clone(),
                     mint_config_tx3,
+                    mint_config_tx2.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
+    /// combine_mint_config_txs adequately sorts inputs and disposes of
+    /// duplicates when handling multiple token types.
+    #[test_with_logger]
+    fn combine_mint_config_txs_sorts_and_removes_dupes_multi_token(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let token_id_1 = TokenId::from(1);
+        let token_id_2 = TokenId::from(2);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        rng = SeedableRng::from_seed([77u8; 32]);
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let (mint_config_tx1, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng2);
+
+        assert_eq!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
+
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
+            (
+                token_id_1,
+                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+            (
+                token_id_2,
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+        ])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+
+        let mut expected_result = vec![mint_config_tx1.clone(), mint_config_tx2.clone()];
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_config_txs(
+                &[
+                    mint_config_tx1.clone(),
                     mint_config_tx2.clone(),
                     mint_config_tx1.clone(),
                     mint_config_tx1,
@@ -1226,6 +1298,92 @@ mod mint_tx_tests {
                     mint_txs[0].clone(),
                     mint_txs[1].clone(),
                     mint_txs[2].clone(),
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
+    /// combine_mint_txs adequately sorts inputs and disposes of
+    /// duplicates.
+    #[test_with_logger]
+    fn combine_mint_txs_sorts_and_keeps_duplicate_nonces_across_tokens(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+
+        let token_id_1 = TokenId::from(1);
+        let token_id_2 = TokenId::from(2);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx),
+                to_validated(&mint_config_tx2),
+            ],
+            ..Default::default()
+        };
+
+        add_block_contents_to_ledger(&mut ledger, BLOCK_VERSION, block_contents, &mut rng).unwrap();
+        let mut rng1: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mint_tx1 = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng1,
+        );
+
+        let mut rng2: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let mint_tx2 = create_mint_tx(
+            token_id_2,
+            &[Ed25519Pair::from(signers2[0].private_key())],
+            1,
+            &mut rng2,
+        );
+
+        assert_eq!(mint_tx1.prefix.nonce, mint_tx2.prefix.nonce);
+        // Test txs, each one using a different mint configuration (determined by the
+        // signers)
+        let mint_txs = vec![mint_tx1, mint_tx2];
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
+            (
+                token_id_1,
+                SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+            (
+                token_id_2,
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
+        ])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+
+        let mut expected_result = mint_txs.clone();
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_txs(
+                &[
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
                 ],
                 100
             ),

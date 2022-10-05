@@ -1,0 +1,24 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "consensusNode.fullname" . }}-internal-tls
+  labels:
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  # Secret names are always required.
+  secretName: {{ include "consensusNode.fullname" . }}-internal-tls
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  privateKey:
+    size: 2048
+    algorithm: RSA
+    encoding: PKCS1
+  usages:
+  - server auth
+  - client auth
+  dnsNames:
+  - {{ include "consensusNode.peerHostname" . }}
+  issuerRef:
+    name: internal-ca-issuer
+    kind: ClusterIssuer

@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-set -ex
+set -exo pipefail
 
 export GO111MODULES=on
 

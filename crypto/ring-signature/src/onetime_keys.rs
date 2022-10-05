@@ -75,7 +75,7 @@ use crate::domain_separators::HASH_TO_SCALAR_DOMAIN_TAG;
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use mc_account_keys::PublicAddress;
+use mc_account_keys_types::RingCtAddress;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
@@ -98,7 +98,7 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
 /// * `recipient` - The recipient subaddress `(C,D)`.
 pub fn create_tx_out_target_key(
     tx_private_key: &RistrettoPrivate,
-    recipient: &PublicAddress,
+    recipient: &impl RingCtAddress,
 ) -> RistrettoPublic {
     // `Hs( r * C)`
     let Hs: Scalar = {
@@ -198,7 +198,7 @@ pub fn create_shared_secret(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_account_keys::AccountKey;
+    use mc_account_keys::{AccountKey, PublicAddress};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_several_seeds;
 

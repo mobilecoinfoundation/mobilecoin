@@ -1,0 +1,23 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "consensusNode.fullname" . }}
+  labels:
+    publish: grafana-cloud
+    app: consensus-node
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: consensus-node
+      {{- include "consensusNode.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: cns-mgmt
+    relabelings:
+    - targetLabel: instance
+      replacement: {{ include "consensusNode.clientHostname" . }}
+    - targetLabel: network
+      replacement: {{ include "consensusNode.mobileCoinNetwork.network" . }}
+    - targetLabel: partner
+      replacement: {{ include "consensusNode.mobileCoinNetwork.partner" . }}

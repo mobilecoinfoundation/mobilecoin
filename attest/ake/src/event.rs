@@ -354,32 +354,45 @@ impl MealyOutput for Vec<u8> {}
 
 /// A type similar to [`aead::Payload`] used to distinguish writer inputs from
 /// outputs when there's an explicit nonce.
-pub struct NoncePlaintext<'aad, 'msg> {
-    pub aad: &'aad [u8],
-    pub msg: &'msg [u8],
-    pub nonce: u64,
-}
+pub struct NoncePlaintext<'aad, 'msg>(Plaintext<'aad, 'msg>);
 
 impl<'aad, 'msg> NoncePlaintext<'aad, 'msg> {
-    pub fn new(aad: &'aad [u8], msg: &'msg [u8], nonce: u64) -> Self {
-        Self { aad, msg, nonce }
+    /// Create a new NoncePlaintext object from the given slices.
+    pub fn new(aad: &'aad [u8], msg: &'msg [u8]) -> Self {
+        Self(Plaintext::new(aad, msg))
+    }
+
+    /// Grab a reference to the internal `aad` slice.
+    pub fn aad(&self) -> &[u8] {
+        self.0.aad
+    }
+
+    /// Grab a reference to the internal `msg` slice.
+    pub fn msg(&self) -> &[u8] {
+        self.0.msg
     }
 }
 
 /// Plaintext may be provided to an FST for encryption into a vector
 impl MealyInput for NoncePlaintext<'_, '_> {}
 
+/// A tuple of bytes and a u64 can be output from an FST for the
+/// encrypt-for-explicit nonce case.
+impl MealyOutput for (Vec<u8>, u64) {}
+
 /// A type similar to [`aead::Payload`] used to distinguish reader inputs from
 /// outputs when there's an explicit nonce.
 pub struct NonceCiphertext<'aad, 'msg> {
-    pub aad: &'aad [u8],
-    pub msg: &'msg [u8],
+    pub ciphertext: Ciphertext<'aad, 'msg>,
     pub nonce: u64,
 }
 
 impl<'aad, 'msg> NonceCiphertext<'aad, 'msg> {
     pub fn new(aad: &'aad [u8], msg: &'msg [u8], nonce: u64) -> Self {
-        Self { aad, msg, nonce }
+        Self {
+            ciphertext: Ciphertext::new(aad, msg),
+            nonce,
+        }
     }
 }
 

@@ -17,7 +17,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs},
+    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -25,6 +25,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 /// A trait used to compare the transaction outputs
@@ -39,6 +40,88 @@ pub struct DefaultTxOutputsOrdering;
 impl TxOutputsOrdering for DefaultTxOutputsOrdering {
     fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
         a.cmp(b)
+    }
+}
+
+/// Transaction output context is produced by add_output method
+/// Used for receipt creation
+#[derive(Debug)]
+pub struct TxOutContext {
+    /// TxOut that comes from a transaction builder
+    /// add_output/add_change_output
+    pub tx_out: TxOut,
+    /// confirmation that comes from a transaction builder
+    /// add_output/add_change_output
+    pub confirmation: TxOutConfirmationNumber,
+    /// Shared Secret that comes from a transaction builder
+    /// add_output/add_change_output
+    pub shared_secret: RistrettoPublic,
+}
+
+/// A structure containing an unsigned transaction, together with the data
+/// required to sign it that does not involve the spend private key.
+/// The idea is that this can be generated without having the spend private key,
+/// and then transferred to an offline/hardware service that does have the spend
+/// private key, which can then be used together with the data here to produce a
+/// valid, signed Tx. Noet that whether the UnsignedTx can be signed on its own
+/// or requires the spend private key will depend on the contents of the
+/// InputRings.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct UnsignedTx {
+    /// The fully constructed TxPrefix.
+    pub tx_prefix: TxPrefix,
+
+    /// rings
+    pub rings: Vec<InputRing>,
+
+    /// Output secrets
+    pub output_secrets: Vec<OutputSecret>,
+
+    /// Block version
+    pub block_version: BlockVersion,
+}
+
+impl UnsignedTx {
+    /// Sign the transaction signing data with a given signer
+    pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+        &self,
+        signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let prefix = self.tx_prefix.clone();
+        let message = prefix.hash().0;
+        let signature = SignatureRctBulletproofs::sign(
+            self.block_version,
+            &message,
+            self.rings.as_slice(),
+            self.output_secrets.as_slice(),
+            Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
+            signer,
+            rng,
+        )?;
+
+        Ok(Tx { prefix, signature })
+    }
+
+    /// Get extraneous signing data
+    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+        &self,
+        rng: &mut RNG,
+    ) -> Result<SigningData, TxBuilderError> {
+        let message = self.tx_prefix.hash().0;
+        let fee_amount = Amount::new(
+            self.tx_prefix.fee,
+            TokenId::from(self.tx_prefix.fee_token_id),
+        );
+        Ok(SigningData::new(
+            self.block_version,
+            &message,
+            &self.rings,
+            &self.output_secrets,
+            fee_amount,
+            true,
+            rng,
+        )?)
     }
 }
 
@@ -234,7 +317,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         amount: Amount,
         recipient: &PublicAddress,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -299,7 +382,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         amount: Amount,
         change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -345,7 +428,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         amount: Amount,
         reserved_subaddresses: &ReservedSubaddresses,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -396,7 +479,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         fog_hint_address: &PublicAddress,
         memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
         if !self.block_version.mixed_transactions_are_supported()
@@ -412,7 +495,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
         let (amount, blinding) = tx_out
-            .masked_amount
+            .get_masked_amount()
+            .expect("TransactionBuilder created an invalid MaskedAmount")
             .get_value(&shared_secret)
             .expect("TransactionBuilder created an invalid Amount");
         let output_secret = OutputSecret { amount, blinding };
@@ -424,7 +508,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok((tx_out, confirmation))
+        Ok(TxOutContext {
+            tx_out,
+            confirmation,
+            shared_secret,
+        })
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
@@ -472,41 +560,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee.token_id
     }
 
-    /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer.
-    /// Used only in testing library.
-    #[cfg(feature = "test-only")]
-    pub fn build_with_sorter<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
-        self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
-    }
-
-    /// Consume the builder and return the transaction with a comparer
-    /// (internal usage only).
-    fn build_with_comparer_internal<
-        RNG: CryptoRng + RngCore,
-        O: TxOutputsOrdering,
-        S: RingSigner + ?Sized,
-    >(
+    /// Return low level data to sign and construct transactions with external
+    /// signers
+    pub fn build_unsigned<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
         mut self,
-        ring_signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
+    ) -> Result<UnsignedTx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -597,24 +655,54 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let input_rings = self
             .input_materials
             .into_iter()
-            .map(Into::into)
-            .collect::<Vec<InputRing>>();
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<InputRing>, _>>()?;
 
-        let message = tx_prefix.hash().0;
-        let signature = SignatureRctBulletproofs::sign(
-            self.block_version,
-            &message,
-            &input_rings,
-            &output_secrets,
-            self.fee,
-            ring_signer,
-            rng,
-        )?;
-
-        Ok(Tx {
-            prefix: tx_prefix,
-            signature,
+        Ok(UnsignedTx {
+            tx_prefix,
+            rings: input_rings,
+            output_secrets,
+            block_version: self.block_version,
         })
+    }
+
+    /// Consume the builder and return the transaction.
+    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer.
+    /// Used only in testing library.
+    #[cfg(feature = "test-only")]
+    pub fn build_with_sorter<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer
+    /// (internal usage only).
+    fn build_with_comparer_internal<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let unsigned_tx = self.build_unsigned::<RNG, O>()?;
+        unsigned_tx.sign(ring_signer, rng)
     }
 }
 
@@ -748,7 +836,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let (_txout, confirmation) = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
@@ -832,7 +920,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let (_txout, confirmation) = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
@@ -928,7 +1016,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (_txout, _confirmation) = transaction_builder
+            let _tx_out_context = transaction_builder
                 .add_output_with_fog_hint_address(
                     Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
@@ -1008,7 +1096,7 @@ pub mod transaction_builder_tests {
                     get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1045,7 +1133,7 @@ pub mod transaction_builder_tests {
                     get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1116,7 +1204,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1186,7 +1274,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1217,7 +1305,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1299,7 +1387,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1369,7 +1457,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1408,7 +1496,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1533,7 +1621,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE * 4);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1572,7 +1660,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1627,7 +1715,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1697,7 +1785,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1737,7 +1825,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1791,7 +1879,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -1861,7 +1949,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1901,7 +1989,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -1943,7 +2031,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -2013,7 +2101,7 @@ pub mod transaction_builder_tests {
                         recipient.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -2035,7 +2123,7 @@ pub mod transaction_builder_tests {
                         sender.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -2120,7 +2208,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &bob_address,
@@ -2191,7 +2279,7 @@ pub mod transaction_builder_tests {
                         bob.view_private_key(),
                         &RistrettoPublic::try_from(&output.public_key).unwrap(),
                     );
-                    let (amount, _) = output.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
                     assert_eq!(amount.token_id, token_id);
 
@@ -2227,7 +2315,7 @@ pub mod transaction_builder_tests {
                         alice.view_private_key(),
                         &RistrettoPublic::try_from(&change.public_key).unwrap(),
                     );
-                    let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
                     assert_eq!(amount.value, change_value);
                     assert_eq!(amount.token_id, token_id);
 
@@ -2314,7 +2402,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -2598,7 +2686,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_tx_out, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(
                     Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     &recipient,
@@ -2777,7 +2868,7 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (_burn_tx_out, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2805,7 +2896,7 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let (_burn_tx_out, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2847,7 +2938,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_output, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_output,
+                ..
+            } = transaction_builder
                 .add_output(Amount::new(110, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2905,7 +2999,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_tx_out, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
@@ -3043,13 +3140,15 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (tx_out1, _confirmation) = transaction_builder
+            let tx_out_context1 = transaction_builder
                 .add_output(tx_out1_right_amount, &recipient_addr, &mut rng)
                 .unwrap();
+            let tx_out1 = tx_out_context1.tx_out;
 
-            let (tx_out2, _confirmation) = transaction_builder
+            let tx_out_context2 = transaction_builder
                 .add_output(amount2, &recipient_addr, &mut rng)
                 .unwrap();
+            let tx_out2 = tx_out_context2.tx_out;
 
             transaction_builder
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
@@ -3176,11 +3275,11 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (_tx_out1, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(tx_out1_amount, &recipient_addr, &mut rng)
                 .unwrap();
 
-            let (_tx_out2, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(amount2, &recipient_addr, &mut rng)
                 .unwrap();
 
@@ -3309,7 +3408,8 @@ pub mod transaction_builder_tests {
             );
 
             let (funding_amount, _) = funding_output
-                .masked_amount
+                .get_masked_amount()
+                .unwrap()
                 .get_value(&funding_output_ss)
                 .unwrap();
             assert_eq!(funding_amount.value, funding_output_amount.value);
@@ -3360,7 +3460,7 @@ pub mod transaction_builder_tests {
             };
 
             // Values we pretend we get from locating the TxOut using the global index
-            let masked_amount = funding_output.masked_amount.clone();
+            let masked_amount = funding_output.get_masked_amount().unwrap().clone();
 
             // Construct the sender Tx from the combo of "located" and "sent" information
             let (sending_input_amount, blinding) = masked_amount
@@ -3451,7 +3551,7 @@ pub mod transaction_builder_tests {
                 receiver.view_private_key(),
                 &RistrettoPublic::try_from(&change.public_key).unwrap(),
             );
-            let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+            let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
             assert_eq!(amount.value, sending_output_amount.value);
             assert_eq!(amount.token_id, token_id);
 
@@ -3526,7 +3626,7 @@ pub mod transaction_builder_tests {
                 sender.view_private_key(),
                 &RistrettoPublic::try_from(&change.public_key).unwrap(),
             );
-            let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+            let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
             assert_eq!(amount.value, cancellation_output_amount.value);
             assert_eq!(amount.token_id, token_id);
 

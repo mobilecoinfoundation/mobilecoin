@@ -12,10 +12,14 @@ mod oblivious_utils;
 use alloc::collections::BTreeMap;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
+use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
+use core::ops::DerefMut;
+use mc_attest_ake::Ready;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -47,6 +51,13 @@ where
 
     /// Logger object
     logger: Logger,
+
+    /// Encrypts a QueryRequest for each individual Fog View Store.
+    /// TODO: Use a BTreeMap<FogViewShardLoadBalancerID,
+    /// BTreeMap<FogViewStoreId, Ready<...>>>  when implement the cursoring
+    /// optimization. For right now, it's fine to leave as a Vec because a
+    /// follow up PR will implement cursoring.
+    store_encryptors: Mutex<Vec<Ready<Aes256Gcm>>>,
 }
 
 impl<OSC> ViewEnclave<OSC>
@@ -56,6 +67,7 @@ where
     pub fn new(logger: Logger) -> Self {
         Self {
             e_tx_out_store: Mutex::new(None),
+            store_encryptors: Mutex::new(Vec::new()),
             ake: Default::default(),
             logger,
         }
@@ -209,20 +221,20 @@ where
     fn create_multi_view_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         Ok(self
             .ake
             .reencrypt_sealed_message_for_backends(&sealed_query)?)
     }
 
-    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<NonceAuthRequest> {
         Ok(self.ake.backend_init(view_store_id)?)
     }
 
     fn view_store_connect(
         &self,
         view_store_id: ResponderId,
-        view_store_auth_response: ClientAuthResponse,
+        view_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         Ok(self
             .ake
@@ -232,7 +244,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -263,15 +275,19 @@ where
     fn create_client_query_response(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<QueryResponse> {
-        let encrypted_shard_query_response = shard_query_responses
-            .values()
+        // Choose any shard query response and use it to supply the skeleton values for
+        // the QueryResponse. The tx_out_search_results and
+        // highest_processed_block_count fields will be set based on all of the
+        // shard query responses.
+        let shard_query_response = shard_query_responses
+            .iter()
             .next()
-            .expect("Shard query responses must have at least one response.")
-            .clone();
-        let shard_query_response_plaintext =
-            self.ake.client_decrypt(encrypted_shard_query_response)?;
+            .expect("Shard query responses must have at least one response.");
+        let shard_query_response_plaintext = self
+            .ake
+            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
         let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
@@ -281,7 +297,7 @@ where
         let shard_query_responses = shard_query_responses
             .into_iter()
             .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?;
+                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
                 Ok(query_response)

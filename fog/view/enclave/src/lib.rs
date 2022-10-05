@@ -12,7 +12,8 @@ use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
 };
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
@@ -163,7 +164,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn view_store_init(&self, view_store_id: ResponderId) -> Result<ClientAuthRequest> {
+    fn view_store_init(&self, view_store_id: ResponderId) -> Result<NonceAuthRequest> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::ViewStoreInit(view_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -172,7 +173,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
     fn view_store_connect(
         &self,
         view_store_id: ResponderId,
-        view_store_auth_response: ClientAuthResponse,
+        view_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::ViewStoreConnect(
             view_store_id,
@@ -214,7 +215,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
     fn create_multi_view_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(
             sealed_query,
         ))?;
@@ -225,7 +226,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CollateQueryResponses(
             sealed_query,

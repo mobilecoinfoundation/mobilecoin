@@ -1,11 +1,14 @@
 [package]
 name = "mc-crypto-hashes"
-version = "1.3.0-pre0"
+version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 
+[features]
+default = [ "mc-crypto-digestible/default" ]
+
 [dependencies]
-mc-crypto-digestible = { path = "../digestible" }
+mc-crypto-digestible = { path = "../digestible", default_features = false }
 
 digest = { version = "0.10.1", default-features = false }
 

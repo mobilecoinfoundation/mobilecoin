@@ -28,14 +28,14 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_connection::{
-    Error as ConnectionError, HardcodedCredentialsProvider, RetryError,
+    Error as ConnectionError, HardcodedCredentialsProvider, ProposeTxResult, RetryError,
     RetryableBlockchainConnection, RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
@@ -43,7 +43,6 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    validation::TransactionValidationError,
     Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -409,7 +408,8 @@ fn select_spendable_tx_outs(
                     get_tx_out_shared_secret(account.view_private_key(), &public_key);
 
                 let (amount, _blinding_factor) = tx_out
-                    .masked_amount
+                    .get_masked_amount()
+                    .expect("TxOut missing masked value")
                     .get_value(&shared_secret)
                     .unwrap_or_else(|err| {
                         panic!(
@@ -451,7 +451,8 @@ fn build_fog_resolver(
     // XXX: This retry should possibly be in the GrpcFogPubkeyResolver object itself
     // instead 15'th fibonacci is 987, so the last delay should be ~100
     // seconds
-    let conn = GrpcFogReportConnection::new(env.clone(), logger.clone());
+    // TODO: Supply a chain id to fog-distribution?
+    let conn = GrpcFogReportConnection::new(String::default(), env.clone(), logger.clone());
     let responses = retry(
         delay::Fibonacci::from_millis(100)
             .map(delay::jitter)
@@ -642,7 +643,8 @@ fn submit_tx(
                 tries,
             }) => {
                 if let ConnectionError::TransactionValidation(
-                    TransactionValidationError::TombstoneBlockExceeded,
+                    ProposeTxResult::TombstoneBlockExceeded,
+                    _,
                 ) = error
                 {
                     log::debug!(
@@ -651,7 +653,8 @@ fn submit_tx(
                     return false;
                 }
                 if let ConnectionError::TransactionValidation(
-                    TransactionValidationError::ContainsSpentKeyImage,
+                    ProposeTxResult::ContainsSpentKeyImage,
+                    _,
                 ) = error
                 {
                     log::info!(

@@ -10,7 +10,7 @@ use mc_transaction_core::{
     tx::TxOut,
     AmountError, EncryptedMemo, MaskedAmount, MemoError,
 };
-use prost::Message;
+use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 pub use mc_fog_kex_rng::KexRngPubkey;
@@ -182,6 +182,49 @@ pub struct TxOutSearchResult {
     pub ciphertext: Vec<u8>,
 }
 
+/// An enum capturing the Oneof in the proto file around masked token id bytes
+/// This is an enum because the options are used to capture which version of
+/// masked amount was serialized.
+#[derive(Clone, Eq, Hash, Oneof, PartialEq)]
+pub enum TxOutAmountMaskedTokenId {
+    /// A v1 masked amount's token id bytes.
+    /// This is used when the masked amount in the original TxOut has version 1
+    /// Note: This tag must match the historical tag used for masked token id
+    /// bytes
+    #[prost(bytes, tag = "10")]
+    TxOutAmountMaskedTokenIdV1(Vec<u8>),
+
+    /// A v2 masked amount's token id bytes
+    /// This is used when the masked amount in the original TxOut has version 2
+    #[prost(bytes, tag = "11")]
+    TxOutAmountMaskedTokenIdV2(Vec<u8>),
+}
+
+impl Default for TxOutAmountMaskedTokenId {
+    fn default() -> Self {
+        // Note: This must default to empty bytes with tag V1, to support the
+        // backwards compatibility with before masked token id even existed.
+        Self::TxOutAmountMaskedTokenIdV1(Default::default())
+    }
+}
+
+impl From<&MaskedAmount> for TxOutAmountMaskedTokenId {
+    fn from(src: &MaskedAmount) -> Self {
+        match src {
+            MaskedAmount::V1(masked_amount) => {
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(
+                    masked_amount.masked_token_id.clone(),
+                )
+            }
+            MaskedAmount::V2(masked_amount) => {
+                TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(
+                    masked_amount.masked_token_id.clone(),
+                )
+            }
+        }
+    }
+}
+
 /// TxOutRecord is what information the fog service preserves for a user about
 /// their TxOut. These are created by the ingest server and then encrypted. The
 /// encrypted blobs are eventually returned to the user, who must deserialize
@@ -189,7 +232,7 @@ pub struct TxOutSearchResult {
 ///
 /// Note: There are conformance tests in fog-api that check that this matches
 /// the proto
-#[derive(Clone, Eq, Hash, PartialEq, Message)]
+#[derive(Clone, Eq, Hash, Message, PartialEq)]
 pub struct TxOutRecord {
     /// The (compressed ristretto) bytes of commitment associated to amount
     /// field in the TxOut that was recovered.
@@ -197,18 +240,22 @@ pub struct TxOutRecord {
     /// crc32 checksum of these bytes is stored.
     #[prost(bytes, tag = "1")]
     pub tx_out_amount_commitment_data: Vec<u8>,
+
     /// The masked value associated to amount field in the TxOut that was
     /// recovered
     #[prost(fixed64, required, tag = "2")]
     pub tx_out_amount_masked_value: u64,
+
     /// The (compressed ristretto) bytes of the target key associated to the
     /// TxOut that was recovered
     #[prost(bytes, required, tag = "3")]
     pub tx_out_target_key_data: Vec<u8>,
+
     /// The (compressed ristretto) bytes of the public key associated to the
     /// TxOut that was recovered
     #[prost(bytes, required, tag = "4")]
     pub tx_out_public_key_data: Vec<u8>,
+
     /// Global index within the set of all TxOuts
     #[prost(fixed64, required, tag = "5")]
     pub tx_out_global_index: u64,
@@ -236,8 +283,8 @@ pub struct TxOutRecord {
 
     /// The masked token id associated to the amount field in the TxOut that
     /// was recovered
-    #[prost(bytes, tag = "10")]
-    pub tx_out_amount_masked_token_id: Vec<u8>,
+    #[prost(oneof = "TxOutAmountMaskedTokenId", tags = "10, 11")]
+    pub tx_out_amount_masked_token_id: Option<TxOutAmountMaskedTokenId>,
 }
 
 impl TxOutRecord {
@@ -253,7 +300,7 @@ impl TxOutRecord {
             tx_out_amount_commitment_data: Default::default(),
             tx_out_amount_commitment_data_crc32: fog_tx_out.amount_commitment_data_crc32,
             tx_out_amount_masked_value: fog_tx_out.amount_masked_value,
-            tx_out_amount_masked_token_id: fog_tx_out.amount_masked_token_id,
+            tx_out_amount_masked_token_id: Some(fog_tx_out.amount_masked_token_id),
             tx_out_target_key_data: fog_tx_out.target_key.as_bytes().to_vec(),
             tx_out_public_key_data: fog_tx_out.public_key.as_bytes().to_vec(),
             tx_out_e_memo_data: fog_tx_out
@@ -270,11 +317,18 @@ impl TxOutRecord {
     /// Note that this discards some metadata (timestamp, block_index,
     /// global_index).
     pub fn get_fog_tx_out(&self) -> Result<FogTxOut, FogTxOutError> {
+        // Note: Unwrap-or-default is used here because in the backwards compat path,
+        // neither v1 nor v2 bytes are present, and that isn't an error, it is supposed
+        // to decode to token id = 0.
+        let amount_masked_token_id = self
+            .tx_out_amount_masked_token_id
+            .clone()
+            .unwrap_or_default();
         Ok(FogTxOut {
             target_key: CompressedRistrettoPublic::try_from(&self.tx_out_target_key_data[..])?,
             public_key: CompressedRistrettoPublic::try_from(&self.tx_out_public_key_data[..])?,
             amount_masked_value: self.tx_out_amount_masked_value,
-            amount_masked_token_id: self.tx_out_amount_masked_token_id.clone(),
+            amount_masked_token_id,
             amount_commitment_data_crc32: self.get_amount_data_crc32()?,
             e_memo: self.get_e_memo()?,
         })
@@ -331,7 +385,7 @@ pub struct FogTxOut {
     pub amount_masked_value: u64,
 
     /// The tx out masked token id
-    pub amount_masked_token_id: Vec<u8>,
+    pub amount_masked_token_id: TxOutAmountMaskedTokenId,
 
     /// The crc32 of the tx out amount commitment bytes
     pub amount_commitment_data_crc32: u32,
@@ -342,18 +396,25 @@ pub struct FogTxOut {
 
 // Convert a TxOut to a FogTxOut in the efficient way (omitting compressed
 // commitment)
-impl From<&TxOut> for FogTxOut {
+impl TryFrom<&TxOut> for FogTxOut {
+    type Error = FogTxOutError;
+
     #[inline]
-    fn from(src: &TxOut) -> Self {
-        Self {
+    fn try_from(src: &TxOut) -> Result<Self, Self::Error> {
+        let masked_amount = src
+            .get_masked_amount()
+            .map_err(|_| FogTxOutError::Amount(AmountError::MissingMaskedAmount))?;
+        let amount_masked_value = *masked_amount.get_masked_value();
+        let amount_commitment_data_crc32 = masked_amount.commitment_crc32();
+        let amount_masked_token_id = TxOutAmountMaskedTokenId::from(masked_amount);
+        Ok(Self {
             target_key: src.target_key,
             public_key: src.public_key,
-            amount_masked_value: src.masked_amount.masked_value,
-            amount_masked_token_id: src.masked_amount.masked_token_id.clone(),
-            amount_commitment_data_crc32: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
-                .checksum(src.masked_amount.commitment.point.as_bytes()),
+            amount_masked_value,
+            amount_masked_token_id,
+            amount_commitment_data_crc32,
             e_memo: src.e_memo,
-        }
+        })
     }
 }
 
@@ -380,19 +441,35 @@ impl FogTxOut {
         let tx_out_shared_secret =
             mc_transaction_core::get_tx_out_shared_secret(view_key, &public_key);
 
-        let (masked_amount, _) = MaskedAmount::reconstruct(
-            self.amount_masked_value,
-            &self.amount_masked_token_id,
-            &tx_out_shared_secret,
-        )
-        .map_err(|_| FogTxOutError::ChecksumMismatch)?;
+        // Reconstruct the correct masked amount version, based on which of the oneof
+        // proto field was present
+        let masked_amount = match &self.amount_masked_token_id {
+            TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV1(bytes) => {
+                let (masked_amount, _) = MaskedAmount::reconstruct_v1(
+                    self.amount_masked_value,
+                    bytes,
+                    &tx_out_shared_secret,
+                )
+                .map_err(FogTxOutError::Amount)?;
+                masked_amount
+            }
+            TxOutAmountMaskedTokenId::TxOutAmountMaskedTokenIdV2(bytes) => {
+                let (masked_amount, _) = MaskedAmount::reconstruct_v2(
+                    self.amount_masked_value,
+                    bytes,
+                    &tx_out_shared_secret,
+                )
+                .map_err(FogTxOutError::Amount)?;
+                masked_amount
+            }
+        };
 
         if masked_amount.commitment_crc32() != self.amount_commitment_data_crc32 {
             return Err(FogTxOutError::ChecksumMismatch);
         }
 
         Ok(TxOut {
-            masked_amount,
+            masked_amount: Some(masked_amount),
             target_key: self.target_key,
             public_key: self.public_key,
             e_fog_hint: EncryptedFogHint::from(&[0u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -402,7 +479,7 @@ impl FogTxOut {
 }
 
 /// An error that occurs when trying to convert a FogTxOut to a TxOut
-#[derive(Display, Debug)]
+#[derive(Clone, Deserialize, Display, Debug, Eq, PartialEq, Serialize)]
 pub enum FogTxOutError {
     /// CompressedCommitment crc32 mismatch
     ChecksumMismatch,

@@ -8,8 +8,6 @@ You must read and accept these terms to use MobileCoin Software.
 
 To send and receive MobileCoin, you can use any of our open source wallet solutions.
 
-Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
-
 #### MobileCoin Wallet CLI
 
 * Run [`mobilecoind`](./mobilecoind/README.md) for the wallet backend. Note that the mobilecoind-db is considered sensitive; you should follow best practices for isolation and security.

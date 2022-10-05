@@ -3,7 +3,7 @@
 //! MobileCoin SDK Errors
 
 use displaydoc::Display;
-use mc_connection::Error as ConnectionError;
+use mc_connection::{Error as ConnectionError, ProposeTxResult};
 use mc_consensus_api::ConversionError;
 use mc_crypto_keys::KeyError;
 use mc_fog_enclave_connection::Error as EnclaveConnectionError;
@@ -12,8 +12,7 @@ use mc_fog_report_connection::Error as FogResolutionError;
 use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
 use mc_transaction_core::{
-    validation::TransactionValidationError, AmountError, BlockVersionError,
-    SignedContingentInputError,
+    AmountError, BlockVersionError, SignedContingentInputError, TxOutConversionError,
 };
 use mc_transaction_std::{SignedContingentInputBuilderError, TxBuilderError};
 use mc_util_uri::UriParseError;
@@ -32,6 +31,9 @@ pub enum TxOutMatchingError {
 
     /// Error parsing key: {0}
     Key(KeyError),
+
+    /// TxOut conversion error: {0}
+    TxOutConversion(TxOutConversionError),
 
     /// Error decompressing FogTxOut: {0}
     FogTxOut(FogTxOutError),
@@ -55,6 +57,12 @@ impl From<KeyError> for TxOutMatchingError {
 impl From<FogTxOutError> for TxOutMatchingError {
     fn from(src: FogTxOutError) -> Self {
         Self::FogTxOut(src)
+    }
+}
+
+impl From<TxOutConversionError> for TxOutMatchingError {
+    fn from(src: TxOutConversionError) -> Self {
+        Self::TxOutConversion(src)
     }
 }
 
@@ -109,8 +117,8 @@ pub enum Error {
     /// Failed to decode ledger server response: {0}
     Conversion(ConversionError),
 
-    /// Proposed transcation rejected: {0}
-    TxRejected(TransactionValidationError),
+    /// Proposed transcation rejected: {0:?}: {1}
+    TxRejected(ProposeTxResult, String),
 
     /// Could not parse uri: {0}
     Uri(UriParseError),
@@ -140,7 +148,7 @@ pub enum Error {
 impl From<ConnectionError> for Error {
     fn from(x: ConnectionError) -> Error {
         match x {
-            ConnectionError::TransactionValidation(tve) => Error::TxRejected(tve),
+            ConnectionError::TransactionValidation(tve, msg) => Error::TxRejected(tve, msg),
             other => Error::ConsensusConnection(other),
         }
     }
@@ -167,12 +175,6 @@ impl From<LedgerConnectionError> for Error {
 impl From<KeyImageQueryError> for Error {
     fn from(x: KeyImageQueryError) -> Error {
         Error::KeyImageQuery(x)
-    }
-}
-
-impl From<TransactionValidationError> for Error {
-    fn from(x: TransactionValidationError) -> Error {
-        Error::TxRejected(x)
     }
 }
 

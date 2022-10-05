@@ -43,7 +43,7 @@ use mc_fog_types::{
 use mc_oblivious_traits::{subtle::ConstantTimeEq, ORAMStorageCreator};
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-use mc_transaction_core::fog_hint::FogHint;
+use mc_transaction_core::{fog_hint::FogHint, tx::TxOut};
 use mc_util_from_random::FromRandom;
 use zeroize::Zeroize;
 
@@ -86,7 +86,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
     /// overflowed and we have to change the egress key and try again.
     /// Returns `None` if overflow occurs.
     fn attempt_ingest_txs(
-        chunk: &TxsForIngest,
+        chunk: &PreparedBlockData,
         ingress_key: &RistrettoPrivate,
         egress_key: &RistrettoPrivate,
         rng_store: &mut RngStore<OSC>,
@@ -96,7 +96,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
         let mut new_tx_rows = Vec::new();
 
         // Use the constant time fog hint decryption
-        for (index, txo) in chunk.redacted_txs.iter().enumerate() {
+        for (index, (txo, fog_tx_out)) in chunk.tx_outs.iter().enumerate() {
             let mut user_id = FogHint::new(RistrettoPublic::from_random(&mut rng));
             // Note: This is ignored because the semantic we want is, user_id should be
             // random if decryption failed, and ct_decrypt has no side-effects
@@ -143,13 +143,12 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
 
                 // Create a TxOutRecord, flattening the Txo data and getting extra data like
                 // global index, block index, timestamp.
-                let fog_tx_out = FogTxOut::from(txo);
                 let meta = FogTxOutMetadata {
                     global_index: chunk.global_txo_index + index as u64,
                     block_index: chunk.block_index,
                     timestamp: chunk.timestamp,
                 };
-                let txo_record = TxOutRecord::new(fog_tx_out, meta);
+                let txo_record = TxOutRecord::new(fog_tx_out.clone(), meta);
 
                 // Get the view-kew-encrypted payload for this TX
                 let plaintext = mc_util_serial::encode(&txo_record);
@@ -298,18 +297,25 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         let mut rng_store_lk = self.rng_store.lock()?;
         let rng_store = rng_store_lk.as_mut().expect("enclave was not initialized");
 
+        // Converting a TxOut to a FogTxOut can fail if the masked amount is missing,
+        // so flush all those errors out now.
+        let prepared_block_data = PreparedBlockData::try_from(chunk)?;
+
         // Try to ingest the new tx's
         loop {
-            if let Some(e_tx_out_records) =
-                Self::attempt_ingest_txs(&chunk, &*ingress_key, &*egress_key, rng_store)
-            {
+            if let Some(e_tx_out_records) = Self::attempt_ingest_txs(
+                &prepared_block_data,
+                &*ingress_key,
+                &*egress_key,
+                rng_store,
+            ) {
                 return Ok((e_tx_out_records, new_kex_rng_pubkey));
             } else {
                 // If attempt_ingest_txs fails, that means the rng store overflowed.
                 // If this happened too many times give up
                 if chunk_retries == 0 {
                     return Err(Error::ChunkTooBig(
-                        chunk.redacted_txs.len(),
+                        prepared_block_data.tx_outs.len(),
                         MAX_CHUNK_RETRIES,
                         rng_store.capacity(),
                     ));
@@ -382,4 +388,51 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
 // Helper for sealing a key, which maps the error to IngestEnclaveError
 fn seal_private_key(src: &RistrettoPrivate) -> Result<SealedIngestKey> {
     Ok(IntelSealed::seal_raw(src.as_ref(), &[])?.as_ref().to_vec())
+}
+
+// Helper to work around TxOut => FogTxOut being fallible.
+// During attempt_ingest_txs, we must be constant-time and it complicates things
+// if operations can fail, because an adversary may be able to use that as
+// leverage.
+//
+// Instead we want to convert all TxOut to FogTxOut up front before calling
+// attempt_ingest_txs, so that all the failures happen before anything sensitive
+// happens.
+//
+// This is done by converting TxsForIngest to PreparedBlockData up front, and
+// then proceeding to process the prepared block data.
+#[derive(Clone, Eq, PartialEq, Debug)]
+struct PreparedBlockData {
+    /// The index of the block in the blockchain where this chunk of Txs
+    /// appeared
+    pub block_index: u64,
+    /// The number of txo's appearing in the entire blockchain before this chunk
+    /// This is needed to compute TxOutRecord::global_tx_out_index
+    pub global_txo_index: u64,
+    /// The txout's of this chunk, also formatted as FogTxOut
+    pub tx_outs: Vec<(TxOut, FogTxOut)>,
+    /// The timestamp of this block
+    pub timestamp: u64,
+}
+
+impl TryFrom<TxsForIngest> for PreparedBlockData {
+    type Error = Error;
+
+    fn try_from(src: TxsForIngest) -> Result<PreparedBlockData> {
+        let tx_outs = src
+            .redacted_txs
+            .into_iter()
+            .map(|txo| match FogTxOut::try_from(&txo) {
+                Ok(ftxo) => Ok((txo, ftxo)),
+                Err(err) => Err(Error::InvalidBlockData(err)),
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(PreparedBlockData {
+            block_index: src.block_index,
+            global_txo_index: src.global_txo_index,
+            timestamp: src.timestamp,
+            tx_outs,
+        })
+    }
 }

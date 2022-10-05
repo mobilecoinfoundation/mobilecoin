@@ -10,6 +10,7 @@ extern crate alloc;
 mod types;
 
 use alloc::{string::String, vec::Vec};
+use chrono::NaiveDateTime;
 use core::fmt::{Debug, Display};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
@@ -18,8 +19,8 @@ use mc_fog_types::view::TxOutSearchResult;
 pub use mc_blockchain_types::Block;
 pub use mc_fog_types::{common::BlockRange, ETxOutRecord};
 pub use types::{
-    AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngestableRange, IngressPublicKeyRecord,
-    IngressPublicKeyStatus, ReportData,
+    AddBlockDataStatus, ExpiredInvocationRecord, FogUserEvent, IngestInvocationId, IngestableRange,
+    IngressPublicKeyRecord, IngressPublicKeyStatus, ReportData,
 };
 
 /// Contains fields that are used as filters in  queries for ingress keys.
@@ -309,6 +310,13 @@ pub trait RecoveryDb {
 
     /// Get the highest block index for which we have any data at all.
     fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error>;
+
+    /// Returns all ingest invocations have not been active since the
+    /// `expired_timestamp`.
+    fn get_expired_invocations(
+        &self,
+        expiration: NaiveDateTime,
+    ) -> Result<Vec<ExpiredInvocationRecord>, Self::Error>;
 }
 
 /// The report database interface.
