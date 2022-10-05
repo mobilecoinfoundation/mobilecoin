@@ -1,5 +1,0 @@
-version: v1
-name: buf.build/mobilecoin/mint-auditor-api
-breaking:
-  use:
-    - FILE

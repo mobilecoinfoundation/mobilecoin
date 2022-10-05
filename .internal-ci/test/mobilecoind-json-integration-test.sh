@@ -63,13 +63,11 @@ python3 -m grpc_tools.protoc \
     -I"/proto/api" \
     -I"/proto/mobilecoind" \
     -I"/proto/consensus" \
-    -I"/proto/mint-auditor" \
     --python_out=. \
     --grpc_python_out=. \
     /proto/api/external.proto \
     /proto/api/blockchain.proto \
     /proto/mobilecoind/mobilecoind_api.proto \
-    /proto/mint-auditor/mint_auditor.proto
 
 echo ""
 echo "-- Run integration_test.py"

@@ -15,7 +15,7 @@ mc-fog-sig-report = { path = "./report" }
 
 displaydoc = "0.2"
 pem = "1.1"
-signature = { version = "1.6.0" }
+signature = { version = "1.6.3" }
 x509-signature = "0.5"
 
 [dev-dependencies]

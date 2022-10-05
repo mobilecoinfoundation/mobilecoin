@@ -17,6 +17,8 @@ use mc_transaction_core_test_utils::AccountKey;
 use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
 use mc_util_test_helper::{RngType, SeedableRng};
 
+pub use mc_ledger_db::test_utils::INITIALIZE_LEDGER_AMOUNT;
+
 pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
     let sender = AccountKey::random(&mut rng);
@@ -81,7 +83,6 @@ pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     (tx, ledger)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrdering>(
     block_version: BlockVersion,
     amount: u64,

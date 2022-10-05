@@ -19,6 +19,7 @@ mod amount;
 mod domain_separators;
 mod input_rules;
 mod memo;
+mod revealed_tx_out;
 mod signed_contingent_input;
 mod token;
 mod tx_error;
@@ -40,6 +41,7 @@ pub mod proptest_fixtures;
 pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
+pub use revealed_tx_out::{try_reveal_amount, RevealedTxOut, RevealedTxOutError};
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
 };
