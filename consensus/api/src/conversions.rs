@@ -76,6 +76,7 @@ impl From<InputRuleError> for ProposeTxResult {
             | InputRuleError::MissingFractionalChangeOutput
             | InputRuleError::MissingFractionalOutput
             | InputRuleError::FractionalOutputTokenIdMismatch
+            | InputRuleError::ZeroPartialFillChange
             | InputRuleError::MinPartialFillValueExceedsPartialFillChange
             | InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction
             | InputRuleError::FractionalChangeOutputAmountExceedsLimit => {

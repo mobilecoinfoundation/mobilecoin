@@ -214,6 +214,40 @@ fn test_input_rules_verify_min_partial_fill_value() {
     );
 }
 
+// Test that invalid amount shared secrets cause invalid transactions
+#[test]
+fn test_input_rules_verify_nonzero_partial_fill_change() {
+    let block_version = BlockVersion::THREE;
+    let (mut tx, revealed_tx_outs) = get_input_rules_test_tx(block_version);
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Add a partial fill output, by doubling one of the revealed tx outs.
+    get_first_rules_mut(&mut tx)
+        .partial_fill_outputs
+        .push(change_committed_amount(
+            &revealed_tx_outs[1],
+            Amount::new(2000, 0.into()),
+        ));
+    // Add a partial fill change, also by doubling one of the revealed tx outs.
+    // This means the fill fraction is 1/2, which we are satisfying.
+    get_first_rules_mut(&mut tx).partial_fill_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(2000, 0.into()),
+    ));
+    get_first_rules(&tx).verify(block_version, &tx).unwrap();
+
+    // Change the partial fill change to zero. This should result in an error.
+    get_first_rules_mut(&mut tx).partial_fill_change = Some(change_committed_amount(
+        &revealed_tx_outs[0],
+        Amount::new(0, 0.into()),
+    ));
+
+    assert_matches!(
+        get_first_rules(&tx).verify(block_version, &tx),
+        Err(InputRuleError::ZeroPartialFillChange)
+    );
+}
+
 // Test that partial fill outputs and change without matching real outputs cause
 // invalid transactions
 #[test]
