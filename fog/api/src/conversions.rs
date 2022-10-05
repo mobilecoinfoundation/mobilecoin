@@ -20,12 +20,9 @@ impl From<Vec<EnclaveMessage<NonceSession>>> for MultiViewStoreQueryRequest {
 }
 
 impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
-    fn from(_attested_query_messages: Vec<attest::NonceMessage>) -> MultiViewStoreQueryRequest {
+    fn from(attested_query_messages: Vec<attest::NonceMessage>) -> MultiViewStoreQueryRequest {
         let mut multi_view_store_query_request = MultiViewStoreQueryRequest::new();
-        // TODO: Once MultiViewStoreQueryRequest.queries is modified to be a
-        // Vec<attest::NonceMessage> change this to use the
-        // _attested_query_messages_field.
-        multi_view_store_query_request.set_queries(vec![].into());
+        multi_view_store_query_request.set_queries(attested_query_messages.into());
 
         multi_view_store_query_request
     }
