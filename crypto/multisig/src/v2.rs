@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A multi-signature implementations that perment nesting.
+//! A multi-signature implementations that supports nesting.
 //! This allows us to accommodate a requirement, where for example we want to
 //! have 2-out-of-3 organizations signing a transaction, and having each
 //! organization require 2-out-of-3 members to sign.
