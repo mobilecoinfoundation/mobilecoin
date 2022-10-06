@@ -1080,36 +1080,36 @@ mod test_nested_multisigs {
         // Signing with less than the threshold doesn't verify.
         let multi_sig = MultiSig::new(vec![
             // Valid org1 signature
-            org1_signer1_sig.clone(),
-            org1_signer2_sig.clone(),
+            org1_signer1_sig,
+            org1_signer2_sig,
             // Invalid org2 signature
-            org2_signer1_sig.clone(),
-            org2_signer2_sig.clone(),
+            org2_signer1_sig,
+            org2_signer2_sig,
             // One of the single signers
-            single_signer1_sig.clone(),
+            single_signer1_sig,
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         let multi_sig = MultiSig::new(vec![
             // Valid org1 signature
-            org1_signer1_sig.clone(),
-            org1_signer2_sig.clone(),
-            org1_signer3_sig.clone(),
+            org1_signer1_sig,
+            org1_signer2_sig,
+            org1_signer3_sig,
             // A valid single signer
-            single_signer1_sig.clone(),
+            single_signer1_sig,
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         // Providing 3 valid signatures verifies.
         let multi_sig = MultiSig::new(vec![
             // Valid org1 signature
-            org1_signer1_sig.clone(),
-            org1_signer2_sig.clone(),
+            org1_signer1_sig,
+            org1_signer2_sig,
             // Two valid singler signers
-            single_signer1_sig.clone(),
-            single_signer2_sig.clone(),
+            single_signer1_sig,
+            single_signer2_sig,
             // Partial but invalid org2 signature
-            org2_signer1_sig.clone(),
+            org2_signer1_sig,
         ]);
         let signers = signer_set
             .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
@@ -1128,15 +1128,15 @@ mod test_nested_multisigs {
         // Providing 4 valid signatures verifies.
         let multi_sig = MultiSig::new(vec![
             // Valid org1 signature
-            org1_signer1_sig.clone(),
-            org1_signer2_sig.clone(),
+            org1_signer1_sig,
+            org1_signer2_sig,
             // Two valid singler signers
-            single_signer1_sig.clone(),
-            single_signer2_sig.clone(),
+            single_signer1_sig,
+            single_signer2_sig,
             // Valid org2 signature
-            org2_signer1_sig.clone(),
-            org2_signer2_sig.clone(),
-            org2_signer3_sig.clone(),
+            org2_signer1_sig,
+            org2_signer2_sig,
+            org2_signer3_sig,
         ]);
         let signers = signer_set
             .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
