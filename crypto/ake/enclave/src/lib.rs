@@ -38,7 +38,7 @@ const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 const MAX_PEER_SESSIONS: usize = 64;
 
 /// Maximum number of concurrent sessions to this enclave from router enclaves.
-const MAX_FRONTEND_SESSIONS: usize = 10_000;
+const MAX_FRONTEND_SESSIONS: usize = 500;
 
 /// Max number of backends that this enclave can connect to as a client.
 const MAX_BACKEND_SESSIONS: usize = 10_000;
