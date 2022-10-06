@@ -87,3 +87,89 @@ impl TryFrom<&external::Ed25519SignerSetV2> for SignerSetV2<Ed25519Public> {
         Ok(Self::new(signers, threshold))
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_util_from_random::FromRandom;
+    use mc_util_serial::{decode, encode};
+    use protobuf::Message;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    // Generate a signer set for testing purposes.
+    pub fn test_signer_set_v2() -> SignerSetV2<Ed25519Public> {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        let signer4 = Ed25519Pair::from_random(&mut rng);
+        let signer5 = Ed25519Pair::from_random(&mut rng);
+        let signer6 = Ed25519Pair::from_random(&mut rng);
+
+        let signer7 = Ed25519Pair::from_random(&mut rng);
+
+        let set1 = SignerSetV2::new(
+            vec![
+                signer1.public_key().into(),
+                signer2.public_key().into(),
+                signer3.public_key().into(),
+            ],
+            2,
+        );
+
+        let set2 = SignerSetV2::new(
+            vec![
+                signer4.public_key().into(),
+                signer5.public_key().into(),
+                signer6.public_key().into(),
+            ],
+            3,
+        );
+
+        SignerSetV2::new(
+            vec![set1.into(), set2.into(), signer7.public_key().into()],
+            1,
+        )
+    }
+
+    #[test]
+    // SignerSetV2<Ed25519Public> -> external::Ed25519SignerSetV2 ->
+    // SignerSetV2<Ed25519Public> should be the identity function.
+    fn test_convert_ed25519_signer_set_v2() {
+        let source = test_signer_set_v2();
+
+        // decode(encode(source)) should be the identity function.
+        {
+            let bytes = encode(&source);
+            let recovered = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // SignerSet<Ed25519Public> -> external::Ed25519SignerSetV2 ->
+        // SignerSet<Ed25519Public> should be the identity function.
+        {
+            let external = external::Ed25519SignerSetV2::from(&source);
+            let recovered = SignerSetV2::try_from(&external).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity
+        // function.
+        {
+            let bytes = encode(&source);
+            let recovered = external::Ed25519SignerSetV2::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, external::Ed25519SignerSetV2::from(&source));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external = external::Ed25519SignerSetV2::from(&source);
+            let bytes = external.write_to_bytes().unwrap();
+            let recovered: SignerSetV2<Ed25519Public> = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+    }
+}
