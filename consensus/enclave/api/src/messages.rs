@@ -112,6 +112,12 @@ pub enum EnclaveCall {
     /// client.
     ClientTxPropose(EnclaveMessage<ClientSession>),
 
+    /// The [ConsensusEnclave::client_tx_propose_v2()] method.
+    ///
+    /// Start a new transaction proposal given the encrypted message from a
+    /// client.
+    ClientTxProposeV2(EnclaveMessage<ClientSession>),
+
     /// The [ConsensusEnclave::client_discard_message()] method.
     ///
     /// Decrypts an incoming message and discard the data.

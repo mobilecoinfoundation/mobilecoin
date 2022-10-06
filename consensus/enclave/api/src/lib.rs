@@ -43,6 +43,7 @@ use mc_transaction_core::{
     tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     TokenId,
 };
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// A generic result type for enclave calls
@@ -246,6 +247,22 @@ pub struct FormBlockInputs {
     pub mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
 }
 
+/// The schema expected to be encrypted for client_tx_propose_v2
+#[derive(Clone, Message)]
+pub struct ClientProposeTxRequest {
+    /// The tx being proposed
+    #[prost(message, required, tag = 1)]
+    pub tx: Tx,
+
+    /// Client's belief about the minimum fee map, expressed as a merlin digest.
+    ///
+    /// The enclave must reject the proposal if this doesn't match the enclave's
+    /// belief, to protect the client from information disclosure attacks.
+    /// (This is TOB-MCCT-5)
+    #[prost(bytes, tag = 2)]
+    pub fee_map_digest: Vec<u8>,
+}
+
 /// The API for interacting with a consensus node's enclave.
 pub trait ConsensusEnclave: ReportableEnclave {
     // UTILITY METHODS
@@ -311,14 +328,41 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Performs the first steps in accepting transactions from a remote client:
     /// 1) Re-encrypt all txs for the local enclave
     /// 2) Extract context data to be handed back to untrusted so that it could
-    /// collect the    information required by `tx_is_well_formed`.
+    /// collect the information required by `tx_is_well_formed`.
+    ///
+    /// Arguments:
+    /// * An EnclaveMessage which encrypts a `Tx` protobuf
+    ///
+    /// Returns:
+    /// * A Tx context including "locally encrypted" version of Tx and some extracted
+    ///   metadata or,
+    /// * A serialization / cryptography error.
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
+
+    /// V2 API of client_tx_propose
+    ///
+    /// Arguments:
+    /// * An EnclaveMessage which encrypts a `ClientProposeTxRequest` protobuf
+    ///
+    /// Returns:
+    /// * A Tx context including "locally encrypted" version of Tx and some extracted
+    ///   metadata, or
+    /// * A serialization / cryptography error, or another mismatch error
+    ///   e.g. minimum_fee_map_hash or (some-day) chain-id error
+    fn client_tx_propose_v2(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
     /// Performs the first steps in accepting transactions from a remote peer:
     /// 1) Re-encrypt all txs for the local enclave
     /// 2) Extract context data to be handed back to untrusted so that it could
-    /// collect the    information required by `tx_is_well_formed`.
+    /// collect the information required by `tx_is_well_formed`.
+    ///
     /// TODO: rename to txs_propose since this operates on multiple txs?
+    ///
+    /// Arguments:
+    /// * An encryption of a `TxList` protobuf
+    ///
+    /// Returns:
+    /// * A sequence of Tx contexts, or a serialization / cryptography error.
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>>;
 
     /// Checks a LocallyEncryptedTx for well-formedness using the given

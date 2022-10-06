@@ -4,7 +4,7 @@
 
 use alloc::collections::BTreeMap;
 use displaydoc::Display;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
@@ -140,6 +140,11 @@ impl FeeMap {
         let mut map = BTreeMap::new();
         map.insert(Mob::ID, Mob::MINIMUM_FEE);
         map
+    }
+
+    /// Get a canonical digest of the minimum fee map
+    pub fn canonical_digest(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(b"mc-fee-map")
     }
 }
 

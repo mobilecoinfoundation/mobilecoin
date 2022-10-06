@@ -14,6 +14,7 @@ use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
+    FeeMap,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -62,6 +63,7 @@ pub struct Client {
     ring_size: usize,
     account_key: AccountKey,
     tx_data: CachedTxData,
+    fee_map: Option<FeeMap>,
 
     /// Number of blocks for which to try and get the new transaction to be
     /// included in the ledger. This value is used to calculate the
@@ -88,7 +90,7 @@ impl Client {
         logger: Logger,
     ) -> Self {
         let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
-
+        let fee_map = None;
         Client {
             consensus_service_conn,
             fog_view,
@@ -101,6 +103,7 @@ impl Client {
             ring_size,
             account_key,
             tx_data,
+            fee_map,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
             logger,
         }
@@ -173,6 +176,18 @@ impl Client {
         self.tx_data.get_latest_block_version()
     }
 
+    /// Get the latest fee map
+    pub fn get_latest_fee_map(&mut self) -> Result<FeeMap> {
+        if let Some(fee_map) = self.fee_map.as_ref() {
+            Ok(fee_map.clone())
+        } else {
+            let block_info = self.consensus_service_conn.fetch_block_info()?;
+            let fee_map = FeeMap::try_from(block_info.minimum_fees)?;
+            self.fee_map = Some(fee_map.clone());
+            Ok(fee_map)
+        }
+    }
+
     /// Submits a transaction to the MobileCoin network.
     ///
     /// To get a transaction, call build_transaction.
@@ -183,17 +198,22 @@ impl Client {
     /// transaction.
     pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
         let start_time = std::time::SystemTime::now();
-        let block_count = self.consensus_service_conn.propose_tx(transaction)?;
+        let fee_map = self.get_latest_fee_map()?;
+        let tx_ok_data = self.consensus_service_conn.propose_tx_v2(transaction, &fee_map).map_err(|err| {
+            // Clear fee map in case this was the problem
+            self.fee_map = None;
+            err
+        })?;
 
         let tracer = tracer!();
-        let mut span = block_span_builder(&tracer, "send_transaction", block_count)
+        let mut span = block_span_builder(&tracer, "send_transaction", tx_ok_data.block_count)
             .with_start_time(start_time)
             .start(&tracer);
 
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(tx_ok_data.block_count as i64));
         span.end();
 
-        Ok(block_count)
+        Ok(tx_ok_data.block_count)
     }
 
     /// Check if a transaction has appeared in the ledger, by checking if one of

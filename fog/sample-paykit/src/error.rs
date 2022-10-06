@@ -3,7 +3,7 @@
 //! MobileCoin SDK Errors
 
 use displaydoc::Display;
-use mc_connection::{Error as ConnectionError, ProposeTxResult};
+use mc_connection::{Error as ConnectionError, FeeMapError, ProposeTxResult};
 use mc_consensus_api::ConversionError;
 use mc_crypto_keys::KeyError;
 use mc_fog_enclave_connection::Error as EnclaveConnectionError;
@@ -146,6 +146,9 @@ pub enum Error {
 
     /// Fog merkle proof: {0}
     FogMerkleProof(String),
+
+    /// Fee Map: {0}
+    FeeMap(FeeMapError)
 }
 
 impl From<ConnectionError> for Error {
@@ -154,6 +157,12 @@ impl From<ConnectionError> for Error {
             ConnectionError::TransactionValidation(tve, msg) => Error::TxRejected(tve, msg),
             other => Error::ConsensusConnection(other),
         }
+    }
+}
+
+impl From<FeeMapError> for Error {
+    fn from(x: FeeMapError) -> Error {
+        Error::FeeMap(x)
     }
 }
 

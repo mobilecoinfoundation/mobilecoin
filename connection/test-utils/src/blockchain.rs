@@ -5,7 +5,7 @@
 use mc_blockchain_types::{Block, BlockID, BlockIndex, BlockVersion};
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
-    Result as ConnectionResult, UserTxConnection,
+    Result as ConnectionResult, UserTxConnection, TxOkData
 };
 use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;
@@ -132,6 +132,14 @@ impl<L: Ledger + Sync> UserTxConnection for MockBlockchainConnection<L> {
     fn propose_tx(&mut self, tx: &Tx) -> ConnectionResult<BlockIndex> {
         self.proposed_txs.push(tx.clone());
         Ok(self.ledger.num_blocks().unwrap())
+    }
+
+    fn propose_tx_v2(&mut self, tx: &Tx, _fee_map: &FeeMap) -> ConnectionResult<TxOkData> {
+        self.proposed_txs.push(tx.clone());
+        Ok(TxOkData {
+            block_count: self.ledger.num_blocks().unwrap(),
+            block_version: 0,   
+        })
     }
 }
 

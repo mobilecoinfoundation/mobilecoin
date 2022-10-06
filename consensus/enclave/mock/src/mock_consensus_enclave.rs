@@ -63,6 +63,8 @@ mock! {
 
         fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> ConsensusEnclaveResult<TxContext>;
 
+        fn client_tx_propose_v2(&self, msg: EnclaveMessage<ClientSession>) -> ConsensusEnclaveResult<TxContext>;
+
         fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> ConsensusEnclaveResult<Vec<TxContext>>;
 
         fn tx_is_well_formed(

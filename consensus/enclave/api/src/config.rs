@@ -46,15 +46,18 @@ impl Default for BlockchainConfig {
 pub struct BlockchainConfigWithDigest {
     config: BlockchainConfig,
     cached_digest: String,
+    fee_map_digest: [u8; 32],
 }
 
 impl From<BlockchainConfig> for BlockchainConfigWithDigest {
     fn from(config: BlockchainConfig) -> Self {
         let digest = config.digest32::<MerlinTranscript>(b"mc-blockchain-config");
         let cached_digest = hex::encode(digest);
+        let fee_map_digest = config.fee_map.canonical_digest();
         Self {
             config,
             cached_digest,
+            fee_map_digest,
         }
     }
 }
@@ -76,6 +79,11 @@ impl BlockchainConfigWithDigest {
     /// responder id that is unique to the current fee configuration.
     pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
         ResponderId(format!("{}-{}", responder_id.0, self.cached_digest))
+    }
+
+    /// Get canonical fee map digest
+    pub fn canonical_fee_map_digest(&self) -> &[u8; 32] {
+        &self.fee_map_digest
     }
 
     /// Get the config (non mutably)

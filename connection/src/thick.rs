@@ -8,7 +8,7 @@ use crate::{
     error::{Error, Result},
     traits::{
         AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
-        UserTxConnection,
+        UserTxConnection, TxOkData
     },
 };
 use aes_gcm::Aes256Gcm;
@@ -35,10 +35,11 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
+use mc_consensus_enclave_api::{FeeMap, ClientProposeTxRequest};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
-use mc_transaction_core::tx::Tx;
+use mc_transaction_core::{tx::Tx};
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
@@ -435,6 +436,51 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
             ))
         }
     }
+
+    fn propose_tx_v2(&mut self, tx: &Tx, fee_map: &FeeMap) -> Result<TxOkData> {
+        trace_time!(self.logger, "ThickClient::propose_tx_v2");
+
+        if !self.is_attested() {
+            let _verification_report = self.attest()?;
+        }
+
+        let enclave_connection = self
+            .enclave_connection
+            .as_mut()
+            .expect("no enclave_connection even though attest succeeded");
+
+        let req = ClientProposeTxRequest {
+            tx: tx.clone(),
+            fee_map_digest: fee_map.canonical_digest().to_vec()
+        };
+
+        let mut msg = Message::new();
+        msg.set_channel_id(Vec::from(enclave_connection.binding()));
+
+        // Don't leave the plaintext serialization floating around
+        let tx_plaintext = SecretVec::new(encode(&req));
+        let tx_ciphertext =
+            enclave_connection.encrypt(&[], tx_plaintext.expose_secret().as_ref())?;
+        msg.set_data(tx_ciphertext);
+
+        let resp = self.authenticated_attested_call(|this, call_option| {
+            this.consensus_client_api_client
+                .client_tx_propose_async_opt(&msg, call_option)
+        })?;
+
+        if resp.get_result() == ProposeTxResult::Ok {
+            Ok(TxOkData {
+                block_count: resp.get_block_count(),
+                block_version: resp.get_block_version(),
+            })
+        } else {
+            Err(Error::TransactionValidation(
+                resp.get_result(),
+                resp.get_err_msg().to_owned(),
+            ))
+        }
+    }
+
 }
 
 impl<CP: CredentialsProvider> Display for ThickClient<CP> {

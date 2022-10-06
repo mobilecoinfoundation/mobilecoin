@@ -3,7 +3,8 @@
 //! User Transaction Connection Mock
 
 use mc_blockchain_types::BlockIndex;
-use mc_connection::{Connection, Result as ConnectionResult, UserTxConnection};
+use mc_connection::{Connection, Result as ConnectionResult, UserTxConnection, TxOkData};
+use mc_consensus_enclave_api::FeeMap;
 use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
@@ -71,5 +72,13 @@ impl UserTxConnection for MockUserTxConnection {
     fn propose_tx(&mut self, tx: &Tx) -> ConnectionResult<BlockIndex> {
         self.submitted_txs.push(tx.clone());
         Ok(1)
+    }
+
+    fn propose_tx_v2(&mut self, tx: &Tx, _fee_map: &FeeMap) -> ConnectionResult<TxOkData> {
+        self.submitted_txs.push(tx.clone());
+        Ok(TxOkData {
+            block_count: 1,
+            block_version: 0,
+        })
     }
 }

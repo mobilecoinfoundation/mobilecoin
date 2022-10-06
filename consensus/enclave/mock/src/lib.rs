@@ -201,6 +201,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         Ok(TxContext::default())
     }
 
+    fn client_tx_propose_v2(&self, _msg: EnclaveMessage<ClientSession>) -> Result<TxContext> {
+        Ok(TxContext::default())
+    }
+
     fn peer_tx_propose(&self, _msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
         Ok(Vec::default())
     }

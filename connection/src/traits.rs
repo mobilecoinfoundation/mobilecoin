@@ -7,6 +7,7 @@ use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
+use mc_consensus_enclave_api::FeeMap;
 use mc_transaction_core::{tokens::Mob, tx::Tx, Token, TokenId};
 use mc_util_uri::ConnectionUri;
 use serde::Serialize;
@@ -153,12 +154,26 @@ pub trait BlockchainConnection: Connection {
     fn fetch_block_info(&mut self) -> Result<BlockInfo>;
 }
 
+/// Data from a successful ProposeTxResponse instance (not include err_str etc.)
+pub struct TxOkData {
+    /// The block count reported by the node
+    pub block_count: u64,
+    /// The block version reported by the node
+    pub block_version: u32,
+}
+
 /// A trait which supports supporting the submission of transactions to a node
 pub trait UserTxConnection: Connection {
     /// Propose a transaction over the encrypted channel.
     /// Returns the number of blocks in the ledger at the time the call was
     /// received.
     fn propose_tx(&mut self, tx: &Tx) -> Result<u64>;
+
+    /// Propose a transaction over the encrypted channel (v2 API).
+    /// The user makes an assertion about what the current state of the minimum
+    /// fee map is, which the enclave checks and rejects the Tx if it is different.
+    /// This prevents an information leak identified in TOB-MCCT-5
+    fn propose_tx_v2(&mut self, tx: &Tx, minimum_fee_map: &FeeMap) -> Result<TxOkData>;
 }
 
 // Retryable connections: these traits exist to allow SyncConnection to extend
@@ -204,4 +219,11 @@ pub trait RetryableUserTxConnection {
         tx: &Tx,
         retry_iterator: impl IntoIterator<Item = Duration>,
     ) -> RetryResult<BlockIndex>;
+
+    fn propose_tx_v2(
+        &self,
+        tx: &Tx,
+        fee_map: &FeeMap,
+        retry_iterator: impl IntoIterator<Item = Duration>,
+    ) -> RetryResult<TxOkData>;
 }

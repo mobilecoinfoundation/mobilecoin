@@ -20,10 +20,11 @@ pub use crate::{
     thick::{ThickClient, ThickClientAttestationError},
     traits::{
         AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
-        RetryableBlockchainConnection, RetryableUserTxConnection, UserTxConnection,
+        RetryableBlockchainConnection, RetryableUserTxConnection, UserTxConnection, TxOkData,
     },
 };
 
 pub use mc_common::trace_time as _trace_time;
 pub use mc_consensus_api::consensus_common::ProposeTxResult;
+pub use mc_consensus_enclave_api::{FeeMap, FeeMapError};
 pub use retry as _retry;

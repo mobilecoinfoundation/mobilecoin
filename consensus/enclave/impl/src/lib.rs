@@ -49,6 +49,7 @@ use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
     FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    ClientProposeTxRequest,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -430,6 +431,33 @@ impl SgxConsensusEnclave {
 
         Ok(mint_txs)
     }
+
+    // Common bits of `client_tx_propose` and `client_tx_propose_v2`
+    fn client_tx_propose_common(&self, tx: Tx) -> Result<TxContext> {
+        // Convert to TxContext
+        let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
+            let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
+            let mut rng = McRng::default();
+
+            let tx_bytes = tx.encode_to_vec();
+
+            Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
+        };
+        let locally_encrypted_tx = maybe_locally_encrypted_tx?;
+
+        let tx_hash = tx.tx_hash();
+        let highest_indices = tx.get_membership_proof_highest_indices();
+        let key_images: Vec<KeyImage> = tx.key_images();
+        let output_public_keys = tx.output_public_keys();
+
+        Ok(TxContext {
+            locally_encrypted_tx,
+            tx_hash,
+            highest_indices,
+            key_images,
+            output_public_keys,
+        })
+    }
 }
 
 impl ReportableEnclave for SgxConsensusEnclave {
@@ -610,27 +638,23 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Try and deserialize.
         let tx: Tx = mc_util_serial::decode(&tx_bytes)?;
 
-        // Convert to TxContext
-        let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
-            let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
-            let mut rng = McRng::default();
+        self.client_tx_propose_common(tx)
+    }
 
-            Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
-        };
-        let locally_encrypted_tx = maybe_locally_encrypted_tx?;
+    fn client_tx_propose_v2(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext> {
+        let req_bytes = self.ake.client_decrypt(msg)?;
 
-        let tx_hash = tx.tx_hash();
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let key_images: Vec<KeyImage> = tx.key_images();
-        let output_public_keys = tx.output_public_keys();
+        // Try and deserialize.
+        let req: ClientProposeTxRequest = mc_util_serial::decode(&req_bytes)?;
 
-        Ok(TxContext {
-            locally_encrypted_tx,
-            tx_hash,
-            highest_indices,
-            key_images,
-            output_public_keys,
-        })
+        if &req.fee_map_digest[..] != &self
+            .blockchain_config
+            .get()
+            .ok_or(Error::NotInitialized)?.canonical_fee_map_digest()[..] {
+            return Err(Error::FeeMapDigestMismatch);   
+        }
+
+        self.client_tx_propose_common(req.tx)
     }
 
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {

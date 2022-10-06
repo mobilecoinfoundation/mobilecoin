@@ -68,6 +68,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),
         // Transactions
         EnclaveCall::ClientTxPropose(msg) => serialize(&ENCLAVE.client_tx_propose(msg)),
+        EnclaveCall::ClientTxProposeV2(msg) => serialize(&ENCLAVE.client_tx_propose_v2(msg)),
         EnclaveCall::PeerTxPropose(msg) => serialize(&ENCLAVE.peer_tx_propose(msg)),
         EnclaveCall::TxIsWellFormed(locally_encrypted_tx, block_index, proofs) => {
             serialize(&ENCLAVE.tx_is_well_formed(locally_encrypted_tx, block_index, proofs))

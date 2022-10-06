@@ -219,6 +219,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn client_tx_propose_v2(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientTxProposeV2(msg))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerTxPropose(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;

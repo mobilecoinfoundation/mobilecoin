@@ -67,10 +67,29 @@ message ProposeMintTxResponse {
     uint32 block_version = 3;
 }
 
+/// Request which is encrypted when calling client_tx_propose_v2 endpoint
+message ClientProposeTxRequest {
+    /// The tx being proposed
+    external.Tx tx = 1;
+
+    /// Client's belief about the minimum fee map, expressed as a merlin digest.
+    ///
+    /// The enclave must reject the proposal if this doesn't match the enclave's
+    /// belief, to protect the client from information disclosure attacks.
+    /// (This is TOB-MCCT-5)
+    bytes fee_map_digest = 2;
+}
+
 service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
+    /// The attest.Message should be encrypting a Tx protobuf.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+
+    /// This API call is made with an encrypted payload for the enclave,
+    /// indicating a new value to be acted upon.
+    /// The attest.Message should be encrypting a ClientProposeTxRequest protobuf.
+    rpc ClientTxProposeV2(attest.Message) returns (consensus_common.ProposeTxResponse);
 
     /// Propose a new MintConfigTx.
     rpc ProposeMintConfigTx(external.MintConfigTx) returns (ProposeMintConfigTxResponse);

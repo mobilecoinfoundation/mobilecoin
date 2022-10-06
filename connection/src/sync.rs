@@ -6,12 +6,13 @@ use crate::{
     error::RetryResult,
     traits::{
         BlockInfo, BlockchainConnection, Connection, RetryableBlockchainConnection,
-        RetryableUserTxConnection, UserTxConnection,
+        RetryableUserTxConnection, UserTxConnection, TxOkData,
     },
 };
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::logger::Logger;
-use mc_transaction_core::tx::Tx;
+use mc_consensus_enclave_api::FeeMap;
+use mc_transaction_core::{tx::Tx};
 use std::{
     cmp::Ordering,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -236,5 +237,14 @@ impl<UTC: UserTxConnection> RetryableUserTxConnection for SyncConnection<UTC> {
         retry_iterator: impl IntoIterator<Item = Duration>,
     ) -> RetryResult<BlockIndex> {
         impl_sync_connection_retry!(self.write(), self.logger, propose_tx, retry_iterator, tx)
+    }
+
+    fn propose_tx_v2(
+        &self,
+        tx: &Tx,
+        fee_map: &FeeMap,
+        retry_iterator: impl IntoIterator<Item = Duration>,
+    ) -> RetryResult<TxOkData> {
+        impl_sync_connection_retry!(self.write(), self.logger, propose_tx_v2, retry_iterator, tx, fee_map)
     }
 }
