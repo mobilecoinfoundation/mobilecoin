@@ -15,7 +15,7 @@ use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
-#[cfg(feature = "ip-check")]
+#[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue, InvalidHeaderValue, AUTHORIZATION, CONTENT_TYPE},
@@ -132,7 +132,7 @@ pub enum ConfigError {
     DataMissing(String),
 
     /// Invalid header: {0}
-    #[cfg(feature = "ip-check")]
+    #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
     InvalidHeader(InvalidHeaderValue),
 }
 
@@ -148,7 +148,7 @@ impl From<reqwest::Error> for ConfigError {
     }
 }
 
-#[cfg(feature = "ip-check")]
+#[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
 impl From<InvalidHeaderValue> for ConfigError {
     fn from(e: InvalidHeaderValue) -> Self {
         Self::InvalidHeader(e)
@@ -231,7 +231,7 @@ impl Config {
     ///
     /// Note, both of these services are free tier and rate-limited. A longer
     /// term solution would be to filter on the consensus server.
-    #[cfg(feature = "ip-check")]
+    #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;
         let mut json_headers = HeaderMap::new();
@@ -276,7 +276,7 @@ impl Config {
     /// Ensure local IP address is valid
     ///
     /// This does nothing when ip-check is disabled.
-    #[cfg(not(feature = "ip-check"))]
+    #[cfg(not(all(feature = "ip-check", not(feature = "bypass-ip-check"))))]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         Ok(())
     }
