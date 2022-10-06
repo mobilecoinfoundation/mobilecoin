@@ -45,6 +45,8 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
+      release_1x_tag: ${{ needs.generate-metadata.outputs.release_1x_tag }}
+      release_2x_tag: ${{ needs.generate-metadata.outputs.release_2x_tag }}
 
     steps:
     - name: Checkout
@@ -417,7 +419,7 @@ jobs:
       ingest_color: blue
       minting_config_enabled: false
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ env.RELEASE_1X_TAG }}
+      version: ${{ needs.generate-metadata.outputs.release_1x_tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
       CLIENT_AUTH_TOKEN: false
@@ -463,7 +465,7 @@ jobs:
   #           "minting_config_enabled": "false",
   #           "ingest_color": "blue",
   #           "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-  #           "version": "${{ env.RELEASE_1X_TAG }}",
+  #           "version": "${{ needs.generate-metadata.outputs.release_1x_tag }}",
   #           "client_auth_enabled": "false",
   #           "use_static_wallet_seeds": "true"
   #         }
@@ -529,7 +531,7 @@ jobs:
       ingest_color: green
       minting_config_enabled: false
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ env.RELEASE_2X_TAG }}
+      version: ${{ needs.generate-metadata.outputs.release_2x_tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
       CLIENT_AUTH_TOKEN: false
@@ -575,7 +577,7 @@ jobs:
     #         "minting_config_enabled": "true",
     #         "ingest_color": "green",
     #         "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-    #         "version": "${{ env.RELEASE_2X_TAG }}",
+    #         "version": "${{ needs.generate-metadata.outputs.release_2x_tag }}",
     #         "client_auth_enabled": "false",
     #         "use_static_wallet_seeds": "true"
     #       }
@@ -639,7 +641,7 @@ jobs:
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       minting_config_enabled: true
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ env.RELEASE_2X_TAG }}
+      version: ${{ needs.generate-metadata.outputs.release_2x_tag }}
     secrets:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -679,7 +681,7 @@ jobs:
     #         "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
     #         "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
     #         "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-    #         "version": "${{ env.RELEASE_2X_TAG }}"
+    #         "version": "${{ needs.generate-metadata.outputs.release_2x_tag }}"
     #       }
 
   test-v2-bv2-release:
