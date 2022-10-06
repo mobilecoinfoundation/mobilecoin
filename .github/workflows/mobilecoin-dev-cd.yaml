@@ -45,8 +45,8 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
-      release_1x_tag: ${{ needs.generate-metadata.outputs.release_1x_tag }}
-      release_2x_tag: ${{ needs.generate-metadata.outputs.release_2x_tag }}
+      release_1x_tag: ${{ env.RELEASE_1X_TAG }}
+      release_2x_tag: ${{ env.RELEASE_2X_TAG }}
 
     steps:
     - name: Checkout
