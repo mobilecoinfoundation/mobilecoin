@@ -744,7 +744,7 @@ jobs:
       ingest_color: blue
       minting_config_enabled: false
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.tag }
+      version: ${{ needs.generate-metadata.outputs.tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
       CLIENT_AUTH_TOKEN: false
