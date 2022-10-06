@@ -19,6 +19,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Update CI deployments to use zerossl instead of letsencrypt.
 - Add a `--hash-tx-file` subcommand to print the hash of a `mint-tx` or `mint-config-tx` file.
 - Add the current block info (fee map, block version, etc.) to the response message for `mobilecoind_api.GetNetworkStatus`.
+- Make Jaeger telemetry opt-in using `MC_TELEMETRY=1`. 
 
 ### Fixes
 
