@@ -193,11 +193,11 @@ where
         Ok(response.data)
     }
 
-    fn query_backend(
+    fn query_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
         untrusted_query_response: UntrustedQueryResponse,
-    ) -> Result<(Vec<u8>, u64)> {
+    ) -> Result<EnclaveMessage<NonceSession>> {
         let channel_id = msg.channel_id.clone();
         let user_plaintext = self.ake.frontend_decrypt(msg)?;
         let response_plaintext_bytes =
@@ -206,7 +206,7 @@ where
             .ake
             .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
 
-        Ok((response.data, response.channel_id.nonce()))
+        Ok(response)
     }
 
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()> {

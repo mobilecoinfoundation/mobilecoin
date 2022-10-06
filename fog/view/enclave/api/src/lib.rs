@@ -165,12 +165,13 @@ pub trait ViewEnclaveApi: ReportableEnclave {
         untrusted_query_response: UntrustedQueryResponse,
     ) -> Result<Vec<u8>>;
 
-    /// Service a query response from a frontend.
-    fn query_backend(
+    /// Service a frontend's query request. Intended to be used by a Fog View
+    /// Store.
+    fn query_store(
         &self,
         payload: EnclaveMessage<NonceSession>,
         untrusted_query_response: UntrustedQueryResponse,
-    ) -> Result<(Vec<u8>, u64)>;
+    ) -> Result<EnclaveMessage<NonceSession>>;
 
     /// SERVER-FACING
 

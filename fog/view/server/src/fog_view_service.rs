@@ -196,16 +196,13 @@ where
         tracer.in_span("query_nonce_impl", |_cx| {
             let untrusted_query_response =
                 self.create_untrusted_query_response(request.get_aad(), &tracer)?;
-            let (data, nonce) = tracer.in_span("enclave_query", |_cx| {
+            let enclave_nonce_message = tracer.in_span("enclave_query_store", |_cx| {
                 self.enclave
-                    .query_backend(request.into(), untrusted_query_response)
+                    .query_store(request.into(), untrusted_query_response)
                     .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))
             })?;
 
-            let mut nonce_message = attest::NonceMessage::new();
-            nonce_message.set_data(data);
-            nonce_message.set_nonce(nonce);
-            Ok(nonce_message)
+            Ok(enclave_nonce_message.into())
         })
     }
 

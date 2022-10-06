@@ -216,7 +216,6 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     pub fn frontend_decrypt(&self, msg: EnclaveMessage<NonceSession>) -> Result<Vec<u8>> {
-        // Ensure lock gets released as soon as we're done decrypting.
         let mut frontends = self.frontends.lock()?;
         frontends
             .get_mut(&msg.channel_id)
