@@ -4,4 +4,4 @@
 
 pub mod multisig;
 pub mod signerset_v1;
-// mod signerset_v2;
+pub mod signerset_v2;
