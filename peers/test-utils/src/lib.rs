@@ -349,15 +349,9 @@ mod peer_manager_tests {
             .expect("failed getting peer conn")
             .send_consensus_msg(&msg, Fibonacci::from_millis(10).take(7));
 
-        match ret {
-            Ok(_) => panic!("should've failed"),
-            Err(retry::Error::Operation { .. }) => {
-                // This is expected
-            }
-            Err(e) => {
-                panic!("got unexpected error {:?}", e);
-            }
-        };
+        if ret.is_ok() {
+            panic!("should've failed");
+        }
 
         assert_eq!(peer.state().send_consensus_msg_call_count, 8);
 

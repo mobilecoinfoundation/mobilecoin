@@ -637,7 +637,7 @@ fn submit_tx(
                 BLOCK_HEIGHT.fetch_max(block_height, Ordering::SeqCst);
                 return true;
             }
-            Err(RetryError::Operation {
+            Err(RetryError {
                 error,
                 total_delay,
                 tries,
@@ -677,10 +677,6 @@ fn submit_tx(
                     tries
                 );
                 thread::sleep(retry_sleep_duration);
-            }
-            Err(RetryError::Internal(_s)) => {
-                // Retry crate never actually returns Internal on any code path
-                unreachable!()
             }
         }
     }

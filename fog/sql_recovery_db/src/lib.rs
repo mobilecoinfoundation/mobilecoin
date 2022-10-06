@@ -1522,12 +1522,7 @@ where
 }
 
 fn unpack_retry_error(src: RetryError<Error>) -> Error {
-    match src {
-        RetryError::Operation { error, .. } => error,
-        RetryError::Internal(_) => {
-            panic!("This is unreachable, see https://github.com/jimmycuadra/retry/issues/38")
-        }
-    }
+    src.error
 }
 
 #[cfg(test)]

@@ -109,7 +109,7 @@ impl S3BlockWriter {
     fn write_bytes_to_s3(&self, path: &str, filename: &str, value: &[u8]) {
         let runtime = Handle::current();
         let result = retry(
-            delay::Exponential::from_millis(10).map(delay::jitter),
+            delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),

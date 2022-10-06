@@ -68,10 +68,7 @@ impl From<ProstEncodeError> for Error {
 
 impl From<RetryError<Self>> for Error {
     fn from(src: RetryError<Self>) -> Self {
-        match src {
-            RetryError::Operation { error, .. } => error,
-            RetryError::Internal(s) => Error::RetryInternal(s),
-        }
+        src.error
     }
 }
 
