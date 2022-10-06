@@ -33,7 +33,9 @@ impl TryFrom<&external::ValidatedMintConfigTx> for ValidatedMintConfigTx {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::convert::ed25519_multisig::tests::{test_multi_sig, test_signer_set};
+    use crate::convert::ed25519_multisig::{
+        multisig::tests::test_multi_sig, signerset_v1::tests::test_signer_set_v1,
+    };
     use mc_transaction_core::mint::{MintConfig, MintConfigTxPrefix};
     use mc_util_serial::{decode, encode};
     use protobuf::Message;
@@ -49,12 +51,12 @@ mod tests {
                     configs: vec![
                         MintConfig {
                             token_id: 123,
-                            signer_set: test_signer_set(),
+                            signer_set: test_signer_set_v1(),
                             mint_limit: 10000,
                         },
                         MintConfig {
                             token_id: 456,
-                            signer_set: test_signer_set(),
+                            signer_set: test_signer_set_v1(),
                             mint_limit: 20000,
                         },
                     ],
@@ -64,7 +66,7 @@ mod tests {
                 },
                 signature: test_multi_sig(),
             },
-            signer_set: test_signer_set(),
+            signer_set: test_signer_set_v1(),
         };
 
         // decode(encode(source)) should be the identity function.

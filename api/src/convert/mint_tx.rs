@@ -65,7 +65,7 @@ impl TryFrom<&external::MintTx> for MintTx {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::convert::ed25519_multisig::tests::test_multi_sig;
+    use crate::convert::ed25519_multisig::multisig::tests::test_multi_sig;
     use mc_util_from_random::FromRandom;
     use mc_util_serial::{decode, encode};
     use protobuf::Message;
