@@ -422,7 +422,6 @@ jobs:
       version: ${{ needs.generate-metadata.outputs.release_1x_tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
-      CLIENT_AUTH_TOKEN: false
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       FOG_KEYS_SEED: ${{ secrets.DEV_FOG_KEYS_SEED }}
@@ -534,7 +533,6 @@ jobs:
       version: ${{ needs.generate-metadata.outputs.release_2x_tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
-      CLIENT_AUTH_TOKEN: false
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       FOG_KEYS_SEED: ${{ secrets.DEV_FOG_KEYS_SEED }}
@@ -749,7 +747,6 @@ jobs:
       version: ${{ needs.generate-metadata.outputs.tag }}
     secrets:
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
-      CLIENT_AUTH_TOKEN: false
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       FOG_KEYS_SEED: ${{ secrets.DEV_FOG_KEYS_SEED }}
