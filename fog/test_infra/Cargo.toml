@@ -40,7 +40,7 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"

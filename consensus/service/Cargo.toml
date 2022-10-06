@@ -44,7 +44,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.13"
 chrono = "0.4"
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
 futures = "0.3"
