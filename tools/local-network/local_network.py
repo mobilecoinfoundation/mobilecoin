@@ -469,6 +469,7 @@ class Network:
 
         # Note: bypass-ip-check feature of mobilecoind is used here,
         # because ip-check is sometimes problematic for devs or CI machines.
+        # If the service rate limits you then mobilecoind fails to start.
         subprocess.run(
             f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --feature mc-mobilecoind/bypass-ip-check {CARGO_FLAGS}',
             shell=True,
