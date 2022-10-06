@@ -47,6 +47,18 @@ message Ed25519SignerSetV1 {
     uint32 threshold = 2;
 }
 
+message Ed25519SignerSetV2 {
+    repeated Ed25519SignerContainer signers = 1;
+    uint32 threshold = 2;
+}
+
+message Ed25519SignerContainer {
+    oneof signer_entity {
+        Ed25519Public single = 1;
+        Ed25519SignerSetV2 multi = 2;
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // `account-keys` crate
