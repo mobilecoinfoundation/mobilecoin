@@ -470,8 +470,9 @@ class Network:
         # Note: no-default-features is set here to avoid the ip_check feature
         # of mc-mobilecoind, which is sometimes problematic for devs or CI machines.
         # If service rate limits you then you can't start mobilecoind.
+        # None of the other crates here have a default feature.
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build --no-default-features -p mc-consensus-service/default -p mc-ledger-distribution/default -p mc-admin-http-gateway/default -p mc-util-grpc-admin-tool/default -p mc-mobilecoind -p mc-crypto-x509-test-vectors/default -p mc-consensus-mint-client/default -p mc-util-seeded-ed25519-key-gen/default {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build --no-default-features -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
