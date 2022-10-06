@@ -1020,6 +1020,143 @@ mod test_nested_multisigs {
     }
 
     #[test]
+    fn ed25519_mixed_single_and_multi() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let message = b"this is a test";
+
+        // Org 1 requires 2-of-3 signatures
+        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org1_signerset = SignerSetV2::new(
+            vec![
+                org1_signer1.public_key().into(),
+                org1_signer2.public_key().into(),
+                org1_signer3.public_key().into(),
+            ],
+            2,
+        );
+
+        // Org 2 requires 3-of-3 signatures
+        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
+        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
+        let org2_signerset = SignerSetV2::new(
+            vec![
+                org2_signer1.public_key().into(),
+                org2_signer2.public_key().into(),
+                org2_signer3.public_key().into(),
+            ],
+            3,
+        );
+
+        // Two single signers
+        let single_signer1 = Ed25519Pair::from_random(&mut rng);
+        let single_signer2 = Ed25519Pair::from_random(&mut rng);
+
+        // Sign the message with all of our signers.
+        let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
+        let org1_signer2_sig = org1_signer2.try_sign(message.as_ref()).unwrap();
+        let org1_signer3_sig = org1_signer3.try_sign(message.as_ref()).unwrap();
+
+        let org2_signer1_sig = org2_signer1.try_sign(message.as_ref()).unwrap();
+        let org2_signer2_sig = org2_signer2.try_sign(message.as_ref()).unwrap();
+        let org2_signer3_sig = org2_signer3.try_sign(message.as_ref()).unwrap();
+
+        let single_signer1_sig = single_signer1.try_sign(message.as_ref()).unwrap();
+        let single_signer2_sig = single_signer2.try_sign(message.as_ref()).unwrap();
+
+        // The top-level multisig requires 3-of-4 signatures
+        let signer_set = SignerSetV2::new(
+            vec![
+                org1_signerset.into(),
+                org2_signerset.into(),
+                single_signer1.public_key().into(),
+                single_signer2.public_key().into(),
+            ],
+            3,
+        );
+
+        // Signing with less than the threshold doesn't verify.
+        let multi_sig = MultiSig::new(vec![
+            // Valid org1 signature
+            org1_signer1_sig.clone(),
+            org1_signer2_sig.clone(),
+            // Invalid org2 signature
+            org2_signer1_sig.clone(),
+            org2_signer2_sig.clone(),
+            // One of the single signers
+            single_signer1_sig.clone(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        let multi_sig = MultiSig::new(vec![
+            // Valid org1 signature
+            org1_signer1_sig.clone(),
+            org1_signer2_sig.clone(),
+            org1_signer3_sig.clone(),
+            // A valid single signer
+            single_signer1_sig.clone(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Providing 3 valid signatures verifies.
+        let multi_sig = MultiSig::new(vec![
+            // Valid org1 signature
+            org1_signer1_sig.clone(),
+            org1_signer2_sig.clone(),
+            // Two valid singler signers
+            single_signer1_sig.clone(),
+            single_signer2_sig.clone(),
+            // Partial but invalid org2 signature
+            org2_signer1_sig.clone(),
+        ]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
+                single_signer1.public_key(),
+                single_signer2.public_key(),
+            ],
+        );
+
+        // Providing 4 valid signatures verifies.
+        let multi_sig = MultiSig::new(vec![
+            // Valid org1 signature
+            org1_signer1_sig.clone(),
+            org1_signer2_sig.clone(),
+            // Two valid singler signers
+            single_signer1_sig.clone(),
+            single_signer2_sig.clone(),
+            // Valid org2 signature
+            org2_signer1_sig.clone(),
+            org2_signer2_sig.clone(),
+            org2_signer3_sig.clone(),
+        ]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+
+        assert_eq_ignore_order(
+            signers,
+            vec![
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
+                single_signer1.public_key(),
+                single_signer2.public_key(),
+            ],
+        );
+    }
+
+    #[test]
     fn test_serde_works() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
