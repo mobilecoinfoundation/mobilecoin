@@ -46,10 +46,10 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
-    FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
-    ClientProposeTxRequestV2,
+    BlockchainConfig, BlockchainConfigWithDigest, ClientProposeTxRequestV2, ConsensusEnclave,
+    Error, FeeMap, FeePublicKey, FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result,
+    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    SMALLEST_MINIMUM_FEE_LOG2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -647,11 +647,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Try and deserialize.
         let req: ClientProposeTxRequestV2 = mc_util_serial::decode(&req_bytes)?;
 
-        if &req.fee_map_digest[..] != &self
-            .blockchain_config
-            .get()
-            .ok_or(Error::NotInitialized)?.canonical_fee_map_digest()[..] {
-            return Err(Error::FeeMapDigestMismatch);   
+        if &req.fee_map_digest[..]
+            != &self
+                .blockchain_config
+                .get()
+                .ok_or(Error::NotInitialized)?
+                .canonical_fee_map_digest()[..]
+        {
+            return Err(Error::FeeMapDigestMismatch);
         }
 
         self.client_tx_propose_common(req.tx)

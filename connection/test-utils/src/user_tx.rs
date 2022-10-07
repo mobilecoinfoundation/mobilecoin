@@ -3,7 +3,7 @@
 //! User Transaction Connection Mock
 
 use mc_blockchain_types::BlockIndex;
-use mc_connection::{Connection, Result as ConnectionResult, UserTxConnection, TxOkData};
+use mc_connection::{Connection, Result as ConnectionResult, TxOkData, UserTxConnection};
 use mc_consensus_enclave_api::FeeMap;
 use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};

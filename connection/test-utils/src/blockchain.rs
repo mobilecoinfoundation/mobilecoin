@@ -5,7 +5,7 @@
 use mc_blockchain_types::{Block, BlockID, BlockIndex, BlockVersion};
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
-    Result as ConnectionResult, UserTxConnection, TxOkData
+    Result as ConnectionResult, TxOkData, UserTxConnection,
 };
 use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;

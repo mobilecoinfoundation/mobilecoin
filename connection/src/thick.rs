@@ -8,7 +8,7 @@ use crate::{
     error::{Error, Result},
     traits::{
         AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
-        UserTxConnection, TxOkData
+        TxOkData, UserTxConnection,
     },
 };
 use aes_gcm::Aes256Gcm;
@@ -35,11 +35,11 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
-use mc_consensus_enclave_api::{FeeMap, ClientProposeTxRequestV2};
+use mc_consensus_enclave_api::{ClientProposeTxRequestV2, FeeMap};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
-use mc_transaction_core::{tx::Tx};
+use mc_transaction_core::tx::Tx;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
@@ -451,7 +451,7 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
 
         let req = ClientProposeTxRequestV2 {
             tx: tx.clone(),
-            fee_map_digest: fee_map.canonical_digest().to_vec()
+            fee_map_digest: fee_map.canonical_digest().to_vec(),
         };
 
         let mut msg = Message::new();
@@ -480,7 +480,6 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
             ))
         }
     }
-
 }
 
 impl<CP: CredentialsProvider> Display for ThickClient<CP> {

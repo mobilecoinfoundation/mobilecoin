@@ -13,8 +13,8 @@ use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
-    BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
-    FeeMap,
+    BlockchainConnection, Connection, FeeMap, HardcodedCredentialsProvider, ThickClient,
+    UserTxConnection,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -176,8 +176,10 @@ impl Client {
         self.tx_data.get_latest_block_version()
     }
 
-    /// Get the latest fee map
-    pub fn get_latest_fee_map(&mut self) -> Result<FeeMap> {
+    /// Get the currently cached fee-map
+    ///
+    /// If the cache is empty, then we get fresh data from consensus.
+    pub fn get_fee_map(&mut self) -> Result<FeeMap> {
         if let Some(fee_map) = self.fee_map.as_ref() {
             Ok(fee_map.clone())
         } else {
@@ -198,12 +200,15 @@ impl Client {
     /// transaction.
     pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
         let start_time = std::time::SystemTime::now();
-        let fee_map = self.get_latest_fee_map()?;
-        let tx_ok_data = self.consensus_service_conn.propose_tx_v2(transaction, &fee_map).map_err(|err| {
-            // Clear fee map in case this was the problem
-            self.fee_map = None;
-            err
-        })?;
+        let fee_map = self.get_fee_map()?;
+        let tx_ok_data = self
+            .consensus_service_conn
+            .propose_tx_v2(transaction, &fee_map)
+            .map_err(|err| {
+                // Clear fee map in case this was the problem
+                self.fee_map = None;
+                err
+            })?;
 
         let tracer = tracer!();
         let mut span = block_span_builder(&tracer, "send_transaction", tx_ok_data.block_count)

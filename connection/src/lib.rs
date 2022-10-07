@@ -20,7 +20,7 @@ pub use crate::{
     thick::{ThickClient, ThickClientAttestationError},
     traits::{
         AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
-        RetryableBlockchainConnection, RetryableUserTxConnection, UserTxConnection, TxOkData,
+        RetryableBlockchainConnection, RetryableUserTxConnection, TxOkData, UserTxConnection,
     },
 };
 

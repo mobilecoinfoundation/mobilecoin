@@ -171,8 +171,9 @@ pub trait UserTxConnection: Connection {
 
     /// Propose a transaction over the encrypted channel (v2 API).
     /// The user makes an assertion about what the current state of the minimum
-    /// fee map is, which the enclave checks and rejects the Tx if it is different.
-    /// This prevents an information leak identified in TOB-MCCT-5
+    /// fee map is, which the enclave checks and rejects the Tx if it is
+    /// different. This prevents an information leak identified in
+    /// TOB-MCCT-5
     fn propose_tx_v2(&mut self, tx: &Tx, minimum_fee_map: &FeeMap) -> Result<TxOkData>;
 }
 

@@ -148,7 +148,7 @@ pub enum Error {
     FogMerkleProof(String),
 
     /// Fee Map: {0}
-    FeeMap(FeeMapError)
+    FeeMap(FeeMapError),
 }
 
 impl From<ConnectionError> for Error {

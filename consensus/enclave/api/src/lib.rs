@@ -334,8 +334,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// * An EnclaveMessage which encrypts a `Tx` protobuf
     ///
     /// Returns:
-    /// * A Tx context including "locally encrypted" version of Tx and some extracted
-    ///   metadata or,
+    /// * A Tx context including "locally encrypted" version of Tx and some
+    ///   extracted metadata or,
     /// * A serialization / cryptography error.
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
@@ -345,10 +345,10 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// * An EnclaveMessage which encrypts a `ClientProposeTxRequest` protobuf
     ///
     /// Returns:
-    /// * A Tx context including "locally encrypted" version of Tx and some extracted
-    ///   metadata, or
-    /// * A serialization / cryptography error, or another mismatch error
-    ///   e.g. minimum_fee_map_hash or (some-day) chain-id error
+    /// * A Tx context including "locally encrypted" version of Tx and some
+    ///   extracted metadata, or
+    /// * A serialization / cryptography error, or another mismatch error e.g.
+    ///   minimum_fee_map_hash or (some-day) chain-id error
     fn client_tx_propose_v2(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
     /// Performs the first steps in accepting transactions from a remote peer:
