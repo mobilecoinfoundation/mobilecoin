@@ -56,4 +56,4 @@ cd $TARGET
 set -x
 
 cargo run -p mc-util-keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
-cargo run -p mc-util-generate-sample-ledger --bin generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM}
+cargo run -p mc-util-generate-sample-ledger --bin generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM} --max-token-id 1

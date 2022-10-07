@@ -510,9 +510,6 @@ class Network:
     def start(self):
         self.stop()
 
-        self.cloud_logging = CloudLogging()
-        self.cloud_logging.start(self)
-
         print("Generating minting keys")
         self.generate_minting_keys()
 
@@ -523,10 +520,6 @@ class Network:
         print("Starting network CLI")
         self.cli = NetworkCLI(self)
         self.cli.start()
-
-        print("Starting mobilecoind")
-        self.mobilecoind = Mobilecoind(MOBILECOIND_PORT)
-        self.mobilecoind.start(self)
 
     def wait(self):
         """Block until one of our processes dies."""
