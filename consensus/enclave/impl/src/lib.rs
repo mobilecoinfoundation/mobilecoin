@@ -647,8 +647,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Try and deserialize.
         let req: ClientProposeTxRequestV2 = mc_util_serial::decode(&req_bytes)?;
 
-        if &req.fee_map_digest[..]
-            != &self
+        if req.fee_map_digest[..]
+            != self
                 .blockchain_config
                 .get()
                 .ok_or(Error::NotInitialized)?
