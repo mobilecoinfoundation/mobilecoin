@@ -96,10 +96,10 @@ pub enum Error {
 //
 // This is somewhat unusual, but the main reason is, lmdb::error::Other(c_int)
 // is very opaque in the Debug output, and displays a nice human readable string
-// in the Display output. The debug output often occurs when we call LedgerDb::open
-// and it fails because of an OS issue, and this error is unwrapped, which is very
-// typical. This change will make it show e.g "file not found" or "permission denied"
-// instead of obscure errno codes.
+// in the Display output. The debug output often occurs when we call
+// LedgerDb::open and it fails because of an OS issue, and this error is
+// unwrapped, which is very typical. This change will make it show e.g "file not
+// found" or "permission denied" instead of obscure errno codes.
 impl core::fmt::Debug for Error {
     fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         <Self as core::fmt::Display>::fmt(self, formatter)
