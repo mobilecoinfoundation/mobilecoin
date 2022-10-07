@@ -568,8 +568,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .map(|(_, encryptor)| {
                 let aad = sealed_client_message.aad.clone();
                 let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_query_bytes)?;
-                let channel_id =
-                    NonceSession::new(sealed_client_message.channel_id.clone().into(), nonce);
+                let channel_id = NonceSession::new(encryptor.binding().into(), nonce);
                 Ok(EnclaveMessage {
                     aad,
                     channel_id,
