@@ -125,7 +125,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         ViewEnclaveRequest::Query(req, untrusted_query_response) => {
             serialize(&ENCLAVE.query(req, untrusted_query_response))
         }
-        ViewEnclaveRequest::QueryBackend(req, untrusted_query_response) => {
+        ViewEnclaveRequest::QueryStore(req, untrusted_query_response) => {
             serialize(&ENCLAVE.query_store(req, untrusted_query_response))
         }
         ViewEnclaveRequest::AddRecords(records) => serialize(&ENCLAVE.add_records(records)),

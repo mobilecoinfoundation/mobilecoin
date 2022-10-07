@@ -201,7 +201,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
         payload: EnclaveMessage<NonceSession>,
         untrusted_query_response: UntrustedQueryResponse,
     ) -> Result<EnclaveMessage<NonceSession>> {
-        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::QueryBackend(
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::QueryStore(
             payload,
             untrusted_query_response,
         ))?;

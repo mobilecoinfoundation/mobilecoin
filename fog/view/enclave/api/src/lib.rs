@@ -85,7 +85,7 @@ pub enum ViewEnclaveRequest {
     Query(EnclaveMessage<ClientSession>, UntrustedQueryResponse),
     /// An encrypted fog_types::view::QueryRequest
     /// Respond with fog_types::view::QueryResponse.
-    QueryBackend(EnclaveMessage<NonceSession>, UntrustedQueryResponse),
+    QueryStore(EnclaveMessage<NonceSession>, UntrustedQueryResponse),
     /// Request from untrusted to add encrypted tx out records to ORAM
     AddRecords(Vec<ETxOutRecord>),
     /// Takes a client query message and returns a SealedClientMessage
