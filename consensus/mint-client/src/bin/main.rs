@@ -31,9 +31,8 @@ fn main() {
 	    contents,
 	    pubkey,
 	} => {
-	    println!("\x1b[33m NOW VERIFYING\x1b[0m");
 	    let result = pubkey.verify(&contents.unwrap(), &signature);
-	    println!("\x1b[32m RESULT = {:?}", result);
+	    println!("Verification result = {:?}", result);
         }
 
         Commands::GenerateAndSubmitMintConfigTx {

@@ -230,8 +230,10 @@ impl MintTxParams {
 }
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Verify whether a signature over given contents verifies with the provided pubkey.
     #[clap(arg_required_else_help = true)]
     CheckSig {
+        /// The signature to verify.
         #[clap(
             long = "signature",
             use_value_delimiter = true,
@@ -239,13 +241,14 @@ pub enum Commands {
         )]
         signature: Ed25519Signature,
 
+	/// The contents that were signed.
         #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_CONTENTS")]
         contents: Option<[u8; 32]>,
 
+	/// The public key to verify with the signature.
         #[clap(long = "public-key", parse(try_from_str = load_pub_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
          pubkey: Ed25519Public,
     },
-
 
     /// Generate and submit a MintConfigTx transaction.
     #[clap(arg_required_else_help = true)]
