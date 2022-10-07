@@ -12,6 +12,7 @@ mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
 mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
 mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
@@ -46,3 +47,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"
+
+[[bench]]
+name = "add_etxout"
+harness = false

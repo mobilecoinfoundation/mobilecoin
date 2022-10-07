@@ -4279,6 +4279,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-rand",
  "mc-enclave-boundary",
  "mc-fog-ocall-oram-storage-edl",
  "mc-fog-ocall-oram-storage-untrusted",
