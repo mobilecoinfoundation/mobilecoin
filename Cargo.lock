@@ -2803,6 +2803,7 @@ dependencies = [
  "mc-connection",
  "mc-consensus-api",
  "mc-consensus-enclave",
+ "mc-consensus-enclave-api",
  "mc-consensus-enclave-mock",
  "mc-consensus-scp",
  "mc-consensus-service-config",

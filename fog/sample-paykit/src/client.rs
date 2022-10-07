@@ -13,8 +13,8 @@ use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
-    BlockchainConnection, Connection, FeeMap, HardcodedCredentialsProvider, ThickClient,
-    UserTxConnection,
+    BlockchainConnection, Connection, Error as ConnectionError, FeeMap,
+    HardcodedCredentialsProvider, ProposeTxResult, ThickClient, UserTxConnection,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -205,8 +205,27 @@ impl Client {
             .consensus_service_conn
             .propose_tx_v2(transaction, &fee_map)
             .map_err(|err| {
-                // Clear fee map in case this was the problem
-                self.fee_map = None;
+                if let ConnectionError::TransactionValidation(
+                    ProposeTxResult::FeeMapDigestMismatch,
+                    _,
+                ) = err
+                {
+                    // Clear fee map cache so that it will be regenerated next time.
+                    //
+                    // NOTE: In a real client, what you should actually do is check
+                    // with several nodes what the fee map is supposed to be,
+                    // to defend against the TOB-MCCT-5 attack.
+                    // If you get differing answers then you know the network is in
+                    // a bad state. Nodes cannot peer if they do not agree on the
+                    // fee map, so this means an attack or some kind of fork is
+                    // happening.
+                    //
+                    // The sample paykit is just test code, and it only has one url
+                    // for a consensus node in this revision, so we don't do that
+                    // here, we just reset the fee map.
+                    self.fee_map = None;
+                }
+
                 err
             })?;
 

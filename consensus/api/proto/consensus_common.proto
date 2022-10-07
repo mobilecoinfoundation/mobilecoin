@@ -97,6 +97,7 @@ enum ProposeTxResult {
     InputRuleInvalidAmountSharedSecret = 51;
     InputRuleTxOutConversion = 52;
     InputRuleAmount = 53;
+    FeeMapDigestMismatch = 54;
 }
 
 /// Response from TxPropose RPC call.
