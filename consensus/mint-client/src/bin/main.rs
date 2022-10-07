@@ -11,7 +11,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Signer};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -252,7 +252,7 @@ fn main() {
             let governors_map = tokens
                 .token_id_to_governors()
                 .expect("governors configuration error");
-            let signature = Ed25519Pair::from(signing_key)
+            let signature = Ed25519Pair::from(Ed25519Private::from(signing_key))
                 .sign_governors_map(&governors_map)
                 .expect("failed signing governors map");
             println!("Signature: {}", hex::encode(signature.as_ref()));
@@ -306,7 +306,7 @@ fn main() {
                 signing_keys
                     .into_iter()
                     .map(|signer| {
-                        Ed25519Pair::from(signer)
+                        Ed25519Pair::from(Ed25519Private::from(signer))
                             .try_sign(message.as_ref())
                             .map_err(|e| format!("Failed to sign: {}", e))
                     })

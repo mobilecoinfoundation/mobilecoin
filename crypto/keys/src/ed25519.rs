@@ -236,15 +236,6 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Ed25519Private(SecretKey);
 
-impl Clone for Ed25519Private {
-    fn clone(&self) -> Self {
-        Self(
-            SecretKey::from_bytes(self.0.as_ref())
-                .expect("SecretKey to SecretKey should always work"),
-        )
-    }
-}
-
 impl AsRef<[u8]> for Ed25519Private {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()

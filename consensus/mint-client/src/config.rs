@@ -24,6 +24,24 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// A private key that can be used with clap.
+pub struct MintPrivateKey(Ed25519Private);
+
+impl Clone for MintPrivateKey {
+    fn clone(&self) -> Self {
+        Self(
+            Ed25519Private::try_from(self.0.as_ref())
+                .expect("Ed25519Private to Ed25519Private should always work"),
+        )
+    }
+}
+
+impl From<MintPrivateKey> for Ed25519Private {
+    fn from(src: MintPrivateKey) -> Self {
+        src.0
+    }
+}
+
 #[derive(Args)]
 pub struct MintConfigTxPrefixParams {
     /// The token id we are minting.
@@ -88,7 +106,7 @@ pub struct MintConfigTxParams {
         value_parser = load_key_from_pem,
         env = "MC_MINTING_SIGNING_KEYS"
     )]
-    signing_keys: Vec<Ed25519Private>,
+    signing_keys: Vec<MintPrivateKey>,
 
     /// Pre-generated signature(s) to use, either in hex format or a PEM file.
     #[clap(
@@ -117,7 +135,7 @@ impl MintConfigTxParams {
             .signing_keys
             .into_iter()
             .map(|signer| {
-                Ed25519Pair::from(signer)
+                Ed25519Pair::from(Ed25519Private::from(signer))
                     .try_sign(message.as_ref())
                     .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {}", e))
             })
@@ -185,7 +203,7 @@ pub struct MintTxParams {
         value_parser = load_key_from_pem,
         env = "MC_MINTING_SIGNING_KEYS"
     )]
-    signing_keys: Vec<Ed25519Private>,
+    signing_keys: Vec<MintPrivateKey>,
 
     /// Pre-generated signature(s) to use, either in hex format or a PEM file.
     #[clap(
@@ -213,7 +231,7 @@ impl MintTxParams {
             .signing_keys
             .into_iter()
             .map(|signer| {
-                Ed25519Pair::from(signer)
+                Ed25519Pair::from(Ed25519Private::from(signer))
                     .try_sign(message.as_ref())
                     .map_err(|e| format!("Failed to sign MintTxPrefix: {}", e))
             })
@@ -349,7 +367,7 @@ pub enum Commands {
     SignGovernors {
         /// The key to sign with.
         #[clap(long = "signing-key", value_parser = load_key_from_pem, env = "MC_MINTING_SIGNING_KEY")]
-        signing_key: Ed25519Private,
+        signing_key: MintPrivateKey,
 
         /// The tokens configuration file to sign (in JSON or TOML format).
         #[clap(long, value_parser = parse_tokens_file, env = "MC_MINTING_TOKENS_CONFIG")]
@@ -386,7 +404,7 @@ pub enum Commands {
             value_parser = load_key_from_pem,
             env = "MC_MINTING_SIGNING_KEYS"
         )]
-        signing_keys: Vec<Ed25519Private>,
+        signing_keys: Vec<MintPrivateKey>,
 
         /// Pre-generated signature(s) to use, either in hex format or a PEM
         /// file.
@@ -409,15 +427,16 @@ pub struct Config {
     pub command: Commands,
 }
 
-pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {
+pub fn load_key_from_pem(filename: &str) -> Result<MintPrivateKey, String> {
     let bytes =
         fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
 
     let parsed_pem = pem::parse(&bytes)
         .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
 
-    Ed25519Private::try_from_der(&parsed_pem.contents[..])
-        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
+    let key = Ed25519Private::try_from_der(&parsed_pem.contents[..])
+        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))?;
+    Ok(MintPrivateKey(key))
 }
 
 pub fn load_or_parse_ed25519_signature(
