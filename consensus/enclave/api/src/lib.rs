@@ -249,7 +249,7 @@ pub struct FormBlockInputs {
 
 /// The schema expected to be encrypted for client_tx_propose_v2
 #[derive(Clone, Message)]
-pub struct ClientProposeTxRequest {
+pub struct ClientProposeTxRequestV2 {
     /// The tx being proposed
     #[prost(message, required, tag = 1)]
     pub tx: Tx,

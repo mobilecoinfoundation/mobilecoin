@@ -35,7 +35,7 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
-use mc_consensus_enclave_api::{FeeMap, ClientProposeTxRequest};
+use mc_consensus_enclave_api::{FeeMap, ClientProposeTxRequestV2};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
@@ -449,7 +449,7 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
             .as_mut()
             .expect("no enclave_connection even though attest succeeded");
 
-        let req = ClientProposeTxRequest {
+        let req = ClientProposeTxRequestV2 {
             tx: tx.clone(),
             fee_map_digest: fee_map.canonical_digest().to_vec()
         };
@@ -465,7 +465,7 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
 
         let resp = self.authenticated_attested_call(|this, call_option| {
             this.consensus_client_api_client
-                .client_tx_propose_async_opt(&msg, call_option)
+                .client_tx_propose_v2_async_opt(&msg, call_option)
         })?;
 
         if resp.get_result() == ProposeTxResult::Ok {

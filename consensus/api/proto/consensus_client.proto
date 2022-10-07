@@ -68,7 +68,7 @@ message ProposeMintTxResponse {
 }
 
 /// Request which is encrypted when calling client_tx_propose_v2 endpoint
-message ClientProposeTxRequest {
+message ClientProposeTxRequestV2 {
     /// The tx being proposed
     external.Tx tx = 1;
 

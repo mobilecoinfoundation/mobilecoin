@@ -49,7 +49,7 @@ use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
     FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
-    ClientProposeTxRequest,
+    ClientProposeTxRequestV2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -645,7 +645,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let req_bytes = self.ake.client_decrypt(msg)?;
 
         // Try and deserialize.
-        let req: ClientProposeTxRequest = mc_util_serial::decode(&req_bytes)?;
+        let req: ClientProposeTxRequestV2 = mc_util_serial::decode(&req_bytes)?;
 
         if &req.fee_map_digest[..] != &self
             .blockchain_config
