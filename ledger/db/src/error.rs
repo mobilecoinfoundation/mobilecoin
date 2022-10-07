@@ -50,7 +50,7 @@ pub enum Error {
     /// Too few outputs
     TooFewOutputs,
 
-    /// LMDB error, may mean database is opened multiple times in a process.
+    /// BadRslot, may mean database is opened multiple times in a process.
     BadRslot,
 
     /// Capacity exceeded
