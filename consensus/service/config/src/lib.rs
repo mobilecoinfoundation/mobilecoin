@@ -51,7 +51,7 @@ pub struct Config {
     pub msg_signer_key: Arc<Ed25519Pair>,
 
     /// The location for the network.toml/json configuration file.
-    #[clap(long = "network", value_parser, env = "MC_NETWORK")]
+    #[clap(long = "network", env = "MC_NETWORK")]
     pub network_path: PathBuf,
 
     /// Your Intel IAS API key.
@@ -85,19 +85,19 @@ pub struct Config {
     pub admin_listen_uri: Option<AdminUri>,
 
     /// The location to write the externalized blocks for the ledger.
-    #[clap(long, value_parser, env = "MC_LEDGER_PATH")]
+    #[clap(long, env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// The location from which to load the origin block.
-    #[clap(long, value_parser, env = "MC_ORIGIN_BLOCK_PATH")]
+    #[clap(long, env = "MC_ORIGIN_BLOCK_PATH")]
     pub origin_block_path: Option<PathBuf>,
 
     /// SCP debug output.
-    #[clap(long, value_parser, env = "MC_SCP_DEBUG_DUMP")]
+    #[clap(long, env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: Option<PathBuf>,
 
     /// Path to the sealed block signing key
-    #[clap(long, value_parser, env = "MC_SEALED_BLOCK_SIGNING_KEY")]
+    #[clap(long, env = "MC_SEALED_BLOCK_SIGNING_KEY")]
     pub sealed_block_signing_key: PathBuf,
 
     /// Enables authenticating client requests using Authorization tokens using
@@ -112,7 +112,7 @@ pub struct Config {
     pub client_auth_token_max_lifetime: Duration,
 
     /// The location for the network.toml/json configuration file.
-    #[clap(long = "tokens", value_parser, env = "MC_TOKENS")]
+    #[clap(long = "tokens", env = "MC_TOKENS")]
     pub tokens_path: Option<PathBuf>,
 
     /// The configured block version

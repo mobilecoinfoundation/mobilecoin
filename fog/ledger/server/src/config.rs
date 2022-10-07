@@ -26,11 +26,11 @@ pub struct LedgerServerConfig {
     pub client_listen_uri: FogLedgerUri,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, value_parser, env = "MC_LEDGER_DB")]
+    #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, value_parser, env = "MC_WATCHER_DB")]
+    #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// Client Responder id.

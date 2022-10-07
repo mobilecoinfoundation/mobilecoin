@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../from-random" }
-mc-util-parse = { path = "../parse", features = ["hex"] }
+mc-util-parse = { path = "../parse" }
 
 clap = { version = "4.0", features = ["derive", "env"] }
 pem = "1.1"

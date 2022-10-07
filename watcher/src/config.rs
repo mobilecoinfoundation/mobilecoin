@@ -18,12 +18,7 @@ use url::Url;
 /// Configuration for the Watcher Node.
 pub struct WatcherConfig {
     /// Path to watcher db (lmdb).
-    #[clap(
-        long,
-        default_value = "/tmp/watcher-db",
-        value_parser,
-        env = "MC_WATCHER_DB"
-    )]
+    #[clap(long, default_value = "/tmp/watcher-db", env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// The location of the sources.toml file. This file configures the list of

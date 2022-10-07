@@ -27,12 +27,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 #[clap(name = "mobilecoind", about = "The MobileCoin client daemon.")]
 pub struct Config {
     /// Path to ledger db (lmdb).
-    #[clap(
-        long,
-        default_value = "/tmp/ledgerdb",
-        value_parser,
-        env = "MC_LEDGER_DB"
-    )]
+    #[clap(long, default_value = "/tmp/ledgerdb", env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// Path to existing ledger db that contains the origin block, used when
@@ -41,7 +36,7 @@ pub struct Config {
     pub ledger_db_bootstrap: Option<String>,
 
     /// Path to watcher db (lmdb).
-    #[clap(long, value_parser, env = "MC_WATCHER_DB")]
+    #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: Option<PathBuf>,
 
     /// Peers config.
@@ -74,7 +69,7 @@ pub struct Config {
 
     // Mobilecoind specific arguments
     /// Path to mobilecoind database used to store transactions and accounts.
-    #[clap(long, value_parser, env = "MC_MOBILECOIND_DB")]
+    #[clap(long, env = "MC_MOBILECOIND_DB")]
     pub mobilecoind_db: Option<PathBuf>,
 
     /// URI to listen on and serve requests from.

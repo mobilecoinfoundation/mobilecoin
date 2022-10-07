@@ -9,9 +9,7 @@ use std::{fs, str::FromStr, time::Duration};
 
 pub use mc_sgx_css::Signature as CssSignature;
 
-#[cfg(feature = "hex")]
 mod hex;
-#[cfg(feature = "hex")]
 pub use crate::hex::parse_hex;
 
 /// Parse a number of seconds into a duration

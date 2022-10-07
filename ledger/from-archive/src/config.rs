@@ -13,12 +13,7 @@ use std::path::PathBuf;
 )]
 pub struct LedgerFromArchiveConfig {
     /// Path to ledger db (lmdb).
-    #[clap(
-        long,
-        default_value = "/tmp/ledgerdb",
-        value_parser,
-        env = "MC_LEDGER_DB"
-    )]
+    #[clap(long, default_value = "/tmp/ledgerdb", env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// URLs to use to pull blocks.

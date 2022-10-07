@@ -37,7 +37,7 @@ pub struct Config {
     pub quorum_set: Option<QuorumSet>,
 
     /// SCP debug dump.
-    #[clap(long, value_parser, env = "MC_SCP_DEBUG_DUMP")]
+    #[clap(long, env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: PathBuf,
 }
 

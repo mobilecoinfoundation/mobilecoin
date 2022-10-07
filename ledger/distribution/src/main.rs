@@ -51,7 +51,7 @@ pub enum StartFrom {
 )]
 pub struct Config {
     /// Path to local LMDB db file.
-    #[clap(long, value_parser, env = "MC_LEDGER_PATH")]
+    #[clap(long, env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// Destination to upload to.
