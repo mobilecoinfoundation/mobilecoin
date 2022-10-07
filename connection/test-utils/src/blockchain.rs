@@ -136,9 +136,12 @@ impl<L: Ledger + Sync> UserTxConnection for MockBlockchainConnection<L> {
 
     fn propose_tx_v2(&mut self, tx: &Tx, _fee_map: &FeeMap) -> ConnectionResult<TxOkData> {
         self.proposed_txs.push(tx.clone());
+
+        let block_count = self.ledger.num_blocks().unwrap();
+        let block_version = self.ledger.get_block(block_count - 1).unwrap().version;
         Ok(TxOkData {
-            block_count: self.ledger.num_blocks().unwrap(),
-            block_version: 0,   
+            block_count,
+            block_version,
         })
     }
 }
