@@ -89,7 +89,7 @@ where
         }
     }
 
-    fn auth_impl(
+    fn client_auth(
         &mut self,
         mut request: attest::AuthMessage,
         logger: &Logger,
@@ -119,7 +119,7 @@ where
         }
     }
 
-    fn auth_nonce_impl(
+    fn frontend_auth(
         &mut self,
         mut request: attest::AuthMessage,
         logger: &Logger,
@@ -131,17 +131,17 @@ where
                 result.set_data(response.into());
                 Ok(result)
             }
-            Err(client_error) => {
+            Err(frontend_error) => {
                 // This is debug because there's no requirement on the remote party to trigger
                 // it.
                 log::debug!(
                     logger,
                     "ViewEnclaveApi::frontend_accept failed: {}",
-                    client_error
+                    frontend_error
                 );
                 let rpc_permissions_error = rpc_permissions_error(
-                    "client_auth",
-                    format!("Permission denied: {}", client_error),
+                    "fontend_accept",
+                    format!("Permission denied: {}", frontend_error),
                     logger,
                 );
                 Err(rpc_permissions_error)
@@ -307,7 +307,7 @@ where
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.auth_impl(request, logger), logger);
+            send_result(ctx, sink, self.client_auth(request, logger), logger);
         })
     }
 
@@ -351,7 +351,7 @@ where
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.auth_nonce_impl(request, logger), logger);
+            send_result(ctx, sink, self.frontend_auth(request, logger), logger);
         })
     }
 
