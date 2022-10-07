@@ -235,6 +235,8 @@ pub enum Commands {
     #[clap(arg_required_else_help = true)]
     CheckSig {
         /// The signature to verify.
+	///
+	/// This signature is created with `ledger-agent -e ed25519 --sign-blob <hash> <key_identifier>`
         #[clap(
             long = "signature",
             use_value_delimiter = true,
@@ -242,11 +244,15 @@ pub enum Commands {
         )]
         signature: Ed25519Signature,
 
-        /// The contents that were signed.
-        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_CONTENTS")]
-        contents: Option<[u8; 32]>,
+        /// The digest (hash of the tokens.toml) that was signed.
+	///
+	/// This digest is created with `mint-client hash-tx-file --tx-file mintconfig.json`
+        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_DIGEST")]
+        digest: Option<[u8; 32]>,
 
         /// The public key to verify with the signature.
+	///
+	/// This pemfile is created with `ledger-agent -e ed25519 --pemout <outfile>.pub <key_identifier>`
         #[clap(long = "public-key", parse(try_from_str = load_pub_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
         pubkey: Ed25519Public,
     },

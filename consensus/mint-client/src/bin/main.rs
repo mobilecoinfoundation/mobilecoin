@@ -28,10 +28,10 @@ fn main() {
     match config.command {
         Commands::CheckSig {
             signature,
-            contents,
+            digest,
             pubkey,
         } => {
-            let result = pubkey.verify(&contents.unwrap(), &signature);
+            let result = pubkey.verify(&digest.unwrap(), &signature);
             println!("Verification result = {:?}", result);
         }
 
