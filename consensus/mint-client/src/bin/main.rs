@@ -31,7 +31,7 @@ fn main() {
             digest,
             pubkey,
         } => {
-            let result = pubkey.verify(&digest.unwrap(), &signature);
+            let result = pubkey.verify(&digest, &signature);
             println!("Verification result = {:?}", result);
         }
 

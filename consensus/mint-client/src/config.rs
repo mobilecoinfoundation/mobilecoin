@@ -248,7 +248,7 @@ pub enum Commands {
 	///
 	/// This digest is created with `mint-client hash-tx-file --tx-file mintconfig.json`
         #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_DIGEST")]
-        digest: Option<[u8; 32]>,
+        digest: [u8; 32],
 
         /// The public key to verify with the signature.
 	///
