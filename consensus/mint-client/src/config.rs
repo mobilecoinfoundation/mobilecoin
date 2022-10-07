@@ -244,9 +244,9 @@ pub enum Commands {
         )]
         signature: Ed25519Signature,
 
-        /// The digest (hash of the tokens.toml) that was signed.
+        /// The digest that was signed.
 	///
-	/// This digest is created with `mint-client hash-tx-file --tx-file mintconfig.json`
+	/// An example digest may be created with `mint-client hash-tx-file --tx-file mintconfig.json`
         #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_DIGEST")]
         digest: [u8; 32],
 
