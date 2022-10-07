@@ -15,7 +15,7 @@ extern crate alloc;
 
 mod v2;
 
-pub use v2::{Signer, SignerContainer, SignerEntity, SignerSetV2};
+pub use v2::{SignerContainer, SignerEntity, SignerIdentity, SignerSetV2};
 
 use alloc::vec::Vec;
 use core::hash::Hash;

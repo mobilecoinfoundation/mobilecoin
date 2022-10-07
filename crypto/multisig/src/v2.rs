@@ -9,27 +9,24 @@ use super::{MultiSig, MAX_SIGNATURES};
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Signature, SignatureError, Verifier};
+use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 /// A marker traint for indicating that a type is able to produce signatures.
-pub trait Signer:
-    Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd
-{
-}
+/// While we do not strictly have to limit ourselves to `PublicKey`, it makes it
+/// more obvious what the intent of this trait is.
+pub trait SignerIdentity: Default + Message + PublicKey {}
 
-impl<T> Signer for T where
-    T: Clone + Default + Digestible + Eq + Hash + Message + Ord + PartialEq + PartialOrd
-{
-}
+impl<T> SignerIdentity for T where T: Default + Message + PublicKey {}
 
 /// A single entity in a group of signers - can either be a single signer, or a
 /// group of m-out-of-n signers.
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub enum SignerEntity<S: Signer> {
+#[serde(bound = "")]
+pub enum SignerEntity<S: SignerIdentity> {
     /// A single signer identity (such as a public key)
     #[prost(message, tag = "1")]
     Single(S),
@@ -39,13 +36,13 @@ pub enum SignerEntity<S: Signer> {
     Multi(SignerSetV2<S>),
 }
 
-impl<S: Signer> From<S> for SignerEntity<S> {
+impl<S: SignerIdentity> From<S> for SignerEntity<S> {
     fn from(signer: S) -> Self {
         Self::Single(signer)
     }
 }
 
-impl<S: Signer> From<SignerSetV2<S>> for SignerEntity<S> {
+impl<S: SignerIdentity> From<SignerSetV2<S>> for SignerEntity<S> {
     fn from(signer_set: SignerSetV2<S>) -> Self {
         Self::Multi(signer_set)
     }
@@ -57,7 +54,8 @@ impl<S: Signer> From<SignerSetV2<S>> for SignerEntity<S> {
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub struct SignerContainer<S: Signer> {
+#[serde(bound = "")]
+pub struct SignerContainer<S: SignerIdentity> {
     /// The underlying signer entity.
     /// This is made optional because of how Prost works. It will be None for
     /// unsupported tags.
@@ -65,7 +63,7 @@ pub struct SignerContainer<S: Signer> {
     pub entity: Option<SignerEntity<S>>,
 }
 
-impl<S: Signer> From<SignerEntity<S>> for SignerContainer<S> {
+impl<S: SignerIdentity> From<SignerEntity<S>> for SignerContainer<S> {
     fn from(entity: SignerEntity<S>) -> Self {
         Self {
             entity: Some(entity),
@@ -73,7 +71,7 @@ impl<S: Signer> From<SignerEntity<S>> for SignerContainer<S> {
     }
 }
 
-impl<S: Signer> From<S> for SignerContainer<S> {
+impl<S: SignerIdentity> From<S> for SignerContainer<S> {
     fn from(signer: S) -> Self {
         Self {
             entity: Some(SignerEntity::Single(signer)),
@@ -81,7 +79,7 @@ impl<S: Signer> From<S> for SignerContainer<S> {
     }
 }
 
-impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
+impl<S: SignerIdentity> From<SignerSetV2<S>> for SignerContainer<S> {
     fn from(signer_set: SignerSetV2<S>) -> Self {
         Self {
             entity: Some(SignerEntity::Multi(signer_set)),
@@ -94,7 +92,8 @@ impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub struct SignerSetV2<S: Signer> {
+#[serde(bound = "")]
+pub struct SignerSetV2<S: SignerIdentity> {
     #[prost(message, repeated, tag = "1")]
     signers: Vec<SignerContainer<S>>,
 
@@ -102,7 +101,7 @@ pub struct SignerSetV2<S: Signer> {
     threshold: u32,
 }
 
-impl<S: Signer> SignerSetV2<S> {
+impl<S: SignerIdentity> SignerSetV2<S> {
     /// Construct a new `SignerSetV2` from a list of signers and threshold.
     pub fn new(signers: Vec<SignerContainer<S>>, threshold: u32) -> Self {
         Self { signers, threshold }
