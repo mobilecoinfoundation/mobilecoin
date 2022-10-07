@@ -253,7 +253,7 @@ pub enum Commands {
         /// The public key to verify with the signature.
 	///
 	/// This pemfile is created with `ledger-agent -e ed25519 --pemout <outfile>.pub <key_identifier>`
-        #[clap(long = "public-key", parse(try_from_str = load_pub_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
+        #[clap(long = "public-key", parse(try_from_str = load_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
         pubkey: Ed25519Public,
     },
 
@@ -437,25 +437,14 @@ pub struct Config {
     pub command: Commands,
 }
 
-pub fn load_pub_key_from_pem(filename: &str) -> Result<Ed25519Public, String> {
+pub fn load_key_from_pem<K: DistinguishedEncoding>(filename: &str) -> Result<K, String> {
     let bytes =
         fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
 
     let parsed_pem = pem::parse(&bytes)
         .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
 
-    Ed25519Public::try_from_der(&parsed_pem.contents[..])
-        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
-}
-
-pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {
-    let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
-
-    let parsed_pem = pem::parse(&bytes)
-        .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
-
-    Ed25519Private::try_from_der(&parsed_pem.contents[..])
+    K::try_from_der(&parsed_pem.contents[..])
         .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
 }
 
