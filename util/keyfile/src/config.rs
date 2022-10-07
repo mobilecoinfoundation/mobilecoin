@@ -7,7 +7,7 @@ use std::{fs, path::PathBuf};
 type VecBytes = Vec<u8>;
 /// Configuration for generating key files for a new user identity
 #[derive(Debug, Parser)]
-pub struct Config {
+pub struct KeyConfig {
     /// Fog Report URL
     #[clap(long, env = "MC_FOG_REPORT_URL")]
     pub fog_report_url: Option<String>,
