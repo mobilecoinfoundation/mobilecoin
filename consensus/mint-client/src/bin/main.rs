@@ -28,11 +28,11 @@ fn main() {
     match config.command {
         Commands::CheckSig {
             signature,
-	    contents,
-	    pubkey,
-	} => {
-	    let result = pubkey.verify(&contents.unwrap(), &signature);
-	    println!("Verification result = {:?}", result);
+            contents,
+            pubkey,
+        } => {
+            let result = pubkey.verify(&contents.unwrap(), &signature);
+            println!("Verification result = {:?}", result);
         }
 
         Commands::GenerateAndSubmitMintConfigTx {
