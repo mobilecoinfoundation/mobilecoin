@@ -131,6 +131,12 @@ impl BlockVersion {
     pub fn require_block_metadata(&self) -> bool {
         self.0 >= 3
     }
+
+    /// MLSAGs sign the extended_message_and_tx_summary digest in v3 and up.
+    /// TODO: MCIP
+    pub fn mlsags_sign_extended_message_and_tx_summary_digest(&self) -> bool {
+        self.0 >= 3
+    }
 }
 
 impl Deref for BlockVersion {

@@ -43,10 +43,9 @@ impl UnsignedTx {
         rng: &mut RNG,
     ) -> Result<Tx, RingCtError> {
         let prefix = self.tx_prefix.clone();
-        let message = prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             self.block_version,
-            &message,
+            &prefix,
             self.rings.as_slice(),
             self.output_secrets.as_slice(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
@@ -62,14 +61,13 @@ impl UnsignedTx {
         &self,
         rng: &mut RNG,
     ) -> Result<SigningData, RingCtError> {
-        let message = self.tx_prefix.hash().0;
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
         SigningData::new(
             self.block_version,
-            &message,
+            &self.tx_prefix,
             &self.rings,
             &self.output_secrets,
             fee_amount,
