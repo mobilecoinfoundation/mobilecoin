@@ -4,6 +4,7 @@
 
 use alloc::vec::Vec;
 use displaydoc::Display;
+use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, KeyImage, RingMLSAG,
 };
@@ -13,9 +14,11 @@ use mc_transaction_core::{
     Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
 };
 use prost::Message;
+use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// The "unmasked" data of an amount commitment
-#[derive(Clone, Eq, Message, PartialEq)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct UnmaskedAmount {
     /// The value of the amount commitment
     #[prost(fixed64, tag = 1)]
@@ -33,7 +36,7 @@ pub struct UnmaskedAmount {
 /// A signed contingent input is a "transaction fragment" which can be
 /// incorporated into a transaction signed by a counterparty. See MCIP #31 for
 /// motivation.
-#[derive(Clone, Eq, Message, PartialEq)]
+#[derive(Clone, Digestible, Eq, Message, PartialEq, Zeroize)]
 pub struct SignedContingentInput {
     /// The block version rules we used when making the signature
     #[prost(uint32, required, tag = 1)]

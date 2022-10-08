@@ -37,14 +37,27 @@ use mc_util_from_random::FromRandom;
 #[cfg(feature = "prost")]
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 pub use mc_core::consts::{
     CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
+
 /// A MobileCoin user's public subaddress.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Digestible)]
+#[derive(
+    Clone,
+    Deserialize,
+    Digestible,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
+)]
 #[cfg_attr(feature = "prost", derive(Message))]
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.

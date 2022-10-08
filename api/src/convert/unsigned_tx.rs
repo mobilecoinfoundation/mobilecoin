@@ -4,7 +4,7 @@
 
 use crate::{external, ConversionError};
 use mc_blockchain_types::BlockVersion;
-use mc_transaction_extra::UnsignedTx;
+use mc_transaction_extra::{TxOutSummaryUnblindingData, UnmaskedAmount, UnsignedTx};
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {
@@ -13,11 +13,11 @@ impl From<&UnsignedTx> for external::UnsignedTx {
         unsigned_tx.set_rings(protobuf::RepeatedField::from_vec(
             source.rings.iter().map(|input| input.into()).collect(),
         ));
-        unsigned_tx.set_output_secrets(protobuf::RepeatedField::from_vec(
+        unsigned_tx.set_tx_out_unblinding_data(protobuf::RepeatedField::from_vec(
             source
-                .output_secrets
+                .tx_out_unblinding_data
                 .iter()
-                .map(|output| output.into())
+                .map(Into::into)
                 .collect(),
         ));
         unsigned_tx.set_block_version(*source.block_version);
@@ -36,12 +36,68 @@ impl TryFrom<&external::UnsignedTx> for UnsignedTx {
                 .iter()
                 .map(|input| input.try_into())
                 .collect::<Result<_, _>>()?,
-            output_secrets: source
-                .get_output_secrets()
+            tx_out_unblinding_data: source
+                .tx_out_unblinding_data
                 .iter()
-                .map(|output| output.try_into())
+                .map(|data| data.try_into())
                 .collect::<Result<_, _>>()?,
             block_version: BlockVersion::try_from(source.get_block_version())?,
+        })
+    }
+}
+
+impl From<&TxOutSummaryUnblindingData> for external::TxOutSummaryUnblindingData {
+    fn from(src: &TxOutSummaryUnblindingData) -> Self {
+        let mut data = external::TxOutSummaryUnblindingData::new();
+        data.set_unmasked_amount((&src.unmasked_amount).into());
+        if let Some(address) = &src.address {
+            data.set_address(address.into());
+        }
+        if let Some(tx_private_key) = &src.tx_private_key {
+            data.set_tx_private_key(tx_private_key.into());
+        }
+        data
+    }
+}
+
+impl TryFrom<&external::TxOutSummaryUnblindingData> for TxOutSummaryUnblindingData {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::TxOutSummaryUnblindingData) -> Result<Self, Self::Error> {
+        Ok(TxOutSummaryUnblindingData {
+            unmasked_amount: source
+                .unmasked_amount
+                .as_ref()
+                .ok_or_else(|| ConversionError::MissingField("unmasked_amount".into()))?
+                .try_into()?,
+            address: source.address.as_ref().map(TryInto::try_into).transpose()?,
+            tx_private_key: source
+                .tx_private_key
+                .as_ref()
+                .map(TryInto::try_into)
+                .transpose()?,
+        })
+    }
+}
+
+impl From<&UnmaskedAmount> for external::UnmaskedAmount {
+    fn from(src: &UnmaskedAmount) -> Self {
+        let mut data = external::UnmaskedAmount::new();
+        data.set_value(src.value);
+        data.set_token_id(src.token_id);
+        data.set_blinding((&src.blinding).into());
+        data
+    }
+}
+
+impl TryFrom<&external::UnmaskedAmount> for UnmaskedAmount {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::UnmaskedAmount) -> Result<Self, Self::Error> {
+        Ok(UnmaskedAmount {
+            value: source.get_value(),
+            token_id: source.get_token_id(),
+            blinding: source.get_blinding().try_into()?,
         })
     }
 }
