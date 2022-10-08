@@ -56,6 +56,67 @@ LOGSTASH_HOST = os.getenv('LOGSTASH_HOST', None)
 GRAFANA_PASSWORD = os.getenv('GRAFANA_PASSWORD', None)
 
 
+class CloudLogging:
+    def __init__(self):
+        self.filebeat_process = None
+        self.prometheus_process = None
+
+    def start(self, network):
+        if not LOG_BRANCH:
+            print('No LOG_BRANCH environment variable - cloud logging would not be enabled.')
+            return
+
+        if LOGSTASH_HOST:
+            self.start_filebeat(LOG_BRANCH, LOGSTASH_HOST)
+
+        if GRAFANA_PASSWORD:
+            hosts = ', '.join(
+                f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
+            )
+            self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
+
+    def start_filebeat(self, log_branch, logstash_host):
+        print(f'Starting filebeat, branch={log_branch}')
+        template = open(os.path.join(PROJECT_DIR, 'tools', 'local-network', 'filebeat.yml.template')).read()
+        with open(os.path.join(WORK_DIR, 'filebeat.yml'), 'w') as f:
+            f.write(template
+                .replace('${BRANCH}', log_branch)
+                .replace('${LOGSTASH_HOST}', logstash_host)
+            )
+        os.chmod(os.path.join(WORK_DIR, 'filebeat.yml'), 0o400)
+        cmd = ' '.join([
+            'filebeat',
+            f'--path.config {WORK_DIR}',
+            f'--path.data {WORK_DIR}/filebeat',
+            f'--path.home {WORK_DIR}/filebeat',
+            f'--path.logs {WORK_DIR}/filebeat',
+        ])
+        print(f'  - {cmd}')
+        self.filebeat_process = subprocess.Popen(cmd, shell=True)
+        time.sleep(1)
+        os.environ['MC_LOG_UDP_JSON'] = '127.0.0.1:16666'
+
+    def start_prometheus(self, log_branch, grafana_password, hosts):
+        print(f'Starting prometheus, branch={log_branch}')
+        os.mkdir(os.path.join(WORK_DIR, 'prometheus'))
+        template = open(os.path.join(PROJECT_DIR, 'tools', 'local-network', 'prometheus.yml.template')).read()
+        with open(os.path.join(WORK_DIR, 'prometheus.yml'), 'w') as f:
+            f.write(template
+                .replace('${BRANCH}', log_branch)
+                .replace('${GRAFANA_PASSWORD}', grafana_password)
+                .replace('${HOSTS}', hosts)
+            )
+        cmd = ' '.join([
+            'prometheus',
+            '--web.listen-address=:18181',
+            f'--config.file={WORK_DIR}/prometheus.yml',
+            f'--storage.tsdb.path={WORK_DIR}/prometheus',
+        ])
+        print(f'  - {cmd}')
+        self.prometheus_process = subprocess.Popen(cmd, shell=True)
+        time.sleep(1)
+
+
 class QuorumSet:
     def __init__(self, threshold, members):
         self.threshold = threshold
@@ -275,6 +336,49 @@ class Node:
         print(f'Stopped node {self}!')
 
 
+class Mobilecoind:
+    def __init__(self, client_port):
+        self.client_port = client_port
+        self.ledger_db = os.path.join(WORK_DIR, 'mobilecoind-ledger-db')
+        self.mobilecoind_db = os.path.join(WORK_DIR, 'mobilecoind-db')
+        self.watcher_db = os.path.join(WORK_DIR, 'watcher-db')
+        self.process = None
+
+    def start(self, network):
+        assert not self.process
+
+        peers = [f'--peer "insecure-mc://localhost:{node.client_port}/"' for node in network.nodes]
+        tx_srcs = [f'--tx-source-url "file://{node.ledger_distribution_dir}"' for node in network.nodes]
+
+        cmd = ' '.join([
+            f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mobilecoind',
+            f'--ledger-db {self.ledger_db}',
+            f'--poll-interval 1',
+            f'--mobilecoind-db {self.mobilecoind_db}',
+            f'--listen-uri insecure-mobilecoind://0.0.0.0:{self.client_port}/',
+            f'--watcher-db {self.watcher_db}',
+        ] + peers + tx_srcs)
+
+        print('Starting mobilecoind:', cmd)
+        print()
+
+        self.process = subprocess.Popen(cmd, shell=True)
+        print()
+
+        while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            if self.process.poll() is not None:
+                print('mobilecoind process crashed')
+                return self.stop()
+            print('Waiting for watcher db to become available')
+            time.sleep(1)
+
+    def stop(self):
+        if self.process:
+            if self.process.poll() is None:
+                self.process.terminate()
+            self.process = None
+
+
 class NetworkCLI(threading.Thread):
     """Network command line interface (over TCP)"""
     def __init__(self, network):
@@ -367,7 +471,7 @@ class Network:
         # because ip-check is sometimes problematic for devs or CI machines.
         # If the service rate limits you then mobilecoind fails to start.
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --features mc-mobilecoind/bypass-ip-check {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --features mc-mobilecoind/bypass-ip-check {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -406,6 +510,9 @@ class Network:
     def start(self):
         self.stop()
 
+        self.cloud_logging = CloudLogging()
+        self.cloud_logging.start(self)
+
         print("Generating minting keys")
         self.generate_minting_keys()
 
@@ -416,6 +523,10 @@ class Network:
         print("Starting network CLI")
         self.cli = NetworkCLI(self)
         self.cli.start()
+
+        print("Starting mobilecoind")
+        self.mobilecoind = Mobilecoind(MOBILECOIND_PORT)
+        self.mobilecoind.start(self)
 
     def wait(self):
         """Block until one of our processes dies."""
@@ -433,6 +544,10 @@ class Network:
                     print(f'Node {node} ledger distribution died with exit code {node.ledger_distribution_process.poll()}')
                     return False
 
+            if self.mobilecoind.process and self.mobilecoind.process.poll() is not None:
+                print(f'mobilecoind died with exit code {self.mobilecoind.process.poll()}')
+                return False
+
             time.sleep(1)
 
     def stop(self):
@@ -442,7 +557,7 @@ class Network:
 
         print("Killing any existing processes")
         try:
-            subprocess.check_output("killall -9 consensus-service ledger-distribution mc-admin-http-gateway 2>/dev/null", shell=True)
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 1:
                 raise
