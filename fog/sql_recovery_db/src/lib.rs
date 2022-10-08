@@ -588,10 +588,13 @@ impl SqlRecoveryDb {
             // errors.
             Err(Error::Orm(diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
-                _,
-            ))) => Ok(AddBlockDataStatus {
-                block_already_scanned_with_this_key: true,
-            }),
+                details,
+            ))) => {
+                log::info!(self.logger, "Unique constraint violated when adding block {} for ingest invocation id {}: {:?}", block.index, ingest_invocation_id, details);
+                Ok(AddBlockDataStatus {
+                    block_already_scanned_with_this_key: true,
+                })
+            }
             Err(err) => Err(err),
         }
     }
