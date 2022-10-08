@@ -174,14 +174,14 @@ where
         tracer.in_span("query_impl", |_cx| {
             let untrusted_query_response =
                 self.create_untrusted_query_response(request.get_aad(), &tracer)?;
-            let result_blob = tracer.in_span("enclave_query", |_cx| {
+            let data = tracer.in_span("enclave_query", |_cx| {
                 self.enclave
                     .query(request.into(), untrusted_query_response)
                     .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))
             })?;
 
             let mut resp = attest::Message::new();
-            resp.set_data(result_blob);
+            resp.set_data(data);
             Ok(resp)
         })
     }
@@ -193,20 +193,16 @@ where
     ) -> Result<attest::NonceMessage, RpcStatus> {
         log::trace!(self.logger, "Getting encrypted request");
         let tracer = tracer!();
-
         tracer.in_span("query_nonce_impl", |_cx| {
-            // TODO: Create query_nonce enclave method that does what query currently does
-            // but for NonceMessage. It should produce data and a nonce that is
-            // then set on the nonce_message.
-            let _untrusted_query_response =
+            let untrusted_query_response =
                 self.create_untrusted_query_response(request.get_aad(), &tracer)?;
-            let data = vec![0; 0];
-            let nonce = 0;
+            let enclave_nonce_message = tracer.in_span("enclave_query_store", |_cx| {
+                self.enclave
+                    .query_store(request.into(), untrusted_query_response)
+                    .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))
+            })?;
 
-            let mut nonce_message = attest::NonceMessage::new();
-            nonce_message.set_data(data);
-            nonce_message.set_nonce(nonce);
-            Ok(nonce_message)
+            Ok(enclave_nonce_message.into())
         })
     }
 
