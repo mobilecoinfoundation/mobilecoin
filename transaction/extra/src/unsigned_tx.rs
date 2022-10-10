@@ -6,7 +6,7 @@ use mc_transaction_core::{
     ring_ct::{
         Error as RingCtError, InputRing, OutputSecret, SignatureRctBulletproofs, SigningData,
     },
-    tx::{Tx, TxPrefix},
+    tx::{Tx, TxPrefix}, TxSummary,
 };
 use mc_transaction_types::{Amount, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};
@@ -60,7 +60,7 @@ impl UnsignedTx {
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<SigningData, RingCtError> {
+    ) -> Result<(SigningData, TxSummary, Vec<u8>), RingCtError> {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),

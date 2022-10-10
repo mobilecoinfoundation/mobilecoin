@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Input rules, described in MCIP #31, specify any additional criteria that the
 //! Tx must satisfy to be valid.
@@ -18,13 +18,14 @@ use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// A representation of rules on a transaction, imposed by the signer of some
 /// input in the transaction.
 ///
 /// Any rule could conceivably be added here if it can be evaluated against a
 /// `Tx`.
-#[derive(Clone, Digestible, PartialEq, Eq, Message, Serialize, Deserialize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct InputRules {
     /// Outputs that are required to appear in the Tx prefix for the transaction
     /// to be valid

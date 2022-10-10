@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The TxSummary is meant to reduce the complexity of implementing a hardware
-//! wallet.
+//! wallet. (See MCIP 52 also.)
 //!
 //! Hardware wallets have the following issue:
 //! * The main function they want to perform is signing RingMLSAG. This only
@@ -57,7 +57,7 @@
 //!   * recipient,
 //!   * tx_private_key,
 //! * These are not part of the TxSummary (because the enclave can't know them)
-//!   but they can be part of a TxSummaryVerificationData or some such thing.
+//!   but they can be part of a TxSummaryUnblindingData or some such thing.
 //! * For a given public key, target key, and masked amount, it is intractable
 //!   to find a different amount, recipient, and tx private key that leads to
 //!   the same data (discrete log hard). So the device can be convinced that
@@ -65,7 +65,7 @@
 //! * For each pseudo output commitment, either this corresponds to an MLSAG
 //!   that the device will actually sign, or it is coming from an SCI, which the
 //!   device will not actually sign. For anything which the device will not
-//!   actually sign, the TxSummaryVerification data can include the amount and
+//!   actually sign, the TxSummaryUnblindingData can include the amount and
 //!   blinding factor. The computer actually has this for all of the pseudo
 //!   output commitments anyways.
 //!
@@ -87,16 +87,12 @@
 //! device in this way.
 //!
 //! In this module we only attempt to define the TxSummary and how it is
-//! digested. We do not attempt to define the TxSummaryVerificationData, that is
-//! thought of as part of the hardware device protocol.
-//!
-//! In the future we might want that in this crate though to help hardware
-//! wallets standardize, and ensure test coverage as the Tx format evolves, I'm
-//! not sure.
+//! digested. In the future we may define TxSummaryUnblindingData as well, per
+//! MCIP 52.
 
 use crate::{
     tx::{TxOut, TxPrefix},
-    CompressedCommitment, MaskedAmount,
+    CompressedCommitment, InputRules, MaskedAmount,
 };
 use alloc::vec::Vec;
 use mc_crypto_digestible::Digestible;
@@ -114,9 +110,9 @@ pub struct TxSummary {
     #[prost(message, repeated, tag = "1")]
     pub outputs: Vec<TxOutSummary>,
 
-    /// Commitments of value equal to each real input.
+    /// Data in the summary associated to each real input
     #[prost(message, repeated, tag = "2")]
-    pub pseudo_output_commitments: Vec<CompressedCommitment>,
+    pub inputs: Vec<TxInSummary>,
 
     /// Fee paid to the foundation for this transaction
     #[prost(uint64, tag = "3")]
@@ -132,11 +128,11 @@ pub struct TxSummary {
 }
 
 impl TxSummary {
-    /// Make a TxSummary for a given TxPrefix and pseudo output commitments
-    pub fn new(tx_prefix: &TxPrefix, pseudo_output_commitments: &[CompressedCommitment]) -> Self {
+    /// Make a TxSummary for a given TxPrefix and input summaries
+    pub fn new(tx_prefix: &TxPrefix, inputs: Vec<TxInSummary>) -> Self {
         Self {
             outputs: tx_prefix.outputs.iter().map(Into::into).collect(),
-            pseudo_output_commitments: pseudo_output_commitments.to_vec(),
+            inputs,
             fee: tx_prefix.fee,
             fee_token_id: tx_prefix.fee_token_id,
             tombstone_block: tx_prefix.tombstone_block,
@@ -169,8 +165,23 @@ impl From<&TxOut> for TxOutSummary {
     fn from(src: &TxOut) -> Self {
         Self {
             masked_amount: src.masked_amount.clone(),
-            target_key: src.target_key.clone(),
-            public_key: src.public_key.clone(),
+            target_key: src.target_key,
+            public_key: src.public_key,
         }
     }
+}
+
+/// Data in a TxSummary associated to a transaction input.
+///
+/// This includes only the pseudo output commitment and the InputRules if any,
+/// omitting the Ring and the proofs of membership.
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+pub struct TxInSummary {
+    /// Commitment of value equal to the real input.
+    #[prost(message, required, tag = "1")]
+    pub pseudo_output_commitment: CompressedCommitment,
+
+    /// Any input rules associated to this input.
+    #[prost(message, optional, tag = "2")]
+    pub input_rules: Option<InputRules>,
 }
