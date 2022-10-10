@@ -21,5 +21,5 @@ pub use constants::MAX_SIGNATURES;
 pub use multi_sig::MultiSig;
 pub use signer_set::{
     v1::SignerSetV1,
-    v2::{SignerIdentity, SignerContainer, SignerEntity, SignerSetV2},
+    v2::{SignerContainer, SignerEntity, SignerIdentity, SignerSetV2},
 };
