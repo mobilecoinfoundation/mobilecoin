@@ -82,13 +82,13 @@ pub struct TestClientConfig {
     /// Seconds to wait for a transaction to clear, before it has exceeded
     /// deadline. The healthy status will be set false if we exceed this
     /// deadline.
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_CONSENSUS_WAIT")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_CONSENSUS_WAIT")]
     pub consensus_wait: Duration,
 
     /// Seconds to wait for ledger sync on fog
     /// This affects the double-spend test but not the continuous mode of
     /// operation.
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_LEDGER_SYNC_WAIT")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_LEDGER_SYNC_WAIT")]
     pub ledger_sync_wait: Duration,
 
     /// Number of transactions to attempt (only when not running continuously)
@@ -99,7 +99,7 @@ pub struct TestClientConfig {
     /// test transfers
     ///
     /// By default the pause is 15 minutes.
-    #[clap(long, default_value = "900", parse(try_from_str = parse_duration_in_seconds), env = "MC_TRANSFER_PERIOD")]
+    #[clap(long, default_value = "900", value_parser = parse_duration_in_seconds, env = "MC_TRANSFER_PERIOD")]
     pub transfer_period: Duration,
 
     /// Amount to transfer per transaction
@@ -164,7 +164,7 @@ pub struct ConsensusConfig {
     #[clap(
         long = "consensus",
         required = true,
-        min_values = 1,
+        num_args = 1..,
         env = "MC_CONSENSUS",
         use_value_delimiter = true
     )]

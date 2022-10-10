@@ -3,10 +3,10 @@
 
 //! Retrieve the paths of previously generated test vectors
 
-use clap::{ArgEnum, Parser};
+use clap::{Parser, ValueEnum};
 use std::fmt::Debug;
 
-#[derive(ArgEnum, Clone, Debug, PartialEq)]
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
 enum PathKind {
     /// Retrieve the path to the PEM chain
     Chain,
@@ -20,7 +20,7 @@ struct Config {
     #[clap(long, env = "MC_TEST_NAME")]
     pub test_name: String,
     /// The type of path to retrieve
-    #[clap(arg_enum, long, alias = "type", env = "MC_TYPE")]
+    #[clap(value_enum, long, alias = "type", env = "MC_TYPE")]
     pub kind: PathKind,
 }
 

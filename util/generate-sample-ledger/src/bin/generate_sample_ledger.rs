@@ -32,7 +32,7 @@ struct Config {
 
     /// Seed to use when generating blocks (e.g.
     // 1234567812345678123456781234567812345678123456781234567812345678).
-    #[clap(long, short, parse(try_from_str = hex::FromHex::from_hex), env = "MC_SEED")]
+    #[clap(long, short, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_SEED")]
     pub seed: Option<[u8; 32]>,
 
     /// Max token id. If set to 1, then this will double the number of tx's in

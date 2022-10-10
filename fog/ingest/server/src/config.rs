@@ -85,13 +85,13 @@ pub struct IngestConfig {
 
     /// How often the active server checks up on each of the peer backups
     /// Defaults to once a minute
-    #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_PEER_CHECKUP_PERIOD")]
+    #[clap(long, default_value = "60", value_parser = parse_duration_in_seconds, env = "MC_PEER_CHECKUP_PERIOD")]
     pub peer_checkup_period: Duration,
 
     /// The amount of time we wait for the watcher db to catchup if it falls
     /// behind If this timeout is exceeded then the ETxOut's will have no
     /// timestamp
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_WATCHER_TIMEOUT")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_WATCHER_TIMEOUT")]
     pub watcher_timeout: Duration,
 
     /// Optional admin listening URI.

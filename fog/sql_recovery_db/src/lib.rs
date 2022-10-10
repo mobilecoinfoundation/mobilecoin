@@ -66,20 +66,20 @@ pub struct SqlRecoveryDbConnectionConfig {
     /// The idle timeout used by the connection pool.
     /// If set, connections will be closed after sitting idle for at most 30
     /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_IDLE_TIMEOUT")]
+    #[clap(long, default_value = "60", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_IDLE_TIMEOUT")]
     pub postgres_idle_timeout: Duration,
 
     /// The maximum lifetime of connections in the pool.
     /// If set, connections will be closed after existing for at most 30 seconds
     /// beyond this duration. If a connection reaches its maximum lifetime
     /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "120", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_MAX_LIFETIME")]
+    #[clap(long, default_value = "120", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_MAX_LIFETIME")]
     pub postgres_max_lifetime: Duration,
 
     /// Sets the connection timeout used by the pool.
     /// The pool will wait this long for a connection to become available before
     /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_CONNECTION_TIMEOUT")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_CONNECTION_TIMEOUT")]
     pub postgres_connection_timeout: Duration,
 
     /// The maximum number of connections managed by the pool.

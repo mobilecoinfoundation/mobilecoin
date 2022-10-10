@@ -47,11 +47,11 @@ pub struct Config {
     /// The value provided via config is the keypair derived from the input
     /// base64 DER-encoded private key.
     // FIXME: MC-973, get Ed25519 Pair from PEM
-    #[clap(long, parse(try_from_str = keypair_from_base64), env = "MC_MSG_SIGNER_KEY")]
+    #[clap(long, value_parser = keypair_from_base64, env = "MC_MSG_SIGNER_KEY")]
     pub msg_signer_key: Arc<Ed25519Pair>,
 
     /// The location for the network.toml/json configuration file.
-    #[clap(long = "network", parse(from_os_str), env = "MC_NETWORK")]
+    #[clap(long = "network", env = "MC_NETWORK")]
     pub network_path: PathBuf,
 
     /// Your Intel IAS API key.
@@ -85,38 +85,38 @@ pub struct Config {
     pub admin_listen_uri: Option<AdminUri>,
 
     /// The location to write the externalized blocks for the ledger.
-    #[clap(long, parse(from_os_str), env = "MC_LEDGER_PATH")]
+    #[clap(long, env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// The location from which to load the origin block.
-    #[clap(long, parse(from_os_str), env = "MC_ORIGIN_BLOCK_PATH")]
+    #[clap(long, env = "MC_ORIGIN_BLOCK_PATH")]
     pub origin_block_path: Option<PathBuf>,
 
     /// SCP debug output.
-    #[clap(long, parse(from_os_str), env = "MC_SCP_DEBUG_DUMP")]
+    #[clap(long, env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: Option<PathBuf>,
 
     /// Path to the sealed block signing key
-    #[clap(long, parse(from_os_str), env = "MC_SEALED_BLOCK_SIGNING_KEY")]
+    #[clap(long, env = "MC_SEALED_BLOCK_SIGNING_KEY")]
     pub sealed_block_signing_key: PathBuf,
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
+    #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The location for the network.toml/json configuration file.
-    #[clap(long = "tokens", parse(from_os_str), env = "MC_TOKENS")]
+    #[clap(long = "tokens", env = "MC_TOKENS")]
     pub tokens_path: Option<PathBuf>,
 
     /// The configured block version
-    #[clap(long, default_value = "0", parse(try_from_str = parse_block_version), env = "MC_BLOCK_VERSION")]
+    #[clap(long, default_value = "0", value_parser = parse_block_version, env = "MC_BLOCK_VERSION")]
     pub block_version: BlockVersion,
 }
 

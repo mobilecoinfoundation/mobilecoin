@@ -16,7 +16,7 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 )]
 pub struct Config {
     /// Secret shared between the token generator and the token validator.
-    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_SHARED_SECRET")]
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_SHARED_SECRET")]
     pub shared_secret: [u8; 32],
 
     /// Username to generator the token for

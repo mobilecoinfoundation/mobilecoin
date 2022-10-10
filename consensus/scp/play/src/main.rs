@@ -25,7 +25,7 @@ pub struct Config {
     ///
     /// Should be specified with a PeerURI, with consensus-msg-key param
     /// provided
-    #[clap(long, parse(try_from_str = parse_node_id_from_uri), env = "MC_NODE_ID")]
+    #[clap(long, value_parser = parse_node_id_from_uri, env = "MC_NODE_ID")]
     pub node_id: Option<NodeID>,
 
     /// Quorum set.
@@ -33,11 +33,11 @@ pub struct Config {
     /// The quorum set is represented in JSON. For example:
     /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
     /// com:8443"},{"type":"Node","args":"node3.test.mobilecoin.com:4843"}]}
-    #[clap(long, parse(try_from_str = parse_quorum_set_from_json), env = "MC_QUORUM_SET")]
+    #[clap(long, value_parser = parse_quorum_set_from_json, env = "MC_QUORUM_SET")]
     pub quorum_set: Option<QuorumSet>,
 
     /// SCP debug dump.
-    #[clap(long, parse(from_os_str), env = "MC_SCP_DEBUG_DUMP")]
+    #[clap(long, env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: PathBuf,
 }
 
