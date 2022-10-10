@@ -2027,7 +2027,7 @@ checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 
 [[package]]
 name = "libmobilecoin"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "cbindgen",
@@ -2273,7 +2273,7 @@ dependencies = [
 
 [[package]]
 name = "mc-android-bindings"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -4411,7 +4411,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mint-auditor"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "clap 3.1.18",
  "displaydoc",
@@ -4444,7 +4444,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mint-auditor-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures",
