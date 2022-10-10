@@ -120,23 +120,16 @@ impl<S: SignerIdentity> SignerSetV2<S> {
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     ///
-    /// NOTE: If a signer appears in multiple groups, it will only be matched
-    /// once, and for the first group it appears in that passed the signing
-    /// threshold (and the ordering of the groups and signatures depends on
-    /// their byte representation since we always sort them). Here is an
-    /// example that demonstrates the implications of this: Assume a signer set,
-    /// that requires 1-of-2 and is sorted, and where each member is a
-    /// m-of-n group where the first requires 2/3 and the second requires
-    /// 3/3:
-    /// 1) A, B, C (threshold 2)
-    /// 2) A, D, E (threshold 3)
-    /// If we are passed signatures A, B, C, D, E we could in theory satisfy the
-    /// threshold of both groups but since A gets "consumed" when matching the
-    /// first group, leaving the second group with only D and E, it will not
-    /// be considered a match. We say we could match all 5 signatures
-    /// in theory, because if we ignored A for the first set, it could still be
-    /// used to match the 2nd set. Such algorithm would require a more
-    /// complex (and slower) implementation, and is not currently supported.
+    /// Note that a signer is allowed to appear in multiple signer sets. For
+    /// example, assume a signer set that requires 2 out of 2 signers, each
+    /// being its own signer set: 1) SignerSet1: SignerA, SignerB (1 out of
+    /// 2) 2) SignerSet2: SignerA, SignerC (1 out of 2)
+    /// 3) SignerSetX: SignerSet1, SignerSet (2 out of 2)
+    /// When validating SignerSetX, providing just a signature from SignerA will
+    /// be enough to satisfy all thresholds. This is acceptable because it
+    /// means the rules for verifying a single signer set and a nested one
+    /// are the same, and easier to follow. The example above simply shows a
+    /// poorly specified signer set.
     pub fn verify<
         SIG: Clone
             + Default
@@ -161,15 +154,26 @@ impl<S: SignerIdentity> SignerSetV2<S> {
             return Err(SignatureError::new());
         }
 
-        // Sort and dedup the list of signatures..
-        let mut signatures = multi_sig.signatures.clone();
+        // Sort and dedup the list of signatures. Even though we match signers to
+        // signatures (and not the other way around), we still deuplicate the
+        // list of signatures since it is cheap to do, and a reasonable defensive
+        // programming measure.
+        let mut signatures = multi_sig.signatures().to_vec();
         signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
         signatures.dedup();
 
         // Verify signatures.
-        self.verify_helper(message, &signatures, &[])
+        let mut signer_identities = self.verify_helper(message, &signatures)?;
+
+        // Sort and dedup the list of matched signer identities.
+        signer_identities.sort();
+        signer_identities.dedup();
+        Ok(signer_identities)
     }
 
+    // The code that does the actual signature verification. We separate it from the
+    // public `verify` method so that we do not keep re-sorting an already
+    // sorted signers/signatures list.
     fn verify_helper<
         SIG: Clone
             + Default
@@ -186,60 +190,53 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         &self,
         message: &[u8],
         signatures: &[SIG],
-        seen_signers: &[S],
     ) -> Result<Vec<S>, SignatureError>
     where
         S: Verifier<SIG>,
     {
         // Sort and dedup the list of signers.
-        // While the verification code below should be immune to duplicate signers, the
-        // overhead of deduping them is negligible and being extra-safe is a good idea.
+        // We shouldn't be handed a signer set that contains the same signer multiple
+        // times, but just in case someone did do this, this will protect us
+        // from that.
         let mut signers = self.signers.clone();
         signers.sort();
         signers.dedup();
 
         // See which signers are satisfied by which signatures.
-        let mut matched_signers = Vec::new();
-        let mut num_matched_entities = 0;
+        let mut matched_signer_identities = Vec::new();
+        let mut num_matched_signers = 0;
 
         for signer in signers.iter() {
             match signer.entity {
-                Some(SignerEntity::Single(ref s)) => {
-                    // If we already encountered this signer, we cannot use it again.
-                    if seen_signers.contains(s) {
-                        continue;
-                    }
-                    if matched_signers.contains(s) {
-                        continue;
-                    }
-
-                    for signature in signatures.iter() {
-                        if s.verify(message, signature).is_ok() {
-                            matched_signers.push(s.clone());
-                            num_matched_entities += 1;
-                            break;
-                        }
+                Some(SignerEntity::Single(ref single_signer)) => {
+                    // See if any of the signatures match this signer.
+                    // Note that we do not need to check if we already encounted this signer, since
+                    // we de-duped the list of signers before entering the outer loop.
+                    if signatures
+                        .iter()
+                        .any(|sig| single_signer.verify(message, sig).is_ok())
+                    {
+                        matched_signer_identities.push(single_signer.clone());
+                        num_matched_signers += 1;
                     }
                 }
-                Some(SignerEntity::Multi(ref s)) => {
-                    let mut ignore_signers = seen_signers.to_vec();
-                    ignore_signers.extend(matched_signers.clone());
 
-                    if let Ok(signers) = s.verify_helper(message, signatures, &ignore_signers) {
-                        matched_signers.extend(signers);
-                        num_matched_entities += 1;
+                Some(SignerEntity::Multi(ref s)) => {
+                    if let Ok(signer_identities) = s.verify_helper(message, signatures) {
+                        matched_signer_identities.extend(signer_identities);
+                        num_matched_signers += 1;
                     }
                 }
                 None => {}
             }
         }
 
-        // Did we pass the threshold of verified signatures?
-        if num_matched_entities < self.threshold as usize {
+        // Did we pass the threshold of signers?
+        if num_matched_signers < self.threshold as usize {
             return Err(SignatureError::new());
         }
 
-        Ok(matched_signers.to_vec())
+        Ok(matched_signer_identities)
     }
 }
 
@@ -884,13 +881,13 @@ mod test_nested_multisigs {
     }
 
     #[test]
-    fn ed25519_duplicate_signers_ignored() {
+    fn ed25519_duplicate_signer() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let message = b"this is a test";
 
         let common_signer = Ed25519Pair::from_random(&mut rng);
 
-        // Org 1 requires 2-of-3 signatures
+        // Org 1 requires 2-of-4 signatures
         let org1_signer1 = Ed25519Pair::from_random(&mut rng);
         let org1_signer2 = Ed25519Pair::from_random(&mut rng);
         let org1_signer3 = Ed25519Pair::from_random(&mut rng);
@@ -901,10 +898,10 @@ mod test_nested_multisigs {
                 org1_signer3.public_key().into(),
                 common_signer.public_key().into(),
             ],
-            3,
+            2,
         );
 
-        // Org 2 requires 3-of-3 signatures
+        // Org 2 requires 3-of-4 signatures
         let org2_signer1 = Ed25519Pair::from_random(&mut rng);
         let org2_signer2 = Ed25519Pair::from_random(&mut rng);
         let org2_signer3 = Ed25519Pair::from_random(&mut rng);
@@ -932,8 +929,8 @@ mod test_nested_multisigs {
         // The top-level multisig requires 1-of-2 signatures
         let signer_set = SignerSetV2::new(vec![org1_signerset.into(), org2_signerset.into()], 1);
 
-        // If we use the common signer only once, we meet the threshold and see it in
-        // the matches list.
+        // Using the common signer as part of the org1 signer set results in only org1
+        // being matched.
         let multi_sig = MultiSig::new(vec![common_signer_sig, org1_signer1_sig, org1_signer2_sig]);
         let signers = signer_set
             .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
@@ -947,6 +944,8 @@ mod test_nested_multisigs {
             ],
         );
 
+        // Using the common signer as part of the org2 signer set results in only org2
+        // being matched.
         let multi_sig = MultiSig::new(vec![common_signer_sig, org2_signer1_sig, org2_signer2_sig]);
         let signers = signer_set
             .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
@@ -960,14 +959,7 @@ mod test_nested_multisigs {
             ],
         );
 
-        // However, if we try to use the common signer for both orgs, it would only
-        // satisfy one group.
-        // Note that the result of this test depends on the sorting order of the
-        // signatures and keys. What is happening here is the org2 set is being
-        // looked at first, and matches the 3 org2 signers and the common
-        // signer. This removes the common signer from the list of signers to
-        // check, and when org1 gets checked we do not exceed the threshold of
-        // 3.
+        // Using the common signer as part of both orgs results in both being matched.
         let multi_sig = MultiSig::new(vec![
             common_signer_sig,
             org1_signer1_sig,
@@ -984,6 +976,8 @@ mod test_nested_multisigs {
             signers,
             vec![
                 common_signer.public_key(),
+                org1_signer1.public_key(),
+                org1_signer2.public_key(),
                 org2_signer1.public_key(),
                 org2_signer2.public_key(),
                 org2_signer3.public_key(),
@@ -1008,12 +1002,12 @@ mod test_nested_multisigs {
             signers,
             vec![
                 common_signer.public_key(),
-                org2_signer1.public_key(),
-                org2_signer2.public_key(),
-                org2_signer3.public_key(),
                 org1_signer1.public_key(),
                 org1_signer2.public_key(),
                 org1_signer3.public_key(),
+                org2_signer1.public_key(),
+                org2_signer2.public_key(),
+                org2_signer3.public_key(),
             ],
         );
     }
