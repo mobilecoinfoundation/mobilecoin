@@ -1045,7 +1045,7 @@ mod rct_bulletproofs_tests {
         ring_signature::{
             generators, Error as RingSignatureError, KeyImage, PedersenGens, ReducedTxOut,
         },
-        tx::TxPrefix,
+        tx::{TxIn, TxPrefix},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -1171,6 +1171,11 @@ mod rct_bulletproofs_tests {
                         blinding,
                     },
                 });
+
+                // This is janky, but needed so that the compute_mlsag_signing_digest
+                // code can find one `TxIn` for each input ring, and determine that
+                // there are no InputRules associated to any of them.
+                tx_prefix.inputs.push(TxIn::default());
             }
 
             // Create one output with the same value as each input.
