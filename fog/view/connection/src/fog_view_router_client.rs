@@ -204,6 +204,7 @@ impl Drop for FogViewRouterGrpcClient {
 }
 
 /// Errors related to the Fog View Router Client.
+#[derive(Debug)]
 pub enum Error {
     /// Decode errors.
     Decode(DecodeError),
