@@ -236,7 +236,7 @@ pub enum Commands {
     CheckSig {
         /// The signature to verify.
 	///
-	/// This signature is created with `ledger-agent -e ed25519 --sign-blob <hash> <key_identifier>`
+	/// This signature can be created with `ledger-agent -e ed25519 --sign-blob <hash> <key_identifier>`
         #[clap(
             long = "signature",
             use_value_delimiter = true,
