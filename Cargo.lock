@@ -978,6 +978,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4529658bdda7fd6769b8614be250cdcfc3aeb0ee72fe66f9e41e5e5eb73eac02"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "649c91bc01e8b1eac09fb91e8dbc7d517684ca6be8ebc75bb9cafc894f9fdb6f"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim 0.10.0",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddfc69c5bfcbd2fc09a0f38451d2daf0e372e367986a83906d1b0dbc88134fb5"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "dashmap"
 version = "5.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1829,6 +1864,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
 name = "idna"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2233,8 +2274,9 @@ dependencies = [
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
  "mc-test-vectors-b58-encodings",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
+ "mc-transaction-extra",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
@@ -2840,9 +2882,9 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -3243,8 +3285,8 @@ dependencies = [
  "mc-fog-report-connection",
  "mc-fog-report-resolver",
  "mc-ledger-db",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-cli",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
@@ -4033,9 +4075,10 @@ dependencies = [
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
  "mc-sgx-css",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
+ "mc-transaction-extra",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-grpc",
@@ -4159,7 +4202,7 @@ dependencies = [
  "mc-fog-uri",
  "mc-sgx-css",
  "mc-transaction-core",
- "mc-transaction-std",
+ "mc-transaction-extra",
  "mc-util-cli",
  "mc-util-grpc",
  "mc-util-keyfile",
@@ -4460,9 +4503,9 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-rand",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-lmdb",
  "mc-util-metrics",
@@ -4597,8 +4640,9 @@ dependencies = [
  "mc-ledger-sync",
  "mc-mobilecoind-api",
  "mc-sgx-css",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
+ "mc-transaction-extra",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
@@ -4636,7 +4680,7 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-consensus-api",
- "mc-transaction-std",
+ "mc-transaction-builder",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-uri",
@@ -4662,8 +4706,8 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-resolver",
  "mc-mobilecoind-api",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-serial",
@@ -4690,6 +4734,7 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
+ "mc-transaction-extra",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-serial",
@@ -4965,7 +5010,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-keys",
  "mc-test-vectors-definitions",
- "mc-transaction-std",
+ "mc-transaction-extra",
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
@@ -4986,12 +5031,44 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-oblivious-traits",
  "mc-test-vectors-definitions",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "mc-transaction-builder"
+version = "2.1.0-pre0"
+dependencies = [
+ "assert_matches",
+ "cfg-if 1.0.0",
+ "curve25519-dalek",
+ "displaydoc",
+ "hmac 0.12.1",
+ "maplit",
+ "mc-account-keys",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation",
+ "mc-fog-report-validation-test-utils",
+ "mc-transaction-core",
+ "mc-transaction-extra",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2 0.10.6",
+ "subtle",
+ "yaml-rust",
+ "zeroize",
 ]
 
 [[package]]
@@ -5020,8 +5097,8 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
+ "mc-transaction-builder",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -5056,7 +5133,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-transaction-std"
+name = "mc-transaction-extra"
 version = "2.1.0-pre0"
 dependencies = [
  "assert_matches",
@@ -5066,14 +5143,16 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-ring-signature",
  "mc-crypto-ring-signature-signer",
- "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
  "mc-transaction-types",
  "mc-util-from-random",
+ "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
  "prost",
@@ -5392,6 +5471,7 @@ dependencies = [
  "protobuf",
  "serde",
  "serde_cbor",
+ "serde_json",
  "serde_with",
 ]
 
@@ -5469,8 +5549,8 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-crypto-keys",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "rand 0.8.5",
  "wasm-bindgen",
  "wasm-bindgen-test",
@@ -5669,9 +5749,9 @@ dependencies = [
 
 [[package]]
 name = "more-asserts"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
+checksum = "1fafa6961cabd9c63bcd77a45d7e3b7f3b552b70417831fb0f56db717e72407e"
 
 [[package]]
 name = "multer"
@@ -7251,11 +7331,24 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "1.14.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
+checksum = "368f2d60d049ea019a84dcd6687b0d1e0030fe663ae105039bdf967ed5e6a9a7"
 dependencies = [
  "serde",
+ "serde_with_macros",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ccadfacf6cf10faad22bbadf55986bdd0856edfb5d9210aa1dcf1f516e84e93"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

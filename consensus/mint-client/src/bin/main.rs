@@ -211,8 +211,6 @@ fn main() {
         },
 
         Commands::HashMintTx { params } => {
-            // Fixme: we should panic if fog css is supplied I think, since this
-            // hash won't be deterministic then.
             let tx_prefix = params
                 .try_into_mint_tx_prefix(None, || panic!("missing tombstone block"))
                 .expect("failed creating tx prefix");

@@ -111,7 +111,6 @@ class FogIngest:
 
         print(f'Starting fog ingest {self.name}')
         cmd = ' '.join([
-            'MC_LOG=trace',
             DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_ingest_server',
             f'--ledger-db={self.ledger_db_path}',

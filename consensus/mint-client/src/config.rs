@@ -182,17 +182,15 @@ impl MintTxPrefixParams {
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTxPrefix, String> {
         let mut tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
-        let e_fog_hint = if let Some(fog_url) = self.recipient.fog_report_url() {
-            if let Some(fog_bits) = fog_bits {
-                let (e_fog_hint, pubkey_expiry) = fog_bits.get_e_fog_hint(&self.recipient)?;
-                tombstone_block = core::cmp::min(tombstone_block, pubkey_expiry);
-                Some(e_fog_hint)
-            } else {
-                return Err(format!("This recipient has a fog url, but a CSS to validate fog public keys was not supplied: '{}'", fog_url));
-            }
-        } else {
-            None
-        };
+        let e_fog_hint = self.recipient.fog_report_url().map(|fog_url| -> Result<_, String> {
+            let fog_bits = fog_bits.ok_or_else(|| format!(
+                "This recipient has a fog url, but a CSS to validate fog public keys was not supplied: '{}'",
+                fog_url,
+            ))?;
+            let (e_fog_hint, pubkey_expiry) = fog_bits.get_e_fog_hint(&self.recipient)?;
+            tombstone_block = tombstone_block.min(pubkey_expiry);
+            Ok(e_fog_hint)
+        }).transpose()?;
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
             token_id: *self.token_id,

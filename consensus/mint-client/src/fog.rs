@@ -18,9 +18,13 @@ use std::{str::FromStr, sync::Arc};
 /// Data and objects needed to resolve a fog address and build an encrypted
 /// fog hint in a one-off way appropriate for a CLI tool
 pub struct FogBits {
+    /// The chain id of the network we expect to connect to
     pub chain_id: String,
+    /// The css file (loaded as signature) that we will verify report against
     pub css_signature: Signature,
+    /// The grpcio environment
     pub grpc_env: Arc<Environment>,
+    /// Logger
     pub logger: Logger,
 }
 
@@ -66,13 +70,13 @@ impl FogBits {
         );
 
         let responses = conn
-            .fetch_fog_reports(core::slice::from_ref(&fog_uri).iter().cloned())
+            .fetch_fog_reports([fog_uri].into_iter())
             .map_err(|err| format!("Error fetching fog reports: {}", err))?;
 
         let verifier = get_fog_ingest_verifier(self.css_signature.clone());
-        let resolver = FogResolver::new(responses, &verifier);
+        let resolver = FogResolver::new(responses, &verifier)
+            .map_err(|err| format!("Error building FogResolver: {}", err))?;
         resolver
-            .map_err(|err| format!("Could not get FogPubkey resolved: {}", err))?
             .get_fog_pubkey(public_address)
             .map_err(|err| format!("Could not validate fog pubkey: {}", err))
     }

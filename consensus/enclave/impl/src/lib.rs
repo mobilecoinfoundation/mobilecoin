@@ -896,7 +896,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 && !config.block_version.minting_to_fog_addresses_is_supported()
             {
                 return Err(Error::BlockVersion(
-                    "Minting to fog addresses is not supported in this block version",
+                    "Minting to fog addresses is not supported in this block version".into(),
                 ));
             }
             let output = mint_output(

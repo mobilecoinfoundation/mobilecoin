@@ -5,7 +5,10 @@
 use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_multisig::MultiSig;
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, mint::{MintTx, MintTxPrefix}};
+use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint,
+    mint::{MintTx, MintTxPrefix},
+};
 
 /// Convert MintTxPrefix --> external::MintTxPrefix.
 impl From<&MintTxPrefix> for external::MintTxPrefix {
@@ -35,8 +38,10 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
         let e_fog_hint = if source.get_e_fog_hint().get_data().is_empty() {
             None
         } else {
-            Some(EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
-            .map_err(|_| ConversionError::ArrayCastError)?)
+            Some(
+                EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
+                    .map_err(|_| ConversionError::ArrayCastError)?,
+            )
         };
 
         Ok(Self {
