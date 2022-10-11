@@ -13,7 +13,7 @@ use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
-/// A marker traint for indicating that a type is able to produce signatures.
+/// A marker trait for indicating that a type is able to produce signatures.
 /// While we do not strictly have to limit ourselves to `PublicKey`, it makes it
 /// more obvious what the intent of this trait is.
 pub trait SignerIdentity: Default + Message + PublicKey {}
