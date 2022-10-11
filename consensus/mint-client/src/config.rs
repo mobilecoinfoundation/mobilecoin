@@ -252,7 +252,7 @@ pub enum Commands {
 
         /// The public key to verify with the signature.
 	///
-	/// This pemfile is created with `ledger-agent -e ed25519 --pemout <outfile>.pub <key_identifier>`
+	/// This pemfile can be created with `ledger-agent -e ed25519 --pemout <outfile>.pub <key_identifier>`
         #[clap(long = "public-key", parse(try_from_str = load_key_from_pem), env = "MC_MINTING_PUBLIC_KEY")]
         pubkey: Ed25519Public,
     },
