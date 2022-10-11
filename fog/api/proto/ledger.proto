@@ -57,7 +57,7 @@ message FogLedgerStoreDecryptionError {
 // Identical to MultiViewStoreQueryRequest - TODO, determine if we should unify these types.
 message MultiKeyImageStoreRequest {
     /// A list of queries encrypted for Fog Ledger Stores.
-    repeated attest.Message queries = 1;
+    repeated attest.NonceMessage queries = 1;
 }
 
 
@@ -77,7 +77,7 @@ message MultiKeyImageStoreResponse {
     /// Optional field that gets set when the Fog Ledger Store is able to decrypt a query
     /// included in the MultiKeyImageStoreRequest and create a query response for that
     //  query.
-    attest.Message query_response = 1;
+    attest.NonceMessage query_response = 1;
 
     /// The FogViewStoreUri for the specific Fog View Store that
     /// tried to decrypt the MultiViewStoreQueryRequest and failed.

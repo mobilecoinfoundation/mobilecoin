@@ -47,6 +47,7 @@ impl KeyImageStoreServer {
 
         let key_image_service = KeyImageService::new(
             KeyImageClientListenUri::Store(config.client_listen_uri.clone()),
+            config.chain_id.clone(),
             ledger.clone(),
             watcher.clone(),
             enclave,

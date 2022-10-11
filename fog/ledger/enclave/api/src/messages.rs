@@ -6,7 +6,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientSession, EnclaveMessage, SealedClientMessage, NonceSession, NonceAuthResponse,
 };
 
 use mc_common::ResponderId;
@@ -119,7 +119,7 @@ pub enum EnclaveCall {
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    FinishConnectingToKeyImageStore(ResponderId, ClientAuthResponse),
+    FinishConnectingToKeyImageStore(ResponderId, NonceAuthResponse),
 
     /// The [LedgerEnclave::decrypt_and_seal_query()] method.
     ///
@@ -139,6 +139,6 @@ pub enum EnclaveCall {
     /// client.
     CollateQueryResponses(
         SealedClientMessage,
-        BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     )
 }

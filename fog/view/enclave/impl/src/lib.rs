@@ -12,10 +12,7 @@ mod oblivious_utils;
 use alloc::collections::BTreeMap;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
-use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
-use core::ops::DerefMut;
-use mc_attest_ake::Ready;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -52,12 +49,12 @@ where
     /// Logger object
     logger: Logger,
 
-    /// Encrypts a QueryRequest for each individual Fog View Store.
-    /// TODO: Use a BTreeMap<FogViewShardLoadBalancerID,
-    /// BTreeMap<FogViewStoreId, Ready<...>>>  when implement the cursoring
-    /// optimization. For right now, it's fine to leave as a Vec because a
-    /// follow up PR will implement cursoring.
-    store_encryptors: Mutex<Vec<Ready<Aes256Gcm>>>,
+    // Encrypts a QueryRequest for each individual Fog View Store.
+    // TODO: Use a BTreeMap<FogViewShardLoadBalancerID,
+    // BTreeMap<FogViewStoreId, Ready<...>>>  when implement the cursoring
+    // optimization. For right now, it's fine to leave as a Vec because a
+    // follow up PR will implement cursoring.
+    // store_encryptors: Mutex<Vec<Ready<Aes256Gcm>>>,
 }
 
 impl<OSC> ViewEnclave<OSC>
@@ -67,7 +64,7 @@ where
     pub fn new(logger: Logger) -> Self {
         Self {
             e_tx_out_store: Mutex::new(None),
-            store_encryptors: Mutex::new(Vec::new()),
+            //store_encryptors: Mutex::new(Vec::new()),
             ake: Default::default(),
             logger,
         }

@@ -49,9 +49,6 @@ const MAX_CLIENT_SESSIONS: usize = 10_000;
 /// Max number of auth requests for enclave backends.
 const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10_000;
 
-/// Max number of auth requests for enclave backends.
-const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10000;
-
 /// Any additional "identities" (e.g. key material) for a given enclave that
 /// needs to become a part of the report. We provide some simple identities, and
 /// a trait to allow extensions
@@ -566,7 +563,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .get_mut(responder_id)
             .ok_or(Error::NotFound)
             .and_then(|session| {
-                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.peek_nonce())?)
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.nonce())?)
             })
     }
 

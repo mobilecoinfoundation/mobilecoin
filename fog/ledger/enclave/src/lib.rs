@@ -15,7 +15,7 @@ use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthResponse, NonceSession, NonceAuthRequest,
 };
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
@@ -194,7 +194,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn connect_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
-    ) -> Result<ClientAuthRequest> {
+    ) -> Result<NonceAuthRequest> {
         mc_sgx_debug::eprintln!(
             "Called connect_to_key_image_store(ledger_store_id: {})",
             ledger_store_id
@@ -209,7 +209,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn finish_connecting_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
-        ledger_store_auth_response: ClientAuthResponse,
+        ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         mc_sgx_debug::eprintln!("Called finish_connecting_to_key_image_store(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
 
@@ -237,7 +237,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn create_multi_key_image_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..) - the router is handling a message from the client");
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateMultiKeyImageStoreQueryData(
             sealed_query,
@@ -249,7 +249,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CollateQueryResponses(
             sealed_query,

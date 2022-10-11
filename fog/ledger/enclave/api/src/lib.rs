@@ -16,7 +16,7 @@ pub use crate::{
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthRequest, NonceAuthResponse, NonceSession,
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
@@ -107,15 +107,15 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// method, most likely a router, will act as a client to the Fog Ledger
     /// Store.
     fn connect_to_key_image_store(&self, ledger_store_id: ResponderId)
-        -> Result<ClientAuthRequest>;
+        -> Result<NonceAuthRequest>;
 
     /// Complete the connection to a Fog Ledger Store that has accepted our
-    /// ClientAuthRequest. This is meant to be called after the enclave has
+    /// NonceAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
     fn finish_connecting_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
-        ledger_store_auth_response: ClientAuthResponse,
+        ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()>;
   
     /// Decrypts a client query message and converts it into a
@@ -133,14 +133,14 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn create_multi_key_image_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>>;
 
     /// Receives all of the shards' query responses and collates them into one
     /// query response for the client.
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 

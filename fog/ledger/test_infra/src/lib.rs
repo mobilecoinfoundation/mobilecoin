@@ -3,7 +3,7 @@
 //! Functionality for mocking and testing components in the ledger server
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse, NonceSession};
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -88,14 +88,14 @@ impl LedgerEnclave for MockEnclave {
     fn connect_to_key_image_store(
         &self,
         _ledger_store_id: ResponderId,
-    ) -> EnclaveResult<ClientAuthRequest> {
+    ) -> EnclaveResult<NonceAuthRequest> {
         unimplemented!()
     }
 
     fn finish_connecting_to_key_image_store(
         &self,
         _ledger_store_id: ResponderId,
-        _ledger_store_auth_response: ClientAuthResponse,
+        _ledger_store_auth_response: NonceAuthResponse,
     ) -> EnclaveResult<()> {
         unimplemented!()
     }
@@ -110,15 +110,15 @@ impl LedgerEnclave for MockEnclave {
     fn create_multi_key_image_store_query_data(
         &self,
         _sealed_query: mc_attest_enclave_api::SealedClientMessage,
-    ) -> EnclaveResult<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> EnclaveResult<Vec<EnclaveMessage<NonceSession>>> {
         unimplemented!()
     }
 
     fn collate_shard_query_responses(
         &self,
         _sealed_query: mc_attest_enclave_api::SealedClientMessage,
-        _shard_query_responses: std::collections::BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
-    ) -> EnclaveResult<EnclaveMessage<ClientSession>> {
+        _shard_query_responses: std::collections::BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
 }

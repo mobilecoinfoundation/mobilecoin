@@ -4,7 +4,7 @@ use crate::error::{router_server_err_to_rpc_status, RouterServerError};
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_common::{logger::Logger, ResponderId};
 use mc_fog_api::{
     ledger::{
@@ -98,14 +98,14 @@ pub struct ProcessedShardResponseData {
     pub store_uris_for_authentication: Vec<KeyImageStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<(ResponderId, attest::Message)>,
+    pub new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<KeyImageStoreApiClient>>,
         store_uris_for_authentication: Vec<KeyImageStoreUri>,
-        new_query_responses: Vec<(ResponderId, attest::Message)>,
+        new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
@@ -178,7 +178,7 @@ async fn handle_query_request<E>(
 where
     E: LedgerEnclaveProxy,
 {
-    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>> = BTreeMap::new();
+    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())

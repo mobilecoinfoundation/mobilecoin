@@ -33,8 +33,8 @@ impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
     }
 }
 
-impl From<Vec<attest::Message>> for MultiKeyImageStoreRequest {
-    fn from(attested_query_messages: Vec<attest::Message>) -> MultiKeyImageStoreRequest {
+impl From<Vec<attest::NonceMessage>> for MultiKeyImageStoreRequest {
+    fn from(attested_query_messages: Vec<attest::NonceMessage>) -> MultiKeyImageStoreRequest {
         let mut multi_key_image_store_request = MultiKeyImageStoreRequest::new();
         multi_key_image_store_request.set_queries(attested_query_messages.into());
 

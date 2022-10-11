@@ -158,7 +158,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
 
     /// Handle MultiKeyImageStoreRequest contents sent by a router to this store.
     fn process_queries(&mut self, fog_ledger_store_uri: KeyImageStoreUri, 
-        queries: Vec<attest::Message>) -> MultiKeyImageStoreResponse { 
+        queries: Vec<attest::NonceMessage>) -> MultiKeyImageStoreResponse { 
         let mut response = MultiKeyImageStoreResponse::new();
         // The router needs our own URI, in case auth fails / hasn't been started yet.
         response.set_fog_ledger_store_uri(fog_ledger_store_uri.url().to_string());
@@ -167,7 +167,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             // Only one of the query messages in the multi-store query is intended for this store.
             // It's a bit of a broadcast model - all queries are sent to all stores, and then 
             // the stores evaluate which message is meant for them.
-            if let Ok(attested_message) = self.check_key_images_auth(query) {
+            if let Ok(attested_message) = self.check_key_images_auth(query) { //Needs a different method? 
                 response.set_query_response(attested_message);
                 response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
 

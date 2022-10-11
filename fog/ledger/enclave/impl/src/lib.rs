@@ -18,7 +18,7 @@ use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthRequest, NonceAuthResponse, NonceSession,
 };
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
@@ -199,7 +199,7 @@ where
     fn connect_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
-    ) -> Result<ClientAuthRequest> {
+    ) -> Result<NonceAuthRequest> {
         mc_sgx_debug::eprintln!(
             "Called connect_to_key_image_store(ledger_store_id: {})",
             ledger_store_id
@@ -211,7 +211,7 @@ where
     fn finish_connecting_to_key_image_store(
         &self,
         ledger_store_id: ResponderId,
-        ledger_store_auth_response: ClientAuthResponse,
+        ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
         mc_sgx_debug::eprintln!("Called finish_connecting_to_key_image_store(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
         Ok(self
@@ -229,7 +229,7 @@ where
     fn create_multi_key_image_store_query_data(
         &self,
         sealed_query: SealedClientMessage,
-    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
         mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..)");
         Ok(self
             .ake
@@ -239,7 +239,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<ClientSession>>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -256,7 +256,7 @@ where
         let shard_query_responses = shard_query_responses
             .into_iter()
             .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(responder_id, enclave_message)?; // TODO explicit nonces
+                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
                 let query_response: CheckKeyImagesResponse =
                     mc_util_serial::decode(&plaintext_bytes)?;
 
