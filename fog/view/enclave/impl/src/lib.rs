@@ -431,6 +431,14 @@ fn get_block_data(mut responses: Vec<DecryptedMultiViewStoreQueryResponse>) -> B
     result
 }
 
+fn get_cumulative_txo_count(shard_query_responses: &[QueryResponse]) -> u64 {
+    shard_query_responses
+        .into_iter()
+        .map(|query_response| query_response.last_known_block_cumulative_txo_count)
+        .max()
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod get_block_data_tests {
     use crate::{get_block_data, DecryptedMultiViewStoreQueryResponse};

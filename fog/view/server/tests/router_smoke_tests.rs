@@ -45,8 +45,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
     let mut expected_records = Vec::new();
     const BLOCK_COUNT: u64 = 5;
+    const TX_OUTS_PER_BLOCK: usize = 2;
     for i in 0..BLOCK_COUNT {
-        let (block, records) = random_block(&mut rng, i, 2);
+        let (block, records) = random_block(&mut rng, i, TX_OUTS_PER_BLOCK);
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -107,7 +108,11 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.rng_records.len(), 1);
     assert_eq!(result.rng_records[0].pubkey, egress_public_key);
     assert_eq!(result.missed_block_ranges.len(), 0);
-    assert_eq!(result.last_known_block_count, 5);
+    assert_eq!(result.last_known_block_count, total_block_count);
+    assert_eq!(
+        result.last_known_block_cumulative_txo_count,
+        BLOCK_COUNT * (TX_OUTS_PER_BLOCK as u64)
+    );
 }
 
 #[test]

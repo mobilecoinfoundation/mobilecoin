@@ -666,7 +666,7 @@ pub fn random_block(
         BlockVersion::ZERO,
         &BlockID::default(),
         block_index,
-        0,
+        (block_index + 1) * (num_txs as u64),
         &Default::default(),
         &Default::default(),
     );
