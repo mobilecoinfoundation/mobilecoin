@@ -5,8 +5,8 @@
 //! produce a joint signature on a common message. The simplest multi-signature
 //! of a message is just a set of signatures containing one signature over the
 //! message from each member of the signing group. We say that a multi-signature
-//! is an M-of-N threshold signature if only M valid signatures are required from
-//! a signing group of size N.
+//! is an M-of-N threshold signature if only M valid signatures are required
+//! from a signing group of size N.
 
 #![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]

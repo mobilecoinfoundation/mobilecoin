@@ -130,7 +130,7 @@ impl<S: SignerIdentity> SignerSetV2<S> {
     pub fn verify<SIG>(
         &self,
         message: &[u8],
-        multi_sig: &MultiSig<SIG>
+        multi_sig: &MultiSig<SIG>,
     ) -> Result<Vec<S>, SignatureError>
     where
         SIG: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
@@ -231,7 +231,7 @@ mod test_single_level {
     use super::*;
     use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Signer};
-    use mc_util_from_random::FromRandom;
+    use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -247,23 +247,34 @@ mod test_single_level {
         assert_eq!(a, b);
     }
 
+    /// Helper to construct a non-nested SignerSetV2
+    pub fn make_signer_set(
+        threshold: u32,
+        num_signers: usize,
+        rng: &mut (impl CryptoRng + RngCore),
+    ) -> (SignerSetV2<Ed25519Public>, Vec<Ed25519Pair>) {
+        let signers = (0..num_signers)
+            .map(|_| Ed25519Pair::from_random(rng))
+            .collect::<Vec<_>>();
+        let signer_set = SignerSetV2::new(
+            signers
+                .iter()
+                .map(|signer| signer.public_key().into())
+                .collect(),
+            threshold,
+        );
+        (signer_set, signers)
+    }
+
     #[test]
     fn ed25519_verify_signers_sanity_k_equals_3() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
-        let signer1 = Ed25519Pair::from_random(&mut rng);
-        let signer2 = Ed25519Pair::from_random(&mut rng);
-        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        let (signer_set, signers) = make_signer_set(2, 3, &mut rng);
+        let (signer1, signer2, signer3) = (&signers[0], &signers[1], &signers[2]);
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSetV2::new(
-            vec![
-                signer1.public_key().into(),
-                signer2.public_key().into(),
-                signer3.public_key().into(),
-            ],
-            2,
-        );
         let message = b"this is a test";
 
         // Try with just one valid signature, we should fail to verify.
@@ -341,20 +352,12 @@ mod test_single_level {
     #[test]
     fn ed25519_verify_signers_sanity_k_equals_1() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
-        let signer1 = Ed25519Pair::from_random(&mut rng);
-        let signer2 = Ed25519Pair::from_random(&mut rng);
-        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        let (signer_set, signers) = make_signer_set(1, 3, &mut rng);
+        let (signer1, signer2, _signer3) = (&signers[0], &signers[1], &signers[2]);
         let signer4 = Ed25519Pair::from_random(&mut rng);
         let signer5 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSetV2::new(
-            vec![
-                signer1.public_key().into(),
-                signer2.public_key().into(),
-                signer3.public_key().into(),
-            ],
-            1,
-        );
         let message = b"this is a test";
 
         // Try with just no valid signatures, we should fail to verify.
@@ -497,58 +500,24 @@ mod test_single_level {
     #[test]
     fn test_serde_works() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
-        let signer1 = Ed25519Pair::from_random(&mut rng);
-        let signer2 = Ed25519Pair::from_random(&mut rng);
-        let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSetV2::new(
-            vec![
-                signer1.public_key().into(),
-                signer2.public_key().into(),
-                signer3.public_key().into(),
-            ],
-            2,
-        );
+        let (signer_set, _signers) = make_signer_set(2, 3, &mut rng);
 
         assert_eq!(
             signer_set,
             mc_util_serial::deserialize(&mc_util_serial::serialize(&signer_set).unwrap()).unwrap(),
-        );
-
-        let message = b"this is a test";
-        let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
-        assert_eq!(
-            multi_sig,
-            mc_util_serial::deserialize(&mc_util_serial::serialize(&multi_sig).unwrap()).unwrap(),
         );
     }
 
     #[test]
     fn test_prost_works() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
-        let signer1 = Ed25519Pair::from_random(&mut rng);
-        let signer2 = Ed25519Pair::from_random(&mut rng);
-        let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSetV2::new(
-            vec![
-                signer1.public_key().into(),
-                signer2.public_key().into(),
-                signer3.public_key().into(),
-            ],
-            2,
-        );
+        let (signer_set, _signers) = make_signer_set(2, 3, &mut rng);
 
         assert_eq!(
             signer_set,
             mc_util_serial::decode(&mc_util_serial::encode(&signer_set)).unwrap(),
-        );
-
-        let message = b"this is a test";
-        let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
-        assert_eq!(
-            multi_sig,
-            mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap(),
         );
     }
 }
@@ -556,7 +525,10 @@ mod test_single_level {
 /// Tests for nested k-out-of-n multisigs
 #[cfg(test)]
 mod test_nested_multisigs {
-    use super::{test_single_level::assert_eq_ignore_order, *};
+    use super::{
+        test_single_level::{assert_eq_ignore_order, make_signer_set},
+        *,
+    };
     use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Signer};
     use mc_util_from_random::FromRandom;
@@ -569,30 +541,14 @@ mod test_nested_multisigs {
         let message = b"this is a test";
 
         // Org 1 requires 2-of-3 signatures
-        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org1_signerset = SignerSetV2::new(
-            vec![
-                org1_signer1.public_key().into(),
-                org1_signer2.public_key().into(),
-                org1_signer3.public_key().into(),
-            ],
-            2,
-        );
+        let (org1_signerset, org1_signers) = make_signer_set(2, 3, &mut rng);
+        let (org1_signer1, org1_signer2, org1_signer3) =
+            (&org1_signers[0], &org1_signers[1], &org1_signers[2]);
 
         // Org 2 requires 3-of-3 signatures
-        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org2_signerset = SignerSetV2::new(
-            vec![
-                org2_signer1.public_key().into(),
-                org2_signer2.public_key().into(),
-                org2_signer3.public_key().into(),
-            ],
-            3,
-        );
+        let (org2_signerset, org2_signers) = make_signer_set(3, 3, &mut rng);
+        let (org2_signer1, org2_signer2, org2_signer3) =
+            (&org2_signers[0], &org2_signers[1], &org2_signers[2]);
 
         // Sign the message with all of our signers.
         let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
@@ -706,30 +662,14 @@ mod test_nested_multisigs {
         let message = b"this is a test";
 
         // Org 1 requires 2-of-3 signatures
-        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org1_signerset = SignerSetV2::new(
-            vec![
-                org1_signer1.public_key().into(),
-                org1_signer2.public_key().into(),
-                org1_signer3.public_key().into(),
-            ],
-            2,
-        );
+        let (org1_signerset, org1_signers) = make_signer_set(2, 3, &mut rng);
+        let (org1_signer1, org1_signer2, org1_signer3) =
+            (&org1_signers[0], &org1_signers[1], &org1_signers[2]);
 
         // Org 2 requires 3-of-3 signatures
-        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org2_signerset = SignerSetV2::new(
-            vec![
-                org2_signer1.public_key().into(),
-                org2_signer2.public_key().into(),
-                org2_signer3.public_key().into(),
-            ],
-            3,
-        );
+        let (org2_signerset, org2_signers) = make_signer_set(3, 3, &mut rng);
+        let (org2_signer1, org2_signer2, org2_signer3) =
+            (&org2_signers[0], &org2_signers[1], &org2_signers[2]);
 
         // Sign the message with all of our signers.
         let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
@@ -992,30 +932,14 @@ mod test_nested_multisigs {
         let message = b"this is a test";
 
         // Org 1 requires 2-of-3 signatures
-        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org1_signerset = SignerSetV2::new(
-            vec![
-                org1_signer1.public_key().into(),
-                org1_signer2.public_key().into(),
-                org1_signer3.public_key().into(),
-            ],
-            2,
-        );
+        let (org1_signerset, org1_signers) = make_signer_set(2, 3, &mut rng);
+        let (org1_signer1, org1_signer2, org1_signer3) =
+            (&org1_signers[0], &org1_signers[1], &org1_signers[2]);
 
         // Org 2 requires 3-of-3 signatures
-        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org2_signerset = SignerSetV2::new(
-            vec![
-                org2_signer1.public_key().into(),
-                org2_signer2.public_key().into(),
-                org2_signer3.public_key().into(),
-            ],
-            3,
-        );
+        let (org2_signerset, org2_signers) = make_signer_set(3, 3, &mut rng);
+        let (org2_signer1, org2_signer2, org2_signer3) =
+            (&org2_signers[0], &org2_signers[1], &org2_signers[2]);
 
         // Two single signers
         let single_signer1 = Ed25519Pair::from_random(&mut rng);
@@ -1127,30 +1051,11 @@ mod test_nested_multisigs {
     fn test_serde_works() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
-        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org1_signerset = SignerSetV2::new(
-            vec![
-                org1_signer1.public_key().into(),
-                org1_signer2.public_key().into(),
-                org1_signer3.public_key().into(),
-            ],
-            2,
-        );
+        // Org 1 requires 2-of-3 signatures
+        let (org1_signerset, _org1_signers) = make_signer_set(2, 3, &mut rng);
 
         // Org 2 requires 3-of-3 signatures
-        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org2_signerset = SignerSetV2::new(
-            vec![
-                org2_signer1.public_key().into(),
-                org2_signer2.public_key().into(),
-                org2_signer3.public_key().into(),
-            ],
-            3,
-        );
+        let (org2_signerset, _org2_signers) = make_signer_set(3, 3, &mut rng);
 
         assert_eq!(
             org1_signerset,
@@ -1179,30 +1084,11 @@ mod test_nested_multisigs {
     fn test_prost_works() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
-        let org1_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org1_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org1_signerset = SignerSetV2::new(
-            vec![
-                org1_signer1.public_key().into(),
-                org1_signer2.public_key().into(),
-                org1_signer3.public_key().into(),
-            ],
-            2,
-        );
+        // Org 1 requires 2-of-3 signatures
+        let (org1_signerset, _org1_signers) = make_signer_set(2, 3, &mut rng);
 
         // Org 2 requires 3-of-3 signatures
-        let org2_signer1 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer2 = Ed25519Pair::from_random(&mut rng);
-        let org2_signer3 = Ed25519Pair::from_random(&mut rng);
-        let org2_signerset = SignerSetV2::new(
-            vec![
-                org2_signer1.public_key().into(),
-                org2_signer2.public_key().into(),
-                org2_signer3.public_key().into(),
-            ],
-            3,
-        );
+        let (org2_signerset, _org2_signers) = make_signer_set(3, 3, &mut rng);
 
         assert_eq!(
             org1_signerset,
