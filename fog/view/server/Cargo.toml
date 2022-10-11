@@ -66,14 +66,14 @@ mc-fog-types = { path = "../../types" }
 mc-fog-view-connection = { path = "../connection" }
 mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-view-protocol = { path = "../protocol" }
-mc-fog-view-server-test-utils = { path = "./test-utils"}
+mc-fog-view-server-test-utils = { path = "./test-utils" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 pem = "1.0"
+portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
-portpicker = "0.1.1"
 tempdir = "0.3"

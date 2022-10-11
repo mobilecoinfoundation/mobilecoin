@@ -323,24 +323,21 @@ where
             })
             .collect::<Result<Vec<(QueryResponse, BlockRange)>>>()?;
 
-        shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
-            client_query_request,
-            shard_query_responses.clone(),
-        )?;
+        shard_query_response.tx_out_search_results =
+            Self::get_collated_tx_out_search_results(client_query_request, &shard_query_responses)?;
         shard_query_response.highest_processed_block_count =
-            self.get_minimum_highest_processed_block_count(shard_query_responses);
+            Self::get_minimum_highest_processed_block_count(&shard_query_responses);
 
         Ok(shard_query_response)
     }
 
     fn get_collated_tx_out_search_results(
-        &self,
         client_query_request: QueryRequest,
-        shard_query_responses: Vec<(QueryResponse, BlockRange)>,
+        shard_query_responses: &[(QueryResponse, BlockRange)],
     ) -> Result<Vec<TxOutSearchResult>> {
         let plaintext_search_results = shard_query_responses
-            .into_iter()
-            .flat_map(|response| response.0.tx_out_search_results)
+            .iter()
+            .flat_map(|response| response.0.tx_out_search_results.clone())
             .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
@@ -351,7 +348,7 @@ where
 
     fn get_minimum_highest_processed_block_count(
         &self,
-        _shard_query_responses: Vec<(QueryResponse, BlockRange)>,
+        _shard_query_responses: &[(QueryResponse, BlockRange)]>,
     ) -> u64 {
         todo!()
     }
