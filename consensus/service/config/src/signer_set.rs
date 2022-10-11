@@ -292,6 +292,9 @@ mod tests {
         "#;
 
         let err = serde_json::from_str::<SignerSetConfig>(invalid_config_json).unwrap_err();
-        assert_eq!(err.to_string(), "Failed to parse PEM: malformedframing at line 4 column 145");
+        assert_eq!(
+            err.to_string(),
+            "Failed to parse PEM: malformedframing at line 4 column 145"
+        );
     }
 }
