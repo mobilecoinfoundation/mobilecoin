@@ -973,6 +973,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 ///
 /// The counter value should be used for each "context" where we mint multiple
 /// outputs to prevent this issue.
+#[allow(clippy::too_many_arguments)]
 fn mint_output<T: Digestible>(
     block_version: BlockVersion,
     recipient: &PublicAddress,

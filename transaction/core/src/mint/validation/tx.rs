@@ -122,6 +122,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![
@@ -161,6 +162,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![
@@ -203,6 +205,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![
@@ -245,6 +248,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![
@@ -271,6 +275,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
@@ -295,6 +300,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
@@ -321,6 +327,7 @@ mod tests {
             spend_public_key: RistrettoPublic::from_random(&mut rng),
             nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
+            e_fog_hint: None,
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
