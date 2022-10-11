@@ -7,9 +7,13 @@ use mc_common::{logger::Logger, time::SystemTimeProvider, ResponderId};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
 use mc_fog_test_infra::get_enclave_path;
-use mc_fog_types::common::BlockRange;
+use mc_fog_types::{
+    common::BlockRange,
+    view::{QueryResponse, TxOutSearchResult, TxOutSearchResultCode},
+    ETxOutRecord,
+};
 use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri};
-use mc_fog_view_connection::fog_view_router_client::FogViewRouterGrpcClient;
+use mc_fog_view_connection::fog_view_router_client::{Error, FogViewRouterGrpcClient};
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_server::{
     config::{
@@ -23,9 +27,11 @@ use mc_fog_view_server::{
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     str::FromStr,
     sync::{Arc, RwLock},
+    thread::sleep,
+    time::Duration,
 };
 
 /// Contains helper methods used by the router integration test.
@@ -204,4 +210,61 @@ impl Drop for RouterTestEnvironment {
         // constantly checking the db.
         self.db_test_context = None;
     }
+}
+
+/// Ensure that all provided ETxOutRecords are in the enclave, and that
+/// non-existing ones aren't.
+pub async fn assert_e_tx_out_records(
+    client: &mut FogViewRouterGrpcClient,
+    records: &[ETxOutRecord],
+) -> Result<QueryResponse, Error> {
+    // Construct an array of expected results that includes both records we expect
+    // to find and records we expect not to find.
+    let mut expected_results = HashSet::new();
+    for record in records {
+        expected_results.insert(TxOutSearchResult {
+            search_key: record.search_key.clone(),
+            result_code: TxOutSearchResultCode::Found as u32,
+            ciphertext: record.payload.clone(),
+        });
+    }
+
+    let search_keys: Vec<_> = expected_results
+        .iter()
+        .map(|result| result.search_key.clone())
+        .collect();
+
+    let mut allowed_tries = 60usize;
+    loop {
+        let result = client.query(0, 0, search_keys.clone()).await.unwrap();
+
+        let actual_tx_out_search_results: HashSet<TxOutSearchResult> =
+            interpret_tx_out_search_results(&result.tx_out_search_results);
+        if actual_tx_out_search_results == expected_results {
+            return Ok(result);
+        }
+        if allowed_tries == 0 {
+            panic!("Server did not catch up to database!");
+        }
+        allowed_tries -= 1;
+        sleep(Duration::from_millis(1000));
+    }
+}
+
+/// Takes the TxOutSearchResults and interprets the ciphertext as follows:
+/// (1) The first byte is the delta between the max payload length and the
+/// length of this payload.
+/// (2) The rest of the bytes for that length are part of the ciphertext.
+fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> HashSet<TxOutSearchResult> {
+    results
+        .iter()
+        .map(|result| {
+            let payload_length = result.ciphertext.len() - (result.ciphertext[0] as usize);
+            TxOutSearchResult {
+                search_key: result.search_key[..].to_vec(),
+                result_code: result.result_code,
+                ciphertext: result.ciphertext[1..payload_length + 1].to_owned(),
+            }
+        })
+        .collect()
 }
