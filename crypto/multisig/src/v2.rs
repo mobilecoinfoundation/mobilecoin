@@ -31,7 +31,7 @@ pub enum SignerEntity<S: SignerIdentity> {
     #[prost(message, tag = "1")]
     Single(S),
 
-    /// A m-out-of-n group of signers
+    /// An M-out-of-N group of signers
     #[prost(message, tag = "2")]
     Multi(SignerSetV2<S>),
 }
