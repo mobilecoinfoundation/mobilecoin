@@ -130,24 +130,13 @@ impl<S: SignerIdentity> SignerSetV2<S> {
     /// means the rules for verifying a single signer set and a nested one
     /// are the same, and easier to follow. The example above simply shows a
     /// poorly specified signer set.
-    pub fn verify<
-        SIG: Clone
-            + Default
-            + Digestible
-            + Eq
-            + Hash
-            + Message
-            + Ord
-            + PartialEq
-            + PartialOrd
-            + Serialize
-            + Signature,
-    >(
+    pub fn verify<SIG>(
         &self,
         message: &[u8],
-        multi_sig: &MultiSig<SIG>,
+        multi_sig: &MultiSig<SIG>
     ) -> Result<Vec<S>, SignatureError>
     where
+        SIG: Clone + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
         S: Verifier<SIG>,
     {
         if multi_sig.signatures().len() > MAX_SIGNATURES {
