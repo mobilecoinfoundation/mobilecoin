@@ -73,6 +73,14 @@ impl SignerSet {
         &self,
         signer_identities: &HashMap<String, PemEd25519Public>,
     ) -> Result<mc_crypto_multisig::SignerSetV2<Ed25519Public>, String> {
+        if self.threshold == 0 || self.threshold as usize > self.signers.len() {
+            return Err(format!(
+                "SignerSet contains invalid threshold of {}/{}",
+                self.threshold,
+                self.signers.len()
+            ));
+        }
+
         let signers = self
             .signers
             .iter()
@@ -253,7 +261,7 @@ mod tests {
               "MobileCoin": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
             },
             "signer_set": {
-              "threshold": 3,
+              "threshold": 1,
               "signers": [
                 {
                   "type": "Single",
@@ -280,7 +288,7 @@ mod tests {
               "MobileCoin": "----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
             },
             "signer_set": {
-              "threshold": 3,
+              "threshold": 1,
               "signers": [
                 {
                   "type": "Single",
@@ -296,5 +304,57 @@ mod tests {
             err.to_string(),
             "Failed to parse PEM: malformedframing at line 4 column 145"
         );
+    }
+
+    #[test]
+    fn threshold_zero_fails_to_parse() {
+        let invalid_config_json = r#"
+        {
+            "signer_identities": {
+              "MobileCoin": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
+            },
+            "signer_set": {
+              "threshold": 0,
+              "signers": [
+                {
+                  "type": "Single",
+                  "identity": "Nope"
+                }
+              ]
+            }
+          }
+        "#;
+
+        let signer_set_config: SignerSetConfig = serde_json::from_str(invalid_config_json).unwrap();
+        let signer_set: Result<mc_crypto_multisig::SignerSetV2<_>, _> =
+            (&signer_set_config).try_into();
+
+        assert_eq!(signer_set, Err("SignerSet contains invalid threshold of 0/1".into()));
+    }
+
+    #[test]
+    fn less_signers_than_threshold_fails_to_parse() {
+        let invalid_config_json = r#"
+        {
+            "signer_identities": {
+              "MobileCoin": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
+            },
+            "signer_set": {
+              "threshold": 2,
+              "signers": [
+                {
+                  "type": "Single",
+                  "identity": "Nope"
+                }
+              ]
+            }
+          }
+        "#;
+
+        let signer_set_config: SignerSetConfig = serde_json::from_str(invalid_config_json).unwrap();
+        let signer_set: Result<mc_crypto_multisig::SignerSetV2<_>, _> =
+            (&signer_set_config).try_into();
+
+        assert_eq!(signer_set, Err("SignerSet contains invalid threshold of 2/1".into()));
     }
 }
