@@ -101,6 +101,12 @@ impl BlockVersion {
         self.0 >= 2
     }
 
+    /// Minting_to_fog_addresses is supported in v3
+    /// [MCIP #53](https://github.com/mobilecoinfoundation/mcips/pull/53)
+    pub fn minting_to_fog_addresses_is_supported(&self) -> bool {
+        self.0 >= 3
+    }
+
     /// The extended message digest is used when signing MLSAGs
     /// in v2 and higher. This is described in
     /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25).
