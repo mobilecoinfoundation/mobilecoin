@@ -25,6 +25,7 @@ impl<T> SignerIdentity for T where T: Default + Message + PublicKey {}
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
 )]
+// Workaround a Rust compiler bug - see https://github.com/serde-rs/serde/issues/1828
 #[serde(bound = "")]
 pub enum SignerEntity<S: SignerIdentity> {
     /// A single signer identity (such as a public key)
@@ -77,9 +78,9 @@ impl<S: SignerIdentity> From<S> for SignerContainer<S> {
     }
 }
 
-impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
+impl<S: SignerIdentity> From<SignerSetV2<S>> for SignerContainer<S> {
     fn from(signer_set: SignerSetV2<S>) -> Self {
-        SignerEntity::from(signer_set)).into()
+        SignerEntity::from(signer_set).into()
     }
 }
 
@@ -132,7 +133,7 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         multi_sig: &MultiSig<SIG>
     ) -> Result<Vec<S>, SignatureError>
     where
-        SIG: Clone + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
+        SIG: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
         S: Verifier<SIG>,
     {
         if multi_sig.signatures().len() > MAX_SIGNATURES {
@@ -239,7 +240,7 @@ mod test_single_level {
     /// compare, but that would hide duplicate elements and we want to catch
     /// that.
     #[track_caller]
-    fn assert_eq_ignore_order(mut a: Vec<Ed25519Public>, mut b: Vec<Ed25519Public>) {
+    pub fn assert_eq_ignore_order(mut a: Vec<Ed25519Public>, mut b: Vec<Ed25519Public>) {
         a.sort();
         b.sort();
 
@@ -555,24 +556,12 @@ mod test_single_level {
 /// Tests for nested k-out-of-n multisigs
 #[cfg(test)]
 mod test_nested_multisigs {
-    use super::*;
+    use super::{test_single_level::assert_eq_ignore_order, *};
     use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Signer};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-
-    /// Helper method for comparing two signers list.
-    /// In other places in the code we might convert to a HashSet first and then
-    /// compare, but that would hide duplicate elements and we want to catch
-    /// that.
-    #[track_caller]
-    fn assert_eq_ignore_order(mut a: Vec<Ed25519Public>, mut b: Vec<Ed25519Public>) {
-        a.sort();
-        b.sort();
-
-        assert_eq!(a, b);
-    }
 
     #[test]
     fn ed25519_verify_signers_sanity_one_of_two_orgs() {
