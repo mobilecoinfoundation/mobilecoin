@@ -4422,6 +4422,7 @@ dependencies = [
  "mc-fog-view-enclave-api",
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
+ "mc-fog-view-server-test-utils",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-util-cli",
