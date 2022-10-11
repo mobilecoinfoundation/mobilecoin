@@ -3,6 +3,7 @@
 //! Data types for representing a `SignerSetV2` in a configuration file.
 //! We do not deserialize a `SignerSetV2` directly, because it is too hard
 //! to maintain by a human operator.
+//! See tests below for an example of the file format.
 
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use serde::{Deserialize, Serialize};

@@ -5,10 +5,12 @@
 
 mod error;
 mod network;
-mod tokens;
 mod signer_set;
+mod tokens;
 
-pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig};
+pub use crate::{
+    error::Error, network::NetworkConfig, signer_set::SignerSetConfig, tokens::TokensConfig,
+};
 
 use clap::Parser;
 use mc_attest_core::ProviderId;
