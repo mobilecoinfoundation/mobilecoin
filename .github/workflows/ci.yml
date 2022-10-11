@@ -84,7 +84,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Run lint script
-        run: ./tools/lint.sh
+        run: ./tools/lint.sh --check
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
