@@ -73,17 +73,13 @@ impl<S: SignerIdentity> From<SignerEntity<S>> for SignerContainer<S> {
 
 impl<S: SignerIdentity> From<S> for SignerContainer<S> {
     fn from(signer: S) -> Self {
-        Self {
-            entity: Some(SignerEntity::Single(signer)),
-        }
+        SignerEntity::from(signer).into()
     }
 }
 
-impl<S: SignerIdentity> From<SignerSetV2<S>> for SignerContainer<S> {
+impl<S: Signer> From<SignerSetV2<S>> for SignerContainer<S> {
     fn from(signer_set: SignerSetV2<S>) -> Self {
-        Self {
-            entity: Some(SignerEntity::Multi(signer_set)),
-        }
+        SignerEntity::from(signer_set)).into()
     }
 }
 
