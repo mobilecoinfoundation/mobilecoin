@@ -160,24 +160,13 @@ impl<S: SignerIdentity> SignerSetV2<S> {
     // The code that does the actual signature verification. We separate it from the
     // public `verify` method so that we do not keep re-sorting an already
     // sorted signers/signatures list.
-    fn verify_helper<
-        SIG: Clone
-            + Default
-            + Digestible
-            + Eq
-            + Hash
-            + Message
-            + Ord
-            + PartialEq
-            + PartialOrd
-            + Serialize
-            + Signature,
-    >(
+    fn verify_helper<SIG>(
         &self,
         message: &[u8],
         signatures: &[SIG],
     ) -> Result<Vec<S>, SignatureError>
     where
+        SIG: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
         S: Verifier<SIG>,
     {
         // Sort and dedup the list of signers.
