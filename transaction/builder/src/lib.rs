@@ -11,7 +11,6 @@ extern crate alloc;
 mod error;
 mod input_credentials;
 mod input_materials;
-mod memo;
 mod memo_builder;
 mod reserved_subaddresses;
 mod signed_contingent_input_builder;
@@ -22,12 +21,6 @@ pub mod test_utils;
 
 pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
-pub use memo::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo,
-    DestinationMemo, DestinationMemoError, GiftCodeCancellationMemo, GiftCodeFundingMemo,
-    GiftCodeSenderMemo, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
-    UnusedMemo,
-};
 pub use memo_builder::{
     BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
     GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
@@ -35,8 +28,5 @@ pub use memo_builder::{
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{
-    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering, UnsignedTx,
+    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
 };
-
-// Re-export this to help the exported macros work
-pub use mc_transaction_core::MemoPayload;

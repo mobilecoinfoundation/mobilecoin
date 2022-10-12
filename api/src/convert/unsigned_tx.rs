@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from mc_transaction_builder::UnsignedTx.
+//! Convert to/from mc_transaction_extra::UnsignedTx.
 
 use crate::{external, ConversionError};
 use mc_blockchain_types::BlockVersion;
-use mc_transaction_builder::UnsignedTx;
+use mc_transaction_extra::UnsignedTx;
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {
@@ -53,7 +53,7 @@ mod tests {
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_builder::{
         test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
-        TransactionBuilder, UnsignedTx,
+        TransactionBuilder,
     };
     use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
     use rand::{rngs::StdRng, SeedableRng};

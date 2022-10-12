@@ -31,6 +31,7 @@ mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" 
 mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-extra = { path = "../../transaction/extra" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-telemetry = { path = "../../util/telemetry" }

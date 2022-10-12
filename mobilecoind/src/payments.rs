@@ -25,9 +25,10 @@ use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, TokenId,
 };
+use mc_transaction_extra::TxOutConfirmationNumber;
 use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{

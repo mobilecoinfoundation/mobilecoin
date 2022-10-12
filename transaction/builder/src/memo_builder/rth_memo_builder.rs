@@ -5,17 +5,15 @@
 //! This MemoBuilder policy implements Recoverable Transaction History using
 //! the encrypted memos, as envisioned in MCIP #4.
 
-use super::{
-    memo::{
-        AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-        DestinationMemoError, SenderMemoCredential, UnusedMemo,
-    },
-    MemoBuilder,
-};
+use super::MemoBuilder;
 use crate::ReservedSubaddresses;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
+};
+use mc_transaction_extra::{
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
+    DestinationMemoError, SenderMemoCredential, UnusedMemo,
 };
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal

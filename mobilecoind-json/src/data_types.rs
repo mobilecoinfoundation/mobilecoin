@@ -1458,7 +1458,7 @@ mod test {
 
         let outlay_index_to_tx_out_index = HashMap::from_iter(vec![(0, 0)]);
         let outlay_confirmation_numbers =
-            vec![mc_transaction_core::tx::TxOutConfirmationNumber::from(
+            vec![mc_transaction_extra::TxOutConfirmationNumber::from(
                 [0u8; 32],
             )];
 

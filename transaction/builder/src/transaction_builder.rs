@@ -21,16 +21,18 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs, SigningData},
+    ring_ct::{InputRing, OutputSecret},
     ring_signature::Scalar,
     tokens::Mob,
-    tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
+    tx::{Tx, TxIn, TxOut, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
-    RevealedTxOutError, SignedContingentInput, SignedContingentInputError, Token, TokenId,
+    RevealedTxOutError, Token, TokenId,
+};
+use mc_transaction_extra::{
+    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber, UnsignedTx,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
 
 /// A trait used to compare the transaction outputs
 pub trait TxOutputsOrdering {
@@ -60,73 +62,6 @@ pub struct TxOutContext {
     /// Shared Secret that comes from a transaction builder
     /// add_output/add_change_output
     pub shared_secret: RistrettoPublic,
-}
-
-/// A structure containing an unsigned transaction, together with the data
-/// required to sign it that does not involve the spend private key.
-/// The idea is that this can be generated without having the spend private key,
-/// and then transferred to an offline/hardware service that does have the spend
-/// private key, which can then be used together with the data here to produce a
-/// valid, signed Tx. Noet that whether the UnsignedTx can be signed on its own
-/// or requires the spend private key will depend on the contents of the
-/// InputRings.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct UnsignedTx {
-    /// The fully constructed TxPrefix.
-    pub tx_prefix: TxPrefix,
-
-    /// rings
-    pub rings: Vec<InputRing>,
-
-    /// Output secrets
-    pub output_secrets: Vec<OutputSecret>,
-
-    /// Block version
-    pub block_version: BlockVersion,
-}
-
-impl UnsignedTx {
-    /// Sign the transaction signing data with a given signer
-    pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
-        &self,
-        signer: &S,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        let prefix = self.tx_prefix.clone();
-        let message = prefix.hash().0;
-        let signature = SignatureRctBulletproofs::sign(
-            self.block_version,
-            &message,
-            self.rings.as_slice(),
-            self.output_secrets.as_slice(),
-            Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
-            signer,
-            rng,
-        )?;
-
-        Ok(Tx { prefix, signature })
-    }
-
-    /// Get extraneous signing data
-    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
-        &self,
-        rng: &mut RNG,
-    ) -> Result<SigningData, TxBuilderError> {
-        let message = self.tx_prefix.hash().0;
-        let fee_amount = Amount::new(
-            self.tx_prefix.fee,
-            TokenId::from(self.tx_prefix.fee_token_id),
-        );
-        Ok(SigningData::new(
-            self.block_version,
-            &message,
-            &self.rings,
-            &self.output_secrets,
-            fee_amount,
-            true,
-            rng,
-        )?)
-    }
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -879,7 +814,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         let unsigned_tx = self.build_unsigned::<RNG, O>()?;
-        unsigned_tx.sign(ring_signer, rng)
+        Ok(unsigned_tx.sign(ring_signer, rng)?)
     }
 }
 
@@ -950,8 +885,7 @@ pub mod transaction_builder_tests {
     use crate::{
         test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
         BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
-        GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoType, RTHMemoBuilder,
-        SenderMemoCredential,
+        GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, RTHMemoBuilder,
     };
     use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
@@ -970,8 +904,9 @@ pub mod transaction_builder_tests {
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
-        NewTxError, TokenId, TxOutGiftCode,
+        NewTxError, TokenId,
     };
+    use mc_transaction_extra::{MemoType, SenderMemoCredential, TxOutGiftCode};
     use rand::{rngs::StdRng, SeedableRng};
 
     // Helper which produces a list of block_version, TokenId pairs to iterate over

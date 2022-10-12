@@ -15,10 +15,11 @@ use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     ring_ct::OutputSecret,
     ring_signature::Scalar,
-    tx::{TxIn, TxOut, TxOutConfirmationNumber},
+    tx::{TxIn, TxOut},
     Amount, BlockVersion, InputRules, MaskedAmount, MemoContext, MemoPayload, NewMemoError,
-    RevealedTxOut, SignedContingentInput, TokenId, UnmaskedAmount,
+    RevealedTxOut, TokenId,
 };
+use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber, UnmaskedAmount};
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper utility for creating signed contingent inputs with required outputs,
@@ -541,9 +542,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::{
-        test_utils::get_input_credentials, EmptyMemoBuilder, MemoType, TransactionBuilder,
-    };
+    use crate::{test_utils::get_input_credentials, EmptyMemoBuilder, TransactionBuilder};
     use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
     use maplit::btreemap;
@@ -564,8 +563,9 @@ pub mod tests {
             validate_ring_elements_are_sorted, validate_signature, validate_tx_out,
             TransactionValidationError,
         },
-        Amount, InputRuleError, SignedContingentInputError, Token, TokenId,
+        Amount, InputRuleError, Token, TokenId,
     };
+    use mc_transaction_extra::{MemoType, SignedContingentInputError};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

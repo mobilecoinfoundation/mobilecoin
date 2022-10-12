@@ -11,9 +11,8 @@
 
 use crate::InputCredentials;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_transaction_core::{
-    ring_ct::InputRing, tx::TxIn, Amount, SignedContingentInput, TxOutConversionError,
-};
+use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount, TxOutConversionError};
+use mc_transaction_extra::SignedContingentInput;
 
 /// Material that can be used by the transaction builder to create an input to
 /// a transaction.

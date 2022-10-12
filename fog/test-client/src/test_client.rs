@@ -16,8 +16,8 @@ use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
-use mc_transaction_builder::MemoType;
 use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, Amount, Token};
+use mc_transaction_extra::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, Span,

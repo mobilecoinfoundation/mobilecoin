@@ -2,8 +2,8 @@
 
 //! Code for computing & receiving gift codes
 
-use crate::{Amount, AmountError, MaskedAmount};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_transaction_core::{Amount, AmountError, MaskedAmount};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConstantTimeEq};

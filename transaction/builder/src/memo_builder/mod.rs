@@ -4,10 +4,11 @@
 //! The memo builder for recoverable transaction history is defined in a
 //! submodule.
 
-use super::{memo, ReservedSubaddresses};
+use super::ReservedSubaddresses;
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_extra::UnusedMemo;
 
 mod burn_redemption_memo_builder;
 mod gift_code_cancellation_memo_builder;
@@ -74,7 +75,7 @@ impl MemoBuilder for EmptyMemoBuilder {
         _recipient: &PublicAddress,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
-        Ok(memo::UnusedMemo {}.into())
+        Ok(UnusedMemo {}.into())
     }
 
     fn make_memo_for_change_output(
@@ -83,6 +84,6 @@ impl MemoBuilder for EmptyMemoBuilder {
         _change_destination: &ReservedSubaddresses,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
-        Ok(memo::UnusedMemo {}.into())
+        Ok(UnusedMemo {}.into())
     }
 }

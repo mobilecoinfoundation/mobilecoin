@@ -25,7 +25,6 @@ use mc_fog_types::{
 };
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
-use mc_transaction_builder::MemoType;
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
@@ -33,6 +32,7 @@ use mc_transaction_core::{
     tx::TxOut,
     Amount, TokenId,
 };
+use mc_transaction_extra::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
