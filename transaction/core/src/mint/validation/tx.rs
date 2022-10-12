@@ -4,7 +4,7 @@
 
 use crate::{
     mint::{
-        config::MintConfig,
+        config::{MintConfig, VersionedSignerSet},
         tx::MintTx,
         validation::{
             common::{
@@ -15,8 +15,6 @@ use crate::{
     },
     BlockVersion, TokenId,
 };
-use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSetV1;
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
@@ -76,13 +74,20 @@ pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Re
 /// # Arguments
 /// * `tx` - A pending transaction that is being validated.
 /// * `signer_set` - The signer set that is permitted to sign the transaction.
-fn validate_signature(tx: &MintTx, signer_set: &SignerSetV1<Ed25519Public>) -> Result<(), Error> {
-    let message = tx.prefix.hash();
+fn validate_signature(tx: &MintTx, signer_set: &Option<VersionedSignerSet>) -> Result<(), Error> {
+    match signer_set {
+        Some(signer_set) => {
+            let message = tx.prefix.hash();
 
-    signer_set
-        .verify(&message[..], &tx.signature)
-        .map_err(|_| Error::InvalidSignature)
-        .map(|_| ())
+            // TODO we should disallow V1 signer sets going forward, based on block version
+
+            signer_set
+                .verify(&message[..], &tx.signature)
+                .map_err(|_| Error::InvalidSignature)
+                .map(|_| ())
+        }
+        None => Err(Error::InvalidSignerSet),
+    }
 }
 
 #[cfg(test)]
@@ -90,7 +95,7 @@ mod tests {
     use super::*;
     use crate::mint::{constants::NONCE_LENGTH, MintTxPrefix};
     use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
-    use mc_crypto_multisig::MultiSig;
+    use mc_crypto_multisig::{MultiSig, SignerSetV1};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
 
@@ -104,13 +109,16 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSetV1::new(
-                vec![
-                    signer_1.public_key(),
-                    signer_2.public_key(),
-                    signer_3.public_key(),
-                ],
-                2,
+            signer_set: Some(
+                SignerSetV1::new(
+                    vec![
+                        signer_1.public_key(),
+                        signer_2.public_key(),
+                        signer_3.public_key(),
+                    ],
+                    2,
+                )
+                .into(),
             ),
             mint_limit: 500,
         };
@@ -143,13 +151,16 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSetV1::new(
-                vec![
-                    signer_1.public_key(),
-                    signer_2.public_key(),
-                    signer_3.public_key(),
-                ],
-                2,
+            signer_set: Some(
+                SignerSetV1::new(
+                    vec![
+                        signer_1.public_key(),
+                        signer_2.public_key(),
+                        signer_3.public_key(),
+                    ],
+                    2,
+                )
+                .into(),
             ),
             mint_limit: 500,
         };
@@ -185,13 +196,16 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSetV1::new(
-                vec![
-                    signer_1.public_key(),
-                    signer_2.public_key(),
-                    signer_3.public_key(),
-                ],
-                2,
+            signer_set: Some(
+                SignerSetV1::new(
+                    vec![
+                        signer_1.public_key(),
+                        signer_2.public_key(),
+                        signer_3.public_key(),
+                    ],
+                    2,
+                )
+                .into(),
             ),
             mint_limit: 500,
         };
@@ -227,13 +241,16 @@ mod tests {
 
         let mint_config = MintConfig {
             token_id,
-            signer_set: SignerSetV1::new(
-                vec![
-                    signer_1.public_key(),
-                    signer_2.public_key(),
-                    signer_3.public_key(),
-                ],
-                2,
+            signer_set: Some(
+                SignerSetV1::new(
+                    vec![
+                        signer_1.public_key(),
+                        signer_2.public_key(),
+                        signer_3.public_key(),
+                    ],
+                    2,
+                )
+                .into(),
             ),
             mint_limit: 500,
         };
@@ -276,7 +293,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSetV1::new(vec![signer_1.public_key()], 1);
+        let signer_set = Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into());
 
         assert_eq!(validate_signature(&tx, &signer_set), Ok(()));
     }
@@ -300,7 +317,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSetV1::new(vec![signer_2.public_key()], 1);
+        let signer_set = Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into());
 
         assert_eq!(
             validate_signature(&tx, &signer_set),
@@ -324,7 +341,7 @@ mod tests {
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-        let signer_set = SignerSetV1::new(vec![signer_1.public_key()], 1);
+        let signer_set = Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into());
 
         let tx = MintTx {
             prefix: prefix.clone(),

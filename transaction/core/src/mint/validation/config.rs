@@ -66,10 +66,10 @@ fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Err
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
-        // TODO call is_valid once moved to v2
+        // TODO we should disallow V1 signer sets going forward, based on block version
 
-        let num_signers = config.signer_set.signers().len();
-        if num_signers == 0 || num_signers < config.signer_set.threshold() as usize {
+        let signer_set = config.signer_set.as_ref().ok_or(Error::InvalidSignerSet)?;
+        if !signer_set.is_valid() {
             return Err(Error::InvalidSignerSet);
         }
     }
@@ -116,24 +116,28 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 
         let mint_config3 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
+            signer_set: Some(
+                SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 1).into(),
+            ),
             mint_limit: 15,
         };
         let mint_config4 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 2),
+            signer_set: Some(
+                SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 2).into(),
+            ),
             mint_limit: 15,
         };
 
@@ -157,13 +161,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 
@@ -186,15 +190,15 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 2), /* threshold > number
-                                                                           * of
-                                                                           * signers */
+            // threshold > number of signers
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 2).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![], 1), // no signers
+            // no signers
+            signer_set: Some(SignerSetV1::new(vec![], 1).into()),
             mint_limit: 15,
         };
 
@@ -217,13 +221,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 
@@ -334,13 +338,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 
@@ -409,13 +413,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 
@@ -504,13 +508,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_2.public_key()], 1).into()),
             mint_limit: 15,
         };
 

@@ -126,8 +126,7 @@ impl ActiveMintConfigs {
             // See if this mint config has signed the mint tx.
             if active_mint_config
                 .mint_config
-                .signer_set
-                .verify(&message, &mint_tx.signature)
+                .signer_set_verify_sig(&message, &mint_tx.signature)
                 .is_err()
             {
                 continue;

@@ -38,23 +38,28 @@ pub fn create_mint_config_tx_and_signers(
     let configs = vec![
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_1.public_key()], 1),
+            signer_set: Some(SignerSetV1::new(vec![signer_1.public_key()], 1).into()),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
+            signer_set: Some(
+                SignerSetV1::new(vec![signer_2.public_key(), signer_3.public_key()], 1).into(),
+            ),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSetV1::new(
-                vec![
-                    signer_3.public_key(),
-                    signer_4.public_key(),
-                    signer_5.public_key(),
-                ],
-                2,
+            signer_set: Some(
+                SignerSetV1::new(
+                    vec![
+                        signer_3.public_key(),
+                        signer_4.public_key(),
+                        signer_5.public_key(),
+                    ],
+                    2,
+                )
+                .into(),
             ),
             mint_limit: rng.next_u32() as u64,
         },
@@ -94,7 +99,7 @@ pub fn create_mint_config_tx(
 pub fn mint_config_tx_to_validated(mint_config_tx: &MintConfigTx) -> ValidatedMintConfigTx {
     ValidatedMintConfigTx {
         mint_config_tx: mint_config_tx.clone(),
-        signer_set: SignerSetV1::default(),
+        signer_set: Some(SignerSetV1::default().into()),
     }
 }
 

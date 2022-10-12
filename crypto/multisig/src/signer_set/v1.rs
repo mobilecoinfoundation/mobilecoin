@@ -48,6 +48,13 @@ impl<P: Default + PublicKey + Message> SignerSetV1<P> {
         self.threshold
     }
 
+    /// Check if the signer set is valid.
+    /// A valid signer set is one that has a threshold of at least 1, and no
+    /// more than `signers`.
+    pub fn is_valid(&self) -> bool {
+        return self.threshold > 0 && self.threshold <= self.signers.len() as u32;
+    }
+
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     pub fn verify<

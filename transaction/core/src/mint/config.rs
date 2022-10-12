@@ -6,10 +6,63 @@ use crate::domain_separators::MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
 use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::{MultiSig, SignerSetV1};
-use mc_util_serial::Message;
+use mc_crypto_keys::{Ed25519Public, Ed25519Signature, SignatureError};
+use mc_crypto_multisig::{MultiSig, SignerSetV1, SignerSetV2};
+use mc_util_serial::{Message, Oneof};
 use serde::{Deserialize, Serialize};
+
+/// A signer set in one of serveal possible versions
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
+)]
+#[digestible(transparent)]
+pub enum VersionedSignerSet {
+    /// A v1 signer set
+    /// Note: This tag must match the historical tag used for signer_set in
+    /// MintConfig and ValidatedMintConfigTx.
+    /// We are lucky that in both cases this is 2 so we can use this enum in
+    /// both places.
+    #[prost(message, tag = "2")]
+    V1(SignerSetV1<Ed25519Public>),
+
+    /// A v2 signer set
+    /// Note: This tag must match what is listed in `tag` for the oneof field in
+    /// MintConfig ValidatedMintConfigTx
+    #[prost(message, tag = "4")]
+    V2(SignerSetV2<Ed25519Public>),
+}
+impl From<SignerSetV1<Ed25519Public>> for VersionedSignerSet {
+    fn from(signer_set: SignerSetV1<Ed25519Public>) -> Self {
+        Self::V1(signer_set)
+    }
+}
+impl From<SignerSetV2<Ed25519Public>> for VersionedSignerSet {
+    fn from(signer_set: SignerSetV2<Ed25519Public>) -> Self {
+        Self::V2(signer_set)
+    }
+}
+
+impl VersionedSignerSet {
+    /// Check if the signer set is valid.
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::V1(signer_set) => signer_set.is_valid(),
+            Self::V2(signer_set) => signer_set.is_valid(),
+        }
+    }
+
+    /// Verify a signature.
+    pub fn verify(
+        &self,
+        message: &[u8],
+        signature: &MultiSig<Ed25519Signature>,
+    ) -> Result<Vec<Ed25519Public>, SignatureError> {
+        match self {
+            Self::V1(signer_set) => signer_set.verify(message, signature),
+            Self::V2(signer_set) => signer_set.verify(message, signature),
+        }
+    }
+}
 
 /// A minting configuration for a single token ID.
 /// The minting configuration specifies who is allowed to submit mint
@@ -22,14 +75,29 @@ pub struct MintConfig {
     #[prost(uint64, tag = "1")]
     pub token_id: u64,
 
-    /// The set of keys that can sign a minting transaction.
-    #[prost(message, required, tag = "2")]
-    pub signer_set: SignerSetV1<Ed25519Public>,
+    /// The signer set used to validate the transaction's signature.
+    #[prost(oneof = "VersionedSignerSet", tags = "2, 4")]
+    pub signer_set: Option<VersionedSignerSet>,
 
     /// The maximal amount this configuration can mint from the moment it has
     /// been applied.
     #[prost(uint64, tag = "3")]
     pub mint_limit: u64,
+}
+
+impl MintConfig {
+    /// A helper method to forward a signature verification call to the signer
+    /// set.
+    pub fn signer_set_verify_sig(
+        &self,
+        message: &[u8],
+        signature: &MultiSig<Ed25519Signature>,
+    ) -> Result<Vec<Ed25519Public>, SignatureError> {
+        self.signer_set
+            .as_ref()
+            .ok_or_else(SignatureError::new)?
+            .verify(message, signature)
+    }
 }
 
 /// The contents of a mint-config transaction. This transaction alters the
@@ -98,6 +166,6 @@ pub struct ValidatedMintConfigTx {
     pub mint_config_tx: MintConfigTx,
 
     /// The signer set used to validate the transaction's signature.
-    #[prost(message, required, tag = "2")]
-    pub signer_set: SignerSetV1<Ed25519Public>,
+    #[prost(oneof = "VersionedSignerSet", tags = "2, 4")]
+    pub signer_set: Option<VersionedSignerSet>,
 }
