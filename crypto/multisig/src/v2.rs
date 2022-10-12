@@ -145,7 +145,7 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         // list of signatures since it is cheap to do, and a reasonable defensive
         // programming measure.
         let mut signatures = multi_sig.signatures().to_vec();
-        signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+        signatures.sort();
         signatures.dedup();
 
         // Verify signatures.
