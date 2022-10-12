@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Contains helper methods and structs used by the router integration test.
+
 use grpcio::ChannelBuilder;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
@@ -14,7 +16,7 @@ use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_server::{
     config::{
         ClientListenUri::Store, FogViewRouterConfig, MobileAcctViewConfig as ViewConfig,
-        ShardingStrategy,
+        ShardingStrategy, ShardingStrategy::Epoch,
     },
     fog_view_router_server::FogViewRouterServer,
     server::ViewServer,
@@ -28,8 +30,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-/// Contains helper methods used by the router integration test.
-
+/// Contains the core structs used by router integration tests and manages their
+/// drop order.
+///
 /// Note: We need to define a precise field drop order in order for this test to
 /// not hang indefinitely upon completion, and wrapping each field in an
 /// `Option` allows us to define drop order. If we don't do this, then the drop
@@ -47,63 +50,71 @@ pub struct RouterTestEnvironment {
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
     pub fn new(omap_capacity: u64, store_count: usize, logger: Logger) -> Self {
+        let (db_test_context, store_servers, store_clients) =
+            Self::create_view_stores(omap_capacity, store_count, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
             FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{}", port))
                 .unwrap();
-
-        let port = portpicker::pick_unused_port().expect("pick_unused_port");
-        let admin_listen_uri = FogViewRouterAdminUri::from_str(&format!(
-            "insecure-fog-view-router-admin://127.0.0.1:{}",
-            port
-        ))
-        .unwrap();
-
-        let (router_server, db_test_context, store_servers) = {
-            let config = FogViewRouterConfig {
-                client_responder_id: router_uri
-                    .responder_id()
-                    .expect("Could not get responder id for Fog View Router."),
-                ias_api_key: Default::default(),
-                ias_spid: Default::default(),
-                client_listen_uri: router_uri.clone(),
-                omap_capacity,
-                admin_listen_uri,
-            };
-
-            let enclave = SgxViewEnclave::new(
-                get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
-                config.client_responder_id.clone(),
-                config.omap_capacity,
-                logger.clone(),
-            );
-
-            let (db_test_context, store_servers, store_clients) =
-                Self::create_view_stores(omap_capacity, store_count, logger.clone());
-
-            let ra_client =
-                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-            let mut router_server =
-                FogViewRouterServer::new(config, enclave, ra_client, store_clients, logger.clone());
-            router_server.start();
-            (router_server, db_test_context, store_servers)
-        };
-
-        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
-
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-        let router_client = FogViewRouterGrpcClient::new(router_uri, verifier, grpcio_env, logger);
-
+        let router_server =
+            Self::create_router_server(&router_uri, omap_capacity, store_clients, &logger);
+        let router_client = Self::create_router_client(router_uri, logger);
         Self {
             db_test_context: Some(db_test_context),
             router_server: Some(router_server),
             router_client: Some(router_client),
             store_servers: Some(store_servers),
         }
+    }
+
+    fn create_router_server(
+        router_uri: &FogViewRouterUri,
+        omap_capacity: u64,
+        store_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        logger: &Logger,
+    ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
+        let port = portpicker::pick_unused_port().expect("pick_unused_port");
+        let admin_listen_uri = FogViewRouterAdminUri::from_str(&format!(
+            "insecure-fog-view-router-admin://127.0.0.1:{}",
+            port
+        ))
+        .unwrap();
+        let config = FogViewRouterConfig {
+            client_responder_id: router_uri
+                .responder_id()
+                .expect("Could not get responder id for Fog View Router."),
+            ias_api_key: Default::default(),
+            ias_spid: Default::default(),
+            client_listen_uri: router_uri.clone(),
+            omap_capacity,
+            admin_listen_uri,
+        };
+        let enclave = SgxViewEnclave::new(
+            get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
+            config.client_responder_id.clone(),
+            config.omap_capacity,
+            logger.clone(),
+        );
+        let ra_client =
+            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+        let mut router_server =
+            FogViewRouterServer::new(config, enclave, ra_client, store_clients, logger.clone());
+        router_server.start();
+        router_server
+    }
+
+    fn create_router_client(
+        router_uri: FogViewRouterUri,
+        logger: Logger,
+    ) -> FogViewRouterGrpcClient {
+        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
+        let mut mr_signer_verifier =
+            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
+        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+        let mut verifier = Verifier::default();
+        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+
+        FogViewRouterGrpcClient::new(router_uri, verifier, grpcio_env, logger)
     }
 
     /// Creates fog view stores with sane defaults.
@@ -117,11 +128,11 @@ impl RouterTestEnvironment {
         Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
+        let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
         let mut store_clients = HashMap::new();
 
         for i in 0..store_count {
-            let db = db_test_context.get_db_instance();
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
                 let store_uri = FogViewStoreUri::from_str(&format!(
@@ -159,13 +170,14 @@ impl RouterTestEnvironment {
                 let ra_client =
                     AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
+                let Epoch(ref sharding_strategy) = config.sharding_strategy;
                 let mut store = ViewServer::new(
-                    config,
+                    config.clone(),
                     enclave,
-                    db,
+                    db.clone(),
                     ra_client,
                     SystemTimeProvider::default(),
-                    EpochShardingStrategy::default(),
+                    sharding_strategy.clone(),
                     logger.clone(),
                 );
                 store.start();
