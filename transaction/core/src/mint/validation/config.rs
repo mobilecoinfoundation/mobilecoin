@@ -15,7 +15,7 @@ use crate::{
     BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSetV1;
+use mc_crypto_multisig::SignerSetV2;
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
@@ -34,7 +34,7 @@ pub fn validate_mint_config_tx(
     tx: &MintConfigTx,
     current_block_index: Option<u64>,
     block_version: BlockVersion,
-    governors: &SignerSetV1<Ed25519Public>,
+    governors: &SignerSetV2<Ed25519Public>,
 ) -> Result<(), Error> {
     validate_block_version(block_version)?;
 
@@ -66,6 +66,8 @@ fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Err
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
+        // TODO call is_valid once moved to v2
+
         let num_signers = config.signer_set.signers().len();
         if num_signers == 0 || num_signers < config.signer_set.threshold() as usize {
             return Err(Error::InvalidSignerSet);
@@ -82,7 +84,7 @@ fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Err
 /// * `signer_set` - The signer set that is permitted to sign the transaction.
 fn validate_signature(
     tx: &MintConfigTx,
-    governors: &SignerSetV1<Ed25519Public>,
+    governors: &SignerSetV2<Ed25519Public>,
 ) -> Result<(), Error> {
     let message = tx.prefix.hash();
 
@@ -100,7 +102,7 @@ mod tests {
         TokenId,
     };
     use mc_crypto_keys::{Ed25519Pair, Signer};
-    use mc_crypto_multisig::MultiSig;
+    use mc_crypto_multisig::{MultiSig, SignerSetV1};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
 
@@ -246,11 +248,11 @@ mod tests {
         };
         assert!(validate_signature(
             &tx,
-            &SignerSetV1::new(
+            &SignerSetV2::new(
                 vec![
-                    governor_1.public_key(),
-                    governor_2.public_key(),
-                    governor_3.public_key()
+                    governor_1.public_key().into(),
+                    governor_2.public_key().into(),
+                    governor_3.public_key().into(),
                 ],
                 1
             )
@@ -268,11 +270,11 @@ mod tests {
         };
         assert!(validate_signature(
             &tx,
-            &SignerSetV1::new(
+            &SignerSetV2::new(
                 vec![
-                    governor_1.public_key(),
-                    governor_2.public_key(),
-                    governor_3.public_key()
+                    governor_1.public_key().into(),
+                    governor_2.public_key().into(),
+                    governor_3.public_key().into(),
                 ],
                 2
             )
@@ -290,11 +292,11 @@ mod tests {
         };
         assert!(validate_signature(
             &tx,
-            &SignerSetV1::new(
+            &SignerSetV2::new(
                 vec![
-                    governor_1.public_key(),
-                    governor_2.public_key(),
-                    governor_3.public_key()
+                    governor_1.public_key().into(),
+                    governor_2.public_key().into(),
+                    governor_3.public_key().into(),
                 ],
                 2
             )
@@ -310,11 +312,11 @@ mod tests {
         let tx = MintConfigTx { prefix, signature };
         assert!(validate_signature(
             &tx,
-            &SignerSetV1::new(
+            &SignerSetV2::new(
                 vec![
-                    governor_1.public_key(),
-                    governor_2.public_key(),
-                    governor_3.public_key()
+                    governor_1.public_key().into(),
+                    governor_2.public_key().into(),
+                    governor_3.public_key().into(),
                 ],
                 3
             )
@@ -365,11 +367,11 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(
+                &SignerSetV2::new(
                     vec![
-                        governor_1.public_key(),
-                        governor_2.public_key(),
-                        governor_3.public_key()
+                        governor_1.public_key().into(),
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into(),
                     ],
                     1
                 )
@@ -384,11 +386,11 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(
+                &SignerSetV2::new(
                     vec![
-                        governor_1.public_key(),
-                        governor_2.public_key(),
-                        governor_3.public_key()
+                        governor_1.public_key().into(),
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into(),
                     ],
                     1
                 )
@@ -439,11 +441,11 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(
+                &SignerSetV2::new(
                     vec![
-                        governor_1.public_key(),
-                        governor_2.public_key(),
-                        governor_3.public_key()
+                        governor_1.public_key().into(),
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into(),
                     ],
                     2
                 )
@@ -460,7 +462,13 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(vec![governor_2.public_key(), governor_3.public_key()], 1)
+                &SignerSetV2::new(
+                    vec![
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into()
+                    ],
+                    1
+                )
             ),
             Err(Error::InvalidSignature)
         );
@@ -474,7 +482,13 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(vec![governor_2.public_key(), governor_3.public_key()], 2)
+                &SignerSetV2::new(
+                    vec![
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into()
+                    ],
+                    2
+                )
             ),
             Err(Error::InvalidSignature)
         );
@@ -522,11 +536,11 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSetV1::new(
+                &SignerSetV2::new(
                     vec![
-                        governor_1.public_key(),
-                        governor_2.public_key(),
-                        governor_3.public_key()
+                        governor_1.public_key().into(),
+                        governor_2.public_key().into(),
+                        governor_3.public_key().into(),
                     ],
                     2
                 )
