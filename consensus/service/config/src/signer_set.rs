@@ -96,10 +96,11 @@ impl SignerSet {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(mc_crypto_multisig::SignerSetV2::new(
-            signers,
-            self.threshold,
-        ))
+        let signer_set = mc_crypto_multisig::SignerSetV2::new(signers, self.threshold);
+        if !signer_set.is_valid() {
+            return Err("SignerSet is invalid".into());
+        }
+        Ok(signer_set)
     }
 }
 
@@ -329,7 +330,10 @@ mod tests {
         let signer_set: Result<mc_crypto_multisig::SignerSetV2<_>, _> =
             (&signer_set_config).try_into();
 
-        assert_eq!(signer_set, Err("SignerSet contains invalid threshold of 0/1".into()));
+        assert_eq!(
+            signer_set,
+            Err("SignerSet contains invalid threshold of 0/1".into())
+        );
     }
 
     #[test]
@@ -355,6 +359,9 @@ mod tests {
         let signer_set: Result<mc_crypto_multisig::SignerSetV2<_>, _> =
             (&signer_set_config).try_into();
 
-        assert_eq!(signer_set, Err("SignerSet contains invalid threshold of 2/1".into()));
+        assert_eq!(
+            signer_set,
+            Err("SignerSet contains invalid threshold of 2/1".into())
+        );
     }
 }
