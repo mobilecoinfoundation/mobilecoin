@@ -37,6 +37,7 @@ use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
 use mc_fog_report_resolver::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
@@ -45,7 +46,6 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, Token, TokenId,
 };
-use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};

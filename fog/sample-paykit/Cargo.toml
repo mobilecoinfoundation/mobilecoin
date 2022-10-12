@@ -29,8 +29,8 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-sgx-css = { path = "../../sgx/css" }
+mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-telemetry = { path = "../../util/telemetry" }

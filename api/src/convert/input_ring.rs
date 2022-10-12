@@ -106,11 +106,11 @@ mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
     use mc_fog_report_validation_test_utils::MockFogResolver;
-    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
-    use mc_transaction_std::{
+    use mc_transaction_builder::{
         test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
         TransactionBuilder,
     };
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
     use rand::{rngs::StdRng, SeedableRng};
 
     // Test converting between external::InputRing and
