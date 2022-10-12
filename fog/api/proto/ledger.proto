@@ -76,7 +76,7 @@ enum MultiKeyImageStoreResponseStatus {
 message MultiKeyImageStoreResponse {
     /// Optional field that gets set when the Fog Ledger Store is able to decrypt a query
     /// included in the MultiKeyImageStoreRequest and create a query response for that
-    //  query.
+    //  query. This is an encrypted CheckKeyImagesResponse.
     attest.NonceMessage query_response = 1;
 
     /// The FogViewStoreUri for the specific Fog View Store that

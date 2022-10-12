@@ -69,6 +69,63 @@ where
             logger,
         }
     }
+
+    fn query_impl(
+        &self,
+        plaintext_request: &[u8],
+        untrusted_query_response: UntrustedQueryResponse,
+    ) -> Result<Vec<u8>> {
+        let req: QueryRequest = mc_util_serial::decode(plaintext_request).map_err(|e| {
+            log::error!(self.logger, "Could not decode user request: {}", e);
+            Error::ProstDecode
+        })?;
+
+        // Prepare the untrusted part of the response.
+        let mut missed_block_ranges = Vec::new();
+        let mut rng_records = Vec::new();
+        let mut decommissioned_ingest_invocations = Vec::new();
+
+        for event in untrusted_query_response.user_events.into_iter() {
+            match event {
+                FogUserEvent::NewRngRecord(rng_record) => rng_records.push(rng_record),
+
+                FogUserEvent::DecommissionIngestInvocation(decommissioned_ingest_invocation) => {
+                    decommissioned_ingest_invocations.push(decommissioned_ingest_invocation)
+                }
+
+                FogUserEvent::MissingBlocks(range) => missed_block_ranges.push(range),
+            }
+        }
+
+        let mut resp = QueryResponse {
+            highest_processed_block_count: untrusted_query_response.highest_processed_block_count,
+            highest_processed_block_signature_timestamp: untrusted_query_response
+                .highest_processed_block_signature_timestamp,
+            next_start_from_user_event_id: untrusted_query_response.next_start_from_user_event_id,
+            missed_block_ranges,
+            rng_records,
+            decommissioned_ingest_invocations,
+            tx_out_search_results: Default::default(),
+            last_known_block_count: untrusted_query_response.last_known_block_count,
+            last_known_block_cumulative_txo_count: untrusted_query_response
+                .last_known_block_cumulative_txo_count,
+        };
+
+        // Do the txos part, scope lock of e_tx_out_store
+        {
+            let mut lk = self.e_tx_out_store.lock()?;
+            let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
+
+            resp.tx_out_search_results = req
+                .get_txos
+                .iter()
+                .map(|key| store.find_record(&key[..]))
+                .collect();
+        }
+
+        let response_plaintext_bytes = mc_util_serial::encode(&resp);
+        Ok(response_plaintext_bytes)
+    }
 }
 
 impl<OSC> ReportableEnclave for ViewEnclave<OSC>
@@ -135,62 +192,29 @@ where
     ) -> Result<Vec<u8>> {
         let channel_id = msg.channel_id.clone();
         let user_plaintext = self.ake.client_decrypt(msg)?;
-
-        let req: QueryRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
-            log::error!(self.logger, "Could not decode user request: {}", e);
-            Error::ProstDecode
-        })?;
-
-        // Prepare the untrusted part of the response.
-        let mut missed_block_ranges = Vec::new();
-        let mut rng_records = Vec::new();
-        let mut decommissioned_ingest_invocations = Vec::new();
-
-        for event in untrusted_query_response.user_events.into_iter() {
-            match event {
-                FogUserEvent::NewRngRecord(rng_record) => rng_records.push(rng_record),
-
-                FogUserEvent::DecommissionIngestInvocation(decommissioned_ingest_invocation) => {
-                    decommissioned_ingest_invocations.push(decommissioned_ingest_invocation)
-                }
-
-                FogUserEvent::MissingBlocks(range) => missed_block_ranges.push(range),
-            }
-        }
-
-        let mut resp = QueryResponse {
-            highest_processed_block_count: untrusted_query_response.highest_processed_block_count,
-            highest_processed_block_signature_timestamp: untrusted_query_response
-                .highest_processed_block_signature_timestamp,
-            next_start_from_user_event_id: untrusted_query_response.next_start_from_user_event_id,
-            missed_block_ranges,
-            rng_records,
-            decommissioned_ingest_invocations,
-            tx_out_search_results: Default::default(),
-            last_known_block_count: untrusted_query_response.last_known_block_count,
-            last_known_block_cumulative_txo_count: untrusted_query_response
-                .last_known_block_cumulative_txo_count,
-        };
-
-        // Do the txos part, scope lock of e_tx_out_store
-        {
-            let mut lk = self.e_tx_out_store.lock()?;
-            let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
-
-            resp.tx_out_search_results = req
-                .get_txos
-                .iter()
-                .map(|key| store.find_record(&key[..]))
-                .collect();
-        }
-
-        let response_plaintext_bytes = mc_util_serial::encode(&resp);
-
+        let response_plaintext_bytes =
+            self.query_impl(&user_plaintext, untrusted_query_response)?;
         let response = self
             .ake
             .client_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
 
         Ok(response.data)
+    }
+
+    fn query_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_query_response: UntrustedQueryResponse,
+    ) -> Result<EnclaveMessage<NonceSession>> {
+        let channel_id = msg.channel_id.clone();
+        let user_plaintext = self.ake.frontend_decrypt(msg)?;
+        let response_plaintext_bytes =
+            self.query_impl(&user_plaintext, untrusted_query_response)?;
+        let response = self
+            .ake
+            .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
+
+        Ok(response)
     }
 
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()> {

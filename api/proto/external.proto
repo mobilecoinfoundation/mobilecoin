@@ -246,6 +246,45 @@ message InputRules {
     //
     // A value of zero here means no limit is enforced
     fixed64 max_tombstone_block = 2;
+
+    // Outputs required to appear in the TxPrefix, but which are permitted to be
+    // filled partially instead of fully, according to the "fill fraction" which
+    // is inferred using the "partial fill change" output (MCIP #42)
+    repeated RevealedTxOut partial_fill_outputs = 3;
+
+    // A change output for any leftover from this input, which may occur during
+    // a partial fill (MCIP #42).
+    //
+    // This field must be present whenever partial fills are used, because the
+    // comparison of this "idealized" output and the corresponding "fractional"
+    // change which appears in the TxPrefix is what determines the "fill fraction",
+    // that is, the degree to which a counterparty is obliged to fill every
+    // partial fill output in these rules.
+    //
+    // It is an error to use any of the partial fill options without also
+    // setting this.
+    RevealedTxOut partial_fill_change = 4;
+
+    // A minimum fill value for the partial fill rules. (MCIP #42)
+    // A counterparty who fills an SCI must keep at least this much of the offer
+    // and can't return all of it as change if this is set.
+    // This can be used to prevent griefing where someone fills your offer in exchange
+    // for dust.
+    // This minimum has no effect if set to 0.
+    fixed64 min_partial_fill_value = 5;
+}
+
+// A TxOut together with its amount shared secret. This is sometimes needed to
+// properly validate partial fill transactions (MCIP #42).
+message RevealedTxOut {
+    // The TxOut
+    TxOut tx_out = 1;
+    // Amount shared secret. This can be used to see the masked value and token id
+    // and confirm that they match the amount commitment.
+    //
+    // This must be exactly 32 bytes, and should be derived from TxOut shared secret
+    // using domain-separated SHA512 as in transaction-core.
+    bytes amount_shared_secret = 2;
 }
 
 // A transaction that a client submits to consensus

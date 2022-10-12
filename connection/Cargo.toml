@@ -26,6 +26,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 retry = "1.3"
 secrecy = "0.8"
+serde = "1.0"
 sha2 = "0.10"
 
 [dev-dependencies]

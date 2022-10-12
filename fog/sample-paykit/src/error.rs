@@ -135,6 +135,9 @@ pub enum Error {
     /// SCI's tx out index ({0}) didn't match to the claimed tx out
     SciGlobalIndexTxOutMismatch(u64),
 
+    /// SCI's token id doesn't match the argument
+    SciTokenIdMismatch,
+
     /// Signed Contingent Input: {0}
     SignedContingentInput(SignedContingentInputError),
 

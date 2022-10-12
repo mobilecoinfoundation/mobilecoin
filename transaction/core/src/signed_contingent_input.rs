@@ -5,7 +5,7 @@
 use crate::{
     ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
-    Amount, TokenId, TxOutConversionError,
+    Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
@@ -108,6 +108,7 @@ impl SignedContingentInput {
                 return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
             }
 
+            // Check that required outputs match their claimed amounts
             for (amount, output) in self
                 .required_output_amounts
                 .iter()
@@ -123,6 +124,27 @@ impl SignedContingentInput {
                 if &expected_commitment != output.get_masked_amount()?.commitment() {
                     return Err(SignedContingentInputError::RequiredOutputMismatch);
                 }
+            }
+
+            // Check that partial fill rule specs look correct
+            if let Some(partial_fill_change) = rules.partial_fill_change.as_ref() {
+                let (amount, _) = partial_fill_change.reveal_amount()?;
+                // If the min fill value exceeds the fractional change, the SCI is ill-formed
+                if rules.min_partial_fill_value > amount.value {
+                    return Err(
+                        SignedContingentInputError::MinPartialFillValueExceedsPartialChange,
+                    );
+                }
+
+                if amount.value == 0 {
+                    return Err(SignedContingentInputError::ZeroPartialFillChange);
+                }
+                // Check that each output can actually be revealed
+                for partial_fill_output in rules.partial_fill_outputs.iter() {
+                    partial_fill_output.reveal_amount()?;
+                }
+            } else if !rules.partial_fill_outputs.is_empty() || rules.min_partial_fill_value != 0 {
+                return Err(SignedContingentInputError::MissingPartialFillChange);
             }
         }
 
@@ -184,6 +206,28 @@ pub enum SignedContingentInputError {
     RingSignature(RingSignatureError),
     /// TxOut conversion: {0}
     TxOutConversion(TxOutConversionError),
+    /// Partial fill input not allowed with this API
+    PartialFillInputNotAllowedHere,
+    /// Missing partial fill change output
+    MissingPartialFillChange,
+    /// Index out of bounds
+    IndexOutOfBounds,
+    /// Fractional change amount was zero
+    ZeroPartialFillChange,
+    /// Min partial fill value exceeds partial fill change
+    MinPartialFillValueExceedsPartialChange,
+    /// Token id mismatch
+    TokenIdMismatch,
+    /// Change value exceeded limit imposed by input rules
+    ChangeLimitExceeded,
+    /// Revealing TxOut: {0}
+    RevealedTxOut(RevealedTxOutError),
+    /// Feature is not supported at this block version ({0}): {1}
+    FeatureNotSupportedAtBlockVersion(u32, &'static str),
+    /// Block version mismatch: {0} vs. {1}
+    BlockVersionMismatch(u32, u32),
+    /// Amount: {0}
+    Amount(AmountError),
 }
 
 impl From<RingSignatureError> for SignedContingentInputError {
@@ -195,5 +239,17 @@ impl From<RingSignatureError> for SignedContingentInputError {
 impl From<TxOutConversionError> for SignedContingentInputError {
     fn from(src: TxOutConversionError) -> Self {
         Self::TxOutConversion(src)
+    }
+}
+
+impl From<RevealedTxOutError> for SignedContingentInputError {
+    fn from(src: RevealedTxOutError) -> Self {
+        Self::RevealedTxOut(src)
+    }
+}
+
+impl From<AmountError> for SignedContingentInputError {
+    fn from(src: AmountError) -> Self {
+        Self::Amount(src)
     }
 }

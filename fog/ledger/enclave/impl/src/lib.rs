@@ -312,6 +312,50 @@ where
 
         Ok(response)
     }
+
+    fn check_key_image_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> Result<Vec<u8>> {
+        let channel_id = msg.channel_id.clone();
+        let responder_id = self.ake.get_peer_self_id()?;
+        let user_plaintext = self.ake.frontend_decrypt(msg)?;
+        
+        let req: CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
+            log::error!(self.logger, "Could not decode user request: {}", e);
+            Error::ProstDecode
+        })?;
+
+        let mut resp = CheckKeyImagesResponse {
+            num_blocks: untrusted_key_image_query_response.highest_processed_block_count,
+            results: Default::default(),
+            global_txo_count: untrusted_key_image_query_response
+                .last_known_block_cumulative_txo_count,
+            latest_block_version: untrusted_key_image_query_response.latest_block_version,
+            max_block_version: untrusted_key_image_query_response.max_block_version,
+        };
+
+        // Do the scope lock of keyimagetore
+        {
+            let mut lk = self.key_image_store.lock()?;
+            let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
+
+            resp.results = req
+                .queries
+                .iter() //  get the key images used to find the key image data using the oram
+                .map(|key| store.find_record(&key.key_image))
+                .collect();
+        }
+
+        let response_plaintext_bytes = mc_util_serial::encode(&resp);
+
+        let response = self
+            .ake
+            .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
+
+        Ok(response.data)
+    }
 }
 
 #[cfg(test)]

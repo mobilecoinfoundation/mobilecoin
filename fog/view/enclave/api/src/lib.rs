@@ -83,6 +83,9 @@ pub enum ViewEnclaveRequest {
     /// An encrypted fog_types::view::QueryRequest
     /// Respond with fog_types::view::QueryResponse
     Query(EnclaveMessage<ClientSession>, UntrustedQueryResponse),
+    /// An encrypted fog_types::view::QueryRequest
+    /// Respond with fog_types::view::QueryResponse.
+    QueryStore(EnclaveMessage<NonceSession>, UntrustedQueryResponse),
     /// Request from untrusted to add encrypted tx out records to ORAM
     AddRecords(Vec<ETxOutRecord>),
     /// Takes a client query message and returns a SealedClientMessage
@@ -161,6 +164,14 @@ pub trait ViewEnclaveApi: ReportableEnclave {
         payload: EnclaveMessage<ClientSession>,
         untrusted_query_response: UntrustedQueryResponse,
     ) -> Result<Vec<u8>>;
+
+    /// Service a frontend's query request. Intended to be used by a Fog View
+    /// Store.
+    fn query_store(
+        &self,
+        payload: EnclaveMessage<NonceSession>,
+        untrusted_query_response: UntrustedQueryResponse,
+    ) -> Result<EnclaveMessage<NonceSession>>;
 
     /// SERVER-FACING
 

@@ -117,7 +117,16 @@ pub trait LedgerEnclave: ReportableEnclave {
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()>;
-  
+
+    /// Extract context data to be handed back to untrusted so that it could
+    /// collect the information required.
+    fn check_key_image_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> Result<Vec<u8>>;
+
+
     /// Decrypts a client query message and converts it into a
     /// SealedClientMessage which can be unsealed multiple times to
     /// construct the MultiKeyImageStoreRequest.

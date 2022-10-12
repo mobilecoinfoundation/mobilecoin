@@ -481,6 +481,17 @@ impl TxOut {
             .as_mut()
             .ok_or(TxOutConversionError::UnknownMaskedAmountVersion)
     }
+
+    /// Check if a TxOut is equal to another TxOut, except possibly in the
+    /// masked_amount. This is used in MCIP #42 partial fills rules
+    /// verification.
+    pub fn eq_ignoring_amount(&self, other: &TxOut) -> bool {
+        let mut this = self.clone();
+        this.masked_amount = None;
+        let mut other = other.clone();
+        other.masked_amount = None;
+        this == other
+    }
 }
 
 impl TryFrom<&TxOut> for ReducedTxOut {

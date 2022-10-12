@@ -38,7 +38,7 @@ const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 const MAX_PEER_SESSIONS: usize = 64;
 
 /// Maximum number of concurrent sessions to this enclave from router enclaves.
-const MAX_FRONTEND_SESSIONS: usize = 10_000;
+const MAX_FRONTEND_SESSIONS: usize = 500;
 
 /// Max number of backends that this enclave can connect to as a client.
 const MAX_BACKEND_SESSIONS: usize = 10_000;
@@ -194,6 +194,35 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         } else {
             Err(Error::AlreadyInit)
         }
+    }
+
+    pub fn frontend_encrypt(
+        &self,
+        session_id: &NonceSession,
+        aad: &[u8],
+        data: &[u8],
+    ) -> Result<EnclaveMessage<NonceSession>> {
+        let mut frontends = self.frontends.lock()?;
+        let session = frontends.get_mut(session_id).ok_or(Error::NotFound)?;
+        let (data, nonce) = session.encrypt_with_nonce(aad, data)?;
+        let channel_id = NonceSession::new(session.binding().to_owned(), nonce);
+
+        // Return message
+        Ok(EnclaveMessage {
+            aad: aad.to_vec(),
+            channel_id,
+            data,
+        })
+    }
+
+    pub fn frontend_decrypt(&self, msg: EnclaveMessage<NonceSession>) -> Result<Vec<u8>> {
+        let mut frontends = self.frontends.lock()?;
+        frontends
+            .get_mut(&msg.channel_id)
+            .ok_or(Error::NotFound)
+            .and_then(|session| {
+                Ok(session.decrypt_with_nonce(&msg.aad, &msg.data, msg.channel_id.nonce())?)
+            })
     }
 
     /// Accept an explicit-nonce session from a frontend service (router) to

@@ -50,7 +50,7 @@ message FogViewRouterResponse {
 
 message MultiViewStoreQueryRequest {
     /// A list of queries encrypted for Fog View Stores.
-    repeated attest.Message queries = 1;
+    repeated attest.NonceMessage queries = 1;
 }
 
 /// The status associated with a MultiViewStoreQueryResponse
@@ -69,7 +69,7 @@ message MultiViewStoreQueryResponse {
     /// Optional field that gets set when the Fog View Store is able to decrypt a query
     /// included in the MultiViewStoreQueryRequest and create a query response for that
     //  query.
-    attest.Message query_response = 1;
+    attest.NonceMessage query_response = 1;
 
     /// The FogViewStoreUri for the specific Fog View Store that
     /// tried to decrypt the MultiViewStoreQueryRequest and failed.

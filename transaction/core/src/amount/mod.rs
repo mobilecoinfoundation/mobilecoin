@@ -65,6 +65,29 @@ impl MaskedAmount {
         })
     }
 
+    /// Create a new masked amount from an amount and an amount shared secret.
+    /// This only works if at least masked amount v2 is supported.
+    ///
+    /// # Arguments
+    /// * `block_version` - The block version rules we are targeting
+    /// * `amount` - The amount information to be masked
+    /// * `amount_shared_secret` - The amount shared secret to derive blinding
+    ///   factors from
+    pub fn new_from_amount_shared_secret(
+        block_version: BlockVersion,
+        amount: Amount,
+        amount_shared_secret: &[u8; 32],
+    ) -> Result<Self, AmountError> {
+        if block_version.masked_amount_v2_is_supported() {
+            Ok(Self::V2(MaskedAmountV2::new_from_amount_shared_secret(
+                amount,
+                amount_shared_secret,
+            )?))
+        } else {
+            Err(AmountError::AmountVersionTooOldForAmountSharedSecret)
+        }
+    }
+
     /// Returns the amount underlying the masked amount, given the shared
     /// secret.
     ///
@@ -79,6 +102,39 @@ impl MaskedAmount {
         match &self {
             Self::V1(masked_amount) => masked_amount.get_value(tx_out_shared_secret),
             Self::V2(masked_amount) => masked_amount.get_value(tx_out_shared_secret),
+        }
+    }
+
+    /// Returns the amount underlying the masked amount, given the amount shared
+    /// secret. This only works at v2 and up.
+    pub fn get_value_from_amount_shared_secret(
+        &self,
+        amount_shared_secret: &[u8; 32],
+    ) -> Result<(Amount, Scalar), AmountError> {
+        match &self {
+            Self::V1(_) => Err(AmountError::AmountVersionTooOldForAmountSharedSecret),
+            Self::V2(masked_amount) => {
+                masked_amount.get_value_from_amount_shared_secret(amount_shared_secret)
+            }
+        }
+    }
+
+    /// Compute the amount shared secret from a TxOut shared secret, assuming
+    /// that we are using the masked amount version appropriate for a given
+    /// block version
+    ///
+    /// If a masked amount v3 is added then we need to select for its block
+    /// version here
+    pub fn compute_amount_shared_secret(
+        block_version: BlockVersion,
+        tx_out_shared_secret: &RistrettoPublic,
+    ) -> Result<[u8; 32], AmountError> {
+        if block_version.masked_amount_v2_is_supported() {
+            Ok(MaskedAmountV2::compute_amount_shared_secret(
+                tx_out_shared_secret,
+            ))
+        } else {
+            Err(AmountError::AmountVersionTooOldForAmountSharedSecret)
         }
     }
 
