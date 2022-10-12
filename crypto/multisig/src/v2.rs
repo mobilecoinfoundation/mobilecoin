@@ -114,6 +114,27 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         self.threshold
     }
 
+    /// Check if the signerset is valid.
+    /// Right now the definition for valid is:
+    /// 1. Has at least one signer.
+    /// 2. Threshold is is between 1 and the total number of signers.
+    /// 3. All multi signers are also valid
+    pub fn is_valid(&self) -> bool {
+        if self.signers.is_empty() || self.signers.len() < self.threshold as usize {
+            return false;
+        }
+
+        for signer in self.signers.iter() {
+            if let Some(SignerEntity::Multi(multi)) = signer.entity.as_ref() {
+                if !multi.is_valid() {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     ///
@@ -136,6 +157,12 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         SIG: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
         S: Verifier<SIG>,
     {
+        // We must be a valid signer set to verify signatures.
+        if !self.is_valid() {
+            return Err(SignatureError::new());
+        }
+
+        // Limit the number of signatures to check against.
         if multi_sig.signatures().len() > MAX_SIGNATURES {
             return Err(SignatureError::new());
         }
@@ -1098,5 +1125,44 @@ mod test_nested_multisigs {
             signer_set,
             mc_util_serial::decode(&mc_util_serial::encode(&signer_set)).unwrap(),
         );
+    }
+
+    #[test]
+    fn is_valid_refuses_no_signers() {
+        let signer_set = SignerSetV2::<Ed25519Public>::new(vec![], 0);
+        assert!(!signer_set.is_valid());
+
+        let signer_set = SignerSetV2::<Ed25519Public>::new(vec![], 1);
+        assert!(!signer_set.is_valid());
+    }
+
+    #[test]
+    fn is_valid_refuses_less_signers_than_threshold() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let signer_set = SignerSetV2::<Ed25519Public>::new(
+            vec![Ed25519Pair::from_random(&mut rng).public_key().into()],
+            2,
+        );
+        assert!(!signer_set.is_valid());
+    }
+
+    #[test]
+    fn is_valid_tests_recursively() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let (valid_signerset, _signers) = make_signer_set(2, 3, &mut rng);
+        let invalid_signerset = SignerSetV2::<Ed25519Public>::new(vec![], 0);
+
+        assert!(valid_signerset.is_valid());
+        assert!(!invalid_signerset.is_valid());
+
+        // Combined signer set
+        let signer_set = SignerSetV2::<Ed25519Public>::new(
+            vec![valid_signerset.into(), invalid_signerset.into()],
+            2,
+        );
+
+        assert!(!signer_set.is_valid());
     }
 }
