@@ -8,6 +8,10 @@ use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_blockchain_test_utils::{make_block_metadata, make_block_signature};
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockVersion};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_transaction_builder::{
+    DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+    TxOutputsOrdering,
+};
 use mc_transaction_core::{
     constants::RING_SIZE,
     get_tx_out_shared_secret,
@@ -18,10 +22,6 @@ use mc_transaction_core::{
     Amount, Token,
 };
 use mc_transaction_core_test_utils::{get_outputs, MockFogResolver, NoKeysRingSigner};
-use mc_transaction_std::{
-    DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
-    TxOutputsOrdering,
-};
 use mc_util_test_helper::{CryptoRng, RngCore};
 use std::{cmp::Ordering, path::Path};
 use tempdir::TempDir;

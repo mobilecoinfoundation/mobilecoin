@@ -7,6 +7,7 @@ use crate::{
     InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilderError,
     TxBuilderError,
 };
+use alloc::{boxed::Box, vec::Vec};
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
@@ -543,6 +544,7 @@ pub mod tests {
     use crate::{
         test_utils::get_input_credentials, EmptyMemoBuilder, MemoType, TransactionBuilder,
     };
+    use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};

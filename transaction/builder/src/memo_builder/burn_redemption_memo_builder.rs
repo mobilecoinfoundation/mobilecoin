@@ -1,8 +1,8 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines the BurnRedemptionMemoBuilder.
 //! This MemoBuilder policy implements Burn Redemption tracking using memos, as
-//! envisioned in MCIP #TODO.
+//! envisioned in MCIP #39.
 
 use super::{
     memo::{BurnRedemptionMemo, DestinationMemo, DestinationMemoError, UnusedMemo},

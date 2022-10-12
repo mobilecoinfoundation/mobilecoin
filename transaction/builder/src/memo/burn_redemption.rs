@@ -1,9 +1,8 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Object for 0x0001 Burn Redemption memo type
 //!
-//! TODO: Link to MCIP
-//! This was proposed for standardization in mobilecoinfoundation/mcips/pull/TBD
+//! This was proposed for standardization in mobilecoinfoundation/mcips/pull/39
 
 use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;

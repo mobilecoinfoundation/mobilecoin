@@ -5,11 +5,11 @@ mod util;
 use assert_matches::assert_matches;
 use mc_account_keys::AccountKey;
 use mc_crypto_keys::RistrettoPublic;
+use mc_transaction_builder::DefaultTxOutputsOrdering;
 use mc_transaction_core::{
     get_tx_out_shared_secret, tx::Tx, Amount, BlockVersion, InputRuleError, InputRules,
     MaskedAmount, RevealedTxOut, RevealedTxOutError,
 };
-use mc_transaction_std::DefaultTxOutputsOrdering;
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{RngType, SeedableRng};
 

@@ -5,8 +5,8 @@
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/32
 
 use crate::{impl_memo_type_conversions, RegisteredMemoType};
+use core::str;
 use mc_transaction_core::MemoError;
-use std::str;
 
 /// A gift code is considered "redeemed" when the receiver of
 /// a gift code message uses the private spend key of the gift

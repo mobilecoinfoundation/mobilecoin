@@ -1,5 +1,5 @@
 [package]
-name = "mc-transaction-std"
+name = "mc-transaction-builder"
 version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"

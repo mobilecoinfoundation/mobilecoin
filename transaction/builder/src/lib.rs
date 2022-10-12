@@ -3,9 +3,10 @@
 //! Utilities for creating MobileCoin transactions, intended for client-side
 //! use and not intended to be used inside of enclaves.
 
+#![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]
 
-extern crate core;
+extern crate alloc;
 
 mod error;
 mod input_credentials;

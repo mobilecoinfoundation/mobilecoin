@@ -7,6 +7,7 @@ use crate::{
     memo::{GiftCodeFundingMemo, UnusedMemo},
     MemoBuilder, ReservedSubaddresses,
 };
+use alloc::{format, string::String};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
@@ -191,8 +192,8 @@ mod tests {
         // Create blank notes and notes near max length
         let blank_note = "";
         let note_minus_one =
-            std::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN - 1]).unwrap();
-        let note_exact = std::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN]).unwrap();
+            core::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN - 1]).unwrap();
+        let note_exact = core::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN]).unwrap();
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let gift_code_public_key = RistrettoPublic::from_random(&mut rng);
         let fee = Amount::new(1, 0.into());
@@ -339,7 +340,7 @@ mod tests {
     fn test_gift_code_funding_memo_builder_creation_fails_with_invalid_note() {
         // Create Memo Builder with note length exceeding max length
         let note_bytes = [b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN + 1];
-        let note = std::str::from_utf8(&note_bytes).unwrap();
+        let note = core::str::from_utf8(&note_bytes).unwrap();
         let builder = GiftCodeFundingMemoBuilder::new(note);
 
         //Assert memo creation fails

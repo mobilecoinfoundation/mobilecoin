@@ -34,6 +34,7 @@ use mc_mobilecoind_api::{
     mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
     MobilecoindUri,
 };
+use mc_transaction_builder::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
@@ -41,7 +42,6 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
-use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -2134,6 +2134,7 @@ mod test {
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
+    use mc_transaction_builder::{EmptyMemoBuilder, MemoType, TransactionBuilder, TxOutContext};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
         fog_hint::FogHint,
@@ -2143,7 +2144,6 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder, TxOutContext};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
