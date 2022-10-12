@@ -528,7 +528,7 @@ jobs:
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: green
-      minting_config_enabled: false
+      minting_config_enabled: true
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.release_2x_tag }}
     secrets:
@@ -742,7 +742,7 @@ jobs:
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
-      minting_config_enabled: false
+      minting_config_enabled: true
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
     secrets:
