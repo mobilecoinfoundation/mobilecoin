@@ -9,6 +9,7 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
+    fog_common::BlockRange,
     view::{
         MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus,
     },
@@ -243,6 +244,8 @@ where
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
         response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
+        let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
+        response.set_block_range(block_range);
         for query in queries.into_iter() {
             let result = self.query_nonce_impl(query);
             // Only one of the query messages in an MVSQR is intended for this store
