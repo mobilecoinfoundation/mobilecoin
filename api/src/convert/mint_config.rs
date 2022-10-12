@@ -3,15 +3,15 @@
 //! Convert to/from external:MintConfig/MintConfigTxPrefix/MintConfigTx.
 
 use crate::{external, ConversionError};
-use mc_crypto_multisig::{MultiSig, SignerSetV1};
-use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
+use mc_crypto_multisig::MultiSig;
+use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix, VersionedSignerSet};
 
 /// Convert MintConfig --> external::MintConfig.
 impl From<&MintConfig> for external::MintConfig {
     fn from(src: &MintConfig) -> Self {
         let mut dst = external::MintConfig::new();
         dst.set_token_id(src.token_id);
-        dst.set_signer_set((&src.signer_set).into());
+        dst.signer_set = src.signer_set.as_ref().map(Into::into);
         dst.set_mint_limit(src.mint_limit);
         dst
     }
@@ -22,7 +22,11 @@ impl TryFrom<&external::MintConfig> for MintConfig {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintConfig) -> Result<Self, Self::Error> {
-        let signer_set = SignerSetV1::try_from(source.get_signer_set())?;
+        let oneof_signer_set = source
+            .signer_set
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?;
+        let signer_set = Some(VersionedSignerSet::try_from(oneof_signer_set)?);
         Ok(Self {
             token_id: source.get_token_id(),
             signer_set,
@@ -102,7 +106,7 @@ mod tests {
     fn test_convert_mint_config() {
         let source = MintConfig {
             token_id: 123,
-            signer_set: test_signer_set_v1(),
+            signer_set: Some(test_signer_set_v1().into()),
             mint_limit: 10000,
         };
 
@@ -148,12 +152,12 @@ mod tests {
                 configs: vec![
                     MintConfig {
                         token_id: 123,
-                        signer_set: test_signer_set_v1(),
+                        signer_set: Some(test_signer_set_v1().into()),
                         mint_limit: 10000,
                     },
                     MintConfig {
                         token_id: 456,
-                        signer_set: test_signer_set_v1(),
+                        signer_set: Some(test_signer_set_v1().into()),
                         mint_limit: 20000,
                     },
                 ],

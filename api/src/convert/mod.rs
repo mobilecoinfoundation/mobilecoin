@@ -28,6 +28,7 @@ mod input_secret;
 mod key_image;
 mod mint_config;
 mod mint_tx;
+mod mint_versioned_signer_set;
 mod node;
 mod output_secret;
 mod public_address;
