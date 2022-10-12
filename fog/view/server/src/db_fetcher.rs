@@ -78,6 +78,7 @@ impl DbFetcher {
     pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
         db: DB,
         readiness_indicator: ReadinessIndicator,
+        block_batch_request_size: usize,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -102,6 +103,7 @@ impl DbFetcher {
                         thread_shared_state,
                         thread_num_queued_records_limiter,
                         readiness_indicator,
+                        block_batch_request_size,
                         logger,
                     )
                 })
@@ -172,6 +174,7 @@ struct DbFetcherThread<DB: RecoveryDb + Clone + Send + Sync + 'static> {
     block_tracker: BlockTracker,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
     readiness_indicator: ReadinessIndicator,
+    block_batch_request_size: usize,
     logger: Logger,
 }
 
@@ -184,8 +187,13 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
         readiness_indicator: ReadinessIndicator,
+        block_batch_request_size: usize,
         logger: Logger,
     ) {
+        assert!(
+            block_batch_request_size > 0,
+            "Block batch request size cannot be 0, this is a configuration error"
+        );
         let thread = Self {
             db,
             stop_requested,
@@ -193,6 +201,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             block_tracker: BlockTracker::new(logger.clone()),
             num_queued_records_limiter,
             readiness_indicator,
+            block_batch_request_size,
             logger,
         };
         thread.run();
@@ -282,64 +291,67 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             // Attempt to load data for the next block.
             let get_tx_outs_by_block_result = {
                 let _metrics_timer = counters::GET_TX_OUTS_BY_BLOCK_TIME.start_timer();
-                self.db
-                    .get_tx_outs_by_block_and_key(ingress_key, block_index)
+                self.db.get_tx_outs_by_block_range_and_key(
+                    ingress_key,
+                    block_index,
+                    self.block_batch_request_size as u64,
+                )
             };
 
             match get_tx_outs_by_block_result {
-                Ok(Some(tx_outs)) => {
-                    let num_tx_outs = tx_outs.len();
-
-                    // Log
-                    log::info!(
-                        self.logger,
-                        "ingress_key {:?} fetched {} tx outs for block {}",
-                        ingress_key,
-                        num_tx_outs,
-                        block_index,
-                    );
-
-                    // Ingest has produced data for this block, we'd like to keep trying the
-                    // next block on the next loop iteration.
-                    may_have_more_work = true;
-
-                    // Mark that we are done fetching data for this block.
-                    self.block_tracker.block_processed(ingress_key, block_index);
-
-                    // Store the fetched records so that they could be consumed by the enclave
-                    // when its ready.
-                    {
-                        let mut state = self.shared_state();
-                        state.fetched_records.push(FetchedRecords {
+                Ok(block_results) => {
+                    if !block_results.is_empty() {
+                        // Log
+                        log::info!(
+                            self.logger,
+                            "ingress_key {:?} fetched {} blocks starting with block {}",
                             ingress_key,
+                            block_results.len(),
                             block_index,
-                            records: tx_outs,
-                        });
+                        );
+
+                        if block_results.len() == self.block_batch_request_size {
+                            // Ingest has produced as much block data as we asked for,
+                            // we'd like to keep trying to download in the next loop iteration.
+                            may_have_more_work = true;
+                        }
+
+                        for (idx, tx_outs) in block_results.into_iter().enumerate() {
+                            let idx = idx as u64;
+                            let num_tx_outs = tx_outs.len();
+
+                            // Mark that we are done fetching data for this block.
+                            self.block_tracker
+                                .block_processed(ingress_key, block_index + idx);
+
+                            // Store the fetched records so that they could be consumed by the
+                            // enclave when its ready.
+                            {
+                                let mut state = self.shared_state();
+                                state.fetched_records.push(FetchedRecords {
+                                    ingress_key,
+                                    block_index: block_index + idx,
+                                    records: tx_outs,
+                                });
+                            }
+
+                            // Update metrics.
+                            counters::BLOCKS_FETCHED_COUNT.inc();
+                            counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as u64);
+
+                            // Block if we have queued up enough records for now.
+                            // (Until the enclave thread drains the queue).
+                            let (lock, condvar) = &*self.num_queued_records_limiter;
+                            let mut num_queued_records = condvar
+                                .wait_while(lock.lock().unwrap(), |num_queued_records| {
+                                    *num_queued_records > MAX_QUEUED_RECORDS
+                                })
+                                .expect("condvar wait failed");
+                            *num_queued_records += num_tx_outs;
+
+                            counters::DB_FETCHER_NUM_QUEUED_RECORDS.set(*num_queued_records as i64);
+                        }
                     }
-
-                    // Update metrics.
-                    counters::BLOCKS_FETCHED_COUNT.inc();
-                    counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as u64);
-
-                    // Block if we have queued up enough records for now.
-                    // (Until the enclave thread drains the queue).
-                    let (lock, condvar) = &*self.num_queued_records_limiter;
-                    let mut num_queued_records = condvar
-                        .wait_while(lock.lock().unwrap(), |num_queued_records| {
-                            *num_queued_records > MAX_QUEUED_RECORDS
-                        })
-                        .expect("condvar wait failed");
-                    *num_queued_records += num_tx_outs;
-
-                    counters::DB_FETCHER_NUM_QUEUED_RECORDS.set(*num_queued_records as i64);
-                }
-                Ok(None) => {
-                    log::trace!(
-                        self.logger,
-                        "ingress_key {:?} block {} query missed, no new data yet",
-                        ingress_key,
-                        block_index
-                    );
                 }
                 Err(err) => {
                     log::warn!(
@@ -351,6 +363,8 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                     );
                     // We might have more work to do, we aren't sure because of the error
                     may_have_more_work = true;
+                    // Let's back off for one interval when there is an error
+                    sleep(DB_POLL_INTERNAL);
                 }
             }
         }

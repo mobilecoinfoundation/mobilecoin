@@ -71,4 +71,10 @@ pub struct MobileAcctViewConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// How many blocks to request at once when requesting blocks from postgres
+    /// Increasing this may help if there is high network latency with postgres,
+    /// and should not much harm performance otherwise when loading the DB.
+    #[clap(long, default_value = "100", env = "MC_BLOCK_BATCH_REQUEST_SIZE")]
+    pub block_batch_request_size: usize,
 }
