@@ -7,28 +7,28 @@ set -e  # exit on error
 CHECK=""
 
 while [ "$1" != "" ]; do
-	case "$1" in
-		--check)
-		  CHECK="--check";;
-		-h | --help)
-			echo "Lints rust files in the repo"
-                        echo "Linters that can fix will fix the files, by default."
-                        echo "Fixing linters include 'cargo sort' and 'cargo fmt'."
-			echo ""
-			echo "Usage: $(basename $0) [--check]"
-			echo ""
-			echo "Args:"
-			echo "        --check  Limit linters that can fix to only check"
-			echo "    -h, --help   Prints help information"
-			exit 0
-			;;
-		*)
-			echo "Unrecognized argument: '$1'"
-                        exit 2
-			;;
-	esac
-
-	shift
+  case "$1" in
+    --check)
+      CHECK="--check"
+      ;;
+    -h | --help)
+      echo "Lints rust files in the repo"
+      echo "Linters that can fix will fix the files, by default."
+      echo "Fixing linters include 'cargo sort' and 'cargo fmt'."
+      echo ""
+      echo "Usage: $(basename $0) [--check]"
+      echo ""
+      echo "Args:"
+      echo "        --check  Limit linters that can fix to only check"
+      echo "    -h, --help   Prints help information"
+      exit 0
+      ;;
+    *)
+      echo "Unrecognized argument: '$1'"
+      exit 2
+      ;;
+  esac
+  shift
 done
 
 # We want to check with --all-targets since it checks test code, but that flag
