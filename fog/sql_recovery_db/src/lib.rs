@@ -972,6 +972,71 @@ impl SqlRecoveryDb {
         }
     }
 
+    /// Get ETxOutRecords for a given ingress key from a block, and subsequent
+    /// blocks, up to some limit. (This is like a batch call to
+    /// get_tx_outs_by_block_and_key_retriable with lookahead, and makes
+    /// sense if there is high network latency.)
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The first block we need ETxOutRecords from
+    /// * block_count: How many subsequent blocks to also request data for.
+    ///
+    /// Returns:
+    /// * The sequence of ETxOutRecord's, from consequecutive blocks starting
+    ///   from block_index. Empty if not even the block_index'th block exists.
+    fn get_tx_outs_by_block_range_and_key_retriable(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+        block_count: u64,
+    ) -> Result<Vec<Vec<ETxOutRecord>>, Error> {
+        let conn = self.pool.get()?;
+
+        // The idea is:
+        // Similar to get_tx_outs_by_block_and_key_retriable, but now
+        // * we have a range of admissible block indices
+        // * we order by the block number
+        // * we also select over the block number so that sql gives us the block number
+        //
+        // This ensures that we can detect any gaps in the data
+        let key_bytes: &[u8] = ingress_key.as_ref();
+        let query = schema::ingested_blocks::dsl::ingested_blocks
+            .filter(schema::ingested_blocks::dsl::ingress_public_key.eq(key_bytes))
+            .filter(schema::ingested_blocks::dsl::block_number.ge(block_index as i64))
+            .filter(
+                schema::ingested_blocks::dsl::block_number.lt((block_index + block_count) as i64),
+            )
+            .select((
+                schema::ingested_blocks::dsl::block_number,
+                schema::ingested_blocks::dsl::proto_ingested_block_data,
+            ))
+            .order(schema::ingested_blocks::dsl::block_number.asc());
+
+        // We will get one row for each hit in the table we found
+        let rows: Vec<(i64, Vec<u8>)> = query.load::<(i64, Vec<u8>)>(&conn)?;
+
+        // We want to iterate over the rows we got, make sure there are no gaps in block
+        // indices, and decode the TxOut's and return them. If there are gaps,
+        // we log at warn level, and short-circuit out of this, returning only
+        // whatever we managed to get. That will discard data that we got from
+        // the DB and we will request it again later, but there is no reason for
+        // there to be gaps, that's not how the system works, so it isn't
+        // important to optimize for that case.
+
+        let mut result = Vec::new();
+        for (idx, (block_number, proto)) in rows.into_iter().enumerate() {
+            if block_index + idx as u64 == block_number as u64 {
+                let proto = ProtoIngestedBlockData::decode(&*proto)?;
+                result.push(proto.e_tx_out_records);
+            } else {
+                log::warn!(self.logger, "When querying for block index {} and up to {} blocks on, the {}'th response has block_number {} which is not expected. Gaps in the data?", block_index, block_count, idx, block_number);
+                break;
+            }
+        }
+        Ok(result)
+    }
+
     /// Get iid that produced data for given ingress key and a given block
     /// index.
     fn get_invocation_id_by_block_and_key_retriable(
@@ -1391,6 +1456,30 @@ impl RecoveryDb for SqlRecoveryDb {
     ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error> {
         our_retry(self.get_retries(), || {
             self.get_tx_outs_by_block_and_key_retriable(ingress_key, block_index)
+        })
+    }
+
+    /// Get ETxOutRecords for a given ingress key from a block, and subsequent
+    /// blocks, up to some limit. (This is like a batch call to
+    /// get_tx_outs_by_block_and_key with lookahead, and makes sense if
+    /// there is high network latency.)
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The first block we need ETxOutRecords from
+    /// * block_count: How many subsequent blocks to also request data for.
+    ///
+    /// Returns:
+    /// * The sequence of ETxOutRecord's, from consequecutive blocks starting
+    ///   from block_index. Empty if not even the block_index'th block exists.
+    fn get_tx_outs_by_block_range_and_key(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+        block_count: u64,
+    ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_tx_outs_by_block_range_and_key_retriable(ingress_key, block_index, block_count)
         })
     }
 
