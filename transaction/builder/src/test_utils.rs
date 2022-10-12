@@ -6,6 +6,7 @@ use crate::{
     EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedSubaddresses,
     TransactionBuilder, TxBuilderError,
 };
+use alloc::vec::Vec;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};

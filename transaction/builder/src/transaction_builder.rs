@@ -8,7 +8,11 @@ use crate::{
     input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedSubaddresses,
     TxBuilderError,
 };
-use core::{cmp::min, fmt::Debug};
+use alloc::{boxed::Box, vec::Vec};
+use core::{
+    cmp::{min, Ordering},
+    fmt::Debug,
+};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::RingSigner;
@@ -27,7 +31,6 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 /// A trait used to compare the transaction outputs
 pub trait TxOutputsOrdering {
@@ -950,6 +953,7 @@ pub mod transaction_builder_tests {
         GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoType, RTHMemoBuilder,
         SenderMemoCredential,
     };
+    use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{

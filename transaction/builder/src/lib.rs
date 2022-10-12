@@ -3,9 +3,14 @@
 //! Utilities for creating MobileCoin transactions, intended for client-side
 //! use and not intended to be used inside of enclaves.
 
+#![no_std]
 #![deny(missing_docs)]
 
-extern crate core;
+extern crate alloc;
+
+// This helps the `maplit` crate macros to work
+#[cfg(test)]
+extern crate std;
 
 mod error;
 mod input_credentials;

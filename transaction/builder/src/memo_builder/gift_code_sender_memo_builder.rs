@@ -4,6 +4,7 @@
 //! specified in MCIP #32
 
 use crate::{memo::GiftCodeSenderMemo, MemoBuilder, ReservedSubaddresses};
+use alloc::{format, string::String};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 
@@ -129,8 +130,8 @@ mod tests {
         let fee = Amount::new(10, 0.into());
         let blank_note = "";
         let note_minus_one =
-            std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1]).unwrap();
-        let note_exact = std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN]).unwrap();
+            core::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1]).unwrap();
+        let note_exact = core::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN]).unwrap();
 
         // Verify blank note is okay
         {
@@ -202,7 +203,7 @@ mod tests {
     fn test_gift_code_sender_note_builder_creation_fails_with_invalid_note() {
         // Create Memo Builder with an input longer than allowed
         let note_bytes = [b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN + 1];
-        let note = std::str::from_utf8(&note_bytes).unwrap();
+        let note = core::str::from_utf8(&note_bytes).unwrap();
         let builder = GiftCodeSenderMemoBuilder::new(note);
         assert_matches!(builder, Err(NewMemoError::BadInputs(_)));
     }

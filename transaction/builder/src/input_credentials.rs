@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::TxBuilderError;
+use alloc::vec::Vec;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData, SignableInputRing};
 use mc_transaction_core::{
