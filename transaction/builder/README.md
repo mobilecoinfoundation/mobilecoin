@@ -1,6 +1,6 @@
 # mc-transaction-builder
 
-This crate provides the One True `TransactionBuilder` and related builder objects
+This crate provides the officially supported `TransactionBuilder` and related builder objects
 that MobileCoin clients use, such as `MemoBuilder` and `SignedContingentInputBuilder`.
 
 This crate is not intended to become a part of the consensus enclave, instead
