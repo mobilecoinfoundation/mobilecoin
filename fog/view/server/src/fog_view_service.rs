@@ -15,7 +15,7 @@ use mc_fog_api::{
     view_grpc::{FogViewApi, FogViewStoreApi},
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
-use mc_fog_types::view::QueryRequestAAD;
+use mc_fog_types::{common::BlockRange, view::QueryRequestAAD};
 use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
@@ -257,6 +257,8 @@ where
                     } else {
                         response.set_query_response(attested_message);
                         response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
+                        // TODO: Make this the block range that corresponds to the epoch sharding
+                        response.set_block_range(BlockRange::default())
                     }
                 }
                 return response;
