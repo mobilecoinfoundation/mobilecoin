@@ -294,7 +294,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                 self.db.get_tx_outs_by_block_range_and_key(
                     ingress_key,
                     block_index,
-                    self.block_batch_request_size as u64,
+                    self.block_batch_request_size,
                 )
             };
 

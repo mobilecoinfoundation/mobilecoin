@@ -273,7 +273,7 @@ pub trait RecoveryDb {
         &self,
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
-        block_count: u64,
+        block_count: usize,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error>;
 
     /// Get the invocation id that published this block with this key.

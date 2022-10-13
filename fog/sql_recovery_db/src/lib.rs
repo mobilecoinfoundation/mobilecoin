@@ -952,7 +952,7 @@ impl SqlRecoveryDb {
         &self,
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
-        block_count: u64,
+        block_count: usize,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Error> {
         let conn = self.pool.get()?;
 
@@ -1438,7 +1438,7 @@ impl RecoveryDb for SqlRecoveryDb {
         &self,
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
-        block_count: u64,
+        block_count: usize,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error> {
         our_retry(self.get_retries(), || {
             self.get_tx_outs_by_block_range_and_key_retriable(ingress_key, block_index, block_count)
