@@ -258,7 +258,6 @@ where
                         response.set_query_response(attested_message);
                         response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
                         // TODO: Make this the block range that corresponds to the epoch sharding
-                        response.set_block_range(BlockRange::default())
                     }
                 }
                 return response;
@@ -266,6 +265,7 @@ where
         }
 
         response.set_status(MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR);
+        response.set_block_range(self.sharding_strategy.get_block_range());
         response
     }
 

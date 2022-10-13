@@ -21,6 +21,9 @@ pub trait ShardingStrategy {
     /// Different sharding strategies might be ready to serve TxOuts when
     /// different conditions have been met.
     fn is_ready_to_serve_tx_outs(&self, processed_block_count: BlockCount) -> bool;
+
+    /// Returns the block range that this sharding strategy is responsible for.
+    fn get_block_range(&self) -> BlockRange;
 }
 
 /// Determines whether or not to process a block's TxOuts based on the "epoch"
@@ -43,6 +46,10 @@ impl ShardingStrategy for EpochShardingStrategy {
 
     fn is_ready_to_serve_tx_outs(&self, processed_block_count: BlockCount) -> bool {
         self.have_enough_blocks_been_processed(processed_block_count)
+    }
+
+    fn get_block_range(&self) -> BlockRange {
+        self.epoch_block_range.clone()
     }
 }
 
