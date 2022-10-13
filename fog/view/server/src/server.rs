@@ -428,7 +428,7 @@ where
             db_fetcher: DbFetcher::new(
                 db,
                 readiness_indicator,
-                config.block_batch_request_size,
+                config.block_query_batch_size,
                 logger.clone(),
             ),
             enclave_block_tracker: BlockTracker::new(logger.clone()),

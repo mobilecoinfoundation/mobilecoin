@@ -78,7 +78,7 @@ impl DbFetcher {
     pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
         db: DB,
         readiness_indicator: ReadinessIndicator,
-        block_batch_request_size: usize,
+        block_query_batch_size: usize,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -103,7 +103,7 @@ impl DbFetcher {
                         thread_shared_state,
                         thread_num_queued_records_limiter,
                         readiness_indicator,
-                        block_batch_request_size,
+                        block_query_batch_size,
                         logger,
                     )
                 })
@@ -174,7 +174,7 @@ struct DbFetcherThread<DB: RecoveryDb + Clone + Send + Sync + 'static> {
     block_tracker: BlockTracker,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
     readiness_indicator: ReadinessIndicator,
-    block_batch_request_size: usize,
+    block_query_batch_size: usize,
     logger: Logger,
 }
 
@@ -187,11 +187,11 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
         readiness_indicator: ReadinessIndicator,
-        block_batch_request_size: usize,
+        block_query_batch_size: usize,
         logger: Logger,
     ) {
         assert!(
-            block_batch_request_size > 0,
+            block_query_batch_size > 0,
             "Block batch request size cannot be 0, this is a configuration error"
         );
         let thread = Self {
@@ -201,7 +201,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             block_tracker: BlockTracker::new(logger.clone()),
             num_queued_records_limiter,
             readiness_indicator,
-            block_batch_request_size,
+            block_query_batch_size,
             logger,
         };
         thread.run();
@@ -294,7 +294,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                 self.db.get_tx_outs_by_block_range_and_key(
                     ingress_key,
                     block_index,
-                    self.block_batch_request_size,
+                    self.block_query_batch_size,
                 )
             };
 
@@ -312,7 +312,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                         block_index,
                     );
 
-                    if block_results.len() == self.block_batch_request_size {
+                    if block_results.len() == self.block_query_batch_size {
                         // Ingest has produced as much block data as we asked for,
                         // we'd like to keep trying to download in the next loop iteration.
                         may_have_more_work = true;

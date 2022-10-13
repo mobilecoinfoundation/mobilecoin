@@ -75,6 +75,6 @@ pub struct MobileAcctViewConfig {
     /// How many blocks to request at once when requesting blocks from postgres
     /// Increasing this may help if there is high network latency with postgres,
     /// and should not much harm performance otherwise when loading the DB.
-    #[clap(long, default_value = "100", env = "MC_BLOCK_BATCH_REQUEST_SIZE")]
-    pub block_batch_request_size: usize,
+    #[clap(long, default_value = "1000", env = "MC_BLOCK_QUERY_BATCH_SIZE")]
+    pub block_query_batch_size: usize,
 }
