@@ -27,16 +27,8 @@ pub enum Error {
     /// Mint configuration is not allowed for token id {0}
     MintConfigNotAllowed(TokenId),
 
-    /**
-     * Invalid mint configuration for token id {0}: must have at least one
-     * signer
-     */
-    NoSigners(TokenId),
-
-    /** Invalid mint configuration for token id {0}: signer set threshold
-     * exceeds number of signers
-     */
-    SignerSetThresholdExceedsSigners(TokenId),
+    /// Signer set for token id {0} is invalid: {1}
+    SignerSet(TokenId, String),
 
     /// Cannot figure out file extension
     PathExtension,
