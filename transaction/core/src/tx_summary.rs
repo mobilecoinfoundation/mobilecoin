@@ -37,7 +37,7 @@
 //! * A 32 byte digest resulting from that is new "extended message with tx
 //!   summary digest", and this is what the MLSAG actually sign.
 //!
-//! We propose that the TxSummary contains:
+//! The TxSummary contains:
 //! * For each output in TxPrefix.outputs, the public key, target key, and
 //!   masked amount.
 //! * The list of pseudo output commitments.
