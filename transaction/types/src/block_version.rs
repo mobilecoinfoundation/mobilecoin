@@ -20,8 +20,7 @@ use serde::{Deserialize, Serialize};
 /// you should try to convert them to BlockVersion.
 /// If that conversion fails, it means that this set of rules
 /// is not understood by your version of `mc-transaction-core`.
-/// This means that your build has reached end-of-life, and the user needs to
-/// update.
+/// This means that your build has reached end-of-life, and needs an update.
 ///
 /// You should not assume that all block versions you will ever see will be
 /// understood by your version of transaction core, otherwise there will be
