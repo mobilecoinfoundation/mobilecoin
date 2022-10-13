@@ -300,57 +300,59 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
             match get_tx_outs_by_block_result {
                 Ok(block_results) => {
-                    if !block_results.is_empty() {
-                        // Log
-                        log::info!(
-                            self.logger,
-                            "ingress_key {:?} fetched {} blocks starting with block {}",
-                            ingress_key,
-                            block_results.len(),
-                            block_index,
-                        );
+                    if block_results.is_empty() {
+                        continue;
+                    };
 
-                        if block_results.len() == self.block_batch_request_size {
-                            // Ingest has produced as much block data as we asked for,
-                            // we'd like to keep trying to download in the next loop iteration.
-                            may_have_more_work = true;
+                    log::info!(
+                        self.logger,
+                        "ingress_key {:?} fetched {} blocks starting with block {}",
+                        ingress_key,
+                        block_results.len(),
+                        block_index,
+                    );
+
+                    if block_results.len() == self.block_batch_request_size {
+                        // Ingest has produced as much block data as we asked for,
+                        // we'd like to keep trying to download in the next loop iteration.
+                        may_have_more_work = true;
+                    }
+
+                    for (idx, tx_outs) in block_results.into_iter().enumerate() {
+                        // shadow block_index using the offset from enumerate
+                        // block_index is now the index of these tx_outs
+                        let block_index = block_index + idx as u64;
+                        let num_tx_outs = tx_outs.len();
+
+                        // Mark that we are done fetching data for this block.
+                        self.block_tracker.block_processed(ingress_key, block_index);
+
+                        // Store the fetched records so that they could be consumed by the
+                        // enclave when its ready.
+                        {
+                            let mut state = self.shared_state();
+                            state.fetched_records.push(FetchedRecords {
+                                ingress_key,
+                                block_index,
+                                records: tx_outs,
+                            });
                         }
 
-                        for (idx, tx_outs) in block_results.into_iter().enumerate() {
-                            let idx = idx as u64;
-                            let num_tx_outs = tx_outs.len();
+                        // Update metrics.
+                        counters::BLOCKS_FETCHED_COUNT.inc();
+                        counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as u64);
 
-                            // Mark that we are done fetching data for this block.
-                            self.block_tracker
-                                .block_processed(ingress_key, block_index + idx);
+                        // Block if we have queued up enough records for now.
+                        // (Until the enclave thread drains the queue).
+                        let (lock, condvar) = &*self.num_queued_records_limiter;
+                        let mut num_queued_records = condvar
+                            .wait_while(lock.lock().unwrap(), |num_queued_records| {
+                                *num_queued_records > MAX_QUEUED_RECORDS
+                            })
+                            .expect("condvar wait failed");
+                        *num_queued_records += num_tx_outs;
 
-                            // Store the fetched records so that they could be consumed by the
-                            // enclave when its ready.
-                            {
-                                let mut state = self.shared_state();
-                                state.fetched_records.push(FetchedRecords {
-                                    ingress_key,
-                                    block_index: block_index + idx,
-                                    records: tx_outs,
-                                });
-                            }
-
-                            // Update metrics.
-                            counters::BLOCKS_FETCHED_COUNT.inc();
-                            counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as u64);
-
-                            // Block if we have queued up enough records for now.
-                            // (Until the enclave thread drains the queue).
-                            let (lock, condvar) = &*self.num_queued_records_limiter;
-                            let mut num_queued_records = condvar
-                                .wait_while(lock.lock().unwrap(), |num_queued_records| {
-                                    *num_queued_records > MAX_QUEUED_RECORDS
-                                })
-                                .expect("condvar wait failed");
-                            *num_queued_records += num_tx_outs;
-
-                            counters::DB_FETCHER_NUM_QUEUED_RECORDS.set(*num_queued_records as i64);
-                        }
+                        counters::DB_FETCHER_NUM_QUEUED_RECORDS.set(*num_queued_records as i64);
                     }
                 }
                 Err(err) => {
