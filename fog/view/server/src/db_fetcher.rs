@@ -179,10 +179,9 @@ where
     db: DB,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
-    block_tracker: BlockTracker,
+    block_tracker: BlockTracker<SS>,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
     readiness_indicator: ReadinessIndicator,
-    sharding_strategy: SS,
     logger: Logger,
 }
 
@@ -206,10 +205,9 @@ where
             db,
             stop_requested,
             shared_state,
-            block_tracker: BlockTracker::new(logger.clone()),
+            block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
             num_queued_records_limiter,
             readiness_indicator,
-            sharding_strategy,
             logger,
         };
         thread.run();
@@ -321,8 +319,7 @@ where
                     may_have_more_work = true;
 
                     // Mark that we are done fetching data for this block.
-                    self.block_tracker.block_processed(ingress_key, block_index);
-                    if !self.sharding_strategy.should_process_block(block_index) {
+                    if !self.block_tracker.block_processed(ingress_key, block_index) {
                         log::trace!(
                             self.logger,
                             "Not adding block_index {} TxOuts because this shard is not responsible for it.",
