@@ -964,20 +964,27 @@ impl SqlRecoveryDb {
         //
         // This ensures that we can detect any gaps in the data
         let key_bytes: &[u8] = ingress_key.as_ref();
-        let query = schema::ingested_blocks::dsl::ingested_blocks
-            .filter(schema::ingested_blocks::dsl::ingress_public_key.eq(key_bytes))
-            .filter(schema::ingested_blocks::dsl::block_number.ge(block_index as i64))
-            .filter(
-                schema::ingested_blocks::dsl::block_number.lt((block_index + block_count) as i64),
-            )
-            .select((
-                schema::ingested_blocks::dsl::block_number,
-                schema::ingested_blocks::dsl::proto_ingested_block_data,
-            ))
-            .order(schema::ingested_blocks::dsl::block_number.asc());
+        let query = {
+            use schema::ingested_blocks::dsl;
+            dsl::ingested_blocks
+                .filter(dsl::ingress_public_key.eq(key_bytes))
+                .filter(dsl::block_number.ge(block_index as i64))
+                .limit(block_count as i64)
+                .select((dsl::block_number, dsl::proto_ingested_block_data))
+                .order(dsl::block_number.asc())
+        };
 
         // We will get one row for each hit in the table we found
         let rows: Vec<(i64, Vec<u8>)> = query.load::<(i64, Vec<u8>)>(&conn)?;
+
+        if rows.len() > block_count as usize {
+            log::warn!(
+                self.logger,
+                "When querying, more responses than expected: {} > {}",
+                rows.len(),
+                block_count
+            );
+        }
 
         // We want to iterate over the rows we got, make sure there are no gaps in block
         // indices, and decode the TxOut's and return them. If there are gaps,
@@ -2376,6 +2383,100 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(tx_outs, records2);
+    }
+
+    #[test_with_logger]
+    fn test_get_tx_outs_by_block_range_and_key(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key, 122).unwrap();
+
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 122)
+            .unwrap();
+
+        let invoc_id2 = db
+            .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let (block1, records1) = random_block(&mut rng, 122, 10);
+        db.add_block_data(&invoc_id1, &block1, 0, &records1)
+            .unwrap();
+
+        let (block2, records2) = random_block(&mut rng, 123, 10);
+        db.add_block_data(&invoc_id2, &block2, 0, &records2)
+            .unwrap();
+
+        // Get tx outs for a key we're not aware of or a block id we're not aware of
+        // should return empty vec
+        let batch_result = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, 124, 2)
+            .unwrap();
+        assert_eq!(batch_result.len(), 0);
+
+        let batch_result = db
+            .get_tx_outs_by_block_range_and_key(
+                CompressedRistrettoPublic::from_random(&mut rng),
+                123,
+                2,
+            )
+            .unwrap();
+        assert_eq!(batch_result.len(), 0);
+
+        // Getting tx outs in a batch should work as expected when requesting things
+        // that exist
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 1)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records1);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 1)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 2);
+        assert_eq!(batch_results[0], records1);
+        assert_eq!(batch_results[1], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 2);
+        assert_eq!(batch_results[0], records1);
+        assert_eq!(batch_results[1], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        // When there is a gap in the data, the gap should suppress any further results
+        // even if there are hits later in the range.
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 1, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 0);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 2, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 0);
     }
 
     #[test_with_logger]
