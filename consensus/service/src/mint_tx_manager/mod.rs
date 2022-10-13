@@ -253,7 +253,7 @@ mod mint_config_tx_tests {
     use super::*;
     use mc_blockchain_types::BlockContents;
     use mc_common::logger::test_with_logger;
-    use mc_crypto_multisig::SignerSetV1;
+    use mc_crypto_multisig::SignerSetV2;
     use mc_ledger_db::test_utils::{
         add_block_contents_to_ledger, create_ledger, initialize_ledger,
     };
@@ -281,7 +281,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -313,15 +313,15 @@ mod mint_config_tx_tests {
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
-                SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_2,
-                SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_3,
-                SignerSetV1::new(signers3.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers3.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
         ])
         .unwrap();
@@ -354,7 +354,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
 
@@ -410,7 +410,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -454,7 +454,7 @@ mod mint_config_tx_tests {
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -485,7 +485,7 @@ mod mint_config_tx_tests {
         let (mut mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -519,7 +519,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx4, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -578,11 +578,11 @@ mod mint_config_tx_tests {
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
-                SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_2,
-                SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
         ])
         .unwrap();
@@ -626,7 +626,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx6, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -670,7 +670,7 @@ mod mint_tx_tests {
     use mc_blockchain_types::BlockContents;
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
-    use mc_crypto_multisig::SignerSetV1;
+    use mc_crypto_multisig::SignerSetV2;
     use mc_ledger_db::test_utils::{
         add_block_contents_to_ledger, create_ledger, initialize_ledger,
     };
@@ -707,7 +707,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -753,11 +753,11 @@ mod mint_tx_tests {
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
-                SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_2,
-                SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
         ])
         .unwrap();
@@ -819,11 +819,11 @@ mod mint_tx_tests {
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
-                SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_2,
-                SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
         ])
         .unwrap();
@@ -901,7 +901,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -991,7 +991,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -1079,7 +1079,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -1140,7 +1140,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -1190,7 +1190,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -1274,7 +1274,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =
@@ -1358,11 +1358,11 @@ mod mint_tx_tests {
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
-                SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
             (
                 token_id_2,
-                SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+                SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1),
             ),
         ])
         .unwrap();
@@ -1461,7 +1461,7 @@ mod mint_tx_tests {
         // Create MintTxManagerImpl
         let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
-            SignerSetV1::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+            SignerSetV2::new(signers.iter().map(|s| s.public_key().into()).collect(), 1),
         )])
         .unwrap();
         let mint_tx_manager =

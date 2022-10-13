@@ -310,7 +310,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             .into_iter()
             .map(|mint_config_tx| ValidatedMintConfigTx {
                 mint_config_tx,
-                signer_set: SignerSetV1::default(),
+                signer_set: Some(SignerSetV1::default().into()),
             })
             .collect();
 

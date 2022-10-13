@@ -38,7 +38,7 @@ message TokenConfig {
     uint64 minimum_fee = 2;
 
     // Minting governors (optional, only when minting is configured).
-    external.Ed25519SignerSetV1 governors = 3;
+    external.Ed25519SignerSetV2 governors = 3;
 
     // Currently active mint configurations for this token (optional, only if a valid MintConfigTx has been previously issued).
     ActiveMintConfigs active_mint_configs = 4;

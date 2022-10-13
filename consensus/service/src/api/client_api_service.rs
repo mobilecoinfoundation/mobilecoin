@@ -170,8 +170,8 @@ impl ClientApiService {
                 grpc_token_config.set_token_id(*token_config.token_id());
                 grpc_token_config
                     .set_minimum_fee(token_config.minimum_fee_or_default().unwrap_or(0));
-                if let Some(governors) = token_config.governors() {
-                    grpc_token_config.set_governors(governors.into());
+                if let Ok(Some(governors)) = token_config.governors() {
+                    grpc_token_config.set_governors((&governors).into());
                 }
 
                 let active_mint_configs = self
