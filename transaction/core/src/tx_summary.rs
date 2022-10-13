@@ -74,7 +74,7 @@
 //! Tx. So it could completely account for the transfer of value caused by the
 //! Tx, it could identify change outputs, and it could display b58 encodings of
 //! the public addresses for outbound transfers. This should only require
-//! sending a few kb in the worst case.
+//! sending a few KB in the worst case.
 //!
 //! It's reasonable to ask, what if the computer lies to the device in the
 //! TxSummary. What if, the TxPrefix actually says one thing, and the TxSummary
