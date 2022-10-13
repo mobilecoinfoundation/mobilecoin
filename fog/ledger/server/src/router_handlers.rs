@@ -167,7 +167,7 @@ where
     Ok(response)
 }
 
-#[allow(unused_variables)] // FIXME when enclave code is set up.
+#[allow(unused_variables)]
 /// Handles a client's query request.
 async fn handle_query_request<E>(
     query: attest::Message,

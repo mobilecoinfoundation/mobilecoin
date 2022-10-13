@@ -126,7 +126,6 @@ pub trait LedgerEnclave: ReportableEnclave {
         untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>>;
 
-
     /// Decrypts a client query message and converts it into a
     /// SealedClientMessage which can be unsealed multiple times to
     /// construct the MultiKeyImageStoreRequest.

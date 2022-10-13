@@ -100,18 +100,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         }
     }
 
-    /// Unwrap and forward to enclave
-    // self.enclave.check_key_images should take both an AttestMessage and an
-    // UntrustedKeyImageQueryResponse object that contains any data that is
-    // needed that isn't in the ORAM. This might be like "num_blocks" and similar
-    // stuff. self.enclave.check_key_images should return an AttestMessage that
-    // we send back to the user.
-    fn check_key_images_auth(
-        &mut self,
-        request: attest::Message,
-    ) -> Result<attest::Message, RpcStatus> {
-        log::trace!(self.logger, "Getting encrypted request");
-
+    /// Generate an UntrustedKeyImageQueryResponse 
+    /// for use in [KeyImageService::check_key_images_auth()]
+    /// and [KeyImageService::check_key_image_store_auth()]
+    fn prepare_untrusted_query(&mut self) -> UntrustedKeyImageQueryResponse { 
         let (
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
@@ -125,12 +117,27 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             )
         };
 
-        let untrusted_query_response = UntrustedKeyImageQueryResponse {
+        UntrustedKeyImageQueryResponse {
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
             latest_block_version,
             max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
-        };
+        }
+    }
+
+    /// Unwrap and forward to enclave
+    // self.enclave.check_key_images should take both an AttestMessage and an
+    // UntrustedKeyImageQueryResponse object that contains any data that is
+    // needed that isn't in the ORAM. This might be like "num_blocks" and similar
+    // stuff. self.enclave.check_key_images should return an AttestMessage that
+    // we send back to the user.
+    fn check_key_images_auth(
+        &mut self,
+        request: attest::Message,
+    ) -> Result<attest::Message, RpcStatus> {
+        log::trace!(self.logger, "Getting encrypted request");
+
+        let untrusted_query_response = self.prepare_untrusted_query();
 
         let result_blob = self
             .enclave
@@ -138,6 +145,30 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
 
         let mut resp = attest::Message::new();
+        resp.set_data(result_blob);
+        Ok(resp)
+    }
+
+    /// Unwrap and forward to enclave
+    // self.enclave.check_key_images should take both a NonceMessage and an
+    // UntrustedKeyImageQueryResponse object that contains any data that is
+    // needed that isn't in the ORAM. This might be like "num_blocks" and similar
+    // stuff. self.enclave.check_key_images should return an AttestMessage that
+    // we send back to the user.
+    fn check_key_image_store_auth(
+        &mut self,
+        request: attest::NonceMessage,
+    ) -> Result<attest::NonceMessage, RpcStatus> {
+        log::trace!(self.logger, "Getting encrypted request");
+
+        let untrusted_query_response = self.prepare_untrusted_query();
+
+        let result_blob = self
+            .enclave
+            .check_key_image_store(request.into(), untrusted_query_response)
+            .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
+
+        let mut resp = attest::NonceMessage::new();
         resp.set_data(result_blob);
         Ok(resp)
     }
@@ -167,7 +198,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             // Only one of the query messages in the multi-store query is intended for this store.
             // It's a bit of a broadcast model - all queries are sent to all stores, and then 
             // the stores evaluate which message is meant for them.
-            if let Ok(attested_message) = self.check_key_images_auth(query) { //Needs a different method? 
+            if let Ok(attested_message) = self.check_key_image_store_auth(query) { //Needs a different method? 
                 response.set_query_response(attested_message);
                 response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
 

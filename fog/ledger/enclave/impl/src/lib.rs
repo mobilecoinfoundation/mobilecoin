@@ -316,10 +316,9 @@ where
     fn check_key_image_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        untrusted_key_image_query_response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>> {
         let channel_id = msg.channel_id.clone();
-        let responder_id = self.ake.get_peer_self_id()?;
         let user_plaintext = self.ake.frontend_decrypt(msg)?;
         
         let req: CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
@@ -348,8 +347,8 @@ where
                 .collect();
         }
 
+        // Encrypt for return to router 
         let response_plaintext_bytes = mc_util_serial::encode(&resp);
-
         let response = self
             .ake
             .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;

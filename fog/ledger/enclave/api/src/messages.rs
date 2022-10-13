@@ -140,5 +140,13 @@ pub enum EnclaveCall {
     CollateQueryResponses(
         SealedClientMessage,
         BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
-    )
+    ),
+
+    /// The [LedgerEnclave::client_check_key_image_store()] method.
+    /// Store-side Ledger/Router system equivalent to [EnclaveCall::CheckKeyImages] 
+    /// Start a new key image check from a client.
+    CheckKeyImageStore(
+        EnclaveMessage<NonceSession>,
+        UntrustedKeyImageQueryResponse,
+    ),
 }

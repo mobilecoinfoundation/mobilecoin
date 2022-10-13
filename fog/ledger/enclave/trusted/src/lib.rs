@@ -81,6 +81,9 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::CollateQueryResponses(sealed_query, shard_query_responses) => {
             serialize(&ENCLAVE.collate_shard_query_responses(sealed_query, shard_query_responses))
         }
+        EnclaveCall::CheckKeyImageStore(req, untrusted_keyimagequery_response) => {
+            serialize(&ENCLAVE.check_key_image_store(req, untrusted_keyimagequery_response))
+        }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }

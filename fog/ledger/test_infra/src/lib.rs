@@ -121,6 +121,14 @@ impl LedgerEnclave for MockEnclave {
     ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
+
+    fn check_key_image_store(
+        &self,
+        _msg: EnclaveMessage<NonceSession>,
+        _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> EnclaveResult<Vec<u8>> {
+        todo!()
+    }
 }
 
 #[derive(Clone, Default)]

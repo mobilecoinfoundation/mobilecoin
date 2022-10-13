@@ -30,6 +30,16 @@ impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
     }
 }
 
+impl From<Vec<EnclaveMessage<NonceSession>>> for MultiKeyImageStoreRequest {
+    fn from(enclave_messages: Vec<EnclaveMessage<NonceSession>>) -> MultiKeyImageStoreRequest {
+        enclave_messages
+            .into_iter()
+            .map(|enclave_message| enclave_message.into())
+            .collect::<Vec<attest::NonceMessage>>()
+            .into()
+    }
+}
+
 impl From<Vec<attest::NonceMessage>> for MultiKeyImageStoreRequest {
     fn from(attested_query_messages: Vec<attest::NonceMessage>) -> MultiKeyImageStoreRequest {
         let mut multi_key_image_store_request = MultiKeyImageStoreRequest::new();
