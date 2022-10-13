@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The TxSummary is meant to reduce the complexity of implementing a hardware
-//! wallet. (See MCIP 52 also.)
+//! wallet. (See MCIP 52)
 //!
 //! Hardware wallets have the following issue:
 //! * The main function they want to perform is signing RingMLSAG. This only
