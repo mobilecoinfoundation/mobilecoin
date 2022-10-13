@@ -20,6 +20,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add a `--hash-tx-file` subcommand to print the hash of a `mint-tx` or `mint-config-tx` file.
 - Add the current block info (fee map, block version, etc.) to the response message for `mobilecoind_api.GetNetworkStatus`.
 - Make Jaeger telemetry opt-in using `MC_TELEMETRY=1`. 
+- Add a `--block-query-batch-size` parameter to fog-view. This makes fog-view load more data at once from postgres, and helps it to start up faster even if there is high
+  network latency in the connection to postgres. This defaults to 1000 now, where previous behavior corresponds to a value of 1.
 
 ### Fixes
 
