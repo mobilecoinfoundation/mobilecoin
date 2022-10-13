@@ -67,7 +67,7 @@ impl UnsignedTx {
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        Ok(SigningData::new(
+        SigningData::new(
             self.block_version,
             &message,
             &self.rings,
@@ -75,6 +75,6 @@ impl UnsignedTx {
             fee_amount,
             true,
             rng,
-        )?)
+        )
     }
 }
