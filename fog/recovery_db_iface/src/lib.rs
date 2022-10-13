@@ -265,11 +265,11 @@ pub trait RecoveryDb {
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
     /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many subsequent blocks to also request data for.
+    /// * block_count: How many consecutive blocks to also request data for.
     ///
     /// Returns:
-    /// * The sequence of ETxOutRecord's, from consequecutive blocks starting
-    ///   from block_index. Empty if not even the block_index'th block exists.
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
     fn get_tx_outs_by_block_range_and_key(
         &self,
         ingress_key: CompressedRistrettoPublic,

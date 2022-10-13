@@ -980,11 +980,11 @@ impl SqlRecoveryDb {
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
     /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many subsequent blocks to also request data for.
+    /// * block_count: How many consecutive blocks to also request data for.
     ///
     /// Returns:
-    /// * The sequence of ETxOutRecord's, from consequecutive blocks starting
-    ///   from block_index. Empty if not even the block_index'th block exists.
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
     fn get_tx_outs_by_block_range_and_key_retriable(
         &self,
         ingress_key: CompressedRistrettoPublic,
@@ -1012,7 +1012,7 @@ impl SqlRecoveryDb {
         };
 
         // We will get one row for each hit in the table we found
-        let rows: Vec<(i64, Vec<u8>)> = query.load::<(i64, Vec<u8>)>(&conn)?;
+        let rows: Vec<(i64, Vec<u8>)> = query.load(&conn)?;
 
         if rows.len() > block_count {
             log::warn!(
@@ -1474,11 +1474,11 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
     /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many subsequent blocks to also request data for.
+    /// * block_count: How many consecutive blocks to also request data for.
     ///
     /// Returns:
-    /// * The sequence of ETxOutRecord's, from consequecutive blocks starting
-    ///   from block_index. Empty if not even the block_index'th block exists.
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
     fn get_tx_outs_by_block_range_and_key(
         &self,
         ingress_key: CompressedRistrettoPublic,
