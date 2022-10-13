@@ -94,7 +94,7 @@ pub fn create_mint_config_tx(
 pub fn mint_config_tx_to_validated(mint_config_tx: &MintConfigTx) -> ValidatedMintConfigTx {
     ValidatedMintConfigTx {
         mint_config_tx: mint_config_tx.clone(),
-        signer_set: SignerSetV1::default(),
+        signer_set: Some(SignerSetV1::default().into()),
     }
 }
 

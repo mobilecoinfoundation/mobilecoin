@@ -3,15 +3,14 @@
 //! Convert between the Rust and Protobuf versions of [ValidatedMintConfigTx]
 
 use crate::{external, ConversionError};
-use mc_crypto_multisig::SignerSetV1;
-use mc_transaction_core::mint::{MintConfigTx, ValidatedMintConfigTx};
+use mc_transaction_core::mint::{MintConfigTx, ValidatedMintConfigTx, VersionedSignerSet};
 
 /// Convert ValidatedMintConfigTx --> external::ValidatedMintConfigTx.
 impl From<&ValidatedMintConfigTx> for external::ValidatedMintConfigTx {
     fn from(src: &ValidatedMintConfigTx) -> Self {
         let mut dst = external::ValidatedMintConfigTx::new();
         dst.set_mint_config_tx((&src.mint_config_tx).into());
-        dst.set_signer_set((&src.signer_set).into());
+        dst.signer_set = src.signer_set.as_ref().map(Into::into);
         dst
     }
 }
@@ -22,7 +21,11 @@ impl TryFrom<&external::ValidatedMintConfigTx> for ValidatedMintConfigTx {
 
     fn try_from(source: &external::ValidatedMintConfigTx) -> Result<Self, Self::Error> {
         let mint_config_tx = MintConfigTx::try_from(source.get_mint_config_tx())?;
-        let signer_set = SignerSetV1::try_from(source.get_signer_set())?;
+        let oneof_signer_set = source
+            .signer_set
+            .as_ref()
+            .ok_or(ConversionError::ObjectMissing)?;
+        let signer_set = Some(VersionedSignerSet::try_from(oneof_signer_set)?);
         Ok(Self {
             mint_config_tx,
             signer_set,
@@ -66,7 +69,7 @@ mod tests {
                 },
                 signature: test_multi_sig(),
             },
-            signer_set: test_signer_set_v1(),
+            signer_set: Some(test_signer_set_v1().into()),
         };
 
         // decode(encode(source)) should be the identity function.

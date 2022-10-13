@@ -923,7 +923,7 @@ mod tests {
         slot::SlotMetrics,
         MockScpNode, QuorumSet,
     };
-    use mc_crypto_multisig::SignerSetV1;
+    use mc_crypto_multisig::SignerSetV2;
     use mc_ledger_db::{
         test_utils::{
             add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
@@ -1660,7 +1660,8 @@ mod tests {
         };
         add_block_contents_to_ledger(&mut ledger, block_version, block_contents, &mut rng).unwrap();
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger.clone(), block_version, governors_map, logger.clone());

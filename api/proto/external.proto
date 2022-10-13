@@ -488,7 +488,11 @@ message MintConfigTx {
 /// A mint-config transaction coupled with the data used to validate it.
 message ValidatedMintConfigTx {
     MintConfigTx mint_config_tx = 1;
-    Ed25519SignerSetV1 signer_set = 2;
+
+    oneof signer_set {
+        Ed25519SignerSetV1 signer_set_v1 = 2;
+        Ed25519SignerSetV2 signer_set_v2 = 4;
+    }
 }
 
 // The amount and blinding factor of a TxOut

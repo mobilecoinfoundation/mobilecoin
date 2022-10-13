@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 pub extern crate prost;
 
-pub use prost::{DecodeError, EncodeError, Message};
+pub use prost::{DecodeError, EncodeError, Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,

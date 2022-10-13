@@ -366,7 +366,7 @@ impl SgxConsensusEnclave {
 
             validated_txs.push(ValidatedMintConfigTx {
                 mint_config_tx: tx,
-                signer_set: governors,
+                signer_set: Some(governors.into()),
             });
         }
 
@@ -1035,7 +1035,7 @@ mod tests {
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
-    use mc_crypto_multisig::SignerSetV1;
+    use mc_crypto_multisig::SignerSetV2;
     use mc_ledger_db::{
         test_utils::{add_txos_to_ledger, create_ledger, create_transaction, initialize_ledger},
         Ledger,
@@ -1085,7 +1085,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
         let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
         let governors_map1 =
             GovernorsMap::try_from_iter([(token_id1, signer_set1.clone())]).unwrap();
         let governors_map2 = GovernorsMap::try_from_iter([(token_id2, signer_set1)]).unwrap();
@@ -2233,8 +2234,10 @@ mod tests {
             &mut rng,
         );
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map =
             GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
@@ -2368,7 +2371,8 @@ mod tests {
             &mut rng,
         );
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
 
@@ -2452,7 +2456,8 @@ mod tests {
             &mut rng,
         );
 
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map = GovernorsMap::try_from_iter([
             // NOTE: token_id1 is also governed by signer_set2, which means a MintTx signed with a
@@ -2527,8 +2532,10 @@ mod tests {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map = GovernorsMap::try_from_iter([
             (token_id1, signer_set1.clone()),
@@ -2599,11 +2606,11 @@ mod tests {
                 vec![
                     ValidatedMintConfigTx {
                         mint_config_tx: mint_config_tx1.clone(),
-                        signer_set: signer_set1.clone(),
+                        signer_set: Some(signer_set1.clone().into()),
                     },
                     ValidatedMintConfigTx {
                         mint_config_tx: mint_config_tx2.clone(),
-                        signer_set: signer_set2.clone(),
+                        signer_set: Some(signer_set2.clone().into()),
                     }
                 ]
             );
@@ -2625,7 +2632,8 @@ mod tests {
         let (mint_config_tx1, _signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map = GovernorsMap::try_from_iter([(token_id2, signer_set2)]).unwrap();
 
@@ -2688,7 +2696,8 @@ mod tests {
         let (mut mint_config_tx1, signers1) =
             create_mint_config_tx_and_signers(token_id1, &mut rng);
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
 
         // This will invalidate the signature.
         mint_config_tx1.prefix.tombstone_block += 1;
@@ -2752,7 +2761,8 @@ mod tests {
 
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
 
@@ -2832,8 +2842,10 @@ mod tests {
             &mut rng,
         );
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map =
             GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
@@ -3016,8 +3028,10 @@ mod tests {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
-        let signer_set1 = SignerSetV1::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
-        let signer_set2 = SignerSetV1::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set1 =
+            SignerSetV2::new(signers1.iter().map(|s| s.public_key().into()).collect(), 1);
+        let signer_set2 =
+            SignerSetV2::new(signers2.iter().map(|s| s.public_key().into()).collect(), 1);
 
         let governors_map =
             GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])

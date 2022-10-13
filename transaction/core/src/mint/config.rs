@@ -7,9 +7,42 @@ use alloc::vec::Vec;
 use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_crypto_multisig::{MultiSig, SignerSetV1};
-use mc_util_serial::Message;
+use mc_crypto_multisig::{MultiSig, SignerSetV1, SignerSetV2};
+use mc_util_serial::{Message, Oneof};
 use serde::{Deserialize, Serialize};
+
+/// A signer set in one of serveal possible versions
+// Note/TODO: In this revision we are not using this struct in MintConfig to reduce the changeset
+// size, but this will get addressed in a followup PR.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Oneof, Ord, PartialEq, PartialOrd, Serialize,
+)]
+#[digestible(transparent)]
+pub enum VersionedSignerSet {
+    /// A v1 signer set
+    /// Note: This tag must match the historical tag used for signer_set in
+    /// MintConfig and ValidatedMintConfigTx.
+    /// We are lucky that in both cases this is 2 so we can use this enum in
+    /// both places.
+    #[prost(message, tag = "2")]
+    V1(SignerSetV1<Ed25519Public>),
+
+    /// A v2 signer set
+    /// Note: This tag must match what is listed in `tag` for the oneof field in
+    /// MintConfig and ValidatedMintConfigTx
+    #[prost(message, tag = "4")]
+    V2(SignerSetV2<Ed25519Public>),
+}
+impl From<SignerSetV1<Ed25519Public>> for VersionedSignerSet {
+    fn from(signer_set: SignerSetV1<Ed25519Public>) -> Self {
+        Self::V1(signer_set)
+    }
+}
+impl From<SignerSetV2<Ed25519Public>> for VersionedSignerSet {
+    fn from(signer_set: SignerSetV2<Ed25519Public>) -> Self {
+        Self::V2(signer_set)
+    }
+}
 
 /// A minting configuration for a single token ID.
 /// The minting configuration specifies who is allowed to submit mint
@@ -98,6 +131,6 @@ pub struct ValidatedMintConfigTx {
     pub mint_config_tx: MintConfigTx,
 
     /// The signer set used to validate the transaction's signature.
-    #[prost(message, required, tag = "2")]
-    pub signer_set: SignerSetV1<Ed25519Public>,
+    #[prost(oneof = "VersionedSignerSet", tags = "2, 4")]
+    pub signer_set: Option<VersionedSignerSet>,
 }
