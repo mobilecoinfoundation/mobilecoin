@@ -38,6 +38,12 @@ impl From<&common::BlockRange> for fog_common::BlockRange {
     }
 }
 
+impl From<fog_common::BlockRange > for common::BlockRange{
+    fn from(proto_block_range: fog_common::BlockRange) -> common::BlockRange {
+        common::BlockRange::new(proto_block_range.start_block, proto_block_range.end_block)
+    }
+}
+
 impl TryFrom<&ingest_common::IngestSummary> for mc_fog_types::ingest_common::IngestSummary {
     type Error = ConversionError;
     fn try_from(proto_ingest_summary: &ingest_common::IngestSummary) -> Result<Self, Self::Error> {

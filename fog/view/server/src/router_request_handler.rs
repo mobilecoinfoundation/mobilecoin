@@ -21,6 +21,7 @@ use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use mc_util_uri::ConnectionUri;
 use std::{collections::BTreeMap, sync::Arc};
+use mc_fog_types::common::BlockRange;
 
 const RETRY_COUNT: usize = 3;
 
@@ -105,7 +106,7 @@ async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
+    let mut query_responses: BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
@@ -150,11 +151,11 @@ where
             )
         })?;
 
-        for (store_responder_id, new_query_response) in processed_shard_response_data
+        for shard_query_response in processed_shard_response_data
             .new_query_responses
             .into_iter()
         {
-            query_responses.insert(store_responder_id, new_query_response.into());
+            query_responses.insert(shard_query_response.store_responder_id, (shard_query_response.encrypted_query_response.into(), shard_query_response.block_range));
         }
 
         shard_clients = processed_shard_response_data.shard_clients_for_retry;

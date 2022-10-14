@@ -7,6 +7,7 @@ use mc_fog_api::{
     view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus},
     view_grpc::FogViewStoreApiClient,
 };
+use mc_fog_types::common::BlockRange;
 use mc_fog_uri::FogViewStoreUri;
 use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
@@ -24,14 +25,29 @@ pub struct ProcessedShardResponseData {
     pub view_store_uris_for_authentication: Vec<FogViewStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
+    pub new_query_responses: Vec<ShardQueryResponse>,
+}
+
+/// Adds additional fields to the encrypted
+/// `mc_fog_types::common::QueryResponse`. These fields are specific to the
+/// functionality of the Fog View Router and are therefore not added directly to
+/// the `QueryResponse`.
+pub struct ShardQueryResponse {
+    /// The `ResponderId` for the store that fulfilled the request.
+    pub(crate) store_responder_id: ResponderId,
+
+    /// The encrypted QueryResponse.
+    pub(crate) encrypted_query_response: attest::NonceMessage,
+
+    /// The block ranges that the shard is responsible for.
+    pub(crate) block_range: BlockRange,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
         view_store_uris_for_authentication: Vec<FogViewStoreUri>,
-        new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
+        new_query_responses: Vec<ShardQueryResponse>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
@@ -54,7 +70,11 @@ pub fn process_shard_responses(
         match response.get_status() {
             MultiViewStoreQueryResponseStatus::SUCCESS => {
                 let store_responder_id = store_uri.responder_id()?;
-                new_query_responses.push((store_responder_id, response.take_query_response()));
+                new_query_responses.push(ShardQueryResponse {
+                    store_responder_id,
+                    encrypted_query_response: response.take_query_response().into(),
+                    block_range: BlockRange::from(response.take_block_range()),
+                });
             }
             // The shard was unable to produce a query response because the Fog View Store
             // it contacted isn't authenticated with the Fog View Router. Therefore

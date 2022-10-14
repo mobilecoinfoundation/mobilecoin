@@ -24,6 +24,7 @@ use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t};
 use mc_sgx_urts::SgxEnclave;
+use mc_fog_types::common::BlockRange;
 
 pub use mc_fog_view_enclave_api::{
     Error, Result, ViewEnclaveApi, ViewEnclaveInitParams, ViewEnclaveProxy, ViewEnclaveRequest,
@@ -245,7 +246,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CollateQueryResponses(
             sealed_query,

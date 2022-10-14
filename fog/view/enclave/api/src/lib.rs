@@ -26,6 +26,7 @@ use mc_sgx_compat::sync::PoisonError;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};
 use serde::{Deserialize, Serialize};
+use mc_fog_types::common::BlockRange;
 
 /// Untrusted data that is part of a view enclave query response.
 #[derive(Serialize, Deserialize)]
@@ -106,7 +107,7 @@ pub enum ViewEnclaveRequest {
     /// client.
     CollateQueryResponses(
         SealedClientMessage,
-        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)>,
     ),
 }
 
@@ -207,7 +208,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 

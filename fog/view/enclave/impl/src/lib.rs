@@ -34,6 +34,7 @@ use mc_fog_view_enclave_api::{
 };
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
+use mc_fog_types::common::BlockRange;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 
 pub struct ViewEnclave<OSC>
@@ -261,7 +262,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -292,7 +293,7 @@ where
     fn create_client_query_response(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: BTreeMap<ResponderId, (EnclaveMessage<NonceSession>, BlockRange)>,
     ) -> Result<QueryResponse> {
         // Choose any shard query response and use it to supply the skeleton values for
         // the QueryResponse. The tx_out_search_results and
@@ -302,9 +303,10 @@ where
             .iter()
             .next()
             .expect("Shard query responses must have at least one response.");
+        // TODO: Add a type so that you don't have to do 1.0.
         let shard_query_response_plaintext = self
             .ake
-            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
+            .backend_decrypt(shard_query_response.0, &shard_query_response.1.0)?;
         let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
@@ -313,13 +315,13 @@ where
 
         let shard_query_responses = shard_query_responses
             .into_iter()
-            .map(|(responder_id, enclave_message)| {
+            .map(|(responder_id, (enclave_message, block_range))| {
                 let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
-                Ok(query_response)
+                Ok((query_response, block_range))
             })
-            .collect::<Result<Vec<QueryResponse>>>()?;
+            .collect::<Result<Vec<(QueryResponse, BlockRange)>>>()?;
 
         shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
             client_query_request,
@@ -334,11 +336,11 @@ where
     fn get_collated_tx_out_search_results(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: Vec<QueryResponse>,
+        shard_query_responses: Vec<(QueryResponse, BlockRange)>,
     ) -> Result<Vec<TxOutSearchResult>> {
         let plaintext_search_results = shard_query_responses
             .into_iter()
-            .flat_map(|response| response.tx_out_search_results)
+            .flat_map(|response| response.0.tx_out_search_results)
             .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
@@ -349,12 +351,8 @@ where
 
     fn get_minimum_highest_processed_block_count(
         &self,
-        shard_query_responses: Vec<QueryResponse>,
+        _shard_query_responses: Vec<(QueryResponse, BlockRange)>,
     ) -> u64 {
-        shard_query_responses
-            .into_iter()
-            .map(|query_response| query_response.highest_processed_block_count)
-            .min()
-            .unwrap_or_default()
+        todo!()
     }
 }
