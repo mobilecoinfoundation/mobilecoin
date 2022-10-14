@@ -1184,6 +1184,8 @@ version = "2.0.0"
 dependencies = [
  "crc",
  "displaydoc",
+ "mc-attest-enclave-api",
+ "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
  "mc-transaction-core",

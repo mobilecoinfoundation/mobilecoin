@@ -1,9 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::common::BlockRange;
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use crc::Crc;
 use displaydoc::Display;
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
+use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
@@ -93,6 +95,39 @@ pub struct QueryResponse {
     /// clients sample for mixins.
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
+}
+
+/// Internal representation of the `MultiViewStoreQueryResponseStance` proto
+/// enum.
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum MultiViewStoreQueryResponseStatus {
+    /// The Fog View Store successfully fulfilled the request.
+    Success,
+    /// The Fog View Store is unable to decrypt a query within the
+    /// MultiViewStoreQuery. It needs to be authenticated by the router.
+    AuthenticationError,
+    /// The Fog View Store is not ready to service a MultiViewStoreQueryRequest.
+    /// This might be because the store has not loaded enough blocks yet.
+    NotReady,
+}
+
+/// Internal representation of the `MultiViewStoreQueryResponse` proto struct.
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct MultiViewStoreQueryResponse {
+    /// The encrypted QueryResponse.
+    pub encrypted_query_response: EnclaveMessage<NonceSession>,
+
+    /// The `ResponderId` for the store that fulfilled the request.
+    pub store_responder_id: ResponderId,
+
+    /// The `FogViewStoreUri` for the store that fulfilled the request.
+    pub store_uri: String,
+
+    /// The block ranges that the shard is responsible for.
+    pub block_range: BlockRange,
+
+    /// The response status set by the store.
+    pub status: MultiViewStoreQueryResponseStatus,
 }
 
 /// A record that can be used by the user to produce an Rng shared with fog

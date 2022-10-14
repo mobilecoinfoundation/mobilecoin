@@ -7,15 +7,12 @@ use crate::{
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_common::{logger::Logger, ResponderId};
 use mc_fog_api::{
-    view::{
-        FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest,
-        MultiViewStoreQueryResponse,
-    },
+    view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
     view_grpc::FogViewStoreApiClient,
 };
+use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
@@ -105,7 +102,7 @@ async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
+    let mut query_responses: BTreeMap<ResponderId, MultiViewStoreQueryResponse> = BTreeMap::new();
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
@@ -150,11 +147,14 @@ where
             )
         })?;
 
-        for (store_responder_id, new_query_response) in processed_shard_response_data
-            .new_query_responses
+        for multi_view_store_query_response in processed_shard_response_data
+            .multi_view_store_query_responses
             .into_iter()
         {
-            query_responses.insert(store_responder_id, new_query_response.into());
+            query_responses.insert(
+                multi_view_store_query_response.store_responder_id.clone(),
+                multi_view_store_query_response,
+            );
         }
 
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
@@ -171,7 +171,7 @@ where
     }
 
     let query_response = enclave
-        .collate_shard_query_responses(sealed_query, query_responses)
+        .collate_shard_query_responses(sealed_query, query_responses.into_values().collect())
         .map_err(|err| {
             router_server_err_to_rpc_status(
                 "Query: shard response collation",
@@ -204,7 +204,7 @@ async fn query_shard(
     let client_unary_receiver = shard_client.multi_view_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
-    Ok((shard_client, response))
+    Ok((shard_client, response.try_into()?))
 }
 
 /// Authenticates Fog View Stores that have previously not been authenticated.

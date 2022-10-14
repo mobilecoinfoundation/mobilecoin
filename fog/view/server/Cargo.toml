@@ -24,6 +24,7 @@ itertools = "0.10"
 lazy_static = "1.4"
 
 # mobilecoin
+mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }

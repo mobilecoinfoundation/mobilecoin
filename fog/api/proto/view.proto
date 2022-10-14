@@ -75,7 +75,7 @@ message MultiViewStoreQueryResponse {
     /// tried to decrypt the MultiViewStoreQueryRequest and failed.
     /// The client should subsequently authenticate with the machine
     /// described by this URI.
-    string fog_view_store_uri = 2;
+    string store_uri = 2;
 
     /// Status that gets returned when the Fog View Store services a MultiViewStoreQueryRequest.
     MultiViewStoreQueryResponseStatus status = 3;

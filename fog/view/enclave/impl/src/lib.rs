@@ -9,7 +9,6 @@ extern crate alloc;
 mod e_tx_out_store;
 mod oblivious_utils;
 
-use alloc::collections::BTreeMap;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
 use alloc::vec::Vec;
@@ -26,7 +25,8 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    view::{QueryRequest, QueryResponse, TxOutSearchResult},
+    common::BlockRange,
+    view::{MultiViewStoreQueryResponse, QueryRequest, QueryResponse, TxOutSearchResult},
     ETxOutRecord,
 };
 use mc_fog_view_enclave_api::{
@@ -261,7 +261,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -292,19 +292,19 @@ where
     fn create_client_query_response(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<QueryResponse> {
         // Choose any shard query response and use it to supply the skeleton values for
         // the QueryResponse. The tx_out_search_results and
         // highest_processed_block_count fields will be set based on all of the
         // shard query responses.
         let shard_query_response = shard_query_responses
-            .iter()
-            .next()
+            .first()
             .expect("Shard query responses must have at least one response.");
-        let shard_query_response_plaintext = self
-            .ake
-            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
+        let shard_query_response_plaintext = self.ake.backend_decrypt(
+            &shard_query_response.store_responder_id,
+            &shard_query_response.encrypted_query_response,
+        )?;
         let mut shard_query_response: QueryResponse =
             mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode shard query response: {}", e);
@@ -313,13 +313,18 @@ where
 
         let shard_query_responses = shard_query_responses
             .into_iter()
-            .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
+            .map(|multi_view_store_query_response| {
+                let plaintext_bytes = self.ake.backend_decrypt(
+                    &multi_view_store_query_response.store_responder_id,
+                    &multi_view_store_query_response
+                        .encrypted_query_response
+                        .into(),
+                )?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
-                Ok(query_response)
+                Ok((query_response, multi_view_store_query_response.block_range))
             })
-            .collect::<Result<Vec<QueryResponse>>>()?;
+            .collect::<Result<Vec<(QueryResponse, BlockRange)>>>()?;
 
         shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
             client_query_request,
@@ -334,11 +339,11 @@ where
     fn get_collated_tx_out_search_results(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: Vec<QueryResponse>,
+        shard_query_responses: Vec<(QueryResponse, BlockRange)>,
     ) -> Result<Vec<TxOutSearchResult>> {
         let plaintext_search_results = shard_query_responses
             .into_iter()
-            .flat_map(|response| response.tx_out_search_results)
+            .flat_map(|response| response.0.tx_out_search_results)
             .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
@@ -349,12 +354,8 @@ where
 
     fn get_minimum_highest_processed_block_count(
         &self,
-        shard_query_responses: Vec<QueryResponse>,
+        _shard_query_responses: Vec<(QueryResponse, BlockRange)>,
     ) -> u64 {
-        shard_query_responses
-            .into_iter()
-            .map(|query_response| query_response.highest_processed_block_count)
-            .min()
-            .unwrap_or_default()
+        todo!()
     }
 }

@@ -33,9 +33,15 @@ impl From<mc_util_uri::UriParseError> for RouterServerError {
     }
 }
 
+impl From<mc_api::ConversionError> for RouterServerError {
+    fn from(src: mc_api::ConversionError) -> Self {
+        RouterServerError::ViewStoreError(src.to_string())
+    }
+}
+
 impl From<mc_util_uri::UriConversionError> for RouterServerError {
     fn from(src: mc_util_uri::UriConversionError) -> Self {
-        RouterServerError::ViewStoreError(format!("{}", src))
+        RouterServerError::ViewStoreError(src.to_string())
     }
 }
 
