@@ -3,10 +3,11 @@
 //! Defines the Memo Builder for the gift code sender memo (0x0002)
 //! specified in MCIP #32
 
-use crate::{memo::GiftCodeSenderMemo, MemoBuilder, ReservedSubaddresses};
+use crate::{MemoBuilder, ReservedSubaddresses};
 use alloc::{format, string::String};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_extra::GiftCodeSenderMemo;
 
 /// There are three possible gift code memo types specified in MCIP #32
 /// | Memo type bytes | Name                        |

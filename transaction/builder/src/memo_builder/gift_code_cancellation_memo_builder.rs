@@ -3,9 +3,10 @@
 //! Defines the Memo Builder for the gift code cancellation memo (0x0202)
 //! specified in MCIP #32
 
-use super::{memo::GiftCodeCancellationMemo, MemoBuilder, ReservedSubaddresses};
+use super::{MemoBuilder, ReservedSubaddresses};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_extra::GiftCodeCancellationMemo;
 
 /// There are three possible gift code memo types specified in MCIP #32
 /// | Memo type bytes | Name                        |

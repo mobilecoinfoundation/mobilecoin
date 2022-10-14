@@ -4,13 +4,11 @@
 //! This MemoBuilder policy implements Burn Redemption tracking using memos, as
 //! envisioned in MCIP #39.
 
-use super::{
-    memo::{BurnRedemptionMemo, DestinationMemo, DestinationMemoError, UnusedMemo},
-    MemoBuilder,
-};
+use super::MemoBuilder;
 use crate::ReservedSubaddresses;
 use mc_account_keys::{burn_address, PublicAddress, ShortAddressHash};
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_extra::{BurnRedemptionMemo, DestinationMemo, DestinationMemoError, UnusedMemo};
 
 /// This memo builder attaches 0x0001 Burn Redemption Memos to an output going
 /// to the designated burn address, and 0x0200 Destination Memos to change

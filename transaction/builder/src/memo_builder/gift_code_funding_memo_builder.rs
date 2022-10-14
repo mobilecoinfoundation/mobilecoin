@@ -3,14 +3,12 @@
 //! Defines the Memo Builder for the gift code funding memo (0x0201)
 //! specified in MCIP #32
 
-use crate::{
-    memo::{GiftCodeFundingMemo, UnusedMemo},
-    MemoBuilder, ReservedSubaddresses,
-};
+use crate::{MemoBuilder, ReservedSubaddresses};
 use alloc::{format, string::String};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_extra::{GiftCodeFundingMemo, UnusedMemo};
 
 /// There are three possible gift code memo types specified in MCIP #32
 /// | Memo type bytes | Name                        |

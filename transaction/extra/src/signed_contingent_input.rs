@@ -2,15 +2,15 @@
 
 //! A signed contingent input as described in MCIP #31
 
-use crate::{
-    ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
-    tx::TxIn,
-    Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
-};
 use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, KeyImage, RingMLSAG,
+};
+use mc_transaction_core::{
+    ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
+    tx::TxIn,
+    Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
 };
 use prost::Message;
 

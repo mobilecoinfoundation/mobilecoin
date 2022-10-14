@@ -29,13 +29,14 @@ use mc_fog_report_validation::FogPubkeyResolver;
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_builder::{
-    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,
-    SenderMemoCredential, SignedContingentInputBuilder, TransactionBuilder,
+    EmptyMemoBuilder, InputCredentials, RTHMemoBuilder, ReservedSubaddresses,
+    SignedContingentInputBuilder, TransactionBuilder,
 };
 use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, SignedContingentInput, TokenId,
+    Amount, TokenId,
 };
+use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;

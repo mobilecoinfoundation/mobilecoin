@@ -7,7 +7,7 @@ use mc_test_vectors_definitions::memos::{
     CorrectEncryptedSenderWithPaymentRequestIdMemoData, IncorrectEncryptedSenderMemoData,
     IncorrectEncryptedSenderWithPaymentRequestIdMemoData,
 };
-use mc_transaction_builder::{
+use mc_transaction_extra::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
     SenderMemoCredential,
 };

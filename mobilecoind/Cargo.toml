@@ -41,6 +41,7 @@ mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-sgx-css = { path = "../sgx/css" }
 mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-extra = { path = "../transaction/extra" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }

@@ -28,6 +28,7 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
+mc-transaction-extra = { path = "../transaction/extra" }
 mc-util-from-random = { path = "../util/from-random" }
 
 rand = "0.8"

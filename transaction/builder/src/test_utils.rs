@@ -3,8 +3,8 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedSubaddresses,
-    TransactionBuilder, TxBuilderError,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
+    TxBuilderError,
 };
 use alloc::vec::Vec;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
@@ -15,7 +15,7 @@ use mc_transaction_core::{
     onetime_keys::*,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockVersion, MemoContext, NewMemoError, Token, TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
