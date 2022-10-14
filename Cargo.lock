@@ -663,22 +663,32 @@ version = "3.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86447ad904c7fb335a790c9d7fe3d0d971dc523b8ccd1561a520de9a85302750"
 dependencies = [
- "atty",
  "bitflags",
- "clap_derive",
- "clap_lex",
+ "clap_lex 0.2.2",
  "indexmap",
- "once_cell",
- "strsim 0.10.0",
- "termcolor",
  "textwrap 0.15.1",
 ]
 
 [[package]]
-name = "clap_derive"
-version = "3.2.18"
+name = "clap"
+version = "4.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
+checksum = "6bf8832993da70a4c6d13c581f4463c2bdda27b9bf1c5498dc4365543abe6d6f"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "clap_lex 0.3.0",
+ "once_cell",
+ "strsim 0.10.0",
+ "termcolor",
+]
+
+[[package]]
+name = "clap_derive"
+version = "4.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c42f169caba89a7d512b5418b09864543eeb4d497416c917d7137863bd2076ad"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -692,6 +702,15 @@ name = "clap_lex"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5538cd660450ebeb4234cfecf8f2284b844ffc4c50531e66d584ad5b91293613"
+dependencies = [
+ "os_str_bytes",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d4198f73e42b4936b35b5bb248d81d2b595ecb170da0bac7655c54eedfa8da8"
 dependencies = [
  "os_str_bytes",
 ]
@@ -1286,9 +1305,9 @@ dependencies = [
 
 [[package]]
 name = "fixed-hash"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
+checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
 dependencies = [
  "byteorder",
  "rand 0.8.5",
@@ -1547,9 +1566,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "go-grpc-gateway-testing"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
@@ -2127,7 +2146,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "criterion",
  "curve25519-dalek",
@@ -2156,7 +2175,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-slip10"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2173,16 +2192,16 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-admin-http-gateway"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2195,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "mc-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "bs58",
  "cargo-emit",
@@ -2214,8 +2233,8 @@ dependencies = [
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
  "mc-test-vectors-b58-encodings",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
@@ -2236,7 +2255,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-ake"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -2261,7 +2280,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aead",
  "cargo-emit",
@@ -2279,7 +2298,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-core"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "bincode",
@@ -2313,7 +2332,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -2326,7 +2345,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-net"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
@@ -2346,7 +2365,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-trusted"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -2357,7 +2376,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-untrusted"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-attest-verifier",
@@ -2367,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "cfg-if 1.0.0",
@@ -2393,7 +2412,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "displaydoc",
@@ -2407,7 +2426,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-blockchain-types",
  "mc-common",
@@ -2421,7 +2440,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "hex_fmt",
@@ -2448,7 +2467,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-validators"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "hex",
@@ -2466,7 +2485,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "backtrace",
  "cfg-if 1.0.0",
@@ -2504,7 +2523,7 @@ dependencies = [
 
 [[package]]
 name = "mc-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "cookie",
@@ -2536,7 +2555,7 @@ dependencies = [
 
 [[package]]
 name = "mc-connection-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-blockchain-types",
  "mc-connection",
@@ -2548,7 +2567,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures",
@@ -2569,7 +2588,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -2595,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "hex",
@@ -2618,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -2626,7 +2645,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-impl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "hex",
@@ -2663,7 +2682,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-measurement"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -2676,7 +2695,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-mock"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-account-keys",
  "mc-attest-core",
@@ -2699,9 +2718,9 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-mint-client"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "grpcio",
  "hex",
@@ -2728,7 +2747,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "maplit",
@@ -2752,9 +2771,9 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-play"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
@@ -2764,7 +2783,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
@@ -2780,11 +2799,11 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-service"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "chrono",
- "clap 3.2.22",
+ "clap 4.0.15",
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -2818,9 +2837,9 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -2846,10 +2865,10 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-service-config"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "hex",
  "mc-attest-core",
@@ -2874,7 +2893,7 @@ dependencies = [
 name = "mc-consensus-tool"
 version = "2.0.0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "mc-common",
  "mc-connection",
@@ -2886,7 +2905,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "digest 0.10.5",
@@ -2906,7 +2925,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aead",
  "digest 0.10.5",
@@ -2922,7 +2941,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-dalek"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -2931,7 +2950,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "curve25519-dalek",
@@ -2944,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2953,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive-test"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
@@ -2961,7 +2980,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
@@ -2970,7 +2989,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "serde_json",
@@ -2978,7 +2997,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "blake2",
  "digest 0.10.5",
@@ -2987,7 +3006,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -3023,7 +3042,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-message-cipher"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
@@ -3037,7 +3056,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-multisig"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -3051,7 +3070,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -3072,7 +3091,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-rand"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "rand 0.8.5",
@@ -3081,7 +3100,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -3109,7 +3128,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature-signer"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -3136,10 +3155,10 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-x509-test-vectors"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.2.22",
+ "clap 4.0.15",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3148,7 +3167,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-x509-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-crypto-keys",
@@ -3159,7 +3178,7 @@ dependencies = [
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-common",
  "mc-crypto-rand",
@@ -3170,7 +3189,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -3202,9 +3221,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-distribution"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3221,8 +3240,8 @@ dependencies = [
  "mc-fog-report-connection",
  "mc-fog-report-resolver",
  "mc-ledger-db",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-cli",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
@@ -3235,7 +3254,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-enclave-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
  "cookie",
@@ -3259,10 +3278,10 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-client"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "assert_cmd",
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "grpcio",
  "hex",
@@ -3298,7 +3317,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "criterion",
@@ -3333,7 +3352,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-enclave-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -3350,7 +3369,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-enclave-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -3358,7 +3377,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-enclave-impl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aligned-cmov",
  "mc-account-keys",
@@ -3391,7 +3410,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-enclave-measurement"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -3404,7 +3423,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-report"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -3416,9 +3435,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "dirs",
  "displaydoc",
  "futures",
@@ -3474,7 +3493,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ingest-server-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-attest-net",
  "mc-blockchain-test-utils",
@@ -3499,7 +3518,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-kex-rng"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "digest 0.10.5",
  "displaydoc",
@@ -3515,7 +3534,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "grpcio",
@@ -3537,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -3566,7 +3585,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-enclave-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -3584,7 +3603,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-enclave-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -3592,7 +3611,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-enclave-impl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aligned-cmov",
  "mc-attest-core",
@@ -3615,7 +3634,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-enclave-measurement"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -3628,13 +3647,12 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
- "hex",
  "lazy_static",
  "mc-account-keys",
  "mc-api",
@@ -3684,7 +3702,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ledger-test-infra"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3701,9 +3719,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-load-testing"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -3729,14 +3747,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-testing"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aligned-cmov",
  "mc-fog-ocall-oram-storage-trusted",
@@ -3747,7 +3765,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-trusted"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes",
  "aligned-cmov",
@@ -3764,7 +3782,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-untrusted"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "lazy_static",
  "mc-common",
@@ -3772,9 +3790,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-overseer-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -3811,7 +3829,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-recovery-db-iface"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "chrono",
  "displaydoc",
@@ -3827,7 +3845,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures",
@@ -3846,7 +3864,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-api-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-util-serial",
  "prost",
@@ -3855,10 +3873,10 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-cli"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "hex",
  "mc-account-keys",
@@ -3879,7 +3897,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "grpcio",
@@ -3896,7 +3914,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-resolver"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-account-keys",
  "mc-attest-verifier",
@@ -3911,9 +3929,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3947,7 +3965,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-crypto-digestible",
@@ -3957,7 +3975,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-validation"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
@@ -3970,7 +3988,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-validation-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-account-keys",
  "mc-fog-report-validation",
@@ -3978,10 +3996,10 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sample-paykit"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4012,9 +4030,9 @@ dependencies = [
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
  "mc-sgx-css",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-grpc",
@@ -4029,7 +4047,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
@@ -4050,7 +4068,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -4061,7 +4079,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-report"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -4076,10 +4094,10 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sql-recovery-db"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "chrono",
- "clap 3.2.22",
+ "clap 4.0.15",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
@@ -4110,10 +4128,10 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sql-recovery-db-cleanup"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "chrono",
- "clap 3.2.22",
+ "clap 4.0.15",
  "mc-common",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
@@ -4122,9 +4140,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-test-client"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "grpcio",
  "hex_fmt",
@@ -4137,8 +4155,8 @@ dependencies = [
  "mc-fog-sample-paykit",
  "mc-fog-uri",
  "mc-sgx-css",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-cli",
  "mc-util-grpc",
  "mc-util-keyfile",
@@ -4156,9 +4174,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-test-infra"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "digest 0.10.5",
  "hex",
  "mc-account-keys",
@@ -4178,6 +4196,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
+ "mc-util-parse",
  "mc-watcher",
  "mc-watcher-api",
  "rand_core 0.6.4",
@@ -4189,7 +4208,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "crc",
  "displaydoc",
@@ -4209,7 +4228,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-uri"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-common",
  "mc-util-uri",
@@ -4217,7 +4236,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "grpcio",
  "mc-attest-core",
@@ -4237,7 +4256,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "criterion",
@@ -4272,7 +4291,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -4290,7 +4309,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -4298,7 +4317,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-impl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aligned-cmov",
  "mc-attest-core",
@@ -4320,7 +4339,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-measurement"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -4333,9 +4352,9 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-load-test"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4352,7 +4371,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-protocol"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
@@ -4375,13 +4394,12 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
- "hex",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
@@ -4427,7 +4445,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-db"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "lazy_static",
@@ -4439,9 +4457,9 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-rand",
+ "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-lmdb",
  "mc-util-metrics",
@@ -4456,9 +4474,9 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-distribution"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "dirs",
  "displaydoc",
  "mc-api",
@@ -4479,9 +4497,9 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-from-archive"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
@@ -4490,9 +4508,9 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-migration"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
@@ -4503,7 +4521,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-sync"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
@@ -4537,10 +4555,10 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "aes-gcm",
- "clap 3.2.22",
+ "clap 4.0.15",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4576,8 +4594,8 @@ dependencies = [
  "mc-ledger-sync",
  "mc-mobilecoind-api",
  "mc-sgx-css",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
@@ -4606,7 +4624,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures",
@@ -4615,7 +4633,7 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-consensus-api",
- "mc-transaction-std",
+ "mc-transaction-builder",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-uri",
@@ -4625,10 +4643,10 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-dev-faucet"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "async-channel",
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "grpcio",
  "hex",
@@ -4641,8 +4659,8 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-fog-report-resolver",
  "mc-mobilecoind-api",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-serial",
@@ -4657,9 +4675,9 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-json"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "hex",
  "mc-api",
@@ -4733,7 +4751,7 @@ dependencies = [
 
 [[package]]
 name = "mc-peers"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
@@ -4766,7 +4784,7 @@ dependencies = [
 
 [[package]]
 name = "mc-peers-test-utils"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "grpcio",
  "hex",
@@ -4790,7 +4808,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-build"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cc",
  "lazy_static",
@@ -4800,7 +4818,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-sgx-types",
@@ -4808,7 +4826,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "mc-sgx-debug-edl",
@@ -4817,7 +4835,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "sha2 0.10.6",
@@ -4825,30 +4843,30 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css-dump"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "hex_fmt",
  "mc-sgx-css",
 ]
 
 [[package]]
 name = "mc-sgx-debug-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -4859,7 +4877,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-report-cache-untrusted"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -4875,7 +4893,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-common",
@@ -4885,18 +4903,18 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 
 [[package]]
 name = "mc-sgx-urts"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-common",
  "mc-sgx-build",
@@ -4907,7 +4925,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-account-keys"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "hex",
  "mc-account-keys",
@@ -4919,7 +4937,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-b58-encodings"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-account-keys",
  "mc-api",
@@ -4929,7 +4947,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-definitions"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-util-test-vector",
  "serde",
@@ -4938,13 +4956,13 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-memos"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "hex",
  "mc-account-keys",
  "mc-crypto-keys",
  "mc-test-vectors-definitions",
- "mc-transaction-std",
+ "mc-transaction-builder",
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
@@ -4953,7 +4971,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-tx-out-records"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "hex",
  "mc-account-keys",
@@ -4965,8 +4983,8 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-oblivious-traits",
  "mc-test-vectors-definitions",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
@@ -4974,69 +4992,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-transaction-core"
-version = "2.0.0"
-dependencies = [
- "aes",
- "assert_matches",
- "bulletproofs-og",
- "crc",
- "curve25519-dalek",
- "displaydoc",
- "generic-array",
- "hex_fmt",
- "hkdf",
- "lazy_static",
- "mc-account-keys",
- "mc-common",
- "mc-crypto-box",
- "mc-crypto-digestible",
- "mc-crypto-digestible-test-utils",
- "mc-crypto-hashes",
- "mc-crypto-keys",
- "mc-crypto-multisig",
- "mc-crypto-ring-signature",
- "mc-crypto-ring-signature-signer",
- "mc-fog-report-validation-test-utils",
- "mc-ledger-db",
- "mc-transaction-core-test-utils",
- "mc-transaction-std",
- "mc-transaction-types",
- "mc-util-from-random",
- "mc-util-repr-bytes",
- "mc-util-serial",
- "mc-util-test-helper",
- "mc-util-zip-exact",
- "merlin",
- "proptest",
- "prost",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "serde",
- "sha2 0.10.6",
- "subtle",
- "tempdir",
- "zeroize",
-]
-
-[[package]]
-name = "mc-transaction-core-test-utils"
-version = "2.0.0"
-dependencies = [
- "mc-account-keys",
- "mc-crypto-keys",
- "mc-crypto-multisig",
- "mc-crypto-rand",
- "mc-crypto-ring-signature-signer",
- "mc-fog-report-validation-test-utils",
- "mc-transaction-core",
- "mc-util-from-random",
- "mc-util-serial",
-]
-
-[[package]]
-name = "mc-transaction-std"
-version = "2.0.0"
+name = "mc-transaction-builder"
+version = "2.1.0-pre0"
 dependencies = [
  "assert_matches",
  "cfg-if 1.0.0",
@@ -5066,8 +5023,69 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-transaction-core"
+version = "2.1.0-pre0"
+dependencies = [
+ "aes",
+ "assert_matches",
+ "bulletproofs-og",
+ "crc",
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "hkdf",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-box",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation-test-utils",
+ "mc-ledger-db",
+ "mc-transaction-builder",
+ "mc-transaction-core-test-utils",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-zip-exact",
+ "merlin",
+ "proptest",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2 0.10.6",
+ "subtle",
+ "tempdir",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-core-test-utils"
+version = "2.1.0-pre0"
+dependencies = [
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation-test-utils",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-serial",
+]
+
+[[package]]
 name = "mc-transaction-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-crypto-digestible",
@@ -5078,16 +5096,16 @@ dependencies = [
 
 [[package]]
 name = "mc-util-b58-decoder"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "hex",
  "mc-api",
 ]
 
 [[package]]
 name = "mc-util-build-enclave"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "cargo_metadata 0.15.0",
@@ -5103,7 +5121,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-grpc"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "mc-util-build-script",
  "protoc-grpcio",
@@ -5111,7 +5129,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-info"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "json",
@@ -5119,7 +5137,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-script"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -5130,7 +5148,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cargo-emit",
  "cc",
@@ -5141,17 +5159,17 @@ dependencies = [
 
 [[package]]
 name = "mc-util-cli"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "mc-util-build-info",
 ]
 
 [[package]]
 name = "mc-util-dump-ledger"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "mc-blockchain-types",
  "mc-common",
@@ -5162,7 +5180,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "displaydoc",
@@ -5173,21 +5191,20 @@ dependencies = [
 
 [[package]]
 name = "mc-util-ffi"
-version = "2.0.0"
+version = "2.1.0-pre0"
 
 [[package]]
 name = "mc-util-from-random"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "rand_core 0.6.4",
 ]
 
 [[package]]
 name = "mc-util-generate-sample-ledger"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
- "hex",
+ "clap 4.0.15",
  "mc-account-keys",
  "mc-blockchain-test-utils",
  "mc-common",
@@ -5196,6 +5213,7 @@ dependencies = [
  "mc-util-build-info",
  "mc-util-from-random",
  "mc-util-keyfile",
+ "mc-util-parse",
  "rand 0.8.5",
  "rand_hc 0.3.1",
  "tempfile",
@@ -5203,10 +5221,10 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
- "clap 3.2.22",
+ "clap 4.0.15",
  "cookie",
  "displaydoc",
  "futures",
@@ -5237,9 +5255,9 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc-admin-tool"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -5248,25 +5266,25 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc-token-generator"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
- "hex",
+ "clap 4.0.15",
  "mc-common",
  "mc-util-grpc",
+ "mc-util-parse",
  "percent-encoding",
 ]
 
 [[package]]
 name = "mc-util-host-cert"
-version = "2.0.0"
+version = "2.1.0-pre0"
 
 [[package]]
 name = "mc-util-keyfile"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "hex",
  "mc-account-keys",
@@ -5275,6 +5293,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-crypto-x509-test-vectors",
  "mc-util-from-random",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
  "pem",
@@ -5291,7 +5310,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-lmdb"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "lmdb-rkv",
@@ -5301,7 +5320,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-logger-macros"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5310,7 +5329,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-metered-channel"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "mc-util-metrics",
@@ -5318,7 +5337,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-metrics"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "chrono",
  "grpcio",
@@ -5331,15 +5350,16 @@ dependencies = [
 
 [[package]]
 name = "mc-util-parse"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
+ "hex",
  "itertools",
  "mc-sgx-css",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "generic-array",
  "hex_fmt",
@@ -5350,12 +5370,12 @@ dependencies = [
 
 [[package]]
 name = "mc-util-seeded-ed25519-key-gen"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
- "hex",
+ "clap 4.0.15",
  "mc-crypto-keys",
  "mc-util-from-random",
+ "mc-util-parse",
  "pem",
  "rand 0.8.5",
  "rand_hc 0.3.1",
@@ -5363,7 +5383,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "prost",
  "protobuf",
@@ -5374,7 +5394,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-telemetry"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
@@ -5385,9 +5405,9 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-helper"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "itertools",
  "lazy_static",
  "mc-account-keys",
@@ -5398,7 +5418,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-vector"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5406,7 +5426,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-with-data"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5415,7 +5435,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-uri"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "base64",
  "displaydoc",
@@ -5433,21 +5453,21 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "mc-wasm-test"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "getrandom 0.2.7",
  "mc-account-keys",
  "mc-api",
  "mc-crypto-keys",
+ "mc-transaction-builder",
  "mc-transaction-core",
- "mc-transaction-std",
  "rand 0.8.5",
  "wasm-bindgen",
  "wasm-bindgen-test",
@@ -5455,9 +5475,9 @@ dependencies = [
 
 [[package]]
 name = "mc-watcher"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
- "clap 3.2.22",
+ "clap 4.0.15",
  "displaydoc",
  "futures",
  "grpcio",
@@ -5499,7 +5519,7 @@ dependencies = [
 
 [[package]]
 name = "mc-watcher-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 dependencies = [
  "displaydoc",
  "serde",
@@ -6159,9 +6179,9 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
-version = "0.11.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
+checksum = "5cfd65aea0c5fa0bfcc7c9e7ca828c921ef778f43d325325ec84bda371bfa75a"
 dependencies = [
  "fixed-hash",
  "impl-codec",
@@ -6638,9 +6658,9 @@ dependencies = [
 
 [[package]]
 name = "retry"
-version = "1.3.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac95c60a949a63fd2822f4964939662d8f2c16c4fa0624fd954bc6e703b9a3f6"
+checksum = "9166d72162de3575f950507683fac47e30f6f2c3836b71b7fbc61aa517c9c5f4"
 dependencies = [
  "rand 0.8.5",
 ]

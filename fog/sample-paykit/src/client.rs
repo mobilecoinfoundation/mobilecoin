@@ -63,7 +63,7 @@ pub struct Client {
     ring_size: usize,
     account_key: AccountKey,
     tx_data: CachedTxData,
-    fee_map: Option<FeeMap>,
+    block_info_cache: Option<BlockInfo>,
 
     /// Number of blocks for which to try and get the new transaction to be
     /// included in the ledger. This value is used to calculate the
@@ -90,7 +90,7 @@ impl Client {
         logger: Logger,
     ) -> Self {
         let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
-        let fee_map = None;
+        let block_info_cache = None;
         Client {
             consensus_service_conn,
             fog_view,
@@ -103,7 +103,7 @@ impl Client {
             ring_size,
             account_key,
             tx_data,
-            fee_map,
+            block_info_cache,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
             logger,
         }
@@ -176,20 +176,6 @@ impl Client {
         self.tx_data.get_latest_block_version()
     }
 
-    /// Get the currently cached fee-map
-    ///
-    /// If the cache is empty, then we get fresh data from consensus.
-    pub fn get_fee_map(&mut self) -> Result<FeeMap> {
-        if let Some(fee_map) = self.fee_map.as_ref() {
-            Ok(fee_map.clone())
-        } else {
-            let block_info = self.consensus_service_conn.fetch_block_info()?;
-            let fee_map = FeeMap::try_from(block_info.minimum_fees)?;
-            self.fee_map = Some(fee_map.clone());
-            Ok(fee_map)
-        }
-    }
-
     /// Submits a transaction to the MobileCoin network.
     ///
     /// To get a transaction, call build_transaction.
@@ -200,7 +186,8 @@ impl Client {
     /// transaction.
     pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
         let start_time = std::time::SystemTime::now();
-        let fee_map = self.get_fee_map()?;
+        // Allow use of cached fee map data
+        let fee_map = self.get_fee_map(true)?;
         let tx_ok_data = self
             .consensus_service_conn
             .propose_tx_v2(transaction, &fee_map)
@@ -210,7 +197,8 @@ impl Client {
                     _,
                 ) = err
                 {
-                    // Clear fee map cache so that it will be regenerated next time.
+                    // Clear block_info cache so that fee map info will be regenerated
+                    // next time.
                     //
                     // NOTE: In a real client, what you should actually do is check
                     // with several nodes what the fee map is supposed to be,
@@ -223,7 +211,7 @@ impl Client {
                     // The sample paykit is just test code, and it only has one url
                     // for a consensus node in this revision, so we don't do that
                     // here, we just reset the fee map.
-                    self.fee_map = None;
+                    self.block_info_cache = None;
                 }
 
                 err
@@ -919,20 +907,59 @@ impl Client {
     }
 
     /// Retrieve the current last block info structure from consensus service.
+    ///
     /// This includes fee data and last block index, and the configured block
     /// version
-    pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
+    ///
+    /// Arguments:
+    /// * allow_cached If true, then we may skip a network call and use cached
+    ///   value.
+    pub fn get_last_block_info(&mut self, allow_cached: bool) -> Result<BlockInfo> {
+        // Clear cache if we aren't allowed to use it, it will be repopulated in this
+        // call.
+        if !allow_cached {
+            self.block_info_cache = None;
+        }
+        // Check if we know our cache is stale for other reasons, like if fog responses
+        // told us the block version has increased.
+        if let Some(block_info_cache) = self.block_info_cache.as_ref() {
+            if block_info_cache.network_block_version != self.tx_data.get_latest_block_version() {
+                drop(block_info_cache);
+                self.block_info_cache = None;
+            }
+        }
+
+        if self.block_info_cache.is_none() {
+            let block_info = self.consensus_service_conn.fetch_block_info()?;
+            // Opportunistically update our cached block version value
+            self.tx_data
+                .notify_block_version(block_info.network_block_version);
+            self.block_info_cache = Some(block_info);
+        }
+
         let block_info = self.consensus_service_conn.fetch_block_info()?;
-        // Opportunistically update our cached block version value
-        self.tx_data
-            .notify_block_version(block_info.network_block_version);
         Ok(block_info)
+    }
+
+    /// Get the currently cached fee-map
+    ///
+    /// If the cache is empty, then we get fresh data from consensus.
+    pub fn get_fee_map(&mut self, allow_cached: bool) -> Result<FeeMap> {
+        let block_info = self.get_last_block_info(allow_cached)?;
+        let fee_map = FeeMap::try_from(block_info.minimum_fees)?;
+        Ok(fee_map)
     }
 
     /// Retrieve the currently configured minimum fee for a token id from the
     /// consensus service
-    pub fn get_minimum_fee(&mut self, token_id: TokenId) -> Result<Option<u64>> {
-        Ok(self.get_last_block_info()?.minimum_fee_or_none(&token_id))
+    pub fn get_minimum_fee(
+        &mut self,
+        token_id: TokenId,
+        allow_cached: bool,
+    ) -> Result<Option<u64>> {
+        Ok(self
+            .get_last_block_info(allow_cached)?
+            .minimum_fee_or_none(&token_id))
     }
 
     /// Get the public b58 address for this client

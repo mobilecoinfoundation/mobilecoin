@@ -249,6 +249,36 @@ impl TestClient {
         clients
     }
 
+    // Get the minium fee amount for a given token id, or an error if it can't
+    // be determined.
+    //
+    // Arguments
+    // * token_id The token id we are interested in
+    // * source_client The client used to make the request / get cached value from
+    fn get_minimum_fee(
+        &self,
+        token_id: TokenId,
+        source_client: &mut Client,
+    ) -> Result<Amount, TestClientError> {
+        // Get the current minimum fee from consensus for given token id
+        // FIXME: #1671, this retry should be inside ThickClient and not here.
+        let fee_value = self
+            .grpc_retry_config
+            .retry(|| -> Result<Option<u64>, _> {
+                let mut maybe_fee = source_client.get_minimum_fee(token_id, true)?;
+                // If the token id doesn't appear to be configured, but we are expecting
+                // it to be, let's try again with "allow_cached = false".
+                if maybe_fee.is_none() {
+                    maybe_fee = source_client.get_minimum_fee(token_id, false)?;
+                }
+                Ok(maybe_fee)
+            })
+            .map_err(|retry_error| TestClientError::GetFee(retry_error.error))?
+            .ok_or(TestClientError::TokenNotConfigured(token_id))?;
+
+        Ok(Amount::new(fee_value, token_id))
+    }
+
     /// Conduct a transfer between two clients, according to the policy
     /// Returns the transaction and the block count of the node it was submitted
     /// to.
@@ -284,13 +314,7 @@ impl TestClient {
         let mut rng = McRng::default();
         assert!(target_address.fog_report_url().is_some());
 
-        // Get the current minimum fee from consensus
-        // FIXME: #1671, this retry should be inside ThickClient and not here.
-        let fee = self
-            .grpc_retry_config
-            .retry(|| -> Result<Option<u64>, _> { source_client.get_minimum_fee(token_id) })
-            .map_err(|retry_error| TestClientError::GetFee(retry_error.error))?
-            .ok_or(TestClientError::TokenNotConfigured(token_id))?;
+        let fee = self.get_minimum_fee(token_id, source_client)?;
 
         // Scope for build operation
         let transaction = {
@@ -300,7 +324,7 @@ impl TestClient {
                     Amount::new(self.policy.transfer_amount, token_id),
                     &target_address,
                     &mut rng,
-                    fee,
+                    fee.value,
                 )
                 .map_err(TestClientError::BuildTx)?;
             counters::TX_BUILD_TIME.observe(start.elapsed().as_secs_f64());
@@ -321,7 +345,7 @@ impl TestClient {
         Ok(TransferData {
             transaction,
             block_count,
-            fee: Amount::new(fee, token_id),
+            fee,
         })
     }
 
@@ -745,13 +769,7 @@ impl TestClient {
         assert!(target_address.fog_report_url().is_some());
 
         // Get the current minimum fee from consensus
-        // FIXME: #1671, this retry should be inside ThickClient and not here.
-        let fee_value = self
-            .grpc_retry_config
-            .retry(|| -> Result<Option<u64>, _> { source_client.get_minimum_fee(token_id1) })
-            .map_err(|retry_error| TestClientError::GetFee(retry_error.error))?
-            .ok_or(TestClientError::TokenNotConfigured(token_id1))?;
-        let fee = Amount::new(fee_value, token_id1);
+        let fee = self.get_minimum_fee(token_id1, source_client)?;
 
         // Build swap proposal
         let signed_input = source_client
