@@ -4441,6 +4441,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-view-server-test-utils"
+version = "2.0.0"
+dependencies = [
+ "grpcio",
+ "mc-attest-net",
+ "mc-attest-verifier",
+ "mc-common",
+ "mc-fog-api",
+ "mc-fog-sql-recovery-db",
+ "mc-fog-test-infra",
+ "mc-fog-types",
+ "mc-fog-uri",
+ "mc-fog-view-connection",
+ "mc-fog-view-enclave",
+ "mc-fog-view-enclave-measurement",
+ "mc-fog-view-server",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "portpicker",
+]
+
+[[package]]
 name = "mc-ledger-db"
 version = "2.0.0"
 dependencies = [

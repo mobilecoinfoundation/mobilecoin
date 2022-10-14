@@ -102,6 +102,7 @@ members = [
     "fog/view/load-test",
     "fog/view/protocol",
     "fog/view/server",
+    "fog/view/server/test-utils",
     "go-grpc-gateway/testing",
     "ledger/db",
     "ledger/distribution",
