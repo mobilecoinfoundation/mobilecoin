@@ -50,7 +50,7 @@
 //! * When we want to start signing MLSAGs, we send the 32 byte extended message
 //!   digest, and the TxSummary. The device can compute the "extended message
 //!   with tx summary digest" and sign MLSAGs over that.
-//! * For each output in the summary, the device expects the computer to
+//! * For each output in the summary, the device expects the host computer to
 //!   ADDITONALLY supply this subset of the arguments to TxOut::new:
 //!   * block_version,
 //!   * amount,
