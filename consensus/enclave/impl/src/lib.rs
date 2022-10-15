@@ -1058,10 +1058,13 @@ fn mint_output<T: Digestible>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aes_gcm::Aes256Gcm;
     use alloc::vec;
+    use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
+    use mc_attest_api::attest::{AuthMessage, Message};
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
-    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature, X25519};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::{
         test_utils::{add_txos_to_ledger, create_ledger, create_transaction, initialize_ledger},
@@ -1077,8 +1080,10 @@ mod tests {
         create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
     };
     use mc_util_from_random::FromRandom;
+    use mc_util_serial::encode;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use sha2::Sha512;
 
     // The private keys here are only used by tests. They do not need to be
     // specified for main net. The public keys associated with this private keys
@@ -1152,6 +1157,97 @@ mod tests {
             ),
             Err(Error::InvalidGovernorsSignature)
         );
+    }
+
+    #[test_with_logger]
+    fn test_client_tx_propose_works(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let block_version = BlockVersion::MAX;
+        let responder_id = Default::default();
+        let fee_map = FeeMap::default();
+
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            fee_map: fee_map.clone(),
+            ..Default::default()
+        };
+        enclave
+            .enclave_init(&responder_id, &responder_id, &None, blockchain_config)
+            .unwrap();
+
+        // First, create an encrypted connection from a client
+        let initiator = Start::new(responder_id.to_string());
+        let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
+        let (initiator, auth_request_output) = initiator.try_next(&mut rng, init_input).unwrap();
+
+        let auth_request_msg = AuthMessage::from(auth_request_output);
+        let (auth_response_msg, _client_session) =
+            enclave.client_accept(auth_request_msg.into()).unwrap();
+        let auth_response_msg = AuthMessage::from(auth_response_msg);
+
+        // Now the client should have a working cipher state
+        let verifier = Default::default();
+        let auth_response_event = AuthResponseInput::new(auth_response_msg.into(), verifier);
+        let (mut initiator, _verification_report) =
+            initiator.try_next(&mut rng, auth_response_event).unwrap();
+
+        // Create a valid test transaction.
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
+
+        let tx = create_transaction(
+            block_version,
+            &mut ledger,
+            &tx_out,
+            &sender,
+            &recipient.default_subaddress(),
+            n_blocks + 1,
+            &mut rng,
+        );
+
+        // Try to propose the Tx
+        let mut fee_map_digest = fee_map.canonical_digest().to_vec();
+        let req = ClientProposeTxRequestV2 {
+            tx: tx.clone(),
+            fee_map_digest: fee_map_digest.clone(),
+        };
+
+        let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
+
+        let mut msg = Message::new();
+        msg.set_channel_id(Vec::from(initiator.binding()));
+        msg.set_data(ciphertext);
+
+        enclave
+            .client_tx_propose_v2(msg.into())
+            .expect("unexpected failure to propose tx");
+
+        // Now, let's screw with the fee_map_digest
+        fee_map_digest[0] = !fee_map_digest[0];
+
+        let req = ClientProposeTxRequestV2 {
+            tx: tx.clone(),
+            fee_map_digest,
+        };
+
+        let tx_ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
+
+        let mut msg = Message::new();
+        msg.set_channel_id(Vec::from(initiator.binding()));
+        msg.set_data(tx_ciphertext);
+
+        let result = enclave.client_tx_propose_v2(msg.into());
+        assert!(result.is_err(), "unexpected success with bad fee map");
     }
 
     #[test_with_logger]

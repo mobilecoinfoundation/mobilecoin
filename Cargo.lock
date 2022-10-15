@@ -2647,10 +2647,13 @@ dependencies = [
 name = "mc-consensus-enclave-impl"
 version = "2.1.0-pre0"
 dependencies = [
+ "aes-gcm",
  "cargo-emit",
  "hex",
  "mbedtls",
  "mc-account-keys",
+ "mc-attest-ake",
+ "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
@@ -2677,6 +2680,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
+ "sha2 0.10.6",
  "subtle",
 ]
 
