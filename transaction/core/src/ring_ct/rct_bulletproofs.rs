@@ -33,7 +33,7 @@ use crate::{
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_ct::{Error, GeneratorCache},
     tx::TxPrefix,
-    Amount, BlockVersion, TxInSummary, TxSummary,
+    Amount, BlockVersion, TxSummary,
 };
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
@@ -934,15 +934,7 @@ fn compute_mlsag_signing_digest(
     );
 
     // Make the TxSummary
-    let tx_in_summaries: Vec<TxInSummary> =
-        zip_exact(tx_prefix.inputs.iter(), pseudo_output_commitments.iter())?
-            .map(|(tx_in, commitment)| TxInSummary {
-                pseudo_output_commitment: *commitment,
-                input_rules: tx_in.input_rules.clone(),
-            })
-            .collect();
-
-    let tx_summary = TxSummary::new(tx_prefix, tx_in_summaries);
+    let tx_summary = TxSummary::new(tx_prefix, pseudo_output_commitments)?;
 
     // When the tx summary is also supposed to be part of the digest (to support
     // hardware wallets, we do another round of merlin using the previous digest

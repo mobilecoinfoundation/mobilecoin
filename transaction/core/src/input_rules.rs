@@ -13,9 +13,10 @@ use crate::{
     tx::{Tx, TxOut},
     BlockVersion, RevealedTxOut, RevealedTxOutError,
 };
-use alloc::vec::Vec;
+use alloc::{collections::BTreeSet, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -69,6 +70,21 @@ pub struct InputRules {
 }
 
 impl InputRules {
+    /// Get all tx target keys associated to outputs appearing in these rules
+    pub fn associated_tx_target_keys(&self) -> BTreeSet<CompressedRistrettoPublic> {
+        let mut result = BTreeSet::default();
+        for output in self.required_outputs.iter() {
+            result.insert(output.target_key);
+        }
+        for output in self.partial_fill_outputs.iter() {
+            result.insert(output.tx_out.target_key);
+        }
+        for output in self.partial_fill_change.iter() {
+            result.insert(output.tx_out.target_key);
+        }
+        result
+    }
+
     /// Verify that a Tx conforms to the rules.
     pub fn verify(&self, block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         // NOTE: If this function gets too busy, we should split it up

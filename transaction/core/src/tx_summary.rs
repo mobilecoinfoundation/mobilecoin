@@ -56,8 +56,8 @@
 //!   * amount,
 //!   * recipient,
 //!   * tx_private_key,
-//! * These are not part of the TxSummary (because the enclave can't know them)
-//!   but they can be part of a TxSummaryUnblindingData or some such thing.
+//! * These are not part of the TxSummary (because the consensus enclave can't
+//!   know them) but can be part of TxSummaryUnblindingData or some such thing.
 //! * For a given public key, target key, and masked amount, it is intractable
 //!   to find a different amount, recipient, and tx private key that leads to
 //!   the same data (discrete log hard). So the device can be convinced that
@@ -76,27 +76,21 @@
 //! the public addresses for outbound transfers. This should only require
 //! sending a few KB in the worst case.
 //!
-//! It's reasonable to ask, what if the computer lies to the device in the
+//! It's reasonable to ask, what if the host computer lies to the device in the
 //! TxSummary. What if, the TxPrefix actually says one thing, and the TxSummary
 //! it gives to the device says another. The device cannot detect this if it
 //! doesn't have insight into the extended message digest. However, in this
 //! case, the transaction will simply be invalid when it is submitted, because
 //! the consensus enclave will derive a different value for the TxSummary when
 //! it attempts to validate the transaction, and that value will actually be
-//! based on the TxPrefix. So the computer can gain no advantage by lying to the
-//! device in this way.
-//!
-//! In this module we only attempt to define the TxSummary and how it is
-//! digested. In the future we may define TxSummaryUnblindingData as well, per
-//! MCIP 52.
+//! based on the TxPrefix. So the host computer can gain no advantage by lying
+//! to the device in this way.
 
-use crate::{
-    tx::{TxOut, TxPrefix},
-    CompressedCommitment, InputRules, MaskedAmount,
-};
-use alloc::vec::Vec;
+use crate::{tx::TxPrefix, CompressedCommitment, MaskedAmount};
+use alloc::{collections::BTreeSet, vec::Vec};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_util_zip_exact::{zip_exact, ZipExactError};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -128,15 +122,51 @@ pub struct TxSummary {
 }
 
 impl TxSummary {
-    /// Make a TxSummary for a given TxPrefix and input summaries
-    pub fn new(tx_prefix: &TxPrefix, inputs: Vec<TxInSummary>) -> Self {
-        Self {
-            outputs: tx_prefix.outputs.iter().map(Into::into).collect(),
+    /// Make a TxSummary for a given TxPrefix and pseudo-output commitments
+    pub fn new(
+        tx_prefix: &TxPrefix,
+        pseudo_output_commitments: &[CompressedCommitment],
+    ) -> Result<Self, ZipExactError> {
+        // Scratch which helps us associate outputs to inputs with rules
+        let mut input_rules_associated_target_keys: BTreeSet<CompressedRistrettoPublic> =
+            Default::default();
+
+        // Compute the inputs
+        let inputs: Vec<TxInSummary> =
+            zip_exact(tx_prefix.inputs.iter(), pseudo_output_commitments.iter())?
+                .map(|(input, commitment)| {
+                    let mut result = TxInSummary {
+                        pseudo_output_commitment: commitment.clone(),
+                        ..Default::default()
+                    };
+                    if let Some(rules) = &input.input_rules {
+                        result.has_input_rules = true;
+                        let mut associated_keys = rules.associated_tx_target_keys();
+                        input_rules_associated_target_keys.append(&mut associated_keys);
+                    }
+                    result
+                })
+                .collect();
+
+        let outputs: Vec<TxOutSummary> = tx_prefix
+            .outputs
+            .iter()
+            .map(|src| TxOutSummary {
+                masked_amount: src.masked_amount.clone(),
+                target_key: src.target_key,
+                public_key: src.public_key,
+                associated_to_input_rules: input_rules_associated_target_keys
+                    .contains(&src.target_key),
+            })
+            .collect();
+
+        Ok(Self {
+            outputs,
             inputs,
             fee: tx_prefix.fee,
             fee_token_id: tx_prefix.fee_token_id,
             tombstone_block: tx_prefix.tombstone_block,
-        }
+        })
     }
 }
 
@@ -148,27 +178,20 @@ impl TxSummary {
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOutSummary {
     /// The amount being sent.
-    #[prost(oneof = "MaskedAmount", tags = "1, 6")]
-    #[digestible(name = "amount")]
+    #[prost(oneof = "MaskedAmount", tags = "1, 2")]
     pub masked_amount: Option<MaskedAmount>,
 
     /// The one-time public address of this output.
-    #[prost(message, required, tag = "2")]
+    #[prost(message, required, tag = "3")]
     pub target_key: CompressedRistrettoPublic,
 
     /// The per output tx public key
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = "4")]
     pub public_key: CompressedRistrettoPublic,
-}
 
-impl From<&TxOut> for TxOutSummary {
-    fn from(src: &TxOut) -> Self {
-        Self {
-            masked_amount: src.masked_amount.clone(),
-            target_key: src.target_key,
-            public_key: src.public_key,
-        }
-    }
+    /// Whether or not this output is associated to an input with rules
+    #[prost(bool, tag = "5")]
+    pub associated_to_input_rules: bool,
 }
 
 /// Data in a TxSummary associated to a transaction input.
@@ -181,7 +204,7 @@ pub struct TxInSummary {
     #[prost(message, required, tag = "1")]
     pub pseudo_output_commitment: CompressedCommitment,
 
-    /// Any input rules associated to this input.
-    #[prost(message, optional, tag = "2")]
-    pub input_rules: Option<InputRules>,
+    /// Whether there are input rules associated to this input
+    #[prost(bool, tag = "2")]
+    pub has_input_rules: bool,
 }
