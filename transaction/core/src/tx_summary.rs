@@ -101,7 +101,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-/// A subset of the data in a Tx which enables efficient verification (by e.g. a
+/// A subset of the data in a Tx which enables efficient verification (e.g. by a
 /// HW wallet) of the inputs and outputs of a transaction being signed.
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxSummary {
