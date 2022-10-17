@@ -66,8 +66,7 @@ fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Err
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
-        let num_signers = config.signer_set.signers().len();
-        if num_signers == 0 || num_signers < config.signer_set.threshold() as usize {
+        if !config.signer_set.is_valid() {
             return Err(Error::InvalidSignerSet);
         }
     }
