@@ -312,7 +312,7 @@ mod test_single_level {
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
-        // Using an unknown signer should not allow us to verify is we are under the
+        // Using an unknown signer should not allow us to verify if we are under the
         // threshold
         let multi_sig = MultiSig::new(vec![
             signer1.try_sign(message.as_ref()).unwrap(),
