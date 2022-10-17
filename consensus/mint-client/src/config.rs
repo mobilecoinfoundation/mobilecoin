@@ -363,7 +363,7 @@ pub enum Commands {
         tx_filenames: Vec<PathBuf>,
     },
 
-    /// Sign governors configuration from a tokens.toml/tokens.json file.
+    /// Sign governors configuration from a tokens.json file.
     SignGovernors {
         /// The key to sign with.
         #[clap(long = "signing-key", value_parser = load_key_from_pem, env = "MC_MINTING_SIGNING_KEY")]
