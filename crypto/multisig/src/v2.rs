@@ -144,7 +144,7 @@ impl<S: SignerIdentity> SignerSetV2<S> {
         }
 
         // Sort and dedup the list of signatures. Even though we match signers to
-        // signatures (and not the other way around), we still deuplicate the
+        // signatures (and not the other way around), we still deduplicate the
         // list of signatures since it is cheap to do, and a reasonable defensive
         // programming measure.
         let mut signatures = multi_sig.signatures().to_vec();
