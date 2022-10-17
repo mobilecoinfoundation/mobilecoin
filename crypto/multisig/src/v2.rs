@@ -320,7 +320,7 @@ mod test_single_level {
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
-        // Using an unknown signer does not get in the way of verifiying a valid set.
+        // Using an unknown signer does not get in the way of verifying a valid set.
         let multi_sig = MultiSig::new(vec![
             signer1.try_sign(message.as_ref()).unwrap(),
             signer3.try_sign(message.as_ref()).unwrap(),
