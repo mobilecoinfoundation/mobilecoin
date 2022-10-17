@@ -246,7 +246,6 @@ fn main() {
         Commands::SignGovernors {
             signing_key,
             mut tokens,
-            output_toml,
             output_json,
         } => {
             let governors_map = tokens
@@ -259,11 +258,6 @@ fn main() {
             println!("Put this signature in the governors configuration file in the key \"governors_signature\".");
 
             tokens.governors_signature = Some(signature);
-
-            if let Some(path) = output_toml {
-                let toml_str = toml::to_string_pretty(&tokens).expect("failed serializing toml");
-                fs::write(path, toml_str).expect("failed writing output file");
-            }
 
             if let Some(path) = output_json {
                 let json_str =

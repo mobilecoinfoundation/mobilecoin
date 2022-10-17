@@ -373,10 +373,6 @@ pub enum Commands {
         #[clap(long, value_parser = parse_tokens_file, env = "MC_MINTING_TOKENS_CONFIG")]
         tokens: TokensConfig,
 
-        /// Optionally write a new tokens.toml file containing the signature.
-        #[clap(long, env = "MC_MINTING_OUTPUT_TOML")]
-        output_toml: Option<PathBuf>,
-
         /// Optionally write a new tokens.json file containing the signature.
         #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
         output_json: Option<PathBuf>,
