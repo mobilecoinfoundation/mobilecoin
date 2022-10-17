@@ -434,45 +434,6 @@ mod test_single_level {
         );
         let message = b"this is a test";
 
-        // Try with just no valid signatures, we should fail to verify.
-        let multi_sig = MultiSig::new(vec![signer4.try_sign(message.as_ref()).unwrap()]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        let multi_sig = MultiSig::new(vec![
-            signer4.try_sign(message.as_ref()).unwrap(),
-            signer4.try_sign(message.as_ref()).unwrap(),
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        let multi_sig = MultiSig::new(vec![
-            signer4.try_sign(message.as_ref()).unwrap(),
-            signer5.try_sign(message.as_ref()).unwrap(),
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        // Add a valid signer, we should now verify successfully.
-        let multi_sig = MultiSig::new(vec![
-            signer4.try_sign(message.as_ref()).unwrap(),
-            signer5.try_sign(message.as_ref()).unwrap(),
-            signer1.try_sign(message.as_ref()).unwrap(),
-        ]);
-        assert_eq_ignore_order(
-            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
-            vec![signer1.public_key()],
-        );
-
-        // With two valid signers we should get both back.
-        let multi_sig = MultiSig::new(vec![
-            signer4.try_sign(message.as_ref()).unwrap(),
-            signer5.try_sign(message.as_ref()).unwrap(),
-            signer1.try_sign(message.as_ref()).unwrap(),
-            signer2.try_sign(message.as_ref()).unwrap(),
-        ]);
-        assert_eq_ignore_order(
-            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
-            vec![signer1.public_key(), signer2.public_key()],
-        );
-
         // Add the same valid signers, they should not be returned twice.
         let multi_sig = MultiSig::new(vec![
             signer1.try_sign(message.as_ref()).unwrap(),
