@@ -188,8 +188,9 @@ impl<S: SignerIdentity> SignerSetV2<S> {
             match signer.entity {
                 Some(SignerEntity::Single(ref single_signer)) => {
                     // See if any of the signatures match this signer.
-                    // Note that we do not need to check if we already encounted this signer, since
-                    // we de-duped the list of signers before entering the outer loop.
+                    // Note that we do not need to check if we already encountered this signer,
+                    // since we de-duped the list of signers before entering the
+                    // outer loop.
                     if signatures
                         .iter()
                         .any(|sig| single_signer.verify(message, sig).is_ok())
