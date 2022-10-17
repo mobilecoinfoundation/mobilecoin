@@ -516,7 +516,7 @@ mod test_nested_multisigs {
         // The top-level multisig requires 1-of-2 signatures
         let signer_set = SignerSetV2::new(vec![org1_signerset.into(), org2_signerset.into()], 1);
 
-        // With not signatures, the multisig should not verify.
+        // With no signatures, the multisig should not verify.
         let multi_sig = MultiSig::new(vec![]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
@@ -591,7 +591,6 @@ mod test_nested_multisigs {
             org1_signer3_sig,
             org2_signer1_sig,
             org2_signer2_sig,
-            org2_signer2_sig,
         ]);
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
@@ -657,7 +656,7 @@ mod test_nested_multisigs {
                 org1_signer2_sig,
                 org2_signer2_sig,
                 org2_signer3_sig,
-            ], // TODO check sig2 for org1
+            ],
         );
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
@@ -799,7 +798,7 @@ mod test_nested_multisigs {
 
         // Using the common signer as part of the org1 signer set results in only org1
         // being matched.
-        let multi_sig = MultiSig::new(vec![common_signer_sig, org1_signer1_sig, org1_signer2_sig]);
+        let multi_sig = MultiSig::new(vec![common_signer_sig, org1_signer1_sig]);
         let signers = signer_set
             .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
             .unwrap();
@@ -808,7 +807,6 @@ mod test_nested_multisigs {
             vec![
                 common_signer.public_key(),
                 org1_signer1.public_key(),
-                org1_signer2.public_key(),
             ],
         );
 
@@ -827,56 +825,6 @@ mod test_nested_multisigs {
             ],
         );
 
-        // Using the common signer as part of both orgs results in both being matched.
-        let multi_sig = MultiSig::new(vec![
-            common_signer_sig,
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org2_signer1_sig,
-            org2_signer2_sig,
-            org2_signer3_sig,
-        ]);
-        let signers = signer_set
-            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
-            .unwrap();
-
-        assert_eq_ignore_order(
-            signers,
-            vec![
-                common_signer.public_key(),
-                org1_signer1.public_key(),
-                org1_signer2.public_key(),
-                org2_signer1.public_key(),
-                org2_signer2.public_key(),
-                org2_signer3.public_key(),
-            ],
-        );
-
-        // Adding a third signer to org1 causes it to be added into the list of matches.
-        let multi_sig = MultiSig::new(vec![
-            common_signer_sig,
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org1_signer3_sig,
-            org2_signer1_sig,
-            org2_signer2_sig,
-            org2_signer3_sig,
-        ]);
-        let signers = signer_set
-            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
-            .unwrap();
-
-        assert_eq_ignore_order(
-            signers,
-            vec![
-                common_signer.public_key(),
-                org1_signer1.public_key(),
-                org1_signer2.public_key(),
-                org1_signer3.public_key(),
-                org2_signer1.public_key(),
-                org2_signer2.public_key(),
-                org2_signer3.public_key(),
-            ],
         );
     }
 
@@ -935,22 +883,12 @@ mod test_nested_multisigs {
         ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
-        let multi_sig = MultiSig::new(vec![
-            // Valid org1 signature
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org1_signer3_sig,
-            // A valid single signer
-            single_signer1_sig,
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
         // Providing 3 valid signatures verifies.
         let multi_sig = MultiSig::new(vec![
             // Valid org1 signature
             org1_signer1_sig,
             org1_signer2_sig,
-            // Two valid singler signers
+            // Two valid single signers
             single_signer1_sig,
             single_signer2_sig,
             // Partial but invalid org2 signature
