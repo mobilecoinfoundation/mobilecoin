@@ -434,7 +434,7 @@ mod test_single_level {
         );
         let message = b"this is a test";
 
-        // Add the same valid signers, they should not be returned twice.
+        // Add the same valid signers, they should only be returned once.
         let multi_sig = MultiSig::new(vec![
             signer1.try_sign(message.as_ref()).unwrap(),
             signer2.try_sign(message.as_ref()).unwrap(),
