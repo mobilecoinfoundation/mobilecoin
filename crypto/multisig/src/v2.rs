@@ -664,16 +664,25 @@ mod test_nested_multisigs {
         // The top-level multisig requires 2-of-2 signatures
         let signer_set = SignerSetV2::new(vec![org1_signerset.into(), org2_signerset.into()], 2);
 
-        // With no signatures, the multisig should not verify.
-        let multi_sig = MultiSig::new(vec![]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
         // Org1 satisfies the threshold, no org2 signatures.
         let multi_sig = MultiSig::new(vec![org1_signer2_sig, org1_signer3_sig]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         // Org2 satisfies the threshold, no org1 signatures.
         let multi_sig = MultiSig::new(vec![org2_signer1_sig, org2_signer2_sig, org2_signer3_sig]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Org1 satisfies the threshold, insufficient org2 signatures.
+        let multi_sig = MultiSig::new(vec![org1_signer2_sig, org1_signer3_sig, org2_signer1_sig]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Org2 satisfies the threshold, insufficeint org1 signatures.
+        let multi_sig = MultiSig::new(vec![
+            org1_signer1_sig,
+            org2_signer1_sig,
+            org2_signer2_sig,
+            org2_signer3_sig,
+        ]);
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         // Both orgs satisfy the threshold.
@@ -690,82 +699,6 @@ mod test_nested_multisigs {
             vec![
                 org1_signer1.public_key(),
                 org1_signer2.public_key(),
-                org2_signer1.public_key(),
-                org2_signer2.public_key(),
-                org2_signer3.public_key(),
-            ],
-        );
-
-        // Org1 exceeds the threshold, org2 satisfies it.
-        let multi_sig = MultiSig::new(vec![
-            org1_signer1_sig,
-            org2_signer1_sig,
-            org1_signer2_sig,
-            org2_signer2_sig,
-            org2_signer3_sig,
-            org1_signer3_sig,
-        ]);
-        let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
-        assert_eq_ignore_order(
-            signers,
-            vec![
-                org1_signer1.public_key(),
-                org1_signer2.public_key(),
-                org1_signer3.public_key(),
-                org2_signer1.public_key(),
-                org2_signer2.public_key(),
-                org2_signer3.public_key(),
-            ],
-        );
-
-        // One org satisfies the threshold and one org does not.
-        let multi_sig = MultiSig::new(vec![
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org2_signer1_sig,
-            org2_signer2_sig,
-            org2_signer1_sig,
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        // Neither orgs provides a valid signature
-        let multi_sig = MultiSig::new(vec![
-            org1_signer1_sig,
-            org1_signer1_sig,
-            org2_signer1_sig,
-            org2_signer1_sig,
-            org2_signer2_sig,
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        // Trying to pass the same org twice doesn't get us to the threshold
-        let multi_sig = MultiSig::new(vec![
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org1_signer3_sig,
-            org1_signer1_sig,
-            org1_signer2_sig,
-            org1_signer3_sig,
-        ]);
-        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
-
-        // Passing multiple valid signatures only matches them once.
-        let multi_sig = MultiSig::new(vec![
-            org1_signer1_sig,
-            org1_signer3_sig,
-            org2_signer1_sig,
-            org2_signer2_sig,
-            org2_signer3_sig,
-            org2_signer2_sig,
-            org1_signer1_sig,
-            org1_signer3_sig,
-        ]);
-        let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
-        assert_eq_ignore_order(
-            signers,
-            vec![
-                org1_signer1.public_key(),
-                org1_signer3.public_key(),
                 org2_signer1.public_key(),
                 org2_signer2.public_key(),
                 org2_signer3.public_key(),
