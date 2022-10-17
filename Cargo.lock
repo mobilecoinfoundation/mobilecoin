@@ -2590,26 +2590,38 @@ dependencies = [
 name = "mc-consensus-enclave"
 version = "2.1.0-pre0"
 dependencies = [
+ "aes-gcm",
  "cargo-emit",
+ "lazy_static",
+ "mc-attest-ake",
+ "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-attest-net",
  "mc-attest-verifier",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-enclave-edl",
  "mc-crypto-keys",
+ "mc-crypto-rand",
  "mc-enclave-boundary",
+ "mc-fog-test-infra",
+ "mc-ledger-db",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
+ "mc-sgx-report-cache-untrusted",
  "mc-sgx-slog-edl",
  "mc-sgx-types",
  "mc-sgx-urts",
  "mc-transaction-core",
+ "mc-transaction-core-test-utils",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "mc-util-metrics",
  "mc-util-serial",
  "pkg-config",
+ "sha2 0.10.6",
 ]
 
 [[package]]
