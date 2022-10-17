@@ -104,7 +104,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// A signer set is considered valid if it has a threshold of at least one,
     /// and the number of signers is greater than or equal to the threshold.
     pub fn is_valid(&self) -> bool {
-        self.threshold > 0 && self.threshold as usize <= self.signers.len()
+        0 < self.threshold && self.threshold as usize <= self.signers.len()
     }
 
     /// Verify a message against a multi-signature, returning the list of
