@@ -119,9 +119,12 @@ impl<S: SignerIdentity> SignerSetV2<S> {
     ///
     /// Note that a signer is allowed to appear in multiple signer sets. For
     /// example, assume a signer set that requires 2 out of 2 signers, each
-    /// being its own signer set: 1) SignerSet1: SignerA, SignerB (1 out of
-    /// 2) 2) SignerSet2: SignerA, SignerC (1 out of 2)
-    /// 3) SignerSetX: SignerSet1, SignerSet (2 out of 2)
+    /// being its own signer set:
+    ///
+    /// 1) SignerSet1: SignerA, SignerB (1 out of 2)
+    /// 2) SignerSet2: SignerA, SignerC (1 out of 2)
+    /// 3) SignerSetX: SignerSet1, SignerSet2 (2 out of 2)
+    ///
     /// When validating SignerSetX, providing just a signature from SignerA will
     /// be enough to satisfy all thresholds. This is acceptable because it
     /// means the rules for verifying a single signer set and a nested one
