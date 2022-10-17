@@ -260,6 +260,34 @@ mod test_single_level {
     }
 
     #[test]
+    fn ed25519_too_many_signatures() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let (signer_set, signers) = make_signer_set(1, 1, &mut rng);
+
+        let message = b"this is a test";
+
+        // Test the upper limit of number of signatures, this should work.
+        let multi_sig = MultiSig::new(
+            (0..MAX_SIGNATURES)
+                .map(|_| signers[0].try_sign(message.as_ref()).unwrap())
+                .collect(),
+        );
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signers[0].public_key()],
+        );
+
+        // One extra signature and we should fail.
+        let multi_sig = MultiSig::new(
+            (0..MAX_SIGNATURES + 1)
+                .map(|_| signers[0].try_sign(message.as_ref()).unwrap())
+                .collect(),
+        );
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+    }
+
+    #[test]
     fn ed25519_verify_signers_sanity_k_equals_3() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
@@ -826,6 +854,62 @@ mod test_nested_multisigs {
         );
 
         );
+    }
+
+    #[test]
+    fn ed25519_common_signer() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let message = b"this is a test";
+
+        let common_signer = Ed25519Pair::from_random(&mut rng);
+
+        // Org 1, 2 and 3 requires 1-of-2 signatures
+        let org1_signer = Ed25519Pair::from_random(&mut rng);
+        let org1_signerset = SignerSetV2::new(
+            vec![
+                org1_signer.public_key().into(),
+                common_signer.public_key().into(),
+            ],
+            1,
+        );
+
+        let org2_signer = Ed25519Pair::from_random(&mut rng);
+        let org2_signerset = SignerSetV2::new(
+            vec![
+                org2_signer.public_key().into(),
+                common_signer.public_key().into(),
+            ],
+            1,
+        );
+
+        let org3_signer = Ed25519Pair::from_random(&mut rng);
+        let org3_signerset = SignerSetV2::new(
+            vec![
+                org3_signer.public_key().into(),
+                common_signer.public_key().into(),
+            ],
+            1,
+        );
+
+        // Sign the message with the common signers.
+        let common_signer_sig = common_signer.try_sign(message).unwrap();
+
+        // The top-level multisig requires 2-of-3 signatures
+        let signer_set = SignerSetV2::new(
+            vec![
+                org1_signerset.into(),
+                org2_signerset.into(),
+                org3_signerset.into(),
+            ],
+            2,
+        );
+
+        // Using the common signer should verify.
+        let multi_sig = MultiSig::new(vec![common_signer_sig]);
+        let signers = signer_set
+            .verify::<Ed25519Signature>(message.as_ref(), &multi_sig)
+            .unwrap();
+        assert_eq_ignore_order(signers, vec![common_signer.public_key()]);
     }
 
     #[test]
