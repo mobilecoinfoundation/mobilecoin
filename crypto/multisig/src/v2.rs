@@ -677,15 +677,13 @@ mod test_nested_multisigs {
         assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
 
         // Both orgs satisfy the threshold.
-        let multi_sig = MultiSig::new(
-            vec![
-                org1_signer1_sig,
-                org2_signer1_sig,
-                org1_signer2_sig,
-                org2_signer2_sig,
-                org2_signer3_sig,
-            ],
-        );
+        let multi_sig = MultiSig::new(vec![
+            org1_signer1_sig,
+            org2_signer1_sig,
+            org1_signer2_sig,
+            org2_signer2_sig,
+            org2_signer3_sig,
+        ]);
         let signers = signer_set.verify(message.as_ref(), &multi_sig).unwrap();
         assert_eq_ignore_order(
             signers,
@@ -814,12 +812,9 @@ mod test_nested_multisigs {
         let common_signer_sig = common_signer.try_sign(message).unwrap();
 
         let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
-        let org1_signer2_sig = org1_signer2.try_sign(message.as_ref()).unwrap();
-        let org1_signer3_sig = org1_signer3.try_sign(message.as_ref()).unwrap();
 
         let org2_signer1_sig = org2_signer1.try_sign(message.as_ref()).unwrap();
         let org2_signer2_sig = org2_signer2.try_sign(message.as_ref()).unwrap();
-        let org2_signer3_sig = org2_signer3.try_sign(message.as_ref()).unwrap();
 
         // The top-level multisig requires 1-of-2 signatures
         let signer_set = SignerSetV2::new(vec![org1_signerset.into(), org2_signerset.into()], 1);
@@ -832,10 +827,7 @@ mod test_nested_multisigs {
             .unwrap();
         assert_eq_ignore_order(
             signers,
-            vec![
-                common_signer.public_key(),
-                org1_signer1.public_key(),
-            ],
+            vec![common_signer.public_key(), org1_signer1.public_key()],
         );
 
         // Using the common signer as part of the org2 signer set results in only org2
@@ -851,8 +843,6 @@ mod test_nested_multisigs {
                 org2_signer1.public_key(),
                 org2_signer2.public_key(),
             ],
-        );
-
         );
     }
 
@@ -919,8 +909,7 @@ mod test_nested_multisigs {
 
         // Org 1 requires 2-of-3 signatures
         let (org1_signerset, org1_signers) = make_signer_set(2, 3, &mut rng);
-        let (org1_signer1, org1_signer2, org1_signer3) =
-            (&org1_signers[0], &org1_signers[1], &org1_signers[2]);
+        let (org1_signer1, org1_signer2) = (&org1_signers[0], &org1_signers[1]);
 
         // Org 2 requires 3-of-3 signatures
         let (org2_signerset, org2_signers) = make_signer_set(3, 3, &mut rng);
@@ -934,7 +923,6 @@ mod test_nested_multisigs {
         // Sign the message with all of our signers.
         let org1_signer1_sig = org1_signer1.try_sign(message.as_ref()).unwrap();
         let org1_signer2_sig = org1_signer2.try_sign(message.as_ref()).unwrap();
-        let org1_signer3_sig = org1_signer3.try_sign(message.as_ref()).unwrap();
 
         let org2_signer1_sig = org2_signer1.try_sign(message.as_ref()).unwrap();
         let org2_signer2_sig = org2_signer2.try_sign(message.as_ref()).unwrap();
