@@ -172,7 +172,7 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSet::new(vec![Ed25519Public::default()], vec![], 1),
             )])
             .unwrap(),
             governors_signature: None,
@@ -183,7 +183,7 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default()], 1),
+                SignerSet::new(vec![Ed25519Public::default()], vec![], 1),
             )])
             .unwrap(),
             governors_signature: None,
@@ -194,7 +194,11 @@ mod test {
             fee_map: FeeMap::default(),
             governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+                SignerSet::new(
+                    vec![Ed25519Public::default(), Ed25519Public::default()],
+                    vec![],
+                    1,
+                ),
             )])
             .unwrap(),
             governors_signature: None,
