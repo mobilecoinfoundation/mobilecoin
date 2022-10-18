@@ -6,6 +6,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
 use mc_fog_test_infra::db_tests::random_block;
+use mc_fog_types::common::BlockRange;
 use mc_fog_view_server_test_utils::RouterTestEnvironment;
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -115,8 +116,18 @@ fn test_512() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     const OMAP_CAPACITY: u64 = 512;
     const STORE_COUNT: usize = 5;
+
+    let mut block_ranges = Vec::with_capacity(STORE_COUNT);
+    for i in 0..STORE_COUNT {
+        let block_range = BlockRange {
+            start_block: i as u64,
+            end_block: (i + 1) as u64,
+        };
+        block_ranges.push(block_range);
+    }
+
     let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, STORE_COUNT, logger.clone());
+        RouterTestEnvironment::new(OMAP_CAPACITY, &block_ranges, logger.clone());
 
     block_on(test_router_integration(
         &mut test_environment,
@@ -129,8 +140,18 @@ fn test_1_million() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     const OMAP_CAPACITY: u64 = 1024 * 1024;
     const STORE_COUNT: usize = 5;
+
+    let mut block_ranges = Vec::with_capacity(STORE_COUNT);
+    for i in 0..STORE_COUNT {
+        let block_range = BlockRange {
+            start_block: i as u64,
+            end_block: (i + 1) as u64,
+        };
+        block_ranges.push(block_range);
+    }
+
     let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, STORE_COUNT, logger.clone());
+        RouterTestEnvironment::new(OMAP_CAPACITY, &block_ranges, logger.clone());
 
     block_on(test_router_integration(
         &mut test_environment,

@@ -55,9 +55,9 @@ pub struct RouterTestEnvironment {
 
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
-    pub fn new(omap_capacity: u64, store_count: usize, logger: Logger) -> Self {
+    pub fn new(omap_capacity: u64, store_block_ranges: &[BlockRange], logger: Logger) -> Self {
         let (db_test_context, store_servers, store_clients) =
-            Self::create_view_stores(omap_capacity, store_count, logger.clone());
+            Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
             FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{}", port))
@@ -126,7 +126,7 @@ impl RouterTestEnvironment {
     /// Creates fog view stores with sane defaults.
     fn create_view_stores(
         omap_capacity: u64,
-        store_count: usize,
+        store_block_ranges: &[BlockRange],
         logger: Logger,
     ) -> (
         SqlRecoveryDbTestContext,
@@ -138,7 +138,7 @@ impl RouterTestEnvironment {
         let mut store_servers = Vec::new();
         let mut store_clients = HashMap::new();
 
-        for i in 0..store_count {
+        for (i, store_block_range) in store_block_ranges.iter().enumerate() {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
                 let store_uri = FogViewStoreUri::from_str(&format!(
@@ -147,10 +147,7 @@ impl RouterTestEnvironment {
                 ))
                 .unwrap();
 
-                // Each store is responsible for 1 block. Note that this means that the stores
-                // in this test are not responsible for overlapping block ranges.
-                let store_block_range = BlockRange::new(i as u64, (i + 1) as u64);
-                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range);
+                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
 
                 let config = ViewConfig {
                     chain_id: "local".to_string(),
