@@ -274,7 +274,8 @@ mod conversion_tests {
     fn test_convert_active_mint_config() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
-        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set =
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), vec![], 1);
 
         let source = mc_ledger_db::ActiveMintConfig {
             mint_config: MintConfig {
@@ -322,7 +323,8 @@ mod conversion_tests {
     fn test_convert_active_mint_configs() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
-        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set =
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), vec![], 1);
 
         let source = mc_ledger_db::ActiveMintConfigs {
             configs: vec![mc_ledger_db::ActiveMintConfig {
