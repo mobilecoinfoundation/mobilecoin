@@ -324,7 +324,7 @@ where
 
                 Ok((query_response, multi_view_store_query_response.block_range))
             })
-            .collect::<Result<Vec<(QueryResponse, BlockRange)>>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
             client_query_request,
