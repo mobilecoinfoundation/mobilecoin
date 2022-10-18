@@ -39,12 +39,13 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
 impl From<&SignerSet<Ed25519Public>> for external::Ed25519SignerSet {
     fn from(src: &SignerSet<Ed25519Public>) -> Self {
         let mut dst = external::Ed25519SignerSet::new();
-        dst.set_signers(
-            src.signers()
+        dst.set_individual_signers(
+            src.individual_signers()
                 .iter()
                 .map(external::Ed25519Public::from)
                 .collect(),
         );
+        dst.set_multi_signers(src.multi_signers().iter().map(From::from).collect());
         dst.set_threshold(src.threshold());
         dst
     }
@@ -55,15 +56,21 @@ impl TryFrom<&external::Ed25519SignerSet> for SignerSet<Ed25519Public> {
     type Error = ConversionError;
 
     fn try_from(source: &external::Ed25519SignerSet) -> Result<Self, Self::Error> {
-        let signers: Vec<Ed25519Public> = source
-            .get_signers()
+        let individual_signers: Vec<Ed25519Public> = source
+            .get_individual_signers()
             .iter()
             .map(Ed25519Public::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
+        let multi_signers: Vec<Self> = source
+            .get_multi_signers()
+            .iter()
+            .map(TryFrom::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
         let threshold = source.get_threshold();
 
-        Ok(Self::new(signers, threshold))
+        Ok(Self::new(individual_signers, multi_signers, threshold))
     }
 }
 
@@ -83,6 +90,7 @@ pub mod tests {
         let signer1 = Ed25519Pair::from_random(&mut rng);
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
+        let signer4 = Ed25519Pair::from_random(&mut rng);
 
         SignerSet::new(
             vec![
@@ -90,6 +98,7 @@ pub mod tests {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
+            vec![SignerSet::new(vec![signer4.public_key()], vec![], 1)],
             2,
         )
     }
