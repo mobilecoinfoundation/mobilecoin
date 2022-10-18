@@ -32,8 +32,8 @@ json=$(cat "${location}/tokens.base.json")
 
 # Set minter1 pub keys and threshold
 minter1_governor=$(cat "${minting_path}/minter1_governor.public.pem")
-json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == 1) | .governors.signers) |= \"${minter1_governor}\"")
-json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == 1) | .governors.threshold) |= 1")
+json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == 8192) | .governors.signers) |= \"${minter1_governor}\"")
+json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == 8192) | .governors.threshold) |= 1")
 
 #output unsigned tokens
 echo "$json" | jq . > .tmp/tokens.json
