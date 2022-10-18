@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::error::RouterServerError;
+use mc_common::logger::{log, Logger};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
 use std::{str::FromStr, sync::Arc};
-use mc_common::logger::{log, Logger};
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
 /// Shard.
@@ -49,7 +49,11 @@ pub fn process_shard_responses(
     for (shard_client, response) in clients_and_responses {
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
-                log::error!(logger, "Received a response with status 'unknown' from store{}", FogViewStoreUri::from_str(&response.store_uri)?);
+                log::error!(
+                    logger,
+                    "Received a response with status 'unknown' from store{}",
+                    FogViewStoreUri::from_str(&response.store_uri)?
+                );
             }
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Success => {
                 new_query_responses.push(response.clone());

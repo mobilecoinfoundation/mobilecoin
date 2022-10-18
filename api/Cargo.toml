@@ -18,7 +18,7 @@ mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
-mc-util-uri = { path = "../util/uri"}
+mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.4.0"

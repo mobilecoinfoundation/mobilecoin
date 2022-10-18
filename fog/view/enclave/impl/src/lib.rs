@@ -316,9 +316,7 @@ where
             .map(|multi_view_store_query_response| {
                 let plaintext_bytes = self.ake.backend_decrypt(
                     &multi_view_store_query_response.store_responder_id,
-                    &multi_view_store_query_response
-                        .encrypted_query_response
-                        .into(),
+                    &multi_view_store_query_response.encrypted_query_response,
                 )?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
