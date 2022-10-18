@@ -38,15 +38,15 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let mut router_server =
-        KeyImageStoreServer::new(config.clone(), 
+    let mut store_server =
+        KeyImageStoreServer::new_from_config(config.clone(), 
             enclave, 
             db, 
             watcher, 
             SystemTimeProvider::default(), 
             logger.clone(),
         );
-    router_server.start();
+    store_server.start();
 
     //Initialize the admin api
     let config2 = config.clone();
