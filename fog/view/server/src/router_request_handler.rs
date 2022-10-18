@@ -138,6 +138,7 @@ where
 
         let processed_shard_response_data = shard_responses_processor::process_shard_responses(
             clients_and_responses,
+            logger.clone(),
         )
         .map_err(|err| {
             router_server_err_to_rpc_status(

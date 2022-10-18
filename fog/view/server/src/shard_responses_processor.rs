@@ -5,6 +5,7 @@ use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
 use std::{str::FromStr, sync::Arc};
+use mc_common::logger::{log, Logger};
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
 /// Shard.
@@ -39,6 +40,7 @@ impl ProcessedShardResponseData {
 /// Processes the MultiViewStoreQueryResponses returned by each Fog View Shard.
 pub fn process_shard_responses(
     clients_and_responses: Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>,
+    logger: Logger,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
     let mut shard_clients_for_retry = Vec::new();
     let mut view_store_uris_for_authentication = Vec::new();
@@ -46,6 +48,9 @@ pub fn process_shard_responses(
 
     for (shard_client, response) in clients_and_responses {
         match response.status {
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
+                log::error!(logger, "Received a response with status 'unknown' from store{}", FogViewStoreUri::from_str(&response.store_uri)?);
+            }
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Success => {
                 new_query_responses.push(response.clone());
             }
@@ -148,7 +153,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -163,7 +168,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -178,7 +183,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -196,7 +201,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -214,7 +219,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -232,7 +237,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -250,7 +255,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -268,7 +273,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -286,7 +291,7 @@ mod tests {
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -315,7 +320,7 @@ mod tests {
             clients_and_responses.push((grpc_client, successful_mvq_response));
         }
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
         assert!(result.is_ok());
         let processed_shard_response_data = result.unwrap();
 

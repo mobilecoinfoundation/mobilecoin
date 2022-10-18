@@ -101,6 +101,8 @@ pub struct QueryResponse {
 /// enum.
 #[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum MultiViewStoreQueryResponseStatus {
+    /// Default status. This shouldn't be set explicitly.
+    Unknown,
     /// The Fog View Store successfully fulfilled the request.
     Success,
     /// The Fog View Store is unable to decrypt a query within the

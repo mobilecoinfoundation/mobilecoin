@@ -98,6 +98,9 @@ impl TryFrom<crate::view::MultiViewStoreQueryResponse>
 impl From<crate::view::MultiViewStoreQueryResponseStatus> for MultiViewStoreQueryResponseStatus {
     fn from(proto_status: crate::view::MultiViewStoreQueryResponseStatus) -> Self {
         match proto_status {
+            crate::view::MultiViewStoreQueryResponseStatus::UNKNOWN => {
+                MultiViewStoreQueryResponseStatus::Unknown
+            }
             crate::view::MultiViewStoreQueryResponseStatus::SUCCESS => {
                 MultiViewStoreQueryResponseStatus::Success
             }
