@@ -539,7 +539,7 @@ fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), Strin
     }
 
     // Success.
-    Ok((mint_limit, SignerSet::new(public_keys, threshold)))
+    Ok((mint_limit, SignerSet::new(public_keys, vec![], threshold)))
 }
 
 /// Parse a tokens file from the command line
