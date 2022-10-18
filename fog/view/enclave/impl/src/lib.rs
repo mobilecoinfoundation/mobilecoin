@@ -2,7 +2,7 @@
 
 //! View Enclave Implementation
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 extern crate alloc;
 
@@ -44,6 +44,40 @@ struct DecryptedMultiViewStoreQueryResponse {
     query_response: QueryResponse,
     /// The `BlockRange` that the shard is meant to process.
     block_range: BlockRange,
+}
+
+/// Helper struct that contains block data for the client `QueryResponse`
+#[derive(Clone)]
+struct BlockData {
+    /// The highest processed block count that will be returned to the client.
+    highest_processed_block_count: u64,
+    /// The timestamp for the highest processed block count
+    highest_processed_block_signature_timestamp: u64,
+    /// The last known block count that will be returned to the client.
+    last_known_block_count: u64,
+}
+
+impl BlockData {
+    fn new(
+        highest_processed_block_count: u64,
+        highest_processed_block_signature_timestamp: u64,
+        last_known_block_count: u64,
+    ) -> Self {
+        Self {
+            highest_processed_block_count,
+            highest_processed_block_signature_timestamp,
+            last_known_block_count,
+        }
+    }
+}
+impl Default for BlockData {
+    fn default() -> Self {
+        Self {
+            highest_processed_block_count: u64::MIN,
+            last_known_block_count: u64::MIN,
+            highest_processed_block_signature_timestamp: u64::MIN,
+        }
+    }
 }
 
 pub struct ViewEnclave<OSC>
@@ -339,8 +373,12 @@ where
 
         shard_query_response.tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &shard_query_responses)?;
+        let block_data = get_block_data(shard_query_responses);
         shard_query_response.highest_processed_block_count =
-            Self::get_minimum_highest_processed_block_count(shard_query_responses);
+            block_data.highest_processed_block_count;
+        shard_query_response.highest_processed_block_signature_timestamp =
+            block_data.highest_processed_block_signature_timestamp;
+        shard_query_response.last_known_block_count = block_data.last_known_block_count;
 
         Ok(shard_query_response)
     }
@@ -359,34 +397,155 @@ where
             plaintext_search_results,
         )
     }
+}
 
-    // Takes each MultiViewStoreResponseQuery
-    fn get_minimum_highest_processed_block_count(
-        mut responses: Vec<DecryptedMultiViewStoreQueryResponse>,
-    ) -> u64 {
-        responses.sort_unstable_by_key(|response| response.block_range.start_block);
-
-        // Find the first time in which a highest processed block count does not equate
-        // to the final block that the shard is responsible for.
-        let mut max_highest_processed_block_count = u64::MIN;
-        for response in responses {
-            let response_highest_processed_block_count =
-                response.query_response.highest_processed_block_count;
-            if response_highest_processed_block_count > max_highest_processed_block_count {
-                max_highest_processed_block_count = response_highest_processed_block_count;
-            }
-
-            // In this case, the shard hasn't processed all the blocks it's responsible for,
-            // and, as such, those blocks might not be processed so we should return this
-            // number.
-            // TODO: Consider implementing logic that accounts for overlapping block ranges.
-            //   If ranges overlap, then the next server might have processed those blocks
-            //   that this shard did not process (but is responsible for).
-            if response_highest_processed_block_count < response.block_range.end_block {
-                return max_highest_processed_block_count;
-            }
+fn get_block_data(mut responses: Vec<DecryptedMultiViewStoreQueryResponse>) -> BlockData {
+    responses.sort_unstable_by_key(|response| response.block_range.start_block);
+    
+    // Find the first time in which a highest processed block count does not equate
+    // to the final block that the shard is responsible for.
+    let mut result = BlockData::default();
+    for response in responses.iter() {
+        let response_highest_processed_block_count =
+            response.query_response.highest_processed_block_count;
+        if response_highest_processed_block_count > result.highest_processed_block_count {
+            result = BlockData::new(
+                response_highest_processed_block_count,
+                response
+                    .query_response
+                    .highest_processed_block_signature_timestamp,
+                response.query_response.last_known_block_count,
+            );
         }
 
-        max_highest_processed_block_count
+        // In this case, the shard hasn't processed all the blocks it's responsible for,
+        // and, as such, those blocks might not be processed so we should return this
+        // number.
+        // TODO: Consider implementing logic that accounts for overlapping block ranges.
+        //   If ranges overlap, then the next server might have processed those blocks
+        //   that this shard did not process (but is responsible for).
+        if response_highest_processed_block_count < response.block_range.end_block {
+            return result;
+        }
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod get_block_data_tests {
+    use crate::{get_block_data, DecryptedMultiViewStoreQueryResponse};
+    use alloc::{vec, vec::Vec};
+    use mc_fog_types::{common::BlockRange, view::QueryResponse};
+
+    fn create_query_response(
+        highest_processed_block_count: u64,
+        highest_processed_block_signature_timestamp: u64,
+        last_known_block_count: u64,
+    ) -> QueryResponse {
+        QueryResponse {
+            highest_processed_block_count,
+            highest_processed_block_signature_timestamp,
+            next_start_from_user_event_id: 0,
+            missed_block_ranges: vec![],
+            rng_records: vec![],
+            decommissioned_ingest_invocations: vec![],
+            tx_out_search_results: vec![],
+            last_known_block_count,
+            last_known_block_cumulative_txo_count: 0,
+        }
+    }
+
+    #[test]
+    fn all_responses_fully_processed_returns_last_response_block_data() {
+        const STORE_COUNT: usize = 4;
+        let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
+        for i in 0..STORE_COUNT {
+            let query_response = create_query_response((i + 1) as u64, i as u64, (i + 1) as u64);
+            let block_range = BlockRange::new(i as u64, (i + 1) as u64);
+            let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
+                query_response,
+                block_range,
+            };
+            decrypted_query_responses.push(decrypted_query_response);
+        }
+
+        let result = get_block_data(decrypted_query_responses.clone());
+
+        let last_response = decrypted_query_responses.last().unwrap();
+        assert_eq!(
+            result.highest_processed_block_count,
+            last_response.query_response.highest_processed_block_count
+        );
+        assert_eq!(
+            result.highest_processed_block_signature_timestamp,
+            last_response
+                .query_response
+                .highest_processed_block_signature_timestamp
+        );
+        assert_eq!(
+            result.last_known_block_count,
+            last_response.query_response.last_known_block_count
+        );
+    }
+
+    #[test]
+    fn multiple_incomplete_responses_returns_response_before_first_incomplete() {
+        const STORE_COUNT: usize = 3;
+        let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
+
+        // Make the first response fully processed.
+        let first_query_response = create_query_response(1, 0, 1);
+        let block_range = BlockRange::new(0, 1);
+        let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
+            query_response: first_query_response.clone(),
+            block_range,
+        };
+        decrypted_query_responses.push(decrypted_query_response);
+
+        // Make the second response "incomplete"- i.e. it hasn't processed all of its
+        // blocks.
+        let incomplete_block_count = 0;
+        let incomplete_query_response =
+            create_query_response(incomplete_block_count, 2, incomplete_block_count);
+        let block_range = BlockRange::new(1, 2);
+        decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
+            query_response: incomplete_query_response,
+            block_range,
+        });
+
+        // Make the third response fully processed.
+        let fully_processed_block_count = 3;
+        let query_response =
+            create_query_response(fully_processed_block_count, 3, fully_processed_block_count);
+        let block_range = BlockRange::new(2, 3);
+        decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
+            query_response,
+            block_range,
+        });
+
+        // Make the fourth response incomplete.
+        let block_count = 0;
+        let query_response = create_query_response(block_count, 0, block_count);
+        let block_range = BlockRange::new(3, 4);
+        decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
+            query_response,
+            block_range,
+        });
+
+        let result = get_block_data(decrypted_query_responses.clone());
+
+        assert_eq!(
+            result.highest_processed_block_count,
+            first_query_response.highest_processed_block_count
+        );
+        assert_eq!(
+            result.highest_processed_block_signature_timestamp,
+            first_query_response.highest_processed_block_signature_timestamp
+        );
+        assert_eq!(
+            result.last_known_block_count,
+            first_query_response.last_known_block_count
+        );
     }
 }
