@@ -8,7 +8,7 @@
 //!   requires sending about 1kb of data and can be fast even on a slow
 //!   connection and slow device.
 //! * However, if they want to be able to display to the user what it is that
-//!   they are signing, i.e. how much money is being transfered to who, and
+//!   they are signing, i.e. how much money is being transferred to who, and
 //!   verify that this is correct on the device, then they have to be able to
 //!   trace the "extended message digest" back to the TxPrefix.outputs list and
 //!   see where these inputs they are signing away are going to.
