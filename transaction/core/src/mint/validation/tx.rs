@@ -110,6 +110,7 @@ mod tests {
                     signer_2.public_key(),
                     signer_3.public_key(),
                 ],
+                vec![],
                 2,
             ),
             mint_limit: 500,
@@ -149,6 +150,7 @@ mod tests {
                     signer_2.public_key(),
                     signer_3.public_key(),
                 ],
+                vec![],
                 2,
             ),
             mint_limit: 500,
@@ -191,6 +193,7 @@ mod tests {
                     signer_2.public_key(),
                     signer_3.public_key(),
                 ],
+                vec![],
                 2,
             ),
             mint_limit: 500,
@@ -233,6 +236,7 @@ mod tests {
                     signer_2.public_key(),
                     signer_3.public_key(),
                 ],
+                vec![],
                 2,
             ),
             mint_limit: 500,
@@ -276,7 +280,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSet::new(vec![signer_1.public_key()], 1);
+        let signer_set = SignerSet::new(vec![signer_1.public_key()], vec![], 1);
 
         assert_eq!(validate_signature(&tx, &signer_set), Ok(()));
     }
@@ -300,7 +304,7 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        let signer_set = SignerSet::new(vec![signer_2.public_key()], 1);
+        let signer_set = SignerSet::new(vec![signer_2.public_key()], vec![], 1);
 
         assert_eq!(
             validate_signature(&tx, &signer_set),
@@ -324,7 +328,7 @@ mod tests {
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-        let signer_set = SignerSet::new(vec![signer_1.public_key()], 1);
+        let signer_set = SignerSet::new(vec![signer_1.public_key()], vec![], 1);
 
         let tx = MintTx {
             prefix: prefix.clone(),
