@@ -84,15 +84,19 @@ pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
 pub fn print_signer_set(signer_set: &SignerSet<Ed25519Public>, indent: usize) {
     let mut indent_str = INDENT_STR.repeat(indent);
     println!(
-        "{}Signer set ({} signer(s)):",
+        "{}Signer set ({} individual signer(s), {} multi signer(s)):",
         indent_str,
-        signer_set.signers().len()
+        signer_set.individual_signers().len(),
+        signer_set.multi_signers().len(),
     );
     indent_str.push_str(INDENT_STR);
-    for signer in signer_set.signers() {
+    println!("{}Threshold: {}", indent_str, signer_set.threshold());
+    for signer in signer_set.individual_signers() {
         print_pem(signer, PEM_TAG_PUBLIC_KEY, indent + 2);
     }
-    println!("{}Threshold: {}", indent_str, signer_set.threshold());
+    for nested_signer_set in signer_set.multi_signers() {
+        print_signer_set(nested_signer_set, indent + 2);
+    }
 }
 
 pub fn print_multi_sig(multi_sig: &MultiSig<Ed25519Signature>, indent: usize) {
