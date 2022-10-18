@@ -255,7 +255,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - Minting tx
       if: inputs.testing_1_2 == 'true'
@@ -270,7 +270,7 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.DST_KEYS_DIR }} \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - mobilecoind-json integration
       if: inputs.testing_1_2 == 'true'
@@ -298,7 +298,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/mint-auditor-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - use drain_accounts to transfer id 1 balances to fog keys
       if: inputs.testing_1_2 == 'true'
@@ -315,7 +315,7 @@ jobs:
             --src ${{ env.DST_KEYS_DIR }} \
             --dst ${{ env.DST_FOG_KEYS_DIR }} \
             --fee 1024 \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - fog-test-client token id 0
       if: inputs.testing_1_2 == 'true'
@@ -345,4 +345,4 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
-            --token-id 1
+            --token-id 8192
