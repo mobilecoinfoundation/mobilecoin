@@ -55,7 +55,7 @@ fn consensus_enclave_client_tx_propose_v2(logger: Logger) {
     // Update enclave report cache, using SIM or HW-mode RA client as appropriate
     let ias_spid = Default::default();
     let ias_api_key = core::str::from_utf8(&[0u8; 64]).unwrap();
-    let ias_client = Client::new(&ias_api_key).expect("Could not create IAS client");
+    let ias_client = Client::new(ias_api_key).expect("Could not create IAS client");
 
     let report_cache = ReportCache::new(
         enclave.clone(),
@@ -125,10 +125,7 @@ fn consensus_enclave_client_tx_propose_v2(logger: Logger) {
     // Now, let's screw with the fee_map_digest
     fee_map_digest[0] = !fee_map_digest[0];
 
-    let req = ClientProposeTxRequestV2 {
-        tx: tx.clone(),
-        fee_map_digest,
-    };
+    let req = ClientProposeTxRequestV2 { tx, fee_map_digest };
 
     let tx_ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 

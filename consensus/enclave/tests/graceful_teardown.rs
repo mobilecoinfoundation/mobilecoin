@@ -29,7 +29,7 @@ fn consensus_enclave_graceful_teardown(logger: Logger) {
 
     let blockchain_config = BlockchainConfig {
         block_version,
-        fee_map: fee_map.clone(),
+        fee_map,
         ..Default::default()
     };
 
@@ -46,7 +46,7 @@ fn consensus_enclave_graceful_teardown(logger: Logger) {
         // Update enclave report cache, using SIM or HW-mode RA client as appropriate
         let ias_spid = Default::default();
         let ias_api_key = core::str::from_utf8(&[0u8; 64]).unwrap();
-        let ias_client = Client::new(&ias_api_key).expect("Could not create IAS client");
+        let ias_client = Client::new(ias_api_key).expect("Could not create IAS client");
 
         let report_cache = ReportCache::new(
             enclave.clone(),

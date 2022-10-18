@@ -924,7 +924,6 @@ impl Client {
         // told us the block version has increased.
         if let Some(block_info_cache) = self.block_info_cache.as_ref() {
             if block_info_cache.network_block_version != self.tx_data.get_latest_block_version() {
-                drop(block_info_cache);
                 self.block_info_cache = None;
             }
         }
