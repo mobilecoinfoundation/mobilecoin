@@ -31,21 +31,30 @@ mod pem_signer_set {
         signer_set: &Option<SignerSet<Ed25519Public>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let pem_signer_set = signer_set.as_ref().map(|signer_set| {
-            let pems = signer_set
-                .signers()
-                .iter()
-                .map(|signer| Pem {
-                    tag: String::from("PUBLIC KEY"),
-                    contents: signer.to_der(),
-                })
-                .collect::<Vec<_>>();
+        let pem_signer_set = signer_set
+            .as_ref()
+            .map(|signer_set| {
+                if !signer_set.multi_signers().is_empty() {
+                    return Err(serde::ser::Error::custom(
+                        "SignerSet multi-signers are not supported in this revision",
+                    ));
+                }
 
-            PemSignerSet {
-                signers: pem::encode_many(&pems[..]),
-                threshold: signer_set.threshold(),
-            }
-        });
+                let pems = signer_set
+                    .individual_signers()
+                    .iter()
+                    .map(|signer| Pem {
+                        tag: String::from("PUBLIC KEY"),
+                        contents: signer.to_der(),
+                    })
+                    .collect::<Vec<_>>();
+
+                Ok(PemSignerSet {
+                    signers: pem::encode_many(&pems[..]),
+                    threshold: signer_set.threshold(),
+                })
+            })
+            .transpose()?;
 
         pem_signer_set.serialize(serializer)
     }
@@ -70,7 +79,11 @@ mod pem_signer_set {
                     // Return the keys.
                     .collect::<Result<_, D::Error>>()?;
 
-                Ok(Some(SignerSet::new(signers, pem_signer_set.threshold)))
+                Ok(Some(SignerSet::new(
+                    signers,
+                    vec![],
+                    pem_signer_set.threshold,
+                )))
             }
         }
     }
@@ -682,6 +695,7 @@ mod tests {
                     Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
                     Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),
                 ],
+                vec![],
                 1,
             )),
         };
@@ -776,7 +790,7 @@ mod tests {
                 .unwrap()
                 .governors()
                 .unwrap()
-                .signers()[0],
+                .individual_signers()[0],
             key1
         );
 
@@ -786,7 +800,7 @@ mod tests {
                 .unwrap()
                 .governors()
                 .unwrap()
-                .signers()[1],
+                .individual_signers()[1],
             key2
         );
         // The governors signature should've decoded successfully.
