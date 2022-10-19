@@ -10,6 +10,7 @@ usage()
 {
     echo "Usage --token-id <num>"
     echo "    --token-id - token id to test"
+    echo "    --token-fee - fee for token id"
 }
 
 is_set()
@@ -30,8 +31,12 @@ do
             usage
             exit 0
             ;;
-        --token-id )
+        --token-id)
             token_id="${2}"
+            shift 2
+            ;;
+        --token-fee)
+            token_fee="${2}"
             shift 2
             ;;
         *)
@@ -43,6 +48,7 @@ do
 done
 
 is_set token_id
+is_set token_fee
 is_set NAMESPACE
 
 
@@ -94,6 +100,8 @@ python3 integration_test.py \
     --mint-auditor-addr "mobilecoind-mint-auditor:7774" \
     --mint-client-bin /usr/local/bin/mc-consensus-mint-client \
     --node-url "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
-    --mint-signing-key "${token_signer_key}"
+    --mint-signing-key "${token_signer_key}" \
+    --token-id "${token_id}" \
+    --token-fee "${token_fee}"
 
 popd >/dev/null || exit 1

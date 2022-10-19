@@ -150,7 +150,7 @@ class MintAuditorTest:
         try:
             b58_addr = self.mobilecoind_client.get_b58_public_address(monitor_id)
             logging.info(f"Minting to {b58_addr}")
-            token_id = 1
+            token_id = self.args.token_id
             mint_amount = 10000
 
             # Get the network block height and wait for the mint auditor to catch up
@@ -180,7 +180,7 @@ class MintAuditorTest:
 
             # Burn 300 tokens
             burn_amount = 300
-            fee_amount = 1024
+            fee_amount = self.args.token_fee
             utxos = self.mobilecoind_client.get_utxos(monitor_id, token_id)
             tx_proposal = self.mobilecoind_client.generate_burn_redemption_tx(
                 monitor_id,
@@ -265,6 +265,12 @@ if __name__ == '__main__':
     parser.add_argument("--mint-signing-key",
                         type=str,
                         help="path to the mint signing private key file")
+    parser.add_argument("--token-id",
+                        type=int,
+                        help="token id to mint")
+    parser.add_argument("--token-fee",
+                        type=int,
+                        help="fee for specified token id")
 
     args = parser.parse_args()
     MintAuditorTest(args).run()
