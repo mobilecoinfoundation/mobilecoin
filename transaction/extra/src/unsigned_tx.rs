@@ -6,7 +6,8 @@ use mc_transaction_core::{
     ring_ct::{
         Error as RingCtError, InputRing, OutputSecret, SignatureRctBulletproofs, SigningData,
     },
-    tx::{Tx, TxPrefix}, TxSummary,
+    tx::{Tx, TxPrefix},
+    TxSummary,
 };
 use mc_transaction_types::{Amount, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};

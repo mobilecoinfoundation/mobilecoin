@@ -136,7 +136,7 @@ impl TxSummary {
             zip_exact(tx_prefix.inputs.iter(), pseudo_output_commitments.iter())?
                 .map(|(input, commitment)| {
                     let mut result = TxInSummary {
-                        pseudo_output_commitment: commitment.clone(),
+                        pseudo_output_commitment: *commitment,
                         ..Default::default()
                     };
                     if let Some(rules) = &input.input_rules {
