@@ -36,6 +36,16 @@ use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 
+/// Helper struct that contains the decrypted `QueryResponse` and the
+/// `BlockRange` the shard is responsible for.
+#[derive(Clone)]
+struct DecryptedMultiViewStoreQueryResponse {
+    /// Decrypted `QueryResponse`
+    query_response: QueryResponse,
+    /// The `BlockRange` that the shard is meant to process.
+    block_range: BlockRange,
+}
+
 pub struct ViewEnclave<OSC>
 where
     OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>,
@@ -320,28 +330,28 @@ where
                 )?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
-                Ok((query_response, multi_view_store_query_response.block_range))
+                Ok(DecryptedMultiViewStoreQueryResponse {
+                    query_response,
+                    block_range: multi_view_store_query_response.block_range,
+                })
             })
             .collect::<Result<Vec<_>>>()?;
 
-        shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
-            client_query_request,
-            shard_query_responses.clone(),
-        )?;
+        shard_query_response.tx_out_search_results =
+            Self::get_collated_tx_out_search_results(client_query_request, &shard_query_responses)?;
         shard_query_response.highest_processed_block_count =
-            self.get_minimum_highest_processed_block_count(shard_query_responses);
+            Self::get_minimum_highest_processed_block_count(shard_query_responses);
 
         Ok(shard_query_response)
     }
 
     fn get_collated_tx_out_search_results(
-        &self,
         client_query_request: QueryRequest,
-        shard_query_responses: Vec<(QueryResponse, BlockRange)>,
+        shard_query_responses: &[DecryptedMultiViewStoreQueryResponse],
     ) -> Result<Vec<TxOutSearchResult>> {
         let plaintext_search_results = shard_query_responses
-            .into_iter()
-            .flat_map(|response| response.0.tx_out_search_results)
+            .iter()
+            .flat_map(|response| response.query_response.tx_out_search_results.clone())
             .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
@@ -350,10 +360,33 @@ where
         )
     }
 
+    // Takes each MultiViewStoreResponseQuery
     fn get_minimum_highest_processed_block_count(
-        &self,
-        _shard_query_responses: Vec<(QueryResponse, BlockRange)>,
+        mut responses: Vec<DecryptedMultiViewStoreQueryResponse>,
     ) -> u64 {
-        todo!()
+        responses.sort_unstable_by_key(|response| response.block_range.start_block);
+
+        // Find the first time in which a highest processed block count does not equate
+        // to the final block that the shard is responsible for.
+        let mut max_highest_processed_block_count = u64::MIN;
+        for response in responses {
+            let response_highest_processed_block_count =
+                response.query_response.highest_processed_block_count;
+            if response_highest_processed_block_count > max_highest_processed_block_count {
+                max_highest_processed_block_count = response_highest_processed_block_count;
+            }
+
+            // In this case, the shard hasn't processed all the blocks it's responsible for,
+            // and, as such, those blocks might not be processed so we should return this
+            // number.
+            // TODO: Consider implementing logic that accounts for overlapping block ranges.
+            //   If ranges overlap, then the next server might have processed those blocks
+            //   that this shard did not process (but is responsible for).
+            if response_highest_processed_block_count < response.block_range.end_block {
+                return max_highest_processed_block_count;
+            }
+        }
+
+        max_highest_processed_block_count
     }
 }
