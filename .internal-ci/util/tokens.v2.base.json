@@ -1,0 +1,20 @@
+{
+    "governors_signature": "",
+    "tokens": [
+        {
+            "token_id": 0,
+            "minimum_fee": 400000000
+        },
+        {
+            "token_id": 1,
+            "minimum_fee": 1024,
+            "governors": {
+                "signer_identities": {},
+                "signer_set": {
+                    "threshold": 1,
+                    "signers": []
+                }
+            }
+        }
+    ]
+}

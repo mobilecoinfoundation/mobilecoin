@@ -51,8 +51,8 @@ is_set token_id
 is_set NAMESPACE
 
 # check block height before config tx
-
 block_count=$(get_block_count)
+echo "Current block count: $block_count"
 
 # These should be populated by volume in toolbox container.
 governor_signer_key="/minting-keys/minter${token_id}_governor.private.pem"
@@ -70,8 +70,9 @@ echo "-- sleep and wait for tx/blocks to sync"
 new_block_count=0
 echo "-- Waiting for mint config tx to commit to the block chain"
 
-while [[ $block_count -le $new_block_count ]]
+while [[ $block_count -ge $new_block_count ]]
 do
+    echo "Sleeping"
     sleep 15
     new_block_count=$(get_block_count)
     echo "  Current block count: $new_block_count"

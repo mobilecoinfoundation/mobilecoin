@@ -599,7 +599,8 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "version": "${{ needs.generate-metadata.outputs.tag }}",
             "client_auth_enabled": "false",
-            "use_static_wallet_seeds": "true"
+            "use_static_wallet_seeds": "true",
+            "tokens_json_version": "2"
           }
 
   test-current-bv2-release:
