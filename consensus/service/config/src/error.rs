@@ -27,8 +27,8 @@ pub enum Error {
     /// Mint configuration is not allowed for token id {0}
     MintConfigNotAllowed(TokenId),
 
-    /// Invalid signer set for token id {0}
-    InvalidSignerSet(TokenId),
+    /// Invalid signer set for token id {0}: {1}
+    InvalidSignerSet(TokenId, String),
 
     /// Cannot figure out file extension
     PathExtension,
