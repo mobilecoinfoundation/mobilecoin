@@ -2,7 +2,7 @@
 
 //! View Enclave Implementation
 
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 
 extern crate alloc;
 
@@ -53,20 +53,16 @@ struct BlockData {
     highest_processed_block_count: u64,
     /// The timestamp for the highest processed block count
     highest_processed_block_signature_timestamp: u64,
-    /// The last known block count that will be returned to the client.
-    last_known_block_count: u64,
 }
 
 impl BlockData {
     fn new(
         highest_processed_block_count: u64,
         highest_processed_block_signature_timestamp: u64,
-        last_known_block_count: u64,
     ) -> Self {
         Self {
             highest_processed_block_count,
             highest_processed_block_signature_timestamp,
-            last_known_block_count,
         }
     }
 }
@@ -74,7 +70,6 @@ impl Default for BlockData {
     fn default() -> Self {
         Self {
             highest_processed_block_count: u64::MIN,
-            last_known_block_count: u64::MIN,
             highest_processed_block_signature_timestamp: u64::MIN,
         }
     }
@@ -373,12 +368,17 @@ where
 
         shard_query_response.tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &shard_query_responses)?;
+        shard_query_response.last_known_block_count = shard_query_responses
+            .iter()
+            .max_by_key(|response| response.query_response.last_known_block_count)
+            .map_or(u64::MIN, |response| {
+                response.query_response.last_known_block_count
+            });
         let block_data = get_block_data(shard_query_responses);
         shard_query_response.highest_processed_block_count =
             block_data.highest_processed_block_count;
         shard_query_response.highest_processed_block_signature_timestamp =
             block_data.highest_processed_block_signature_timestamp;
-        shard_query_response.last_known_block_count = block_data.last_known_block_count;
 
         Ok(shard_query_response)
     }
@@ -401,7 +401,7 @@ where
 
 fn get_block_data(mut responses: Vec<DecryptedMultiViewStoreQueryResponse>) -> BlockData {
     responses.sort_unstable_by_key(|response| response.block_range.start_block);
-    
+
     // Find the first time in which a highest processed block count does not equate
     // to the final block that the shard is responsible for.
     let mut result = BlockData::default();
@@ -414,7 +414,6 @@ fn get_block_data(mut responses: Vec<DecryptedMultiViewStoreQueryResponse>) -> B
                 response
                     .query_response
                     .highest_processed_block_signature_timestamp,
-                response.query_response.last_known_block_count,
             );
         }
 
@@ -441,7 +440,6 @@ mod get_block_data_tests {
     fn create_query_response(
         highest_processed_block_count: u64,
         highest_processed_block_signature_timestamp: u64,
-        last_known_block_count: u64,
     ) -> QueryResponse {
         QueryResponse {
             highest_processed_block_count,
@@ -451,7 +449,7 @@ mod get_block_data_tests {
             rng_records: vec![],
             decommissioned_ingest_invocations: vec![],
             tx_out_search_results: vec![],
-            last_known_block_count,
+            last_known_block_count: highest_processed_block_count,
             last_known_block_cumulative_txo_count: 0,
         }
     }
@@ -461,7 +459,7 @@ mod get_block_data_tests {
         const STORE_COUNT: usize = 4;
         let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
         for i in 0..STORE_COUNT {
-            let query_response = create_query_response((i + 1) as u64, i as u64, (i + 1) as u64);
+            let query_response = create_query_response((i + 1) as u64, i as u64);
             let block_range = BlockRange::new(i as u64, (i + 1) as u64);
             let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
                 query_response,
@@ -483,10 +481,6 @@ mod get_block_data_tests {
                 .query_response
                 .highest_processed_block_signature_timestamp
         );
-        assert_eq!(
-            result.last_known_block_count,
-            last_response.query_response.last_known_block_count
-        );
     }
 
     #[test]
@@ -495,7 +489,7 @@ mod get_block_data_tests {
         let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
 
         // Make the first response fully processed.
-        let first_query_response = create_query_response(1, 0, 1);
+        let first_query_response = create_query_response(1, 0);
         let block_range = BlockRange::new(0, 1);
         let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
             query_response: first_query_response.clone(),
@@ -506,8 +500,7 @@ mod get_block_data_tests {
         // Make the second response "incomplete"- i.e. it hasn't processed all of its
         // blocks.
         let incomplete_block_count = 0;
-        let incomplete_query_response =
-            create_query_response(incomplete_block_count, 2, incomplete_block_count);
+        let incomplete_query_response = create_query_response(incomplete_block_count, 2);
         let block_range = BlockRange::new(1, 2);
         decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
             query_response: incomplete_query_response,
@@ -516,8 +509,7 @@ mod get_block_data_tests {
 
         // Make the third response fully processed.
         let fully_processed_block_count = 3;
-        let query_response =
-            create_query_response(fully_processed_block_count, 3, fully_processed_block_count);
+        let query_response = create_query_response(fully_processed_block_count, 3);
         let block_range = BlockRange::new(2, 3);
         decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
             query_response,
@@ -526,7 +518,7 @@ mod get_block_data_tests {
 
         // Make the fourth response incomplete.
         let block_count = 0;
-        let query_response = create_query_response(block_count, 0, block_count);
+        let query_response = create_query_response(block_count, 0);
         let block_range = BlockRange::new(3, 4);
         decrypted_query_responses.push(DecryptedMultiViewStoreQueryResponse {
             query_response,
@@ -542,10 +534,6 @@ mod get_block_data_tests {
         assert_eq!(
             result.highest_processed_block_signature_timestamp,
             first_query_response.highest_processed_block_signature_timestamp
-        );
-        assert_eq!(
-            result.last_known_block_count,
-            first_query_response.last_known_block_count
         );
     }
 }
