@@ -70,7 +70,7 @@ echo "-- sleep and wait for tx/blocks to sync"
 new_block_count=0
 echo "-- Waiting for mint config tx to commit to the block chain"
 
-while [[ $block_count -le $new_block_count ]]
+while [[ $block_count -ge $new_block_count ]]
 do
     sleep 15
     new_block_count=$(get_block_count)
