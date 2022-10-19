@@ -9,6 +9,7 @@ use mc_consensus_api::{
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::Error as EnclaveError;
+use mc_consensus_service_config::Error as ConfigError;
 use mc_ledger_db::Error as LedgerError;
 use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 
@@ -37,6 +38,9 @@ pub enum ConsensusGrpcError {
 
     /// Invalid argument `{0}`
     InvalidArgument(String),
+
+    /// Configuration error `{0}`
+    Config(ConfigError),
 
     /// Other error `{0}`
     Other(String),
@@ -92,6 +96,12 @@ impl From<MintTxManagerError> for ConsensusGrpcError {
             MintTxManagerError::MintValidation(err) => Self::from(err),
             MintTxManagerError::LedgerDb(err) => Self::from(err),
         }
+    }
+}
+
+impl From<ConfigError> for ConsensusGrpcError {
+    fn from(src: ConfigError) -> Self {
+        Self::Config(src)
     }
 }
 
