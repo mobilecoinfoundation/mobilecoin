@@ -7,20 +7,17 @@ use crate::{
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
-use mc_common::{logger::Logger, ResponderId};
+use mc_common::logger::Logger;
 use mc_fog_api::{
-    view::{
-        FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest,
-        MultiViewStoreQueryResponse,
-    },
+    view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
     view_grpc::FogViewStoreApiClient,
 };
+use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use mc_util_uri::ConnectionUri;
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 const RETRY_COUNT: usize = 3;
 
@@ -105,7 +102,8 @@ async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
+    let mut query_responses: Vec<MultiViewStoreQueryResponse> =
+        Vec::with_capacity(shard_clients.len());
     let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
@@ -141,6 +139,7 @@ where
 
         let processed_shard_response_data = shard_responses_processor::process_shard_responses(
             clients_and_responses,
+            logger.clone(),
         )
         .map_err(|err| {
             router_server_err_to_rpc_status(
@@ -150,11 +149,11 @@ where
             )
         })?;
 
-        for (store_responder_id, new_query_response) in processed_shard_response_data
-            .new_query_responses
+        for multi_view_store_query_response in processed_shard_response_data
+            .multi_view_store_query_responses
             .into_iter()
         {
-            query_responses.insert(store_responder_id, new_query_response.into());
+            query_responses.push(multi_view_store_query_response);
         }
 
         shard_clients = processed_shard_response_data.shard_clients_for_retry;
@@ -204,7 +203,7 @@ async fn query_shard(
     let client_unary_receiver = shard_client.multi_view_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
-    Ok((shard_client, response))
+    Ok((shard_client, response.try_into()?))
 }
 
 /// Authenticates Fog View Stores that have previously not been authenticated.

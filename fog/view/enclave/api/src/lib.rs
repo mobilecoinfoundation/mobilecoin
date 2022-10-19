@@ -8,7 +8,7 @@
 
 extern crate alloc;
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
@@ -21,7 +21,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
 use mc_crypto_noise::CipherError;
 use mc_fog_recovery_db_iface::FogUserEvent;
-use mc_fog_types::ETxOutRecord;
+use mc_fog_types::{view::MultiViewStoreQueryResponse, ETxOutRecord};
 use mc_sgx_compat::sync::PoisonError;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};
@@ -104,10 +104,7 @@ pub enum ViewEnclaveRequest {
     FrontendAccept(NonceAuthRequest),
     /// Collates shard query responses into a single query response for the
     /// client.
-    CollateQueryResponses(
-        SealedClientMessage,
-        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
-    ),
+    CollateQueryResponses(SealedClientMessage, Vec<MultiViewStoreQueryResponse>),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -207,7 +204,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
