@@ -20,14 +20,12 @@ use url::Url;
 
 const TEST_URL: &str = "http://www.my_url1.com";
 
-fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
+fn setup_watcher_db(path: PathBuf, logger: Logger) -> WatcherDB {
     let url = Url::parse(TEST_URL).unwrap();
 
-    let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-    WatcherDB::create(db_tmp.path()).unwrap();
-    let watcher = WatcherDB::open_rw(db_tmp.path(), &[url], logger).unwrap();
-    let watcher_dir = db_tmp.path().to_path_buf();
-    (watcher, watcher_dir)
+    // create does not open
+    WatcherDB::create(&path).unwrap();
+    WatcherDB::open_rw(&path, &[url], logger).unwrap()
 }
 
 // Test that a fog ledger connection is able to get valid merkle proofs by
@@ -60,11 +58,13 @@ fn create_stores(omap_capacity: u64, store_count: usize, logger: Logger) -> Vec<
             logger.clone(),
         );
         
-        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
-        let db_full_path = ledger_dir.path();
-        let ledger = recreate_ledger_db(db_full_path);
+        let ledger_db_tmp = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let ledger_db_path = ledger_db_tmp.path();
+        let ledger = recreate_ledger_db(ledger_db_path);
 
-        let (watcher, _watcher_dir) = setup_watcher_db(logger.clone());
+        let watcher_db_tmp = TempDir::new("fog-watcher").expect("Could not make tempdir for watcher db");
+        let watcher_db_path = watcher_db_tmp.path();
+        let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
         let store = KeyImageStoreServer::new(
             config,
