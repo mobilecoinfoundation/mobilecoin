@@ -224,7 +224,7 @@ impl Default for TokensConfig {
 }
 
 impl TokensConfig {
-    /// Get the tokens configuration by loading the tokens.toml/json file.
+    /// Get the tokens configuration by loading the tokens.json file.
     pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
 
@@ -234,7 +234,6 @@ impl TokensConfig {
         // Parse configuration file.
         let tokens_config: Self = match path.extension().and_then(|ext| ext.to_str()) {
             None => Err(Error::PathExtension),
-            Some("toml") => toml::from_str(&data).map_err(Error::from),
             Some("json") => serde_json::from_str(&data).map_err(Error::from),
             Some(ext) => Err(Error::UnrecognizedExtension(ext.to_string())),
         }?;
@@ -325,16 +324,10 @@ mod tests {
 
     #[test]
     fn empty_config() {
-        let input_toml: &str = r#"
-            tokens = []
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": []
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since MOB is not specified.
         assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
@@ -342,20 +335,12 @@ mod tests {
 
     #[test]
     fn no_mob_config_with_minimum_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 128000
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 1, "minimum_fee": 128000 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since we must have the MOB token configured.
         assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
@@ -364,19 +349,12 @@ mod tests {
 
     #[test]
     fn no_mob_config_without_minimum_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 2
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 2 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since we must have the MOB token configured.
         assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
@@ -385,20 +363,12 @@ mod tests {
 
     #[test]
     fn only_mob_config_with_minimum_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 128000
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 128000 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since MOB is specified and has minimum fee.
         assert!(tokens.validate().is_ok());
@@ -413,19 +383,12 @@ mod tests {
 
     #[test]
     fn only_mob_config_without_minimum_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since MOB is specified and has a default minimum
         // fee.
@@ -447,25 +410,13 @@ mod tests {
     fn mob_and_another_token_with_minimum_fee() {
         let test_token = TokenId::from(6);
 
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 128000
-
-            [[tokens]]
-            token_id = 6
-            minimum_fee = 512000
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 128000 },
                 { "token_id": 6, "minimum_fee": 512000 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since MOB and the secound token have minimum fee
         // configured.
@@ -498,15 +449,6 @@ mod tests {
     #[test]
     fn mob_and_another_token_without_minimum_fee_reverts_to_default() {
         let test_token = TokenId::from(6);
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-
-            [[tokens]]
-            token_id = 6
-            minimum_fee = 512000
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
             "tokens": [
@@ -514,8 +456,7 @@ mod tests {
                 { "token_id": 6, "minimum_fee": 512000 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since MOB and the secound token have minimum fee
         // configured.
@@ -548,24 +489,13 @@ mod tests {
     // Without a minimum fee for the second token that does not have a default fee.
     #[test]
     fn mob_and_another_token_without_minimum_fee_and_no_default() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 128000
-
-            [[tokens]]
-            token_id = 6
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 128000 },
                 { "token_id": 6 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since the minimum fee for the second token is unknown.
         assert!(
@@ -578,25 +508,13 @@ mod tests {
 
     #[test]
     fn cant_use_allow_any_fee_on_non_mob_tokens() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 128000
-            allow_any_fee = true
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0 },
                 { "token_id": 1, "minimum_fee": 128000, "allow_any_fee": true }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
         assert!(
@@ -606,20 +524,12 @@ mod tests {
 
     #[test]
     fn cant_use_small_fee_on_mob_without_allow_any_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 1
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since the fee is outside the allowed eange.
         assert!(
@@ -629,21 +539,12 @@ mod tests {
 
     #[test]
     fn cant_use_small_fee_on_mob_with_allow_any_fee_false() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 1
-            allow_any_fee = false
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1, "allow_any_fee": false }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since the fee is outside the allowed range.
         assert!(
@@ -653,21 +554,12 @@ mod tests {
 
     #[test]
     fn allow_any_fee_allows_small_mob_fee() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-            minimum_fee = 1
-            allow_any_fee = true
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1, "allow_any_fee": true }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since allow_any_fee was true.
         assert!(tokens.validate().is_ok());
@@ -734,30 +626,10 @@ mod tests {
         .unwrap();
         let key2 = Ed25519Public::try_from_der(&pem2.contents[..]).unwrap();
 
-        let input_toml: &str = r#"
-            # Signature generated by taking the above file and the admin private key above and running:
-            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
-            governors_signature = "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408"
-
-            [[tokens]]
-            token_id = 0 # Must have MOB
-
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 1
-            [tokens.governors]
-            signers = """
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
-            -----END PUBLIC KEY-----
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=
-            -----END PUBLIC KEY-----
-            """
-            threshold = 1
-       "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
-
+        // Signature generated by taking the above file and the admin private key above
+        // and running:
+        // cargo run --bin mc-consensus-mint-client --sign-governors --tokens
+        // tokens.json --signing-key private.pem
         let input_json: &str = r#"{
             "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
             "tokens": [
@@ -772,8 +644,7 @@ mod tests {
                 }
             ]
         }"#;
-        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
-        assert_eq!(tokens, tokens2);
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should succeed since the configuration is valid.
         assert!(tokens.validate().is_ok());
@@ -806,20 +677,18 @@ mod tests {
 
     #[test]
     fn cannot_specify_minting_config_for_mob() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-
-            [tokens.governors]
-            signers = """
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
-            -----END PUBLIC KEY-----
-            """
-             threshold = 1
-       "#;
-
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let input_json: &str = r#"{
+            "tokens": [
+                {
+                    "token_id": 0,
+                    "governors": {
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
+                        "threshold": 1
+                    }
+                }
+            ]
+        }"#;
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         assert!(
             matches!(tokens.validate(), Err(Error::MintConfigNotAllowed(token_id)) if token_id == Mob::ID)
@@ -828,19 +697,21 @@ mod tests {
 
     #[test]
     fn cannot_have_no_signers() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0 # Must have MOB
-
-            [[tokens]]
-            token_id = 2
-            minimum_fee = 1
-            [tokens.governors]
-            signers = ""
-            threshold = 1
-       "#;
-
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let input_json: &str = r#"{
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 2,
+                    "minimum_fee": 1,
+                    "governors": {
+                        "signers": "",
+                        "threshold": 1
+                    }
+                }
+            ]
+        }"#;
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         assert!(
             matches!(tokens.validate(), Err(Error::InvalidSignerSet(token_id)) if token_id == 2)
@@ -849,22 +720,21 @@ mod tests {
 
     #[test]
     fn cannot_have_zero_threshold() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0 # Must have MOB
-            [[tokens]]
-            token_id = 2
-            minimum_fee = 1
-            [tokens.governors]
-            signers = """
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
-            -----END PUBLIC KEY-----
-            """
-            threshold = 0
-       "#;
-
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let input_json: &str = r#"{
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 2,
+                    "minimum_fee": 1,
+                    "governors": {
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
+                        "threshold": 0
+                    }
+                }
+            ]
+        }"#;
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         assert!(
             matches!(tokens.validate(), Err(Error::InvalidSignerSet(token_id)) if token_id == 2)
@@ -873,19 +743,30 @@ mod tests {
 
     #[test]
     fn cannot_have_duplicate_token_ids() {
-        let input_toml: &str = r#"
-            [[tokens]]
-            token_id = 0
-
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 128000
-
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 128000
-        "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let input_json: &str = r#"{
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 1,
+                    "minimum_fee": 128000,
+                    "governors": {
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
+                        "threshold": 1
+                    }
+                },
+                {
+                    "token_id": 1,
+                    "minimum_fee": 128000,
+                    "governors": {
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
+                        "threshold": 1
+                    }
+                }
+ 
+            ]
+        }"#;
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // Validation should fail since we must have the MOB token configured.
         assert!(matches!(
@@ -907,29 +788,23 @@ mod tests {
         let minting_trust_root_private_key =
             Ed25519Private::try_from_der(&minting_trust_root_private_key_pem.contents[..]).unwrap();
 
-        let input_toml: &str = r#"
-            # Signature generated by taking the above file and the admin private key above and running:
-            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
-            governors_signature = "a07b628ebb74acd222a8d267f01dedbf1389db7ec3f2bb51d2270f4b43b4f2ebcdd5b43ee7574783ba483b03d9e2fb92dd0ed9d993509dad935532aede18790c"
-
-            [[tokens]]
-            token_id = 0 # Must have MOB
-
-            [[tokens]]
-            token_id = 1
-            minimum_fee = 1
-            [tokens.governors]
-            signers = """
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
-            -----END PUBLIC KEY-----
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=
-            -----END PUBLIC KEY-----
-            """
-            threshold = 2 # The signature was generated when this was set to 1
-       "#;
-        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        // Made invalid by changing the token id
+        // A previous test verified the signature is valid.
+        let input_json: &str = r#"{
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 1000,
+                    "minimum_fee": 2,
+                    "governors": {
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
+                        "threshold": 1
+                    }
+                }
+            ]
+        }"#;
+        let tokens: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
 
         // The governors signature should've decoded successfully.
         assert!(tokens
