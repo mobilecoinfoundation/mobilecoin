@@ -112,12 +112,12 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
 
     /// Get the list of potential individual signers.
     pub fn individual_signers(&self) -> &[P] {
-        &&self.individual_signers
+       &self.individual_signers
     }
 
     /// Get the list of potential multi signers.
     pub fn multi_signers(&self) -> &[SignerSet<P>] {
-        &&self.multi_signers
+        &self.multi_signers
     }
 
     /// Get the total number of signers in this set.
@@ -613,7 +613,7 @@ mod test {
         // Test a signer set that requires 1 of 2 orgs.
         let signer_set = SignerSet::new(
             vec![],
-            vec![org1_signer_set.clone(), org2_signer_set.clone()],
+            vec![org1_signer_set, org2_signer_set],
             1,
         );
 
