@@ -50,6 +50,11 @@ on:
         type: boolean
         required: true
         default: false
+      tokens_json_version:
+        description: "The version of the tokens.json file we will generate"
+        type: string
+        default: '1'
+        required: false
 
 jobs:
   list-values:
@@ -77,6 +82,7 @@ jobs:
       ingest_color: ${{ github.event.inputs.ingest_color }}
       minting_config_enabled: ${{ github.event.inputs.minting_config_enabled }}
       block_version: ${{ github.event.inputs.block_version }}
+      tokens_json_version: ${{ github.event.inputs.tokens_json_version }}
     secrets:
       RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}

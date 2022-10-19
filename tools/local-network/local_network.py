@@ -231,17 +231,31 @@ class Node:
                     "token_id": 1,
                     "minimum_fee": 1024,
                     "governors": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read(),
-                        "threshold": 1
-                    }
+                        "signer_identities": {
+                            "governor1": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read(),
+                        },
+                        "signer_set": {
+                            "threshold": 1,
+                            "signers": [
+                                {"type": "Single", "identity": "governor1" },
+                            ],
+                        },
+                    },
                 },
                 {
                     "token_id": 2,
                     "minimum_fee": 1024,
                     "governors": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read(),
-                        "threshold": 1
-                    }
+                        "signer_identities": {
+                            "governor2": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read(),
+                        },
+                        "signer_set": {
+                            "threshold": 1,
+                            "signers": [
+                                {"type": "Single", "identity": "governor2" },
+                            ],
+                        },
+                    },
                 },
              ],
         }
@@ -455,7 +469,7 @@ class Network:
             shutil.rmtree(WORK_DIR)
         except FileNotFoundError:
             pass
-        os.mkdir(WORK_DIR)
+        os.makedirs(WORK_DIR)
 
     def build_binaries(self):
         print('Building binaries...')
