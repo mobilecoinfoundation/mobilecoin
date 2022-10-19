@@ -5,8 +5,8 @@
 
 mod error;
 mod network;
-mod tokens;
 mod signer_set;
+mod tokens;
 
 pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig};
 
