@@ -364,7 +364,7 @@ where
     fn get_minimum_highest_processed_block_count(
         mut responses: Vec<DecryptedMultiViewStoreQueryResponse>,
     ) -> u64 {
-        responses.sort_by(|a, b| a.block_range.start_block.cmp(&b.block_range.start_block));
+        responses.sort_unstable_by_key(|response| response.block_range.start_block);
 
         // Find the first time in which a highest processed block count does not equate
         // to the final block that the shard is responsible for.
