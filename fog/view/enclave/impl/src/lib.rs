@@ -376,12 +376,12 @@ where
                 max_highest_processed_block_count = response_highest_processed_block_count;
             }
 
-            // In this case, the shard hasn't processed all the blocks it's responsible for.
-            // And, as such, those blocks might not be processed. Let's return
-            // this number. TODO: Consider implementing logic that accounts for
-            // overapping block ranges. If ranges overlap, then the next server
-            // might have processed those blocks that this shard did not process
-            // (but is responsible for).
+            // In this case, the shard hasn't processed all the blocks it's responsible for,
+            // and, as such, those blocks might not be processed so we should return this
+            // number.
+            // TODO: Consider implementing logic that accounts for overlapping block ranges.
+            //   If ranges overlap, then the next server might have processed those blocks
+            //   that this shard did not process (but is responsible for).
             if response_highest_processed_block_count < response.block_range.end_block {
                 return max_highest_processed_block_count;
             }
