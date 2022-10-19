@@ -402,10 +402,11 @@ where
     }
 }
 
-struct DbPollThreadWorker<E, DB>
+struct DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy,
 {
     /// Stop request trigger, used to signal the thread to stop.
     stop_requested: Arc<AtomicBool>,
@@ -424,7 +425,7 @@ where
     db_fetcher: DbFetcher,
 
     /// Keeps track of which blocks we have fed into the enclave.
-    enclave_block_tracker: BlockTracker,
+    enclave_block_tracker: BlockTracker<SS>,
 
     /// Keeps track how long ago it since we made progress, (or complained about
     /// not making progress) When this gets too distant in the past, we log
@@ -444,12 +445,13 @@ pub enum WorkerTickResult {
 /// Telemetry: block indes currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
-impl<E, DB> DbPollThreadWorker<E, DB>
+impl<E, DB, SS> DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
-    pub fn new<SS>(
+    pub fn new(
         stop_requested: Arc<AtomicBool>,
         enclave: E,
         db: DB,
@@ -457,17 +459,19 @@ where
         readiness_indicator: ReadinessIndicator,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> Self
-    where
-        SS: ShardingStrategy + Clone + Send + Sync + 'static,
-    {
+    ) -> Self {
         Self {
             stop_requested,
             enclave,
             db: db.clone(),
             shared_state,
-            db_fetcher: DbFetcher::new(db, readiness_indicator, sharding_strategy, logger.clone()),
-            enclave_block_tracker: BlockTracker::new(logger.clone()),
+            db_fetcher: DbFetcher::new(
+                db,
+                readiness_indicator,
+                sharding_strategy.clone(),
+                logger.clone(),
+            ),
+            enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
             last_unblocked_at: Instant::now(),
             logger,
         }
@@ -641,14 +645,17 @@ where
                 );
 
                 // Track that this block was processed.
-                self.enclave_block_tracker
-                    .block_processed(ingress_key, block_index);
-                let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
-                shared_state.processed_block_count += 1;
+                if self
+                    .enclave_block_tracker
+                    .block_processed(ingress_key, block_index)
+                {
+                    let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
+                    shared_state.processed_block_count += 1;
 
-                // Update metrics
-                counters::BLOCKS_ADDED_COUNT.inc();
-                counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                    // Update metrics
+                    counters::BLOCKS_ADDED_COUNT.inc();
+                    counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                }
             }
         }
     }
