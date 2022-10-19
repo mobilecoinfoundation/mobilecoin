@@ -139,10 +139,8 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// - The number of signers is greater than or equal to the threshold.
     pub fn is_valid(&self) -> bool {
         // All nested sets must be valid
-        for signer_set in &self.multi_signers {
-            if !signer_set.is_valid() {
-                return false;
-            }
+        if !self.multi_signers.iter().all(|s| s.is_valid()) {
+            return false;
         }
 
         0 < self.threshold && self.threshold as usize <= self.num_signers()
@@ -175,11 +173,9 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
             return Err(SignatureError::new());
         }
 
-        // If the signature contains less than the threshold number of signers or more
-        // than the hardcoded limit, there's no point in trying.
-        if multi_sig.signatures.len() < self.threshold as usize
-            || multi_sig.signatures.len() > MAX_SIGNATURES
-        {
+        // Don't allow more than MAX_SIGNATURES signatures. This prevents potential
+        // abuse.
+        if multi_sig.signatures.len() > MAX_SIGNATURES {
             return Err(SignatureError::new());
         }
 
@@ -226,6 +222,12 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         if num_matches < self.threshold as usize {
             return Err(SignatureError::new());
         }
+
+        // Dedup the list of matched signer identities. We will encounter duplicates in
+        // the case of common signers. (e.g. if a signer set contains a signer
+        // that is also a signer in a nested signer set).
+        matched_signer_identities.sort();
+        matched_signer_identities.dedup();
 
         Ok(matched_signer_identities)
     }
@@ -642,6 +644,42 @@ mod test {
             signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
             vec![org1_signer1.public_key(), org1_signer2.public_key()],
         );
+    }
+
+    #[test]
+    fn ed25519_verify_common_signer() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let message = b"this is a test";
+
+        let common_signer = Ed25519Pair::from_random(&mut rng);
+        let org1_signer = Ed25519Pair::from_random(&mut rng);
+        let org2_signer = Ed25519Pair::from_random(&mut rng);
+
+        // Two orgs, both requiring either a common signer or a signer from the org.
+        let org1_signer_set = SignerSet::new(
+            vec![common_signer.public_key(), org1_signer.public_key()],
+            vec![],
+            1,
+        );
+
+        let org2_signer_set = SignerSet::new(
+            vec![common_signer.public_key(), org2_signer.public_key()],
+            vec![],
+            1,
+        );
+
+        // Test a signer set that requires the two orgs with a common signer
+        let signer_set = SignerSet::new(vec![], vec![org1_signer_set, org2_signer_set], 2);
+
+        let multi_sig = MultiSig::new(vec![common_signer.try_sign(message.as_ref()).unwrap()]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![common_signer.public_key()],
+        );
+
+        // Sanity to ensure a single org signer is insufficient.
+        let multi_sig = MultiSig::new(vec![org1_signer.try_sign(message.as_ref()).unwrap()]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
     }
 
     #[test]
