@@ -363,19 +363,15 @@ pub enum Commands {
         tx_filenames: Vec<PathBuf>,
     },
 
-    /// Sign governors configuration from a tokens.toml/tokens.json file.
+    /// Sign governors configuration from a tokens.json file.
     SignGovernors {
         /// The key to sign with.
         #[clap(long = "signing-key", value_parser = load_key_from_pem, env = "MC_MINTING_SIGNING_KEY")]
         signing_key: MintPrivateKey,
 
-        /// The tokens configuration file to sign (in JSON or TOML format).
+        /// The tokens configuration file to sign (in JSON format).
         #[clap(long, value_parser = parse_tokens_file, env = "MC_MINTING_TOKENS_CONFIG")]
         tokens: TokensConfig,
-
-        /// Optionally write a new tokens.toml file containing the signature.
-        #[clap(long, env = "MC_MINTING_OUTPUT_TOML")]
-        output_toml: Option<PathBuf>,
 
         /// Optionally write a new tokens.json file containing the signature.
         #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
