@@ -135,7 +135,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Check if this signer set is valid.
     /// A signer set is considered valid if:
     /// - All nested signer sets underneath it are also valid
-    /// - It has a threshold of at least oni
+    /// - It has a threshold of at least one
     /// - The number of signers is greater than or equal to the threshold.
     pub fn is_valid(&self) -> bool {
         // All nested sets must be valid
@@ -581,7 +581,7 @@ mod test {
             org1_signer2.try_sign(message.as_ref()).unwrap(),
             org1_signer2.try_sign(message.as_ref()).unwrap(),
             org1_signer2.try_sign(message.as_ref()).unwrap(),
-            // Org 2 not satisfied
+            // Org 2 satisfied
             org2_signer1.try_sign(message.as_ref()).unwrap(),
             org2_signer2.try_sign(message.as_ref()).unwrap(),
             org2_signer1.try_sign(message.as_ref()).unwrap(),
