@@ -6,6 +6,7 @@
 //! See tests below for an example of the file format.
 
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
+use pem::{EncodeConfig, LineEnding};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{collections::HashMap, fmt, str::FromStr};
@@ -19,7 +20,7 @@ impl FromStr for PemEd25519Public {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let pem = pem::parse(s).map_err(|e| format!("Failed to parse PEM: {}", e))?;
+        let pem = pem::parse(s).map_err(|e| format!("Failed to parse PEM {:?}: {}", s, e))?;
         let public_key = Ed25519Public::try_from_der(&pem.contents)
             .map_err(|e| format!("Failed to parse public key {:?}: {}", s, e))?;
         Ok(PemEd25519Public(public_key))
@@ -243,6 +244,9 @@ mod tests {
 
     #[test]
     fn unknown_identity_fails_to_parse() {
+        // Note: The identity inside "signers" has lowercase `c` - so we are making sure
+        // that identity name comparison is case-sensitive, in addition to
+        // testing unknown identities behave as expected.
         let invalid_config_json = r#"
         {
             "signer_identities": {
@@ -253,7 +257,7 @@ mod tests {
               "signers": [
                 {
                   "type": "Single",
-                  "identity": "Nope"
+                  "identity": "Mobilecoin"
                 }
               ]
             }
@@ -264,7 +268,7 @@ mod tests {
         let signer_set: Result<mc_crypto_multisig::SignerSet<_>, _> =
             (&signer_set_config).try_into();
 
-        assert_eq!(signer_set, Err("Unknown identity: Nope".into()));
+        assert_eq!(signer_set, Err("Unknown identity: Mobilecoin".into()));
     }
 
     #[test]
@@ -290,7 +294,7 @@ mod tests {
         let err = serde_json::from_str::<SignerSetConfig>(invalid_config_json).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Failed to parse PEM: malformedframing at line 4 column 145"
+            "Failed to parse PEM \"----BEGIN PUBLIC KEY-----\\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\\n-----END PUBLIC KEY-----\\n\": malformedframing at line 4 column 145"
         );
     }
 
