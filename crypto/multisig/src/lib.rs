@@ -257,7 +257,7 @@ mod test {
     where
         S: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
     {
-        MultiSig::new(signers.into_iter().map(|s| s.sign(message)).collect())
+        MultiSig::new(signers.iter().map(|s| s.sign(message)).collect())
     }
 
     #[test]
