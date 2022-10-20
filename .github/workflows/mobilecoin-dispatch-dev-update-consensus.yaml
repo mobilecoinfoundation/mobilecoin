@@ -22,6 +22,11 @@ on:
         type: string
         required: true
         default: '2'
+      tokens_json_version:
+        description: "The version of the tokens.json file we will generate"
+        type: string
+        default: '1'
+        required: false
       chart_repo:
         description: "Chart Repo URL"
         type: string
@@ -36,4 +41,5 @@ jobs:
       version: ${{ inputs.version }}
       chart_repo: ${{ inputs.chart_repo }}
       block_version: "${{ inputs.block_version }}"
+      tokens_json_version: "${{ github.event.inputs.tokens_json_version }}"
     secrets: inherit
