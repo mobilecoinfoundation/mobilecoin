@@ -33,6 +33,11 @@ on:
         description: "block_version"
         type: string
         required: true
+      tokens_json_version:
+        description: "The version of the tokens.json file we will generate"
+        type: string
+        default: '1'
+        required: false
 
     secrets:
       RANCHER_CLUSTER:
@@ -109,7 +114,7 @@ jobs:
           --network none \
           --workdir /workspace \
           ${{ inputs.docker_image_org }}/bootstrap-tools:${{ inputs.version }} \
-          .internal-ci/util/generate_tokens_config.sh
+          .internal-ci/util/generate_tokens_config.sh ${{ inputs.tokens_json_version }}
 
     - name: Create minting key secrets
       if: inputs.minting_config_enabled == 'true'
