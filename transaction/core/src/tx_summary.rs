@@ -178,19 +178,20 @@ impl TxSummary {
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOutSummary {
     /// The amount being sent.
-    #[prost(oneof = "MaskedAmount", tags = "1, 2")]
+    // Note: These tags must match those of MaskedAmount enum in transaction-core
+    #[prost(oneof = "MaskedAmount", tags = "1, 6")]
     pub masked_amount: Option<MaskedAmount>,
 
     /// The one-time public address of this output.
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = "2")]
     pub target_key: CompressedRistrettoPublic,
 
     /// The per output tx public key
-    #[prost(message, required, tag = "4")]
+    #[prost(message, required, tag = "3")]
     pub public_key: CompressedRistrettoPublic,
 
     /// Whether or not this output is associated to an input with rules
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub associated_to_input_rules: bool,
 }
 
