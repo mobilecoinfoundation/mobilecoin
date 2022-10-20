@@ -298,9 +298,9 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/mint-auditor-test.sh \
-            --token-id 8192
+            --token-id 8192 --token-fee 1024
 
-    - name: Test - use drain_accounts to transfer id 1 balances to fog keys
+    - name: Test - use drain_accounts to transfer id 8192 balances to fog keys
       if: inputs.testing_1_2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
