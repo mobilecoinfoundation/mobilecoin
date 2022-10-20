@@ -93,9 +93,9 @@ pub struct SignerSet<P: Default + PublicKey + Message> {
     multi_signers: Vec<SignerSet<P>>,
 
     /// Minimum number of signers required. The potential signers are the union
-    /// of `sigenrs` and `signer_sets` This implies that the upper limit
-    /// (the total number of possible signers) is `signers.len() +
-    /// signer_sets.len()`).
+    /// of `individual_signers` and `multi_signers`.
+    /// This implies that the upper limit (total number of possible signers) is
+    /// `individual_signers.len() + multi_signers.len()`.
     #[prost(uint32, tag = "2")]
     threshold: u32,
 }
