@@ -13,7 +13,7 @@ use std::{collections::HashMap, fmt, str::FromStr};
 /// A helper struct for serializing/deserializing an Ed25519Public key that is
 /// PEM-DER-encoded.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-struct PemEd25519Public(pub Ed25519Public);
+struct PemEd25519Public(Ed25519Public);
 
 impl FromStr for PemEd25519Public {
     type Err = String;
@@ -32,7 +32,10 @@ impl fmt::Display for PemEd25519Public {
             tag: "PUBLIC KEY".to_string(),
             contents: self.0.to_der().to_vec(),
         };
-        write!(f, "{}", pem::encode(&pem).replace('\r', ""))
+        let encoding = EncodeConfig {
+            line_ending: LineEnding::LF,
+        };
+        write!(f, "{}", pem::encode_config(&pem, encoding))
     }
 }
 
@@ -303,7 +306,7 @@ mod tests {
               "signers": [
                 {
                   "type": "Single",
-                  "identity": "Nope"
+                  "identity": "MobileCoin"
                 }
               ]
             }
@@ -332,7 +335,7 @@ mod tests {
               "signers": [
                 {
                   "type": "Single",
-                  "identity": "Nope"
+                  "identity": "MobileCoin"
                 }
               ]
             }
