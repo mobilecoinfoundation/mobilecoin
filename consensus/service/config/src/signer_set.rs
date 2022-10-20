@@ -77,7 +77,7 @@ impl SignerSet {
                     let signer = signer_identities
                         .get(identity)
                         .ok_or_else(|| format!("Unknown identity: {}", identity))?;
-                    individual_signers.push(signer.0.clone());
+                    individual_signers.push(signer.0);
                 }
 
                 Signer::Multi(signer_set) => {
@@ -222,11 +222,11 @@ mod tests {
             (&signer_set_config).try_into().unwrap();
 
         let expected_signer_set = mc_crypto_multisig::SignerSet::new(
-            vec![key_mobilecoin.into(), key_some_org.into()],
+            vec![key_mobilecoin, key_some_org],
             vec![mc_crypto_multisig::SignerSet::new(
-                vec![key_lp1.into(), key_lp2.into()],
+                vec![key_lp1, key_lp2],
                 vec![mc_crypto_multisig::SignerSet::new(
-                    vec![key_lp3a.into(), key_lp3b.into(), key_mobilecoin.into()],
+                    vec![key_lp3a, key_lp3b, key_mobilecoin],
                     vec![],
                     2,
                 )],
