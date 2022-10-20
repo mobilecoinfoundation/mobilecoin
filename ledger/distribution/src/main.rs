@@ -7,7 +7,7 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
-use clap::{ArgEnum, Parser};
+use clap::{Parser, ValueEnum};
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{create_app_logger, log, o, Logger};
@@ -30,7 +30,7 @@ pub trait BlockHandler {
 }
 
 /// Block to start syncing from.
-#[derive(ArgEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 pub enum StartFrom {
     /// Start from the origin block.
     Zero,
@@ -51,7 +51,7 @@ pub enum StartFrom {
 )]
 pub struct Config {
     /// Path to local LMDB db file.
-    #[clap(long, parse(from_os_str), env = "MC_LEDGER_PATH")]
+    #[clap(long, env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// Destination to upload to.
@@ -59,7 +59,7 @@ pub struct Config {
     pub destination: Uri,
 
     /// Block to start from.
-    #[clap(arg_enum, long, default_value = "zero", env = "MC_START_FROM")]
+    #[clap(value_enum, long, default_value = "zero", env = "MC_START_FROM")]
     pub start_from: StartFrom,
 
     /// State file, defaults to ~/.mc-ledger-distribution-state
@@ -109,7 +109,7 @@ impl S3BlockWriter {
     fn write_bytes_to_s3(&self, path: &str, filename: &str, value: &[u8]) {
         let runtime = Handle::current();
         let result = retry(
-            delay::Exponential::from_millis(10).map(delay::jitter),
+            delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),

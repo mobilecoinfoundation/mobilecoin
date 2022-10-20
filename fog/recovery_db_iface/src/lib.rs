@@ -257,6 +257,26 @@ pub trait RecoveryDb {
         block_index: u64,
     ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error>;
 
+    /// Get ETxOutRecords for a given ingress key from a block, and subsequent
+    /// blocks, up to some limit. (This is like a batch call to
+    /// get_tx_outs_by_block_and_key_retriable with lookahead, and makes
+    /// sense if there is high network latency.)
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The first block we need ETxOutRecords from
+    /// * block_count: How many consecutive blocks to also request data for.
+    ///
+    /// Returns:
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
+    fn get_tx_outs_by_block_range_and_key(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+        block_count: usize,
+    ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error>;
+
     /// Get the invocation id that published this block with this key.
     ///
     /// Note: This is only used by TESTS right now, but it is important to be

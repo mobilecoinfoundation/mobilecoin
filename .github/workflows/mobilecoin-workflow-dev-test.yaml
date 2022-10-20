@@ -291,20 +291,6 @@ jobs:
           /test/mobilecoind-json-integration-test.sh \
             --key-dir ${{ env.DST_KEYS_DIR }}
 
-    - name: Test - mint-auditor
-      if: inputs.testing_block_v2 == 'true'
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: toolbox-exec
-        ingest_color: ${{ inputs.ingest_color }}
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-        command: |
-          /test/mint-auditor-test.sh \
-            --token-id 1
-
     - name: Test - use drain_accounts to transfer id 1 balances to fog keys
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -441,20 +427,6 @@ jobs:
         command: |
           /test/mobilecoind-json-integration-test.sh \
             --key-dir ${{ env.DST_KEYS_DIR }}
-
-    - name: Test - mint-auditor
-      if: inputs.testing_block_v3 == 'true'
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: toolbox-exec
-        ingest_color: ${{ inputs.ingest_color }}
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-        command: |
-          /test/mint-auditor-test.sh \
-            --token-id 1
 
     - name: Test - use drain_accounts to transfer id 1 balances to fog keys
       if: inputs.testing_block_v3 == 'true'

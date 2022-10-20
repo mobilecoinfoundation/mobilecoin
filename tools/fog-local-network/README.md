@@ -36,7 +36,16 @@ In order to use it, the following steps are necessary.
     cargo run -p mc-util-generate-sample-ledger --release -- --txs 100
     ```
 
-4) Start a local network, for example:
+4) Start postgresql service:
+    ```
+    sudo service postgresql start
+    ```
+    If you haven't done so yet, also create a postgres user:
+    ```
+    sudo -u postgres createuser --superuser $USER
+    ```
+
+5) Start a local network, for example:
     ```
     SGX_MODE=SW IAS_MODE=DEV \
     MC_LOG="trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
@@ -51,9 +60,9 @@ In order to use it, the following steps are necessary.
     Note that all of the above arguments are identical to the mobilecoin local_network.py script.
     The script is known to work with python 3.6 or later
 
-4) Wait for the network to start. This takes awhile. You can tell by looking at the log messages and noticing when they slow down/end. At this point you have a local network running with fog. If you want to test it, see the following steps.
+6) Wait for the network to start. This takes awhile. You can tell by looking at the log messages and noticing when they slow down/end. At this point you have a local network running with fog. If you want to test it, see the following steps.
 
-5) Distribute coins with usable fog hints:
+7) Distribute coins with usable fog hints:
     ```
     # Create a set of target keys. They would be identical to the first N keys inside `keys/`. This is needed if you don't
     # want to send to transactions to all 1000 keys created at step 1.
@@ -82,7 +91,7 @@ In order to use it, the following steps are necessary.
 
     Note that `fog-distribution` does not wait for the transactions it submitted to complete.
 
-6) When its done, wait for consensus to complete processing the transactions (by looking at the logs). Afterwards you should be able to successfully run the test client:
+8) When its done, wait for consensus to complete processing the transactions (by looking at the logs). Afterwards you should be able to successfully run the test client:
     ```
     SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
     INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \

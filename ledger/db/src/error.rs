@@ -6,7 +6,7 @@ use mc_transaction_core::membership_proofs::RangeError;
 use mc_util_lmdb::MetadataStoreError;
 
 /// A Ledger error kind.
-#[derive(Debug, Eq, PartialEq, Clone, Display)]
+#[derive(Clone, Display, Eq, PartialEq)]
 pub enum Error {
     /// Record not found
     NotFound,
@@ -50,7 +50,7 @@ pub enum Error {
     /// Too few outputs
     TooFewOutputs,
 
-    /// LMDB error, may mean database is opened multiple times in a process.
+    /// BadRslot, may mean database is opened multiple times in a process.
     BadRslot,
 
     /// Capacity exceeded
@@ -90,6 +90,20 @@ pub enum Error {
 
     /// Missing masked amonut
     MissingMaskedAmount,
+}
+
+// Implement Debug by forwarding to Display
+//
+// This is somewhat unusual, but the main reason is, lmdb::error::Other(c_int)
+// is very opaque in the Debug output, and displays a nice human readable string
+// in the Display output. The debug output often occurs when we call
+// LedgerDb::open and it fails because of an OS issue, and this error is
+// unwrapped, which is very typical. This change will make it show e.g "file not
+// found" or "permission denied" instead of obscure errno codes.
+impl core::fmt::Debug for Error {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        <Self as core::fmt::Display>::fmt(self, formatter)
+    }
 }
 
 impl From<lmdb::Error> for Error {

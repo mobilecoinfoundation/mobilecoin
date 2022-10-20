@@ -46,13 +46,13 @@ pub struct MobileAcctViewConfig {
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
+    #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The capacity to build the OMAP (ORAM hash table) with.
@@ -71,4 +71,10 @@ pub struct MobileAcctViewConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// How many blocks to request at once when requesting blocks from postgres
+    /// Increasing this may help if there is high network latency with postgres,
+    /// and should not much harm performance otherwise when loading the DB.
+    #[clap(long, default_value = "1000", env = "MC_BLOCK_QUERY_BATCH_SIZE")]
+    pub block_query_batch_size: usize,
 }

@@ -26,11 +26,11 @@ pub struct LedgerServerConfig {
     pub client_listen_uri: FogLedgerUri,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, parse(from_os_str), env = "MC_LEDGER_DB")]
+    #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
+    #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// Client Responder id.
@@ -54,13 +54,13 @@ pub struct LedgerServerConfig {
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
+    #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The capacity to build the OMAP (ORAM hash table) with.

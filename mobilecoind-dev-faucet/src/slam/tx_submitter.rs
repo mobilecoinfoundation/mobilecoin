@@ -54,7 +54,7 @@ impl TxSubmitter {
         let conn = &self.conns[node_index];
         match conn.propose_tx(tx, empty()) {
             Ok(block_height) => Ok(block_height),
-            Err(RetryError::Operation { error, .. }) => match error {
+            Err(RetryError { error, .. }) => match error {
                 ConnectionError::TransactionValidation(
                     ProposeTxResult::TombstoneBlockExceeded,
                     _,
@@ -85,10 +85,6 @@ impl TxSubmitter {
                     }
                 }
             },
-            Err(RetryError::Internal(_s)) => {
-                // Retry crate never actually returns Internal on any code path
-                unreachable!()
-            }
         }
     }
 

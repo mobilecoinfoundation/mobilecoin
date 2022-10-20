@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -24,4 +24,4 @@ mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
 grpcio = "0.11.0"
-retry = "1.3"
+retry = "2.0"

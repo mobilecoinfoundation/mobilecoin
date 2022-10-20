@@ -35,11 +35,11 @@ pub struct Config {
     pub admin_listen_uri: Option<AdminUri>,
 
     /// The path to an X509 certificate chain in PEM format.
-    #[clap(long, parse(from_os_str), env = "MC_SIGNING_CHAIN")]
+    #[clap(long, env = "MC_SIGNING_CHAIN")]
     pub signing_chain: PathBuf,
 
     /// The path to the signing key.
-    #[clap(long, parse(from_os_str), env = "MC_SIGNING_KEY")]
+    #[clap(long, env = "MC_SIGNING_KEY")]
     pub signing_key: PathBuf,
 
     /// Postgres config

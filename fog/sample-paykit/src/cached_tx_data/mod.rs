@@ -32,7 +32,7 @@ use mc_transaction_core::{
     tx::TxOut,
     Amount, TokenId,
 };
-use mc_transaction_std::MemoType;
+use mc_transaction_extra::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use std::collections::{BTreeMap, HashMap, HashSet};
 

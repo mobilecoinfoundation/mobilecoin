@@ -493,6 +493,7 @@ mod combine_tests {
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
         tokens::Mob,
@@ -500,7 +501,6 @@ mod combine_tests {
         Amount, BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
-    use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;

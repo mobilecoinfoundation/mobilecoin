@@ -133,7 +133,6 @@ then
     docker cp "bootstrap-tools:/usr/local/bin/read-pubfile" ./
     docker cp "bootstrap-tools:/usr/local/bin/mc-util-grpc-token-generator" ./
     docker cp "bootstrap-tools:/usr/local/bin/test_client" ./
-    docker cp "mobilecoind:/usr/bin/mc-mint-auditor" ./
     docker cp "mobilecoind:/usr/bin/mobilecoind-json" ./
     docker cp "mobilecoind:/enclaves/libingest-enclave.css" ./
     docker cp "fog-ledger:/usr/bin/libledger-enclave.signed.so" ./

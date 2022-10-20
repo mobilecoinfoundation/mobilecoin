@@ -141,7 +141,11 @@ impl PeerKeepalive {
 
                     match conn_manager
                         .conn(&responder_id)
-                        .ok_or_else(|| RetryError::Internal(format!("{} not found", responder_id)))
+                        .ok_or_else(|| RetryError {
+                            error: mc_peers::Error::NotFound,
+                            total_delay: Default::default(),
+                            tries: 0,
+                        })
                         .and_then(|conn| conn.fetch_latest_msg(std::iter::empty()))
                     {
                         Ok(None) => {

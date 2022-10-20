@@ -1,6 +1,6 @@
 [package]
 name = "mc-ledger-db"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -10,7 +10,7 @@ migration_support = []
 test_utils = [
     "mc-blockchain-test-utils",
     "mc-transaction-core-test-utils",
-    "mc-transaction-std/test-only"
+    "mc-transaction-builder/test-only"
 ]
 
 [dependencies]
@@ -19,9 +19,9 @@ mc-blockchain-test-utils = { path = "../../blockchain/test-utils", optional = tr
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils", optional = true }
-mc-transaction-std = { path = "../../transaction/std" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-metrics = { path = "../../util/metrics" }
@@ -41,5 +41,5 @@ tempdir = "0.3"
 mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-crypto-rand = { path = "../../crypto/rand" }
+mc-transaction-builder = { path = "../../transaction/builder", features = ["test-only"] }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-transaction-std = { path = "../../transaction/std", features = ["test-only"] }

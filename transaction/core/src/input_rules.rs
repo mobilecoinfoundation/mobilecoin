@@ -100,9 +100,18 @@ impl InputRules {
             // There is a partial fill change output. Let's try to unblind its amount.
             let (partial_fill_change_amount, _) = partial_fill_change.reveal_amount()?;
             // If the min fill value exceeds the fractional change, then the SCI is
-            // ill-formed
+            // ill-formed.
+            // This check ensures that the expression
+            // `partial_fill_change_amount.value - self.min_partial_fill_value`
+            // does not panic.
             if partial_fill_change_amount.value < self.min_partial_fill_value {
                 return Err(InputRuleError::MinPartialFillValueExceedsPartialFillChange);
+            }
+
+            // Per spec, check if the partial fill change amount is zero.
+            // This is always invalid, and can lead to division by zero on clients.
+            if partial_fill_change_amount.value == 0 {
+                return Err(InputRuleError::ZeroPartialFillChange);
             }
 
             // Let's check if there is a corresponding fractional change output.
@@ -219,6 +228,8 @@ pub enum InputRuleError {
     MissingFractionalOutput,
     /// Fractional output token id did not match fraction output token id
     FractionalOutputTokenIdMismatch,
+    /// Zero partial fill change
+    ZeroPartialFillChange,
     /// Min partial fill value exceeds partial fill change
     MinPartialFillValueExceedsPartialFillChange,
     /// Fractional output amount does not respect fill fraction

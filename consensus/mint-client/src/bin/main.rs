@@ -3,7 +3,7 @@
 //! Entrypoint for the consensus mint client.
 
 use clap::Parser;
-use grpcio::{CallOption, ChannelBuilder, EnvBuilder, MetadataBuilder};
+use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
@@ -11,29 +11,15 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Signer};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
     mint::{MintConfigTx, MintTx},
 };
-use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
+use mc_util_grpc::{common_headers_call_option, ConnectionUriGrpcioChannel};
 use protobuf::ProtobufEnum;
 use std::{fs, process::exit, sync::Arc};
-
-// Make a "call option" object which includes appropriate grpc headers
-fn call_option(chain_id: &str) -> CallOption {
-    let mut metadata_builder = MetadataBuilder::new();
-
-    // Add the chain id header if we have a chain id specified
-    if !chain_id.is_empty() {
-        metadata_builder
-            .add_str(CHAIN_ID_GRPC_HEADER, chain_id)
-            .expect("Could not add chain-id header");
-    }
-
-    CallOption::default().headers(metadata_builder.build())
-}
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -64,7 +50,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_config_tx_opt(&(&tx).into(), call_option(&chain_id))
+                .propose_mint_config_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -133,7 +119,10 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_config_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
+                .propose_mint_config_tx_opt(
+                    &(&merged_tx).into(),
+                    common_headers_call_option(&chain_id),
+                )
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -167,7 +156,7 @@ fn main() {
             }
 
             let resp = client_api
-                .propose_mint_tx_opt(&(&tx).into(), call_option(&chain_id))
+                .propose_mint_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -244,7 +233,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch);
 
             let resp = client_api
-                .propose_mint_tx_opt(&(&merged_tx).into(), call_option(&chain_id))
+                .propose_mint_tx_opt(&(&merged_tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
             println!("response: {:?}", resp);
 
@@ -263,7 +252,7 @@ fn main() {
             let governors_map = tokens
                 .token_id_to_governors()
                 .expect("governors configuration error");
-            let signature = Ed25519Pair::from(signing_key)
+            let signature = Ed25519Pair::from(Ed25519Private::from(signing_key))
                 .sign_governors_map(&governors_map)
                 .expect("failed signing governors map");
             println!("Signature: {}", hex::encode(signature.as_ref()));
@@ -317,7 +306,7 @@ fn main() {
                 signing_keys
                     .into_iter()
                     .map(|signer| {
-                        Ed25519Pair::from(signer)
+                        Ed25519Pair::from(Ed25519Private::from(signer))
                             .try_sign(message.as_ref())
                             .map_err(|e| format!("Failed to sign: {}", e))
                     })

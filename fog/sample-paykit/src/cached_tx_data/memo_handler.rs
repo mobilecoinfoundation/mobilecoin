@@ -7,7 +7,7 @@ use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash, CHANGE_SUBADD
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_transaction_core::{get_tx_out_shared_secret, subaddress_matches_tx_out, tx::TxOut};
-use mc_transaction_std::{MemoDecodingError, MemoType};
+use mc_transaction_extra::{MemoDecodingError, MemoType};
 use std::collections::HashMap;
 
 /// A handler object that holds a contacts list and tries to recieve and

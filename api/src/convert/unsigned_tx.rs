@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from mc_transaction_std::UnsignedTx.
+//! Convert to/from mc_transaction_extra::UnsignedTx.
 
 use crate::{external, ConversionError};
 use mc_blockchain_types::BlockVersion;
-use mc_transaction_std::UnsignedTx;
+use mc_transaction_extra::UnsignedTx;
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {
@@ -51,15 +51,15 @@ mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
     use mc_fog_report_validation_test_utils::MockFogResolver;
-    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
-    use mc_transaction_std::{
+    use mc_transaction_builder::{
         test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
-        TransactionBuilder, UnsignedTx,
+        TransactionBuilder,
     };
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
     use rand::{rngs::StdRng, SeedableRng};
 
     // Test converting between external::UnsignedTx and
-    // mc_transaction_std::UnsignedTx
+    // mc_transaction_builder::UnsignedTx
     #[test]
     fn test_unsigned_tx_conversion() {
         // Generate an UnsignedTx to test with.
@@ -98,8 +98,8 @@ mod tests {
                 .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
                 .unwrap();
 
-            // Converting mc_transaction_std::UnsignedTx -> external::UnsignedTx ->
-            // mc_transaction_std::UnsignedTx should be the identity function.
+            // Converting mc_transaction_builder::UnsignedTx -> external::UnsignedTx ->
+            // mc_transaction_builder::UnsignedTx should be the identity function.
             {
                 let external_unsigned_tx: external::UnsignedTx = (&unsigned_tx).into();
                 let recovered_unsigned_tx: UnsignedTx = (&external_unsigned_tx).try_into().unwrap();

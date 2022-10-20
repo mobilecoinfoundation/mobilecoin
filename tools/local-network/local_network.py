@@ -161,7 +161,7 @@ class Node:
         self.peers = peers
         self.quorum_set = quorum_set
         self.minimum_fee = 400_000_000
-        self.block_version = block_version or 2
+        self.block_version = block_version or 3
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -467,8 +467,11 @@ class Network:
                 check=True,
             )
 
+        # Note: bypass-ip-check feature of mobilecoind is used here,
+        # because ip-check is sometimes problematic for devs or CI machines.
+        # If the service rate limits you then mobilecoind fails to start.
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mint-auditor -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --features mc-mobilecoind/bypass-ip-check {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

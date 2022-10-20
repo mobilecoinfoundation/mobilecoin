@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
@@ -25,7 +25,6 @@ mc-transaction-types = { path = "../../../transaction/types" }
 mc-util-serial = { path = "../../../util/serial" }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
-
 
 [dev-dependencies]
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }

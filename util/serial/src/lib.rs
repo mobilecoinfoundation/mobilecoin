@@ -79,8 +79,8 @@ pub fn decode<T: Message + Default>(buf: &[u8]) -> Result<T, DecodeError> {
 
 #[cfg(feature = "serde_with")]
 mod json_u64 {
-
     use super::*;
+    use serde_with::{serde_as, DisplayFromStr};
 
     /// Represents u64 using string, when serializing to Json
     /// Javascript integers are not 64 bit, and so it is not really proper json.
@@ -89,9 +89,10 @@ mod json_u64 {
     ///
     /// This does not rely on the serde-json arbitrary precision feature, which
     /// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
+    #[serde_as]
     #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
     #[serde(transparent)]
-    pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+    pub struct JsonU64(#[serde_as(as = "DisplayFromStr")] pub u64);
 
     impl From<&u64> for JsonU64 {
         fn from(src: &u64) -> Self {
@@ -198,5 +199,12 @@ mod json_u64_tests {
         let serialized = serialize(&the_struct).unwrap();
         let deserialized: TestStruct = deserialize(&serialized).unwrap();
         assert_eq!(deserialized, the_struct);
+
+        // Sanity that serde_as works as expected: it should accept and hand us back
+        // strings.
+        let expected_json =
+            r#"{"nums":["0","1","2","18446744073709551615"],"block":"18446744073709551614"}"#;
+        assert_eq!(expected_json, serde_json::to_string(&the_struct).unwrap());
+        assert_eq!(the_struct, serde_json::from_str(expected_json).unwrap());
     }
 }

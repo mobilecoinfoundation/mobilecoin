@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -24,8 +24,9 @@ aes-gcm = "0.9.4"
 cookie = "0.16"
 displaydoc = "0.2"
 grpcio = "0.11.0"
-retry = "1.3"
+retry = "2.0"
 secrecy = "0.8"
+serde = "1.0"
 sha2 = "0.10"
 
 [dev-dependencies]

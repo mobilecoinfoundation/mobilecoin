@@ -13,7 +13,7 @@ use std::{path::PathBuf, thread::sleep, time::Duration};
 #[derive(Clone, Debug, Parser)]
 pub struct Config {
     /// Ledger DB path.
-    #[clap(long, parse(from_os_str), env = "MC_LEDGER_DB")]
+    #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 }
 

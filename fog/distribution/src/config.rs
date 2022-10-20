@@ -21,7 +21,7 @@ use std::{path::PathBuf, sync::Arc};
 )]
 pub struct Config {
     /// Path to sample data for keys/ and ledger/
-    #[clap(long, parse(from_os_str), env = "MC_SAMPLE_DATA_DIR")]
+    #[clap(long, env = "MC_SAMPLE_DATA_DIR")]
     pub sample_data_dir: PathBuf,
 
     /// Number of transactions to send per account

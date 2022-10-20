@@ -9,6 +9,7 @@ use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
 use mc_transaction_core::{tokens::Mob, tx::Tx, Token, TokenId};
 use mc_util_uri::ConnectionUri;
+use serde::Serialize;
 use std::{
     collections::BTreeMap,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -66,7 +67,7 @@ pub trait AttestedConnection: Connection {
 }
 
 /// A structure meant to contain the results of a GetLastBlockInfo response
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct BlockInfo {
     /// The index of the last block (aka the block height)
     pub block_index: BlockIndex,

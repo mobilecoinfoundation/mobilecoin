@@ -131,6 +131,4 @@ spec:
           - configMap:
               name: mobilecoind-supervisord-mobilecoind
           - configMap:
-              name: {{ include "mobilecoind.fullname" . }}-supervisord-mint-auditor
-          - configMap:
               name: {{ include "mobilecoind.fullname" . }}-supervisord-mobilecoind-json
