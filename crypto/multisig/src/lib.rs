@@ -139,11 +139,8 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// - The number of signers is greater than or equal to the threshold.
     pub fn is_valid(&self) -> bool {
         // All nested sets must be valid
-        if !self.multi_signers.iter().all(|s| s.is_valid()) {
-            return false;
-        }
-
-        0 < self.threshold && self.threshold as usize <= self.num_signers()
+        self.multi_signers.iter().all(|s| s.is_valid()) &&
+            0 < self.threshold && self.threshold as usize <= self.num_signers()
     }
 
     /// Verify a message against a multi-signature, returning the list of
