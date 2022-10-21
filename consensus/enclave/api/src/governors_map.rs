@@ -119,11 +119,11 @@ mod test {
         let map1 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], vec![], 1),
+                SignerSet::new(vec![Ed25519Public::default()], 1),
             ),
             (
                 TokenId::from(2),
-                SignerSet::new(vec![Ed25519Public::default()], vec![], 1),
+                SignerSet::new(vec![Ed25519Public::default()], 1),
             ),
         ])
         .unwrap();
@@ -135,15 +135,11 @@ mod test {
         let map2 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
-                SignerSet::new(vec![Ed25519Public::default()], vec![], 1),
+                SignerSet::new(vec![Ed25519Public::default()], 1),
             ),
             (
                 TokenId::from(2),
-                SignerSet::new(
-                    vec![Ed25519Public::default(), Ed25519Public::default()],
-                    vec![],
-                    2,
-                ),
+                SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 2),
             ),
         ])
         .unwrap();
@@ -167,7 +163,7 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 Mob::ID,
-                SignerSet::new(vec![Ed25519Public::default()], vec![], 1)
+                SignerSet::new(vec![Ed25519Public::default()], 1)
             )])),
             Err(Error::MobTokenNotAllowed),
         );
@@ -176,14 +172,14 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![], vec![], 0)
+                SignerSet::new(vec![], 0)
             )])),
             Err(Error::InvalidSignerSet(test_token_id)),
         );
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![], vec![], 1)
+                SignerSet::new(vec![], 1)
             )])),
             Err(Error::InvalidSignerSet(test_token_id)),
         );
@@ -192,7 +188,7 @@ mod test {
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
-                SignerSet::new(vec![Ed25519Public::default()], vec![], 2)
+                SignerSet::new(vec![Ed25519Public::default()], 2)
             )])),
             Err(Error::InvalidSignerSet(test_token_id)),
         );
