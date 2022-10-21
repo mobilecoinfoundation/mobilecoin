@@ -244,7 +244,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --key-dir ${{ env.V2_DST_KEYS_DIR }} \
             --token-id 8192
 
     - name: Test - block-v2 - mobilecoind-json integration
@@ -305,7 +305,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --token-id 8192
 
     - name: Setup - block-v3 - Copy subset of non-fog keys
@@ -368,7 +368,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --key-dir ${{ env.V3_DST_KEYS_DIR }} \
             --token-id 8192
 
     - name: Test - block-v3 - mobilecoind-json integration
@@ -414,6 +414,6 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --token-ids 0,8192
 
