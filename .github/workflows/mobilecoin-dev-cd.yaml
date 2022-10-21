@@ -517,6 +517,22 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
+  cleanup-on-pr:
+    if: github.event_name == 'pull_request'
+    needs:
+    - test-v2-bv0-release
+    - generate-metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+
 ###############################################
 # Upgrade v2.x to block v2
 ###############################################
@@ -671,3 +687,4 @@ jobs:
 #       RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
 #       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
 #       RANCHER_URL: ${{ secrets.RANCHER_URL }}
+

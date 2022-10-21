@@ -123,8 +123,11 @@ case "${GITHUB_REF_TYPE}" in
     ;;
 esac
 
-echo "::set-output name=version::${version}"
-echo "::set-output name=namespace::${namespace}"
-echo "::set-output name=sha::${sha}"
-echo "::set-output name=tag::${tag}"
-echo "::set-output name=docker_tag::${docker_tag}"
+# Set GHA output vars
+cat <<EOF >> "${GITHUB_OUTPUT}"
+version=${version}
+namespace=${namespace}
+sha=${sha}
+tag=${tag}
+docker_tag=${docker_tag}
+EOF
