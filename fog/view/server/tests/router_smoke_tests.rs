@@ -12,7 +12,6 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::{thread::sleep, time::Duration};
 
 async fn test_router_integration(test_environment: &mut RouterTestEnvironment, logger: Logger) {
-    let store_count = 5;
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     let db = test_environment
         .db_test_context
@@ -35,9 +34,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     )
     .unwrap();
 
-    let total_block_count = store_count;
     let egress_public_key = KexRngPubkey {
-        public_key: [1; 32].to_vec(),
+        public_key: vec![1; 32],
         version: 0,
     };
 
@@ -46,8 +44,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
         .unwrap();
 
     let mut expected_records = Vec::new();
-    for i in 0..total_block_count {
-        let (block, records) = random_block(&mut rng, i as u64, 2);
+    const BLOCK_COUNT: u64 = 5;
+    for i in 0..BLOCK_COUNT {
+        let (block, records) = random_block(&mut rng, i, 2);
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }

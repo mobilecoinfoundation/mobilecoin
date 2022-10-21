@@ -273,9 +273,9 @@ fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> HashSet<TxO
         .map(|result| {
             let payload_length = result.ciphertext.len() - (result.ciphertext[0] as usize);
             TxOutSearchResult {
-                search_key: result.search_key[..].to_vec(),
+                search_key: result.search_key.clone(),
                 result_code: result.result_code,
-                ciphertext: result.ciphertext[1..payload_length + 1].to_owned(),
+                ciphertext: result.ciphertext[1..=payload_length].to_owned(),
             }
         })
         .collect()
