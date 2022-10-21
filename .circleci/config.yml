@@ -247,7 +247,6 @@ commands:
           command: |
             command -v rustup >/dev/null \
               || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain stable
-            # Installs the toolchain specified in `rust-toolchain`
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
   install-ci-deps:
@@ -308,11 +307,10 @@ commands:
       - checkout
       - when:
           condition: { equal: [ << parameters.os >>, macos ] }
-          steps: [ restore-homebrew-cache ]
+          steps: [ restore-homebrew-cache, install-rust ]
       - when:
           condition: { equal: [ << parameters.os >>, linux ] }
           steps: [ enable-postgresql ]
-      - install-rust
       - restore-cargo-cache
       - env_setup
       - install-ci-deps:
