@@ -70,7 +70,11 @@ impl TryFrom<&external::Ed25519SignerSet> for SignerSet<Ed25519Public> {
 
         let threshold = source.get_threshold();
 
-        Ok(Self::new(individual_signers, multi_signers, threshold))
+        Ok(Self::new_with_multi(
+            individual_signers,
+            multi_signers,
+            threshold,
+        ))
     }
 }
 
@@ -92,13 +96,13 @@ pub mod tests {
         let signer3 = Ed25519Pair::from_random(&mut rng);
         let signer4 = Ed25519Pair::from_random(&mut rng);
 
-        SignerSet::new(
+        SignerSet::new_with_multi(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![SignerSet::new(vec![signer4.public_key()], vec![], 1)],
+            vec![SignerSet::new(vec![signer4.public_key()], 1)],
             2,
         )
     }

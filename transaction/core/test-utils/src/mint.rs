@@ -38,16 +38,12 @@ pub fn create_mint_config_tx_and_signers(
     let configs = vec![
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(
-                vec![signer_2.public_key(), signer_3.public_key()],
-                vec![],
-                1,
-            ),
+            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: rng.next_u32() as u64,
         },
         MintConfig {
@@ -58,7 +54,6 @@ pub fn create_mint_config_tx_and_signers(
                     signer_4.public_key(),
                     signer_5.public_key(),
                 ],
-                vec![],
                 2,
             ),
             mint_limit: rng.next_u32() as u64,

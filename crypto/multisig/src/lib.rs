@@ -102,7 +102,17 @@ pub struct SignerSet<P: Default + PublicKey + Message> {
 
 impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
-    pub fn new(individual_signers: Vec<P>, multi_signers: Vec<Self>, threshold: u32) -> Self {
+    pub fn new(individual_signers: Vec<P>, threshold: u32) -> Self {
+        Self::new_with_multi(individual_signers, Vec::new(), threshold)
+    }
+
+    /// Construct a new `SignerSet` from a list of public keys, multi signers
+    /// and threshold.
+    pub fn new_with_multi(
+        individual_signers: Vec<P>,
+        multi_signers: Vec<Self>,
+        threshold: u32,
+    ) -> Self {
         Self {
             individual_signers,
             multi_signers,
@@ -275,7 +285,6 @@ mod test {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![],
             2,
         );
         let message = b"this is a test";
@@ -347,7 +356,6 @@ mod test {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![],
             1,
         );
         let message = b"this is a test";
@@ -410,7 +418,6 @@ mod test {
                 signer1.public_key(),
                 signer2.public_key(),
             ],
-            vec![],
             1,
         );
         let message = b"this is a test";
@@ -469,7 +476,6 @@ mod test {
         // Org 1 requires 2-out-of-2
         let org1_signer_set = SignerSet::new(
             vec![org1_signer1.public_key(), org1_signer2.public_key()],
-            vec![],
             2,
         );
 
@@ -480,12 +486,11 @@ mod test {
                 org2_signer2.public_key(),
                 org2_signer3.public_key(),
             ],
-            vec![],
             2,
         );
 
         // Test a signer set that requires the two orgs and an individual signer.
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSet::new_with_multi(
             vec![individual_signer.public_key()],
             vec![org1_signer_set.clone(), org2_signer_set.clone()],
             3,
@@ -576,7 +581,8 @@ mod test {
         );
 
         // Test a signer set that requires 1 of 2 orgs.
-        let signer_set = SignerSet::new(vec![], vec![org1_signer_set, org2_signer_set], 1);
+        let signer_set =
+            SignerSet::new_with_multi(vec![], vec![org1_signer_set, org2_signer_set], 1);
 
         let multi_sig = make_multi_sig(
             message.as_ref(),
@@ -627,18 +633,17 @@ mod test {
         // Two orgs, both requiring either a common signer or a signer from the org.
         let org1_signer_set = SignerSet::new(
             vec![common_signer.public_key(), org1_signer.public_key()],
-            vec![],
             1,
         );
 
         let org2_signer_set = SignerSet::new(
             vec![common_signer.public_key(), org2_signer.public_key()],
-            vec![],
             1,
         );
 
         // Test a signer set that requires the two orgs with a common signer
-        let signer_set = SignerSet::new(vec![], vec![org1_signer_set, org2_signer_set], 2);
+        let signer_set =
+            SignerSet::new_with_multi(vec![], vec![org1_signer_set, org2_signer_set], 2);
 
         let multi_sig = make_multi_sig(message.as_ref(), &[&common_signer]);
         assert_eq_ignore_order(
@@ -658,15 +663,15 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSet::new_with_multi(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
                 signer3.public_key(),
             ],
             vec![
-                SignerSet::new(vec![signer1.public_key(), signer2.public_key()], vec![], 2),
-                SignerSet::new(
+                SignerSet::new(vec![signer1.public_key(), signer2.public_key()], 2),
+                SignerSet::new_with_multi(
                     vec![signer1.public_key(), signer2.public_key()],
                     vec![SignerSet::new(
                         vec![
@@ -674,7 +679,6 @@ mod test {
                             signer2.public_key(),
                             signer3.public_key(),
                         ],
-                        vec![],
                         3,
                     )],
                     2,
@@ -703,15 +707,15 @@ mod test {
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
 
-        let signer_set = SignerSet::new(
+        let signer_set = SignerSet::new_with_multi(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
                 signer3.public_key(),
             ],
             vec![
-                SignerSet::new(vec![signer1.public_key(), signer2.public_key()], vec![], 2),
-                SignerSet::new(
+                SignerSet::new(vec![signer1.public_key(), signer2.public_key()], 2),
+                SignerSet::new_with_multi(
                     vec![signer1.public_key(), signer2.public_key()],
                     vec![SignerSet::new(
                         vec![
@@ -719,7 +723,6 @@ mod test {
                             signer2.public_key(),
                             signer3.public_key(),
                         ],
-                        vec![],
                         3,
                     )],
                     2,
@@ -755,13 +758,12 @@ mod test {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![],
             2,
         );
         assert!(valid_flat_signer_set.is_valid());
 
         // Signer set with threshold = 0 is invalid
-        assert!(!SignerSet::new(
+        assert!(!SignerSet::new_with_multi(
             vec![
                 signer1.public_key(),
                 signer2.public_key(),
@@ -779,12 +781,11 @@ mod test {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![],
             4,
         )
         .is_valid());
 
-        assert!(!SignerSet::new(
+        assert!(!SignerSet::new_with_multi(
             vec![signer2.public_key(), signer3.public_key(),],
             vec![valid_flat_signer_set.clone()],
             4,
@@ -798,19 +799,18 @@ mod test {
                 signer2.public_key(),
                 signer3.public_key(),
             ],
-            vec![],
             3,
         )
         .is_valid());
 
-        assert!(SignerSet::new(
+        assert!(SignerSet::new_with_multi(
             vec![signer2.public_key(), signer3.public_key(),],
             vec![valid_flat_signer_set.clone()],
             3,
         )
         .is_valid());
 
-        assert!(SignerSet::new(
+        assert!(SignerSet::new_with_multi(
             vec![],
             vec![
                 valid_flat_signer_set.clone(),
@@ -822,7 +822,7 @@ mod test {
         .is_valid());
 
         // A signer set with a nested invalid set is also invalid
-        let invalid_signer_set = SignerSet::new(vec![signer1.public_key()], vec![], 4);
-        assert!(!SignerSet::new(vec![], vec![invalid_signer_set], 1).is_valid());
+        let invalid_signer_set = SignerSet::new(vec![signer1.public_key()], 4);
+        assert!(!SignerSet::new_with_multi(vec![], vec![invalid_signer_set], 1).is_valid());
     }
 }
