@@ -225,7 +225,6 @@ if __name__ == '__main__':
     print(submit_response)
 
 
-    success = False
     for i in range(20):
         logging.info(f"Waiting for burn transaction, attempt #{i}")
         time.sleep(1)
@@ -235,11 +234,9 @@ if __name__ == '__main__':
 
         if new_balance == balance - args.value - args.fee:
             logging.info("Burn transaction was successful")
-            success = True
             break
         else:
             logging.error(f"Burn transaction appears to be unsuccessful: new_balance={new_balance} balance={balance} args.value={args.value} args.fee={args.fee}")
-
-    if not success:
+    else:
         logging.error("Giving up :(")
         sys.exit(1)
