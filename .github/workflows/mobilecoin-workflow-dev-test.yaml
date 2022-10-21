@@ -260,7 +260,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - Minting tx
       if: inputs.testing_block_v2 == 'true'
@@ -275,7 +275,7 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.DST_KEYS_DIR }} \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - mobilecoind-json integration
       if: inputs.testing_block_v2 == 'true'
@@ -306,7 +306,7 @@ jobs:
             --src ${{ env.DST_KEYS_DIR }} \
             --dst ${{ env.DST_FOG_KEYS_DIR }} \
             --fee 1024 \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - fog-test-client token id 0
       if: inputs.testing_block_v2 == 'true'
@@ -336,7 +336,7 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
-            --token-id 1
+            --token-id 8192
 
   testing-block-v3:
     name: Testing for block version 3 ${{ inputs.testing_block_v3 == 'true' && '(run)' || '(skipped)' }}
@@ -397,7 +397,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - Minting tx
       if: inputs.testing_block_v3 == 'true'
@@ -412,7 +412,7 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.DST_KEYS_DIR }} \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - mobilecoind-json integration
       if: inputs.testing_block_v3 == 'true'
@@ -443,7 +443,7 @@ jobs:
             --src ${{ env.DST_KEYS_DIR }} \
             --dst ${{ env.DST_FOG_KEYS_DIR }} \
             --fee 1024 \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - fog-test-client token ids 0,1
       if: inputs.testing_block_v3 == 'true'
@@ -458,4 +458,4 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
-            --token-ids 0,1
+            --token-ids 0,8192
