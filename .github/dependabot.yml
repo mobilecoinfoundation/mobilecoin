@@ -4,6 +4,8 @@ updates:
   directory: "/"
   schedule:
     interval: daily
+    time: "00:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 25
   labels:
     - "blocks-v3.x"
@@ -13,6 +15,8 @@ updates:
   directory: "/consensus/enclave/trusted/"
   schedule:
     interval: daily
+    time: "01:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
     - "blocks-v3.x"
@@ -22,6 +26,8 @@ updates:
   directory: "/fog/ingest/enclave/trusted/"
   schedule:
     interval: daily
+    time: "01:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
     - "blocks-v3.x"
@@ -31,6 +37,8 @@ updates:
   directory: "/fog/ledger/enclave/trusted/"
   schedule:
     interval: daily
+    time: "01:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
     - "blocks-v3.x"
@@ -40,6 +48,8 @@ updates:
   directory: "/fog/view/enclave/trusted/"
   schedule:
     interval: daily
+    time: "01:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
     - "blocks-v3.x"
@@ -49,4 +59,6 @@ updates:
   directory: "/"
   schedule:
     interval: daily
+    time: "02:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 10
