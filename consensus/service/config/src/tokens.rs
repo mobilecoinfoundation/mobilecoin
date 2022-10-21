@@ -636,9 +636,9 @@ mod tests {
 
         assert_eq!(
             governors,
-            SignerSet::new(
+            SignerSet::new_with_multi(
                 vec![key1, key2],
-                vec![SignerSet::new(vec![key1, key2, key3], vec![], 2)],
+                vec![SignerSet::new(vec![key1, key2, key3], 2)],
                 1
             )
         );
