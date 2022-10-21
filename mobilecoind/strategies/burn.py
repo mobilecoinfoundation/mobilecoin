@@ -240,6 +240,6 @@ if __name__ == '__main__':
         else:
             logging.error(f"Burn transaction appears to be unsuccessful: new_balance={new_balance} balance={balance} args.value={args.value} args.fee={args.fee}")
 
-    if not succesS:
+    if not success:
         logging.error("Giving up :(")
         sys.exit(1)
