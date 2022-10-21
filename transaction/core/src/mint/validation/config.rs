@@ -113,32 +113,24 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
         let mint_config3 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(
-                vec![signer_2.public_key(), signer_3.public_key()],
-                vec![],
-                1,
-            ),
+            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: 15,
         };
         let mint_config4 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(
-                vec![signer_2.public_key(), signer_3.public_key()],
-                vec![],
-                2,
-            ),
+            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 2),
             mint_limit: 15,
         };
 
@@ -162,13 +154,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
@@ -192,13 +184,13 @@ mod tests {
         let mint_config1 = MintConfig {
             token_id: *token_id,
             // threshold > number of signers
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 2),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 2),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![], vec![], 1), // no signers
+            signer_set: SignerSet::new(vec![], 1), // no signers
             mint_limit: 15,
         };
 
@@ -221,13 +213,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
@@ -258,7 +250,6 @@ mod tests {
                     governor_2.public_key(),
                     governor_3.public_key()
                 ],
-                vec![],
                 1
             )
         )
@@ -281,7 +272,6 @@ mod tests {
                     governor_2.public_key(),
                     governor_3.public_key()
                 ],
-                vec![],
                 2
             )
         )
@@ -304,7 +294,6 @@ mod tests {
                     governor_2.public_key(),
                     governor_3.public_key()
                 ],
-                vec![],
                 2
             )
         )
@@ -325,7 +314,6 @@ mod tests {
                     governor_2.public_key(),
                     governor_3.public_key()
                 ],
-                vec![],
                 3
             )
         )
@@ -342,13 +330,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
@@ -381,7 +369,6 @@ mod tests {
                         governor_2.public_key(),
                         governor_3.public_key()
                     ],
-                    vec![],
                     1
                 )
             ),
@@ -401,7 +388,6 @@ mod tests {
                         governor_2.public_key(),
                         governor_3.public_key()
                     ],
-                    vec![],
                     1
                 )
             ),
@@ -419,13 +405,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
@@ -457,7 +443,6 @@ mod tests {
                         governor_2.public_key(),
                         governor_3.public_key()
                     ],
-                    vec![],
                     2
                 )
             ),
@@ -473,11 +458,7 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSet::new(
-                    vec![governor_2.public_key(), governor_3.public_key()],
-                    vec![],
-                    1
-                )
+                &SignerSet::new(vec![governor_2.public_key(), governor_3.public_key()], 1)
             ),
             Err(Error::InvalidSignature)
         );
@@ -491,11 +472,7 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSet::new(
-                    vec![governor_2.public_key(), governor_3.public_key()],
-                    vec![],
-                    2
-                )
+                &SignerSet::new(vec![governor_2.public_key(), governor_3.public_key()], 2)
             ),
             Err(Error::InvalidSignature)
         );
@@ -511,13 +488,13 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: 123,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
             token_id: 234,
-            signer_set: SignerSet::new(vec![signer_2.public_key()], vec![], 1),
+            signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
@@ -549,7 +526,6 @@ mod tests {
                         governor_2.public_key(),
                         governor_3.public_key()
                     ],
-                    vec![],
                     2
                 )
             ),

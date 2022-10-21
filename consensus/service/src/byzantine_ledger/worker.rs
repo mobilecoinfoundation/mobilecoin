@@ -1660,8 +1660,7 @@ mod tests {
         };
         add_block_contents_to_ledger(&mut ledger, block_version, block_contents, &mut rng).unwrap();
 
-        let signer_set1 =
-            SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), vec![], 1);
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger.clone(), block_version, governors_map, logger.clone());

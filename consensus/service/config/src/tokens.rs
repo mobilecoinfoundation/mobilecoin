@@ -79,11 +79,7 @@ mod pem_signer_set {
                     // Return the keys.
                     .collect::<Result<_, D::Error>>()?;
 
-                Ok(Some(SignerSet::new(
-                    signers,
-                    vec![],
-                    pem_signer_set.threshold,
-                )))
+                Ok(Some(SignerSet::new(signers, pem_signer_set.threshold)))
             }
         }
     }
@@ -695,7 +691,6 @@ mod tests {
                     Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
                     Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),
                 ],
-                vec![],
                 1,
             )),
         };
