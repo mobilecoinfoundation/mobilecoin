@@ -8,7 +8,7 @@ env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_1X_TAG: v1.1.3-dev
-  RELEASE_2X_TAG: v2.1.0-pre # Used until 3.0.x is ready to move to token id 8192
+  RELEASE_2X_TAG: v2.1.0-pre1 # Used until 3.0.x is ready to move to token id 8192
 
 on:
   pull_request:
@@ -30,7 +30,9 @@ on:
     - '**.md'
 
 # don't run more than one at a time for a branch/tag
-concurrency: mobilecoin-dev-cd-${{ github.ref }}
+concurrency:
+  group: mobilecoin-dev-cd-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
 ############################################
