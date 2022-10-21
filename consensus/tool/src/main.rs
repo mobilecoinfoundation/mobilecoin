@@ -35,7 +35,7 @@ pub struct Config {
     pub tool_command: ToolCommand,
 
     /// Consensus_uri's to connect to
-    #[clap(global = true, env = "MC_PEERS")]
+    #[clap(global = true, use_value_delimiter = true, env = "MC_PEERS")]
     pub consensus_uris: Vec<ConsensusClientUri>,
 }
 
