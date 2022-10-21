@@ -86,8 +86,11 @@
 //! based on the TxPrefix. So the host computer can gain no advantage by lying
 //! to the device in this way.
 
-use crate::{tx::TxPrefix, CompressedCommitment, MaskedAmount};
-use alloc::{collections::BTreeSet, vec::Vec};
+use crate::{
+    tx::{TxOut, TxPrefix},
+    CompressedCommitment, MaskedAmount,
+};
+use alloc::{collections::BTreeMap, vec::Vec};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_util_zip_exact::{zip_exact, ZipExactError};
@@ -128,7 +131,7 @@ impl TxSummary {
         pseudo_output_commitments: &[CompressedCommitment],
     ) -> Result<Self, ZipExactError> {
         // Scratch which helps us associate outputs to inputs with rules
-        let mut input_rules_associated_target_keys: BTreeSet<CompressedRistrettoPublic> =
+        let mut input_rules_associated_tx_outs: BTreeMap<CompressedRistrettoPublic, TxOut> =
             Default::default();
 
         // Compute the inputs
@@ -141,8 +144,8 @@ impl TxSummary {
                     };
                     if let Some(rules) = &input.input_rules {
                         result.has_input_rules = true;
-                        let mut associated_keys = rules.associated_tx_target_keys();
-                        input_rules_associated_target_keys.append(&mut associated_keys);
+                        let mut associated_tx_outs = rules.associated_tx_outs();
+                        input_rules_associated_tx_outs.append(&mut associated_tx_outs);
                     }
                     result
                 })
@@ -155,8 +158,14 @@ impl TxSummary {
                 masked_amount: src.masked_amount.clone(),
                 target_key: src.target_key,
                 public_key: src.public_key,
-                associated_to_input_rules: input_rules_associated_target_keys
-                    .contains(&src.target_key),
+                // Check if the public key and target key of this TxOutSummary match to a TxOut in
+                // the associated_tx_outs list. The masked amount is not necessarily
+                // expected to match, and no other fields of TxOut are in the TxOutSummary
+                // This should generally agree with `TxOut::eq_ignoring_amount`
+                associated_to_input_rules: input_rules_associated_tx_outs
+                    .get(&src.public_key)
+                    .map(|tx_out| tx_out.target_key == src.target_key)
+                    .unwrap_or(false),
             })
             .collect();
 

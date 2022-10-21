@@ -13,7 +13,7 @@ use crate::{
     tx::{Tx, TxOut},
     BlockVersion, RevealedTxOut, RevealedTxOutError,
 };
-use alloc::{collections::BTreeSet, vec::Vec};
+use alloc::{collections::BTreeMap, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -70,17 +70,17 @@ pub struct InputRules {
 }
 
 impl InputRules {
-    /// Get all tx target keys associated to outputs appearing in these rules
-    pub fn associated_tx_target_keys(&self) -> BTreeSet<CompressedRistrettoPublic> {
-        let mut result = BTreeSet::default();
+    /// Get all TxOut's appearing in these rules, keyed by public key
+    pub fn associated_tx_outs(&self) -> BTreeMap<CompressedRistrettoPublic, TxOut> {
+        let mut result = BTreeMap::default();
         for output in self.required_outputs.iter() {
-            result.insert(output.target_key);
+            result.insert(output.public_key, output.clone());
         }
         for output in self.partial_fill_outputs.iter() {
-            result.insert(output.tx_out.target_key);
+            result.insert(output.tx_out.public_key, output.tx_out.clone());
         }
         for output in self.partial_fill_change.iter() {
-            result.insert(output.tx_out.target_key);
+            result.insert(output.tx_out.public_key, output.tx_out.clone());
         }
         result
     }
