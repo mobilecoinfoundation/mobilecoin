@@ -4,7 +4,8 @@ use alloc::vec::Vec;
 use mc_crypto_ring_signature_signer::RingSigner;
 use mc_transaction_core::{
     ring_ct::{
-        Error as RingCtError, InputRing, OutputSecret, SignatureRctBulletproofs, SigningData,
+        Error as RingCtError, ExtendedMessageDigest, InputRing, OutputSecret,
+        SignatureRctBulletproofs, SigningData,
     },
     tx::{Tx, TxPrefix},
     TxSummary,
@@ -57,16 +58,17 @@ impl UnsignedTx {
         Ok(Tx { prefix, signature })
     }
 
-    /// Get extraneous signing data
+    /// Get prepared (but unsigned) ringct bulletproofs which can be signed
+    /// later. Also gets the TxSummary and related digests.
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<(SigningData, TxSummary, Vec<u8>), RingCtError> {
+    ) -> Result<(SigningData, TxSummary, ExtendedMessageDigest), RingCtError> {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        SigningData::new(
+        SigningData::new_with_summary(
             self.block_version,
             &self.tx_prefix,
             &self.rings,

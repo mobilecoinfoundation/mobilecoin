@@ -16,22 +16,21 @@ use curve25519_dalek::{
     traits::Identity,
 };
 use mc_common::HashSet;
-use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
+use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
-use mc_util_zip_exact::{zip_exact, ZipExactError};
+use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
     constants::FEE_BLINDING,
-    domain_separators::{EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, EXTENDED_MESSAGE_DOMAIN_TAG},
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_ct::{Error, GeneratorCache},
+    ring_ct::{compute_mlsag_signing_digest, Error, ExtendedMessageDigest, GeneratorCache},
     tx::TxPrefix,
     Amount, BlockVersion, TxSummary,
 };
@@ -165,10 +164,6 @@ impl SigningData {
     ///
     /// Returns:
     /// * The SigningData
-    /// * The TxSummary
-    /// * The extended message digest
-    ///
-    /// (The latter two are MCIP #52 and only relevant on small HW wallets)
     pub fn new<CSPRNG: RngCore + CryptoRng>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
@@ -177,7 +172,52 @@ impl SigningData {
         fee: Amount,
         check_value_is_preserved: bool,
         rng: &mut CSPRNG,
-    ) -> Result<(Self, TxSummary, Vec<u8>), Error> {
+    ) -> Result<Self, Error> {
+        Ok(Self::new_with_summary(
+            block_version,
+            tx_prefix,
+            rings,
+            output_secrets,
+            fee,
+            check_value_is_preserved,
+            rng,
+        )?
+        .0)
+    }
+
+    /// Create a new [`SigningData`] instance, as well as TxSummary and extended
+    /// message digest.
+    ///
+    /// # Arguments
+    /// * `block_version` - Block version of transaction being signed. This may
+    ///   influence details of the signature.
+    /// * `tx_prefix` - This is used to generate the "message" as
+    ///   tx_prefix.hash(), and to generate the TxSummary, which also becomes
+    ///   part of the Digest which MLSAGs sign.
+    /// * `rings` - Input rings, each one describing a single input to the
+    ///   transaction.
+    /// * `output_secrets` - Outputs secret (amount and commitment) for the
+    ///   outputs we will be creating.
+    /// * `fee` - Value of the implicit fee output.
+    /// * `check_value_is_preserved` - If true, check that the value of inputs
+    ///   equals value of outputs.
+    /// * `rng` - randomness
+    ///
+    /// Returns:
+    /// * The SigningData
+    /// * The TxSummary
+    /// * The extended message digest
+    ///
+    /// (The latter two are MCIP #52 and only relevant on small HW wallets)
+    pub fn new_with_summary<CSPRNG: RngCore + CryptoRng>(
+        block_version: BlockVersion,
+        tx_prefix: &TxPrefix,
+        rings: &[InputRing],
+        output_secrets: &[OutputSecret],
+        fee: Amount,
+        check_value_is_preserved: bool,
+        rng: &mut CSPRNG,
+    ) -> Result<(Self, TxSummary, ExtendedMessageDigest), Error> {
         if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
             return Err(Error::TokenIdNotAllowed);
         }
@@ -375,13 +415,14 @@ impl SigningData {
 
         // Compute the mlsag_signing_digest in whatever way is appropriate for this
         // block version.
-        let (mlsag_signing_digest, tx_summary, extended_message) = compute_mlsag_signing_digest(
-            block_version,
-            tx_prefix,
-            &pseudo_output_commitments,
-            &range_proof,
-            &range_proofs,
-        )?;
+        let (mlsag_signing_digest, tx_summary, extended_message_digest) =
+            compute_mlsag_signing_digest(
+                block_version,
+                tx_prefix,
+                &pseudo_output_commitments,
+                &range_proof,
+                &range_proofs,
+            )?;
 
         let mut pseudo_output_token_ids: Vec<u64> =
             rings.iter().map(|ring| *ring.amount().token_id).collect();
@@ -402,7 +443,7 @@ impl SigningData {
 
         Ok((
             Self {
-                mlsag_signing_digest,
+                mlsag_signing_digest: mlsag_signing_digest.0,
                 pseudo_output_blindings,
                 pseudo_output_commitments,
                 range_proof_bytes: range_proof,
@@ -411,7 +452,7 @@ impl SigningData {
                 output_token_ids,
             },
             tx_summary,
-            extended_message,
+            extended_message_digest,
         ))
     }
 }
@@ -743,7 +784,7 @@ impl SignatureRctBulletproofs {
             let this_was_signed: &[u8] = if let Some(signed_digest) = ring.signed_digest.as_ref() {
                 &signed_digest[..]
             } else {
-                &mlsag_signing_digest
+                &mlsag_signing_digest.0
             };
 
             let ring_signature = &self.ring_signatures[i];
@@ -786,20 +827,16 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     signer: &S,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
-    let (
-        SigningData {
-            mlsag_signing_digest,
-            pseudo_output_blindings,
-            pseudo_output_commitments,
-            range_proofs,
-            range_proof_bytes,
-            pseudo_output_token_ids,
-            output_token_ids,
-            ..
-        },
-        _tx_summary,
-        _extended_message,
-    ) = SigningData::new(
+    let SigningData {
+        mlsag_signing_digest,
+        pseudo_output_blindings,
+        pseudo_output_commitments,
+        range_proofs,
+        range_proof_bytes,
+        pseudo_output_token_ids,
+        output_token_ids,
+        ..
+    } = SigningData::new(
         block_version,
         tx_prefix,
         rings,
@@ -904,120 +941,6 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
             }
         })
         .collect())
-}
-
-/// Compute the digest that mlsags should actually sign, depending on the block
-/// version.
-///
-/// Returns: The MLSAG Signing Digest, the TxSummary, and the
-/// extended_message_digest.
-///
-/// TODO: When support for block version < 2 is deprecated,
-/// we can make this return `[u8; 32]` instead of Vec<u8>, which is nicer for
-/// the hardware wallet implementation.
-fn compute_mlsag_signing_digest(
-    block_version: BlockVersion,
-    tx_prefix: &TxPrefix,
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-    range_proofs: &[Vec<u8>],
-) -> Result<(Vec<u8>, TxSummary, Vec<u8>), ZipExactError> {
-    // The historical "message" is the tx_prefix hash
-    let message = tx_prefix.hash();
-    // The historical extended message
-    let extended_message = compute_extended_message_either_version(
-        block_version,
-        &message,
-        pseudo_output_commitments,
-        range_proof_bytes,
-        range_proofs,
-    );
-
-    // Make the TxSummary
-    let tx_summary = TxSummary::new(tx_prefix, pseudo_output_commitments)?;
-
-    // When the tx summary is also supposed to be part of the digest (to support
-    // hardware wallets, we do another round of merlin using the previous digest
-    // as the starting point, and then digest the TxSummary.
-    // The TxSummary is much smaller than the entire Tx, so this last digest
-    // can be reproduced on the hardware wallet with relative ease, compared to
-    // trying to reproduce the entire extended message digest.
-    if block_version.mlsags_sign_extended_message_and_tx_summary_digest() {
-        let mut transcript =
-            MerlinTranscript::new(EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG.as_bytes());
-        extended_message.append_to_transcript(b"extended_message", &mut transcript);
-        tx_summary.append_to_transcript(b"tx_summary", &mut transcript);
-
-        // Extract digest
-        let mut output = [0u8; 32];
-        transcript.extract_digest(&mut output);
-        Ok((output.to_vec(), tx_summary, extended_message))
-    } else {
-        Ok((extended_message, tx_summary, Default::default()))
-    }
-}
-
-/// Toggles between old-style and new-style extended message
-///
-/// TODO: When support for block version < 2 is deprecated,
-/// we can make this return `[u8; 32]` instead, which is nicer for the hardware
-/// wallet implementation.
-fn compute_extended_message_either_version(
-    block_version: BlockVersion,
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-    range_proofs: &[Vec<u8>],
-) -> Vec<u8> {
-    if block_version.mlsags_sign_extended_message_digest() {
-        // New-style extended message using merlin
-        digest_extended_message(
-            message,
-            pseudo_output_commitments,
-            range_proof_bytes,
-            range_proofs,
-        )
-        .to_vec()
-    } else {
-        // Old-style extended message
-        extend_message(message, pseudo_output_commitments, range_proof_bytes)
-    }
-}
-
-/// Computes a merlin digest of message, pseudo_output_commitments, range proof
-fn digest_extended_message(
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-    range_proofs: &[Vec<u8>],
-) -> [u8; 32] {
-    let mut transcript = MerlinTranscript::new(EXTENDED_MESSAGE_DOMAIN_TAG.as_bytes());
-    message.append_to_transcript(b"message", &mut transcript);
-    pseudo_output_commitments.append_to_transcript(b"pseudo_output_commitments", &mut transcript);
-    range_proof_bytes.append_to_transcript_allow_omit(b"range_proof_bytes", &mut transcript);
-    range_proofs.append_to_transcript_allow_omit(b"range_proofs", &mut transcript);
-
-    let mut output = [0u8; 32];
-    transcript.extract_digest(&mut output);
-    output
-}
-
-/// Concatenates [message || pseudo_output_commitments || range_proof].
-/// (Used before block version two)
-fn extend_message(
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-) -> Vec<u8> {
-    let mut extended_message: Vec<u8> = Vec::with_capacity(
-        message.len() + pseudo_output_commitments.len() * 32 + range_proof_bytes.len(),
-    );
-    extended_message.extend_from_slice(message);
-    for commitment in pseudo_output_commitments {
-        extended_message.extend_from_slice(commitment.as_ref());
-    }
-    extended_message.extend_from_slice(range_proof_bytes);
-    extended_message
 }
 
 impl From<&SignableInputRing> for SignedInputRing {
