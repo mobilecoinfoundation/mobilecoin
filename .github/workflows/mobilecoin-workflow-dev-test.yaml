@@ -230,7 +230,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - block-v2 - Minting tx
       if: inputs.testing_block_v2 == 'true'
@@ -244,8 +244,8 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.V2_DST_KEYS_DIR }} \
-            --token-id 1
+            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --token-id 8192
 
     - name: Test - block-v2 - mobilecoind-json integration
       if: inputs.testing_block_v2 == 'true'
@@ -276,7 +276,7 @@ jobs:
             --src ${{ env.V2_DST_KEYS_DIR }} \
             --dst ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --fee 1024 \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - block-v2 - fog-test-client token id 0
       if: inputs.testing_block_v2 == 'true'
@@ -305,9 +305,8 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
-            --token-id 1
-
+            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --token-id 8192
 
     - name: Setup - block-v3 - Copy subset of non-fog keys
       if: inputs.testing_block_v3 == 'true'
@@ -355,7 +354,7 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - block-v3 - Minting tx
       if: inputs.testing_block_v3 == 'true'
@@ -369,8 +368,8 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.V3_DST_KEYS_DIR }} \
-            --token-id 1
+            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --token-id 8192
 
     - name: Test - block-v3 - mobilecoind-json integration
       if: inputs.testing_block_v3 == 'true'
@@ -401,7 +400,7 @@ jobs:
             --src ${{ env.V3_DST_KEYS_DIR }} \
             --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --fee 1024 \
-            --token-id 1
+            --token-id 8192
 
     - name: Test - block-v3 - fog-test-client token ids 0,1
       if: inputs.testing_block_v3 == 'true'
@@ -415,5 +414,6 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
-            --token-ids 0,1
+            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --token-ids 0,8192
+
