@@ -561,6 +561,12 @@ jobs:
           STRATEGIES_DIR="$PWD/mobilecoind/strategies"
           export MC_CHAIN_ID="local"
           export MC_LOG=info
+          # This is needed since we want to capture the output of mc-consensus-tool, and we can't have the
+          # logs getting in the way.
+          export MC_LOG_STDERR=1
+
+          # Used by mc-consensus-tool
+          export MC_PEERS="insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/"
 
           cd /tmp/fog-local-network
           export LEDGER_BASE="$PWD/ledger"
@@ -580,12 +586,9 @@ jobs:
           echo "Authorizing minters"
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          echo "Waiting for quiet after authorizing minters..."
+          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet)
+          echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
 
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
@@ -599,12 +602,9 @@ jobs:
                   --amount 1000000
           done
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          echo "Waiting for quiet after minting"
+          POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block $PRE_MINT_BLOCK_INDEX)
+          echo "Done waiting, POST_MINT_BLOCK_INDEX = ${POST_MINT_BLOCK_INDEX}"
 
           # Use burn.py to burn some token1
           cd "$STRATEGIES_DIR"

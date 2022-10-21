@@ -224,13 +224,19 @@ if __name__ == '__main__':
     submit_response = client.submit_tx(tx_proposal)
     print(submit_response)
 
-    time.sleep(3)
 
-    client.wait_for_monitor_to_sync(monitor)
-    new_balance = client.get_balance(monitor, args.token_id)
+    for i in range(20):
+        logging.info(f"Waiting for burn transaction, attempt #{i}")
+        time.sleep(1)
 
-    if new_balance == balance - args.value - args.fee:
-        logging.info("Burn transaction was successful")
+        client.wait_for_monitor_to_sync(monitor)
+        new_balance = client.get_balance(monitor, args.token_id)
+
+        if new_balance == balance - args.value - args.fee:
+            logging.info("Burn transaction was successful")
+            break
+        else:
+            logging.error(f"Burn transaction appears to be unsuccessful: new_balance={new_balance} balance={balance} args.value={args.value} args.fee={args.fee}")
     else:
-        logging.error("Burn transaction appears to be unsuccessful")
+        logging.error("Giving up :(")
         sys.exit(1)
