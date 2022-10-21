@@ -37,7 +37,6 @@
 #   - All tests run with in the kubernetes namespace context so we can reach internally hosted endpoints,
 #      like mobilecoind. (CBB: add full-service?)
 #
-# CBB: make tests work if client_auth_token is enabled. Will require generating the auth tokens.
 
 name: mobilecoin-workflow-dev-test
 
@@ -93,22 +92,18 @@ on:
         required: false
 
 jobs:
-  list-values:
-    runs-on: [self-hosted, Linux, small]
-    steps:
-    - name: values
-      run: |
-        echo namespace ${{ inputs.namespace }}
-        echo ingest_color ${{ inputs.ingest_color }}
-        echo fog_distribution ${{ inputs.fog_distribution }}
-        echo testing_block_v0 ${{ inputs.testing_block_v0 }}
-        echo testing_block_v2 ${{ inputs.testing_block_v2 }}
-        echo testing_block_v3 ${{ inputs.testing_block_v3 }}
-
-  setup-environment:
+  cd-integration-tests:
     runs-on: [self-hosted, Linux, small]
     env:
       FOG_REPORT_SIGNING_CA_CERT_PATH: .tmp/fog_report_signing_ca_cert.pem
+      SRC_KEYS_DIR: /tmp/sample_data/keys
+      SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
+      V2_DST_KEYS_DIR: /tmp/2-testing/keys
+      V2_DST_FOG_KEYS_DIR: /tmp/2-testing/fog_keys
+      V3_DST_KEYS_DIR: /tmp/3-testing/keys
+      V3_DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
+      START_KEYS: '494'
+      END_KEYS: '499'
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -140,12 +135,6 @@ jobs:
           FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
           /util/generate_origin_data.sh
 
-  fog-distribution:
-    name: fog-distribution ${{ inputs.fog_distribution == 'true' && '(run)' || '(skipped)' }}
-    runs-on: [self-hosted, Linux, small]
-    needs:
-    - setup-environment
-    steps:
     - name: Test - fog-distribution
       if: inputs.fog_distribution == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -159,13 +148,7 @@ jobs:
         command: |
           /test/fog-distribution-test.sh
 
-  testing-block-v0:
-    name: testing-block-v0 ${{ inputs.testing_block_v0 == 'true' && '(run)' || '(skipped)' }}
-    runs-on: [self-hosted, Linux, small]
-    needs:
-    - fog-distribution
-    steps:
-    - name: Test - fog-test-client
+    - name: Test - block-v0 - fog-test-client
       if: inputs.testing_block_v0 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -188,7 +171,7 @@ jobs:
             --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
             --fog-ledger fog-ledger://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443
 
-    - name: Test - mobilecoind-grpc (previously Wallet Integration)
+    - name: Test - block-v0 - mobilecoind-grpc (previously Wallet Integration)
       if: inputs.testing_block_v0 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -201,20 +184,7 @@ jobs:
         command: |
           /test/mobilecoind-integration-test.sh
 
-  testing-block-v2:
-    name: Testing for block version 2 ${{ inputs.testing_block_v2 == 'true' && '(run)' || '(skipped)' }}
-    runs-on: [self-hosted, Linux, small]
-    needs:
-    - testing-block-v0
-    env:
-      SRC_KEYS_DIR: /tmp/sample_data/keys
-      SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
-      DST_KEYS_DIR: /tmp/2-testing/keys
-      DST_FOG_KEYS_DIR: /tmp/2-testing/fog_keys
-      START_KEYS: '494'
-      END_KEYS: '499'
-    steps:
-    - name: Copy subset of non-fog keys
+    - name: Setup - block-v2 - Copy subset of non-fog keys
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -227,11 +197,11 @@ jobs:
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_KEYS_DIR }} \
-            --dst ${{ env.DST_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_KEYS_DIR }} \
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
-    - name: Copy subset of fog keys
+    - name: Setup - block-v2 - Copy subset of fog keys
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -244,11 +214,11 @@ jobs:
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_FOG_KEYS_DIR }} \
-            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
-    - name: Test - Minting config tx
+    - name: Test - block-v2 - Minting config tx
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -262,7 +232,7 @@ jobs:
           /test/minting-config-tx-test.sh \
             --token-id 1
 
-    - name: Test - Minting tx
+    - name: Test - block-v2 - Minting tx
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -274,10 +244,10 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --key-dir ${{ env.V2_DST_KEYS_DIR }} \
             --token-id 1
 
-    - name: Test - mobilecoind-json integration
+    - name: Test - block-v2 - mobilecoind-json integration
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -289,9 +259,9 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/mobilecoind-json-integration-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }}
+            --key-dir ${{ env.V2_DST_KEYS_DIR }}
 
-    - name: Test - use drain_accounts to transfer id 1 balances to fog keys
+    - name: Test - block-v2 - use drain_accounts to transfer id 1 balances to fog keys
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -303,12 +273,12 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /util/drain_accounts.sh \
-            --src ${{ env.DST_KEYS_DIR }} \
-            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --src ${{ env.V2_DST_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --fee 1024 \
             --token-id 1
 
-    - name: Test - fog-test-client token id 0
+    - name: Test - block-v2 - fog-test-client token id 0
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -320,10 +290,10 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --token-id 0
 
-    - name: Test - fog-test-client token id 1
+    - name: Test - block-v2 - fog-test-client token id 1
       if: inputs.testing_block_v2 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -335,23 +305,11 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
             --token-id 1
 
-  testing-block-v3:
-    name: Testing for block version 3 ${{ inputs.testing_block_v3 == 'true' && '(run)' || '(skipped)' }}
-    runs-on: [self-hosted, Linux, small]
-    needs:
-    - testing-block-v2
-    env:
-      SRC_KEYS_DIR: /tmp/sample_data/keys
-      SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
-      DST_KEYS_DIR: /tmp/3-testing/keys
-      DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
-      START_KEYS: '494'
-      END_KEYS: '499'
-    steps:
-    - name: Copy subset of non-fog keys
+
+    - name: Setup - block-v3 - Copy subset of non-fog keys
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -364,11 +322,11 @@ jobs:
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_KEYS_DIR }} \
-            --dst ${{ env.DST_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_KEYS_DIR }} \
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
-    - name: Copy subset of fog keys
+    - name: Setup - block-v3 - Copy subset of fog keys
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -381,11 +339,11 @@ jobs:
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_FOG_KEYS_DIR }} \
-            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
-    - name: Test - Minting config tx
+    - name: Test - block-v3 - Minting config tx
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -399,7 +357,7 @@ jobs:
           /test/minting-config-tx-test.sh \
             --token-id 1
 
-    - name: Test - Minting tx
+    - name: Test - block-v3 - Minting tx
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -411,10 +369,10 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }} \
+            --key-dir ${{ env.V3_DST_KEYS_DIR }} \
             --token-id 1
 
-    - name: Test - mobilecoind-json integration
+    - name: Test - block-v3 - mobilecoind-json integration
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -426,9 +384,9 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/mobilecoind-json-integration-test.sh \
-            --key-dir ${{ env.DST_KEYS_DIR }}
+            --key-dir ${{ env.V3_DST_KEYS_DIR }}
 
-    - name: Test - use drain_accounts to transfer id 1 balances to fog keys
+    - name: Test - block-v3 - use drain_accounts to transfer id 1 balances to fog keys
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -440,12 +398,12 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /util/drain_accounts.sh \
-            --src ${{ env.DST_KEYS_DIR }} \
-            --dst ${{ env.DST_FOG_KEYS_DIR }} \
+            --src ${{ env.V3_DST_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --fee 1024 \
             --token-id 1
 
-    - name: Test - fog-test-client token ids 0,1
+    - name: Test - block-v3 - fog-test-client token ids 0,1
       if: inputs.testing_block_v3 == 'true'
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -457,5 +415,5 @@ jobs:
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
-            --key-dir ${{ env.DST_FOG_KEYS_DIR }} \
+            --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --token-ids 0,1
