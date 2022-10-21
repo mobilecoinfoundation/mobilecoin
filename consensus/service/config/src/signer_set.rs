@@ -90,8 +90,11 @@ impl SignerSet {
             };
         }
 
-        let signer_set =
-            mc_crypto_multisig::SignerSet::new(individual_signers, multi_signers, self.threshold);
+        let signer_set = mc_crypto_multisig::SignerSet::new_with_multi(
+            individual_signers,
+            multi_signers,
+            self.threshold,
+        );
         if !signer_set.is_valid() {
             return Err("SignerSet is invalid".into());
         }
@@ -225,13 +228,12 @@ mod tests {
         let signer_set: mc_crypto_multisig::SignerSet<Ed25519Public> =
             (&signer_set_config).try_into().unwrap();
 
-        let expected_signer_set = mc_crypto_multisig::SignerSet::new(
+        let expected_signer_set = mc_crypto_multisig::SignerSet::new_with_multi(
             vec![key_mobilecoin, key_some_org],
-            vec![mc_crypto_multisig::SignerSet::new(
+            vec![mc_crypto_multisig::SignerSet::new_with_multi(
                 vec![key_lp1, key_lp2],
                 vec![mc_crypto_multisig::SignerSet::new(
                     vec![key_lp3a, key_lp3b, key_mobilecoin],
-                    vec![],
                     2,
                 )],
                 2,

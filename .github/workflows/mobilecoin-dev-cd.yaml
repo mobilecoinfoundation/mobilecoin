@@ -592,6 +592,7 @@ jobs:
     - generate-metadata
     with:
       block_version: "2"
+      tokens_json_version: "2"
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
@@ -650,6 +651,7 @@ jobs:
     - generate-metadata
     with:
       block_version: "3"
+      tokens_json_version: "2"
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       minting_config_enabled: true

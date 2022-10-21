@@ -28,7 +28,7 @@ tokens_file="${location}/tokens.v${VERSION}.base.json"
 exists "${tokens_file}"
 
 # Grab base json
-json=$(cat "${location}/tokens.base.json")
+json=$(cat "${tokens_file}")
 token_ids=$(echo "${json}" | jq -r '.tokens[].token_id')
 
 for id in ${token_ids}
