@@ -75,6 +75,34 @@ impl Default for BlockData {
     }
 }
 
+/// Helper struct that contains data associated with the "last known" fields in
+/// the `QueryResponse`.
+struct LastKnownData {
+    /// The globally maximum block count that any store has seen but not
+    /// necessarily processed.
+    last_known_block_count: u64,
+    /// The cumulative TxOut count associated with the last known block count.
+    last_known_block_cumulative_txo_count: u64,
+}
+
+impl LastKnownData {
+    fn new(last_known_block_count: u64, last_known_block_cumulative_txo_count: u64) -> Self {
+        Self {
+            last_known_block_count,
+            last_known_block_cumulative_txo_count,
+        }
+    }
+}
+
+impl Default for LastKnownData {
+    fn default() -> Self {
+        Self {
+            last_known_block_count: u64::MIN,
+            last_known_block_cumulative_txo_count: u64::MIN,
+        }
+    }
+}
+
 pub struct ViewEnclave<OSC>
 where
     OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>,
@@ -368,12 +396,10 @@ where
 
         shard_query_response.tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &shard_query_responses)?;
-        shard_query_response.last_known_block_count = shard_query_responses
-            .iter()
-            .max_by_key(|response| response.query_response.last_known_block_count)
-            .map_or(u64::MIN, |response| {
-                response.query_response.last_known_block_count
-            });
+        let last_known_data = get_last_known_data(&shard_query_responses);
+        shard_query_response.last_known_block_count = last_known_data.last_known_block_count;
+        shard_query_response.last_known_block_cumulative_txo_count =
+            last_known_data.last_known_block_cumulative_txo_count;
         let block_data = get_block_data(shard_query_responses);
         shard_query_response.highest_processed_block_count =
             block_data.highest_processed_block_count;
@@ -429,6 +455,20 @@ fn get_block_data(mut responses: Vec<DecryptedMultiViewStoreQueryResponse>) -> B
     }
 
     result
+}
+
+fn get_last_known_data(responses: &[DecryptedMultiViewStoreQueryResponse]) -> LastKnownData {
+    responses
+        .iter()
+        .max_by_key(|response| response.query_response.last_known_block_count)
+        .map_or(LastKnownData::default(), |response| {
+            LastKnownData::new(
+                response.query_response.last_known_block_count,
+                response
+                    .query_response
+                    .last_known_block_cumulative_txo_count,
+            )
+        })
 }
 
 #[cfg(test)]
@@ -842,6 +882,110 @@ mod get_block_data_tests {
         assert_eq!(
             result.highest_processed_block_signature_timestamp,
             last_fully_processed_timestamp
+        );
+    }
+}
+#[cfg(test)]
+mod last_known_block_data_tests {
+    use crate::{get_last_known_data, DecryptedMultiViewStoreQueryResponse};
+    use alloc::{vec, vec::Vec};
+    use mc_fog_types::{common::BlockRange, view::QueryResponse};
+
+    fn create_query_response(
+        last_known_block_count: u64,
+        last_known_block_cumulative_txo_count: u64,
+    ) -> QueryResponse {
+        QueryResponse {
+            highest_processed_block_count: 0,
+            highest_processed_block_signature_timestamp: 0,
+            next_start_from_user_event_id: 0,
+            missed_block_ranges: vec![],
+            rng_records: vec![],
+            decommissioned_ingest_invocations: vec![],
+            tx_out_search_results: vec![],
+            last_known_block_count,
+            last_known_block_cumulative_txo_count,
+        }
+    }
+
+    #[test]
+    fn different_last_known_block_counts() {
+        const STORE_COUNT: usize = 4;
+        let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
+
+        for i in 0..STORE_COUNT {
+            let last_known_block_count = ((i + 1) * 10) as u64;
+            let last_known_block_cumulative_txo_count = last_known_block_count * 2;
+            let query_response = create_query_response(
+                last_known_block_count,
+                last_known_block_cumulative_txo_count,
+            );
+            let block_range = BlockRange::new(i as u64, last_known_block_count);
+            let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
+                query_response,
+                block_range,
+            };
+            decrypted_query_responses.push(decrypted_query_response);
+        }
+
+        let last_response = decrypted_query_responses
+            .last()
+            .expect("Couldn't get last decrypted query response");
+        let expected_last_known_block_count = last_response.query_response.last_known_block_count;
+        let expected_last_known_block_cumulative_txo_count = last_response
+            .query_response
+            .last_known_block_cumulative_txo_count;
+
+        let result = get_last_known_data(&decrypted_query_responses);
+
+        assert_eq!(
+            result.last_known_block_count,
+            expected_last_known_block_count
+        );
+        assert_eq!(
+            result.last_known_block_cumulative_txo_count,
+            expected_last_known_block_cumulative_txo_count
+        );
+    }
+
+    #[test]
+    fn same_last_known_block_counts() {
+        const STORE_COUNT: usize = 4;
+        const LAST_KNOWN_BLOCK_COUNT: u64 = 100;
+        const LAST_KNOWN_BLOCK_CUMULATIVE_TXO_COUNT: u64 = 1000;
+
+        let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
+        for i in 0..STORE_COUNT {
+            let end_block_count = ((i + 1) * 25) as u64;
+            let query_response = create_query_response(
+                LAST_KNOWN_BLOCK_COUNT,
+                LAST_KNOWN_BLOCK_CUMULATIVE_TXO_COUNT,
+            );
+            let block_range = BlockRange::new(i as u64, end_block_count);
+            let decrypted_query_response = DecryptedMultiViewStoreQueryResponse {
+                query_response,
+                block_range,
+            };
+            decrypted_query_responses.push(decrypted_query_response);
+        }
+
+        let last_response = decrypted_query_responses
+            .last()
+            .expect("Couldn't get last decrypted query response");
+        let expected_last_known_block_count = last_response.query_response.last_known_block_count;
+        let expected_last_known_block_cumulative_txo_count = last_response
+            .query_response
+            .last_known_block_cumulative_txo_count;
+
+        let result = get_last_known_data(&decrypted_query_responses);
+
+        assert_eq!(
+            result.last_known_block_count,
+            expected_last_known_block_count
+        );
+        assert_eq!(
+            result.last_known_block_cumulative_txo_count,
+            expected_last_known_block_cumulative_txo_count
         );
     }
 }
