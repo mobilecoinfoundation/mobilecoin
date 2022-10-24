@@ -8,7 +8,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## Unreleased
 
-## [2.1.0]
+## [3.0.0]
 
 ### Added
 
@@ -31,6 +31,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Security
 
 - TOB-MCCT-4: Make minting nonces unique per-token.
+- Build with SGX SDK 2.17.1 to mitigate and account for INTEL-SA-00657.
 
 
 ## [2.0.0] - 2022-07-25
