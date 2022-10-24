@@ -39,6 +39,7 @@ jobs:
 # Generate environment information
 ############################################
   generate-metadata:
+    if: github.actor != 'dependabot[bot]'
     name: 👾 Environment Info 👾
     runs-on: [self-hosted, Linux, small]
     outputs:
@@ -73,6 +74,7 @@ jobs:
 # Build binaries
 #########################################
   build-rust-hardware-projects:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, large]
     container:
       image: mobilecoin/rust-sgx-base:v0.0.18
@@ -233,6 +235,7 @@ jobs:
 # Create/Refresh base runtime image
 ########################################
   docker-base:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Checkout
@@ -278,6 +281,7 @@ jobs:
 # Build/Publish public artifacts
 #########################################
   docker:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     needs:
     - build-go-projects
@@ -353,6 +357,7 @@ jobs:
         tags: ${{ steps.docker_meta.outputs.tags }}
 
   charts:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     needs:
     - docker
@@ -392,6 +397,7 @@ jobs:
 # Reset existing namespace
 #################################
   dev-reset:
+    if: github.actor != 'dependabot[bot]'
     needs:
     - generate-metadata
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
@@ -410,6 +416,7 @@ jobs:
 #######################################
   # CBB: Need to come back and figure out how to do skips
   deploy-v1-bv0-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
     - dev-reset
@@ -444,6 +451,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   test-v1-bv0-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
     - deploy-v1-bv0-release
@@ -467,6 +475,7 @@ jobs:
 ###############################################
 
   deploy-v2-bv0-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
     - test-v1-bv0-release
@@ -501,6 +510,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   test-v2-bv0-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
     - deploy-v2-bv0-release
@@ -523,6 +533,7 @@ jobs:
 # Upgrade v2.x to block v2
 ###############################################
   update-v2-to-bv2:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
     needs:
     - test-v2-bv0-release
@@ -550,6 +561,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   test-v2-bv2-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
     - update-v2-to-bv2
@@ -572,6 +584,7 @@ jobs:
 # Deploy current version to namespace block v2
 ###############################################
   deploy-current-bv2-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
     - test-v2-bv2-release
@@ -607,6 +620,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   test-current-bv2-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
     - deploy-current-bv2-release
@@ -629,6 +643,7 @@ jobs:
 # Update current consensus to namespace block v3
 #################################################
   update-current-to-bv3:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
     needs:
     - test-current-bv2-release
@@ -656,6 +671,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   test-current-bv3-release:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
     - update-current-to-bv3
@@ -675,7 +691,9 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
   cleanup-on-pr:
-    if: github.event_name == 'pull_request'
+    if: |
+        github.actor != 'dependabot[bot]' &&
+        github.event_name == 'pull_request'
     needs:
     - test-current-bv3-release
     - generate-metadata
