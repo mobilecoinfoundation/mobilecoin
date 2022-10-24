@@ -2,7 +2,7 @@
 #
 # MobileCoin Core projects - Dispatch (manual) Job - Update consensus nodes in a development namespace.
 
-name: mobilecoin-dispatch-dev-update-consensus
+name: (Manual) Upgrade Consensus Config in Dev Namespace
 
 on:
   workflow_dispatch:
@@ -43,6 +43,7 @@ on:
 
 jobs:
   update-consensus-block-version:
+    name: Update Consensus Block Version - ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.block_version }}
     uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
     with:
       namespace: ${{ github.event.inputs.namespace }}

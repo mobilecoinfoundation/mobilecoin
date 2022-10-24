@@ -2,29 +2,43 @@
 #
 # MobileCoin Core projects - Build, deploy to development.
 
-name: mobilecoin-dev-cd
+name: Mobilecoin CD
 
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  PREVIOUS_RELEASE: v1.1.3-dev
+  RELEASE_1X_TAG: v1.1.3-dev
 
 on:
+  pull_request:
+    branches:
+    - master
+    - main
+    - release/*
+    paths-ignore:
+    - '**.md'
   push:
     branches:
+    - master
+    - main
     - feature/*
     - release/*
     tags:
       - v[0-9]+*
+    paths-ignore:
+    - '**.md'
 
 # don't run more than one at a time for a branch/tag
-concurrency: mobilecoin-dev-cd-${{ github.ref }}
+concurrency:
+  group: mobilecoin-dev-cd-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
 ############################################
 # Generate environment information
 ############################################
   generate-metadata:
+    if: github.actor != 'dependabot[bot]'
     name: 👾 Environment Info 👾
     runs-on: [self-hosted, Linux, small]
     outputs:
@@ -33,7 +47,7 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
-      previous_release: ${{ env.PREVIOUS_RELEASE }}
+      release_1x_tag: ${{ env.RELEASE_1X_TAG }}
 
     steps:
     - name: Checkout
@@ -58,6 +72,7 @@ jobs:
 # Build binaries
 #########################################
   build-rust-hardware-projects:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, large]
     container:
       image: mobilecoin/rust-sgx-base:v0.0.18
@@ -171,6 +186,7 @@ jobs:
         path: rust_build_artifacts/
 
   build-go-projects:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, large]
     container:
       image: golang:1.16.4
@@ -219,6 +235,7 @@ jobs:
 # Create/Refresh base runtime image
 ########################################
   docker-base:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Checkout
@@ -228,7 +245,7 @@ jobs:
     - name: Generate Docker Tags
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_meta
-      uses: docker/metadata-action@v3
+      uses: docker/metadata-action@v4
       with:
         images: ${{ env.DOCKER_ORG }}/runtime-base
         flavor: |
@@ -238,11 +255,11 @@ jobs:
 
     - name: Set up Docker Buildx
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -250,7 +267,7 @@ jobs:
     - name: Publish to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -264,6 +281,7 @@ jobs:
 # Build/Publish public artifacts
 #########################################
   docker:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     needs:
     - build-go-projects
@@ -305,18 +323,18 @@ jobs:
     - name: Generate Docker Tags
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_meta
-      uses: docker/metadata-action@v3
+      uses: docker/metadata-action@v4
       with:
         images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
         tags: ${{ needs.generate-metadata.outputs.docker_tag }}
 
     - name: Set up Docker Buildx
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -324,7 +342,7 @@ jobs:
     - name: Publish to DockerHub
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -339,6 +357,7 @@ jobs:
         tags: ${{ steps.docker_meta.outputs.tags }}
 
   charts:
+    if: github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Linux, small]
     needs:
     - docker
@@ -378,6 +397,7 @@ jobs:
 # Reset existing namespace
 #################################
   dev-reset:
+    if: github.actor != 'dependabot[bot]'
     needs:
     - generate-metadata
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
@@ -392,174 +412,186 @@ jobs:
       LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
 
 #######################################
-# Deploy previous release to namespace
+# Deploy 1.x release to namespace
 #######################################
-  previous-release-deploy:
-    runs-on: [self-hosted, Linux, small]
+  deploy-v1-bv0-release:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
     - dev-reset
     - generate-metadata
-    steps:
-    - name: Deploy Release
-      if: "! contains(github.event.head_commit.message, '[skip previous-release-deploy]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-deploy
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "block_version": "0",
-            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
-            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
-            "minting_config_enabled": "false",
-            "ingest_color": "blue",
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.previous_release }}",
-            "client_auth_enabled": "false",
-            "use_static_wallet_seeds": "true"
-          }
+    with:
+      block_version: "0"
+      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
+      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
+      ingest_color: blue
+      minting_config_enabled: false
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      version: ${{ needs.generate-metadata.outputs.release_1x_tag }}
+    secrets:
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      FOG_KEYS_SEED: ${{ secrets.DEV_FOG_KEYS_SEED }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
+      IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+      IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+      INITIAL_KEYS_SEED: ${{ secrets.DEV_INITIAL_KEYS_SEED }}
+      IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+      MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.DEV_MINTING_TRUST_ROOT_PRIVATE }}
+      MNEMONIC_FOG_KEYS_SEED: ${{ secrets.DEV_MNEMONIC_FOG_KEYS_SEED }}
+      MNEMONIC_KEYS_SEED: ${{ secrets.DEV_MNEMONIC_KEYS_SEED }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
-  previous-release-test:
-    runs-on: [self-hosted, Linux, small]
+  test-v1-bv0-release:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
-    - previous-release-deploy
+    - deploy-v1-bv0-release
     - generate-metadata
-    steps:
-    - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip previous-release-test]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-test
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "ingest_color": "blue",
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "fog_distribution": "true",
-            "testing_1_1": "true",
-            "testing_1_2": "false",
-            "client_auth_enabled": "false"
-          }
+    with:
+      fog_distribution: true
+      ingest_color: blue
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      testing_block_v0: true
+      testing_block_v2: false
+    secrets:
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
 ###############################################
-# Deploy current version to namespace block v0
+# Deploy current version to namespace block v2
 ###############################################
-  current-release-v0-deploy:
-    runs-on: [self-hosted, Linux, small]
+  deploy-current-bv0-release:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
-    - previous-release-test
-    - generate-metadata
+    - test-v1-bv0-release
     - charts
-    steps:
-    - name: Deploy Release
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-deploy]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-deploy
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "block_version": "0",
-            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
-            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
-            "minting_config_enabled": "true",
-            "ingest_color": "green",
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.tag }}",
-            "client_auth_enabled": "false",
-            "use_static_wallet_seeds": "true"
-          }
-
-  current-release-v0-test:
-    runs-on: [self-hosted, Linux, small]
-    needs:
-    - current-release-v0-deploy
     - generate-metadata
-    steps:
-    - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v0-test]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-test
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "ingest_color": "green",
-            "fog_distribution": "false",
-            "testing_1_1": "true",
-            "testing_1_2": "false",
-            "client_auth_enabled": "false"
-          }
+    with:
+      block_version: "0"
+      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
+      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
+      ingest_color: green
+      minting_config_enabled: true
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      version: ${{ needs.generate-metadata.outputs.tag }}
+    secrets:
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      FOG_KEYS_SEED: ${{ secrets.DEV_FOG_KEYS_SEED }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
+      IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+      IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+      INITIAL_KEYS_SEED: ${{ secrets.DEV_INITIAL_KEYS_SEED }}
+      IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+      MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.DEV_MINTING_TRUST_ROOT_PRIVATE }}
+      MNEMONIC_FOG_KEYS_SEED: ${{ secrets.DEV_MNEMONIC_FOG_KEYS_SEED }}
+      MNEMONIC_KEYS_SEED: ${{ secrets.DEV_MNEMONIC_KEYS_SEED }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+
+  test-current-bv0-release:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
+    needs:
+    - deploy-current-bv0-release
+    - generate-metadata
+    with:
+      fog_distribution: false
+      ingest_color: green
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      testing_block_v0: true
+      testing_block_v2: false
+
+    secrets:
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
 #################################################
-# Update current consensus to namespace block v1
+# Update current consensus to namespace block v3
 #################################################
-  current-release-v2-update:
-    runs-on: [self-hosted, Linux, small]
+  update-current-to-bv2:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
     needs:
-    - current-release-v0-test
+    - test-current-bv0-release
     - generate-metadata
-    steps:
-    - name: Update consensus config
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-update]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-update-consensus
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "block_version": "2",
-            "client_auth_enabled": "false",
-            "minting_config_enabled": "true",
-            "docker_image_org": "${{ needs.generate-metadata.outputs.docker_org }}",
-            "chart_repo": "${{ needs.generate-metadata.outputs.chart_repo }}",
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "version": "${{ needs.generate-metadata.outputs.tag }}"
-          }
+    with:
+      block_version: "2"
+      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
+      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
+      minting_config_enabled: true
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      version: ${{ needs.generate-metadata.outputs.tag }}
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
+      IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+      IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+      IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+      MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.DEV_MINTING_TRUST_ROOT_PRIVATE }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
 
-  current-release-v2-test:
-    runs-on: [self-hosted, Linux, small]
+  test-current-bv2-release:
+    if: github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     needs:
-    - current-release-v2-update
+    - update-current-to-bv2
     - generate-metadata
-    steps:
-    - name: Run MobileCoin integration tests
-      if: "! contains(github.event.head_commit.message, '[skip current-release-v2-test]')"
-      uses: mobilecoinofficial/gha-workflow-dispatch@v2.1.3
-      with:
-        workflow: mobilecoin-dispatch-dev-test
-        token: ${{ secrets.ACTIONS_TOKEN }}
-        wait-for-completion: true
-        wait-for-completion-timeout: 30m
-        wait-for-completion-interval: 30s
-        display-workflow-run-url-interval: 30s
-        inputs: |
-          {
-            "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
-            "ingest_color": "green",
-            "fog_distribution": "false",
-            "testing_1_1": "true",
-            "testing_1_2": "true",
-            "client_auth_enabled": "false"
-          }
+    with:
+      fog_distribution: false
+      ingest_color: green
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      testing_block_v0: false
+      testing_block_v2: true
+    secrets:
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+
+  cleanup-on-pr:
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      github.event_name == 'pull_request'
+    needs:
+    - test-current-bv2-release
+    - generate-metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+
