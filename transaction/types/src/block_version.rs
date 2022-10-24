@@ -145,6 +145,12 @@ impl BlockVersion {
     pub fn mlsags_sign_extended_message_and_tx_summary_digest(&self) -> bool {
         self.0 >= 3
     }
+
+    /// Nested multisigs are supporoted starting from v3.
+    /// [MCIP #TODO]
+    pub fn nested_multisigs_are_supported(&self) -> bool {
+        self.0 >= 3
+    }
 }
 
 impl Deref for BlockVersion {

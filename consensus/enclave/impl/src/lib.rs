@@ -465,6 +465,55 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         blockchain_config.validate(&minting_trust_root_public_key)?;
 
+        /* TODO
+        // Validate governors signature.
+        if !blockchain_config.governors_map.is_empty() {
+            let signature = blockchain_config
+                .governors_signature
+                .ok_or(Error::MissingGovernorsSignature)?;
+
+            let minting_trust_root_public_key =
+                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
+
+            minting_trust_root_public_key
+                .verify_governors_map(&blockchain_config.governors_map, &signature)
+                .map_err(|_| Error::InvalidGovernorsSignature)?;
+        }
+
+        // Validate governors signature.
+        if !blockchain_config.governors_map.is_empty() {
+            let signature = blockchain_config
+                .governors_signature
+                .ok_or(Error::MissingGovernorsSignature)?;
+
+            let minting_trust_root_public_key =
+                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
+
+            minting_trust_root_public_key
+                .verify_governors_map(&blockchain_config.governors_map, &signature)
+                .map_err(|_| Error::InvalidGovernorsSignature)?;
+
+            // Prohibit governors that use nested multi-sigs if we are not running with a
+            // block version that supports them.
+            if !blockchain_config
+                .block_version
+                .nested_multisigs_are_supported()
+            {
+                for (token_id, signer_set) in blockchain_config.governors_map.iter() {
+                    if !signer_set.multi_signers().is_empty() {
+                        return Err(Error::NestedMultiSigGovernorsNotSupported(
+                            *token_id,
+                            blockchain_config.block_version,
+                        ));
+                    }
+                }
+            }
+        }
+>>>>>>> 008f5d69f (gate the usage of nested multisigs on a block version change)
+        */
+
         // Set the minimum fee map.
         self.ct_min_fee_map
             .set(Box::new(
@@ -1132,6 +1181,49 @@ mod tests {
             ),
             Err(Error::InvalidGovernorsSignature)
         );
+    }
+
+    #[test_with_logger]
+    fn test_enclave_init_refuses_nested_multisig_governors_when_not_supported(logger: Logger) {
+        let nested_governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(1),
+            SignerSet::new_with_multi(
+                vec![],
+                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
+                1,
+            ),
+        )])
+        .unwrap();
+
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+
+        for block_version in BlockVersion::iterator() {
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                governors_map: nested_governors_map.clone(),
+                governors_signature: sign_governors_map(&nested_governors_map),
+                ..Default::default()
+            };
+
+            let result = enclave.enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            );
+
+            if block_version.nested_multisigs_are_supported() {
+                assert!(result.is_ok());
+            } else {
+                assert_eq!(
+                    result,
+                    Err(Error::NestedMultiSigGovernorsNotSupported(
+                        TokenId::from(1),
+                        block_version,
+                    ))
+                );
+            }
+        }
     }
 
     #[test_with_logger]

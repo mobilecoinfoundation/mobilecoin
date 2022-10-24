@@ -41,7 +41,7 @@ pub fn validate_mint_config_tx(
     let token_id = TokenId::from(tx.prefix.token_id);
     validate_token_id(token_id)?;
 
-    validate_configs(token_id, &tx.prefix.configs)?;
+    validate_configs(token_id, &tx.prefix.configs, block_version)?;
 
     validate_nonce(&tx.prefix.nonce)?;
 
@@ -55,18 +55,34 @@ pub fn validate_mint_config_tx(
 }
 
 /// The minting configurations must all point to the same token id, and must
-/// have a valid signer set.
+/// have a valid signer set. The signer set can only contain nested signer sets
+/// if the block version support it.
 ///
 /// # Arguments
 /// * `token_id` - The token id we are trying to mint.
 /// * `configs` - The minting configurations to validate.
-fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Error> {
+/// * `block_version` - The version of the block that is being built.
+fn validate_configs(
+    token_id: TokenId,
+    configs: &[MintConfig],
+    block_version: BlockVersion,
+) -> Result<(), Error> {
     for config in configs {
+        // Token id must match the one in the MintConfigTx.
         if config.token_id != token_id {
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
+        // The signer set must be valid.
         if !config.signer_set.is_valid() {
+            return Err(Error::InvalidSignerSet);
+        }
+
+        // The signer set cannot contain multi signers unless supported by the current
+        // block version.
+        if !block_version.nested_multisigs_are_supported()
+            && !config.signer_set.multi_signers().is_empty()
+        {
             return Err(Error::InvalidSignerSet);
         }
     }
@@ -130,20 +146,44 @@ mod tests {
         };
         let mint_config4 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 2),
+            signer_set: SignerSet::new_with_multi(
+                vec![signer_1.public_key()],
+                vec![SignerSet::new(
+                    vec![signer_2.public_key(), signer_3.public_key()],
+                    2,
+                )],
+                2,
+            ),
             mint_limit: 15,
         };
 
-        assert!(validate_configs(
-            token_id,
-            &[mint_config1, mint_config2, mint_config3, mint_config4]
-        )
-        .is_ok());
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let mut configs = vec![
+                mint_config1.clone(),
+                mint_config2.clone(),
+                mint_config3.clone(),
+            ];
+            if block_version.nested_multisigs_are_supported() {
+                configs.push(mint_config4.clone());
+            }
+
+            assert!(validate_configs(token_id, &configs, block_version,).is_ok());
+        }
     }
 
     #[test]
     fn validate_configs_accepts_no_configs() {
-        assert!(validate_configs(123.into(), &[]).is_ok());
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            assert!(validate_configs(123.into(), &[], block_version).is_ok());
+        }
     }
 
     #[test]
@@ -164,15 +204,29 @@ mod tests {
             mint_limit: 15,
         };
 
-        assert_eq!(
-            validate_configs(123.into(), &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::InvalidTokenId(234.into()))
-        );
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
 
-        assert_eq!(
-            validate_configs(1.into(), &[mint_config1, mint_config2]),
-            Err(Error::InvalidTokenId(123.into()))
-        );
+            assert_eq!(
+                validate_configs(
+                    123.into(),
+                    &[mint_config1.clone(), mint_config2.clone()],
+                    block_version
+                ),
+                Err(Error::InvalidTokenId(234.into()))
+            );
+
+            assert_eq!(
+                validate_configs(
+                    1.into(),
+                    &[mint_config1.clone(), mint_config2.clone()],
+                    block_version
+                ),
+                Err(Error::InvalidTokenId(123.into()))
+            );
+        }
     }
 
     #[test]
@@ -194,14 +248,49 @@ mod tests {
             mint_limit: 15,
         };
 
-        assert_eq!(
-            validate_configs(token_id, &[mint_config1]),
-            Err(Error::InvalidSignerSet)
-        );
-        assert_eq!(
-            validate_configs(token_id, &[mint_config2]),
-            Err(Error::InvalidSignerSet)
-        );
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            assert_eq!(
+                validate_configs(token_id, &[mint_config1.clone()], block_version),
+                Err(Error::InvalidSignerSet)
+            );
+            assert_eq!(
+                validate_configs(token_id, &[mint_config2.clone()], block_version),
+                Err(Error::InvalidSignerSet)
+            );
+        }
+    }
+
+    #[test]
+    fn validate_configs_rejects_nested_multisigners_on_unsupported_block_versions() {
+        let mut rng = get_seeded_rng();
+        let signer_1 = Ed25519Pair::from_random(&mut rng);
+
+        let mint_config = MintConfig {
+            token_id: 123,
+            signer_set: SignerSet::new_with_multi(
+                vec![],
+                vec![SignerSet::new(vec![signer_1.public_key()], 1)],
+                1,
+            ),
+            mint_limit: 10,
+        };
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported()
+                || block_version.nested_multisigs_are_supported()
+            {
+                continue;
+            }
+
+            assert_eq!(
+                validate_configs(123.into(), &[mint_config.clone()], block_version),
+                Err(Error::InvalidSignerSet)
+            );
+        }
     }
 
     #[test]
