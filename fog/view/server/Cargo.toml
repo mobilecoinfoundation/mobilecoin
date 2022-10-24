@@ -67,6 +67,7 @@ mc-fog-types = { path = "../../types" }
 mc-fog-view-connection = { path = "../connection" }
 mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-view-protocol = { path = "../protocol" }
+mc-fog-view-server-test-utils = { path = "./test-utils" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial" }
