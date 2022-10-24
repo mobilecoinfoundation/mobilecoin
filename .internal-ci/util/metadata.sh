@@ -32,8 +32,16 @@ is_set GITHUB_SHA
 
 # Make sure prefix is less that 18 characters or k8s limits.
 namespace_prefix="mc"
-branch="${GITHUB_REF_NAME}"
 sha="sha-${GITHUB_SHA:0:8}"
+
+# Set branch name. Where we get this ref is different for branch, pull_request or delete event
+branch="${GITHUB_REF_NAME}"
+
+# Override branch name with head when event is a PR
+if [[ -n "${GITHUB_HEAD_REF}" ]]
+then
+    branch="${GITHUB_HEAD_REF}"
+fi
 
 # Override branch with delete ref if set.
 if [[ -n "${DELETE_REF_NAME}" ]]
@@ -73,48 +81,41 @@ case "${GITHUB_REF_TYPE}" in
         is_set tag
         is_set docker_tag
     ;;
+    # Branches and pull requests will set type as branch.
+    # Don't filter on "valid" branches, rely on workflows to filter out their accepted events.
     branch)
-        # Check for valid branches. Using case if we want add more or split branch types later.
-        case "${branch}" in
-            release/*|feature/*|main|master)
-                # All branch builds will just have a "dummy" tag.
-                version="v0"
+        # All branch builds will just have a "dummy" tag.
+        version="v0"
 
-                echo "Clean up branch. Remove feature|deploy|release prefix and replace ._/ with -"
-                normalized_branch="$(normalize_ref_name "${branch}")"
+        echo "Clean up branch. Remove feature|deploy|release prefix and replace ._/ with -"
+        normalized_branch="$(normalize_ref_name "${branch}")"
 
-                # Check and truncate branch name if total tag length exceeds the 63 character K8s label value limit.
-                label_limit=63
-                version_len=${#version}
-                sha_len=${#sha}
-                run_number_len=${#GITHUB_RUN_NUMBER}
-                # number of separators in tag
-                dots=3
+        # Check and truncate branch name if total tag length exceeds the 63 character K8s label value limit.
+        label_limit=63
+        version_len=${#version}
+        sha_len=${#sha}
+        run_number_len=${#GITHUB_RUN_NUMBER}
+        # number of separators in tag
+        dots=3
 
-                cutoff=$((label_limit - version_len - sha_len - run_number_len - dots))
+        cutoff=$((label_limit - version_len - sha_len - run_number_len - dots))
 
-                if [[ ${#normalized_branch} -gt ${cutoff} ]]
-                then
-                    cut_branch=$(echo "${normalized_branch}" | cut -c -${cutoff})
-                    echo "Your branch name ${normalized_branch} + metadata exceeds the maximum length for K8s identifiers, truncating to ${cut_branch}"
-                    normalized_branch="${cut_branch}"
-                fi
+        if [[ ${#normalized_branch} -gt ${cutoff} ]]
+        then
+            cut_branch=$(echo "${normalized_branch}" | cut -c -${cutoff})
+            echo "Your branch name ${normalized_branch} + metadata exceeds the maximum length for K8s identifiers, truncating to ${cut_branch}"
+            normalized_branch="${cut_branch}"
+        fi
 
-                echo "Before: '${branch}'"
-                echo "After: '${normalized_branch}'"
+        echo "Before: '${branch}'"
+        echo "After: '${normalized_branch}'"
 
-                # Set artifact tag
-                tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
-                # Set docker metadata action compatible tag
-                docker_tag="type=raw,value=${tag}"
-                # Set namespace from normalized branch value
-                namespace="${namespace_prefix}-${normalized_branch}"
-            ;;
-            *)
-                echo "Branch: ${branch} is not a release/, feature/, master or main branch"
-                exit 1
-            ;;
-        esac
+        # Set artifact tag
+        tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
+        # Set docker metadata action compatible tag
+        docker_tag="type=raw,value=${tag}"
+        # Set namespace from normalized branch value
+        namespace="${namespace_prefix}-${normalized_branch}"
     ;;
     *)
         echo "${GITHUB_REF_TYPE} is an unknown GitHub Reference Type"
@@ -122,8 +123,11 @@ case "${GITHUB_REF_TYPE}" in
     ;;
 esac
 
-echo "::set-output name=version::${version}"
-echo "::set-output name=namespace::${namespace}"
-echo "::set-output name=sha::${sha}"
-echo "::set-output name=tag::${tag}"
-echo "::set-output name=docker_tag::${docker_tag}"
+# Set GHA output vars
+cat <<EOF >> "${GITHUB_OUTPUT}"
+version=${version}
+namespace=${namespace}
+sha=${sha}
+tag=${tag}
+docker_tag=${docker_tag}
+EOF

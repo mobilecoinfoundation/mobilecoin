@@ -2,7 +2,7 @@
 #
 # MobileCoin Core projects - Delete development namespaces when branch is removed.
 
-name: mobilecoin-dev-delete
+name: Mobilecoin Dev Clean Up
 
 on:
   delete: {}

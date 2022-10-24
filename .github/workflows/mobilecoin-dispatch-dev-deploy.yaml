@@ -2,7 +2,7 @@
 #
 # MobileCoin Core projects - Dispatch (manual) Job - Deploy core apps to the development namespace.
 
-name: mobilecoin-dispatch-dev-deploy
+name: (Manual) Deploy to Dev Namespace
 
 on:
   workflow_dispatch:
@@ -52,6 +52,21 @@ on:
         default: false
 
 jobs:
+  list-values:
+    name: 👾 Environment Info - ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.version }} 👾
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: 👾 Print Environment Details 👾
+      env:
+        CHART_REPO: ${{ github.event.inputs.chart_repo }}
+        NAMESPACE: ${{ github.event.inputs.namespace }}
+        VERSION: ${{ github.event.inputs.version }}
+      run: |
+        .internal-ci/util/print_details.sh
+
   deploy:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:

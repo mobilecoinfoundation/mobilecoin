@@ -43,6 +43,7 @@ on:
 
 jobs:
   update-consensus-block-version:
+    name: Update Consensus Block Version - ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.block_version }}
     uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
     with:
       namespace: ${{ github.event.inputs.namespace }}
