@@ -1,6 +1,6 @@
 [package]
 name = "mc-android-bindings"
-version = "2.1.0-pre0"
+version = "3.0.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 resolver = "2"

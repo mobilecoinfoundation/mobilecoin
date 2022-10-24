@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sql-recovery-db"
-version = "2.1.0-pre0"
+version = "3.0.0-pre0"
 authors = ["Mobilecoin"]
 edition = "2018"
 license = "GPL-3.0"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-api"
-version = "2.1.0-pre0"
+version = "3.0.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"
