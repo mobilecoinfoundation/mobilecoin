@@ -2,11 +2,15 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+    - '**.md'
   push:
     branches:
       - master
       - main
       - develop
+    paths-ignore:
+    - '**.md'
   workflow_dispatch:
 
 env:
