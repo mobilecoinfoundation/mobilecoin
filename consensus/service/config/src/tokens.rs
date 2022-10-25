@@ -98,7 +98,7 @@ impl TokenConfig {
             .as_ref()
             .map(|governors| {
                 governors
-                    .try_into_signer_set(Some(&self.signer_identities))
+                    .try_into_signer_set(&self.signer_identities)
                     .map_err(|err| Error::InvalidSignerSet(self.token_id, err))
             })
             .transpose()
@@ -133,7 +133,7 @@ impl TokenConfig {
 
             // We have a governors configuration, see if it can be converted to a valid
             // signer set, and abort if not.
-            if let Err(err) = governors.try_into_signer_set(Some(&self.signer_identities)) {
+            if let Err(err) = governors.try_into_signer_set(&self.signer_identities) {
                 return Err(Error::InvalidSignerSet(self.token_id, err));
             }
         }
@@ -537,7 +537,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
@@ -612,13 +612,13 @@ mod tests {
                         "signer3": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmMQUAJgqpOc0Z7NAwa+4JqAh+DCVB0TQy9zj+8xRRDc=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
                             {"type": "Identity", "name": "signer2"},
                             {
-                                "type": "Multi",
+                                "type": "MultiSig",
                                 "threshold": 2,
                                 "signers": [
                                     {"type": "Identity", "name": "signer1"},
@@ -670,7 +670,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
@@ -701,7 +701,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": []
                     }
@@ -729,7 +729,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 0,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
@@ -760,7 +760,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
@@ -776,7 +776,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
@@ -822,7 +822,7 @@ mod tests {
                         "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
-                        "type": "Multi",
+                        "type": "MultiSig",
                         "threshold": 1,
                         "signers": [
                             {"type": "Identity", "name": "signer1"},
