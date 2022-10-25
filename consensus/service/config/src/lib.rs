@@ -6,9 +6,10 @@
 mod error;
 mod network;
 mod signer_set;
+mod signer_identity;
 mod tokens;
 
-pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig};
+pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig, signer_identity::{SignerIdentityMap, SignerIdentity}};
 
 use clap::Parser;
 use mc_attest_core::ProviderId;
