@@ -46,9 +46,9 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
-    FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
+    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -459,33 +459,22 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        // Check that fee map is actually well formed
-        FeeMap::is_valid_map(blockchain_config.fee_map.as_ref()).map_err(Error::FeeMap)?;
+        // Ensure the blockchain configuration is valid.
+        let minting_trust_root_public_key =
+            Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                .map_err(Error::ParseMintingTrustRootPublicKey)?;
 
-        // Validate governors signature.
-        if !blockchain_config.governors_map.is_empty() {
-            let signature = blockchain_config
-                .governors_signature
-                .ok_or(Error::MissingGovernorsSignature)?;
+        blockchain_config.validate(&minting_trust_root_public_key)?;
 
-            let minting_trust_root_public_key =
-                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
-                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
-
-            minting_trust_root_public_key
-                .verify_governors_map(&blockchain_config.governors_map, &signature)
-                .map_err(|_| Error::InvalidGovernorsSignature)?;
-        }
-
+        // Set the minimum fee map.
         self.ct_min_fee_map
             .set(Box::new(
                 blockchain_config.fee_map.as_ref().iter().collect(),
             ))
             .expect("enclave was already initialized");
 
+        // Inject the configuration into the peer ResponderId.
         let blockchain_config = BlockchainConfigWithDigest::from(blockchain_config);
-
-        // Inject the fee map and block version into the peer ResponderId.
         let peer_self_id = blockchain_config.responder_id(peer_self_id);
 
         self.blockchain_config
@@ -1079,7 +1068,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_enclave_init_refuses_invalid_governors_signature(logger: Logger) {
+    fn test_enclave_init_validates_blockchain_config(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let token_id1 = TokenId::from(1);
@@ -1093,7 +1082,8 @@ mod tests {
         let block_version = BlockVersion::MAX;
 
         // Can't initialize without a valid governors signature if we are passing a
-        // governors map.
+        // governors map. This proves to us that BlockchainConfig::validate is being
+        // called.
         let blockchain_config = BlockchainConfig {
             block_version,
             governors_map: governors_map1.clone(),

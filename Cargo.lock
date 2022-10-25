@@ -2748,6 +2748,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-serial",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
