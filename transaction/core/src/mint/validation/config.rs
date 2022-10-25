@@ -73,7 +73,6 @@ fn validate_configs(
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
-        // The signer set must be valid.
         if !config.signer_set.is_valid() {
             return Err(Error::InvalidSignerSet);
         }
