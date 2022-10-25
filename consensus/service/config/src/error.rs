@@ -77,6 +77,12 @@ pub enum Error {
 
     /// Signature error: {0}
     Signature(SignatureError),
+
+    /// Unknown signer identity "{0}"
+    UnknownSignerIdentity(String),
+
+    /// Signer set nesting depth exceeded
+    SignerSetNestingTooDeep,
 }
 
 impl From<IoError> for Error {
