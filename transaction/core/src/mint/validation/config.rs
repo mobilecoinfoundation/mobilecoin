@@ -143,7 +143,33 @@ mod tests {
             signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: 15,
         };
-        let mint_config4 = MintConfig {
+
+        let configs = vec![mint_config1, mint_config2, mint_config3];
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            assert!(validate_configs(token_id, &configs, block_version,).is_ok());
+        }
+    }
+
+    #[test]
+    fn validate_configs_accepts_valid_mint_configs_with_nested_signers() {
+        let mut rng = get_seeded_rng();
+        let token_id = TokenId::from(123);
+        let signer_1 = Ed25519Pair::from_random(&mut rng);
+        let signer_2 = Ed25519Pair::from_random(&mut rng);
+        let signer_3 = Ed25519Pair::from_random(&mut rng);
+
+        let mint_config1 = MintConfig {
+            token_id: *token_id,
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
+            mint_limit: 10,
+        };
+
+        let mint_config2 = MintConfig {
             token_id: *token_id,
             signer_set: SignerSet::new_with_multi(
                 vec![signer_1.public_key()],
@@ -156,21 +182,12 @@ mod tests {
             mint_limit: 15,
         };
 
-        for block_version in BlockVersion::iterator() {
-            if !block_version.mint_transactions_are_supported() {
-                continue;
-            }
+        let configs = vec![mint_config1, mint_config2];
 
-            let mut configs = vec![
-                mint_config1.clone(),
-                mint_config2.clone(),
-                mint_config3.clone(),
-            ];
-            if block_version.nested_multisigs_are_supported() {
-                configs.push(mint_config4.clone());
-            }
-
-            assert!(validate_configs(token_id, &configs, block_version,).is_ok());
+        for block_version in BlockVersion::iterator().filter(|bv| {
+            bv.mint_transactions_are_supported() && bv.nested_multisigs_are_supported()
+        }) {
+            assert!(validate_configs(token_id, &configs, block_version).is_ok());
         }
     }
 
