@@ -73,8 +73,8 @@ case "${GITHUB_REF_TYPE}" in
 
         # Set docker metadata action compatible tag. Short tag + metadata tag.
         docker_tag=$(cat << EOF
-type=raw,value=${version}-dev,priority=20
-type=raw,value=${version}-dev.${GITHUB_RUN_NUMBER}.${sha},priority=10
+type=raw,value=${version},priority=20
+type=raw,value=${version}.${GITHUB_RUN_NUMBER}.${sha},priority=10
 EOF
 )
 
