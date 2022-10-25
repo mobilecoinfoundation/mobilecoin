@@ -47,7 +47,7 @@ impl fmt::Display for PemEd25519Public {
 #[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
 pub enum Error {
     /// SignerSet validation failed
-    ValidationFailed,
+    SignerSetValidationFailed,
 
     /// Unknown signer identity "{0}"
     UnknownSignerIdentity(String),
@@ -92,7 +92,7 @@ impl SignerIdentity {
     ) -> Result<SignerSet<Ed25519Public>, Error> {
         let signer_set = self.try_into_signer_set_helper(identity_map, 0)?;
         if !signer_set.is_valid() {
-            return Err(Error::ValidationFailed);
+            return Err(Error::SignerSetValidationFailed);
         }
         Ok(signer_set)
     }
@@ -152,79 +152,56 @@ pub type SignerIdentityMap = HashMap<String, SignerIdentity>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
-    use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::get_seeded_rng;
+    use mc_crypto_keys::Ed25519Public;
 
     #[test]
     fn test_happy_path() {
-        let mut rng = get_seeded_rng();
+        // Keys randomly generated using `openssl genpkey -algorithm ED25519 | openssl
+        // pkey -pubout`
+        let key_lp1 = PemEd25519Public::from_str(
+            "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAf2gGDJ2c18AJtpYg7C3CpFaFJ8Y6ytVDweKHkmitu2Q=\n-----END PUBLIC KEY-----\n",
+        )
+        .unwrap()
+        .0;
+        let key_lp2 = PemEd25519Public::from_str(
+            "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAeUw6FyG1H4ZXAkzTJnyW/fY7eDHzjuztcWnoMOtx+cU=\n-----END PUBLIC KEY-----\n",
+        )
+        .unwrap()
+        .0;
+        let key_rsv1 = PemEd25519Public::from_str(
+            "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAoqh+PBcDGtLCbVNiNV8F3k/FdNw9xq6ql8x/54qXnpA=\n-----END PUBLIC KEY-----\n",
+        )
+        .unwrap()
+        .0;
+        let key_rsv2 = PemEd25519Public::from_str(
+            "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEArQ2apgrrQili3wfZ+SAABnq69CU2ZT1kBT12HMF4fTo=\n-----END PUBLIC KEY-----\n",
+        )
+        .unwrap()
+        .0;
 
-        let lp1 = Ed25519Pair::from_random(&mut rng).public_key();
-        let lp2 = Ed25519Pair::from_random(&mut rng).public_key();
-        let rsv1 = Ed25519Pair::from_random(&mut rng).public_key();
-        let rsv2 = Ed25519Pair::from_random(&mut rng).public_key();
+        let valid_json = r#"{
+            "LP1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAf2gGDJ2c18AJtpYg7C3CpFaFJ8Y6ytVDweKHkmitu2Q=\n-----END PUBLIC KEY-----\n"},
+            "LP2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAeUw6FyG1H4ZXAkzTJnyW/fY7eDHzjuztcWnoMOtx+cU=\n-----END PUBLIC KEY-----\n"},
+            "RSV1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAoqh+PBcDGtLCbVNiNV8F3k/FdNw9xq6ql8x/54qXnpA=\n-----END PUBLIC KEY-----\n"},
+            "RSV2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEArQ2apgrrQili3wfZ+SAABnq69CU2ZT1kBT12HMF4fTo=\n-----END PUBLIC KEY-----\n"},
 
-        let map = SignerIdentityMap::from_iter(vec![
-            (
-                "LP1".into(),
-                SignerIdentity::Single {
-                    pub_key: PemEd25519Public(lp1),
-                },
-            ),
-            (
-                "LP2".into(),
-                SignerIdentity::Single {
-                    pub_key: PemEd25519Public(lp2),
-                },
-            ),
-            (
-                "RSV1".into(),
-                SignerIdentity::Single {
-                    pub_key: PemEd25519Public(rsv1),
-                },
-            ),
-            (
-                "RSV2".into(),
-                SignerIdentity::Single {
-                    pub_key: PemEd25519Public(rsv2),
-                },
-            ),
-            (
-                "LPs".into(),
-                SignerIdentity::MultiSig {
-                    threshold: 1,
-                    signers: vec![
-                        SignerIdentity::Identity { name: "LP1".into() },
-                        SignerIdentity::Identity { name: "LP2".into() },
-                    ],
-                },
-            ),
-            (
-                "RSV".into(),
-                SignerIdentity::MultiSig {
-                    threshold: 2,
-                    signers: vec![
-                        SignerIdentity::Identity {
-                            name: "RSV1".into(),
-                        },
-                        SignerIdentity::Identity {
-                            name: "RSV2".into(),
-                        },
-                    ],
-                },
-            ),
-            (
-                "LPs_and_RSV".into(),
-                SignerIdentity::MultiSig {
-                    threshold: 2,
-                    signers: vec![
-                        SignerIdentity::Identity { name: "LPs".into() },
-                        SignerIdentity::Identity { name: "RSV".into() },
-                    ],
-                },
-            ),
-        ]);
+            "LPs": {"type": "MultiSig", "threshold": 1, "signers": [
+                {"type": "Identity", "name": "LP1"},
+                {"type": "Identity", "name": "LP2"}
+            ]},
+
+            "RSV": {"type": "MultiSig", "threshold": 2, "signers": [
+                {"type": "Identity", "name": "RSV1"},
+                {"type": "Identity", "name": "RSV2"}
+            ]},
+
+            "LPs_and_RSV": {"type": "MultiSig", "threshold": 2, "signers": [
+                {"type": "Identity", "name": "LPs"},
+                {"type": "Identity", "name": "RSV"}
+            ]}
+        }"#;
+
+        let map: SignerIdentityMap = serde_json::from_str(valid_json).unwrap();
 
         let lps_and_rsv = SignerIdentity::MultiSig {
             threshold: 2,
@@ -240,8 +217,8 @@ mod tests {
             SignerSet::new_with_multi(
                 vec![],
                 vec![
-                    SignerSet::new(vec![lp1, lp2], 1),
-                    SignerSet::new(vec![rsv1, rsv2], 2),
+                    SignerSet::new(vec![key_lp1, key_lp2], 1),
+                    SignerSet::new(vec![key_rsv1, key_rsv2], 2),
                 ],
                 2,
             )
@@ -275,10 +252,100 @@ mod tests {
         assert_eq!(
             signer_set,
             SignerSet::new_with_multi(
-                vec![rsv1, Ed25519Public::default()],
-                vec![lps_and_rsv, SignerSet::new(vec![lp1, lp2], 1)],
+                vec![key_rsv1, Ed25519Public::default()],
+                vec![lps_and_rsv, SignerSet::new(vec![key_lp1, key_lp2], 1)],
                 3,
             )
+        );
+    }
+
+    #[test]
+    fn unknown_identity_fails_to_parse() {
+        // Note: The identity inside "signers" has lowercase `c` - so we are making sure
+        // that identity name comparison is case-sensitive, in addition to
+        // testing unknown identities behave as expected.
+        let invalid_config_json = r#"
+        {
+            "MobileCoin": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"},
+            "SomeIdentity": {
+              "type": "MultiSig",
+              "threshold": 1,
+              "signers": [
+                {"type": "Identity", "name": "Mobilecoin"}
+              ]
+            }
+          }
+        "#;
+
+        let map: SignerIdentityMap = serde_json::from_str(invalid_config_json).unwrap();
+        assert_eq!(
+            map.get("SomeIdentity").unwrap().try_into_signer_set(&map),
+            Err(Error::UnknownSignerIdentity("Mobilecoin".into()))
+        );
+    }
+    #[test]
+    fn invalid_pem_fails_to_parse() {
+        // This PEM is missing a dash
+        let invalid_config_json = r#"
+        {
+            "MobileCoin": {"type": "Single", "pub_key": "----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+        }
+        "#;
+
+        let err = serde_json::from_str::<SignerIdentityMap>(invalid_config_json).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Failed to parse PEM \"----BEGIN PUBLIC KEY-----\\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\\n-----END PUBLIC KEY-----\\n\": malformedframing at line 4 column 9"
+        );
+    }
+
+    #[test]
+    fn threshold_zero_fails_to_parse() {
+        let invalid_config_json = r#"
+        {
+            "SomeIdentity": {
+                "type": "MultiSig",
+                "threshold": 0,
+                "signers": [
+                    {
+                        "type": "Single",
+                        "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
+                    }
+                ]
+            }
+        }
+        "#;
+
+        let map: SignerIdentityMap = serde_json::from_str(invalid_config_json).unwrap();
+
+        assert_eq!(
+            map.get("SomeIdentity").unwrap().try_into_signer_set(&map),
+            Err(Error::SignerSetValidationFailed)
+        );
+    }
+
+    #[test]
+    fn less_signers_than_threshold_fails_to_parse() {
+        let invalid_config_json = r#"
+        {
+            "SomeIdentity": {
+                "type": "MultiSig",
+                "threshold": 2,
+                "signers": [
+                    {
+                        "type": "Single",
+                        "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
+                    }
+                ]
+            }
+        }
+        "#;
+
+        let map: SignerIdentityMap = serde_json::from_str(invalid_config_json).unwrap();
+
+        assert_eq!(
+            map.get("SomeIdentity").unwrap().try_into_signer_set(&map),
+            Err(Error::SignerSetValidationFailed)
         );
     }
 
