@@ -99,7 +99,7 @@ impl TokenConfig {
             .map(|governors| {
                 governors
                     .try_into_signer_set(Some(&self.signer_identities))
-                    .map_err(|err| Error::InvalidSignerSet(self.token_id, err.to_string()))
+                    .map_err(|err| Error::InvalidSignerSet(self.token_id, err))
             })
             .transpose()
     }
@@ -134,7 +134,7 @@ impl TokenConfig {
             // We have a governors configuration, see if it can be converted to a valid
             // signer set, and abort if not.
             if let Err(err) = governors.try_into_signer_set(Some(&self.signer_identities)) {
-                return Err(Error::InvalidSignerSet(self.token_id, err.to_string()));
+                return Err(Error::InvalidSignerSet(self.token_id, err));
             }
         }
 
@@ -532,18 +532,17 @@ mod tests {
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 }
             ]
@@ -608,9 +607,9 @@ mod tests {
                     "token_id": 1,
                     "minimum_fee": 1,
                     "signer_identities": {
-                        "signer1": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
-                        "signer2": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"},
-                        "signer3": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmMQUAJgqpOc0Z7NAwa+4JqAh+DCVB0TQy9zj+8xRRDc=\n-----END PUBLIC KEY-----\n"}
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"},
+                        "signer3": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmMQUAJgqpOc0Z7NAwa+4JqAh+DCVB0TQy9zj+8xRRDc=\n-----END PUBLIC KEY-----\n"}
                     },
                     "governors": {
                         "type": "Multi",
@@ -666,18 +665,17 @@ mod tests {
             "tokens": [
                 {
                     "token_id": 0,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 }
             ]
@@ -698,15 +696,14 @@ mod tests {
                 {
                     "token_id": 2,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": []
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": []
                     }
                 }
             ]
@@ -727,18 +724,17 @@ mod tests {
                 {
                     "token_id": 2,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 0,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 0,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 }
             ]
@@ -759,35 +755,33 @@ mod tests {
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 },
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 }
             ]
@@ -823,18 +817,17 @@ mod tests {
                 {
                     "token_id": 10,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": {"type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"}
+                        ]
                     }
                 }
             ]

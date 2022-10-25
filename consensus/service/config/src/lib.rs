@@ -5,11 +5,16 @@
 
 mod error;
 mod network;
-mod signer_set;
 mod signer_identity;
+mod signer_set;
 mod tokens;
 
-pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig, signer_identity::{SignerIdentityMap, SignerIdentity}};
+pub use crate::{
+    error::Error,
+    network::NetworkConfig,
+    signer_identity::{Error as SignerIdentityError, SignerIdentity, SignerIdentityMap},
+    tokens::TokensConfig,
+};
 
 use clap::Parser;
 use mc_attest_core::ProviderId;
