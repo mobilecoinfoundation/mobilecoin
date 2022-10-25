@@ -102,7 +102,7 @@ impl SignerIdentity {
         identity_map: &SignerIdentityMap,
         nesting_level: usize,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
-        if nesting_level > MAX_NESTING_DEPTH {
+        if nesting_level >= MAX_NESTING_DEPTH {
             return Err(Error::NestingTooDeep);
         }
 
