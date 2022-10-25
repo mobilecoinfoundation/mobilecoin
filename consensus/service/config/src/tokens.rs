@@ -5,7 +5,6 @@
 use crate::{
     error::Error,
     signer_identity::{SignerIdentity, SignerIdentityMap},
-    signer_set::SignerSetConfig,
 };
 use mc_common::HashSet;
 use mc_consensus_enclave_api::{GovernorsMap, GovernorsVerifier};
