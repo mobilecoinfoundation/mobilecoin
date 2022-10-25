@@ -7,7 +7,7 @@
 // Multi -> MultiSig
 // Get rid of Option<> in map
 
-use crate::error::Error;
+use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
 use pem::{EncodeConfig, LineEnding};
@@ -47,6 +47,19 @@ impl fmt::Display for PemEd25519Public {
     }
 }
 
+/// Error data type for SignerIdentity stuff.
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
+pub enum Error {
+    /// SignerSet validation failed
+    ValidationFailed,
+
+    /// Unknown signer identity "{0}"
+    UnknownSignerIdentity(String),
+
+    /// Signer set nesting depth exceeded
+    NestingTooDeep,
+}
+
 /// The types of signer identities we support.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -81,7 +94,11 @@ impl SignerIdentity {
         &self,
         identity_map: Option<&SignerIdentityMap>,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
-        self.try_into_signer_set_helper(identity_map, 0)
+        let signer_set = self.try_into_signer_set_helper(identity_map, 0)?;
+        if !signer_set.is_valid() {
+            return Err(Error::ValidationFailed);
+        }
+        Ok(signer_set)
     }
 
     fn try_into_signer_set_helper(
@@ -91,7 +108,7 @@ impl SignerIdentity {
         nesting_level: usize,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
         if nesting_level > MAX_NESTING_DEPTH {
-            return Err(Error::SignerSetNestingTooDeep);
+            return Err(Error::NestingTooDeep);
         }
 
         match self {
@@ -322,23 +339,23 @@ mod tests {
             ),
         ]);
 
-        assert!(matches!(
+        assert_eq!(
             SignerIdentity::Identity {
                 name: "Multi1".into()
             }
             .try_into_signer_set(Some(&map)),
-            Err(Error::SignerSetNestingTooDeep)
-        ));
+            Err(Error::NestingTooDeep),
+        );
 
-        assert!(matches!(
+        assert_eq!(
             SignerIdentity::Identity {
                 name: "Multi2".into()
             }
             .try_into_signer_set(Some(&map)),
-            Err(Error::SignerSetNestingTooDeep)
-        ));
+            Err(Error::NestingTooDeep)
+        );
 
-        assert!(matches!(
+        assert_eq!(
             SignerIdentity::Multi {
                 threshold: 1,
                 signers: vec![SignerIdentity::Identity {
@@ -346,7 +363,7 @@ mod tests {
                 }]
             }
             .try_into_signer_set(Some(&map)),
-            Err(Error::SignerSetNestingTooDeep)
-        ));
+            Err(Error::NestingTooDeep)
+        );
     }
 }

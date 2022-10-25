@@ -2,6 +2,7 @@
 
 //! Configuration error data type
 
+use crate::signer_identity::Error as SignerIdentityError;
 use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::GovernorsMapError;
@@ -28,7 +29,7 @@ pub enum Error {
     MintConfigNotAllowed(TokenId),
 
     /// Invalid signer set for token id {0}: {1}
-    InvalidSignerSet(TokenId, String),
+    InvalidSignerSet(TokenId, SignerIdentityError),
 
     /// Cannot figure out file extension
     PathExtension,
@@ -77,12 +78,6 @@ pub enum Error {
 
     /// Signature error: {0}
     Signature(SignatureError),
-
-    /// Unknown signer identity "{0}"
-    UnknownSignerIdentity(String),
-
-    /// Signer set nesting depth exceeded
-    SignerSetNestingTooDeep,
 }
 
 impl From<IoError> for Error {
