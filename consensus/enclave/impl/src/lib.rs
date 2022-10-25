@@ -1135,49 +1135,6 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_enclave_init_refuses_nested_multisig_governors_when_not_supported(logger: Logger) {
-        let nested_governors_map = GovernorsMap::try_from_iter([(
-            TokenId::from(1),
-            SignerSet::new_with_multi(
-                vec![],
-                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
-                1,
-            ),
-        )])
-        .unwrap();
-
-        let enclave = SgxConsensusEnclave::new(logger.clone());
-
-        for block_version in BlockVersion::iterator() {
-            let blockchain_config = BlockchainConfig {
-                block_version,
-                governors_map: nested_governors_map.clone(),
-                governors_signature: sign_governors_map(&nested_governors_map),
-                ..Default::default()
-            };
-
-            let result = enclave.enclave_init(
-                &Default::default(),
-                &Default::default(),
-                &None,
-                blockchain_config,
-            );
-
-            if block_version.nested_multisigs_are_supported() {
-                assert!(result.is_ok());
-            } else {
-                assert_eq!(
-                    result,
-                    Err(Error::NestedMultiSigGovernorsNotSupported(
-                        TokenId::from(1),
-                        block_version,
-                    ))
-                );
-            }
-        }
-    }
-
-    #[test_with_logger]
     fn test_tx_is_well_formed_works(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 

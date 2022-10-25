@@ -375,4 +375,128 @@ mod test {
             Err(Error::InvalidGovernorsSignature)
         );
     }
+
+    #[test]
+    fn validate_accepts_nested_multisig_govenors_when_supported() {
+        let nested_governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(1),
+            SignerSet::new_with_multi(
+                vec![],
+                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
+                1,
+            ),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&nested_governors_map);
+
+        for block_version in
+            BlockVersion::iterator().filter(|bv| bv.nested_multisigs_are_supported())
+        {
+            let config = BlockchainConfig {
+                fee_map: FeeMap::default(),
+                governors_map: nested_governors_map.clone(),
+                governors_signature,
+                block_version,
+            };
+
+            assert_eq!(config.validate(&governors_public_key), Ok(()));
+        }
+    }
+
+    #[test]
+    fn validate_accepts_nested_multisig_with_individual_govenors_when_supported() {
+        let nested_governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(1),
+            SignerSet::new_with_multi(
+                vec![Ed25519Public::default()],
+                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
+                1,
+            ),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&nested_governors_map);
+
+        for block_version in
+            BlockVersion::iterator().filter(|bv| bv.nested_multisigs_are_supported())
+        {
+            let config = BlockchainConfig {
+                fee_map: FeeMap::default(),
+                governors_map: nested_governors_map.clone(),
+                governors_signature,
+                block_version,
+            };
+
+            assert_eq!(config.validate(&governors_public_key), Ok(()));
+        }
+    }
+
+    #[test]
+    fn validate_rejects_nested_multisig_govenors_when_not_supported() {
+        let nested_governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(1),
+            SignerSet::new_with_multi(
+                vec![],
+                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
+                1,
+            ),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&nested_governors_map);
+
+        for block_version in
+            BlockVersion::iterator().filter(|bv| !bv.nested_multisigs_are_supported())
+        {
+            let config = BlockchainConfig {
+                fee_map: FeeMap::default(),
+                governors_map: nested_governors_map.clone(),
+                governors_signature,
+                block_version,
+            };
+
+            assert_eq!(
+                config.validate(&governors_public_key),
+                Err(Error::NestedMultiSigGovernorsNotSupported(
+                    TokenId::from(1),
+                    block_version
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn validate_rejects_nested_multisig_with_individual_govenors_when_not_supported() {
+        let nested_governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(1),
+            SignerSet::new_with_multi(
+                vec![Ed25519Public::default()],
+                vec![SignerSet::new(vec![Ed25519Public::default()], 1)],
+                1,
+            ),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&nested_governors_map);
+
+        for block_version in
+            BlockVersion::iterator().filter(|bv| !bv.nested_multisigs_are_supported())
+        {
+            let config = BlockchainConfig {
+                fee_map: FeeMap::default(),
+                governors_map: nested_governors_map.clone(),
+                governors_signature,
+                block_version,
+            };
+
+            assert_eq!(
+                config.validate(&governors_public_key),
+                Err(Error::NestedMultiSigGovernorsNotSupported(
+                    TokenId::from(1),
+                    block_version
+                ))
+            );
+        }
+    }
 }
