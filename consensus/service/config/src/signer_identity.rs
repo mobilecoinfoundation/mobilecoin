@@ -3,6 +3,10 @@
 //! Data types for representing a map of human readable name -> SignerSet in a
 //! JSON configuration file.
 
+// TODO
+// Multi -> MultiSig
+// Get rid of Option<> in map
+
 use crate::error::Error;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
@@ -82,6 +86,7 @@ impl SignerIdentity {
 
     fn try_into_signer_set_helper(
         &self,
+        // TODO shouldn;t be Option<>
         identity_map: Option<&SignerIdentityMap>,
         nesting_level: usize,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
@@ -121,7 +126,7 @@ impl SignerIdentity {
 
             Self::Identity { name } => {
                 let identity = identity_map
-                    .ok_or(Error::UnknownSignerIdentity(name.clone()))?
+                    .ok_or_else(|| Error::UnknownSignerIdentity(name.clone()))?
                     .get(name)
                     .ok_or_else(|| Error::UnknownSignerIdentity(name.clone()))?;
                 identity.try_into_signer_set_helper(identity_map, nesting_level + 1)

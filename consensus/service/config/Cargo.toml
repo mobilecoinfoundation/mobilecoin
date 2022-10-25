@@ -29,5 +29,5 @@ serde_with = "2.0"
 toml = "0.5"
 
 [dev-dependencies]
-mc-util-from-random= { path = "../../../util/from-random" }
+mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
