@@ -13,7 +13,8 @@ is_set()
   var_name="${1}"
 
   if [ -z "${!var_name}" ]; then
-    error_exit "${var_name} is not set."
+    echo "${var_name} is not set."
+    exit 1
   fi
 }
 
@@ -64,17 +65,20 @@ case "${GITHUB_REF_TYPE}" in
             echo "Found pre-release tag."
             # set artifact tag
             tag="${version}"
-            docker_tag="type=raw,value=${version},priority=20%0Atype=raw,value=${version}.${GITHUB_RUN_NUMBER}.${sha},priority=10"
         else
             echo "Found release tag."
             # set artifact tag
             tag="${version}-dev"
-            #set docker metadata action compatible tag. Short tag + metadata tag.
-            docker_tag="type=raw,value=${version}-dev,priority=20%0Atype=raw,value=${version}-dev.${GITHUB_RUN_NUMBER}.${sha},priority=10"
         fi
 
-        normalized_tag=$(normalize_ref_name "${tag}")
+        # Set docker metadata action compatible tag. Short tag + metadata tag.
+        docker_tag=$(cat << EOF
+type=raw,value=${version},priority=20
+type=raw,value=${version}.${GITHUB_RUN_NUMBER}.${sha},priority=10
+EOF
+)
 
+        normalized_tag=$(normalize_ref_name "${tag}")
         namespace="${namespace_prefix}-${normalized_tag}"
 
         # just make sure we have these set to avoid weird edge cases.
@@ -124,10 +128,14 @@ case "${GITHUB_REF_TYPE}" in
 esac
 
 # Set GHA output vars
-cat <<EOF >> "${GITHUB_OUTPUT}"
+cat <<EOO >> "${GITHUB_OUTPUT}"
 version=${version}
 namespace=${namespace}
 sha=${sha}
 tag=${tag}
-docker_tag=${docker_tag}
+docker_tag<<EOF
+${docker_tag}
 EOF
+EOO
+
+cat "${GITHUB_OUTPUT}"
