@@ -28,7 +28,7 @@ on:
     paths-ignore:
     - '**.md'
 
-# don't run more than one at a time for a  branch/tag
+# don't run more than one at a time for a branch/tag
 concurrency:
   group: mobilecoin-dev-cd-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
