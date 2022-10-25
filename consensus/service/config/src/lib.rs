@@ -6,7 +6,6 @@
 mod error;
 mod network;
 mod signer_identity;
-mod signer_set;
 mod tokens;
 
 pub use crate::{
