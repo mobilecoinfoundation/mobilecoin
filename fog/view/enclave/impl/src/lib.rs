@@ -8,8 +8,10 @@ extern crate alloc;
 
 mod e_tx_out_store;
 mod oblivious_utils;
+mod types;
 
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
+use types::{BlockData, DecryptedMultiViewStoreQueryResponse, LastKnownData};
 
 use alloc::vec::Vec;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -25,7 +27,6 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    common::BlockRange,
     view::{MultiViewStoreQueryResponse, QueryRequest, QueryResponse, TxOutSearchResult},
     ETxOutRecord,
 };
@@ -35,65 +36,6 @@ use mc_fog_view_enclave_api::{
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-
-/// Helper struct that contains the decrypted `QueryResponse` and the
-/// `BlockRange` the shard is responsible for.
-#[derive(Clone)]
-struct DecryptedMultiViewStoreQueryResponse {
-    /// Decrypted `QueryResponse`
-    query_response: QueryResponse,
-    /// The `BlockRange` that the shard is meant to process.
-    block_range: BlockRange,
-}
-
-/// Helper struct that contains block data for the client `QueryResponse`
-#[derive(Clone)]
-struct BlockData {
-    /// The highest processed block count that will be returned to the client.
-    highest_processed_block_count: u64,
-    /// The timestamp for the highest processed block count
-    highest_processed_block_signature_timestamp: u64,
-}
-
-impl BlockData {
-    fn new(
-        highest_processed_block_count: u64,
-        highest_processed_block_signature_timestamp: u64,
-    ) -> Self {
-        Self {
-            highest_processed_block_count,
-            highest_processed_block_signature_timestamp,
-        }
-    }
-}
-impl Default for BlockData {
-    fn default() -> Self {
-        Self {
-            highest_processed_block_count: u64::MIN,
-            highest_processed_block_signature_timestamp: u64::MIN,
-        }
-    }
-}
-
-/// Helper struct that contains data associated with the "last known" fields in
-/// the `QueryResponse`.
-#[derive(Default)]
-struct LastKnownData {
-    /// The globally maximum block count that any store has seen but not
-    /// necessarily processed.
-    last_known_block_count: u64,
-    /// The cumulative TxOut count associated with the last known block count.
-    last_known_block_cumulative_txo_count: u64,
-}
-
-impl LastKnownData {
-    fn new(last_known_block_count: u64, last_known_block_cumulative_txo_count: u64) -> Self {
-        Self {
-            last_known_block_count,
-            last_known_block_cumulative_txo_count,
-        }
-    }
-}
 
 pub struct ViewEnclave<OSC>
 where
