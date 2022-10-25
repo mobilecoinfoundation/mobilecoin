@@ -29,6 +29,8 @@ on:
     paths-ignore:
     - '**.md'
 
+# no-op to test concurrency by actor
+
 concurrency:
   # Limit to one concurrent process on master and release/*.
   # Limit other events, PRs and other branches, by actor (user or dependabot).
