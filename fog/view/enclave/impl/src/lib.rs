@@ -13,6 +13,7 @@ mod types;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 use types::{BlockData, DecryptedMultiViewStoreQueryResponse, LastKnownData};
 
+use crate::types::SharedData;
 use alloc::vec::Vec;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
@@ -334,6 +335,14 @@ where
         shard_query_response.last_known_block_count = last_known_data.last_known_block_count;
         shard_query_response.last_known_block_cumulative_txo_count =
             last_known_data.last_known_block_cumulative_txo_count;
+        let shared_data: SharedData = shard_query_responses.as_slice().into();
+        shard_query_response.missed_block_ranges = shared_data.missed_block_ranges;
+        shard_query_response.rng_records = shared_data.rng_records;
+        shard_query_response.decommissioned_ingest_invocations =
+            shared_data.decommissioned_ingest_invocations;
+        shard_query_response.next_start_from_user_event_id =
+            shared_data.next_start_from_user_event_id;
+
         let block_data = get_block_data(shard_query_responses);
         shard_query_response.highest_processed_block_count =
             block_data.highest_processed_block_count;

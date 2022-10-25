@@ -150,7 +150,7 @@ service FogViewStoreAPI {
 /// if you already have some Rng's before you make that request.
 ///
 /// The highest_processed_block_count value from the first request in a given session should become the
-/// start_from_block_index value the next time you make a request. Similarly, next_start_from_user_event_id should
+/// start_from_block_index value the next time you make a request. Similarly, NEXT_START_FROM_USER_EVENT_ID should
 /// become start_from_user_event_id for the next request.
 ///
 // After the interaction, you can be sure that you got every Txo of yours up to those cursor values.
@@ -186,7 +186,7 @@ message QueryResponse {
     /// The number of blocks processed at the time that the request was evaluated.
     ///
     /// The semantics of the result as a whole are, we guarantee to get you all
-    /// relevant event data from start_from_user_event_id to next_start_from_user_event_id
+    /// relevant event data from start_from_user_event_id to NEXT_START_FROM_USER_EVENT_ID
     /// and all TxOutSearchResults from start_from_block_index to highest_processed_block_count.
     ///
     /// The highest_processed_block_count value you had last time should generally be the start_from_block_index
@@ -201,7 +201,7 @@ message QueryResponse {
 
     /// The next value to use for start_from_user_event_id. For the first query, this should
     /// be 0.
-    int64 next_start_from_user_event_id = 3;
+    int64 NEXT_START_FROM_USER_EVENT_ID = 3;
 
     /// Any block ranges that are missed.
     /// These ranges are guaranteed to be non-overlapping.
