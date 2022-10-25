@@ -2,7 +2,11 @@
 
 //! Tokens configuration.
 
-use crate::{error::Error, signer_set::SignerSetConfig};
+use crate::{
+    error::Error,
+    signer_identity::{SignerIdentity, SignerIdentityMap},
+    signer_set::SignerSetConfig,
+};
 use mc_common::HashSet;
 use mc_consensus_enclave_api::{GovernorsMap, GovernorsVerifier};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
@@ -59,11 +63,16 @@ pub struct TokenConfig {
     #[serde(default)]
     allow_any_fee: bool,
 
+    /// Signer identities - this allows the configuration to contain a human
+    /// readable mapping of names to signer identities.
+    #[serde(default)]
+    signer_identities: SignerIdentityMap,
+
     /// Governors - if set, controls the set of keys that can sign
     /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default)]
-    governors: Option<SignerSetConfig>,
+    governors: Option<SignerIdentity>,
 }
 
 impl TokenConfig {
@@ -88,8 +97,9 @@ impl TokenConfig {
         self.governors
             .as_ref()
             .map(|governors| {
-                SignerSet::<Ed25519Public>::try_from(governors)
-                    .map_err(|err| Error::InvalidSignerSet(self.token_id, err))
+                governors
+                    .try_into_signer_set(Some(&self.signer_identities))
+                    .map_err(|err| Error::InvalidSignerSet(self.token_id, err.to_string()))
             })
             .transpose()
     }
@@ -123,8 +133,8 @@ impl TokenConfig {
 
             // We have a governors configuration, see if it can be converted to a valid
             // signer set, and abort if not.
-            if let Err(err) = SignerSet::<Ed25519Public>::try_from(governors) {
-                return Err(Error::InvalidSignerSet(self.token_id, err));
+            if let Err(err) = governors.try_into_signer_set(Some(&self.signer_identities)) {
+                return Err(Error::InvalidSignerSet(self.token_id, err.to_string()));
             }
         }
 
@@ -153,6 +163,7 @@ impl Default for TokensConfig {
                 token_id: Mob::ID,
                 minimum_fee: Some(Mob::MINIMUM_FEE),
                 allow_any_fee: false,
+                signer_identities: Default::default(),
                 governors: None,
             }],
         }
@@ -596,27 +607,27 @@ mod tests {
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
+                    "signer_identities": {
+                        "signer1": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n"},
+                        "signer2": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n"},
+                        "signer3": { "type": "Single", "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmMQUAJgqpOc0Z7NAwa+4JqAh+DCVB0TQy9zj+8xRRDc=\n-----END PUBLIC KEY-----\n"}
+                    },
                     "governors": {
-                        "signer_identities": {
-                            "signer1": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n",
-                            "signer2": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----\n",
-                            "signer3": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmMQUAJgqpOc0Z7NAwa+4JqAh+DCVB0TQy9zj+8xRRDc=\n-----END PUBLIC KEY-----\n"
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "signer1"},
-                                {"type": "Single", "identity": "signer2"},
-                                {"type": "Multi", "identity": {
-                                    "threshold": 2,
-                                    "signers": [
-                                        {"type": "Single", "identity": "signer1"},
-                                        {"type": "Single", "identity": "signer2"},
-                                        {"type": "Single", "identity": "signer3"}
-                                    ]
-                                }}
-                            ]
-                        }
+                        "type": "Multi",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Identity", "name": "signer1"},
+                            {"type": "Identity", "name": "signer2"},
+                            {
+                                "type": "Multi",
+                                "threshold": 2,
+                                "signers": [
+                                    {"type": "Identity", "name": "signer1"},
+                                    {"type": "Identity", "name": "signer2"},
+                                    {"type": "Identity", "name": "signer3"}
+                                ]
+                            }
+                        ]
                     }
                 }
             ]
