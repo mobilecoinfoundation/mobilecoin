@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Object for 0x0200 Destination memo type
+//! Object for 0x0204 Destination With Payment Intent Id memo type
 //!
-//! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
+//! This was proposed for standardization in mobilecoinfoundation/mcips/pull/54
 
+use super::DestinationMemoError;
 use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;
-use displaydoc::Display;
 use mc_account_keys::ShortAddressHash;
 
 /// A memo that the sender writes to themself to record details of the
@@ -18,7 +18,7 @@ use mc_account_keys::ShortAddressHash;
 /// This memo should be validated by confirming that the TxOut matches to the
 /// change subaddress.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct DestinationMemo {
+pub struct DestinationWithPaymentIntentIdMemo {
     /// The address hash of the recipient to whom the payment is attributed
     address_hash: ShortAddressHash,
     /// The number of recipients of the transaction (ignoring the change output
@@ -50,13 +50,15 @@ pub struct DestinationMemo {
     /// as a u64. In that case, the memo builder is responsible to signal an
     /// an error. The client may disable destination memos for this transaction.
     total_outlay: u64,
+    /// TODO: HERE!
+    payment_intent_id: u64,
 }
 
-impl RegisteredMemoType for DestinationMemo {
-    const MEMO_TYPE_BYTES: [u8; 2] = [0x02, 0x00];
+impl RegisteredMemoType for DestinationWithPaymentIntentIdMemo {
+    const MEMO_TYPE_BYTES: [u8; 2] = [0x02, 0x04];
 }
 
-impl DestinationMemo {
+impl DestinationWithPaymentIntentIdMemo {
     /// Create a new destination memo set up for a single recipient
     /// (To create a memo for multiple recipients, use set_num_recipients)
     ///
@@ -65,12 +67,14 @@ impl DestinationMemo {
         address_hash: ShortAddressHash,
         total_outlay: u64,
         fee: u64,
+        payment_intent_id: u64,
     ) -> Result<Self, DestinationMemoError> {
         let mut result = Self {
             address_hash,
             num_recipients: 1,
             total_outlay,
             fee: 0,
+            payment_intent_id,
         };
         result.set_fee(fee)?;
         Ok(result)
@@ -112,15 +116,24 @@ impl DestinationMemo {
     pub fn set_total_outlay(&mut self, val: u64) {
         self.total_outlay = val;
     }
+    /// Get the payment intent ID
+    pub fn get_payment_intent_id(&self) -> u64 {
+        self.payment_intent_id
+    }
+    /// Set the payment intent ID
+    pub fn set_payment_intent_id(&mut self, val: u64) {
+        self.payment_intent_id = val;
+    }
 }
 
-impl From<&[u8; 64]> for DestinationMemo {
+impl From<&[u8; 64]> for DestinationWithPaymentIntentIdMemo {
     // The layout of the memo data in 64 bytes is:
     // [0-16): sender_address_hash
     // [16]: num_recipients
     // [17-24): fee
     // [24-32): total outlay
-    // [32-64): unused
+    // [32-40): payment intent id
+    // [40-64): unused
     fn from(src: &[u8; 64]) -> Self {
         let address_hash: [u8; 16] = src[0..16].try_into().expect("arithmetic error");
         let num_recipients = src[16];
@@ -130,31 +143,27 @@ impl From<&[u8; 64]> for DestinationMemo {
             u64::from_be_bytes(fee_bytes)
         };
         let total_outlay = u64::from_be_bytes(src[24..32].try_into().expect("arithmetic error"));
+        let payment_intent_id = u64::from_be_bytes(src[32..40].try_into().expect("arithmetic error"));
         Self {
             address_hash: address_hash.into(),
             num_recipients,
             fee,
             total_outlay,
+            payment_intent_id
         }
     }
 }
 
-impl From<DestinationMemo> for [u8; 64] {
-    fn from(src: DestinationMemo) -> [u8; 64] {
+impl From<DestinationWithPaymentIntentIdMemo> for [u8; 64] {
+    fn from(src: DestinationWithPaymentIntentIdMemo) -> [u8; 64] {
         let mut memo_data = [0u8; 64];
         memo_data[0..16].copy_from_slice(src.address_hash.as_ref());
         memo_data[16..24].copy_from_slice(&src.fee.to_be_bytes());
         memo_data[16] = src.num_recipients;
         memo_data[24..32].copy_from_slice(&src.total_outlay.to_be_bytes());
+        memo_data[32..40].copy_from_slice(&src.payment_intent_id.to_be_bytes());
         memo_data
     }
 }
 
-/// An error that can occur when configuring a destination memo
-#[derive(Display, Debug)]
-pub enum DestinationMemoError {
-    /// The fee amount is too large to be represented in the destination memo
-    FeeTooLarge,
-}
-
-impl_memo_type_conversions! { DestinationMemo }
+impl_memo_type_conversions! { DestinationWithPaymentIntentIdMemo }

@@ -1945,7 +1945,7 @@ pub mod transaction_builder_tests {
                     if block_version.e_memo_feature_is_supported() {
                         let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
+                            MemoType::DestinationWithPaymentRequestId(memo) => {
                                 assert_eq!(
                                     memo.get_address_hash(),
                                     &ShortAddressHash::from(&recipient_address),
@@ -2243,7 +2243,7 @@ pub mod transaction_builder_tests {
                     if block_version.e_memo_feature_is_supported() {
                         let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
+                            MemoType::DestinationWithPaymentRequestId(memo) => {
                                 assert_eq!(
                                     memo.get_address_hash(),
                                     &ShortAddressHash::from(&recipient_address),
