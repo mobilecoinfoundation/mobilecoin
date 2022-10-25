@@ -29,10 +29,13 @@ on:
     paths-ignore:
     - '**.md'
 
-# don't run more than one at a time for a branch/tag
 concurrency:
-  group: mobilecoin-dev-cd-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  # Limit to one concurrent process on master and release/*.
+  # Limit other events, PRs and other branches, by actor (user or dependabot).
+  group: ${{ github.workflow }}-${{ ( github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/') ) && github.ref || github.actor }}
+  # Cancel in progress if master or release/*, but keep queue for PRs and other actors.
+  cancel-in-progress: ${{ ( github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/') )}}
+
 
 jobs:
 ############################################

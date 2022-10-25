@@ -13,6 +13,13 @@ on:
     - '**.md'
   workflow_dispatch:
 
+concurrency:
+  # Limit to one concurrent process on master and release/*.
+  # Limit other events, PRs and other branches, by actor (user or dependabot).
+  group: ${{ github.workflow }}-${{ ( github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/') ) && github.ref || github.actor }}
+  # Cancel in progress if master or release/*, but keep queue for PRs and other actors.
+  cancel-in-progress: ${{ ( github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/') )}}
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -647,8 +654,3 @@ jobs:
       with:
         check_name: Test Report
         report_paths: '**/*.xml'
-
-# via https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-cancel-in-progress-jobs-or-runs-for-the-current-workflow
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
