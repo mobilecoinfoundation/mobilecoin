@@ -8,12 +8,11 @@
         {
             "token_id": 8192,
             "minimum_fee": 1024,
+            "signer_identities": {},
             "governors": {
-                "signer_identities": {},
-                "signer_set": {
-                    "threshold": 1,
-                    "signers": []
-                }
+                "type": "MultiSig",
+                "threshold": 1,
+                "signers": []
             }
         }
     ]

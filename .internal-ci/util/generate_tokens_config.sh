@@ -50,9 +50,9 @@ do
         json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signers) |= \"${minter_governor}\"")
         json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.threshold) |= 1")
     elif [ "$VERSION" = "2" ]; then
-        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signer_identities.minter1_governor) |= \"${minter_governor}\"")
-        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signer_set.signers) |= [{\"type\": \"Single\", \"identity\": \"minter1_governor\"}]")
-        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signer_set.threshold) |= 1")
+        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .signer_identities.minter1_governor) |= {\"type\": \"Single\", \"pub_key\": \"${minter_governor}\"}")
+        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signers) |= [{\"type\": \"Identity\", \"name\": \"minter1_governor\"}]")
+        json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.threshold) |= 1")
     else
         echo "Unknown version $VERSION"
         exit 1
