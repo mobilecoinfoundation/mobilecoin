@@ -3,10 +3,6 @@
 //! Data types for representing a map of human readable name -> SignerSet in a
 //! JSON configuration file.
 
-// TODO
-// Multi -> MultiSig
-// Get rid of Option<> in map
-
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
@@ -73,7 +69,7 @@ pub enum SignerIdentity {
     },
 
     /// A multisig signer.
-    Multi {
+    MultiSig {
         /// The minimum number of signatures required.
         threshold: u32,
 
@@ -92,7 +88,7 @@ impl SignerIdentity {
     /// Convert this identity into a SignerSet.
     pub fn try_into_signer_set(
         &self,
-        identity_map: Option<&SignerIdentityMap>,
+        identity_map: &SignerIdentityMap,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
         let signer_set = self.try_into_signer_set_helper(identity_map, 0)?;
         if !signer_set.is_valid() {
@@ -103,8 +99,7 @@ impl SignerIdentity {
 
     fn try_into_signer_set_helper(
         &self,
-        // TODO shouldn;t be Option<>
-        identity_map: Option<&SignerIdentityMap>,
+        identity_map: &SignerIdentityMap,
         nesting_level: usize,
     ) -> Result<SignerSet<Ed25519Public>, Error> {
         if nesting_level > MAX_NESTING_DEPTH {
@@ -114,7 +109,7 @@ impl SignerIdentity {
         match self {
             Self::Single { pub_key } => Ok(SignerSet::new(vec![pub_key.0], 1)),
 
-            Self::Multi { threshold, signers } => {
+            Self::MultiSig { threshold, signers } => {
                 let mut individual_signers = Vec::new();
                 let mut multi_signers = Vec::new();
 
@@ -143,7 +138,6 @@ impl SignerIdentity {
 
             Self::Identity { name } => {
                 let identity = identity_map
-                    .ok_or_else(|| Error::UnknownSignerIdentity(name.clone()))?
                     .get(name)
                     .ok_or_else(|| Error::UnknownSignerIdentity(name.clone()))?;
                 identity.try_into_signer_set_helper(identity_map, nesting_level + 1)
@@ -198,7 +192,7 @@ mod tests {
             ),
             (
                 "LPs".into(),
-                SignerIdentity::Multi {
+                SignerIdentity::MultiSig {
                     threshold: 1,
                     signers: vec![
                         SignerIdentity::Identity { name: "LP1".into() },
@@ -208,7 +202,7 @@ mod tests {
             ),
             (
                 "RSV".into(),
-                SignerIdentity::Multi {
+                SignerIdentity::MultiSig {
                     threshold: 2,
                     signers: vec![
                         SignerIdentity::Identity {
@@ -222,7 +216,7 @@ mod tests {
             ),
             (
                 "LPs_and_RSV".into(),
-                SignerIdentity::Multi {
+                SignerIdentity::MultiSig {
                     threshold: 2,
                     signers: vec![
                         SignerIdentity::Identity { name: "LPs".into() },
@@ -232,14 +226,14 @@ mod tests {
             ),
         ]);
 
-        let lps_and_rsv = SignerIdentity::Multi {
+        let lps_and_rsv = SignerIdentity::MultiSig {
             threshold: 2,
             signers: vec![
                 SignerIdentity::Identity { name: "LPs".into() },
                 SignerIdentity::Identity { name: "RSV".into() },
             ],
         }
-        .try_into_signer_set(Some(&map))
+        .try_into_signer_set(&map)
         .unwrap();
         assert_eq!(
             lps_and_rsv,
@@ -255,12 +249,12 @@ mod tests {
         assert_eq!(
             map.get("LPs_and_RSV")
                 .unwrap()
-                .try_into_signer_set(Some(&map))
+                .try_into_signer_set(&map)
                 .unwrap(),
             lps_and_rsv
         );
 
-        let signer_set = SignerIdentity::Multi {
+        let signer_set = SignerIdentity::MultiSig {
             threshold: 3,
             signers: vec![
                 SignerIdentity::Identity {
@@ -275,7 +269,7 @@ mod tests {
                 },
             ],
         }
-        .try_into_signer_set(Some(&map))
+        .try_into_signer_set(&map)
         .unwrap();
 
         assert_eq!(
@@ -302,13 +296,13 @@ mod tests {
             SignerIdentity::Identity {
                 name: "NotLP".into(),
             }
-            .try_into_signer_set(Some(&map)),
+            .try_into_signer_set(&map),
             Err(Error::UnknownSignerIdentity(name)) if name == "NotLP"
         ));
 
-        // Passing None should return an error.
+        // Passing a default map should return an error.
         assert!(matches!(
-            SignerIdentity::Identity { name: "LP".into() }.try_into_signer_set(None),
+            SignerIdentity::Identity { name: "LP".into() }.try_into_signer_set(&Default::default()),
             Err(Error::UnknownSignerIdentity(name)) if name == "LP"
         ));
     }
@@ -323,17 +317,17 @@ mod tests {
                 },
             ),
             (
-                "Multi1".into(),
+                "Infinite".into(),
                 SignerIdentity::Identity {
-                    name: "Multi1".into(),
+                    name: "Infinite".into(),
                 },
             ),
             (
-                "Multi2".into(),
-                SignerIdentity::Multi {
+                "Multi".into(),
+                SignerIdentity::MultiSig {
                     threshold: 1,
                     signers: vec![SignerIdentity::Identity {
-                        name: "Multi1".into(),
+                        name: "Infinite".into(),
                     }],
                 },
             ),
@@ -341,28 +335,28 @@ mod tests {
 
         assert_eq!(
             SignerIdentity::Identity {
-                name: "Multi1".into()
+                name: "Infinite".into()
             }
-            .try_into_signer_set(Some(&map)),
+            .try_into_signer_set(&map),
             Err(Error::NestingTooDeep),
         );
 
         assert_eq!(
             SignerIdentity::Identity {
-                name: "Multi2".into()
+                name: "Multi".into()
             }
-            .try_into_signer_set(Some(&map)),
+            .try_into_signer_set(&map),
             Err(Error::NestingTooDeep)
         );
 
         assert_eq!(
-            SignerIdentity::Multi {
+            SignerIdentity::MultiSig {
                 threshold: 1,
                 signers: vec![SignerIdentity::Identity {
-                    name: "Multi2".into()
+                    name: "Multi".into()
                 }]
             }
-            .try_into_signer_set(Some(&map)),
+            .try_into_signer_set(&map),
             Err(Error::NestingTooDeep)
         );
     }

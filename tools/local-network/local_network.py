@@ -231,30 +231,22 @@ class Node:
                     "token_id": 1,
                     "minimum_fee": 1024,
                     "governors": {
-                        "signer_identities": {
-                            "governor1": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read(),
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "governor1" },
-                            ],
-                        },
+                        "type": "MultiSig",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Single", "pub_key": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read()},
+                        ],
                     },
                 },
                 {
                     "token_id": 2,
                     "minimum_fee": 1024,
                     "governors": {
-                        "signer_identities": {
-                            "governor2": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read(),
-                        },
-                        "signer_set": {
-                            "threshold": 1,
-                            "signers": [
-                                {"type": "Single", "identity": "governor2" },
-                            ],
-                        },
+                        "type": "MultiSig",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Single", "pub_key": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read()},
+                        ],
                     },
                 },
              ],
