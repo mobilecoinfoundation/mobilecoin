@@ -27,7 +27,3 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 serde_json = "1.0"
 serde_with = "2.0"
 toml = "0.5"
-
-[dev-dependencies]
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-test-helper = { path = "../../../util/test-helper" }
