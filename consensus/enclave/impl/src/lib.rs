@@ -465,55 +465,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         blockchain_config.validate(&minting_trust_root_public_key)?;
 
-        /* TODO
-        // Validate governors signature.
-        if !blockchain_config.governors_map.is_empty() {
-            let signature = blockchain_config
-                .governors_signature
-                .ok_or(Error::MissingGovernorsSignature)?;
-
-            let minting_trust_root_public_key =
-                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
-                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
-
-            minting_trust_root_public_key
-                .verify_governors_map(&blockchain_config.governors_map, &signature)
-                .map_err(|_| Error::InvalidGovernorsSignature)?;
-        }
-
-        // Validate governors signature.
-        if !blockchain_config.governors_map.is_empty() {
-            let signature = blockchain_config
-                .governors_signature
-                .ok_or(Error::MissingGovernorsSignature)?;
-
-            let minting_trust_root_public_key =
-                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
-                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
-
-            minting_trust_root_public_key
-                .verify_governors_map(&blockchain_config.governors_map, &signature)
-                .map_err(|_| Error::InvalidGovernorsSignature)?;
-
-            // Prohibit governors that use nested multi-sigs if we are not running with a
-            // block version that supports them.
-            if !blockchain_config
-                .block_version
-                .nested_multisigs_are_supported()
-            {
-                for (token_id, signer_set) in blockchain_config.governors_map.iter() {
-                    if !signer_set.multi_signers().is_empty() {
-                        return Err(Error::NestedMultiSigGovernorsNotSupported(
-                            *token_id,
-                            blockchain_config.block_version,
-                        ));
-                    }
-                }
-            }
-        }
->>>>>>> 008f5d69f (gate the usage of nested multisigs on a block version change)
-        */
-
         // Set the minimum fee map.
         self.ct_min_fee_map
             .set(Box::new(

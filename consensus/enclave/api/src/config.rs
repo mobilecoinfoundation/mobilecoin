@@ -56,6 +56,19 @@ impl BlockchainConfig {
                 .map_err(|_| Error::InvalidGovernorsSignature)?;
         }
 
+        // Prohibit governors that use nested multi-sigs if we are not running with a
+        // block version that supports them.
+        if !self.block_version.nested_multisigs_are_supported() {
+            for (token_id, signer_set) in self.governors_map.iter() {
+                if !signer_set.multi_signers().is_empty() {
+                    return Err(Error::NestedMultiSigGovernorsNotSupported(
+                        *token_id,
+                        self.block_version,
+                    ));
+                }
+            }
+        }
+
         Ok(())
     }
 }
