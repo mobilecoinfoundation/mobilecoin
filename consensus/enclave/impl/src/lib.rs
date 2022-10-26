@@ -2491,7 +2491,6 @@ mod tests {
 
         assert!(signature.verify(&block).is_ok());
 
-        // The block contents should contain two mint txs.
         assert_eq!(block_contents.mint_txs, vec![mint_tx]);
 
         // There should be no key images or mint config txs
