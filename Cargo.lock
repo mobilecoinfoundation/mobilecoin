@@ -2327,6 +2327,7 @@ dependencies = [
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
+ "mc-crypto-dalek",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-ring-signature-signer",
@@ -2597,6 +2598,7 @@ dependencies = [
  "hex_fmt",
  "hostname",
  "lazy_static",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -2937,6 +2939,7 @@ dependencies = [
  "mc-consensus-enclave-mock",
  "mc-consensus-scp",
  "mc-consensus-service-config",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-multisig",
@@ -3027,6 +3030,7 @@ dependencies = [
  "hkdf",
  "lazy_static",
  "mc-core-types",
+ "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-test-vectors-definitions",
@@ -3092,6 +3096,26 @@ version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
+ "mc-crypto-dalek-backend-simd",
+ "mc-crypto-dalek-backend-u64",
+ "x25519-dalek",
+]
+
+[[package]]
+name = "mc-crypto-dalek-backend-simd"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "x25519-dalek",
+]
+
+[[package]]
+name = "mc-crypto-dalek-backend-u64"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519-dalek",
  "x25519-dalek",
 ]
 
@@ -3103,6 +3127,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
+ "mc-crypto-dalek",
  "mc-crypto-digestible-derive",
  "merlin",
  "x25519-dalek",
@@ -3251,9 +3276,11 @@ version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
+ "ed25519-dalek",
  "hex_fmt",
  "mc-account-keys",
  "mc-account-keys-types",
+ "mc-core-types",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
@@ -3381,6 +3408,7 @@ dependencies = [
  "mc-common",
  "mc-connection",
  "mc-consensus-enclave-measurement",
+ "mc-crypto-dalek",
  "mc-crypto-keys",
  "mc-crypto-ring-signature-signer",
  "mc-fog-ingest-enclave-measurement",
@@ -5152,6 +5180,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-ring-signature-signer",
@@ -5190,6 +5219,7 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
@@ -5245,6 +5275,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",

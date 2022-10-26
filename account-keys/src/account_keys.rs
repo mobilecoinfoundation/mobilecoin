@@ -34,6 +34,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
+#[cfg(feature = "prost")]
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
@@ -43,20 +44,21 @@ pub use mc_core::consts::{
     INVALID_SUBADDRESS_INDEX,
 };
 /// A MobileCoin user's public subaddress.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Digestible)]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
     view_public_key: RistrettoPublic,
 
     /// The user's public subaddress spend key `D`.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "2"))]
     spend_public_key: RistrettoPublic,
 
     /// This is the URL to talk to the fog report server.
     /// Empty if no fog for this public address, should be parseable as
     /// mc_util_uri::FogUri.
-    #[prost(string, tag = "3")]
+    #[cfg_attr(feature = "prost", prost(string, tag = "3"))]
     #[digestible(never_omit)]
     fog_report_url: String,
 
@@ -64,7 +66,7 @@ pub struct PublicAddress {
     /// This id string indicates which of the reports to use.
     ///
     /// Empty if no fog for this public address.
-    #[prost(string, tag = "4")]
+    #[cfg_attr(feature = "prost", prost(string, tag = "4"))]
     #[digestible(never_omit)]
     fog_report_id: String,
 
@@ -73,7 +75,7 @@ pub struct PublicAddress {
     ///
     /// Empty if no fog for this public address, must be parseable as a
     /// [`SchnorrkelSignature`].
-    #[prost(bytes, tag = "5")]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = "5"))]
     #[digestible(never_omit)]
     fog_authority_sig: Vec<u8>,
 }
@@ -224,29 +226,31 @@ impl FromRandom for PublicAddress {
 /// Complete AccountKey, containing the pair of secret keys, which can be used
 /// for spending, and optionally some fog-related info,
 /// can be used for spending. This should only ever be present in client code.
-#[derive(Clone, Message, Zeroize)]
+#[derive(Clone, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 #[zeroize(drop)]
 pub struct AccountKey {
     /// Private key 'a' used for view-key matching.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
     view_private_key: RistrettoPrivate,
 
     /// Private key `b` used for spending.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "2"))]
     spend_private_key: RistrettoPrivate,
 
     /// Fog Report server url (if user has Fog service), empty string otherwise
-    #[prost(string, tag = "3")]
+    #[cfg_attr(feature = "prost", prost(string, tag = "3"))]
     fog_report_url: String,
 
     /// Fog Report Key (if user has Fog service), empty otherwise
     /// The key labelling the report to use, from among the several reports
     /// which might be served by the fog report server.
-    #[prost(string, tag = "4")]
+    #[cfg_attr(feature = "prost", prost(string, tag = "4"))]
     fog_report_id: String,
 
     /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
-    #[prost(bytes, tag = "5")]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = "5"))]
     fog_authority_spki: Vec<u8>,
 }
 
@@ -520,15 +524,16 @@ impl AccountKey {
 }
 
 /// View AccountKey, containing the view private key and the spend public key.
-#[derive(Clone, Message, Zeroize)]
+#[derive(Clone, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
 #[zeroize(drop)]
 pub struct ViewAccountKey {
     /// Private key 'a' used for view-key matching.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
     view_private_key: RistrettoPrivate,
 
     /// Public key `B` used for generating Public Addresses.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "2"))]
     spend_public_key: RistrettoPublic,
 }
 

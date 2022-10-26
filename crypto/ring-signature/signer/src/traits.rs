@@ -6,11 +6,13 @@ use mc_crypto_keys::{KeyError, RistrettoPrivate};
 use mc_crypto_ring_signature::{Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar};
 use mc_transaction_types::Amount;
 use rand_core::CryptoRngCore;
-use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 /// A representation of the part of the input ring needed to create an MLSAG
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SignableInputRing {
     /// A reduced representation of the TxOut's in the ring. For each ring
     /// member we have only:
@@ -27,7 +29,8 @@ pub struct SignableInputRing {
 
 /// The secrets needed to create a signature that spends an existing output as
 /// an input
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, Zeroize)]
+#[derive(Clone, Debug, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[zeroize(drop)]
 pub struct InputSecret {
     /// Represents either the one-time private key, or data to derive it
@@ -49,7 +52,8 @@ pub struct InputSecret {
 /// ourselves.
 ///
 /// This enum selects which path to the one-time private key is taken.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, Zeroize)]
+#[derive(Clone, Debug, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[zeroize(drop)]
 pub enum OneTimeKeyDeriveData {
     /// The one-time private key for the output
@@ -118,7 +122,8 @@ impl<S: RingSigner> RingSigner for &S {
 }
 
 /// An error that can occur when using an abstract RingSigner
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Error {
     /// True input not owned by this subaddress
     TrueInputNotOwned,

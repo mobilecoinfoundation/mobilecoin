@@ -3,14 +3,21 @@
 use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
 use core::fmt;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
-    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
-    GenericArray, ReprBytes,
+    derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 /// A Pedersen commitment in uncompressed Ristretto format.
 #[derive(Copy, Clone, Default, Digestible)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[digestible(transparent)]
 pub struct Commitment {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,
@@ -46,7 +53,11 @@ impl TryFrom<&CompressedCommitment> for Commitment {
 
 impl fmt::Debug for Commitment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Commitment({})", hex_fmt::HexFmt(self.to_bytes()))
+        write!(f, "Commitment(")?;
+        for i in self.to_bytes() {
+            write!(f, "{:02x}", i)?;
+        }
+        write!(f, ")")
     }
 }
 
@@ -64,8 +75,10 @@ impl ReprBytes for Commitment {
     }
 }
 
-derive_prost_message_from_repr_bytes!(Commitment);
 derive_try_from_slice_from_repr_bytes!(Commitment);
+
+#[cfg(feature = "prost")]
+derive_prost_message_from_repr_bytes!(Commitment);
 
 #[cfg(test)]
 #[allow(non_snake_case)]

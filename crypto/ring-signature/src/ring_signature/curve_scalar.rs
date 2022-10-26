@@ -11,15 +11,20 @@ use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
-    GenericArray, ReprBytes,
+    derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// A curve scalar
-#[derive(Copy, Clone, Default, Serialize, Deserialize, Digestible, Zeroize)]
+#[derive(Copy, Clone, Default, Digestible, Zeroize)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[digestible(transparent)]
 pub struct CurveScalar {
     /// The scalar value
@@ -114,8 +119,9 @@ impl ReprBytes for CurveScalar {
 
 derive_core_cmp_from_as_ref!(CurveScalar, [u8; 32]);
 derive_debug_and_display_hex_from_as_ref!(CurveScalar);
-derive_prost_message_from_repr_bytes!(CurveScalar);
 derive_try_from_slice_from_repr_bytes!(CurveScalar);
+#[cfg(feature = "prost")]
+derive_prost_message_from_repr_bytes!(CurveScalar);
 
 #[cfg(test)]
 mod tests {
@@ -146,6 +152,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "prost")]
     /// CurveScalar should serialize and deserialize.
     fn test_curve_scalar_roundtrip() {
         let five = CurveScalar::from(5u64);

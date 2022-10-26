@@ -5,11 +5,13 @@
 
 use crate::token::TokenId;
 use mc_crypto_digestible::Digestible;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// An amount of some token, in the "base" (u64) denomination.
-#[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Amount {
     /// The "raw" value of this amount as a u64
     pub value: u64,

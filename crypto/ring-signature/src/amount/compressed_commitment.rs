@@ -8,14 +8,20 @@ use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
-    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
-    GenericArray, ReprBytes,
+    derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
-use serde::{Deserialize, Serialize};
+
 use zeroize::Zeroize;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+
 /// A Pedersen commitment in compressed Ristretto format.
-#[derive(Copy, Clone, Default, Deserialize, Digestible, Serialize, Zeroize)]
+#[derive(Copy, Clone, Default, Digestible, Zeroize)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[digestible(transparent)]
 pub struct CompressedCommitment {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,
@@ -40,6 +46,12 @@ impl From<&Commitment> for CompressedCommitment {
 impl From<&CompressedRistretto> for CompressedCommitment {
     fn from(source: &CompressedRistretto) -> Self {
         Self { point: *source }
+    }
+}
+
+impl From<CompressedRistretto> for CompressedCommitment {
+    fn from(source: CompressedRistretto) -> Self {
+        Self { point: source }
     }
 }
 
@@ -72,8 +84,10 @@ impl ReprBytes for CompressedCommitment {
 
 derive_core_cmp_from_as_ref!(CompressedCommitment, [u8; 32]);
 derive_debug_and_display_hex_from_as_ref!(CompressedCommitment);
-derive_prost_message_from_repr_bytes!(CompressedCommitment);
 derive_try_from_slice_from_repr_bytes!(CompressedCommitment);
+
+#[cfg(feature = "prost")]
+derive_prost_message_from_repr_bytes!(CompressedCommitment);
 
 #[cfg(test)]
 #[allow(non_snake_case)]

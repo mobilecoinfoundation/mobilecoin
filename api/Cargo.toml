@@ -11,6 +11,7 @@ mc-account-keys = { path = "../account-keys" }
 mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", default-features = false }
+mc-crypto-dalek = { path = "../crypto/dalek" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
@@ -25,11 +26,7 @@ crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.27.1"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
