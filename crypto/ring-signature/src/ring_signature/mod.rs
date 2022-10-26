@@ -4,27 +4,45 @@
 
 #![allow(non_snake_case)]
 
-pub use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+pub use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::{
+    constants::{RISTRETTO_BASEPOINT_COMPRESSED, RISTRETTO_BASEPOINT_POINT},
+    ristretto::RistrettoPoint,
+};
+
+#[cfg(feature = "alloc")]
+use curve25519_dalek::traits::MultiscalarMul;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 mod curve_scalar;
 mod error;
 mod key_image;
+mod mlsag_sign;
+mod mlsag_verify;
+
+#[cfg(feature = "alloc")]
 mod mlsag;
 
-pub use self::{
-    curve_scalar::CurveScalar,
-    error::Error,
-    key_image::KeyImage,
-    mlsag::{ReducedTxOut, RingMLSAG},
+#[cfg(feature = "alloc")]
+pub use self::mlsag::RingMLSAG;
+
+pub use self::{curve_scalar::CurveScalar, error::Error, key_image::KeyImage};
+
+use crate::{
+    domain_separators::{HASH_TO_POINT_DOMAIN_TAG, RING_MLSAG_CHALLENGE_DOMAIN_TAG},
+    Commitment, CompressedCommitment,
 };
 
-use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
-use curve25519_dalek::{
-    constants::{RISTRETTO_BASEPOINT_COMPRESSED, RISTRETTO_BASEPOINT_POINT},
-    traits::MultiscalarMul,
+#[cfg(feature = "internals")]
+pub use self::{
+    mlsag_sign::{MlsagSignCtx, MlsagSignParams},
+    mlsag_verify::MlsagVerify,
 };
+
 use mc_crypto_hashes::{Blake2b512, Digest};
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 
 /// The base point for blinding factors used with all amount commitments
 pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
@@ -45,7 +63,13 @@ impl PedersenGens {
     /// Creates a Pedersen commitment using the value scalar and a blinding
     /// factor.
     pub fn commit(&self, value: Scalar, blinding: Scalar) -> RistrettoPoint {
-        RistrettoPoint::multiscalar_mul(&[value, blinding], &[self.B, self.B_blinding])
+        // Use optimised Straus' method if alloc is available
+        #[cfg(feature = "alloc")]
+        return RistrettoPoint::multiscalar_mul(&[value, blinding], &[self.B, self.B_blinding]);
+
+        // Otherwise fallback to naive method
+        #[cfg(not(feature = "alloc"))]
+        return value * self.B + blinding * self.B_blinding;
     }
 }
 
@@ -94,6 +118,117 @@ pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
     hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
     hasher.update(&ristretto_public.to_bytes());
     RistrettoPoint::from_hash(hasher)
+}
+
+// Compute the ring "challenge" H( message | key_image | L0 | R0 | L1 ).
+pub(crate) fn challenge(
+    message: &[u8],
+    key_image: &KeyImage,
+    L0: &RistrettoPoint,
+    R0: &RistrettoPoint,
+    L1: &RistrettoPoint,
+) -> Scalar {
+    let mut hasher = Blake2b512::new();
+    hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
+    hasher.update(message);
+    hasher.update(key_image);
+    hasher.update(L0.compress().as_bytes());
+    hasher.update(R0.compress().as_bytes());
+    hasher.update(L1.compress().as_bytes());
+    Scalar::from_hash(hasher)
+}
+
+/// A reduced representation of a TxOut, appropriate for making MLSAG
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ReducedTxOut {
+    /// The tx_out.public_key field
+    pub public_key: CompressedRistrettoPublic,
+    /// The tx_out.target_key field
+    pub target_key: CompressedRistrettoPublic,
+    /// The tx_out.masked_amount.commitment field
+    pub commitment: CompressedCommitment,
+}
+
+/// Expand a [`ReducedTxOut`] to `(RistrettoPublic, Commitment)` for MLSAG use
+impl TryFrom<&ReducedTxOut> for (RistrettoPublic, Commitment) {
+    type Error = Error;
+
+    fn try_from(r: &ReducedTxOut) -> Result<(RistrettoPublic, Commitment), Self::Error> {
+        let ristretto_public =
+            RistrettoPublic::try_from(&r.target_key).map_err(|_e| Error::InvalidCurvePoint)?;
+        let commitment = Commitment::try_from(&r.commitment)?;
+
+        Ok((ristretto_public, commitment))
+    }
+}
+
+/// [`Ring`] trait allows implementations to be generic over rings for
+/// performance (pre-decompressed) or space (decompress-on-access)
+pub trait Ring {
+    /// Return size of ring
+    ///
+    /// (a-la `slice::len`, except we don't have a trait for this)
+    fn size(&self) -> usize;
+
+    /// Access a decompressed ring element by index
+    ///
+    /// (a-la `core::ops::Index`, defined here to avoid orphan rules)
+    fn index(&self, index: usize) -> Result<(RistrettoPublic, Commitment), Error>;
+
+    /// Ensure ring decompresses (no-op for pre-decompressed rings)
+    fn check(&self) -> Result<(), Error>;
+}
+
+/// [`Ring`] implementation for pre-decompressed slices
+impl Ring for &[(RistrettoPublic, Commitment)] {
+    /// Fetch ring size
+    fn size(&self) -> usize {
+        self.as_ref().len()
+    }
+
+    /// Access a pre-decompressed ring element by index
+    fn index(&self, index: usize) -> Result<(RistrettoPublic, Commitment), Error> {
+        match self.as_ref().get(index) {
+            Some(v) => Ok(*v),
+            None => Err(Error::IndexOutOfBounds),
+        }
+    }
+
+    /// Pre-decompressed ring always decompresses...
+    fn check(&self) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+/// [`Ring`] implementation for reduced slices
+impl Ring for &[ReducedTxOut] {
+    /// Fetch ring size
+    fn size(&self) -> usize {
+        self.as_ref().len()
+    }
+
+    /// Decompress and access a ring element by index
+    fn index(&self, index: usize) -> Result<(RistrettoPublic, Commitment), Error> {
+        let tx_out = match self.as_ref().get(index) {
+            Some(v) => v,
+            None => return Err(Error::IndexOutOfBounds),
+        };
+
+        let decompressed: (RistrettoPublic, Commitment) = tx_out.try_into()?;
+
+        Ok(decompressed)
+    }
+
+    /// Decompress each entry to check ring
+    fn check(&self) -> Result<(), Error> {
+        // Ring must decompress.
+        for i in 0..self.size() {
+            let _tx_out = self.index(i)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
