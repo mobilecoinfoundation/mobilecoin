@@ -124,7 +124,7 @@ pub trait LedgerEnclave: ReportableEnclave {
         &self,
         msg: EnclaveMessage<NonceSession>,
         untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
-    ) -> Result<Vec<u8>>;
+    ) -> Result<EnclaveMessage<NonceSession>>;
 
     /// Decrypts a client query message and converts it into a
     /// SealedClientMessage which can be unsealed multiple times to

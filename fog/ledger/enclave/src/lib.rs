@@ -263,7 +263,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
         &self,
         msg: EnclaveMessage<NonceSession>,
         untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<EnclaveMessage<NonceSession>> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImageStore(
             msg,
             untrusted_keyimagequery_response,

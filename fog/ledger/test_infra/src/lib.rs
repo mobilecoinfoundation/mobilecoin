@@ -126,7 +126,7 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _msg: EnclaveMessage<NonceSession>,
         _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
-    ) -> EnclaveResult<Vec<u8>> {
+    ) -> EnclaveResult<EnclaveMessage<NonceSession>> {
         todo!()
     }
 }

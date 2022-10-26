@@ -76,7 +76,16 @@ impl KeyImageStoreServer {
             client_authenticator.clone(),
             logger.clone(),
         );
+        Self::new_from_service(key_image_service, client_listen_uri.clone(), logger.clone())
+    }
 
+    pub fn new_from_service<E>(
+        key_image_service: KeyImageService<LedgerDB, E>,
+        client_listen_uri: Uri<KeyImageStoreScheme>,
+        logger: Logger,
+    ) -> KeyImageStoreServer
+        where E: LedgerEnclaveProxy
+    {
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
@@ -113,8 +122,6 @@ impl KeyImageStoreServer {
         Self { server, logger }
     }
 
-
-    #[allow(dead_code)] // FIXME
     /// Starts the server
     pub fn start(&mut self) {
         self.server.start();

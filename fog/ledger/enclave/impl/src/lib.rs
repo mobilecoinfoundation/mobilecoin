@@ -317,7 +317,7 @@ where
         &self,
         msg: EnclaveMessage<NonceSession>,
         untrusted_key_image_query_response: UntrustedKeyImageQueryResponse,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<EnclaveMessage<NonceSession>> {
         let channel_id = msg.channel_id.clone();
         let user_plaintext = self.ake.frontend_decrypt(msg)?;
         
@@ -353,7 +353,7 @@ where
             .ake
             .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
 
-        Ok(response.data)
+        Ok(response)
     }
 }
 

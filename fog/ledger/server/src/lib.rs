@@ -26,3 +26,4 @@ pub use untrusted_tx_out_service::UntrustedTxOutService;
 
 pub use key_image_router_server::KeyImageRouterServer;
 pub use key_image_store_server::KeyImageStoreServer;
+pub use server::DbPollSharedState;

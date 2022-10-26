@@ -3639,6 +3639,7 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "2.0.0"
 dependencies = [
+ "aes-gcm",
  "clap 3.2.8",
  "displaydoc",
  "futures",
@@ -3647,6 +3648,7 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-api",
+ "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3691,6 +3693,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
+ "sha2 0.10.2",
  "tempdir",
  "url",
  "x509-signature",

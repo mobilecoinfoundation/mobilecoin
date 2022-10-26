@@ -163,14 +163,12 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
 
         let untrusted_query_response = self.prepare_untrusted_query();
 
-        let result_blob = self
+        let response = self
             .enclave
             .check_key_image_store(request.into(), untrusted_query_response)
             .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
 
-        let mut resp = attest::NonceMessage::new();
-        resp.set_data(result_blob);
-        Ok(resp)
+        Ok(response.into())
     }
 
     // Helper function that is common

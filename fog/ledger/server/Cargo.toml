@@ -74,6 +74,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-attest-ake = { path = "../../../attest/ake" }
 mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
@@ -90,6 +91,8 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
+aes-gcm = "0.9.4"
 pem = "1.1"
+sha2 = "0.10"
 tempdir = "0.3"
 x509-signature = "0.5"
