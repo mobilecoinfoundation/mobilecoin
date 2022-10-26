@@ -1039,13 +1039,14 @@ mod tests {
     use alloc::vec;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
     use mc_consensus_enclave_api::{GovernorsMap, GovernorsSigner};
-    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
-    use mc_crypto_multisig::SignerSet;
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature, Signer};
+    use mc_crypto_multisig::{MultiSig, SignerSet};
     use mc_ledger_db::{
         test_utils::{add_txos_to_ledger, create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
     use mc_transaction_core::{
+        mint::{constants::NONCE_LENGTH, MintConfigTxPrefix},
         tokens::Mob,
         tx::TxOutMembershipHash,
         validation::{validate_tx_out, TransactionValidationError},
@@ -2355,6 +2356,330 @@ mod tests {
             assert_eq!(amount.value, 200);
             assert_eq!(amount.token_id, token_id2);
         }
+    }
+
+    #[test_with_logger]
+    fn form_block_accepts_valid_nested_multisig_mint(logger: Logger) {
+        let token_id1 = TokenId::from(1);
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+        let block_version = BlockVersion::MAX;
+
+        // Ensure the chosen block version supports the feature being tested here.
+        assert!(block_version.mint_transactions_are_supported());
+        assert!(block_version.nested_multisigs_are_supported());
+
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
+
+        let governors_signer_set = SignerSet::new_with_multi(
+            vec![governor_1.public_key()],
+            vec![SignerSet::new(
+                vec![governor_2.public_key(), governor_3.public_key()],
+                2,
+            )],
+            2,
+        );
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, governors_signer_set)]).unwrap();
+
+        let minter_1 = Ed25519Pair::from_random(&mut rng);
+        let minter_2 = Ed25519Pair::from_random(&mut rng);
+        let minter_3 = Ed25519Pair::from_random(&mut rng);
+
+        let minters_signer_set = SignerSet::new_with_multi(
+            vec![minter_1.public_key()],
+            vec![SignerSet::new(
+                vec![minter_2.public_key(), minter_3.public_key()],
+                2,
+            )],
+            2,
+        );
+
+        let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+        rng.fill_bytes(&mut nonce);
+
+        let mint_config_tx = {
+            let prefix = MintConfigTxPrefix {
+                token_id: *token_id1,
+                configs: vec![MintConfig {
+                    token_id: *token_id1,
+                    signer_set: minters_signer_set,
+                    mint_limit: 10000,
+                }],
+                nonce,
+                tombstone_block: 2,
+                total_mint_limit: 10000,
+            };
+            let message = prefix.hash();
+            let signature = MultiSig::new(vec![
+                governor_1.sign(message.as_ref()),
+                governor_2.sign(message.as_ref()),
+                governor_3.sign(message.as_ref()),
+            ]);
+            MintConfigTx { prefix, signature }
+        };
+
+        let recipient1 = AccountKey::random(&mut rng);
+
+        let mint_tx = create_mint_tx_to_recipient(
+            token_id1,
+            &[minter_1, minter_2, minter_3],
+            12,
+            &recipient1.default_subaddress(),
+            &mut rng,
+        );
+
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            governors_map: governors_map.clone(),
+            governors_signature: sign_governors_map(&governors_map),
+            ..Default::default()
+        };
+        enclave
+            .enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            )
+            .unwrap();
+
+        // Initialize a ledger.
+        let sender = AccountKey::random(&mut rng);
+        let mut ledger = create_ledger();
+
+        // We want the next block that gets appended to the ledger to exceed the
+        // tombstone limit of the mint config tx, since we want to make sure
+        // that minting that relies on an old MintConfigTx (one that is past
+        // its tombstone block) still validate and mint successfully.
+        let n_blocks = mint_config_tx.prefix.tombstone_block;
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Form block
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+        let (block, block_contents, signature) = enclave
+            .form_block(
+                &parent_block,
+                FormBlockInputs {
+                    mint_txs_with_config: vec![(
+                        mint_tx.clone(),
+                        mint_config_tx.clone(),
+                        mint_config_tx.prefix.configs[0].clone(),
+                    )],
+                    ..Default::default()
+                },
+                &root_element,
+            )
+            .unwrap();
+
+        // Verify signature
+        assert_eq!(
+            signature.signer(),
+            &enclave
+                .ake
+                .get_identity()
+                .signing_keypair
+                .lock()
+                .unwrap()
+                .public_key()
+        );
+
+        assert!(signature.verify(&block).is_ok());
+
+        // The block contents should contain two mint txs.
+        assert_eq!(block_contents.mint_txs, vec![mint_tx.clone()]);
+
+        // There should be no key images or mint config txs
+        assert!(block_contents.key_images.is_empty());
+        assert!(block_contents.validated_mint_config_txs.is_empty());
+
+        // The block contents should contain the minted tx out.
+        assert_eq!(block_contents.outputs.len(), 1);
+
+        let output1 = &block_contents.outputs[0];
+        let (amount, _) = output1
+            .view_key_match(recipient1.view_private_key())
+            .unwrap();
+        assert_eq!(amount.value, 12);
+        assert_eq!(amount.token_id, token_id1);
+    }
+
+    #[test_with_logger]
+    fn form_block_rejects_mints_with_partially_signed_nested_multisigs(logger: Logger) {
+        let token_id1 = TokenId::from(1);
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+        let block_version = BlockVersion::MAX;
+
+        // Ensure the chosen block version supports the feature being tested here.
+        assert!(block_version.mint_transactions_are_supported());
+        assert!(block_version.nested_multisigs_are_supported());
+
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
+
+        let governors_signer_set = SignerSet::new_with_multi(
+            vec![governor_1.public_key()],
+            vec![SignerSet::new(
+                vec![governor_2.public_key(), governor_3.public_key()],
+                2,
+            )],
+            2,
+        );
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, governors_signer_set)]).unwrap();
+
+        let minter_1 = Ed25519Pair::from_random(&mut rng);
+        let minter_2 = Ed25519Pair::from_random(&mut rng);
+        let minter_3 = Ed25519Pair::from_random(&mut rng);
+
+        let minters_signer_set = SignerSet::new_with_multi(
+            vec![minter_1.public_key()],
+            vec![SignerSet::new(
+                vec![minter_2.public_key(), minter_3.public_key()],
+                2,
+            )],
+            2,
+        );
+
+        let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+        rng.fill_bytes(&mut nonce);
+
+        let mint_config_tx_prefix = MintConfigTxPrefix {
+            token_id: *token_id1,
+            configs: vec![MintConfig {
+                token_id: *token_id1,
+                signer_set: minters_signer_set,
+                mint_limit: 10000,
+            }],
+            nonce,
+            tombstone_block: 2,
+            total_mint_limit: 10000,
+        };
+        let message = mint_config_tx_prefix.hash();
+
+        // Signed with all governors
+        let valid_mint_config_tx = {
+            let signature = MultiSig::new(vec![
+                governor_1.sign(message.as_ref()),
+                governor_2.sign(message.as_ref()),
+                governor_3.sign(message.as_ref()),
+            ]);
+            MintConfigTx {
+                prefix: mint_config_tx_prefix.clone(),
+                signature,
+            }
+        };
+
+        // Missing one governor signature.
+        let invalid_mint_config_tx = {
+            let signature = MultiSig::new(vec![
+                governor_1.sign(message.as_ref()),
+                governor_2.sign(message.as_ref()),
+            ]);
+            MintConfigTx {
+                prefix: mint_config_tx_prefix.clone(),
+                signature,
+            }
+        };
+
+        let recipient1 = AccountKey::random(&mut rng);
+
+        // Signed without one of the needed minters
+        let invalid_mint_tx = create_mint_tx_to_recipient(
+            token_id1,
+            &[
+                Ed25519Pair::from(minter_1.private_key()),
+                Ed25519Pair::from(minter_2.private_key()),
+            ],
+            12,
+            &recipient1.default_subaddress(),
+            &mut rng,
+        );
+
+        // Signed with all minters
+        let valid_mint_tx = create_mint_tx_to_recipient(
+            token_id1,
+            &[minter_1, minter_2, minter_3],
+            12,
+            &recipient1.default_subaddress(),
+            &mut rng,
+        );
+
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            governors_map: governors_map.clone(),
+            governors_signature: sign_governors_map(&governors_map),
+            ..Default::default()
+        };
+        enclave
+            .enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            )
+            .unwrap();
+
+        // Initialize a ledger.
+        let sender = AccountKey::random(&mut rng);
+        let mut ledger = create_ledger();
+
+        // We want the next block that gets appended to the ledger to exceed the
+        // tombstone limit of the mint config tx, since we want to make sure
+        // that minting that relies on an old MintConfigTx (one that is past
+        // its tombstone block) still validate and mint successfully.
+        let n_blocks = mint_config_tx_prefix.tombstone_block;
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+        // Form block with a valid mint config but invalid mint tx
+        let result = enclave.form_block(
+            &parent_block,
+            FormBlockInputs {
+                mint_txs_with_config: vec![(
+                    invalid_mint_tx.clone(),
+                    valid_mint_config_tx.clone(),
+                    valid_mint_config_tx.prefix.configs[0].clone(),
+                )],
+                ..Default::default()
+            },
+            &root_element,
+        );
+        assert_eq!(
+            result,
+            Err(Error::MalformedMintingTx(
+                MintValidationError::InvalidSignature
+            ))
+        );
+
+        // Form block with an invalid mint config but a valid mint tx
+        let result = enclave.form_block(
+            &parent_block,
+            FormBlockInputs {
+                mint_txs_with_config: vec![(
+                    valid_mint_tx.clone(),
+                    invalid_mint_config_tx.clone(),
+                    invalid_mint_config_tx.prefix.configs[0].clone(),
+                )],
+                ..Default::default()
+            },
+            &root_element,
+        );
+        assert_eq!(
+            result,
+            Err(Error::MalformedMintingTx(
+                MintValidationError::InvalidSignature
+            ))
+        );
     }
 
     #[test_with_logger]
