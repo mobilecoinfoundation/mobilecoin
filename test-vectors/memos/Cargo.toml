@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-memos"
-version = "3.0.0-pre0"
+version = "3.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
