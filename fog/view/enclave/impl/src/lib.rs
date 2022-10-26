@@ -461,7 +461,7 @@ fn get_last_known_data(responses: &[DecryptedMultiViewStoreQueryResponse]) -> La
     responses
         .iter()
         .max_by_key(|response| response.query_response.last_known_block_count)
-        .map_or(LastKnownData::default(), |response| {
+        .map_or_else(LastKnownData::default, |response| {
             LastKnownData::new(
                 response.query_response.last_known_block_count,
                 response
@@ -969,23 +969,12 @@ mod last_known_block_data_tests {
             decrypted_query_responses.push(decrypted_query_response);
         }
 
-        let last_response = decrypted_query_responses
-            .last()
-            .expect("Couldn't get last decrypted query response");
-        let expected_last_known_block_count = last_response.query_response.last_known_block_count;
-        let expected_last_known_block_cumulative_txo_count = last_response
-            .query_response
-            .last_known_block_cumulative_txo_count;
-
         let result = get_last_known_data(&decrypted_query_responses);
 
-        assert_eq!(
-            result.last_known_block_count,
-            expected_last_known_block_count
-        );
+        assert_eq!(result.last_known_block_count, LAST_KNOWN_BLOCK_COUNT);
         assert_eq!(
             result.last_known_block_cumulative_txo_count,
-            expected_last_known_block_cumulative_txo_count
+            LAST_KNOWN_BLOCK_CUMULATIVE_TXO_COUNT
         );
     }
 }
