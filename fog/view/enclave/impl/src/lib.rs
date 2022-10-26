@@ -77,6 +77,7 @@ impl Default for BlockData {
 
 /// Helper struct that contains data associated with the "last known" fields in
 /// the `QueryResponse`.
+#[derive(Default)]
 struct LastKnownData {
     /// The globally maximum block count that any store has seen but not
     /// necessarily processed.
@@ -90,15 +91,6 @@ impl LastKnownData {
         Self {
             last_known_block_count,
             last_known_block_cumulative_txo_count,
-        }
-    }
-}
-
-impl Default for LastKnownData {
-    fn default() -> Self {
-        Self {
-            last_known_block_count: u64::MIN,
-            last_known_block_cumulative_txo_count: u64::MIN,
         }
     }
 }
