@@ -68,7 +68,6 @@ fn validate_configs(
     block_version: BlockVersion,
 ) -> Result<(), Error> {
     for config in configs {
-        // Token id must match the one in the MintConfigTx.
         if config.token_id != token_id {
             return Err(Error::InvalidTokenId(config.token_id.into()));
         }
