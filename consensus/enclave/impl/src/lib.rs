@@ -2492,7 +2492,7 @@ mod tests {
         assert!(signature.verify(&block).is_ok());
 
         // The block contents should contain two mint txs.
-        assert_eq!(block_contents.mint_txs, vec![mint_tx.clone()]);
+        assert_eq!(block_contents.mint_txs, vec![mint_tx]);
 
         // There should be no key images or mint config txs
         assert!(block_contents.key_images.is_empty());
@@ -2646,7 +2646,7 @@ mod tests {
             &parent_block,
             FormBlockInputs {
                 mint_txs_with_config: vec![(
-                    invalid_mint_tx.clone(),
+                    invalid_mint_tx,
                     valid_mint_config_tx.clone(),
                     valid_mint_config_tx.prefix.configs[0].clone(),
                 )],
@@ -2666,7 +2666,7 @@ mod tests {
             &parent_block,
             FormBlockInputs {
                 mint_txs_with_config: vec![(
-                    valid_mint_tx.clone(),
+                    valid_mint_tx,
                     invalid_mint_config_tx.clone(),
                     invalid_mint_config_tx.prefix.configs[0].clone(),
                 )],
