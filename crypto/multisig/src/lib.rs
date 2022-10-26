@@ -13,7 +13,7 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
@@ -103,7 +103,7 @@ pub struct SignerSet<P: Default + PublicKey + Message> {
 impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
     pub fn new(individual_signers: Vec<P>, threshold: u32) -> Self {
-        Self::new_with_multi(individual_signers, Vec::new(), threshold)
+        Self::new_with_multi(individual_signers, vec![], threshold)
     }
 
     /// Construct a new `SignerSet` from a list of public keys, multi signers
@@ -205,7 +205,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
 
         // Collect individual signer identities that signed the message, and count how
         // many signers we successfully matched.
-        let mut matched_signer_identities = Vec::new();
+        let mut matched_signer_identities = vec![];
         let mut num_matches = 0;
 
         for individual_signer in potential_individual_signers {
@@ -262,7 +262,7 @@ mod test {
         assert_eq!(a, b);
     }
 
-    /// Helper for constructing a multi signature fromn a list of signers.
+    /// Helper for constructing a multi signature from a list of signers.
     fn make_multi_sig<S>(message: &[u8], signers: &[&impl Signer<S>]) -> MultiSig<S>
     where
         S: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
