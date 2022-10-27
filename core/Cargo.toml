@@ -29,7 +29,7 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 
 [dev-dependencies]
 
-anyhow = { version = "1.0.65" }
+anyhow = { version = "1.0.26" }
 clap = { version = "3.2.20", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
@@ -42,7 +42,7 @@ serde = { version = "1.0.0", features = [ "derive" ] }
 serde_json = { version = "1.0.85" }
 
 [build-dependencies]
-anyhow = { version = "1.0.57" }
+anyhow = { version = "1.0.26" }
 glob = { version = "0.3.0" }
 
 [[example]]
