@@ -2575,7 +2575,7 @@ mod tests {
                 governor_2.sign(message.as_ref()),
             ]);
             MintConfigTx {
-                prefix: mint_config_tx_prefix.clone(),
+                prefix: mint_config_tx_prefix,
                 signature,
             }
         };
