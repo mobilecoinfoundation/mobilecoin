@@ -2449,13 +2449,7 @@ mod tests {
         // Initialize a ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
-
-        // We want the next block that gets appended to the ledger to exceed the
-        // tombstone limit of the mint config tx, since we want to make sure
-        // that minting that relies on an old MintConfigTx (one that is past
-        // its tombstone block) still validate and mint successfully.
-        let n_blocks = mint_config_tx.prefix.tombstone_block;
-        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+        initialize_ledger(block_version, &mut ledger, 1, &sender, &mut rng);
 
         // Form block
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
@@ -2504,8 +2498,7 @@ mod tests {
         let (amount, _) = output1
             .view_key_match(recipient1.view_private_key())
             .unwrap();
-        assert_eq!(amount.value, 12);
-        assert_eq!(amount.token_id, token_id1);
+        assert_eq!(amount, Amount::new(12, token_id1));
     }
 
     #[test_with_logger]
@@ -2629,13 +2622,7 @@ mod tests {
         // Initialize a ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
-
-        // We want the next block that gets appended to the ledger to exceed the
-        // tombstone limit of the mint config tx, since we want to make sure
-        // that minting that relies on an old MintConfigTx (one that is past
-        // its tombstone block) still validate and mint successfully.
-        let n_blocks = mint_config_tx_prefix.tombstone_block;
-        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+       initialize_ledger(block_version, &mut ledger, 1, &sender, &mut rng);
 
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
         let root_element = ledger.get_root_tx_out_membership_element().unwrap();
