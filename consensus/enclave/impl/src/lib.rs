@@ -2622,7 +2622,7 @@ mod tests {
         // Initialize a ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
-       initialize_ledger(block_version, &mut ledger, 1, &sender, &mut rng);
+        initialize_ledger(block_version, &mut ledger, 1, &sender, &mut rng);
 
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
         let root_element = ledger.get_root_tx_out_membership_element().unwrap();
