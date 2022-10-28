@@ -7113,8 +7113,7 @@ dependencies = [
 [[package]]
 name = "rusoto_core"
 version = "0.48.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1db30db44ea73551326269adcf7a2169428a054f14faf9e1768f2163494f2fa2"
+source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -7138,8 +7137,7 @@ dependencies = [
 [[package]]
 name = "rusoto_credential"
 version = "0.48.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee0a6c13db5aad6047b6a44ef023dbbc21a056b6dab5be3b79ce4283d5c02d05"
+source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
 dependencies = [
  "async-trait",
  "chrono",
@@ -7156,8 +7154,7 @@ dependencies = [
 [[package]]
 name = "rusoto_s3"
 version = "0.48.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aae4677183411f6b0b412d66194ef5403293917d66e70ab118f07cc24c5b14d"
+source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
 dependencies = [
  "async-trait",
  "bytes 1.1.0",
@@ -7169,8 +7166,7 @@ dependencies = [
 [[package]]
 name = "rusoto_signature"
 version = "0.48.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5ae95491c8b4847931e291b151127eccd6ff8ca13f33603eb3d0035ecb05272"
+source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
 dependencies = [
  "base64 0.13.1",
  "bytes 1.1.0",

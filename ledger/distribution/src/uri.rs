@@ -77,8 +77,7 @@ impl FromStr for Uri {
                 });
 
                 let region = region_param
-                    .map_or_else(|| Ok(Region::default()), |param| Region::from_str(&param))
-                    .map_err(UriParseError::InvalidS3Region)?;
+                    .map_or_else(|| Region::default(), |param| Region::from_str(&param).unwrap_or(Region::Custom { name: "custom".to_string(), endpoint: param }));
 
                 Destination::S3 {
                     path: PathBuf::from(path),
