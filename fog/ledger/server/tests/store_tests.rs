@@ -39,7 +39,7 @@ pub struct TestingContext<R: RngCore + CryptoRng> {
     pub tempdir: TempDir,
     pub tx_source_url: Url,
     pub watcher: WatcherDB,
-    pub watcher_path: PathBuf,
+    pub watcher_path: TempDir,
 }
 
 impl<R: RngCore + CryptoRng> TestingContext<R> {
@@ -63,6 +63,10 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
 
         let enclave_path = std::env::current_exe()
             .expect("Could not get the path of our executable")
+            // The test ends up in target/debug/deps/ 
+            // rather than just target/debug/. So, 
+            // we need the parent directory.
+            .parent().unwrap()
             .with_file_name(ENCLAVE_FILE);
             
         let enclave = LedgerSgxEnclave::new(
@@ -80,10 +84,9 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let test_url_name = format!("http://{}.wallet.test.test", test_name);
         let url = Url::parse(&test_url_name).unwrap();
 
-        let db_tmp = test_path.join(PathBuf::from("wallet_db"));
-        WatcherDB::create(db_tmp.as_path()).unwrap();
-        let watcher_path = db_tmp.join(PathBuf::from("watcher_db"));
-        let watcher = WatcherDB::open_rw(watcher_path.as_path(), &[url.clone()], logger).unwrap();
+        let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
+        WatcherDB::create(db_tmp.path()).unwrap();
+        let watcher = WatcherDB::open_rw(db_tmp.path(), &[url.clone()], logger).unwrap();
 
         Self {
             enclave,
@@ -94,7 +97,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             tempdir,
             tx_source_url: url,
             watcher,
-            watcher_path,
+            watcher_path: db_tmp,
         }
     }
 }
@@ -131,7 +134,7 @@ pub fn simple_roundtrip(logger: Logger) {
         client_responder_id: responder_id.clone(),
         client_listen_uri: client_listen_uri.clone(),
         ledger_db: ledger_path,
-        watcher_db: watcher_path,
+        watcher_db: PathBuf::from(watcher_path.path()),
         ias_api_key: Default::default(),
         ias_spid: Default::default(),
         admin_listen_uri: Default::default(),
