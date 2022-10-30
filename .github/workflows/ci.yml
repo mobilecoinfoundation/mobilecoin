@@ -447,7 +447,7 @@ jobs:
               --consensus insecure-mc://localhost:3203/ \
               --consensus insecure-mc://localhost:3204/ \
               --num-clients 4 \
-              --num-transactions 200 \
+              --num-transactions 40 \
               --consensus-wait 300 \
               --transfer-amount 20 \
               --fog-view insecure-fog-view://localhost:8200 \
@@ -487,7 +487,7 @@ jobs:
               --consensus insecure-mc://localhost:3203/ \
               --consensus insecure-mc://localhost:3204/ \
               --num-clients 4 \
-              --num-transactions 200 \
+              --num-transactions 40 \
               --consensus-wait 300 \
               --transfer-amount 20 \
               --token-ids 0,1 \
