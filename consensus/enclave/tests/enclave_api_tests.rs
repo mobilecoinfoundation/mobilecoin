@@ -40,7 +40,7 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let blockchain_config = BlockchainConfig {
         block_version,
-        fee_map: fee_map.clone(),
+        fee_map,
         ..Default::default()
     };
 
@@ -106,7 +106,7 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
     );
 
     // Try to propose the Tx
-    let req = tx.clone();
+    let req = tx;
 
     let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 
