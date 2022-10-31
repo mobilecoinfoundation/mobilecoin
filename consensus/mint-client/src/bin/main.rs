@@ -61,9 +61,27 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::GenerateMintConfigTx { out, params } => {
+        Commands::GenerateMintConfigTx {
+            out,
+            tombstone_from_node,
+            params,
+        } => {
             let tx = params
-                .try_into_mint_config_tx(|| panic!("missing tombstone block"))
+                .try_into_mint_config_tx(|| {
+                    if let Some(node) = &tombstone_from_node {
+                        let env =
+                            Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+                        let ch = ChannelBuilder::default_channel_builder(env)
+                            .connect_to_uri(node, &logger);
+                        let blockchain_api = BlockchainApiClient::new(ch);
+                        let last_block_info = blockchain_api
+                            .get_last_block_info(&Empty::new())
+                            .expect("get last block info");
+                        last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                    } else {
+                        panic!("missing tombstone block")
+                    }
+                })
                 .expect("failed creating tx");
 
             TxFile::from(tx)

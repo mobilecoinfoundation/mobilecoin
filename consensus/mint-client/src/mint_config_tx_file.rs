@@ -34,9 +34,10 @@ pub struct MintConfigTxFile {
     /// Mint configurations
     pub configs: Vec<MintConfig>,
 
-    /// Nonce, which is optional in the case we want this tool to auto-generate
-    /// one.
-    pub nonce: Option<Vec<u8>>,
+    /// Nonce (64 bytes, hex-encoded), which is optional (empty array) in the
+    /// case we want this tool to auto-generate one.
+    #[serde(default, with = "hex")]
+    pub nonce: Vec<u8>,
 
     /// Tombstone block, which is optional in case we want this tool to populate
     /// it.
@@ -59,15 +60,7 @@ impl TryFrom<&MintConfigTxFile> for MintConfigTxPrefix {
     type Error = MintConfigTxFileError;
 
     fn try_from(src: &MintConfigTxFile) -> Result<Self, Self::Error> {
-        let nonce = src
-            .nonce
-            .as_ref()
-            .ok_or(MintConfigTxFileError::MissingNonce)?
-            .clone();
-
-        let tombstone_block = src
-            .tombstone_block
-            .ok_or(MintConfigTxFileError::MissingTombstoneBlock)?;
+        let tombstone_block = src.tombstone_block.unwrap_or_default();
 
         let configs = src
             .configs
@@ -87,7 +80,7 @@ impl TryFrom<&MintConfigTxFile> for MintConfigTxPrefix {
         Ok(Self {
             token_id: *src.token_id,
             configs,
-            nonce,
+            nonce: src.nonce.clone(),
             tombstone_block,
             total_mint_limit: src.total_mint_limit,
         })
@@ -97,12 +90,6 @@ impl TryFrom<&MintConfigTxFile> for MintConfigTxPrefix {
 /// Error data type
 #[derive(Debug, Display)]
 pub enum MintConfigTxFileError {
-    /// Missing nonce
-    MissingNonce,
-
-    /// Missing tombstone block
-    MissingTombstoneBlock,
-
     /// IO error: {0}
     Io(IoError),
 
