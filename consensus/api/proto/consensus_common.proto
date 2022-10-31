@@ -98,6 +98,7 @@ enum ProposeTxResult {
     InputRuleTxOutConversion = 52;
     InputRuleAmount = 53;
     LedgerTxOutIndexOutOfBounds = 54;
+    FeeMapDigestMismatch = 55;
 }
 
 /// Response from TxPropose RPC call.

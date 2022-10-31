@@ -600,6 +600,18 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Try and deserialize.
         let tx: Tx = mc_util_serial::decode(&tx_bytes)?;
 
+        // Verify fee map digest if it is present.
+        if !tx.fee_map_digest.is_empty()
+            && tx.fee_map_digest[..]
+                != self
+                    .blockchain_config
+                    .get()
+                    .ok_or(Error::NotInitialized)?
+                    .canonical_fee_map_digest()[..]
+        {
+            return Err(Error::FeeMapDigestMismatch);
+        }
+
         // Convert to TxContext
         let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
             let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
