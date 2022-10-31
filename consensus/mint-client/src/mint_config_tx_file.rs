@@ -15,11 +15,6 @@ pub struct MintConfig {
     /// time it is active.
     pub mint_limit: u64,
 
-    /// Signer identities - this allows the configuration to contain a human
-    /// readable mapping of names to signer identities.
-    #[serde(default)]
-    pub signer_identities: SignerIdentityMap,
-
     /// Governors - the set of keys that can sign mint transactions.
     pub minters: SignerIdentity,
 }
@@ -46,6 +41,12 @@ pub struct MintConfigTxFile {
     /// The maximal amount that can be minted by configurations specified in
     /// this tx. This amount is shared amongst all configs.
     pub total_mint_limit: u64,
+
+    /// Signer identities - this allows the configuration to contain a human
+    /// readable mapping of names to signer identities. These are shared amongst
+    /// all MintConfigs.
+    #[serde(default)]
+    pub signer_identities: SignerIdentityMap,
 }
 
 impl MintConfigTxFile {
@@ -66,9 +67,7 @@ impl TryFrom<&MintConfigTxFile> for MintConfigTxPrefix {
             .configs
             .iter()
             .map(|config| {
-                let signer_set = config
-                    .minters
-                    .try_into_signer_set(&config.signer_identities)?;
+                let signer_set = config.minters.try_into_signer_set(&src.signer_identities)?;
                 Ok(mc_transaction_core::mint::MintConfig {
                     token_id: *src.token_id,
                     signer_set,
