@@ -128,5 +128,5 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
     msg.set_data(tx_ciphertext);
 
     let result = enclave.client_tx_propose(msg.into());
-    assert!(result.is_err(), "unexpected success with bad fee value");
+    assert!(result.is_err(), "unexpected success with bad serialized Tx");
 }
