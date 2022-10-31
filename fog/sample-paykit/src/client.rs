@@ -330,7 +330,7 @@ impl Client {
             .tx_data
             .get_transaction_inputs(required_input_amount, TARGET_NUM_INPUTS)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
+        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, None, rng)?;
 
         let tombstone_block = self.compute_tombstone_block()?;
 
@@ -384,7 +384,7 @@ impl Client {
         // Only one input can be used, otherwise defragmentation is required
         let inputs = self.tx_data.get_transaction_inputs(offered, 1)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
+        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, None, rng)?;
 
         assert_eq!(inputs.len(), 1);
         assert_eq!(rings.len(), 1);
@@ -585,6 +585,7 @@ impl Client {
 
         let sci_token_id = TokenId::from(sci.pseudo_output_amount.token_id);
         let sci_value = sci.pseudo_output_amount.value;
+        let sci_tx_out_global_indices = sci.tx_out_global_indices.clone();
 
         // Now we have to case out on the partial-fill vs. non-partial fill flow
         if let Some(fill_amount) = fill_amount {
@@ -683,7 +684,9 @@ impl Client {
                 .sum();
 
             let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-            let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
+            // Pass the sci.tx_out_global_indices as indices that we must avoid selecting
+            let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> =
+                self.get_rings(&inputs, Some(&sci_tx_out_global_indices), rng)?;
 
             // Add the inputs we selected for this token id
             add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, &self.account_key)?;
@@ -783,40 +786,47 @@ impl Client {
     /// true input, but that is not implemented yet.
     ///
     /// # Arguments
-    /// *`num_rings` - The number of rings of TxOuts to request.
+    /// * true_inputs: The true inputs and membership proofs for these
+    /// * avoid_indices: Indices which are not allowed to be used (if any)
+    /// * rng: randomness
     ///
     /// # Returns
     /// Returns a collection of "rings", where each "ring" contains
-    /// self.ring_size elements.
+    /// self.ring_size elements, consisting of a TxOut and its membership proof
     fn get_rings<T: RngCore + CryptoRng>(
         &mut self,
         true_inputs: &[(OwnedTxOut, TxOutMembershipProof)],
+        avoid_indices: Option<&[u64]>,
         rng: &mut T,
     ) -> Result<Vec<Vec<(TxOut, TxOutMembershipProof)>>> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_rings");
 
-        let true_input_indices: HashSet<u64> = true_inputs
+        let mut all_avoid_indices: HashSet<u64> = true_inputs
             .iter()
             .map(|input| input.0.global_index)
             .collect();
+
+        for idx in avoid_indices.unwrap_or_default().iter() {
+            all_avoid_indices.insert(*idx);
+        }
 
         let num_rings = true_inputs.len();
         let num_requested = num_rings * self.ring_size;
         let sample_limit = self.tx_data.get_global_txo_count() as usize;
 
         // Randomly sample `num_requested` TxOuts, without replacement, not using
-        // true_inputs
-        if sample_limit < num_requested + true_inputs.len() {
+        // any of the indices we must avoid
+        if sample_limit < num_requested + all_avoid_indices.len() {
             return Err(Error::InsufficientTxOutsInBlockchain(
                 sample_limit,
-                num_requested + true_inputs.len(),
+                num_requested + all_avoid_indices.len(),
             ));
         }
 
         let mut sampled_indices: HashSet<u64> = HashSet::default();
         while sampled_indices.len() < num_requested {
             let index = rng.gen_range(0..sample_limit) as u64;
-            if !true_input_indices.contains(&index) {
+            if !all_avoid_indices.contains(&index) {
                 sampled_indices.insert(index);
             }
         }
