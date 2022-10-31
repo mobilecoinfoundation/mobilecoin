@@ -826,7 +826,7 @@ impl Client {
         let mut sampled_indices: HashSet<u64> = HashSet::default();
         while sampled_indices.len() < num_requested {
             let index = rng.gen_range(0..sample_limit) as u64;
-            if !all_avoid_indices.contains(&index) {
+            if !all_avoid_indices.contains(&index) && !sampled_indices.contains(index) {
                 sampled_indices.insert(index);
             }
         }
