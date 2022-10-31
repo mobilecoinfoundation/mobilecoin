@@ -29,3 +29,18 @@ mc-util-build-sgx = { path = "../../util/build/sgx" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"
+
+[dev-dependencies]
+mc-attest-ake = { path = "../../attest/ake" }
+mc-attest-api = { path = "../../attest/api" }
+mc-attest-net = { path = "../../attest/net" }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-fog-test-infra = { path = "../../fog/test_infra" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-util-metrics = { path = "../../util/metrics" }
+
+aes-gcm = "0.9.4"
+lazy_static = "1"
+sha2 = "0.10"
