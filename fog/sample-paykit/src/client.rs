@@ -13,7 +13,8 @@ use mc_attest_verifier::Verifier;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
-    BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
+    BlockchainConnection, Connection, Error as ConnectionError, HardcodedCredentialsProvider,
+    ProposeTxResult, ThickClient, UserTxConnection,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -34,7 +35,7 @@ use mc_transaction_builder::{
 };
 use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, TokenId,
+    Amount, FeeMap, TokenId,
 };
 use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
@@ -63,6 +64,7 @@ pub struct Client {
     ring_size: usize,
     account_key: AccountKey,
     tx_data: CachedTxData,
+    block_info_cache: Option<BlockInfo>,
 
     /// Number of blocks for which to try and get the new transaction to be
     /// included in the ledger. This value is used to calculate the
@@ -102,6 +104,7 @@ impl Client {
             ring_size,
             account_key,
             tx_data,
+            block_info_cache: None,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
             logger,
         }
@@ -184,7 +187,35 @@ impl Client {
     /// transaction.
     pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
         let start_time = std::time::SystemTime::now();
-        let block_count = self.consensus_service_conn.propose_tx(transaction)?;
+
+        let block_count = self
+            .consensus_service_conn
+            .propose_tx(transaction)
+            .map_err(|err| {
+                if let ConnectionError::TransactionValidation(
+                    ProposeTxResult::FeeMapDigestMismatch,
+                    _,
+                ) = err
+                {
+                    // Clear block_info cache so that fee map info will be regenerated
+                    // next time.
+                    //
+                    // NOTE: In a real client, what you should actually do is check
+                    // with several nodes what the fee map is supposed to be,
+                    // to defend against the TOB-MCCT-5 attack.
+                    // If you get differing answers then you know the network is in
+                    // a bad state. Nodes cannot peer if they do not agree on the
+                    // fee map, so this means an attack or some kind of fork is
+                    // happening.
+                    //
+                    // The sample paykit is just test code, and it only has one url
+                    // for a consensus node in this revision, so we don't do that
+                    // here, we just reset the fee map.
+                    self.block_info_cache = None;
+                }
+
+                err
+            })?;
 
         let tracer = tracer!();
         let mut span = block_span_builder(&tracer, "send_transaction", block_count)
@@ -336,6 +367,9 @@ impl Client {
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
+        let last_block_info = self.get_last_block_info(true)?;
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
+
         // Make fog resolver
         let fog_uris = (&[&self.account_key.change_subaddress(), target_address])
             .iter()
@@ -351,6 +385,7 @@ impl Client {
 
         build_transaction_helper(
             block_version,
+            fee_map,
             inputs,
             rings,
             amount,
@@ -572,6 +607,9 @@ impl Client {
             EmptyMemoBuilder::default(),
         )?;
         tx_builder.set_tombstone_block(tombstone_block);
+
+        let last_block_info = self.get_last_block_info(true)?;
+        tx_builder.set_fee_map(FeeMap::try_from(last_block_info.minimum_fees)?);
 
         // Aggregate total required outlay due to the SCI
         // (Note: In the partial fill case, there will be more outlays later)
@@ -886,20 +924,58 @@ impl Client {
     }
 
     /// Retrieve the current last block info structure from consensus service.
+    ///
     /// This includes fee data and last block index, and the configured block
     /// version
-    pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
+    ///
+    /// Arguments:
+    /// * allow_cached If true, then we may skip a network call and use cached
+    ///   value.
+    pub fn get_last_block_info(&mut self, allow_cached: bool) -> Result<BlockInfo> {
+        // Clear cache if we aren't allowed to use it, it will be repopulated in this
+        // call.
+        if !allow_cached {
+            self.block_info_cache = None;
+        }
+        // Check if we know our cache is stale for other reasons, like if fog responses
+        // told us the block version has increased.
+        if let Some(block_info_cache) = self.block_info_cache.as_ref() {
+            if block_info_cache.network_block_version != self.tx_data.get_latest_block_version() {
+                self.block_info_cache = None;
+            }
+        }
+
+        if self.block_info_cache.is_none() {
+            let block_info = self.consensus_service_conn.fetch_block_info()?;
+            // Opportunistically update our cached block version value
+            self.tx_data
+                .notify_block_version(block_info.network_block_version);
+            self.block_info_cache = Some(block_info);
+        }
+
         let block_info = self.consensus_service_conn.fetch_block_info()?;
-        // Opportunistically update our cached block version value
-        self.tx_data
-            .notify_block_version(block_info.network_block_version);
         Ok(block_info)
+    }
+
+    /// Get the currently cached fee-map
+    ///
+    /// If the cache is empty, then we get fresh data from consensus.
+    pub fn get_fee_map(&mut self, allow_cached: bool) -> Result<FeeMap> {
+        let block_info = self.get_last_block_info(allow_cached)?;
+        let fee_map = FeeMap::try_from(block_info.minimum_fees)?;
+        Ok(fee_map)
     }
 
     /// Retrieve the currently configured minimum fee for a token id from the
     /// consensus service
-    pub fn get_minimum_fee(&mut self, token_id: TokenId) -> Result<Option<u64>> {
-        Ok(self.get_last_block_info()?.minimum_fee_or_none(&token_id))
+    pub fn get_minimum_fee(
+        &mut self,
+        token_id: TokenId,
+        allow_cached: bool,
+    ) -> Result<Option<u64>> {
+        Ok(self
+            .get_last_block_info(allow_cached)?
+            .minimum_fee_or_none(&token_id))
     }
 
     /// Get the public b58 address for this client
@@ -930,6 +1006,7 @@ impl Client {
 /// * `rng` -
 fn build_transaction_helper<T: RngCore + CryptoRng>(
     block_version: BlockVersion,
+    fee_map: FeeMap,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
     amount: Amount,
@@ -966,6 +1043,8 @@ fn build_transaction_helper<T: RngCore + CryptoRng>(
             memo_builder,
         )?
     };
+
+    tx_builder.set_fee_map(fee_map);
 
     // Check amount found, calculate change
     let input_amount = inputs
@@ -1207,6 +1286,7 @@ mod test_build_transaction_helper {
             let fake_acct_resolver = FakeAcctResolver {};
             let tx = build_transaction_helper(
                 block_version,
+                FeeMap::default(),
                 inputs,
                 rings_and_membership_proofs,
                 amount_to_send,
