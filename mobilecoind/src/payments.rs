@@ -844,6 +844,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ///   default one (EmptyMemoBuilder).
     /// * `rng` - randomness
     /// * `logger` - Logger
+    #[allow(clippy::too_many_arguments)]
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
