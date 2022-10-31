@@ -147,31 +147,6 @@ fn get_majority_block_info(block_infos: &[BlockInfo]) -> Option<BlockInfo> {
         .map(|(block_info, _count)| block_info)
 }
 
-fn get_network_block_version(block_infos: &[BlockInfo]) -> u32 {
-    block_infos
-        .iter()
-        .map(|block_info| block_info.network_block_version)
-        .max()
-        .unwrap_or(0)
-}
-
-fn get_fee(block_infos: &[BlockInfo], token_id: TokenId, opt_fee: u64) -> u64 {
-    if opt_fee > 0 {
-        opt_fee
-    } else if block_infos.is_empty() {
-        FALLBACK_FEE
-    } else {
-        // iterate an owned list of connections in parallel, get the block info for
-        // each, and extract the fee. If no fees are returned, use the hard-coded
-        // minimum.
-        block_infos
-            .iter()
-            .filter_map(|block_info| block_info.minimum_fee_or_none(&token_id))
-            .max()
-            .unwrap_or(FALLBACK_FEE)
-    }
-}
-
 impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver>
     TransactionsManager<T, FPR>
 {
@@ -200,7 +175,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &self,
         token_id: TokenId,
         opt_fee: u64,
-        block_infos: &[BlockInfo],
+        last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless opt_fee is non-zero
@@ -208,10 +183,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
         } else {
-            let fee = get_fee(block_infos, token_id, opt_fee);
+            let fee = last_block_info
+                .minimum_fee_or_none(&token_id)
+                .unwrap_or(FALLBACK_FEE);
             let block_version = max(
                 candidate_block_version,
-                get_network_block_version(block_infos),
+                last_block_info.network_block_version,
             );
             (fee, block_version)
         })
@@ -271,15 +248,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             total_value
         );
 
-        // Figure out the minimum fee map.
+        // Figure out the block version, fee and minimum fee map.
         let last_block_info = get_majority_block_info(last_block_infos)
             .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless opt_fee is non-zero)
         let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
+            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
+
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
         // Confirm that we understand this block version
         let block_version =
@@ -383,15 +359,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
-        // Figure out the minimum fee map.
+        // Figure out the block version, fee and minimum fee map.
         let last_block_info = get_majority_block_info(last_block_infos)
             .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless fee arg is non-zero)
         let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
+            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
+
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
         // Make sure we understand this block version
         let block_version =
@@ -522,15 +497,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
-        // Figure out the minimum fee map.
+        // Figure out the block version, fee and minimum fee map.
         let last_block_info = get_majority_block_info(last_block_infos)
             .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless fee arg is non-zero)
         let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
+            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
+
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
 
         // Make sure we understand this block version
         let block_version =
