@@ -2,7 +2,6 @@
 
 //! Enclave API Errors
 
-use crate::FeeMapError;
 use alloc::string::String;
 use displaydoc::Display;
 use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
@@ -10,7 +9,9 @@ use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
-use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
+use mc_transaction_core::{
+    mint::MintValidationError, validation::TransactionValidationError, FeeMapError,
+};
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,

@@ -2,10 +2,10 @@
 
 //! A helper object for maintaining a map of token id -> minimum fee.
 
+use crate::{tokens::Mob, Token, TokenId};
 use alloc::collections::BTreeMap;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
-use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
 /// The log base 2 of the smallest allowed minimum fee, in the smallest

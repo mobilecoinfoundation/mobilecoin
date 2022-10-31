@@ -3,9 +3,9 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
-    FeeMapError, FeePublicKey, FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey,
+    FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 
 use mc_attest_core::{

@@ -48,7 +48,7 @@ use mc_common::{
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
     FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -68,7 +68,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Token, TokenId,
+    Amount, Token, TokenId, SMALLEST_MINIMUM_FEE_LOG2,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -1028,7 +1028,7 @@ mod tests {
     use super::*;
     use alloc::vec;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
-    use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
+    use mc_consensus_enclave_api::{GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::{
@@ -1039,7 +1039,7 @@ mod tests {
         tokens::Mob,
         tx::TxOutMembershipHash,
         validation::{validate_tx_out, TransactionValidationError},
-        BlockVersion, Token,
+        BlockVersion, FeeMap, Token,
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,

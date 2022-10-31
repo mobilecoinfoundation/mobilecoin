@@ -4,10 +4,10 @@
 
 use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsVerifier};
+use mc_consensus_enclave_api::{GovernorsMap, GovernorsVerifier};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
-use mc_transaction_core::{tokens::Mob, Token, TokenId};
+use mc_transaction_core::{tokens::Mob, FeeMap, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, ops::Range, path::Path};
 

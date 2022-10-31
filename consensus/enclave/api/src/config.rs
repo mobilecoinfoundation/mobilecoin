@@ -1,9 +1,9 @@
-use crate::{Error, FeeMap, GovernorsMap, GovernorsVerifier};
+use crate::{Error, GovernorsMap, GovernorsVerifier};
 use alloc::{format, string::String};
 use mc_common::ResponderId;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_transaction_core::BlockVersion;
+use mc_transaction_core::{BlockVersion, FeeMap};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for the enclave which is used to help determine which
@@ -108,11 +108,11 @@ impl BlockchainConfigWithDigest {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{governors_sig::Signer, FeeMapError};
+    use crate::governors_sig::Signer;
     use alloc::{string::ToString, vec};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Ed25519Public};
     use mc_crypto_multisig::SignerSet;
-    use mc_transaction_core::{tokens::Mob, Token, TokenId};
+    use mc_transaction_core::{tokens::Mob, FeeMapError, Token, TokenId};
 
     fn sign_governors_map(map: &GovernorsMap) -> (Option<Ed25519Signature>, Ed25519Public) {
         let keypair = Ed25519Pair::from(Ed25519Private::try_from(&[1; 32][..]).unwrap());
