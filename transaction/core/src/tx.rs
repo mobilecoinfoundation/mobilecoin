@@ -112,6 +112,14 @@ pub struct Tx {
     /// The transaction signature.
     #[prost(message, required, tag = "2")]
     pub signature: SignatureRctBulletproofs,
+
+    /// Client's belief about the minimum fee map, expressed as a merlin digest.
+    ///
+    /// The enclave must reject the proposal if this doesn't match the enclave's
+    /// belief, to protect the client from information disclosure attacks.
+    /// (This is TOB-MCCT-5)
+    #[prost(bytes, tag = "3")]
+    pub fee_map_digest: Vec<u8>,
 }
 
 impl fmt::Display for Tx {
@@ -700,7 +708,11 @@ mod tests {
             // TODO: use a meaningful signature.
             let signature = SignatureRctBulletproofs::default();
 
-            let tx = Tx { prefix, signature };
+            let tx = Tx {
+                prefix,
+                signature,
+                fee_map_digest: vec![],
+            };
 
             let recovered_tx: Tx = Tx::decode(&tx.encode_to_vec()[..]).unwrap();
             assert_eq!(tx, recovered_tx);
