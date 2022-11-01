@@ -217,6 +217,9 @@ pub struct TxOutSearchResult {
     /// The ciphertext payload
     #[prost(bytes, tag = "3")]
     pub ciphertext: Vec<u8>,
+    /// The payload length
+    #[prost(fixed32, tag = "4")]
+    pub payload_length: u32,
 }
 
 /// An enum capturing the Oneof in the proto file around masked token id bytes

@@ -466,13 +466,16 @@ fn assert_e_tx_out_records_sanity(
             search_key: record.search_key.clone(),
             result_code: TxOutSearchResultCode::Found as u32,
             ciphertext: record.payload.clone(),
+            payload_length: record.payload.len() as u32,
         });
     }
     for i in 0..3 {
+        let payload_length = 64;
         expected_results.push(TxOutSearchResult {
             search_key: vec![i + 1; 16], // Search key if all zeros is invalid.
             result_code: TxOutSearchResultCode::NotFound as u32,
-            ciphertext: vec![0; 64],
+            ciphertext: vec![0; payload_length],
+            payload_length: payload_length as u32,
         });
     }
 
