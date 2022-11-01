@@ -348,7 +348,7 @@ pub enum Commands {
 
         /// Fog ingest enclave CSS file (needed in order to enable minting
         /// to fog recipients).
-        #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
+        #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS", requires = "chain_id")]
         fog_ingest_enclave_css: Option<Signature>,
 
         /// The chain id of the network we expect to connect to. This is only
