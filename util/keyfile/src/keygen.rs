@@ -10,7 +10,7 @@ use crate::{
 };
 use bip39::{Language, Mnemonic};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use mc_account_keys_slip10::Slip10KeyGenerator;
+use mc_core::slip10::Slip10KeyGenerator;
 use rand_core::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
@@ -35,7 +35,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
         (None, None) => AccountKey::try_from(slip10key)
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?,
         (Some(fog_report_url), Some(fog_authority_spki)) => {
-            slip10key.try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)?
+            AccountKey::from(slip10key).with_fog(fog_report_url, fog_report_id, fog_authority_spki)
         }
         _ => return Err(Error::MissingFogDetails),
     };

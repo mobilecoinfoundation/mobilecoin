@@ -716,6 +716,7 @@ dependencies = [
  "displaydoc",
  "hkdf",
  "mc-account-keys-types",
+ "mc-core",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -866,6 +867,31 @@ dependencies = [
  "sha3",
  "siphasher",
  "slog",
+]
+
+[[package]]
+name = "mc-core"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "glob",
+ "hkdf",
+ "mc-core-types",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "sha2",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-core-types"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+ "mc-crypto-keys",
+ "zeroize",
 ]
 
 [[package]]

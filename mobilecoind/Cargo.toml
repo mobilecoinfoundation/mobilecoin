@@ -15,7 +15,6 @@ bypass-ip-check = []
 
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
-mc-account-keys-slip10 = { path = "../account-keys/slip10" }
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
@@ -26,6 +25,7 @@ mc-consensus-api = { path = "../consensus/api" }
 mc-consensus-enclave-api = { path = "../consensus/enclave/api" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../consensus/scp" }
+mc-core = { path = "../core" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }
 mc-crypto-hashes = { path = "../crypto/hashes" }
 mc-crypto-keys = { path = "../crypto/keys" }

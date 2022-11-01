@@ -16,12 +16,13 @@ zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "types" }
+mc-core = { path = "../core", default_features = false }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-hashes = { path = "../crypto/hashes" }
-mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = ["prost"] }
 mc-fog-sig-authority = { path = "../fog/sig/authority" }
 mc-util-from-random = { path = "../util/from-random" }
-mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false, features = ["alloc"] }
+mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false, features = ["alloc", "prost"] }
 mc-util-serial = { path = "../util/serial" }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
