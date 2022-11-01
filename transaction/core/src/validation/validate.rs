@@ -302,13 +302,10 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
         .cloned()
         .collect::<Vec<_>>();
 
-    let tx_prefix_hash = tx.prefix.hash();
-    let message = tx_prefix_hash.as_bytes();
-
     tx.signature
         .verify(
             block_version,
-            message,
+            &tx.prefix,
             &rings,
             &output_commitments,
             Amount::new(tx.prefix.fee, TokenId::from(tx.prefix.fee_token_id)),

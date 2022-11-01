@@ -149,6 +149,9 @@ impl Tx {
 
 /// TxPrefix is the Tx struct without the signature.  It is used to
 /// calculate the prefix hash for signing and verifying.
+///
+/// Note: If you add something here, consider if it should be added to the
+/// TxSummary also for hardware wallet visibility.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
 pub struct TxPrefix {
     /// List of inputs to the transaction.
