@@ -44,7 +44,7 @@ pub fn validate_mint_tx(
 
     validate_against_mint_config(tx, mint_config)?;
 
-    validate_e_fog_hint(block_version, &tx)?;
+    validate_e_fog_hint(block_version, tx)?;
 
     Ok(())
 }
@@ -100,7 +100,10 @@ fn validate_signature(tx: &MintTx, signer_set: &SignerSet<Ed25519Public>) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{constants::NONCE_LENGTH, MintTxPrefix};
+    use crate::{
+        encrypted_fog_hint::EncryptedFogHint,
+        mint::{constants::NONCE_LENGTH, MintTxPrefix},
+    };
     use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -402,17 +405,20 @@ mod tests {
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-        let tx = MintTx { prefix, signature };
+        let tx = MintTx {
+            prefix: prefix.clone(),
+            signature,
+        };
 
-        assert_eq!(validate_e_fog_hint(BlockVersoin::TWO, &tx), Ok(()));
+        assert_eq!(validate_e_fog_hint(BlockVersion::TWO, &tx), Ok(()));
 
-        prefix.e_fog_hint = EncryptedFogHint::default();
+        prefix.e_fog_hint = Some(EncryptedFogHint::default());
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
         assert_eq!(
-            validate_e_fog_hint(BlockVersoin::TWO, &tx),
+            validate_e_fog_hint(BlockVersion::TWO, &tx),
             Err(Error::MintingToFogNotSupported)
         );
     }
@@ -434,15 +440,18 @@ mod tests {
         };
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-        let tx = MintTx { prefix, signature };
+        let tx = MintTx {
+            prefix: prefix.clone(),
+            signature,
+        };
 
-        assert_eq!(validate_e_fog_hint(BlockVersoin::THREE, &tx), Ok(()));
+        assert_eq!(validate_e_fog_hint(BlockVersion::THREE, &tx), Ok(()));
 
-        prefix.e_fog_hint = EncryptedFogHint::default();
+        prefix.e_fog_hint = Some(EncryptedFogHint::default());
         let message = prefix.hash();
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintTx { prefix, signature };
 
-        assert_eq!(validate_e_fog_hint(BlockVersoin::THREE, &tx), Ok(()));
+        assert_eq!(validate_e_fog_hint(BlockVersion::THREE, &tx), Ok(()));
     }
 }
