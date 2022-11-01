@@ -25,13 +25,14 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = Config::parse();
 
+    let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+
     match config.command {
         Commands::GenerateAndSubmitMintConfigTx {
             node,
             params,
             chain_id,
         } => {
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
@@ -114,7 +115,6 @@ fn main() {
                 signature: MultiSig::new(signatures),
             };
 
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch);
 
@@ -138,7 +138,6 @@ fn main() {
             chain_id,
             fog_ingest_enclave_css,
         } => {
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch =
                 ChannelBuilder::default_channel_builder(env.clone()).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
@@ -181,15 +180,11 @@ fn main() {
             fog_ingest_enclave_css,
             params,
         } => {
-            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| {
-                let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
-
-                FogBits {
-                    chain_id: chain_id.expect("Chain id should be passed when fog is used"),
-                    css_signature: signature,
-                    grpc_env: env,
-                    logger: logger.clone(),
-                }
+            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogBits {
+                chain_id: chain_id.expect("Chain id should be passed when fog is used"),
+                css_signature: signature,
+                grpc_env: env,
+                logger: logger.clone(),
             });
 
             let tx = params
@@ -253,7 +248,6 @@ fn main() {
                 signature: MultiSig::new(signatures),
             };
 
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch);
 
