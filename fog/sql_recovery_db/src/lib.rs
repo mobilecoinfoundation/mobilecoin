@@ -913,13 +913,19 @@ impl SqlRecoveryDb {
                     search_key: search_key.clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: payload.clone(),
+                    payload_length: payload.len() as u32,
                 },
 
-                None => TxOutSearchResult {
-                    search_key: search_key.clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: Default::default(),
-                },
+                None => {
+                    let ciphertext: Vec<u8> = Default::default();
+                    let payload_length = ciphertext.len() as u32;
+                    TxOutSearchResult {
+                        search_key: search_key.clone(),
+                        result_code: TxOutSearchResultCode::NotFound as u32,
+                        ciphertext,
+                        payload_length,
+                    }
+                }
             });
         }
 
@@ -2240,7 +2246,8 @@ mod tests {
                     .map(|search_key| TxOutSearchResult {
                         search_key: search_key.clone(),
                         result_code: TxOutSearchResultCode::NotFound as u32,
-                        ciphertext: vec![]
+                        ciphertext: vec![],
+                        payload_length: 0,
                     })
                     .collect::<Vec<_>>()
             );
@@ -2261,27 +2268,32 @@ mod tests {
                 TxOutSearchResult {
                     search_key: test_case[0].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[1].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records1[0].payload.clone(),
+                    payload_length: records1[0].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[2].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records1[5].payload.clone(),
+                    payload_length: records1[5].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[3].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records2[3].payload.clone(),
+                    payload_length: records2[3].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[4].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
             ]
         );
@@ -2293,27 +2305,32 @@ mod tests {
                 TxOutSearchResult {
                     search_key: test_case[0].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[1].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records1[0].payload.clone(),
+                    payload_length: records1[0].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[2].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records1[5].payload.clone(),
+                    payload_length: records1[5].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[3].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records2[3].payload.clone(),
+                    payload_length: records2[3].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[4].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0
                 },
             ]
         );
@@ -2327,27 +2344,32 @@ mod tests {
                 TxOutSearchResult {
                     search_key: test_case[0].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[1].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[2].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[3].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[4].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
             ]
         );
@@ -2359,27 +2381,32 @@ mod tests {
                 TxOutSearchResult {
                     search_key: test_case[0].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[1].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[2].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
                 TxOutSearchResult {
                     search_key: test_case[3].clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext: records2[3].payload.clone(),
+                    payload_length: records2[3].payload.len() as u32,
                 },
                 TxOutSearchResult {
                     search_key: test_case[4].clone(),
                     result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
+                    ciphertext: vec![],
+                    payload_length: 0,
                 },
             ]
         );
