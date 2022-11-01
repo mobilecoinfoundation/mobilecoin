@@ -4,9 +4,11 @@ use alloc::vec::Vec;
 use mc_crypto_ring_signature_signer::RingSigner;
 use mc_transaction_core::{
     ring_ct::{
-        Error as RingCtError, InputRing, OutputSecret, SignatureRctBulletproofs, SigningData,
+        Error as RingCtError, ExtendedMessageDigest, InputRing, OutputSecret,
+        SignatureRctBulletproofs, SigningData,
     },
     tx::{Tx, TxPrefix},
+    TxSummary,
 };
 use mc_transaction_types::{Amount, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};
@@ -43,10 +45,9 @@ impl UnsignedTx {
         rng: &mut RNG,
     ) -> Result<Tx, RingCtError> {
         let prefix = self.tx_prefix.clone();
-        let message = prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             self.block_version,
-            &message,
+            &prefix,
             self.rings.as_slice(),
             self.output_secrets.as_slice(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
@@ -57,19 +58,19 @@ impl UnsignedTx {
         Ok(Tx { prefix, signature })
     }
 
-    /// Get extraneous signing data
+    /// Get prepared (but unsigned) ringct bulletproofs which can be signed
+    /// later. Also gets the TxSummary and related digests.
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<SigningData, RingCtError> {
-        let message = self.tx_prefix.hash().0;
+    ) -> Result<(SigningData, TxSummary, ExtendedMessageDigest), RingCtError> {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        SigningData::new(
+        SigningData::new_with_summary(
             self.block_version,
-            &message,
+            &self.tx_prefix,
             &self.rings,
             &self.output_secrets,
             fee_amount,

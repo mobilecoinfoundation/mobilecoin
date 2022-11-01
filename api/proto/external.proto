@@ -612,9 +612,16 @@ message UnsignedTx {
 /// A structure that contains all the data required to sign a transaction that
 /// does not rely on having the spend private key.
 message SigningData {
-    /// The message extended with the range proof and pseudo_output_commitments.
-    /// This ensures that they are signed by each RingMLSAG.
-    bytes extended_message_digest = 1;
+    /// The bytes actually signed by MLSAG signatures.
+    /// This is different depending on what block version we are in.
+    /// * In the oldest block versions, this is a large number of bytes called the
+    ///   "extended message", which includes a tx prefix as well as the pseudo output commitments.
+    /// * In block version 2, this is instead 32 bytes called the "extended message digest".
+    /// * In block version 3, this is instead 32 bytes called the "extended-message-and-tx-summary digest".
+    ///
+    /// Note that SCI's are the exception to this, they sign the digest based on their TxIn instead,
+    /// see MCIP #31 for more on that. Everything that isn't an SCI signs this.
+    bytes mlsag_signing_digest = 1;
 
     /// The actual pseudo output commitments use the blindings from
     /// `pseudo_output_blinding` and not the original true input.

@@ -16,7 +16,7 @@ use curve25519_dalek::{
     traits::Identity,
 };
 use mc_common::HashSet;
-use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
+use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
@@ -29,10 +29,10 @@ use zeroize::Zeroize;
 
 use crate::{
     constants::FEE_BLINDING,
-    domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_ct::{Error, GeneratorCache},
-    Amount, BlockVersion,
+    ring_ct::{compute_mlsag_signing_digest, Error, ExtendedMessageDigest, GeneratorCache},
+    tx::TxPrefix,
+    Amount, BlockVersion, TxSummary,
 };
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
@@ -104,8 +104,19 @@ pub struct SignedInputRing {
 /// key and uses that to generate a fully signed transaction.
 #[derive(Clone, Debug, Deserialize, Digestible, Eq, PartialEq, Serialize)]
 pub struct SigningData {
-    /// Transaction extended message.
-    pub extended_message_digest: Vec<u8>,
+    /// The bytes actually signed by MLSAG signatures.
+    /// This is different depending on what block version we are in.
+    /// * In the oldest block versions, this is a large number of bytes called
+    ///   the "extended message".
+    /// * In block version 2, this is instead 32 bytes called the "extended
+    ///   message digest".
+    /// * In block version 3, this is instead 32 bytes called the
+    ///   "extended-message-and-tx-summary digest".
+    ///
+    /// Note that SCI's are the exception to this, they sign the digest based on
+    /// their TxIn instead, see MCIP #31 for more on that. Everything that
+    /// isn't an SCI signs this.
+    pub mlsag_signing_digest: Vec<u8>,
 
     /// Pseudo output blindings.
     pub pseudo_output_blindings: Vec<Scalar>,
@@ -139,7 +150,9 @@ impl SigningData {
     /// # Arguments
     /// * `block_version` - Block version of transaction being signed. This may
     ///   influence details of the signature.
-    /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
+    /// * `tx_prefix` - This is used to generate the "message" as
+    ///   tx_prefix.hash(), and to generate the TxSummary, which also becomes
+    ///   part of the Digest which MLSAGs sign.
     /// * `rings` - Input rings, each one describing a single input to the
     ///   transaction.
     /// * `output_secrets` - Outputs secret (amount and commitment) for the
@@ -148,15 +161,63 @@ impl SigningData {
     /// * `check_value_is_preserved` - If true, check that the value of inputs
     ///   equals value of outputs.
     /// * `rng` - randomness
+    ///
+    /// Returns:
+    /// * The SigningData
     pub fn new<CSPRNG: RngCore + CryptoRng>(
         block_version: BlockVersion,
-        message: &[u8; 32],
+        tx_prefix: &TxPrefix,
         rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
         check_value_is_preserved: bool,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
+        Ok(Self::new_with_summary(
+            block_version,
+            tx_prefix,
+            rings,
+            output_secrets,
+            fee,
+            check_value_is_preserved,
+            rng,
+        )?
+        .0)
+    }
+
+    /// Create a new [`SigningData`] instance, as well as TxSummary and extended
+    /// message digest.
+    ///
+    /// # Arguments
+    /// * `block_version` - Block version of transaction being signed. This may
+    ///   influence details of the signature.
+    /// * `tx_prefix` - This is used to generate the "message" as
+    ///   tx_prefix.hash(), and to generate the TxSummary, which also becomes
+    ///   part of the Digest which MLSAGs sign.
+    /// * `rings` - Input rings, each one describing a single input to the
+    ///   transaction.
+    /// * `output_secrets` - Outputs secret (amount and commitment) for the
+    ///   outputs we will be creating.
+    /// * `fee` - Value of the implicit fee output.
+    /// * `check_value_is_preserved` - If true, check that the value of inputs
+    ///   equals value of outputs.
+    /// * `rng` - randomness
+    ///
+    /// Returns:
+    /// * The SigningData
+    /// * The TxSummary
+    /// * The extended message digest
+    ///
+    /// (The latter two are MCIP #52 and only relevant on small HW wallets)
+    pub fn new_with_summary<CSPRNG: RngCore + CryptoRng>(
+        block_version: BlockVersion,
+        tx_prefix: &TxPrefix,
+        rings: &[InputRing],
+        output_secrets: &[OutputSecret],
+        fee: Amount,
+        check_value_is_preserved: bool,
+        rng: &mut CSPRNG,
+    ) -> Result<(Self, TxSummary, ExtendedMessageDigest), Error> {
         if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
             return Err(Error::TokenIdNotAllowed);
         }
@@ -229,11 +290,10 @@ impl SigningData {
         let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
 
         // Create Range proofs for outputs and pseudo-outputs.
-        let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
-            .iter()
-            .zip(pseudo_output_blindings.iter())
-            .map(|(ring, blinding)| (ring.amount().value, *blinding))
-            .collect();
+        let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> =
+            zip_exact(rings.iter(), pseudo_output_blindings.iter())?
+                .map(|(ring, blinding)| (ring.amount().value, *blinding))
+                .collect();
 
         // Create a pedersen generator cache
         let mut generator_cache = GeneratorCache::default();
@@ -353,15 +413,16 @@ impl SigningData {
             .map(|point| CompressedCommitment::from(&point.compress()))
             .collect();
 
-        // Extend the message with the range proof and pseudo_output_commitments.
-        // This ensures that they are signed by each RingMLSAG.
-        let extended_message_digest = compute_extended_message_either_version(
-            block_version,
-            message,
-            &pseudo_output_commitments,
-            &range_proof,
-            &range_proofs,
-        );
+        // Compute the mlsag_signing_digest in whatever way is appropriate for this
+        // block version.
+        let (mlsag_signing_digest, tx_summary, extended_message_digest) =
+            compute_mlsag_signing_digest(
+                block_version,
+                tx_prefix,
+                &pseudo_output_commitments,
+                &range_proof,
+                &range_proofs,
+            )?;
 
         let mut pseudo_output_token_ids: Vec<u64> =
             rings.iter().map(|ring| *ring.amount().token_id).collect();
@@ -380,15 +441,19 @@ impl SigningData {
             assert!(!range_proofs.is_empty());
         }
 
-        Ok(Self {
+        Ok((
+            Self {
+                mlsag_signing_digest: mlsag_signing_digest.0,
+                pseudo_output_blindings,
+                pseudo_output_commitments,
+                range_proof_bytes: range_proof,
+                range_proofs,
+                pseudo_output_token_ids,
+                output_token_ids,
+            },
+            tx_summary,
             extended_message_digest,
-            pseudo_output_blindings,
-            pseudo_output_commitments,
-            range_proof_bytes: range_proof,
-            range_proofs,
-            pseudo_output_token_ids,
-            output_token_ids,
-        })
+        ))
     }
 }
 
@@ -437,7 +502,7 @@ impl SignatureRctBulletproofs {
     ///
     /// # Arguments
     /// * `block_version` - This may influence details of the signature
-    /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
+    /// * `tx_prefix` - The TxPrefix to be signed
     /// * `rings` - One or more rings of one-time addresses and amount
     ///   commitments.
     /// * `real_input_indices` - The index of the real input in each ring.
@@ -449,7 +514,7 @@ impl SignatureRctBulletproofs {
     /// * `token id` - This determines the pedersen generator for commitments
     pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
-        message: &[u8; 32],
+        tx_prefix: &TxPrefix,
         input_rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
@@ -458,7 +523,7 @@ impl SignatureRctBulletproofs {
     ) -> Result<Self, Error> {
         sign_with_balance_check(
             block_version,
-            message,
+            tx_prefix,
             input_rings,
             output_secrets,
             fee,
@@ -472,7 +537,7 @@ impl SignatureRctBulletproofs {
     ///
     /// # Arguments
     /// * `block_version` - This may influence details of the signature
-    /// * `message` - The message which was signed
+    /// * `tx_prefix` - The TxPrefix which was signed over
     /// * `rings` - One or more rings which were signed to create this signature
     /// * `output_commitments` - Output amount commitments.
     /// * `fee` - Amount of the implicit fee output. commitment
@@ -480,7 +545,7 @@ impl SignatureRctBulletproofs {
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
         &self,
         block_version: BlockVersion,
-        message: &[u8; 32],
+        tx_prefix: &TxPrefix,
         rings: &[SignedInputRing],
         output_commitments: &[CompressedCommitment],
         fee: Amount,
@@ -702,13 +767,14 @@ impl SignatureRctBulletproofs {
         }
 
         // Extend the message with the range proof and pseudo_output_commitments.
-        let extended_message_digest = compute_extended_message_either_version(
-            block_version,
-            message,
-            &self.pseudo_output_commitments,
-            &self.range_proof_bytes,
-            &self.range_proofs,
-        );
+        let (mlsag_signing_digest, _tx_summary, _extended_message_digest) =
+            compute_mlsag_signing_digest(
+                block_version,
+                tx_prefix,
+                &self.pseudo_output_commitments,
+                &self.range_proof_bytes,
+                &self.range_proofs,
+            )?;
 
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
@@ -718,7 +784,7 @@ impl SignatureRctBulletproofs {
             let this_was_signed: &[u8] = if let Some(signed_digest) = ring.signed_digest.as_ref() {
                 &signed_digest[..]
             } else {
-                &extended_message_digest
+                &mlsag_signing_digest.0
             };
 
             let ring_signature = &self.ring_signatures[i];
@@ -753,7 +819,7 @@ impl SignatureRctBulletproofs {
 /// * `rng` - randomness
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     block_version: BlockVersion,
-    message: &[u8; 32],
+    tx_prefix: &TxPrefix,
     rings: &[InputRing],
     output_secrets: &[OutputSecret],
     fee: Amount,
@@ -762,7 +828,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
     let SigningData {
-        extended_message_digest,
+        mlsag_signing_digest,
         pseudo_output_blindings,
         pseudo_output_commitments,
         range_proofs,
@@ -772,7 +838,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         ..
     } = SigningData::new(
         block_version,
-        message,
+        tx_prefix,
         rings,
         output_secrets,
         fee,
@@ -789,7 +855,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
                     InputRing::Signable(ring) => {
-                        signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
+                        signer.sign(&mlsag_signing_digest, ring, pseudo_output_blinding, rng)?
                     }
                     InputRing::Presigned(ring) => ring.mlsag.clone(),
                 })
@@ -877,65 +943,6 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
         .collect())
 }
 
-/// Toggles between old-style and new-style extended message
-fn compute_extended_message_either_version(
-    block_version: BlockVersion,
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-    range_proofs: &[Vec<u8>],
-) -> Vec<u8> {
-    if block_version.mlsags_sign_extended_message_digest() {
-        // New-style extended message using merlin
-        digest_extended_message(
-            message,
-            pseudo_output_commitments,
-            range_proof_bytes,
-            range_proofs,
-        )
-        .to_vec()
-    } else {
-        // Old-style extended message
-        extend_message(message, pseudo_output_commitments, range_proof_bytes)
-    }
-}
-
-/// Computes a merlin digest of message, pseudo_output_commitments, range proof
-fn digest_extended_message(
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-    range_proofs: &[Vec<u8>],
-) -> [u8; 32] {
-    let mut transcript = MerlinTranscript::new(EXTENDED_MESSAGE_DOMAIN_TAG.as_bytes());
-    message.append_to_transcript(b"message", &mut transcript);
-    pseudo_output_commitments.append_to_transcript(b"pseudo_output_commitments", &mut transcript);
-    range_proof_bytes.append_to_transcript_allow_omit(b"range_proof_bytes", &mut transcript);
-    range_proofs.append_to_transcript_allow_omit(b"range_proofs", &mut transcript);
-
-    let mut output = [0u8; 32];
-    transcript.extract_digest(&mut output);
-    output
-}
-
-/// Concatenates [message || pseudo_output_commitments || range_proof].
-/// (Used before block version two)
-fn extend_message(
-    message: &[u8],
-    pseudo_output_commitments: &[CompressedCommitment],
-    range_proof_bytes: &[u8],
-) -> Vec<u8> {
-    let mut extended_message: Vec<u8> = Vec::with_capacity(
-        message.len() + pseudo_output_commitments.len() * 32 + range_proof_bytes.len(),
-    );
-    extended_message.extend_from_slice(message);
-    for commitment in pseudo_output_commitments {
-        extended_message.extend_from_slice(commitment.as_ref());
-    }
-    extended_message.extend_from_slice(range_proof_bytes);
-    extended_message
-}
-
 impl From<&SignableInputRing> for SignedInputRing {
     fn from(src: &SignableInputRing) -> SignedInputRing {
         SignedInputRing {
@@ -953,6 +960,7 @@ mod rct_bulletproofs_tests {
         ring_signature::{
             generators, Error as RingSignatureError, KeyImage, PedersenGens, ReducedTxOut,
         },
+        tx::{TxIn, TxPrefix},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -970,8 +978,12 @@ mod rct_bulletproofs_tests {
     extern crate std;
 
     struct SignatureParams {
-        /// Message to be signed.
-        message: [u8; 32],
+        /// TxPrefix to be signed.
+        /// Note that the TxPrefix is only hashed in this computation,
+        /// and its set of inputs and outputs are ignored.
+        ///
+        /// It is only actually used in this test to record the fee amount.
+        tx_prefix: TxPrefix,
 
         /// Rings of input onetime addresses and amount commitments.
         rings: Vec<SignableInputRing>,
@@ -981,14 +993,11 @@ mod rct_bulletproofs_tests {
 
         /// Block Version
         block_version: BlockVersion,
-
-        /// Token id
-        fee_token_id: TokenId,
     }
 
     impl SignatureParams {
         fn generator(&self) -> PedersenGens {
-            generators(*self.fee_token_id)
+            generators(self.tx_prefix.fee_token_id)
         }
 
         fn random<RNG: RngCore + CryptoRng>(
@@ -1007,8 +1016,7 @@ mod rct_bulletproofs_tests {
             num_token_ids: usize,
             rng: &mut RNG,
         ) -> Self {
-            let mut message = [0u8; 32];
-            rng.fill_bytes(&mut message);
+            let mut tx_prefix = TxPrefix::default();
 
             if !block_version.mixed_transactions_are_supported() && num_token_ids != 1 {
                 panic!("more than one token id not supported at this block version");
@@ -1021,7 +1029,7 @@ mod rct_bulletproofs_tests {
             }
 
             // First token id is the fee
-            let fee_token_id = TokenId::from(token_ids[0]);
+            tx_prefix.fee_token_id = token_ids[0];
 
             let mut generator_cache = GeneratorCache::default();
 
@@ -1033,7 +1041,7 @@ mod rct_bulletproofs_tests {
                 for _i in 0..num_mixins {
                     let public_key = CompressedRistrettoPublic::from_random(rng);
                     let target_key = CompressedRistrettoPublic::from_random(rng);
-                    let generator = generator_cache.get(fee_token_id);
+                    let generator = generator_cache.get(tx_prefix.fee_token_id.into());
                     let commitment = {
                         let value = rng.next_u64();
                         let blinding = Scalar::random(rng);
@@ -1078,6 +1086,11 @@ mod rct_bulletproofs_tests {
                         blinding,
                     },
                 });
+
+                // This is janky, but needed so that the compute_mlsag_signing_digest
+                // code can find one `TxIn` for each input ring, and determine that
+                // there are no InputRules associated to any of them.
+                tx_prefix.inputs.push(TxIn::default());
             }
 
             // Create one output with the same value as each input.
@@ -1093,11 +1106,10 @@ mod rct_bulletproofs_tests {
                 .collect();
 
             SignatureParams {
-                message,
+                tx_prefix,
                 rings,
                 output_secrets,
                 block_version,
-                fee_token_id,
             }
         }
 
@@ -1126,17 +1138,28 @@ mod rct_bulletproofs_tests {
                 .collect()
         }
 
+        fn get_fee_amount(&self) -> Amount {
+            Amount::new(
+                self.tx_prefix.fee,
+                TokenId::from(self.tx_prefix.fee_token_id),
+            )
+        }
+
+        fn set_fee_amount(&mut self, amount: Amount) {
+            self.tx_prefix.fee = amount.value;
+            self.tx_prefix.fee_token_id = *amount.token_id;
+        }
+
         fn sign<RNG: RngCore + CryptoRng>(
             &self,
-            fee: u64,
             rng: &mut RNG,
         ) -> Result<SignatureRctBulletproofs, Error> {
             SignatureRctBulletproofs::sign(
                 self.block_version,
-                &self.message,
+                &self.tx_prefix,
                 &self.get_input_rings(),
                 &self.output_secrets,
-                Amount::new(fee, self.fee_token_id),
+                self.get_fee_amount(),
                 &NoKeysRingSigner {},
                 rng,
             )
@@ -1144,15 +1167,14 @@ mod rct_bulletproofs_tests {
 
         fn sign_without_balance_check<RNG: RngCore + CryptoRng>(
             &self,
-            fee: u64,
             rng: &mut RNG,
         ) -> Result<SignatureRctBulletproofs, Error> {
             sign_with_balance_check(
                 self.block_version,
-                &self.message,
+                &self.tx_prefix,
                 &self.get_input_rings(),
                 &self.output_secrets,
-                Amount::new(fee, self.fee_token_id),
+                self.get_fee_amount(),
                 false,
                 &NoKeysRingSigner {},
                 rng,
@@ -1176,7 +1198,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             params.rings = Vec::new();
 
-            let result = params.sign(0, &mut rng);
+            let result = params.sign(&mut rng);
 
             match result {
                 Err(Error::NoInputs) => {} // OK,
@@ -1198,7 +1220,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             params.rings[0].members = Vec::new();
 
-            let result = params.sign(0, &mut rng);
+            let result = params.sign(&mut rng);
 
             match result {
                 Err(Error::InvalidRingSize(0)) => {} // OK,
@@ -1217,7 +1239,7 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let signature = params.sign(0, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             // The signature must contain one ring signature per input.
             assert_eq!(signature.ring_signatures.len(), num_inputs);
@@ -1242,15 +1264,14 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
             result.unwrap();
@@ -1268,15 +1289,14 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
-            let fee = 0;
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
             result.unwrap();
@@ -1293,9 +1313,8 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
 
-            let mut signature = params.sign(fee, &mut rng).unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             // Modify an MLSAG ring signature
             let index = rng.next_u64() as usize % (num_inputs);
@@ -1303,10 +1322,10 @@ mod rct_bulletproofs_tests {
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1324,7 +1343,6 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
             // Modify an output value
             {
                 let index = rng.next_u64() as usize % (num_inputs);
@@ -1332,14 +1350,14 @@ mod rct_bulletproofs_tests {
             }
 
             // Sign, without checking that value is preserved.
-            let invalid_signature = params.sign_without_balance_check(fee, &mut rng).unwrap();
+            let invalid_signature = params.sign_without_balance_check(&mut rng).unwrap();
 
             let result = invalid_signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1357,8 +1375,7 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
-            let mut signature = params.sign(fee, &mut rng).unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             // Modify the range proof
             let wrong_range_proof = {
@@ -1376,10 +1393,10 @@ mod rct_bulletproofs_tests {
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1397,8 +1414,7 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
-            let mut signature = params.sign(fee, &mut rng).unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             // Modify the range proof
             let wrong_range_proof = {
@@ -1416,10 +1432,10 @@ mod rct_bulletproofs_tests {
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1438,21 +1454,20 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
 
             // Duplicate one of the rings.
             params.rings[2] = params.rings[3].clone();
             // Duplicate the corresponding output also, so we don't get "value not conserved" error
             params.output_secrets[2].amount = params.output_secrets[3].amount;
 
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1470,8 +1485,7 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            let fee = 0;
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             use mc_util_serial::prost::Message;
 
@@ -1497,28 +1511,28 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.amount.value;
+            params.set_fee_amount(popped_secret.amount);
 
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
             result.unwrap();
 
             // Verify should fail if the signature disagrees with the fee.
-            let wrong_fee = fee + 1;
+            let wrong_fee = params.tx_prefix.fee + 1;
             match signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(wrong_fee, params.fee_token_id),
+                Amount::new(wrong_fee, params.tx_prefix.fee_token_id.into()),
                 &mut rng,
             ) {
                 Err(Error::ValueNotConserved) => {} // Expected
@@ -1540,16 +1554,16 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.amount.value;
+            params.set_fee_amount(popped_secret.amount);
 
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 BlockVersion::TWO,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
             assert!(result.is_err());
@@ -1566,16 +1580,16 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.amount.value;
+            params.set_fee_amount(popped_secret.amount);
 
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let result = signature.verify(
                 BlockVersion::ONE,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
             assert!(result.is_err());
@@ -1592,26 +1606,26 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.amount.value;
+            params.set_fee_amount(popped_secret.amount);
 
-            let signature = params.sign(fee, &mut rng).unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             signature.verify(
                 BlockVersion::TWO,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             ).unwrap();
 
 
             let result = signature.verify(
                 BlockVersion::TWO,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, TokenId::from(*params.fee_token_id + 1)),
+                Amount::new(params.tx_prefix.fee, TokenId::from(params.tx_prefix.fee_token_id + 1)),
                 &mut rng,
             );
 
@@ -1629,11 +1643,11 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.amount.value;
+            params.set_fee_amount(popped_secret.amount);
 
-            params.fee_token_id = 1.into();
+            params.tx_prefix.fee_token_id = 1;
 
-            assert_eq!(params.sign(fee, &mut rng), Err(Error::TokenIdNotAllowed));
+            assert_eq!(params.sign(&mut rng), Err(Error::TokenIdNotAllowed));
         }
 
         #[test]
@@ -1649,15 +1663,14 @@ mod rct_bulletproofs_tests {
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins,num_token_ids, &mut rng);
 
-            let fee = 0;
-            let mut signature = params.sign(fee, &mut rng).unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             ).unwrap();
 
@@ -1665,10 +1678,10 @@ mod rct_bulletproofs_tests {
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 
@@ -1688,15 +1701,14 @@ mod rct_bulletproofs_tests {
             let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
 
-            let fee = 0;
-            let mut signature = params.sign(fee, &mut rng).unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             ).unwrap();
 
@@ -1704,10 +1716,10 @@ mod rct_bulletproofs_tests {
 
             let result = signature.verify(
                 block_version,
-                &params.message,
+                &params.tx_prefix,
                 &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
-                Amount::new(fee, params.fee_token_id),
+                params.get_fee_amount(),
                 &mut rng,
             );
 

@@ -31,6 +31,7 @@ pub mod mint;
 pub mod range_proofs;
 pub mod ring_ct;
 pub mod tx;
+pub mod tx_summary;
 pub mod validation;
 
 #[cfg(test)]
@@ -43,6 +44,7 @@ pub use revealed_tx_out::{try_reveal_amount, RevealedTxOut, RevealedTxOutError};
 pub use token::{tokens, Token};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, TxOutConversionError, ViewKeyMatchError};
+pub use tx_summary::{TxInSummary, TxOutSummary, TxSummary};
 
 // Re-export from transaction-types, and some from RingSignature crate.
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
