@@ -16,7 +16,9 @@ use mc_fog_ledger_server::{LedgerStoreConfig, KeyImageStoreServer, KeyImageServi
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::KeyImageStoreScheme;
 use mc_ledger_db::{LedgerDB, test_utils::recreate_ledger_db};
+use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, AnonymousAuthenticator};
+use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{SeedableRng, RngType, Rng};
 use mc_util_uri::{Uri, UriScheme};
 use mc_watcher::watcher_db::WatcherDB;
@@ -102,6 +104,14 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
     }
 }
 
+lazy_static::lazy_static! {
+    pub static ref TEST_OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_service");
+}
+
+lazy_static::lazy_static! {
+    pub static ref TEST_ENCLAVE_REPORT_TIMESTAMP: IntGauge = TEST_OP_COUNTERS.gauge("enclave_report_timestamp");
+}
+
 #[test_with_logger]
 pub fn simple_roundtrip(logger: Logger) { 
     const PORT: u16 = 3228;
@@ -158,17 +168,25 @@ pub fn simple_roundtrip(logger: Logger) {
     let mut store_server = KeyImageStoreServer::new_from_service(store_service, client_listen_uri.clone(), logger.clone());
     store_server.start();
 
-    let _ra_client =
-        AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-    // Make GRPC client for sending requests.  
+    // Set up IAS verficiation
+    // This will be a SimClient in testing contexts.
+    let ias_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+    let mut report_cache_thread = Some(ReportCacheThread::start(
+        enclave.clone(),
+        ias_client.clone(),
+        config.ias_spid,
+        &TEST_ENCLAVE_REPORT_TIMESTAMP,
+        logger.clone(),
+    ).unwrap()).unwrap();
+
+    // Make GRPC client for sending requests.
     let ch = grpcio::ChannelBuilder::new(grpc_env.clone())
         .connect_to_uri(&client_listen_uri, &logger);
     let api_client = ledger_grpc::KeyImageStoreApiClient::new(ch);
 
-    // Get the enclave to generate an auth request. 
+    // Get the enclave to generate an auth request.
     let client_auth_request = enclave.connect_to_key_image_store(responder_id.clone()).unwrap();
     // Submit auth request and wait for the response.
     let auth_response = api_client.auth(&client_auth_request.into()).unwrap();
@@ -251,5 +269,6 @@ pub fn simple_roundtrip(logger: Logger) {
             enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap()
         );
     }
-    assert!(results.len() > 0); 
+    assert!(results.len() > 0);
+    report_cache_thread.stop().unwrap();
 }
