@@ -2,7 +2,7 @@
 
 //! Command line configuration for the consensus mint client.
 
-use crate::{FogBits, TxFile};
+use crate::{FogContext, TxFile};
 use clap::{Args, Parser, Subcommand};
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
@@ -178,7 +178,7 @@ pub struct MintTxPrefixParams {
 impl MintTxPrefixParams {
     pub fn try_into_mint_tx_prefix(
         self,
-        fog_bits: Option<FogBits>,
+        fog_bits: Option<FogContext>,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTxPrefix, String> {
         let mut tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
@@ -230,7 +230,7 @@ pub struct MintTxParams {
 impl MintTxParams {
     pub fn try_into_mint_tx(
         self,
-        fog_bits: Option<FogBits>,
+        fog_bits: Option<FogContext>,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTx, String> {
         let prefix = self

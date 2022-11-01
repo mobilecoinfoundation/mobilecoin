@@ -17,7 +17,7 @@ use std::{str::FromStr, sync::Arc};
 
 /// Data and objects needed to resolve a fog address and build an encrypted
 /// fog hint in a one-off way appropriate for a CLI tool
-pub struct FogBits {
+pub struct FogContext {
     /// The chain id of the network we expect to connect to
     pub chain_id: String,
     /// The css file (loaded as signature) that we will verify report against
@@ -28,7 +28,7 @@ pub struct FogBits {
     pub logger: Logger,
 }
 
-impl FogBits {
+impl FogContext {
     /// Get an encrypted fog hint for a TxOut belonging to a paritcular public
     /// address
     ///

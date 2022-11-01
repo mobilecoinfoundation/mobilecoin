@@ -7,5 +7,5 @@ mod tx_file;
 pub mod printers;
 
 pub use config::{Commands, Config};
-pub use fog::FogBits;
+pub use fog::FogContext;
 pub use tx_file::TxFile;

@@ -10,7 +10,7 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
-use mc_consensus_mint_client::{printers, Commands, Config, FogBits, TxFile};
+use mc_consensus_mint_client::{printers, Commands, Config, FogContext, TxFile};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
@@ -143,7 +143,7 @@ fn main() {
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
 
-            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogBits {
+            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
                 chain_id: chain_id.clone(),
                 css_signature: signature,
                 grpc_env: env.clone(),
@@ -180,7 +180,7 @@ fn main() {
             fog_ingest_enclave_css,
             params,
         } => {
-            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogBits {
+            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
                 chain_id: chain_id.expect("Chain id should be passed when fog is used"),
                 css_signature: signature,
                 grpc_env: env,
