@@ -35,11 +35,12 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
     fn try_from(source: &external::MintTxPrefix) -> Result<Self, Self::Error> {
         let view_public_key = RistrettoPublic::try_from(source.get_view_public_key())?;
         let spend_public_key = RistrettoPublic::try_from(source.get_spend_public_key())?;
-        let e_fog_hint = if source.get_e_fog_hint().get_data().is_empty() {
+        let e_fog_hint_data = source.get_e_fog_hint().get_data();
+        let e_fog_hint = if e_fog_hint_data.is_empty() {
             None
         } else {
             Some(
-                EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
+                EncryptedFogHint::try_from(e_fog_hint_data)
                     .map_err(|_| ConversionError::ArrayCastError)?,
             )
         };
