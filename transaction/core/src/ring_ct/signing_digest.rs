@@ -31,6 +31,18 @@ impl From<ExtendedMessageDigest> for Vec<u8> {
 /// Compute the digest that mlsags should actually sign, depending on the block
 /// version.
 ///
+/// Arguments:
+/// * block_version: the block version we are targetting
+/// * tx_prefix: the tx prefix of the transaction
+/// * pseudo_output_commitments: the pseudo_output_commitments of the
+///   transaction
+/// * range_proof_bytes: the bytes of a single range proof. this is used in
+///   block version 2 before the mixed transactions feature, and must be empty
+///   after block version 3.
+/// * range_proofs: the bytes of multiple range proofs. This is used in block
+///   block version 3 after mixed transactions feature, and must be empty before
+///   block version 3.
+///
 /// Returns:
 /// * The MLSAG Signing Digest
 /// * The TxSummary
@@ -90,6 +102,22 @@ pub fn compute_mlsag_signing_digest(
 
 /// Toggles between old-style and new-style extended message
 ///
+/// Arguments:
+/// * block_version: the block version we are targetting
+/// * message: the digest of the tx_prefix
+/// * pseudo_output_commitments: the pseudo_output_commitments of the
+///   transaction
+/// * range_proof_bytes: the bytes of a single range proof. this is used in
+///   block version 2 before the mixed transactions feature, and must be empty
+///   after block version 3.
+/// * range_proofs: the bytes of multiple range proofs. This is used in block
+///   block version 3 after mixed transactions feature, and must be empty before
+///   block version 3.
+///
+/// Returns:
+/// * In block version 2 and later, the 32-byte extended message digest
+/// * In block version <= 1, the (many byte) extended message
+///
 /// TODO: When support for block version < 2 is deprecated,
 /// we can make this return `[u8; 32]` instead, which is nicer for the hardware
 /// wallet implementation.
@@ -115,7 +143,17 @@ fn compute_extended_message_either_version(
     })
 }
 
-/// Computes a merlin digest of message, pseudo_output_commitments, range proof
+/// Computes the extended message digest (new in block version 2)
+///
+/// * message: the digest of the tx_prefix
+/// * pseudo_output_commitments: the pseudo_output_commitments of the
+///   transaction
+/// * range_proof_bytes: the bytes of a single range proof. this is used in
+///   block version 2 before the mixed transactions feature, and must be empty
+///   after block version 3.
+/// * range_proofs: the bytes of multiple range proofs. This is used in block
+///   block version 3 after mixed transactions feature, and must be empty before
+///   block version 3.
 fn digest_extended_message(
     message: &[u8],
     pseudo_output_commitments: &[CompressedCommitment],
@@ -133,8 +171,9 @@ fn digest_extended_message(
     output
 }
 
-/// Concatenates [message || pseudo_output_commitments || range_proof].
-/// (Used before block version two)
+/// Concatenates [message || pseudo_output_commitments || range_proof_bytes].
+/// This is the "extended message", which is signed by MLSAG's before block
+/// version 2.
 fn extend_message(
     message: &[u8],
     pseudo_output_commitments: &[CompressedCommitment],
