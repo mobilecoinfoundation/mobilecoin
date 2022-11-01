@@ -12,7 +12,6 @@
 
 #![allow(non_snake_case)]
 
-use crate::domain_separators::SUBADDRESS_DOMAIN_TAG;
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -23,9 +22,15 @@ use core::{
     hash::{Hash, Hasher},
 };
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use mc_account_keys_types::RingCtAddress;
+use mc_core::{
+    keys::{
+        RootSpendPrivate, RootSpendPublic, RootViewPrivate, SubaddressSpendPublic,
+        SubaddressViewPublic,
+    },
+    slip10::Slip10Key,
+    subaddress::Subaddress,
+};
 use mc_crypto_digestible::Digestible;
-use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
@@ -33,20 +38,10 @@ use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
-/// An account's "default address" is its zero^th subaddress.
-pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
-
-/// u64::MAX is a reserved subaddress value for "invalid/none" (MCIP #36)
-pub const INVALID_SUBADDRESS_INDEX: u64 = u64::MAX;
-
-/// An account's "change address" is the 1st reserved subaddress,
-/// counting down from `u64::MAX`. (See MCIP #4, MCIP #36)
-pub const CHANGE_SUBADDRESS_INDEX: u64 = u64::MAX - 1;
-
-/// The subaddress derived using u64::MAX - 2 is the reserved subaddress
-/// for gift code TxOuts to be sent as specified in MCIP #32.
-pub const GIFT_CODE_SUBADDRESS_INDEX: u64 = u64::MAX - 2;
-
+pub use mc_core::consts::{
+    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
+    INVALID_SUBADDRESS_INDEX,
+};
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]
 pub struct PublicAddress {
@@ -188,13 +183,23 @@ impl PublicAddress {
     }
 }
 
-impl RingCtAddress for PublicAddress {
+impl mc_account_keys_types::RingCtAddress for PublicAddress {
     fn view_public_key(&self) -> &RistrettoPublic {
         &self.view_public_key
     }
 
     fn spend_public_key(&self) -> &RistrettoPublic {
         &self.spend_public_key
+    }
+}
+
+impl mc_core::account::RingCtAddress for PublicAddress {
+    fn view_public_key(&self) -> SubaddressViewPublic {
+        SubaddressViewPublic::from(self.view_public_key)
+    }
+
+    fn spend_public_key(&self) -> SubaddressSpendPublic {
+        SubaddressSpendPublic::from(self.spend_public_key)
     }
 }
 
@@ -274,6 +279,16 @@ impl Ord for AccountKey {
     }
 }
 
+/// Create an AccountKey from a SLIP-0010 key
+impl From<Slip10Key> for AccountKey {
+    fn from(slip10key: Slip10Key) -> Self {
+        let spend_private_key = RootSpendPrivate::from(&slip10key);
+        let view_private_key = RootViewPrivate::from(&slip10key);
+
+        Self::new(spend_private_key.as_ref(), view_private_key.as_ref())
+    }
+}
+
 impl AccountKey {
     /// A user's AccountKey, without a fog service.
     ///
@@ -316,6 +331,30 @@ impl AccountKey {
             fog_report_id,
             fog_authority_spki: fog_authority_spki.as_ref().to_vec(),
         }
+    }
+
+    /// Copy to a new instance using with provided fog fields
+    ///
+    /// # Arguments
+    /// * `fog_report_url` - Url of fog report service
+    /// * `fog_report_id` - The id labelling the report to use, from among the
+    ///   several reports which might be served by the fog report server.
+    /// * `fog_authority` - The DER-encoded subjectPublicKeyInfo of the fog
+    ///   authority, which will be signed by the user when constructing the
+    ///   public address.
+    pub fn with_fog(
+        self,
+        fog_report_url: impl ToString,
+        fog_report_id: impl ToString,
+        fog_authority_spki: impl AsRef<[u8]>,
+    ) -> Self {
+        AccountKey::new_with_fog(
+            &self.spend_private_key,
+            &self.view_private_key,
+            fog_report_url,
+            fog_report_id.to_string(),
+            fog_authority_spki,
+        )
     }
 
     /// Get the view private key.
@@ -444,20 +483,13 @@ impl AccountKey {
 
     /// The private spend key for the i^th subaddress.
     pub fn subaddress_spend_private(&self, index: u64) -> RistrettoPrivate {
-        let a: &Scalar = self.view_private_key.as_ref();
+        let (_view_private, spend_private) = (
+            &RootViewPrivate::from(self.view_private_key),
+            &RootSpendPrivate::from(self.spend_private_key),
+        )
+            .subaddress(index);
 
-        // `Hs(a || n)`
-        let Hs: Scalar = {
-            let n = Scalar::from(index);
-            let mut digest = Blake2b512::new();
-            digest.update(SUBADDRESS_DOMAIN_TAG);
-            digest.update(a.as_bytes());
-            digest.update(n.as_bytes());
-            Scalar::from_hash(digest)
-        };
-
-        let b: &Scalar = self.spend_private_key.as_ref();
-        RistrettoPrivate::from(Hs + b)
+        spend_private.inner()
     }
 
     /// The private view key for the default subaddress.
@@ -477,21 +509,13 @@ impl AccountKey {
 
     /// The private view key for the i^th subaddress.
     pub fn subaddress_view_private(&self, index: u64) -> RistrettoPrivate {
-        let a: &Scalar = self.view_private_key.as_ref();
+        let (view_private, _spend_private) = (
+            &RootViewPrivate::from(self.view_private_key),
+            &RootSpendPrivate::from(self.spend_private_key),
+        )
+            .subaddress(index);
 
-        // `Hs(a || n)`
-        let Hs: Scalar = {
-            let n = Scalar::from(index);
-            let mut digest = Blake2b512::new();
-            digest.update(SUBADDRESS_DOMAIN_TAG);
-            digest.update(a.as_bytes());
-            digest.update(n.as_bytes());
-            Scalar::from_hash(digest)
-        };
-
-        let b: &Scalar = self.spend_private_key.as_ref();
-        let c = a * (Hs + b);
-        RistrettoPrivate::from(c)
+        view_private.inner()
     }
 }
 
@@ -597,12 +621,15 @@ impl ViewAccountKey {
 
     /// Get the account's i^th subaddress.
     pub fn subaddress(&self, index: u64) -> PublicAddress {
-        let view_public_key = self.subaddress_view_public(index);
-        let spend_public_key = self.subaddress_spend_public(index);
+        let (view_public, spend_public) = (
+            &RootViewPrivate::from(self.view_private_key),
+            &RootSpendPublic::from(*self.spend_public_key()),
+        )
+            .subaddress(index);
 
         PublicAddress {
-            view_public_key,
-            spend_public_key,
+            view_public_key: view_public.inner(),
+            spend_public_key: spend_public.inner(),
             fog_report_url: "".to_string(),
             fog_report_id: "".to_string(),
             fog_authority_sig: Vec::default(),
@@ -626,23 +653,13 @@ impl ViewAccountKey {
 
     /// The private spend key for the i^th subaddress.
     pub fn subaddress_spend_public(&self, index: u64) -> RistrettoPublic {
-        let a: &Scalar = self.view_private_key.as_ref();
+        let (_view_public, spend_public) = (
+            &RootViewPrivate::from(self.view_private_key),
+            &RootSpendPublic::from(*self.spend_public_key()),
+        )
+            .subaddress(index);
 
-        // `Hs(a || n)`
-        let Hs: Scalar = {
-            let n = Scalar::from(index);
-            let mut digest = Blake2b512::new();
-            digest.update(SUBADDRESS_DOMAIN_TAG);
-            digest.update(a.as_bytes());
-            digest.update(n.as_bytes());
-            Scalar::from_hash(digest)
-        };
-
-        let b = RistrettoPrivate::from(Hs);
-        let B = RistrettoPublic::from(&b);
-
-        let C: RistrettoPoint = B.as_ref() + self.spend_public_key().as_ref();
-        RistrettoPublic::from(C)
+        spend_public.inner()
     }
 
     /// The private view key for the default subaddress.

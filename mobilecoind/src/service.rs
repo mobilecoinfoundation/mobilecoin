@@ -19,12 +19,12 @@ use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, Un
 use mc_account_keys::{
     burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
 };
-use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
+use mc_core::slip10::Slip10KeyGenerator;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};

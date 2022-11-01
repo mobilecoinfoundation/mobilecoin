@@ -30,4 +30,3 @@ for arg in args:
 
     print(f"    spend_hex: \"{key.hex()}\",")
     print("},")
-
