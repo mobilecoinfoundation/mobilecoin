@@ -3,7 +3,10 @@
 //! Functionality for mocking and testing components in the ledger server
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse, NonceSession};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession,
+};
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -117,7 +120,10 @@ impl LedgerEnclave for MockEnclave {
     fn collate_shard_query_responses(
         &self,
         _sealed_query: mc_attest_enclave_api::SealedClientMessage,
-        _shard_query_responses: std::collections::BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        _shard_query_responses: std::collections::BTreeMap<
+            ResponderId,
+            EnclaveMessage<NonceSession>,
+        >,
     ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }

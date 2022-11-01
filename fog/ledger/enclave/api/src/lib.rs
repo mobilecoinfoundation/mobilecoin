@@ -16,7 +16,8 @@ pub use crate::{
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::result::Result as StdResult;
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthRequest, NonceAuthResponse, NonceSession,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
@@ -106,8 +107,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Begin a connection to a Fog Ledger Store. The enclave calling this
     /// method, most likely a router, will act as a client to the Fog Ledger
     /// Store.
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId)
-        -> Result<NonceAuthRequest>;
+    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
 
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// NonceAuthRequest. This is meant to be called after the enclave has

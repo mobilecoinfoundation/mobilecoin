@@ -15,7 +15,8 @@ use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthResponse, NonceSession, NonceAuthRequest,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
 };
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
@@ -191,10 +192,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     }
 
     // Router/store system.
-    fn connect_to_key_image_store(
-        &self,
-        ledger_store_id: ResponderId,
-    ) -> Result<NonceAuthRequest> {
+    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
         mc_sgx_debug::eprintln!(
             "Called connect_to_key_image_store(ledger_store_id: {})",
             ledger_store_id
@@ -217,7 +215,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
             ledger_store_id,
             ledger_store_auth_response,
         ))?;
-      
+
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

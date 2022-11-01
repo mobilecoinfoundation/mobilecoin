@@ -6,7 +6,8 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientSession, EnclaveMessage, SealedClientMessage, NonceSession, NonceAuthResponse,
+    ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthResponse, NonceSession,
+    SealedClientMessage,
 };
 
 use mc_common::ResponderId;
@@ -111,7 +112,6 @@ pub enum EnclaveCall {
     /// Begin a connection to a Fog Ledger Store. The enclave calling this
     /// method, most likely a router, will act as a client to the Fog Ledger
     /// Store.
-  
     ConnectToKeyImageStore(ResponderId),
 
     /// The [LedgerEnclave::finish_connecting_to_store()] method.
@@ -143,10 +143,8 @@ pub enum EnclaveCall {
     ),
 
     /// The [LedgerEnclave::client_check_key_image_store()] method.
-    /// Store-side Ledger/Router system equivalent to [EnclaveCall::CheckKeyImages] 
-    /// Start a new key image check from a client.
-    CheckKeyImageStore(
-        EnclaveMessage<NonceSession>,
-        UntrustedKeyImageQueryResponse,
-    ),
+    /// Store-side Ledger/Router system equivalent to
+    /// [EnclaveCall::CheckKeyImages] Start a new key image check from a
+    /// client.
+    CheckKeyImageStore(EnclaveMessage<NonceSession>, UntrustedKeyImageQueryResponse),
 }

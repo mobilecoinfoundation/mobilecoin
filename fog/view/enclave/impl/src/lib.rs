@@ -48,7 +48,6 @@ where
 
     /// Logger object
     logger: Logger,
-
     // Encrypts a QueryRequest for each individual Fog View Store.
     // TODO: Use a BTreeMap<FogViewShardLoadBalancerID,
     // BTreeMap<FogViewStoreId, Ready<...>>>  when implement the cursoring

@@ -107,7 +107,6 @@ pub struct LedgerRouterConfig {
     pub omap_capacity: u64,
 }
 
-
 /// Configuration parameters for the Fog Ledger Store service.
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
@@ -115,7 +114,7 @@ pub struct LedgerStoreConfig {
     /// The chain id of the network we are a part of
     #[clap(long, env = "MC_CHAIN_ID")]
     pub chain_id: String,
-    
+
     /// The ID with which to respond to client attestation requests.
     ///
     /// This ID needs to match the host:port clients use in their URI when
@@ -173,13 +172,15 @@ pub struct LedgerStoreConfig {
 }
 
 /// Uri for any node in the key image store system.
-/// Old-style single-node servers and routers are both referred to with 
+/// Old-style single-node servers and routers are both referred to with
 /// a KeyImageClientListenUri::ClientFacing(FogLedgerUri), whereas ledger
 /// store shard Uris will be KeyImageClientListenUri::Store(KeyImageStoreUri).
 #[derive(Clone, Serialize)]
 pub enum KeyImageClientListenUri {
-    /// URI used by the KeyImageStoreServer when fulfilling direct client requests.
+    /// URI used by the KeyImageStoreServer when fulfilling direct client
+    /// requests.
     ClientFacing(FogLedgerUri),
-    /// URI used by the KeyImageStoreServer when fulfilling Fog Ledger Router requests.
+    /// URI used by the KeyImageStoreServer when fulfilling Fog Ledger Router
+    /// requests.
     Store(KeyImageStoreUri),
 }

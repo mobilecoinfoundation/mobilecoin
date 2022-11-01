@@ -18,7 +18,8 @@ use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, SealedClientMessage, NonceAuthRequest, NonceAuthResponse, NonceSession,
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
 };
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
@@ -196,10 +197,7 @@ where
         Ok(())
     }
 
-    fn connect_to_key_image_store(
-        &self,
-        ledger_store_id: ResponderId,
-    ) -> Result<NonceAuthRequest> {
+    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
         mc_sgx_debug::eprintln!(
             "Called connect_to_key_image_store(ledger_store_id: {})",
             ledger_store_id
@@ -320,7 +318,7 @@ where
     ) -> Result<EnclaveMessage<NonceSession>> {
         let channel_id = msg.channel_id.clone();
         let user_plaintext = self.ake.frontend_decrypt(msg)?;
-        
+
         let req: CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
             log::error!(self.logger, "Could not decode user request: {}", e);
             Error::ProstDecode
@@ -347,7 +345,7 @@ where
                 .collect();
         }
 
-        // Encrypt for return to router 
+        // Encrypt for return to router
         let response_plaintext_bytes = mc_util_serial::encode(&resp);
         let response = self
             .ake

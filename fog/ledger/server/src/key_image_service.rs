@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{server::DbPollSharedState, config::KeyImageClientListenUri};
+use crate::{config::KeyImageClientListenUri, server::DbPollSharedState};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::{
     attest,
@@ -8,12 +8,14 @@ use mc_attest_api::{
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    ledger::{MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus},
+    ledger::{
+        MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
+    },
     ledger_grpc::{FogKeyImageApi, KeyImageStoreApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
-use mc_fog_uri::{KeyImageStoreUri, ConnectionUri};
+use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
     check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
@@ -72,10 +74,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         self.db_poll_shared_state.clone()
     }
 
-    pub fn auth_impl(&mut self,
+    pub fn auth_impl(
+        &mut self,
         mut req: AuthMessage,
-        logger: &Logger) 
-            -> Result<attest::AuthMessage, RpcStatus> { 
+        logger: &Logger,
+    ) -> Result<attest::AuthMessage, RpcStatus> {
         // TODO: Use the prost message directly, once available
         match self.enclave.client_accept(req.take_data().into()) {
             Ok((response, _)) => {
@@ -100,10 +103,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         }
     }
 
-    /// Generate an UntrustedKeyImageQueryResponse 
+    /// Generate an UntrustedKeyImageQueryResponse
     /// for use in [KeyImageService::check_key_images_auth()]
     /// and [KeyImageService::check_key_image_store_auth()]
-    fn prepare_untrusted_query(&mut self) -> UntrustedKeyImageQueryResponse { 
+    fn prepare_untrusted_query(&mut self) -> UntrustedKeyImageQueryResponse {
         let (
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
@@ -185,18 +188,24 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         }
     }
 
-    /// Handle MultiKeyImageStoreRequest contents sent by a router to this store.
-    fn process_queries(&mut self, fog_ledger_store_uri: KeyImageStoreUri, 
-        queries: Vec<attest::NonceMessage>) -> MultiKeyImageStoreResponse { 
+    /// Handle MultiKeyImageStoreRequest contents sent by a router to this
+    /// store.
+    fn process_queries(
+        &mut self,
+        fog_ledger_store_uri: KeyImageStoreUri,
+        queries: Vec<attest::NonceMessage>,
+    ) -> MultiKeyImageStoreResponse {
         let mut response = MultiKeyImageStoreResponse::new();
         // The router needs our own URI, in case auth fails / hasn't been started yet.
         response.set_fog_ledger_store_uri(fog_ledger_store_uri.url().to_string());
 
         for query in queries.into_iter() {
-            // Only one of the query messages in the multi-store query is intended for this store.
-            // It's a bit of a broadcast model - all queries are sent to all stores, and then 
-            // the stores evaluate which message is meant for them.
-            if let Ok(attested_message) = self.check_key_image_store_auth(query) { //Needs a different method? 
+            // Only one of the query messages in the multi-store query is intended for this
+            // store. It's a bit of a broadcast model - all queries are sent to
+            // all stores, and then the stores evaluate which message is meant
+            // for them.
+            if let Ok(attested_message) = self.check_key_image_store_auth(query) {
+                //Needs a different method?
                 response.set_query_response(attested_message);
                 response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
 
@@ -204,7 +213,8 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             }
         }
 
-        // TODO: different response code for "none found matching" from "authentication error," potentially?
+        // TODO: different response code for "none found matching" from "authentication
+        // error," potentially?
 
         response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
         response
@@ -251,12 +261,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                         client_error
                     );
                     // TODO: increment failed inbound peering counter.
-                    send_result(
-                        ctx,
-                        sink,
-                        Err(client_error),
-                        logger,
-                    );
+                    send_result(ctx, sink, Err(client_error), logger);
                 }
             }
         });
@@ -290,12 +295,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
                         client_error
                     );
                     // TODO: increment failed inbound peering counter.
-                    send_result(
-                        ctx,
-                        sink,
-                        Err(client_error),
-                        logger,
-                    );
+                    send_result(ctx, sink, Err(client_error), logger);
                 }
             }
         });

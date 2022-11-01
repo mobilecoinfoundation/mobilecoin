@@ -3,16 +3,24 @@
 use std::sync::{Arc, Mutex};
 
 use futures::executor::block_on;
-use mc_common::{logger::{Logger, log}, time::TimeProvider};
+use mc_common::{
+    logger::{log, Logger},
+    time::TimeProvider,
+};
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme};
 use mc_ledger_db::LedgerDB;
-use mc_util_grpc::{ReadinessIndicator, Authenticator, TokenAuthenticator, AnonymousAuthenticator, ConnectionUriGrpcioServer};
+use mc_util_grpc::{
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
+    TokenAuthenticator,
+};
 use mc_util_uri::Uri;
 use mc_watcher::watcher_db::WatcherDB;
 
-use crate::{KeyImageService, server::DbPollSharedState, config::LedgerStoreConfig, KeyImageClientListenUri};
+use crate::{
+    config::LedgerStoreConfig, server::DbPollSharedState, KeyImageClientListenUri, KeyImageService,
+};
 
 pub struct KeyImageStoreServer {
     server: grpcio::Server,
@@ -29,18 +37,19 @@ impl KeyImageStoreServer {
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
     ) -> KeyImageStoreServer
-        where E: LedgerEnclaveProxy
+    where
+        E: LedgerEnclaveProxy,
     {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
-        if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
-            Arc::new(TokenAuthenticator::new(
-                *shared_secret,
-                config.client_auth_token_max_lifetime,
-                time_provider,
-            ))
-        } else {
-            Arc::new(AnonymousAuthenticator::default())
-        };
+            if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
+                Arc::new(TokenAuthenticator::new(
+                    *shared_secret,
+                    config.client_auth_token_max_lifetime,
+                    time_provider,
+                ))
+            } else {
+                Arc::new(AnonymousAuthenticator::default())
+            };
 
         Self::new( 
             config.chain_id, 
@@ -112,7 +121,7 @@ impl KeyImageStoreServer {
             "Starting Key Image Store server on {}",
             client_listen_uri.addr(),
         );
-        
+
         let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(ledger_store_service)
             .register_service(health_service)

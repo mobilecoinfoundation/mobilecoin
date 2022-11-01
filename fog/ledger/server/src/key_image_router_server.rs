@@ -41,12 +41,14 @@ impl KeyImageRouterServer {
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
-                
+
         // Build our router server.
         // Init ledger router service.
-        let ledger_router_service = ledger_grpc::create_ledger_api(
-            KeyImageRouterService::new(enclave, shards, logger.clone()),
-        );
+        let ledger_router_service = ledger_grpc::create_ledger_api(KeyImageRouterService::new(
+            enclave,
+            shards,
+            logger.clone(),
+        ));
         log::debug!(logger, "Constructed Key Image Router GRPC Service");
 
         // Package service into grpc server
