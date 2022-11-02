@@ -24,12 +24,12 @@ pub enum Error {
 ///
 /// TBD what the best path is: https://github.com/p-avital/vec-map-rs/blob/master/src/lib.rs
 #[derive(Clone, Debug)]
-pub struct VecMap<K: Clone + Eq + PartialEq, V, const N: usize> {
+pub struct VecMap<K, V, const N: usize> {
     keys: Vec<K, N>,
     values: Vec<V, N>,
 }
 
-impl<K: Clone + Eq + PartialEq, V, const N: usize> Default for VecMap<K, V, N> {
+impl<K, V, const N: usize> Default for VecMap<K, V, N> {
     fn default() -> Self {
         Self {
             keys: Default::default(),
@@ -38,7 +38,7 @@ impl<K: Clone + Eq + PartialEq, V, const N: usize> Default for VecMap<K, V, N> {
     }
 }
 
-impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
+impl<K, V, const N: usize> VecMap<K, V, N> {
     /// Check if the map is empty
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -51,9 +51,11 @@ impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
         debug_assert!(self.keys.len() == self.values.len());
         self.keys.len()
     }
+}
 
+impl<K: Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
     /// Get the value associated to a key, if present
-    pub fn get<'a>(&'a self, key: &K) -> Option<&'a V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
         self.keys
             .iter()
             .position(|k| k == key)
@@ -61,23 +63,25 @@ impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
     }
 
     /// Get a mutable reference to the value associated to a key, if present
-    pub fn get_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         self.keys
             .iter()
             .position(|k| k == key)
             .map(|idx| &mut self.values[idx])
     }
+}
 
+impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
     /// Get a mutable reference to the value associated to a key, if present,
     /// or else insert such a value produced by given callback,
     /// and then return a mutable reference
     ///
     /// Returns an error if the heapless::Vec capacity was exceeded
-    pub fn get_mut_or_insert_with<'a>(
-        &'a mut self,
+    pub fn get_mut_or_insert_with(
+        &mut self,
         key: &K,
         val_fn: impl FnOnce() -> V,
-    ) -> Result<&'a mut V, Error> {
+    ) -> Result<&mut V, Error> {
         if let Some(idx) = self.keys.iter().position(|k| k == key) {
             Ok(&mut self.values[idx])
         } else {
