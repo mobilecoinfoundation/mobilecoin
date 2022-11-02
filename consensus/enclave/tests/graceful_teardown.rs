@@ -6,10 +6,10 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
-use mc_consensus_enclave_api::{BlockchainConfig, FeeMap};
+use mc_consensus_enclave_api::BlockchainConfig;
 use mc_fog_test_infra::get_enclave_path;
 use mc_sgx_report_cache_untrusted::ReportCache;
-use mc_transaction_core::BlockVersion;
+use mc_transaction_core::{BlockVersion, FeeMap};
 use mc_util_metrics::IntGauge;
 use std::str::FromStr;
 
