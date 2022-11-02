@@ -20,7 +20,7 @@ pub enum Error {
 /// It may be better to patch upstream for no_std compatibility and use that,
 /// but that crate has other issues -- it relies on an
 /// experimental "contracts" crate that causes a dependency on rand crate.
-/// Porting to Heapless would be a breaking chnage to the API.
+/// Porting to Heapless would be a breaking change to the API.
 ///
 /// TBD what the best path is: https://github.com/p-avital/vec-map-rs/blob/master/src/lib.rs
 #[derive(Clone, Debug)]
