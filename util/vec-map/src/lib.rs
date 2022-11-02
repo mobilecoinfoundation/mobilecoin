@@ -8,7 +8,7 @@ use displaydoc::Display;
 use heapless::Vec;
 
 /// An error which can occur when using VecMap
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum Error {
     /// VecMap capacity exceeded
     CapacityExceeded,
@@ -166,7 +166,10 @@ mod tests {
         assert_eq!(*vec_map.get_mut_or_insert_with(&4, || 6).unwrap(), 6);
         assert_eq!(*vec_map.get_mut_or_insert_with(&7, || 6).unwrap(), 6);
         assert_eq!(*vec_map.get_mut_or_insert_with(&8, || 10).unwrap(), 10);
-        assert!(vec_map.get_mut_or_insert_with(&9, || 11).is_err());
+        assert_eq!(
+            vec_map.get_mut_or_insert_with(&9, || 11),
+            Err(Error::CapacityExceeded)
+        );
         assert_eq!(vec_map.len(), 4);
         assert_eq!(*vec_map.get_mut_or_insert_with(&7, || 10).unwrap(), 6);
         assert_eq!(vec_map.len(), 4);
@@ -207,21 +210,74 @@ mod tests {
     #[test]
     fn test_iter() {
         let mut vec_map = VecMap::<u32, u64, 4>::default();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![]);
+
         assert_eq!(*vec_map.get_mut_or_insert_with(&3, || 5).unwrap(), 5);
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&3, &5)]);
+
         assert_eq!(*vec_map.get_mut_or_insert_with(&4, || 6).unwrap(), 6);
         assert_eq!(*vec_map.get_mut_or_insert_with(&7, || 6).unwrap(), 6);
         assert_eq!(*vec_map.get_mut_or_insert_with(&8, || 10).unwrap(), 10);
 
         let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
-        assert_eq!(seq.len(), 4);
-        assert_eq!(seq[0], (&3, &5));
-        assert_eq!(seq[1], (&4, &6));
-        assert_eq!(seq[2], (&7, &6));
-        assert_eq!(seq[3], (&8, &10));
+        assert_eq!(seq, vec![(&3, &5), (&4, &6), (&7, &6), (&8, &10)]);
     }
 
     #[test]
-    fn test_sort() {
+    fn test_sort_empty() {
+        let mut vec_map = VecMap::<u32, u64, 4>::default();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![]);
+
+        vec_map.sort();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![]);
+    }
+
+    #[test]
+    fn test_sort_one() {
+        let mut vec_map = VecMap::<u32, u64, 4>::default();
+
+        assert_eq!(*vec_map.get_mut_or_insert_with(&9, || 5).unwrap(), 5);
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&9, &5)]);
+
+        vec_map.sort();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&9, &5)]);
+    }
+
+    #[test]
+    fn test_sort_two() {
+        let mut vec_map = VecMap::<u32, u64, 4>::default();
+
+        assert_eq!(*vec_map.get_mut_or_insert_with(&9, || 5).unwrap(), 5);
+        assert_eq!(*vec_map.get_mut_or_insert_with(&3, || 6).unwrap(), 6);
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&9, &5), (&3, &6)]);
+
+        vec_map.sort();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&3, &6), (&9, &5)]);
+
+        vec_map.sort();
+
+        let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
+        assert_eq!(seq, vec![(&3, &6), (&9, &5)]);
+    }
+
+    #[test]
+    fn test_sort_at_capacity() {
         let mut vec_map = VecMap::<u32, u64, 4>::default();
         assert_eq!(*vec_map.get_mut_or_insert_with(&9, || 5).unwrap(), 5);
         assert_eq!(*vec_map.get_mut_or_insert_with(&3, || 6).unwrap(), 6);
@@ -229,28 +285,16 @@ mod tests {
         assert_eq!(*vec_map.get_mut_or_insert_with(&1, || 10).unwrap(), 10);
 
         let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
-        assert_eq!(seq.len(), 4);
-        assert_eq!(seq[0], (&9, &5));
-        assert_eq!(seq[1], (&3, &6));
-        assert_eq!(seq[2], (&7, &7));
-        assert_eq!(seq[3], (&1, &10));
+        assert_eq!(seq, vec![(&9, &5), (&3, &6), (&7, &7), (&1, &10)]);
 
         vec_map.sort();
 
         let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
-        assert_eq!(seq.len(), 4);
-        assert_eq!(seq[0], (&1, &10));
-        assert_eq!(seq[1], (&3, &6));
-        assert_eq!(seq[2], (&7, &7));
-        assert_eq!(seq[3], (&9, &5));
+        assert_eq!(seq, vec![(&1, &10), (&3, &6), (&7, &7), (&9, &5)]);
 
         vec_map.sort();
 
         let seq: alloc::vec::Vec<_> = vec_map.iter().collect();
-        assert_eq!(seq.len(), 4);
-        assert_eq!(seq[0], (&1, &10));
-        assert_eq!(seq[1], (&3, &6));
-        assert_eq!(seq[2], (&7, &7));
-        assert_eq!(seq[3], (&9, &5));
+        assert_eq!(seq, vec![(&1, &10), (&3, &6), (&7, &7), (&9, &5)]);
     }
 }
