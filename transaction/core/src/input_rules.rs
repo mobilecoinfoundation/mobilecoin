@@ -15,7 +15,7 @@ use crate::{
 };
 use alloc::{collections::BTreeMap, vec::Vec};
 use displaydoc::Display;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -83,6 +83,11 @@ impl InputRules {
             result.insert(output.tx_out.public_key, output.tx_out.clone());
         }
         result
+    }
+
+    /// Compute MCIP-52 canonical digest of input rules
+    pub fn canonical_digest(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(b"mc-input-rules")
     }
 
     /// Verify that a Tx conforms to the rules.
