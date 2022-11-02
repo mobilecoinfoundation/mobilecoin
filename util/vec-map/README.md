@@ -8,7 +8,7 @@ The motivation is somewhat connected to crates.io crates:
 * https://docs.rs/vec_map/latest/vec_map/struct.VecMap.html
 * https://docs.rs/vec-collections/latest/vec_collections/
 
-However these crates use `std::vec::Vec` rather than a `no_std` friendly object.
+However, these crates use `std::vec::Vec` rather than a `no_std` friendly object.
 
 We are using `heapless` because we want this to be friendly for hardware wallets.
 
