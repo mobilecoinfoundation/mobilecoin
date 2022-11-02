@@ -254,7 +254,7 @@ impl TxOutStore {
     ) -> Result<(), Error> {
         let num_tx_outs = self.num_tx_outs(db_transaction)?;
         if index >= num_tx_outs {
-            return Err(Error::IndexOutOfBounds(index));
+            return Err(Error::TxOutIndexOutOfBounds(index));
         }
 
         let ranges = containing_ranges(index, num_tx_outs)?;
@@ -304,7 +304,7 @@ impl TxOutStore {
     ) -> Result<TxOutMembershipProof, Error> {
         let num_tx_outs = self.num_tx_outs(db_transaction)?;
         if index >= num_tx_outs {
-            return Err(Error::IndexOutOfBounds(index));
+            return Err(Error::TxOutIndexOutOfBounds(index));
         }
 
         // These pairs correspond to the ranges we will use for the proof elements
@@ -374,7 +374,7 @@ fn range_to_key_bytes(range: &Range) -> [u8; 16] {
 /// order from smallest to largest.
 pub fn containing_ranges(index: u64, num_leaves: u64) -> Result<Vec<(u64, u64)>, Error> {
     if index >= num_leaves {
-        return Err(Error::IndexOutOfBounds(index));
+        return Err(Error::TxOutIndexOutOfBounds(index));
     }
 
     if let Some(num_leaves_full_tree) = num_leaves.checked_next_power_of_two() {
@@ -1340,7 +1340,7 @@ pub mod tx_out_store_tests {
         let ro_transaction = env.begin_ro_txn().unwrap();
         match tx_out_store.get_merkle_proof_of_membership(43, &ro_transaction) {
             Ok(_proof) => panic!("43 is out of bounds"),
-            Err(Error::IndexOutOfBounds(43)) => {
+            Err(Error::TxOutIndexOutOfBounds(43)) => {
                 // This is expected.
             }
             Err(e) => panic!("Unexpected error {:?}", e),

@@ -49,6 +49,7 @@ impl From<Error> for ProposeTxResult {
             Error::InvalidRistrettoPublicKey => Self::InvalidRistrettoPublicKey,
             Error::InvalidLedgerContext => Self::InvalidLedgerContext,
             Error::Ledger(_) => Self::Ledger,
+            Error::LedgerTxOutIndexOutOfBounds(_) => Self::LedgerTxOutIndexOutOfBounds,
             Error::MembershipProofValidationError => Self::MembershipProofValidationError,
             Error::TxFeeError => Self::TxFeeError,
             Error::KeyError => Self::KeyError,

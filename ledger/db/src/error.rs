@@ -56,8 +56,8 @@ pub enum Error {
     /// Capacity exceeded
     CapacityExceeded,
 
-    /// Index out of bounds: {0}
-    IndexOutOfBounds(u64),
+    /// TxOut Index out of bounds: {0}
+    TxOutIndexOutOfBounds(u64),
 
     /// LMDB: {0}
     Lmdb(lmdb::Error),

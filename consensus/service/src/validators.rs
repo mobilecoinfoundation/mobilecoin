@@ -25,7 +25,7 @@
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_ledger_db::Ledger;
+use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
@@ -168,7 +168,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
         self.ledger
             .get_tx_out_proof_of_memberships(indexes)
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
+            .map_err(|e| match e {
+                LedgerError::TxOutIndexOutOfBounds(index) => {
+                    TransactionValidationError::LedgerTxOutIndexOutOfBounds(index)
+                }
+                e => TransactionValidationError::Ledger(e.to_string()),
+            })
     }
 }
 
