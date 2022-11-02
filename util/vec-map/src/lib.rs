@@ -2,6 +2,7 @@
 
 //! Provides a map (key-value store) interface backed by `heapless::Vec`
 
+#![no_std]
 #![deny(missing_docs)]
 
 use displaydoc::Display;
