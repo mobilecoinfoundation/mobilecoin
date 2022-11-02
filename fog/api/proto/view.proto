@@ -201,7 +201,7 @@ message QueryResponse {
 
     /// The next value to use for start_from_user_event_id. For the first query, this should
     /// be 0.
-    int64 next_start_from_user_event_id= 3;
+    int64 next_start_from_user_event_id = 3;
 
     /// Any block ranges that are missed.
     /// These ranges are guaranteed to be non-overlapping.

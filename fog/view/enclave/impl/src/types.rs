@@ -41,7 +41,7 @@ pub(crate) struct LastKnownData {
 
 /// Helper struct that contains `QueryResponse` fields that should be shared
 /// across all shards, but might not be do to distributed system latencies.
-pub(crate) struct SharedData {
+pub(crate) struct CommonShardData {
     /// Blocks that Fog Ingest was unable to process.
     pub(crate) missed_block_ranges: Vec<BlockRange>,
     /// All RNG records for a given user.
@@ -85,7 +85,7 @@ impl LastKnownData {
     }
 }
 
-impl SharedData {
+impl CommonShardData {
     pub(crate) fn new(
         missed_block_ranges: Vec<BlockRange>,
         rng_records: Vec<RngRecord>,
@@ -101,7 +101,7 @@ impl SharedData {
     }
 }
 
-impl From<&[DecryptedMultiViewStoreQueryResponse]> for SharedData {
+impl From<&[DecryptedMultiViewStoreQueryResponse]> for CommonShardData {
     fn from(responses: &[DecryptedMultiViewStoreQueryResponse]) -> Self {
         let mut missed_block_ranges = HashSet::default();
         let mut rng_records = HashSet::default();
@@ -129,7 +129,7 @@ impl From<&[DecryptedMultiViewStoreQueryResponse]> for SharedData {
             .into_iter()
             .collect::<Vec<DecommissionedIngestInvocation>>();
 
-        SharedData::new(
+        CommonShardData::new(
             missed_block_ranges,
             rng_records,
             decommissioned_ingest_invocations,
@@ -141,7 +141,7 @@ impl From<&[DecryptedMultiViewStoreQueryResponse]> for SharedData {
 #[cfg(test)]
 mod shared_data_tests {
     extern crate std;
-    use crate::{DecryptedMultiViewStoreQueryResponse, SharedData};
+    use crate::{CommonShardData, DecryptedMultiViewStoreQueryResponse};
     use alloc::{vec, vec::Vec};
     use mc_fog_types::{
         common::BlockRange,
@@ -220,7 +220,7 @@ mod shared_data_tests {
             decrypted_query_responses.push(decrypted_query_response);
         }
 
-        let shared_data: SharedData = decrypted_query_responses.as_slice().into();
+        let shared_data: CommonShardData = decrypted_query_responses.as_slice().into();
 
         let actual_missed_block_ranges =
             HashSet::<_>::from_iter(shared_data.missed_block_ranges.iter());
@@ -300,7 +300,7 @@ mod shared_data_tests {
             decrypted_query_responses.push(decrypted_query_response);
         }
 
-        let shared_data: SharedData = decrypted_query_responses.as_slice().into();
+        let shared_data: CommonShardData = decrypted_query_responses.as_slice().into();
 
         let actual_missed_block_ranges =
             HashSet::<_>::from_iter(shared_data.missed_block_ranges.iter());
