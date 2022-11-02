@@ -82,18 +82,7 @@ impl ClientApiService {
         msg: Message,
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
-        let tx_context = match self.enclave.client_tx_propose(msg.into()) {
-            Ok(tx_context) => tx_context,
-            Err(EnclaveError::FeeMapDigestMismatch) => {
-                let mut response = ProposeTxResponse::new();
-                response.set_result(ProposeTxResult::FeeMapDigestMismatch);
-                response.set_err_msg(EnclaveError::FeeMapDigestMismatch.to_string());
-                return Ok(response);
-            }
-            Err(err) => {
-                return Err(err.into());
-            }
-        };
+        let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         // Cache the transaction. This performs the well-formedness checks.
         let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
