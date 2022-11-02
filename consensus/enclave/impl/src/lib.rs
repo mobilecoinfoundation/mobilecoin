@@ -58,6 +58,7 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::compute_implied_merkle_root,
     mint::{
         validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
@@ -854,6 +855,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                             value: output_fee,
                             token_id,
                         },
+                        None,
                         outputs.len(),
                     ));
                     total_fee -= output_fee as u128;
@@ -900,6 +902,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     value: mint_tx.prefix.amount,
                     token_id: TokenId::from(mint_tx.prefix.token_id),
                 },
+                mint_tx.prefix.e_fog_hint.clone(),
                 counter,
             )?;
 
@@ -955,6 +958,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// * `parent_block` - The parent block.
 /// * `transactions` - The transactions that are included in the current block.
 /// * `amount` - Output amount.
+/// * `e_fog_hint` - Optional encrypted fog hint to use
 /// * `counter` - An additional counter used to disambiguate hashes, when the
 ///   same amount is minted repeatedly
 ///
@@ -970,6 +974,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 ///
 /// The counter value should be used for each "context" where we mint multiple
 /// outputs to prevent this issue.
+#[allow(clippy::too_many_arguments)]
 fn mint_output<T: Digestible>(
     block_version: BlockVersion,
     recipient: &PublicAddress,
@@ -977,6 +982,7 @@ fn mint_output<T: Digestible>(
     parent_block: &Block,
     transactions: &[T],
     amount: Amount,
+    e_fog_hint: Option<EncryptedFogHint>,
     counter: usize,
 ) -> Result<TxOut> {
     // Check if the token id makes sense right now
@@ -1012,7 +1018,7 @@ fn mint_output<T: Digestible>(
         amount,
         recipient,
         &tx_private_key,
-        Default::default(),
+        e_fog_hint.unwrap_or_default(),
     )
     .map_err(|e| Error::FormBlock(format!("NewTxError: {}", e)))
 }

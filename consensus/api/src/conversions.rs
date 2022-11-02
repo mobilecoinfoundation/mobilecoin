@@ -149,6 +149,10 @@ impl From<MintValidationError> for MintValidationResult {
                 code: MintValidationResultCode::NoMatchingMintConfig,
                 ..Default::default()
             },
+            MintValidationError::MintingToFogNotSupported => Self {
+                code: MintValidationResultCode::MintingToFogNotSupported,
+                ..Default::default()
+            },
         }
     }
 }
@@ -191,6 +195,9 @@ impl TryInto<MintValidationError> for MintValidationResult {
             MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
             MintValidationResultCode::NoMatchingMintConfig => {
                 Ok(MintValidationError::NoMatchingMintConfig)
+            }
+            MintValidationResultCode::MintingToFogNotSupported => {
+                Ok(MintValidationError::MintingToFogNotSupported)
             }
         }
     }
