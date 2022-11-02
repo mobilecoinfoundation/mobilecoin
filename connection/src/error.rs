@@ -42,6 +42,7 @@ impl Error {
         match self {
             Error::Grpc(_) => true,
             Error::Attestation(err) => err.should_retry(),
+            Error::TransactionValidation(ProposeTxResult::LedgerTxOutIndexOutOfBounds, _) => true,
             _ => false,
         }
     }
