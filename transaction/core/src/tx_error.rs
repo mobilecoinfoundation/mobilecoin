@@ -97,7 +97,7 @@ pub enum NewMemoError {
     /// Attempted value: {1} > Max Value: {0}
     MaxFeeExceeded(u64, u64),
     /// Payment request and intent ID both are set
-    RequestAndIntentIdSet(),
+    RequestAndIntentIdSet,
     /// Other: {0}
     Other(String),
 }
