@@ -2,7 +2,7 @@
 
 //! Command line configuration for the consensus mint client.
 
-use crate::TxFile;
+use crate::{FogContext, TxFile};
 use clap::{Args, Parser, Subcommand};
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
@@ -11,12 +11,14 @@ use mc_crypto_keys::{
     DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
 };
 use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_sgx_css::Signature;
 use mc_transaction_core::{
     mint::{
         constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
     },
     TokenId,
 };
+use mc_util_parse::load_css_file;
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
 use std::{
@@ -176,12 +178,19 @@ pub struct MintTxPrefixParams {
 impl MintTxPrefixParams {
     pub fn try_into_mint_tx_prefix(
         self,
+        fog_bits: Option<FogContext>,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTxPrefix, String> {
-        if let Some(fog_url) = self.recipient.fog_report_url() {
-            return Err(format!("This recipient has a fog url, but minting to fog users is not supported right now: '{}'", fog_url));
-        }
-        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
+        let mut tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
+        let e_fog_hint = self.recipient.fog_report_url().map(|fog_url| -> Result<_, String> {
+            let fog_bits = fog_bits.ok_or_else(|| format!(
+                "This recipient has a fog url, but a CSS to validate fog public keys was not supplied: '{}'",
+                fog_url,
+            ))?;
+            let (e_fog_hint, pubkey_expiry) = fog_bits.get_e_fog_hint(&self.recipient)?;
+            tombstone_block = tombstone_block.min(pubkey_expiry);
+            Ok(e_fog_hint)
+        }).transpose()?;
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
             token_id: *self.token_id,
@@ -190,6 +199,7 @@ impl MintTxPrefixParams {
             spend_public_key: *self.recipient.spend_public_key(),
             nonce,
             tombstone_block,
+            e_fog_hint,
         })
     }
 }
@@ -220,11 +230,12 @@ pub struct MintTxParams {
 impl MintTxParams {
     pub fn try_into_mint_tx(
         self,
+        fog_bits: Option<FogContext>,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTx, String> {
         let prefix = self
             .prefix_params
-            .try_into_mint_tx_prefix(fallback_tombstone_block)?;
+            .try_into_mint_tx_prefix(fog_bits, fallback_tombstone_block)?;
         let message = prefix.hash();
 
         let mut signatures = self
@@ -320,6 +331,11 @@ pub enum Commands {
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
+        /// Fog ingest enclave CSS file (needed in order to enable minting
+        /// to fog recipients).
+        #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
+        fog_ingest_enclave_css: Option<Signature>,
+
         #[clap(flatten)]
         params: MintTxParams,
     },
@@ -329,6 +345,16 @@ pub enum Commands {
         /// Filename to write the mint configuration to.
         #[clap(long, env = "MC_MINTING_OUT_FILE")]
         out: PathBuf,
+
+        /// Fog ingest enclave CSS file (needed in order to enable minting
+        /// to fog recipients).
+        #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS", requires = "chain_id")]
+        fog_ingest_enclave_css: Option<Signature>,
+
+        /// The chain id of the network we expect to connect to. This is only
+        /// needed if fog is used.
+        #[clap(long, env = "MC_CHAIN_ID")]
+        chain_id: Option<String>,
 
         #[clap(flatten)]
         params: MintTxParams,
@@ -478,13 +504,6 @@ fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
     if printable_wrapper.has_public_address() {
         let public_address = PublicAddress::try_from(printable_wrapper.get_public_address())
             .map_err(|err| format!("failed converting b58 public address '{}': {}", b58, err))?;
-
-        if public_address.fog_report_url().is_some() {
-            return Err(format!(
-                "b58 address '{}' is a fog address, which is not supported",
-                b58
-            ));
-        }
 
         Ok(public_address)
     } else {

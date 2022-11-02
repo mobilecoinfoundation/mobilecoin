@@ -44,4 +44,7 @@ pub enum Error {
 
     /// No matching mint configuration
     NoMatchingMintConfig,
+
+    /// Minting to fog is not supported at this block version
+    MintingToFogNotSupported,
 }

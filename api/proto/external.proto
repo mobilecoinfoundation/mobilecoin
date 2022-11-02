@@ -423,6 +423,9 @@ message MintTxPrefix {
 
     /// The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 6;
+
+    /// The (optional) encrypted fog hint of the minted TxOut.
+    EncryptedFogHint e_fog_hint = 7;
 }
 
 /// A mint transaction coupled with a signature over it.
