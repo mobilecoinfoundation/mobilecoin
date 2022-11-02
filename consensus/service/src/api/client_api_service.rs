@@ -19,7 +19,7 @@ use mc_consensus_api::{
     consensus_config::{ConsensusNodeConfig, TokenConfig},
     empty::Empty,
 };
-use mc_consensus_enclave::{ConsensusEnclave, Error as EnclaveError};
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_service_config::Config;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
@@ -361,7 +361,7 @@ mod client_api_tests {
         consensus_client::MintValidationResultCode, consensus_client_grpc,
         consensus_client_grpc::ConsensusClientApiClient, consensus_common::ProposeTxResult,
     };
-    use mc_consensus_enclave::TxContext;
+    use mc_consensus_enclave::{Error as EnclaveError, TxContext};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_consensus_service_config::Config;
     use mc_crypto_keys::Ed25519Pair;
@@ -701,6 +701,66 @@ mod client_api_tests {
                 assert_eq!(
                     propose_tx_response.get_result(),
                     ProposeTxResult::ContainsSpentKeyImage
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return ProposeTxResult::FeeMapDigestMismatch if the tx is not
+    // well-formed.
+    fn test_client_tx_propose_fee_map_mismatched(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+
+        consensus_enclave
+            .expect_client_tx_propose()
+            .times(1)
+            .return_const(Err(EnclaveError::FeeMapDigestMismatch));
+
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let tx_manager = MockTxManager::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result(),
+                    ProposeTxResult::FeeMapDigestMismatch
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
