@@ -367,8 +367,7 @@ impl Client {
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
-        let last_block_info = self.get_last_block_info(true)?;
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
+        let fee_map = self.get_fee_map(true)?;
 
         // Make fog resolver
         let fog_uris = (&[&self.account_key.change_subaddress(), target_address])
@@ -608,8 +607,7 @@ impl Client {
         )?;
         tx_builder.set_tombstone_block(tombstone_block);
 
-        let last_block_info = self.get_last_block_info(true)?;
-        tx_builder.set_fee_map(FeeMap::try_from(last_block_info.minimum_fees)?);
+        tx_builder.set_fee_map(self.get_fee_map(true)?);
 
         // Aggregate total required outlay due to the SCI
         // (Note: In the partial fill case, there will be more outlays later)
