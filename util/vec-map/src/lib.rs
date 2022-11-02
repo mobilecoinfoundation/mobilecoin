@@ -54,7 +54,7 @@ impl<K, V, const N: usize> VecMap<K, V, N> {
     }
 }
 
-impl<K: Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
+impl<K: Eq, V, const N: usize> VecMap<K, V, N> {
     /// Get the value associated to a key, if present
     pub fn get(&self, key: &K) -> Option<&V> {
         self.keys
@@ -72,7 +72,7 @@ impl<K: Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
     }
 }
 
-impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
+impl<K: Clone + Eq, V, const N: usize> VecMap<K, V, N> {
     /// Get a mutable reference to the value associated to a key, if present,
     /// or else insert such a value produced by given callback,
     /// and then return a mutable reference
@@ -93,7 +93,7 @@ impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
                 .map_err(|_| Error::CapacityExceeded)?;
             self.values
                 .push(val_fn())
-                .map_err(|_| Error::CapacityExceeded)?;
+                .map_err(|_| panic!("Length invariant violated"))?;
             Ok(&mut self.values[idx])
         }
     }
@@ -105,7 +105,7 @@ impl<K: Clone + Eq + PartialEq, V, const N: usize> VecMap<K, V, N> {
 }
 
 // Sorting is possible when keys are ordered, and keys and values are cloneable
-impl<K: Clone + Ord + PartialOrd + Eq + PartialEq, V: Clone, const N: usize> VecMap<K, V, N> {
+impl<K: Clone + Ord, V: Clone, const N: usize> VecMap<K, V, N> {
     /// Sort the key-value pairs of the VecMap
     pub fn sort(&mut self) {
         // First compute the order that would sort the set of keys
@@ -129,18 +129,18 @@ impl<K: Clone + Ord + PartialOrd + Eq + PartialEq, V: Clone, const N: usize> Vec
 }
 
 /// An iterator over a VecMap
-pub struct IterVecMap<'a, K: Clone + Eq + PartialEq, V, const N: usize> {
+pub struct IterVecMap<'a, K: Clone + Eq, V, const N: usize> {
     src: &'a VecMap<K, V, N>,
     idx: usize,
 }
 
-impl<'a, K: Clone + Eq + PartialEq, V, const N: usize> IterVecMap<'a, K, V, N> {
+impl<'a, K: Clone + Eq, V, const N: usize> IterVecMap<'a, K, V, N> {
     fn new(src: &'a VecMap<K, V, N>) -> Self {
         Self { src, idx: 0 }
     }
 }
 
-impl<'a, K: Clone + Eq + PartialEq, V, const N: usize> Iterator for IterVecMap<'a, K, V, N> {
+impl<'a, K: Clone + Eq, V, const N: usize> Iterator for IterVecMap<'a, K, V, N> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
