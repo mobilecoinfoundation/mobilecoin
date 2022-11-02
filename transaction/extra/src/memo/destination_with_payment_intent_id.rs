@@ -50,7 +50,16 @@ pub struct DestinationWithPaymentIntentIdMemo {
     /// as a u64. In that case, the memo builder is responsible to signal an
     /// an error. The client may disable destination memos for this transaction.
     total_outlay: u64,
-    /// TODO: HERE!
+    /// An ID number which uniquely identifies an intent to send a payment
+    /// 
+    /// This ID isn't necessarily unique on the blockchain. The ID number itself
+    /// provides a standard way for client applications to keep records of
+    /// payment intents and recover them using only data on the blockchain.
+    /// The exact details of a payment intent need to be made and agreed upon
+    /// off of the blockchain. Having the ID in the memo only enables client
+    /// applications to associate TxOuts to payment intents without storing any
+    /// information about the TxOuts outside of the blockchain alongside the
+    /// payment intent ID.
     payment_intent_id: u64,
 }
 

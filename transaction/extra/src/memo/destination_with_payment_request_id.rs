@@ -50,7 +50,16 @@ pub struct DestinationWithPaymentRequestIdMemo {
     /// as a u64. In that case, the memo builder is responsible to signal an
     /// an error. The client may disable destination memos for this transaction.
     total_outlay: u64,
-    /// TODO: HERE!
+    /// An ID number which uniquely identifies a request for payment
+    /// 
+    /// This ID isn't necessarily unique on the blockchain. The ID number itself
+    /// provides a standard way for client applications to keep records of
+    /// payment requests and recover them using only data on the blockchain.
+    /// The exact details of a payment request need to be made and agreed upon
+    /// off of the blockchain. Having the ID in the memo only enables client
+    /// applications to associate TxOuts to payment requests without storing
+    /// any information about the TxOuts outside of the blockchain alongside
+    /// the payment request ID.
     payment_request_id: u64,
 }
 
