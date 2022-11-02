@@ -160,6 +160,8 @@ members = [
     "util/test-helper",
     "util/test-vector",
     "util/uri",
+    "util/vec-map",
+    "util/zip-exact",
     "wasm-test",
     "watcher",
     "watcher/api",
