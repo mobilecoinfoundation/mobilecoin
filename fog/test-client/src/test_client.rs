@@ -715,7 +715,7 @@ impl TestClient {
         let tok1_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
         let tok2_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
 
-        log::debug!(
+        log::info!(
             self.logger,
             "Attempting to {} swap ({}) of {} and ({}) of {}",
             if is_partial_fill {
@@ -935,12 +935,12 @@ impl TestClient {
     pub fn run_test(&self, num_transactions: usize) -> Result<(), TestClientError> {
         let client_count = self.account_keys.len() as usize;
         assert!(client_count > 1);
-        log::debug!(self.logger, "Creating {} clients", client_count);
+        log::info!(self.logger, "Creating {} clients", client_count);
         let clients = self.build_clients(client_count);
 
         // Send test transfers in each configured token id
         for token_id in &self.policy.token_ids {
-            log::debug!(
+            log::info!(
                 self.logger,
                 "Generating and testing {} transactions",
                 token_id
@@ -948,7 +948,7 @@ impl TestClient {
 
             let start_time = Instant::now();
             for ti in 0..num_transactions {
-                log::debug!(self.logger, "Transation: {:?}", ti);
+                log::info!(self.logger, "Test Transfer: {:?}", ti);
 
                 let source_index = ti % client_count;
                 let target_index = (ti + 1) % client_count;
@@ -965,6 +965,7 @@ impl TestClient {
 
                 // Attempt double spend on the last transaction. This is an expensive test.
                 if ti == num_transactions - 1 {
+                    log::info!(self.logger, "attemping double spend test");
                     let mut source_client_lk = source_client.lock().expect("mutex poisoned");
                     self.attempt_double_spend(&mut source_client_lk, &transaction)?;
                 }
@@ -980,14 +981,14 @@ impl TestClient {
 
         // Now, run some tests of the atomic swaps functionality
         if self.policy.token_ids.len() > 1 {
-            log::debug!(
+            log::info!(
                 self.logger,
                 "Generating and testing atomic swap transactions"
             );
 
             let start_time = Instant::now();
             for ti in 0..num_transactions {
-                log::debug!(self.logger, "Transation: {:?}", ti);
+                log::info!(self.logger, "Test Swap: {:?}", ti);
 
                 let source_index = ti % client_count;
                 let target_index = (ti + 1) % client_count;

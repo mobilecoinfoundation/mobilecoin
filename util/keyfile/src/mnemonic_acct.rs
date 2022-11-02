@@ -1,4 +1,4 @@
-// Copyright 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains code related to reading/writing mnemonic-based accounts
 //! (either as protobuf or JSON strings) and converting them into AccountKey
@@ -7,7 +7,7 @@
 use bip39::{Language, Mnemonic};
 use displaydoc::Display;
 use mc_account_keys::AccountKey;
-use mc_account_keys_slip10::{Error as Slip10Error, Slip10KeyGenerator};
+use mc_core::slip10::Slip10KeyGenerator;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -23,16 +23,7 @@ pub enum Error {
     InvalidMnemonic(String),
     /// No account index was provided
     NoAccountIndex,
-    /// Could not derive account key from SLIP-0010 key: {0}
-    KeyDerivation(Slip10Error),
 }
-
-impl From<Slip10Error> for Error {
-    fn from(src: Slip10Error) -> Error {
-        Error::KeyDerivation(src)
-    }
-}
-
 /// A serialized mnemonic-based account key
 #[derive(Clone, Eq, Hash, Ord, PartialOrd, PartialEq, Serialize, Deserialize, Message)]
 pub struct UncheckedMnemonicAccount {
@@ -63,11 +54,11 @@ impl TryFrom<UncheckedMnemonicAccount> for AccountKey {
         )
         .map_err(|e| Error::InvalidMnemonic(format!("{}", e)))?;
         let slip10 = mnemonic.derive_slip10_key(src.account_index.ok_or(Error::NoAccountIndex)?);
-        Ok(slip10.try_into_account_key(
+        Ok(AccountKey::from(slip10).with_fog(
             src.fog_report_url.unwrap_or_default().as_str(),
             src.fog_report_id.unwrap_or_default().as_str(),
             src.fog_authority_spki.unwrap_or_default().as_slice(),
-        )?)
+        ))
     }
 }
 

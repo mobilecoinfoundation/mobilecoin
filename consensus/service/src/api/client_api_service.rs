@@ -15,7 +15,7 @@ use mc_common::logger::Logger;
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
-    consensus_common::{ProposeTxResponse, ProposeTxResult},
+    consensus_common::ProposeTxResponse,
     consensus_config::{ConsensusNodeConfig, TokenConfig},
     empty::Empty,
 };
@@ -83,15 +83,11 @@ impl ClientApiService {
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
-        let mut response = ProposeTxResponse::new();
 
         // Cache the transaction. This performs the well-formedness checks.
         let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
-                let result = ProposeTxResult::from(cause.clone());
-                response.set_result(result);
-                response.set_err_msg(cause.to_string());
             }
             err
         })?;
@@ -104,6 +100,8 @@ impl ClientApiService {
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::TxHash(tx_hash), None, None);
         counters::ADD_TX.inc();
+
+        let response = ProposeTxResponse::new();
         Ok(response)
     }
 

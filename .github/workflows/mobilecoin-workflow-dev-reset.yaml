@@ -36,13 +36,6 @@ on:
         required: true
 
 jobs:
-  list-values:
-    runs-on: [self-hosted, Linux, small]
-    steps:
-    - name: values
-      run: |
-        echo namespace ${{ inputs.namespace }}
-
   reset-releases:
     runs-on: [self-hosted, Linux, small]
     strategy:

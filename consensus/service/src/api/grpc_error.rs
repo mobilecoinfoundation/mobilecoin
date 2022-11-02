@@ -139,6 +139,7 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
         match src {
             ConsensusGrpcError::TransactionValidation(err) => {
                 let mut resp = ProposeTxResponse::new();
+                resp.set_err_msg(err.to_string());
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
             }

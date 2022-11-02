@@ -1,8 +1,8 @@
-use crate::{FeeMap, GovernorsMap};
+use crate::{Error, FeeMap, GovernorsMap, GovernorsVerifier};
 use alloc::{format, string::String};
 use mc_common::ResponderId;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_crypto_keys::Ed25519Signature;
+use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 use mc_transaction_core::BlockVersion;
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +36,27 @@ impl Default for BlockchainConfig {
             governors_signature: None,
             block_version: BlockVersion::MAX,
         }
+    }
+}
+
+impl BlockchainConfig {
+    /// Check if the blockchain config is valid.
+    pub fn validate(&self, minting_trust_root_public_key: &Ed25519Public) -> Result<(), Error> {
+        // Check that fee map is actually well formed
+        FeeMap::is_valid_map(self.fee_map.as_ref()).map_err(Error::FeeMap)?;
+
+        // Validate governors signature.
+        if !self.governors_map.is_empty() {
+            let signature = self
+                .governors_signature
+                .ok_or(Error::MissingGovernorsSignature)?;
+
+            minting_trust_root_public_key
+                .verify_governors_map(&self.governors_map, &signature)
+                .map_err(|_| Error::InvalidGovernorsSignature)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -87,10 +108,19 @@ impl BlockchainConfigWithDigest {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{governors_sig::Signer, FeeMapError};
     use alloc::{string::ToString, vec};
-    use mc_crypto_keys::Ed25519Public;
+    use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Ed25519Public};
     use mc_crypto_multisig::SignerSet;
     use mc_transaction_core::{tokens::Mob, Token, TokenId};
+
+    fn sign_governors_map(map: &GovernorsMap) -> (Option<Ed25519Signature>, Ed25519Public) {
+        let keypair = Ed25519Pair::from(Ed25519Private::try_from(&[1; 32][..]).unwrap());
+        (
+            Some(keypair.sign_governors_map(map).unwrap()),
+            keypair.public_key(),
+        )
+    }
 
     /// Different block_version/fee maps/responder ids should result in
     /// different responder ids over all
@@ -216,6 +246,112 @@ mod test {
         assert_ne!(
             config2.responder_id(&responder_id1),
             config3.responder_id(&responder_id1)
+        );
+    }
+
+    #[test]
+    fn validate_succeeds_with_valid_config() {
+        // With governors map
+        let governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(2),
+            SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&governors_map);
+
+        let config = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            governors_map,
+            governors_signature,
+            block_version: BlockVersion::ONE,
+        };
+
+        assert_eq!(config.validate(&governors_public_key), Ok(()));
+
+        // Without governors map
+        let config = BlockchainConfig {
+            fee_map: Default::default(),
+            governors_map: Default::default(),
+            governors_signature: None,
+            block_version: BlockVersion::ONE,
+        };
+
+        assert_eq!(config.validate(&governors_public_key), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_invalid_fee_map() {
+        let governors_public_key =
+            Ed25519Pair::from(Ed25519Private::try_from(&[1; 32][..]).unwrap()).public_key();
+
+        // Fee map does not contain MOB. We deserialize from JSON since that's the only
+        // way we have of constructing an invalid fee map.
+        let invalid_fee_map: FeeMap = serde_json::from_str(r#"{"map": {"2": 384}}"#).unwrap();
+
+        let config = BlockchainConfig {
+            fee_map: invalid_fee_map,
+            governors_map: Default::default(),
+            governors_signature: None,
+            block_version: BlockVersion::ONE,
+        };
+
+        assert_eq!(
+            config.validate(&governors_public_key),
+            Err(Error::FeeMap(FeeMapError::MissingFee(Mob::ID)))
+        );
+    }
+
+    #[test]
+    fn validate_rejects_governors_without_signature() {
+        let governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(2),
+            SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+        )])
+        .unwrap();
+
+        let (_governors_signature, governors_public_key) = sign_governors_map(&governors_map);
+
+        let config = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            governors_map,
+            governors_signature: None,
+            block_version: BlockVersion::ONE,
+        };
+
+        assert_eq!(
+            config.validate(&governors_public_key),
+            Err(Error::MissingGovernorsSignature)
+        );
+    }
+
+    #[test]
+    fn validate_rejects_invalid_governors_signature() {
+        let governors_map = GovernorsMap::try_from_iter([(
+            TokenId::from(2),
+            SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+        )])
+        .unwrap();
+
+        let (governors_signature, governors_public_key) = sign_governors_map(&governors_map);
+
+        // Invalidate the signature by using a different governors map
+        let governors_map2 = GovernorsMap::try_from_iter([(
+            TokenId::from(3),
+            SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+        )])
+        .unwrap();
+
+        let config = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            governors_map: governors_map2,
+            governors_signature,
+            block_version: BlockVersion::ONE,
+        };
+
+        assert_eq!(
+            config.validate(&governors_public_key),
+            Err(Error::InvalidGovernorsSignature)
         );
     }
 }
