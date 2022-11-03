@@ -19,10 +19,11 @@ mod tx_out_gift_code;
 mod unsigned_tx;
 
 pub use memo::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo,
-    DestinationMemo, DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, GiftCodeCancellationMemo, GiftCodeFundingMemo,
-    GiftCodeSenderMemo, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
-    UnusedMemo,
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+    AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DestinationMemo,
+    DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
+    GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
+    RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,

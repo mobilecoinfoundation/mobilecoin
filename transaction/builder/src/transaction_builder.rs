@@ -2266,7 +2266,7 @@ pub mod transaction_builder_tests {
                     }
                 }
             }
-        
+
             // Enable both sender and destination memos, and set a payment intent id
             {
                 let mut memo_builder = RTHMemoBuilder::default();

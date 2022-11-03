@@ -12,8 +12,10 @@ use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    AuthenticatedSenderMemo,AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    DestinationMemoError, DestinationWithPaymentRequestIdMemo, DestinationWithPaymentIntentIdMemo, SenderMemoCredential, UnusedMemo,
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+    AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, DestinationMemoError,
+    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, SenderMemoCredential,
+    UnusedMemo,
 };
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
@@ -254,7 +256,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
 
         if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
-           return  Err(NewMemoError::RequestAndIntentIdSet);
+            return Err(NewMemoError::RequestAndIntentIdSet);
         }
 
         if let Some(payment_request_id) = self.payment_request_id {

@@ -20,7 +20,8 @@ use subtle::Choice;
 /// but deniable way, for the recipient of a TxOut, which also includes a
 /// payment intent id number under the MAC.
 ///
-/// See mobilecoinfoundation/mcips/pull/4 for a discussion of the deniability property.
+/// See mobilecoinfoundation/mcips/pull/4 for a discussion of the deniability
+/// property.
 ///
 /// The recipient of this memo type should:
 /// * First, use sender_address_hash to look up the address of the sender, from

@@ -4,8 +4,7 @@
 //!
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/54
 
-use super::DestinationMemoError;
-use super::RegisteredMemoType;
+use super::{DestinationMemoError, RegisteredMemoType};
 use crate::impl_memo_type_conversions;
 use mc_account_keys::ShortAddressHash;
 
@@ -51,7 +50,7 @@ pub struct DestinationWithPaymentIntentIdMemo {
     /// an error. The client may disable destination memos for this transaction.
     total_outlay: u64,
     /// An ID number which uniquely identifies an intent to send a payment
-    /// 
+    ///
     /// This ID isn't necessarily unique on the blockchain. The ID number itself
     /// provides a standard way for client applications to keep records of
     /// payment intents and recover them using only data on the blockchain.
@@ -152,13 +151,14 @@ impl From<&[u8; 64]> for DestinationWithPaymentIntentIdMemo {
             u64::from_be_bytes(fee_bytes)
         };
         let total_outlay = u64::from_be_bytes(src[24..32].try_into().expect("arithmetic error"));
-        let payment_intent_id = u64::from_be_bytes(src[32..40].try_into().expect("arithmetic error"));
+        let payment_intent_id =
+            u64::from_be_bytes(src[32..40].try_into().expect("arithmetic error"));
         Self {
             address_hash: address_hash.into(),
             num_recipients,
             fee,
             total_outlay,
-            payment_intent_id
+            payment_intent_id,
         }
     }
 }
