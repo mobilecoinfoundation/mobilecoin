@@ -841,6 +841,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
+    /// * `fee_map` - The current minimum fee map consensus is configured with.
     /// * `rng` - randomness
     /// * `logger` - Logger
     #[allow(clippy::too_many_arguments)]
