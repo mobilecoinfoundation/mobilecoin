@@ -138,13 +138,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 fn get_majority_block_info(block_infos: &[BlockInfo]) -> Option<BlockInfo> {
     let mut block_info_counts = HashMap::default();
     for block_info in block_infos {
-        *block_info_counts.entry(block_info.clone()).or_insert(0) += 1;
+        *block_info_counts.entry(block_info).or_insert(0) += 1;
     }
 
     block_info_counts
         .into_iter()
         .max_by_key(|(_block_info, count)| *count)
-        .map(|(block_info, _count)| block_info)
+        .map(|(block_info, _count)| block_info.clone())
 }
 
 impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver>
