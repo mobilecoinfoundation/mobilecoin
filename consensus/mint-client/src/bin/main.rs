@@ -69,7 +69,7 @@ fn main() {
             let tx = params
                 .try_into_mint_config_tx(|| {
                     if let Some(node) = &tombstone_from_node {
-                        let ch = ChannelBuilder::default_channel_builder(env)
+                        let ch = ChannelBuilder::default_channel_builder(env.clone())
                             .connect_to_uri(node, &logger);
                         let blockchain_api = BlockchainApiClient::new(ch);
                         let last_block_info = blockchain_api
