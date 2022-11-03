@@ -674,9 +674,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Return low level data to sign and construct transactions with external
     /// signers
-    pub fn build_unsigned<T: RngCore + CryptoRng, O: TxOutputsOrdering>(
-        mut self,
-    ) -> Result<UnsignedTx, TxBuilderError> {
+    pub fn build_unsigned<O: TxOutputsOrdering>(mut self) -> Result<UnsignedTx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -813,7 +811,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        let unsigned_tx = self.build_unsigned::<RNG, O>()?;
+        let unsigned_tx = self.build_unsigned::<O>()?;
         Ok(unsigned_tx.sign(ring_signer, rng)?)
     }
 }
