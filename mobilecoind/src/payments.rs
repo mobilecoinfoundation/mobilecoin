@@ -177,8 +177,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         opt_fee: u64,
         last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless opt_fee is non-zero
+        // Figure out the block_version and fee, taking into account if opt_fee is nonzero
         let candidate_block_version = self.ledger_db.get_latest_block()?.version;
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
