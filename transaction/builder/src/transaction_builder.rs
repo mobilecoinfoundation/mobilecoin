@@ -1945,7 +1945,7 @@ pub mod transaction_builder_tests {
                     if block_version.e_memo_feature_is_supported() {
                         let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
+                            MemoType::DestinationWithPaymentRequestId(memo) => {
                                 assert_eq!(
                                     memo.get_address_hash(),
                                     &ShortAddressHash::from(&recipient_address),
@@ -1958,6 +1958,7 @@ pub mod transaction_builder_tests {
                                     value - change_value,
                                     "outlay should be amount sent to recipient + fee"
                                 );
+                                assert_eq!(memo.get_payment_request_id(), 42);
                             }
                             _ => {
                                 panic!("unexpected memo type")
@@ -2243,7 +2244,7 @@ pub mod transaction_builder_tests {
                     if block_version.e_memo_feature_is_supported() {
                         let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
+                            MemoType::DestinationWithPaymentRequestId(memo) => {
                                 assert_eq!(
                                     memo.get_address_hash(),
                                     &ShortAddressHash::from(&recipient_address),
@@ -2256,6 +2257,173 @@ pub mod transaction_builder_tests {
                                     value - change_value,
                                     "outlay should be amount sent to recipient + fee"
                                 );
+                                assert_eq!(memo.get_payment_request_id(), 47);
+                            }
+                            _ => {
+                                panic!("unexpected memo type")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Enable both sender and destination memos, and set a payment intent id
+            {
+                let mut memo_builder = RTHMemoBuilder::default();
+                memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
+                memo_builder.enable_destination_memo();
+                memo_builder.set_payment_intent_id(4855282172840142080);
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
+                    fog_resolver.clone(),
+                    memo_builder,
+                )
+                .unwrap();
+
+                transaction_builder.set_tombstone_block(2000);
+
+                let input_credentials = get_input_credentials(
+                    block_version,
+                    Amount { value, token_id },
+                    &sender,
+                    &fog_resolver,
+                    &mut rng,
+                );
+                transaction_builder.add_input(input_credentials);
+
+                transaction_builder
+                    .add_output(
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+                        &recipient_address,
+                        &mut rng,
+                    )
+                    .unwrap();
+
+                transaction_builder
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
+                    .unwrap();
+
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+
+                // The transaction should have two output.
+                assert_eq!(tx.prefix.outputs.len(), 2);
+
+                // The tombstone block should be the min of what the user requested, and what
+                // fog limits it to
+                assert_eq!(tx.prefix.tombstone_block, 1000);
+
+                let output = tx
+                    .prefix
+                    .outputs
+                    .iter()
+                    .find(|tx_out| {
+                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
+                            .unwrap()
+                    })
+                    .expect("Didn't find recipient's output");
+                let change = tx
+                    .prefix
+                    .outputs
+                    .iter()
+                    .find(|tx_out| {
+                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                    })
+                    .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
+                assert!(
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
+                        .unwrap()
+                );
+                assert!(
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
+                );
+                assert!(
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
+                );
+                assert!(
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
+                        .unwrap()
+                );
+
+                // The 1st output should belong to the correct recipient and have correct amount
+                // and have correct memo
+                {
+                    let ss = get_tx_out_shared_secret(
+                        recipient.view_private_key(),
+                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    );
+                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
+                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
+                    assert_eq!(amount.token_id, token_id);
+
+                    if block_version.e_memo_feature_is_supported() {
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
+                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
+                                assert_eq!(
+                                    memo.sender_address_hash(),
+                                    ShortAddressHash::from(&sender_addr),
+                                    "lookup based on address hash failed"
+                                );
+                                assert!(
+                                    bool::from(
+                                        memo.validate(
+                                            &sender_addr,
+                                            &recipient
+                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                            &output.public_key,
+                                        )
+                                    ),
+                                    "hmac validation failed"
+                                );
+                                assert_eq!(memo.payment_intent_id(), 4855282172840142080);
+                            }
+                            _ => {
+                                panic!("unexpected memo type")
+                            }
+                        }
+                    }
+                }
+
+                // The 2nd output should belong to the correct recipient and have correct amount
+                // and have correct memo
+                {
+                    let ss = get_tx_out_shared_secret(
+                        sender.view_private_key(),
+                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    );
+                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
+                    assert_eq!(amount.value, change_value);
+                    assert_eq!(amount.token_id, token_id);
+
+                    if block_version.e_memo_feature_is_supported() {
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
+                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                            MemoType::DestinationWithPaymentIntentId(memo) => {
+                                assert_eq!(
+                                    memo.get_address_hash(),
+                                    &ShortAddressHash::from(&recipient_address),
+                                    "lookup based on address hash failed"
+                                );
+                                assert_eq!(memo.get_num_recipients(), 1);
+                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                                assert_eq!(
+                                    memo.get_total_outlay(),
+                                    value - change_value,
+                                    "outlay should be amount sent to recipient + fee"
+                                );
+                                assert_eq!(memo.get_payment_intent_id(), 4855282172840142080);
                             }
                             _ => {
                                 panic!("unexpected memo type")

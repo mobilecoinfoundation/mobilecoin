@@ -39,17 +39,23 @@
 //! | 0x0002          | Gift Code Sender Memo                             |
 //! | 0x0100          | Authenticated Sender Memo                         |
 //! | 0x0101          | Authenticated Sender With Payment Request Id Memo |
+//! | 0x0102          | Authenticated Sender With Payment Intent Id Memo  |
 //! | 0x0200          | Destination Memo                                  |
 //! | 0x0201          | Gift Code Funding Memo                            |
 //! | 0x0202          | Gift Code Cancellation Memo                       |
+//! | 0x0203          | Destination With Payment Request Id Memo          |
+//! | 0x0204          | Destination With Payment Intent Id Memo           |
 
 pub use self::{
     authenticated_common::compute_category1_hmac,
     authenticated_sender::AuthenticatedSenderMemo,
+    authenticated_sender_with_payment_intent_id::AuthenticatedSenderWithPaymentIntentIdMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,
     credential::SenderMemoCredential,
     destination::{DestinationMemo, DestinationMemoError},
+    destination_with_payment_intent_id::DestinationWithPaymentIntentIdMemo,
+    destination_with_payment_request_id::DestinationWithPaymentRequestIdMemo,
     gift_code_cancellation::GiftCodeCancellationMemo,
     gift_code_funding::GiftCodeFundingMemo,
     gift_code_sender::GiftCodeSenderMemo,
@@ -58,10 +64,13 @@ pub use self::{
 
 mod authenticated_common;
 mod authenticated_sender;
+mod authenticated_sender_with_payment_intent_id;
 mod authenticated_sender_with_payment_request_id;
 mod burn_redemption;
 mod credential;
 mod destination;
+mod destination_with_payment_intent_id;
+mod destination_with_payment_request_id;
 mod gift_code_cancellation;
 mod gift_code_funding;
 mod gift_code_sender;
@@ -96,8 +105,11 @@ pub enum MemoDecodingError {
 impl_memo_enum! { MemoType,
     AuthenticatedSender(AuthenticatedSenderMemo),
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
+    AuthenticatedSenderWithPaymentIntentId(AuthenticatedSenderWithPaymentIntentIdMemo),
     BurnRedemption(BurnRedemptionMemo),
     Destination(DestinationMemo),
+    DestinationWithPaymentRequestId(DestinationWithPaymentRequestIdMemo),
+    DestinationWithPaymentIntentId(DestinationWithPaymentIntentIdMemo),
     GiftCodeCancellation(GiftCodeCancellationMemo),
     GiftCodeFunding(GiftCodeFundingMemo),
     GiftCodeSender(GiftCodeSenderMemo),
