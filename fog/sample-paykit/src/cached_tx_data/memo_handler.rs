@@ -120,6 +120,35 @@ impl MemoHandler {
                 // TODO: Add Gift Code Validation
                 Ok(Some(memo_type))
             }
+            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) {
+                if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
+                    if bool::from(memo.validate(
+                        addr,
+                        &account_key.default_subaddress_view_private(),
+                        &tx_out.public_key,
+                    )) {
+                        Ok(Some(memo_type))
+                    } else {
+                        Err(MemoHandlerError::FailedHmacValidation)
+                    }
+                } else {
+                    Err(MemoHandlerError::UnknownSender)
+                }
+            }
+            MemoType::DestinationWithPaymentRequestId(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
+            }
+            MemoType::DestinationWithPaymentIntentId(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
+            }
         }
     }
 }
