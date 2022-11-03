@@ -69,8 +69,6 @@ fn main() {
             let tx = params
                 .try_into_mint_config_tx(|| {
                     if let Some(node) = &tombstone_from_node {
-                        let env =
-                            Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
                         let ch = ChannelBuilder::default_channel_builder(env)
                             .connect_to_uri(node, &logger);
                         let blockchain_api = BlockchainApiClient::new(ch);
