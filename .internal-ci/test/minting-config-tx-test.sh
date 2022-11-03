@@ -53,6 +53,7 @@ is_set NAMESPACE
 # check block height before config tx
 
 block_count=$(get_block_count)
+echo "Current block count: ${block_count}"
 
 # These should be populated by volume in toolbox container.
 governor_signer_key="/minting-keys/minter${token_id}_governor.private.pem"
