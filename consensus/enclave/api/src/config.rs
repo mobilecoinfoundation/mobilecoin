@@ -377,7 +377,7 @@ mod test {
     }
 
     #[test]
-    fn validate_accepts_nested_multisig_govenors_when_supported() {
+    fn validate_accepts_nested_multisig_governors_when_supported() {
         let nested_governors_map = GovernorsMap::try_from_iter([(
             TokenId::from(1),
             SignerSet::new_with_multi(
@@ -405,7 +405,7 @@ mod test {
     }
 
     #[test]
-    fn validate_accepts_nested_multisig_with_individual_govenors_when_supported() {
+    fn validate_accepts_nested_multisig_with_individual_governors_when_supported() {
         let nested_governors_map = GovernorsMap::try_from_iter([(
             TokenId::from(1),
             SignerSet::new_with_multi(
@@ -433,7 +433,7 @@ mod test {
     }
 
     #[test]
-    fn validate_rejects_nested_multisig_govenors_when_not_supported() {
+    fn validate_rejects_nested_multisig_governors_when_not_supported() {
         let nested_governors_map = GovernorsMap::try_from_iter([(
             TokenId::from(1),
             SignerSet::new_with_multi(
@@ -467,7 +467,7 @@ mod test {
     }
 
     #[test]
-    fn validate_rejects_nested_multisig_with_individual_govenors_when_not_supported() {
+    fn validate_rejects_nested_multisig_with_individual_governors_when_not_supported() {
         let nested_governors_map = GovernorsMap::try_from_iter([(
             TokenId::from(1),
             SignerSet::new_with_multi(
