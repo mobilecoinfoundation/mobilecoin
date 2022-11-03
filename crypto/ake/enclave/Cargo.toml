@@ -15,6 +15,7 @@ mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../../crypto/rand", default-features = false }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
+mc-sgx-debug = { path = "../../../sgx/debug" }
 
 aes-gcm = "0.9.4"
 digest = "0.10"

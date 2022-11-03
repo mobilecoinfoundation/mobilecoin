@@ -7,7 +7,7 @@ use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthResponse, NonceSession,
-    SealedClientMessage,
+    SealedClientMessage, NonceAuthRequest,
 };
 
 use mc_common::ResponderId;
@@ -147,4 +147,9 @@ pub enum EnclaveCall {
     /// [EnclaveCall::CheckKeyImages] Start a new key image check from a
     /// client.
     CheckKeyImageStore(EnclaveMessage<NonceSession>, UntrustedKeyImageQueryResponse),
+
+    /// The [LedgerEnclave::router_accept()] method.
+    /// Called by a Store accepting a Router's incoming
+    /// connection.
+    RouterAccept(NonceAuthRequest),
 }

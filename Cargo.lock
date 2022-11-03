@@ -2991,6 +2991,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
+ "mc-sgx-debug",
  "mc-util-from-random",
  "sha2 0.10.6",
 ]

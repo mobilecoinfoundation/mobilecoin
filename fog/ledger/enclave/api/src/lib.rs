@@ -109,6 +109,11 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Store.
     fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
 
+    /// As a "Store" in a Router/Store system, 
+    /// accept a connection from a Router. 
+    fn router_accept(&self, auth_request: NonceAuthRequest) 
+        -> Result<(NonceAuthResponse, NonceSession)>;
+
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// NonceAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.

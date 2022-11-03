@@ -133,7 +133,14 @@ impl LedgerEnclave for MockEnclave {
         _msg: EnclaveMessage<NonceSession>,
         _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
     ) -> EnclaveResult<EnclaveMessage<NonceSession>> {
-        todo!()
+        unimplemented!()
+    }
+
+    fn router_accept(
+        &self,
+        _auth_message: NonceAuthRequest
+    ) -> EnclaveResult<(NonceAuthResponse, NonceSession)> {
+        unimplemented!()
     }
 }
 

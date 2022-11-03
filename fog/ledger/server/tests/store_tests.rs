@@ -9,7 +9,6 @@ use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{logger::{Logger, test_with_logger}, ResponderId};
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::{CryptoRng, RngCore};
-use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE, LedgerEnclave, KeyImageData};
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{LedgerStoreConfig, KeyImageStoreServer, KeyImageService, DbPollSharedState, KeyImageClientListenUri};
@@ -17,7 +16,7 @@ use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::KeyImageStoreScheme;
 use mc_ledger_db::{LedgerDB, test_utils::recreate_ledger_db};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, AnonymousAuthenticator};
+use mc_util_grpc::{AnonymousAuthenticator};
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{SeedableRng, RngType, Rng};
 use mc_util_uri::{Uri, UriScheme};
@@ -168,7 +167,7 @@ pub fn simple_roundtrip(logger: Logger) {
     let mut store_server = KeyImageStoreServer::new_from_service(store_service, client_listen_uri.clone(), logger.clone());
     store_server.start();
 
-    let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+    //let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
     // Set up IAS verficiation
     // This will be a SimClient in testing contexts.
@@ -182,14 +181,15 @@ pub fn simple_roundtrip(logger: Logger) {
     ).unwrap()).unwrap();
 
     // Make GRPC client for sending requests.
-    let ch = grpcio::ChannelBuilder::new(grpc_env.clone())
-        .connect_to_uri(&client_listen_uri, &logger);
-    let api_client = ledger_grpc::KeyImageStoreApiClient::new(ch);
+    //let ch = grpcio::ChannelBuilder::new(grpc_env.clone())
+    //    .connect_to_uri(&client_listen_uri, &logger);
+    //let api_client = ledger_grpc::KeyImageStoreApiClient::new(ch);
 
     // Get the enclave to generate an auth request.
     let client_auth_request = enclave.connect_to_key_image_store(responder_id.clone()).unwrap();
     // Submit auth request and wait for the response.
-    let auth_response = api_client.auth(&client_auth_request.into()).unwrap();
+    //let auth_response = api_client.auth(&client_auth_request.into()).unwrap();
+    let (auth_response, _store_side_session) = enclave.router_accept(client_auth_request).unwrap(); 
     // Finish the enclave's handshake with itself.
     enclave.finish_connecting_to_key_image_store(responder_id.clone(), auth_response.into()).unwrap();
 
@@ -198,8 +198,8 @@ pub fn simple_roundtrip(logger: Logger) {
     rng.fill(&mut test_key_image_bytes);
     let test_key_image = KeyImageData {
         key_image: test_key_image_bytes.into(),
-        block_index: 0,
-        timestamp: 0,
+        block_index: 1,
+        timestamp: 255,
     };
     enclave.add_key_image_data(vec![test_key_image.clone()]).unwrap();
 
@@ -225,7 +225,7 @@ pub fn simple_roundtrip(logger: Logger) {
     let key_images_request = CheckKeyImagesRequest {
         queries: vec![KeyImageQuery{ 
             key_image: test_key_image.key_image.clone(), 
-            start_block: 0
+            start_block: 1
         }],
     };
     // Protobuf-encoded plaintext.
@@ -240,6 +240,8 @@ pub fn simple_roundtrip(logger: Logger) {
     // Decrypt and seal
     let sealed_query = enclave.decrypt_and_seal_query(msg).unwrap();
     let multi_query =  enclave.create_multi_key_image_store_query_data(sealed_query).unwrap();
+
+    //let request: MultiKeyImageStoreRequest = multi_query.into();
 
     // Get an untrusted query
     let (
@@ -264,11 +266,12 @@ pub fn simple_roundtrip(logger: Logger) {
 
     // Most likely this will just be one, but just in case... 
     let mut results: Vec<EnclaveMessage<NonceSession>> = Vec::new();
-    for query in multi_query {
+    for request in multi_query { 
         results.push(
-            enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap()
+            enclave.check_key_image_store(request, untrusted_kiqr.clone()).unwrap()
         );
     }
+
     assert!(results.len() > 0);
     report_cache_thread.stop().unwrap();
 }

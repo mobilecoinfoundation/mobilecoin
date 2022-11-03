@@ -86,7 +86,7 @@ fn create_stores(
         let watcher_db_path = watcher_db_tmp.path();
         let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-        let store = KeyImageStoreServer::new(
+        let store = KeyImageStoreServer::new_from_config(
             config,
             enclave,
             ledger,

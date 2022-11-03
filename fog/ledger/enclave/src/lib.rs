@@ -193,10 +193,6 @@ impl LedgerEnclave for LedgerSgxEnclave {
 
     // Router/store system.
     fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
-        mc_sgx_debug::eprintln!(
-            "Called connect_to_key_image_store(ledger_store_id: {})",
-            ledger_store_id
-        );
         let inbuf =
             mc_util_serial::serialize(&EnclaveCall::ConnectToKeyImageStore(ledger_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
@@ -209,8 +205,6 @@ impl LedgerEnclave for LedgerSgxEnclave {
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
-        mc_sgx_debug::eprintln!("Called finish_connecting_to_key_image_store(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
-
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FinishConnectingToKeyImageStore(
             ledger_store_id,
             ledger_store_auth_response,
@@ -224,9 +218,6 @@ impl LedgerEnclave for LedgerSgxEnclave {
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<SealedClientMessage> {
-        mc_sgx_debug::eprintln!(
-            "Called decrypt_and_seal_query(..) - the router is handling a message from the client"
-        );
         let inbuf = mc_util_serial::serialize(&EnclaveCall::DecryptAndSealQuery(client_query))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -236,7 +227,6 @@ impl LedgerEnclave for LedgerSgxEnclave {
         &self,
         sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
-        mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..) - the router is handling a message from the client");
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateMultiKeyImageStoreQueryData(
             sealed_query,
         ))?;
@@ -265,6 +255,15 @@ impl LedgerEnclave for LedgerSgxEnclave {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImageStore(
             msg,
             untrusted_keyimagequery_response,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn router_accept(&self, auth_request: NonceAuthRequest) 
+        -> Result<(NonceAuthResponse, NonceSession)> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::RouterAccept(
+            auth_request
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

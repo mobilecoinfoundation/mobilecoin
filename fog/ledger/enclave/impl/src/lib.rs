@@ -198,10 +198,6 @@ where
     }
 
     fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
-        mc_sgx_debug::eprintln!(
-            "Called connect_to_key_image_store(ledger_store_id: {})",
-            ledger_store_id
-        );
         Ok(self.ake.backend_init(ledger_store_id)?)
     }
 
@@ -211,7 +207,6 @@ where
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()> {
-        mc_sgx_debug::eprintln!("Called finish_connecting_to_key_image_store(ledger_store_id: {}, ledger_store_auth_response: {:?})", ledger_store_id, ledger_store_auth_response);
         Ok(self
             .ake
             .backend_connect(ledger_store_id, ledger_store_auth_response)?)
@@ -228,7 +223,6 @@ where
         &self,
         sealed_query: SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
-        mc_sgx_debug::eprintln!("Called create_multi_key_image_store_query_data(..)");
         Ok(self
             .ake
             .reencrypt_sealed_message_for_backends(&sealed_query)?)
@@ -352,6 +346,12 @@ where
             .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
 
         Ok(response)
+    }
+
+    fn router_accept(&self, auth_request: NonceAuthRequest) 
+        -> Result<(NonceAuthResponse, NonceSession)> {
+        self.ake.frontend_accept(auth_request)
+            .map_err(|e| e.into())
     }
 }
 

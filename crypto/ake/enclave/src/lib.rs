@@ -203,6 +203,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         data: &[u8],
     ) -> Result<EnclaveMessage<NonceSession>> {
         let mut frontends = self.frontends.lock()?;
+
+        let frontend_list: Vec<NonceSession> = frontends.iter().map(|(session, _)| session.clone()).collect(); 
+        mc_sgx_debug::eprintln!("frontend_encrypt() - Frontends are: {:?}. Session ID is: {:?}", frontend_list, session_id);
+
         let session = frontends.get_mut(session_id).ok_or(Error::NotFound)?;
         let (data, nonce) = session.encrypt_with_nonce(aad, data)?;
         let channel_id = NonceSession::new(session.binding().to_owned(), nonce);
@@ -217,6 +221,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     pub fn frontend_decrypt(&self, msg: EnclaveMessage<NonceSession>) -> Result<Vec<u8>> {
         let mut frontends = self.frontends.lock()?;
+
+        let frontend_list: Vec<NonceSession> = frontends.iter().map(|(session, _)| session.clone()).collect(); 
+        mc_sgx_debug::eprintln!("frontend_encrypt() - Frontends are: {:?}. Message channel ID is: {:?}", frontend_list, &msg.channel_id);
+        
         frontends
             .get_mut(&msg.channel_id)
             .ok_or(Error::NotFound)
