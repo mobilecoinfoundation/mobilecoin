@@ -151,7 +151,8 @@ impl From<&[u8; 64]> for DestinationWithPaymentRequestIdMemo {
             u64::from_be_bytes(fee_bytes)
         };
         let total_outlay = u64::from_be_bytes(src[24..32].try_into().expect("arithmetic error"));
-        let payment_request_id = u64::from_be_bytes(src[32..40].try_into().expect("arithmetic error"));
+        let payment_request_id =
+            u64::from_be_bytes(src[32..40].try_into().expect("arithmetic error"));
         Self {
             address_hash: address_hash.into(),
             num_recipients,
