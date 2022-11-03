@@ -122,15 +122,12 @@ impl MemoHandler {
             }
             MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
-                    if bool::from(memo.validate(
+                    memo.validate(
                         addr,
                         &account_key.default_subaddress_view_private(),
                         &tx_out.public_key,
-                    )) {
-                        Ok(Some(memo_type))
-                    } else {
-                        Err(MemoHandlerError::FailedHmacValidation)
-                    }
+                    ).map(|_| Some(memo_type))
+                    .map_err(|_| MemoHandlerError::FailedHmacValidation)
                 } else {
                     Err(MemoHandlerError::UnknownSender)
                 }
