@@ -120,7 +120,7 @@ impl MemoHandler {
                 // TODO: Add Gift Code Validation
                 Ok(Some(memo_type))
             }
-            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) {
+            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
                     if bool::from(memo.validate(
                         addr,
