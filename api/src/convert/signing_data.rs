@@ -104,7 +104,7 @@ mod tests {
                 .unwrap();
 
             let unsigned_tx = transaction_builder
-                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .build_unsigned::<DefaultTxOutputsOrdering>()
                 .unwrap();
 
             let (signing_data, _, _) = unsigned_tx.get_signing_data(&mut rng).unwrap();

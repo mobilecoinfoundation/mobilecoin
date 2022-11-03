@@ -95,7 +95,7 @@ mod tests {
                 .unwrap();
 
             let unsigned_tx = transaction_builder
-                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .build_unsigned::<DefaultTxOutputsOrdering>()
                 .unwrap();
 
             // Converting mc_transaction_builder::UnsignedTx -> external::UnsignedTx ->

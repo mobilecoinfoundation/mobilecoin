@@ -150,7 +150,7 @@ mod tests {
                 .unwrap();
 
             let unsigned_tx = transaction_builder
-                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .build_unsigned::<DefaultTxOutputsOrdering>()
                 .unwrap();
 
             let input_ring = unsigned_tx.rings[0].clone();
