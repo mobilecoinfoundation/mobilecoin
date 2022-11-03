@@ -177,7 +177,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         opt_fee: u64,
         last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
-        // Figure out the block_version and fee, taking into account if opt_fee is nonzero
+        // Figure out the block_version and fee, taking into account if opt_fee is
+        // nonzero
         let candidate_block_version = self.ledger_db.get_latest_block()?.version;
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
@@ -191,6 +192,32 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             );
             (fee, block_version)
         })
+    }
+
+    // A helper for figuring ou the minimum fee, fee map and block version from a
+    // list of BlockInfo objects.
+    // # Arguments
+    // * `last_block_info` - The last block info we have from each node
+    // * `token_id` - The token id we are interested in
+    // * `opt_fee` - If nonzero, use this fee instead of the network fee
+    fn get_fee_info_and_block_version(
+        &self,
+        last_block_infos: &[BlockInfo],
+        token_id: TokenId,
+        opt_fee: u64,
+    ) -> Result<(u64, FeeMap, BlockVersion), Error> {
+        let last_block_info = get_majority_block_info(last_block_infos)
+            .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
+
+        let (fee, block_version) =
+            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
+
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
+
+        let block_version =
+            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+
+        Ok((fee, fee_map, block_version))
     }
 
     /// Create a TxProposal.
@@ -248,17 +275,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
 
         // Figure out the block version, fee and minimum fee map.
-        let last_block_info = get_majority_block_info(last_block_infos)
-            .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
-
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
-
-        // Confirm that we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // Select the UTXOs to be used for this transaction.
         let selected_utxos =
@@ -359,17 +377,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
         // Figure out the block version, fee and minimum fee map.
-        let last_block_info = get_majority_block_info(last_block_infos)
-            .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
-
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
-
-        // Make sure we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // Select UTXOs that will be spent by this transaction.
         let selected_utxos = {
@@ -497,17 +506,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Figure out the block version, fee and minimum fee map.
-        let last_block_info = get_majority_block_info(last_block_infos)
-            .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
-
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
-
-        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
-
-        // Make sure we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // All inputs are to be spent, except those with wrong token id
         let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
