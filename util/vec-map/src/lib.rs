@@ -159,6 +159,7 @@ impl<'a, K: Clone + Eq, V, const N: usize> Iterator for IterVecMap<'a, K, V, N> 
 mod tests {
     use super::*;
     extern crate alloc;
+    use alloc::vec;
 
     #[test]
     fn test_get_mut_or_insert_with() {

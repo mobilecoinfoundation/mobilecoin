@@ -5,6 +5,7 @@ This is a map (container of key-value pairs) whose storage is arranged as two
 `Heapless::Vec` objects, one for keys and one for values.
 
 The motivation is somewhat connected to crates.io crates:
+* https://crates.io/crates/vector-map
 * https://docs.rs/vec_map/latest/vec_map/struct.VecMap.html
 * https://docs.rs/vec-collections/latest/vec_collections/
 
