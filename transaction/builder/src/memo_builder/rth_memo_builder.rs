@@ -185,7 +185,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
         let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
-            if !self.payment_request_id.is_none() && !self.payment_intent_id.is_none() {
+            if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
                 return Err(NewMemoError::RequestAndIntentIdSet);
             }
             if let Some(payment_request_id) = self.payment_request_id {
@@ -253,7 +253,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .checked_add(self.fee.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
 
-        if !self.payment_request_id.is_none() && !self.payment_intent_id.is_none() {
+        if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
            return  Err(NewMemoError::RequestAndIntentIdSet);
         }
 
