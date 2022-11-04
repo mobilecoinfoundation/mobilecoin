@@ -5,6 +5,7 @@
 mod error;
 mod generator_cache;
 mod rct_bulletproofs;
+mod signing_digest;
 
 pub use self::{
     error::Error,
@@ -13,4 +14,5 @@ pub use self::{
         InputRing, OutputSecret, PresignedInputRing, SignatureRctBulletproofs, SignedInputRing,
         SigningData,
     },
+    signing_digest::{compute_mlsag_signing_digest, ExtendedMessageDigest, MLSAGSigningDigest},
 };

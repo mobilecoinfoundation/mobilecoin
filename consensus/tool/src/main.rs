@@ -25,7 +25,7 @@ use std::{sync::Arc, time::Duration};
 /// $ STOP_BLOCK=$(mc-consensus-tool wait-for-quiet \
 /// mc://localhost:3200 mc://localhost:3201 mc://localhost:3202)
 ///
-/// $ MC_PEERS=mc://localhost:3200,mc://localhost:3201 \
+/// $ MC_PEER=mc://localhost:3200,mc://localhost:3201 \
 /// mc-consensus-tool wait-for-block --index=$(STOP_BLOCK)
 #[derive(Clone, Debug, Parser)]
 #[clap(name = "mc-consensus-tool")]
@@ -35,7 +35,7 @@ pub struct Config {
     pub tool_command: ToolCommand,
 
     /// Consensus_uri's to connect to
-    #[clap(global = true, use_value_delimiter = true, env = "MC_PEERS")]
+    #[clap(global = true, use_value_delimiter = true, env = "MC_PEER")]
     pub consensus_uris: Vec<ConsensusClientUri>,
 }
 
@@ -61,7 +61,7 @@ pub enum ToolCommand {
     /// block_index on STDOUT.
     WaitForQuiet {
         /// Number of seconds the network must stop moving for.
-        #[clap(long, env = "MC_PERIOD", default_value = "20")]
+        #[clap(long, env = "MC_PERIOD", default_value = "40")]
         period: u64,
 
         /// Wait for quiet at some block index greater than this number.
@@ -88,6 +88,10 @@ fn main() {
             (uri.clone(), BlockchainApiClient::new(ch))
         })
         .collect();
+
+    if blockchain_conns.is_empty() {
+        panic!("No consensus uris specified")
+    }
 
     match config.tool_command {
         ToolCommand::Status => {

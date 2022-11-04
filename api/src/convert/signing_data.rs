@@ -8,7 +8,7 @@ use mc_transaction_core::ring_ct::SigningData;
 impl From<&SigningData> for external::SigningData {
     fn from(src: &SigningData) -> Self {
         let mut signing_data = external::SigningData::new();
-        signing_data.set_extended_message_digest(src.extended_message_digest.clone());
+        signing_data.set_mlsag_signing_digest(src.mlsag_signing_digest.clone());
         signing_data.set_pseudo_output_blindings(
             src.pseudo_output_blindings
                 .iter()
@@ -44,7 +44,7 @@ impl TryFrom<&external::SigningData> for SigningData {
             .map(|commitment| commitment.try_into())
             .collect::<Result<Vec<_>, _>>()?;
         Ok(SigningData {
-            extended_message_digest: src.extended_message_digest.clone(),
+            mlsag_signing_digest: src.mlsag_signing_digest.clone(),
             pseudo_output_blindings,
             pseudo_output_commitments,
             range_proof_bytes: src.range_proof_bytes.clone(),
@@ -104,10 +104,10 @@ mod tests {
                 .unwrap();
 
             let unsigned_tx = transaction_builder
-                .build_unsigned::<StdRng, DefaultTxOutputsOrdering>()
+                .build_unsigned::<DefaultTxOutputsOrdering>()
                 .unwrap();
 
-            let signing_data = unsigned_tx.get_signing_data(&mut rng).unwrap();
+            let (signing_data, _, _) = unsigned_tx.get_signing_data(&mut rng).unwrap();
 
             // Converting mc_transaction_core::ring_ct::SigningData -> external::SigningData
             // -> mc_transaction_core::ring_ct::SigningData should be the identity

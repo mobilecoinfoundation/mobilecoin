@@ -5,7 +5,10 @@
 use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_multisig::MultiSig;
-use mc_transaction_core::mint::{MintTx, MintTxPrefix};
+use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint,
+    mint::{MintTx, MintTxPrefix},
+};
 
 /// Convert MintTxPrefix --> external::MintTxPrefix.
 impl From<&MintTxPrefix> for external::MintTxPrefix {
@@ -17,6 +20,10 @@ impl From<&MintTxPrefix> for external::MintTxPrefix {
         dst.set_spend_public_key((&src.spend_public_key).into());
         dst.set_nonce(src.nonce.clone());
         dst.set_tombstone_block(src.tombstone_block);
+        if let Some(e_fog_hint) = &src.e_fog_hint {
+            let hint_bytes = e_fog_hint.as_ref().to_vec();
+            dst.mut_e_fog_hint().set_data(hint_bytes);
+        }
         dst
     }
 }
@@ -28,6 +35,15 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
     fn try_from(source: &external::MintTxPrefix) -> Result<Self, Self::Error> {
         let view_public_key = RistrettoPublic::try_from(source.get_view_public_key())?;
         let spend_public_key = RistrettoPublic::try_from(source.get_spend_public_key())?;
+        let e_fog_hint_data = source.get_e_fog_hint().get_data();
+        let e_fog_hint = if e_fog_hint_data.is_empty() {
+            None
+        } else {
+            Some(
+                EncryptedFogHint::try_from(e_fog_hint_data)
+                    .map_err(|_| ConversionError::ArrayCastError)?,
+            )
+        };
 
         Ok(Self {
             token_id: source.get_token_id(),
@@ -36,6 +52,7 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
             spend_public_key,
             nonce: source.get_nonce().to_vec(),
             tombstone_block: source.get_tombstone_block(),
+            e_fog_hint,
         })
     }
 }
@@ -86,6 +103,7 @@ mod tests {
                 spend_public_key: RistrettoPublic::from_random(&mut rng),
                 nonce: vec![3u8; 32],
                 tombstone_block: rng.next_u64(),
+                e_fog_hint: Some(EncryptedFogHint::fake_onetime_hint(&mut rng)),
             },
             signature: test_multi_sig(),
         };
