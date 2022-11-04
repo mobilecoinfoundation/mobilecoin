@@ -455,6 +455,55 @@ impl SigningData {
             extended_message_digest,
         ))
     }
+
+    /// Sign a signing digest.
+    ///
+    /// This must be passed the same set of rings used to create the signing
+    /// data.
+    pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
+        self,
+        rings: &[InputRing],
+        signer: &S,
+        rng: &mut CSPRNG,
+    ) -> Result<SignatureRctBulletproofs, Error> {
+        let SigningData {
+            mlsag_signing_digest,
+            pseudo_output_blindings,
+            pseudo_output_commitments,
+            range_proof_bytes,
+            range_proofs,
+            pseudo_output_token_ids,
+            output_token_ids,
+            ..
+        } = self;
+        // Prove that the signer is allowed to spend a public key in each ring, and that
+        // the input's value equals the value of the pseudo_output.
+        let ring_signatures: Vec<RingMLSAG> =
+            zip_exact(rings.iter(), pseudo_output_blindings.into_iter())?
+                .map(
+                    |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
+                        Ok(match ring {
+                            InputRing::Signable(ring) => signer.sign(
+                                &mlsag_signing_digest,
+                                ring,
+                                pseudo_output_blinding,
+                                rng,
+                            )?,
+                            InputRing::Presigned(ring) => ring.mlsag.clone(),
+                        })
+                    },
+                )
+                .collect::<Result<_, _>>()?;
+
+        Ok(SignatureRctBulletproofs {
+            ring_signatures,
+            pseudo_output_commitments,
+            range_proof_bytes,
+            range_proofs,
+            pseudo_output_token_ids,
+            output_token_ids,
+        })
+    }
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
@@ -511,7 +560,8 @@ impl SignatureRctBulletproofs {
     /// * `output_values_and_blindings` - Value and blinding for each output
     ///   amount commitment.
     /// * `fee` - Value of the implicit fee output.
-    /// * `token id` - This determines the pedersen generator for commitments
+    /// * `signer` - The ring signer entity (with spend private key)
+    /// * `rng` - randomness
     pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
@@ -521,16 +571,17 @@ impl SignatureRctBulletproofs {
         signer: &S,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
-        sign_with_balance_check(
+        let signing_data = SigningData::new(
             block_version,
             tx_prefix,
             input_rings,
             output_secrets,
             fee,
             true,
-            signer,
             rng,
-        )
+        )?;
+
+        signing_data.sign(input_rings, signer, rng)
     }
 
     /// Verify.
@@ -803,74 +854,6 @@ impl SignatureRctBulletproofs {
             .map(|mlsag| mlsag.key_image)
             .collect()
     }
-}
-
-/// Sign, with optional check for inputs = outputs.
-///
-/// # Arguments
-/// * `block_version` - This may influence details of the signature
-/// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
-/// * `rings` - One or more rings of one-time addresses and amount commitments,
-///   with secrets for the real input
-/// * `output_secrets` - Output secret for each output amount commitment.
-/// * `fee` - Amount of the implicit fee output.
-/// * `check_value_is_preserved` - If true, check that the value of inputs
-///   equals value of outputs.
-/// * `rng` - randomness
-fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
-    block_version: BlockVersion,
-    tx_prefix: &TxPrefix,
-    rings: &[InputRing],
-    output_secrets: &[OutputSecret],
-    fee: Amount,
-    check_value_is_preserved: bool,
-    signer: &S,
-    rng: &mut CSPRNG,
-) -> Result<SignatureRctBulletproofs, Error> {
-    let SigningData {
-        mlsag_signing_digest,
-        pseudo_output_blindings,
-        pseudo_output_commitments,
-        range_proofs,
-        range_proof_bytes,
-        pseudo_output_token_ids,
-        output_token_ids,
-        ..
-    } = SigningData::new(
-        block_version,
-        tx_prefix,
-        rings,
-        output_secrets,
-        fee,
-        check_value_is_preserved,
-        rng,
-    )?;
-
-    // Prove that the signer is allowed to spend a public key in each ring, and that
-    // the input's value equals the value of the pseudo_output.
-    let ring_signatures: Vec<RingMLSAG> = rings
-        .iter()
-        .zip(pseudo_output_blindings)
-        .map(
-            |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
-                Ok(match ring {
-                    InputRing::Signable(ring) => {
-                        signer.sign(&mlsag_signing_digest, ring, pseudo_output_blinding, rng)?
-                    }
-                    InputRing::Presigned(ring) => ring.mlsag.clone(),
-                })
-            },
-        )
-        .collect::<Result<_, _>>()?;
-
-    Ok(SignatureRctBulletproofs {
-        ring_signatures,
-        pseudo_output_commitments,
-        range_proof_bytes,
-        range_proofs,
-        pseudo_output_token_ids,
-        output_token_ids,
-    })
 }
 
 /// Computes appropriate pseudo-output blinding values for each input ring.
@@ -1169,16 +1152,16 @@ mod rct_bulletproofs_tests {
             &self,
             rng: &mut RNG,
         ) -> Result<SignatureRctBulletproofs, Error> {
-            sign_with_balance_check(
+            let signing_data = SigningData::new(
                 self.block_version,
                 &self.tx_prefix,
                 &self.get_input_rings(),
                 &self.output_secrets,
                 self.get_fee_amount(),
                 false,
-                &NoKeysRingSigner {},
                 rng,
-            )
+            )?;
+            signing_data.sign(&self.get_input_rings(), &NoKeysRingSigner {}, rng)
         }
     }
 
