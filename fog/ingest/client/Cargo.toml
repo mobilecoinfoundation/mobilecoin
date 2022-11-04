@@ -26,7 +26,7 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }
 
 # third party
-assert_cmd = "2.0.5"
+assert_cmd = "2.0.6"
 predicates = "2"
 rand = "0.8"
 tempdir = "0.3"
