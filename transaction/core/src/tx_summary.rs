@@ -143,7 +143,7 @@ impl TxSummary {
                         ..Default::default()
                     };
                     if let Some(rules) = &input.input_rules {
-                        result.has_input_rules = true;
+                        result.input_rules_digest = rules.canonical_digest().to_vec();
                         let mut associated_tx_outs = rules.associated_tx_outs();
                         input_rules_associated_tx_outs.append(&mut associated_tx_outs);
                     }
@@ -214,7 +214,8 @@ pub struct TxInSummary {
     #[prost(message, required, tag = "1")]
     pub pseudo_output_commitment: CompressedCommitment,
 
-    /// Whether there are input rules associated to this input
-    #[prost(bool, tag = "2")]
-    pub has_input_rules: bool,
+    /// If there are input rules associated to this input, the canonical digest
+    /// of these (per MCIP 52). If not, then this field is empty.
+    #[prost(bytes, tag = "2")]
+    pub input_rules_digest: Vec<u8>,
 }
