@@ -12,8 +12,10 @@ use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    DestinationMemoError, SenderMemoCredential, UnusedMemo,
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+    AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, DestinationMemoError,
+    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, SenderMemoCredential,
+    UnusedMemo,
 };
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
@@ -56,6 +58,8 @@ pub struct RTHMemoBuilder {
     sender_cred: Option<SenderMemoCredential>,
     // The payment request id, if any
     payment_request_id: Option<u64>,
+    // The payment intent id, if any
+    payment_intent_id: Option<u64>,
     // Whether destination memos are enabled.
     destination_memo_enabled: bool,
     // Tracks if we already wrote a destination memo, for error reporting
@@ -77,6 +81,7 @@ impl Default for RTHMemoBuilder {
         Self {
             sender_cred: Default::default(),
             payment_request_id: None,
+            payment_intent_id: None,
             destination_memo_enabled: false,
             wrote_destination_memo: false,
             last_recipient: Default::default(),
@@ -120,6 +125,16 @@ impl RTHMemoBuilder {
     /// Clear the payment request id.
     pub fn clear_payment_request_id(&mut self) {
         self.payment_request_id = None;
+    }
+
+    /// Set the payment intent id.
+    pub fn set_payment_intent_id(&mut self, id: u64) {
+        self.payment_intent_id = Some(id);
+    }
+
+    /// Clear the payment intent id.
+    pub fn clear_payment_intent_id(&mut self) {
+        self.payment_intent_id = None;
     }
 
     /// Enable destination memos
@@ -172,12 +187,23 @@ impl MemoBuilder for RTHMemoBuilder {
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
         let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
+            if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
+                return Err(NewMemoError::RequestAndIntentIdSet);
+            }
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
                     cred,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
                     payment_request_id,
+                )
+                .into()
+            } else if let Some(payment_intent_id) = self.payment_intent_id {
+                AuthenticatedSenderWithPaymentIntentIdMemo::new(
+                    cred,
+                    recipient.view_public_key(),
+                    &memo_context.tx_public_key.into(),
+                    payment_intent_id,
                 )
                 .into()
             } else {
@@ -228,19 +254,58 @@ impl MemoBuilder for RTHMemoBuilder {
             .total_outlay
             .checked_add(self.fee.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
-        match DestinationMemo::new(
-            self.last_recipient.clone(),
-            self.total_outlay,
-            self.fee.value,
-        ) {
-            Ok(mut d_memo) => {
-                self.wrote_destination_memo = true;
-                d_memo.set_num_recipients(self.num_recipients);
-                Ok(d_memo.into())
+
+        if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
+            return Err(NewMemoError::RequestAndIntentIdSet);
+        }
+
+        if let Some(payment_request_id) = self.payment_request_id {
+            match DestinationWithPaymentRequestIdMemo::new(
+                self.last_recipient.clone(),
+                self.total_outlay,
+                self.fee.value,
+                payment_request_id,
+            ) {
+                Ok(mut d_memo) => {
+                    self.wrote_destination_memo = true;
+                    d_memo.set_num_recipients(self.num_recipients);
+                    Ok(d_memo.into())
+                }
+                Err(err) => match err {
+                    DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
+                },
             }
-            Err(err) => match err {
-                DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
-            },
+        } else if let Some(payment_intent_id) = self.payment_intent_id {
+            match DestinationWithPaymentIntentIdMemo::new(
+                self.last_recipient.clone(),
+                self.total_outlay,
+                self.fee.value,
+                payment_intent_id,
+            ) {
+                Ok(mut d_memo) => {
+                    self.wrote_destination_memo = true;
+                    d_memo.set_num_recipients(self.num_recipients);
+                    Ok(d_memo.into())
+                }
+                Err(err) => match err {
+                    DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
+                },
+            }
+        } else {
+            match DestinationMemo::new(
+                self.last_recipient.clone(),
+                self.total_outlay,
+                self.fee.value,
+            ) {
+                Ok(mut d_memo) => {
+                    self.wrote_destination_memo = true;
+                    d_memo.set_num_recipients(self.num_recipients);
+                    Ok(d_memo.into())
+                }
+                Err(err) => match err {
+                    DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
+                },
+            }
         }
     }
 }
