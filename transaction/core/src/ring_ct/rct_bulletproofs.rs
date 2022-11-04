@@ -561,7 +561,7 @@ impl SignatureRctBulletproofs {
     ///   amount commitment.
     /// * `fee` - Value of the implicit fee output.
     /// * `signer` - The ring signer entity (with spend private key)
-    /// * `rng` -
+    /// * `rng` - randomness
     pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
