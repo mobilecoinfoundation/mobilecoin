@@ -8,6 +8,8 @@ import "fog_common.proto";
 package fog_ledger;
 option go_package = "mobilecoin/api";
 
+import "google/protobuf/empty.proto";
+
 ////
 // Ledger router API
 ////
@@ -15,6 +17,17 @@ option go_package = "mobilecoin/api";
 service LedgerAPI {
     rpc request(stream LedgerRequest) returns (stream LedgerResponse) {}
 }
+
+service LedgerRouterAdminAPI {
+    // Adds a shard to the Fog View Router's list of shards to query.
+    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
+}
+
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
+}
+
 
 /// Fulfills requests sent by the Fog Ledger Router. This is not meant to fulfill requests sent directly by the client.
 service KeyImageStoreAPI {

@@ -16,6 +16,7 @@ mod untrusted_tx_out_service;
 mod key_image_router_server;
 mod key_image_router_service;
 mod key_image_store_server;
+mod router_admin_service;
 
 pub use block_service::BlockService;
 pub use config::{

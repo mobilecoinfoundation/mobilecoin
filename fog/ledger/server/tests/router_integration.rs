@@ -7,21 +7,21 @@ use mc_fog_ledger_server::{
     KeyImageRouterServer, KeyImageStoreServer, LedgerRouterConfig, LedgerStoreConfig,
 };
 
-use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
+use mc_fog_api::ledger_grpc::{KeyImageStoreApiClient, LedgerRouterAdminApiClient};
 
-use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
+use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri, FogLedgerRouterAdminUri};
 //use mc_util_uri::AdminUri;
 //use mc_attest_core::ProviderId;
 use grpcio::ChannelBuilder;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_fog_ledger_connection::FogKeyImageGrpcClient;
+use mc_fog_ledger_connection::{FogKeyImageGrpcClient};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_test_infra::get_enclave_path;
 use mc_ledger_db::test_utils::recreate_ledger_db;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::{Arc, RwLock}, collections::HashMap};
 use tempdir::TempDir;
 use url::Url;
 //use core::time::Duration;
@@ -61,9 +61,9 @@ fn create_stores(
     store_count: usize,
     grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
-) -> (Vec<KeyImageStoreServer>, Vec<KeyImageStoreApiClient>) {
+) -> (Vec<KeyImageStoreServer>, Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>) {
     let mut stores = vec![];
-    let mut store_clients = vec![];
+    let mut store_clients = HashMap::new();
     for _ in 0..store_count {
         let port = portpicker::pick_unused_port().expect("couldn't get unused port");
         let uri =
@@ -86,7 +86,7 @@ fn create_stores(
         let watcher_db_path = watcher_db_tmp.path();
         let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-        let store = KeyImageStoreServer::new(
+        let store = KeyImageStoreServer::new_from_config(
             config,
             enclave,
             ledger,
@@ -101,10 +101,10 @@ fn create_stores(
             ChannelBuilder::default_channel_builder(grpc_env.clone()).connect_to_uri(&uri, &logger),
         );
 
-        store_clients.push(store_client);
+        store_clients.insert(uri, Arc::new(store_client));
     }
 
-    (stores, store_clients)
+    (stores, Arc::new(RwLock::new(store_clients)))
 }
 
 const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
@@ -114,18 +114,20 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 
 fn create_router(
     omap_capacity: u64,
-    shards: Vec<KeyImageStoreApiClient>,
+    shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>,
     grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
-) -> (KeyImageRouterServer, FogKeyImageGrpcClient) {
+) -> (KeyImageRouterServer, FogKeyImageGrpcClient, LedgerRouterAdminApiClient) {
     let port = portpicker::pick_unused_port().expect("couldn't get unused port");
     let uri = FogLedgerUri::from_str(&format!("insecure-fog-ledger://127.0.0.1:{}", port)).unwrap();
+    let admin_uri = FogLedgerRouterAdminUri::from_str(&format!("insecure-fog-ledger-router-admin://127.0.0.1:{}", port)).unwrap();
 
     let config = LedgerRouterConfig {
         client_responder_id: uri
             .responder_id()
             .expect("Couldn't get responder ID for router"),
         client_listen_uri: uri.clone(),
+        admin_listen_uri: admin_uri.clone(),
         omap_capacity,
     };
 
@@ -152,10 +154,14 @@ fn create_router(
         GRPC_RETRY_CONFIG,
         verifier,
         grpc_env.clone(),
-        logger,
+        logger.clone(),
     );
 
-    (router, router_client)
+    let admin_client = LedgerRouterAdminApiClient::new(
+        ChannelBuilder::default_channel_builder(grpc_env.clone()).connect_to_uri(&admin_uri, &logger),
+    );
+
+    (router, router_client, admin_client)
 }
 
 #[test]
@@ -172,7 +178,7 @@ fn router_integration_test() {
         create_stores(omap_capacity, num_stores, grpc_env.clone(), logger.clone());
     // router talks directly to stores for these tests
     // shard tests are done in CI/CD
-    let (_router, _router_client) = create_router(omap_capacity, store_clients, grpc_env, logger);
+    let (_router, _router_client, _admin_client) = create_router(omap_capacity, store_clients, grpc_env, logger);
 
     unimplemented!();
 }

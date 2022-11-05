@@ -7,7 +7,7 @@
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
-use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
+use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri, FogLedgerRouterAdminUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -91,6 +91,10 @@ pub struct LedgerRouterConfig {
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogLedgerUri,
+    
+    /// Router admin listening URI.
+    #[clap(long)]
+    pub admin_listen_uri: FogLedgerRouterAdminUri,
 
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.

@@ -1,19 +1,21 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use futures::executor::block_on;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
-use mc_fog_uri::ConnectionUri;
+use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 
-use crate::{config::LedgerRouterConfig, key_image_router_service::KeyImageRouterService};
+use crate::{config::LedgerRouterConfig, key_image_router_service::KeyImageRouterService, router_admin_service::LedgerRouterAdminService};
 
 #[allow(dead_code)] // FIXME
 pub struct KeyImageRouterServer {
-    server: grpcio::Server,
+    router_server: grpcio::Server,
+    admin_server: grpcio::Server,
     logger: Logger,
 }
 
@@ -23,7 +25,7 @@ impl KeyImageRouterServer {
     pub fn new<E>(
         config: LedgerRouterConfig,
         enclave: E,
-        shards: Vec<ledger_grpc::KeyImageStoreApiClient>,
+        shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         logger: Logger,
     ) -> KeyImageRouterServer
     where
@@ -46,10 +48,14 @@ impl KeyImageRouterServer {
         // Init ledger router service.
         let ledger_router_service = ledger_grpc::create_ledger_api(KeyImageRouterService::new(
             enclave,
-            shards,
+            shards.clone(),
             logger.clone(),
         ));
         log::debug!(logger, "Constructed Key Image Router GRPC Service");
+        
+        // Init ledger router admin service.
+        let ledger_router_admin_service = ledger_grpc::create_ledger_router_admin_api(LedgerRouterAdminService::new(shards, logger.clone()));
+        log::debug!(logger, "Constructed Key Image Router Admin GRPC Service");
 
         // Package service into grpc server
         log::info!(
@@ -58,27 +64,37 @@ impl KeyImageRouterServer {
             config.client_listen_uri.addr(),
         );
 
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let router_server_builder = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
             .register_service(health_service)
             .bind_using_uri(&config.client_listen_uri, logger.clone());
-        let server = server_builder.build().unwrap();
+        let admin_server_builder = grpcio::ServerBuilder::new(env)
+            .register_service(ledger_router_admin_service)
+            .bind_using_uri(&config.admin_listen_uri, logger.clone());
 
-        Self { server, logger }
+
+        let router_server = router_server_builder.build().unwrap();
+        let admin_server = admin_server_builder.build().unwrap();
+
+        Self { router_server, admin_server, logger }
     }
 
-    #[allow(dead_code)] // FIXME
     /// Starts the server
     pub fn start(&mut self) {
-        self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
+        self.router_server.start();
+        for (host, port) in self.router_server.bind_addrs() {
+            log::info!(self.logger, "Router API listening on {}:{}", host, port);
+        }
+        self.admin_server.start();
+        for (host, port) in self.admin_server.bind_addrs() {
+            log::info!(self.logger, "Router Admin API listening on {}:{}", host, port);
         }
     }
 
     /// Stops the server
     pub fn stop(&mut self) {
-        block_on(self.server.shutdown()).expect("Could not stop grpc server");
+        block_on(self.router_server.shutdown()).expect("Could not stop router grpc server");
+        block_on(self.admin_server.shutdown()).expect("Could not stop router admin grpc server");
     }
 }
 
