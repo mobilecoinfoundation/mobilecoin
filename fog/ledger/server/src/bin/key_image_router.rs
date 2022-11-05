@@ -1,7 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{env, str::FromStr, sync::{Arc, RwLock}};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    env,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 use clap::Parser;
 use grpcio::ChannelBuilder;

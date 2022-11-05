@@ -1,43 +1,53 @@
-use std::{path::PathBuf, str::FromStr, sync::{Arc, Mutex}};
+use std::{
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
-use mc_attest_ake::{Start, ClientInitiate, Transition, AuthResponseInput};
+use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{EnclaveMessage, ClientSession, NonceSession};
+use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::Verifier;
 use mc_blockchain_types::MAX_BLOCK_VERSION;
-use mc_common::{logger::{Logger, test_with_logger}, ResponderId};
+use mc_common::{
+    logger::{test_with_logger, Logger},
+    ResponderId,
+};
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_api::ledger_grpc;
-use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE, LedgerEnclave, KeyImageData};
+use mc_fog_ledger_enclave::{KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
-use mc_fog_ledger_server::{LedgerStoreConfig, KeyImageStoreServer, KeyImageService, DbPollSharedState, KeyImageClientListenUri};
+use mc_fog_ledger_server::{
+    DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
+    LedgerStoreConfig,
+};
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::KeyImageStoreScheme;
-use mc_ledger_db::{LedgerDB, test_utils::recreate_ledger_db};
+use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, AnonymousAuthenticator};
+use mc_util_grpc::{AnonymousAuthenticator, ConnectionUriGrpcioChannel};
 use mc_util_metrics::{IntGauge, OpMetrics};
-use mc_util_test_helper::{SeedableRng, RngType, Rng};
+use mc_util_test_helper::{Rng, RngType, SeedableRng};
 use mc_util_uri::{Uri, UriScheme};
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
 use sha2::Sha512;
 use tempdir::TempDir;
-use url::Url; 
+use url::Url;
 
-pub fn responder_id_for_test(test_name: &'static str, port: u16) -> ResponderId { 
+pub fn responder_id_for_test(test_name: &'static str, port: u16) -> ResponderId {
     ResponderId(format!("fog://{}.fog.test:{}", test_name, port))
 }
 
-pub struct TestingContext<R: RngCore + CryptoRng> { 
+pub struct TestingContext<R: RngCore + CryptoRng> {
     pub enclave: LedgerSgxEnclave,
     pub ledger: LedgerDB,
     pub ledger_path: PathBuf,
     pub responder_id: ResponderId,
-    pub rng: R, 
+    pub rng: R,
     pub tempdir: TempDir,
     pub tx_source_url: Url,
     pub watcher: WatcherDB,
@@ -45,44 +55,43 @@ pub struct TestingContext<R: RngCore + CryptoRng> {
 }
 
 impl<R: RngCore + CryptoRng> TestingContext<R> {
-    pub fn new(test_name: &'static str, 
-            port: u16, 
-            omap_capacity: u64, 
-            logger: Logger,
-            rng: R)
-            -> Self {
-        // Set up our directories. 
+    pub fn new(
+        test_name: &'static str,
+        port: u16,
+        omap_capacity: u64,
+        logger: Logger,
+        rng: R,
+    ) -> Self {
+        // Set up our directories.
         let test_dir_name = format!("fog_ledger_test_{}", test_name);
         let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
-        let user_keys_path = test_path.join(PathBuf::from("keys/")); 
-        if !user_keys_path.exists() { 
+        let user_keys_path = test_path.join(PathBuf::from("keys/"));
+        if !user_keys_path.exists() {
             std::fs::create_dir(&user_keys_path).unwrap();
         }
 
-        // This ID needs to match the host:port clients use in their URI when referencing the host node.
+        // This ID needs to match the host:port clients use in their URI when
+        // referencing the host node.
         let responder_id = responder_id_for_test(test_name, port);
 
         let enclave_path = std::env::current_exe()
             .expect("Could not get the path of our executable")
-            // The test ends up in target/debug/deps/ 
-            // rather than just target/debug/. So, 
+            // The test ends up in target/debug/deps/
+            // rather than just target/debug/. So,
             // we need the parent directory.
-            .parent().unwrap()
+            .parent()
+            .unwrap()
             .with_file_name(ENCLAVE_FILE);
-            
-        let enclave = LedgerSgxEnclave::new(
-            enclave_path,
-            &responder_id,
-            omap_capacity,
-            logger.clone(),
-        );
+
+        let enclave =
+            LedgerSgxEnclave::new(enclave_path, &responder_id, omap_capacity, logger.clone());
 
         // Make LedgerDB
         let ledger_path = test_path.join(PathBuf::from("fog_ledger"));
         let ledger = recreate_ledger_db(ledger_path.as_path());
 
-        // Set up wallet db. 
+        // Set up wallet db.
         let test_url_name = format!("http://{}.wallet.test.test", test_name);
         let url = Url::parse(&test_url_name).unwrap();
 
@@ -113,19 +122,19 @@ lazy_static::lazy_static! {
 }
 
 #[test_with_logger]
-pub fn simple_roundtrip(logger: Logger) { 
+pub fn simple_roundtrip(logger: Logger) {
     const PORT: u16 = 3228;
     const TEST_NAME: &'static str = "key_image_store_simple_roundtrip";
     const CHAIN_ID: &'static str = TEST_NAME;
-    const OMAP_CAPACITY: u64 = 768; 
+    const OMAP_CAPACITY: u64 = 768;
 
-    let rng = RngType::from_entropy(); 
-    let TestingContext { 
+    let rng = RngType::from_entropy();
+    let TestingContext {
         enclave,
         ledger,
         ledger_path,
         responder_id,
-        mut rng, 
+        mut rng,
         tempdir: _tempdir,
         tx_source_url: _tx_source_url,
         watcher,
@@ -152,20 +161,25 @@ pub fn simple_roundtrip(logger: Logger) {
         client_auth_token_max_lifetime: Default::default(),
         omap_capacity: OMAP_CAPACITY,
     };
- 
+
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
     let store_service = KeyImageService::new(
-        KeyImageClientListenUri::Store(client_listen_uri.clone()), 
+        KeyImageClientListenUri::Store(client_listen_uri.clone()),
         CHAIN_ID.to_string(),
-        ledger, 
-        watcher, 
+        ledger,
+        watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
-        shared_state.clone(), 
-        Arc::new(AnonymousAuthenticator::default()), 
-        logger.clone());
+        shared_state.clone(),
+        Arc::new(AnonymousAuthenticator::default()),
+        logger.clone(),
+    );
 
-    let mut store_server = KeyImageStoreServer::new_from_service(store_service, client_listen_uri.clone(), logger.clone());
+    let mut store_server = KeyImageStoreServer::new_from_service(
+        store_service,
+        client_listen_uri.clone(),
+        logger.clone(),
+    );
     store_server.start();
 
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
@@ -173,25 +187,33 @@ pub fn simple_roundtrip(logger: Logger) {
     // Set up IAS verficiation
     // This will be a SimClient in testing contexts.
     let ias_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-    let mut report_cache_thread = Some(ReportCacheThread::start(
-        enclave.clone(),
-        ias_client.clone(),
-        config.ias_spid,
-        &TEST_ENCLAVE_REPORT_TIMESTAMP,
-        logger.clone(),
-    ).unwrap()).unwrap();
+    let mut report_cache_thread = Some(
+        ReportCacheThread::start(
+            enclave.clone(),
+            ias_client.clone(),
+            config.ias_spid,
+            &TEST_ENCLAVE_REPORT_TIMESTAMP,
+            logger.clone(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 
     // Make GRPC client for sending requests.
-    let ch = grpcio::ChannelBuilder::new(grpc_env.clone())
-        .connect_to_uri(&client_listen_uri, &logger);
+    let ch =
+        grpcio::ChannelBuilder::new(grpc_env.clone()).connect_to_uri(&client_listen_uri, &logger);
     let api_client = ledger_grpc::KeyImageStoreApiClient::new(ch);
 
     // Get the enclave to generate an auth request.
-    let client_auth_request = enclave.connect_to_key_image_store(responder_id.clone()).unwrap();
+    let client_auth_request = enclave
+        .connect_to_key_image_store(responder_id.clone())
+        .unwrap();
     // Submit auth request and wait for the response.
     let auth_response = api_client.auth(&client_auth_request.into()).unwrap();
     // Finish the enclave's handshake with itself.
-    enclave.finish_connecting_to_key_image_store(responder_id.clone(), auth_response.into()).unwrap();
+    enclave
+        .finish_connecting_to_key_image_store(responder_id.clone(), auth_response.into())
+        .unwrap();
 
     // Generate a dummy key image we're going to check against.
     let mut test_key_image_bytes: [u8; 32] = [0u8; 32];
@@ -201,9 +223,11 @@ pub fn simple_roundtrip(logger: Logger) {
         block_index: 0,
         timestamp: 0,
     };
-    enclave.add_key_image_data(vec![test_key_image.clone()]).unwrap();
+    enclave
+        .add_key_image_data(vec![test_key_image.clone()])
+        .unwrap();
 
-    // Set up the client's end of the encrypted connection.  
+    // Set up the client's end of the encrypted connection.
     let initiator = Start::new(responder_id.to_string());
 
     let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
@@ -211,35 +235,38 @@ pub fn simple_roundtrip(logger: Logger) {
 
     // Authenticate our "client" with the server.
     let auth_message = attest::AuthMessage::from(auth_request_output);
-    let (client_auth_response, client_session) = enclave.client_accept(auth_message.into()).unwrap();
-    // We will need to double-convert, ClientAuthResponse -> AuthMessage -> AuthResponseOutput
+    let (client_auth_response, client_session) =
+        enclave.client_accept(auth_message.into()).unwrap();
+    // We will need to double-convert, ClientAuthResponse -> AuthMessage ->
+    // AuthResponseOutput
     let auth_message = attest::AuthMessage::from(client_auth_response);
     // Initiator accepts responder's message.
-    let auth_response_event =
-        AuthResponseInput::new(auth_message.into(), Verifier::default());
-    // Should be a valid noise connection at this point. 
+    let auth_response_event = AuthResponseInput::new(auth_message.into(), Verifier::default());
+    // Should be a valid noise connection at this point.
     let (mut noise_connection, _verification_report) =
         initiator.try_next(&mut rng, auth_response_event).unwrap();
 
-    //Construct our request. 
+    //Construct our request.
     let key_images_request = CheckKeyImagesRequest {
-        queries: vec![KeyImageQuery{ 
-            key_image: test_key_image.key_image.clone(), 
-            start_block: 0
+        queries: vec![KeyImageQuery {
+            key_image: test_key_image.key_image.clone(),
+            start_block: 0,
         }],
     };
     // Protobuf-encoded plaintext.
     let message_encoded = mc_util_serial::encode(&key_images_request);
     let ciphertext = noise_connection.encrypt(&[], &message_encoded).unwrap();
-    let msg: EnclaveMessage<ClientSession> = EnclaveMessage { 
-        aad: vec![], 
-        channel_id: client_session, 
-        data: ciphertext 
+    let msg: EnclaveMessage<ClientSession> = EnclaveMessage {
+        aad: vec![],
+        channel_id: client_session,
+        data: ciphertext,
     };
 
     // Decrypt and seal
     let sealed_query = enclave.decrypt_and_seal_query(msg).unwrap();
-    let multi_query =  enclave.create_multi_key_image_store_query_data(sealed_query).unwrap();
+    let multi_query = enclave
+        .create_multi_key_image_store_query_data(sealed_query)
+        .unwrap();
 
     // Get an untrusted query
     let (
@@ -262,11 +289,13 @@ pub fn simple_roundtrip(logger: Logger) {
         max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
     };
 
-    // Most likely this will just be one, but just in case... 
+    // Most likely this will just be one, but just in case...
     let mut results: Vec<EnclaveMessage<NonceSession>> = Vec::new();
     for query in multi_query {
         results.push(
-            enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap()
+            enclave
+                .check_key_image_store(query, untrusted_kiqr.clone())
+                .unwrap(),
         );
     }
     assert!(results.len() > 0);

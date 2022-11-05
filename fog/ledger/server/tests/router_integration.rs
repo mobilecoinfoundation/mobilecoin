@@ -9,19 +9,24 @@ use mc_fog_ledger_server::{
 
 use mc_fog_api::ledger_grpc::{KeyImageStoreApiClient, LedgerRouterAdminApiClient};
 
-use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri, FogLedgerRouterAdminUri};
+use mc_fog_uri::{FogLedgerRouterAdminUri, FogLedgerUri, KeyImageStoreUri};
 //use mc_util_uri::AdminUri;
 //use mc_attest_core::ProviderId;
 use grpcio::ChannelBuilder;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_fog_ledger_connection::{FogKeyImageGrpcClient};
+use mc_fog_ledger_connection::FogKeyImageGrpcClient;
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_test_infra::get_enclave_path;
 use mc_ledger_db::test_utils::recreate_ledger_db;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{path::PathBuf, str::FromStr, sync::{Arc, RwLock}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 use tempdir::TempDir;
 use url::Url;
 //use core::time::Duration;
@@ -61,7 +66,10 @@ fn create_stores(
     store_count: usize,
     grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
-) -> (Vec<KeyImageStoreServer>, Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>) {
+) -> (
+    Vec<KeyImageStoreServer>,
+    Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>,
+) {
     let mut stores = vec![];
     let mut store_clients = HashMap::new();
     for _ in 0..store_count {
@@ -117,10 +125,18 @@ fn create_router(
     shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>,
     grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
-) -> (KeyImageRouterServer, FogKeyImageGrpcClient, LedgerRouterAdminApiClient) {
+) -> (
+    KeyImageRouterServer,
+    FogKeyImageGrpcClient,
+    LedgerRouterAdminApiClient,
+) {
     let port = portpicker::pick_unused_port().expect("couldn't get unused port");
     let uri = FogLedgerUri::from_str(&format!("insecure-fog-ledger://127.0.0.1:{}", port)).unwrap();
-    let admin_uri = FogLedgerRouterAdminUri::from_str(&format!("insecure-fog-ledger-router-admin://127.0.0.1:{}", port)).unwrap();
+    let admin_uri = FogLedgerRouterAdminUri::from_str(&format!(
+        "insecure-fog-ledger-router-admin://127.0.0.1:{}",
+        port
+    ))
+    .unwrap();
 
     let config = LedgerRouterConfig {
         client_responder_id: uri
@@ -158,7 +174,8 @@ fn create_router(
     );
 
     let admin_client = LedgerRouterAdminApiClient::new(
-        ChannelBuilder::default_channel_builder(grpc_env.clone()).connect_to_uri(&admin_uri, &logger),
+        ChannelBuilder::default_channel_builder(grpc_env.clone())
+            .connect_to_uri(&admin_uri, &logger),
     );
 
     (router, router_client, admin_client)
@@ -178,7 +195,8 @@ fn router_integration_test() {
         create_stores(omap_capacity, num_stores, grpc_env.clone(), logger.clone());
     // router talks directly to stores for these tests
     // shard tests are done in CI/CD
-    let (_router, _router_client, _admin_client) = create_router(omap_capacity, store_clients, grpc_env, logger);
+    let (_router, _router_client, _admin_client) =
+        create_router(omap_capacity, store_clients, grpc_env, logger);
 
     unimplemented!();
 }

@@ -1,7 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::sync::{Arc, RwLock};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
@@ -11,9 +13,9 @@ use mc_fog_api::{
     ledger_grpc::{self, LedgerApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
+use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::rpc_logger;
 use mc_util_metrics::SVC_COUNTERS;
-use mc_fog_uri::KeyImageStoreUri;
 
 use crate::router_handlers;
 

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     ledger::AddShardRequest,
-    ledger_grpc::{LedgerRouterAdminApi, KeyImageStoreApiClient},
+    ledger_grpc::{KeyImageStoreApiClient, LedgerRouterAdminApi},
 };
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::{
