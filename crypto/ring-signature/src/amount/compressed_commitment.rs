@@ -10,7 +10,6 @@ use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
     derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
-
 use zeroize::Zeroize;
 
 #[cfg(feature = "serde")]

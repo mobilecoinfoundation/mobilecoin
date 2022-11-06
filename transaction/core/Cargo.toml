@@ -9,7 +9,6 @@ readme = "README.md"
 # External dependencies
 aes = { version = "0.7.5", default-features = false, features = ["ctr"] }
 crc = { version = "3.0.0", default-features = false }
-
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }

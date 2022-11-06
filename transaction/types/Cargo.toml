@@ -7,7 +7,7 @@ readme = "README.md"
 
 [features]
 serde = ["dep:serde"]
-alloc = ["serde/alloc"]
+alloc = ["serde?/alloc"]
 default = ["serde", "alloc"]
 
 [dependencies]

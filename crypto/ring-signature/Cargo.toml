@@ -6,7 +6,7 @@ edition = "2021"
 readme = "README.md"
 
 [features]
-alloc = ["serde/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-transaction-types/alloc", "mc-crypto-dalek/alloc"]
+alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-transaction-types/alloc", "mc-crypto-dalek/alloc"]
 serde = ["dep:serde", "mc-crypto-dalek/serde", "mc-crypto-keys/serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost", "mc-util-serial"]
 internals = []
