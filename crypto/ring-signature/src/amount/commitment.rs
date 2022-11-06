@@ -3,12 +3,12 @@
 use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
 use core::fmt;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
     derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "prost")]
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
