@@ -93,7 +93,7 @@ python3 -m grpc_tools.protoc \
 echo ""
 echo "-- Run integration_test.py"
 echo ""
-token_signer_key="/minting-keys/token${token_id}_signer.private.pem"
+token_signer_key="/minting-keys/token_${token_id}_signer_1.private.pem"
 
 python3 integration_test.py \
     --mobilecoind-addr "mobilecoind:3229" \

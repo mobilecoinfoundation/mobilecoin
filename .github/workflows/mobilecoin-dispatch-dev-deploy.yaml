@@ -4,6 +4,8 @@
 
 name: (Manual) Deploy to Dev Namespace
 
+run-name: Deploy ${{ inputs.version }} to ${{ inputs.namespace }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -13,6 +15,18 @@ on:
         required: true
       version:
         description: "Chart Version"
+        type: string
+        required: true
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: choice
+        required: true
+        default: blue
+        options:
+        - blue
+        - green
+      block_version:
+        description: "Consensus block_version"
         type: string
         required: true
       chart_repo:
@@ -25,35 +39,11 @@ on:
         type: string
         required: true
         default: docker.io/mobilecoin
-      ingest_color:
-        description: "Fog Ingest blue/green"
-        type: string
-        required: true
-        default: blue
-      minting_config_enabled:
-        description: "Enable minting config"
-        type: boolean
-        required: true
-        default: false
-      block_version:
-        description: "Consensus block_version"
-        type: string
-        required: true
-      client_auth_enabled:
-        description: "Enable client token auth"
-        type: boolean
-        required: true
-        default: false
-      # true: use GHA secret values, false: generate random seeds
-      use_static_wallet_seeds:
-        description: "Use static wallet seeds"
-        type: boolean
-        required: true
-        default: false
+
 
 jobs:
   list-values:
-    name: 👾 Environment Info - ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.version }} 👾
+    name: 👾 Environment Info - ${{ inputs.namespace }} - ${{ inputs.version }} 👾
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Checkout
@@ -61,40 +51,19 @@ jobs:
 
     - name: 👾 Print Environment Details 👾
       env:
-        CHART_REPO: ${{ github.event.inputs.chart_repo }}
-        NAMESPACE: ${{ github.event.inputs.namespace }}
-        VERSION: ${{ github.event.inputs.version }}
+        CHART_REPO: ${{ inputs.chart_repo }}
+        NAMESPACE: ${{ inputs.namespace }}
+        VERSION: ${{ inputs.version }}
       run: |
         .internal-ci/util/print_details.sh
 
   deploy:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:
-      namespace: ${{ github.event.inputs.namespace }}
-      version: ${{ github.event.inputs.version }}
-      docker_image_org: ${{ github.event.inputs.docker_image_org }}
-      chart_repo: ${{ github.event.inputs.chart_repo }}
-      ingest_color: ${{ github.event.inputs.ingest_color }}
-      minting_config_enabled: ${{ github.event.inputs.minting_config_enabled }}
-      block_version: ${{ github.event.inputs.block_version }}
-    secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
-      RANCHER_URL: ${{ secrets.RANCHER_URL }}
-      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
-      IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
-      IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
-      FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
-      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
-      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
-      MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.DEV_MINTING_TRUST_ROOT_PRIVATE }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
-      CLIENT_AUTH_TOKEN: ${{  github.event.inputs.client_auth_enabled == 'true' && secrets.DEV_CLIENT_AUTH_TOKEN || '' }}
-      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
-      INITIAL_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_INITIAL_KEYS_SEED || '' }}
-      FOG_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_FOG_KEYS_SEED || '' }}
-      MNEMONIC_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_MNEMONIC_KEYS_SEED || '' }}
-      MNEMONIC_FOG_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_MNEMONIC_FOG_KEYS_SEED || '' }}
+      block_version: ${{ inputs.block_version }}
+      chart_repo: ${{ inputs.chart_repo }}
+      docker_image_org: ${{ inputs.docker_image_org }}
+      ingest_color: ${{ inputs.ingest_color }}
+      namespace: ${{ inputs.namespace }}
+      version: ${{ inputs.version }}
+    secrets: inherit

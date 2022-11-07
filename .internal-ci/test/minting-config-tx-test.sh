@@ -46,8 +46,8 @@ is_set token_id
 is_set NAMESPACE
 
 # These should be populated by volume in toolbox container.
-governor_signer_key="/minting-keys/minter${token_id}_governor.private.pem"
-token_signer_key="/minting-keys/token${token_id}_signer.public.pem"
+governor_signer_key="/minting-keys/token_${token_id}_governor_1.private.pem"
+token_signer_key="/minting-keys/token_${token_id}_signer_1.public.pem"
 
 mc-consensus-mint-client generate-and-submit-mint-config-tx \
     --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
