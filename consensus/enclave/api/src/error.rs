@@ -77,6 +77,9 @@ pub enum Error {
 
     /// Failed parsing minting trust root public key
     ParseMintingTrustRootPublicKey(KeyError),
+
+    /// Fee Map Digest Mismatch
+    FeeMapDigestMismatch,
 }
 
 impl From<ParseSealedError> for Error {

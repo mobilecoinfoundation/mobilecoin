@@ -12,7 +12,7 @@ use mc_fog_report_connection::Error as FogResolutionError;
 use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
 use mc_transaction_builder::{SignedContingentInputBuilderError, TxBuilderError};
-use mc_transaction_core::{AmountError, BlockVersionError, TxOutConversionError};
+use mc_transaction_core::{AmountError, BlockVersionError, FeeMapError, TxOutConversionError};
 use mc_transaction_extra::SignedContingentInputError;
 use mc_util_uri::UriParseError;
 use std::result::Result as StdResult;
@@ -145,6 +145,9 @@ pub enum Error {
 
     /// Fog merkle proof: {0}
     FogMerkleProof(String),
+
+    /// Fee Map: {0}
+    FeeMap(FeeMapError),
 }
 
 impl From<ConnectionError> for Error {
@@ -219,5 +222,11 @@ impl From<UriParseError> for Error {
 impl From<BlockVersionError> for Error {
     fn from(src: BlockVersionError) -> Self {
         Self::BlockVersion(src)
+    }
+}
+
+impl From<FeeMapError> for Error {
+    fn from(x: FeeMapError) -> Error {
+        Error::FeeMap(x)
     }
 }

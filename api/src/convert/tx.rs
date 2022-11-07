@@ -11,6 +11,7 @@ impl From<&tx::Tx> for external::Tx {
         let mut tx = external::Tx::new();
         tx.set_prefix(external::TxPrefix::from(&source.prefix));
         tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
+        tx.set_fee_map_digest(source.fee_map_digest.clone());
         tx
     }
 }
@@ -22,7 +23,12 @@ impl TryFrom<&external::Tx> for tx::Tx {
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
         let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
         let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-        Ok(tx::Tx { prefix, signature })
+        let fee_map_digest = source.get_fee_map_digest().to_vec();
+        Ok(tx::Tx {
+            prefix,
+            signature,
+            fee_map_digest,
+        })
     }
 }
 
@@ -62,6 +68,8 @@ mod tests {
                 EmptyMemoBuilder::default(),
             )
             .unwrap();
+
+            transaction_builder.set_fee_map(Default::default());
 
             transaction_builder.add_input(get_input_credentials(
                 block_version,

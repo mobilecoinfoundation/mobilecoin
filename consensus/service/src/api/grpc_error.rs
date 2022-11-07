@@ -143,6 +143,13 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
             }
+            ConsensusGrpcError::Enclave(EnclaveError::FeeMapDigestMismatch) => {
+                let mut resp = ProposeTxResponse::new();
+                resp.set_err_msg(EnclaveError::FeeMapDigestMismatch.to_string());
+                resp.set_result(ProposeTxResult::FeeMapDigestMismatch);
+                Ok(resp)
+            }
+
             _ => Err(RpcStatus::from(src)),
         }
     }

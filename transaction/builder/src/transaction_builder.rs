@@ -25,7 +25,7 @@ use mc_transaction_core::{
     ring_signature::Scalar,
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxPrefix},
-    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
+    Amount, BlockVersion, FeeMap, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
     RevealedTxOutError, Token, TokenId,
 };
 use mc_transaction_extra::{
@@ -100,6 +100,8 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// types that SDKs must bind to if they support multiple memo builder
     /// types.
     memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+    /// The minimum fee map, if available.
+    fee_map: Option<FeeMap>,
 }
 
 impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
@@ -156,6 +158,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
+            fee_map: None,
         })
     }
 
@@ -672,6 +675,15 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee.token_id
     }
 
+    /// Sets the minimum fee map.
+    /// This is used to allow the enclave to reject the transaction if the
+    /// client has used a different fee map than consensus is using, which
+    /// could result in an information disclosure attack. (This is a
+    /// TOB-MCCT-5 mitigation)
+    pub fn set_fee_map(&mut self, fee_map: FeeMap) {
+        self.fee_map = Some(fee_map);
+    }
+
     /// Return low level data to sign and construct transactions with external
     /// signers
     pub fn build_unsigned<O: TxOutputsOrdering>(mut self) -> Result<UnsignedTx, TxBuilderError> {
@@ -811,8 +823,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
+        let fee_map = self.fee_map.clone();
         let unsigned_tx = self.build_unsigned::<O>()?;
-        Ok(unsigned_tx.sign(ring_signer, rng)?)
+        Ok(unsigned_tx.sign(ring_signer, fee_map.as_ref(), rng)?)
     }
 }
 
