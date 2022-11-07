@@ -181,18 +181,26 @@ pub fn validate_ring_sizes(
     Ok(())
 }
 
-/// Elements in all rings within the transaction must be unique.
+/// Ring elements of each ring without input rules must be unique.
+/// For any ring with input rules, ring elements must be unique within that
+/// ring. (See also MCIP #57)
 pub fn validate_ring_elements_are_unique(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
-    let ring_elements: Vec<&TxOut> = tx_prefix
-        .inputs
-        .iter()
-        .flat_map(|tx_in| tx_in.ring.iter())
-        .collect();
-
-    check_unique(
-        &ring_elements,
-        TransactionValidationError::DuplicateRingElements,
-    )
+    let mut ring_elements_without_input_rules = HashSet::<&TxOut>::default();
+    for input in tx_prefix.inputs.iter() {
+        if input.input_rules.is_some() {
+            check_unique(
+                &input.ring,
+                TransactionValidationError::DuplicateRingElements,
+            )?;
+        } else {
+            for elem in input.ring.iter() {
+                if !ring_elements_without_input_rules.insert(elem) {
+                    return Err(TransactionValidationError::DuplicateRingElements);
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Elements in a ring must be sorted.
