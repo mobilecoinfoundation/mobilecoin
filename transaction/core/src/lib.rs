@@ -17,6 +17,7 @@ extern crate lazy_static;
 
 mod amount;
 mod domain_separators;
+mod fee_map;
 mod input_rules;
 mod memo;
 mod revealed_tx_out;
@@ -38,6 +39,7 @@ pub mod validation;
 pub mod proptest_fixtures;
 
 pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
+pub use fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2};
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use revealed_tx_out::{try_reveal_amount, RevealedTxOut, RevealedTxOutError};

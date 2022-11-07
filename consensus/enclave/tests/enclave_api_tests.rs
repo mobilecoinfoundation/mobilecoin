@@ -9,7 +9,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave::{ConsensusEnclave, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
-use mc_consensus_enclave_api::{BlockchainConfig, FeeMap};
+use mc_consensus_enclave_api::BlockchainConfig;
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::McRng;
 use mc_fog_test_infra::get_enclave_path;
@@ -18,7 +18,7 @@ use mc_ledger_db::{
     Ledger,
 };
 use mc_sgx_report_cache_untrusted::ReportCache;
-use mc_transaction_core::{AccountKey, BlockVersion};
+use mc_transaction_core::{AccountKey, BlockVersion, FeeMap};
 use mc_util_metrics::IntGauge;
 use mc_util_serial::encode;
 use sha2::Sha512;

@@ -178,8 +178,7 @@ fn parse_block_version(s: &str) -> Result<BlockVersion, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_enclave_api::FeeMap;
-    use mc_transaction_core::{tokens::Mob, Token};
+    use mc_transaction_core::{tokens::Mob, FeeMap, Token};
 
     #[test]
     fn test_local_uris_with_pubkey() {

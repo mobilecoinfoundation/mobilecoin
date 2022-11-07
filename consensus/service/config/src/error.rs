@@ -4,9 +4,9 @@
 
 use displaydoc::Display;
 use mc_common::ResponderId;
-use mc_consensus_enclave_api::{FeeMapError, GovernorsMapError};
+use mc_consensus_enclave_api::GovernorsMapError;
 use mc_crypto_keys::SignatureError;
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{FeeMapError, TokenId};
 use mc_util_uri::UriConversionError;
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
