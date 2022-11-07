@@ -88,6 +88,19 @@ impl UriScheme for KeyImageRouterScheme {
     const DEFAULT_INSECURE_PORT: u16 = 3223;
 }
 
+/// Fog Ledger Router Admin Scheme
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FogLedgerRouterAdminScheme {}
+
+impl UriScheme for FogLedgerRouterAdminScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "fog-ledger-router-admin";
+    const SCHEME_INSECURE: &'static str = "insecure-fog-ledger-router-admin";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3223;
+}
 /// Fog Ledger Store (for use with router) Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct KeyImageStoreScheme {}
@@ -137,6 +150,8 @@ pub type FogIngestUri = Uri<FogIngestScheme>;
 /// FogLedgerUri is also used for the router / client-facing part of the
 /// router & store system.
 pub type FogLedgerUri = Uri<FogLedgerScheme>;
+/// Uri used when talking to fog ledger router admin service.
+pub type FogLedgerRouterAdminUri = Uri<FogLedgerRouterAdminScheme>;
 /// Uri for a Fog key image store, to be queried by a Key Image Router.
 pub type KeyImageStoreUri = Uri<KeyImageStoreScheme>;
 /// Uri used when talking to fog view router admin service.

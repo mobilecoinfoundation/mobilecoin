@@ -1,6 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{env, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    env,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 use clap::Parser;
 use grpcio::ChannelBuilder;
@@ -35,7 +40,7 @@ fn main() {
         logger.clone(),
     );
 
-    let mut ledger_store_grpc_clients: Vec<KeyImageStoreApiClient> = Vec::new();
+    let mut ledger_store_grpc_clients = HashMap::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())
@@ -52,8 +57,9 @@ fn main() {
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
         );
-        ledger_store_grpc_clients.push(ledger_store_grpc_client);
+        ledger_store_grpc_clients.insert(shard_uri, Arc::new(ledger_store_grpc_client));
     }
+    let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
 
     let mut router_server =
         KeyImageRouterServer::new(config, enclave, ledger_store_grpc_clients, logger);

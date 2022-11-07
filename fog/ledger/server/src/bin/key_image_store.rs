@@ -38,14 +38,14 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let mut store_server =
-        KeyImageStoreServer::new_from_config(config.clone(), 
-            enclave, 
-            db, 
-            watcher, 
-            SystemTimeProvider::default(), 
-            logger.clone(),
-        );
+    let mut store_server = KeyImageStoreServer::new_from_config(
+        config.clone(),
+        enclave,
+        db,
+        watcher,
+        SystemTimeProvider::default(),
+        logger.clone(),
+    );
     store_server.start();
 
     //Initialize the admin api

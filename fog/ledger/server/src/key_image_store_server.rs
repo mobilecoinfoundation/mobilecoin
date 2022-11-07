@@ -51,27 +51,28 @@ impl KeyImageStoreServer {
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        Self::new( 
-            config.chain_id, 
-            client_authenticator, 
-            config.client_listen_uri, 
-            enclave, 
+        Self::new(
+            config.chain_id,
+            client_authenticator,
+            config.client_listen_uri,
+            enclave,
             ledger,
             watcher,
-            logger
+            logger,
         )
     }
 
     pub fn new<E>(
-        chain_id: String, 
+        chain_id: String,
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
-        client_listen_uri: Uri<KeyImageStoreScheme>, 
+        client_listen_uri: Uri<KeyImageStoreScheme>,
         enclave: E,
         ledger: LedgerDB,
         watcher: WatcherDB,
         logger: Logger,
     ) -> KeyImageStoreServer
-        where E: LedgerEnclaveProxy
+    where
+        E: LedgerEnclaveProxy,
     {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
@@ -93,7 +94,8 @@ impl KeyImageStoreServer {
         client_listen_uri: Uri<KeyImageStoreScheme>,
         logger: Logger,
     ) -> KeyImageStoreServer
-        where E: LedgerEnclaveProxy
+    where
+        E: LedgerEnclaveProxy,
     {
         let readiness_indicator = ReadinessIndicator::default();
 
@@ -107,12 +109,10 @@ impl KeyImageStoreServer {
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
-        
+
         // Build our store server.
         // Init ledger store service.
-        let ledger_store_service = ledger_grpc::create_key_image_store_api(
-            key_image_service,
-        );
+        let ledger_store_service = ledger_grpc::create_key_image_store_api(key_image_service);
         log::debug!(logger, "Constructed Key Image Store GRPC Service");
 
         // Package service into grpc server

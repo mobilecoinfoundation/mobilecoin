@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
@@ -10,6 +13,7 @@ use mc_fog_api::{
     ledger_grpc::{self, LedgerApi},
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
+use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::rpc_logger;
 use mc_util_metrics::SVC_COUNTERS;
 
@@ -22,7 +26,7 @@ where
     E: LedgerEnclaveProxy,
 {
     enclave: E,
-    shards: Vec<Arc<ledger_grpc::KeyImageStoreApiClient>>,
+    shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
     logger: Logger,
 }
 
@@ -32,10 +36,9 @@ impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     #[allow(dead_code)] // FIXME
     pub fn new(
         enclave: E,
-        shards: Vec<ledger_grpc::KeyImageStoreApiClient>,
+        shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         logger: Logger,
     ) -> Self {
-        let shards = shards.into_iter().map(Arc::new).collect();
         Self {
             enclave,
             shards,
@@ -64,8 +67,9 @@ where
             );
             let logger = logger.clone();
 
+            let shards = self.shards.read().expect("RwLock poisoned");
             let future = router_handlers::handle_requests(
-                self.shards.clone(),
+                shards.values().cloned().collect(),
                 self.enclave.clone(),
                 requests,
                 responses,
