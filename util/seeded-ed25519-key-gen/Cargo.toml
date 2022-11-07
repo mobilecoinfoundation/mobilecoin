@@ -1,15 +1,15 @@
 [package]
 name = "mc-util-seeded-ed25519-key-gen"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
 [dependencies]
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../from-random" }
+mc-util-parse = { path = "../parse" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
-hex = "0.4"
+clap = { version = "4.0", features = ["derive", "env"] }
 pem = "1.1"
 rand = "0.8"
 rand_hc = "0.3"

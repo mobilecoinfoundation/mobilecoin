@@ -164,6 +164,7 @@ impl RouterTestEnvironment {
                     client_auth_token_max_lifetime: Default::default(),
                     sharding_strategy: ShardingStrategy::Epoch(epoch_sharding_strategy),
                     postgres_config: Default::default(),
+                    block_query_batch_size: 2,
                 };
 
                 let enclave = SgxViewEnclave::new(

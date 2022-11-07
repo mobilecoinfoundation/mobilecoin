@@ -10,8 +10,8 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
-use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Signer};
+use mc_consensus_mint_client::{printers, Commands, Config, FogContext, TxFile};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -25,13 +25,14 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = Config::parse();
 
+    let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+
     match config.command {
         Commands::GenerateAndSubmitMintConfigTx {
             node,
             params,
             chain_id,
         } => {
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
@@ -114,7 +115,6 @@ fn main() {
                 signature: MultiSig::new(signatures),
             };
 
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch);
 
@@ -136,14 +136,22 @@ fn main() {
             node,
             params,
             chain_id,
+            fog_ingest_enclave_css,
         } => {
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
-            let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
+            let ch =
+                ChannelBuilder::default_channel_builder(env.clone()).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
 
+            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
+                chain_id: chain_id.clone(),
+                css_signature: signature,
+                grpc_env: env.clone(),
+                logger: logger.clone(),
+            });
+
             let tx = params
-                .try_into_mint_tx(|| {
+                .try_into_mint_tx(maybe_fog_bits, || {
                     let last_block_info = blockchain_api
                         .get_last_block_info(&Empty::new())
                         .expect("get last block info");
@@ -166,9 +174,21 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::GenerateMintTx { out, params } => {
+        Commands::GenerateMintTx {
+            out,
+            chain_id,
+            fog_ingest_enclave_css,
+            params,
+        } => {
+            let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
+                chain_id: chain_id.expect("Chain id should be passed when fog is used"),
+                css_signature: signature,
+                grpc_env: env,
+                logger: logger.clone(),
+            });
+
             let tx = params
-                .try_into_mint_tx(|| panic!("missing tombstone block"))
+                .try_into_mint_tx(maybe_fog_bits, || panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
             TxFile::from(tx)
@@ -187,7 +207,7 @@ fn main() {
 
         Commands::HashMintTx { params } => {
             let tx_prefix = params
-                .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
+                .try_into_mint_tx_prefix(None, || panic!("missing tombstone block"))
                 .expect("failed creating tx prefix");
 
             // Print the nonce, since if we generated it randomlly then there is no way to
@@ -228,7 +248,6 @@ fn main() {
                 signature: MultiSig::new(signatures),
             };
 
-            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch);
 
@@ -252,7 +271,7 @@ fn main() {
             let governors_map = tokens
                 .token_id_to_governors()
                 .expect("governors configuration error");
-            let signature = Ed25519Pair::from(signing_key)
+            let signature = Ed25519Pair::from(Ed25519Private::from(signing_key))
                 .sign_governors_map(&governors_map)
                 .expect("failed signing governors map");
             println!("Signature: {}", hex::encode(signature.as_ref()));
@@ -306,7 +325,7 @@ fn main() {
                 signing_keys
                     .into_iter()
                     .map(|signer| {
-                        Ed25519Pair::from(signer)
+                        Ed25519Pair::from(Ed25519Private::from(signer))
                             .try_sign(message.as_ref())
                             .map_err(|e| format!("Failed to sign: {}", e))
                     })

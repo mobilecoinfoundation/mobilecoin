@@ -62,7 +62,7 @@ mc-consensus-mint-client generate-and-submit-mint-config-tx \
     --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
     --signing-key "${governor_signer_key}" \
     --token-id "${token_id}" \
-    --config "1000000000:${token_id}:${token_signer_key}" \
+    --config "1000000000:1:${token_signer_key}" \
     --total-mint-limit 10000000000
 
 echo "-- sleep and wait for tx/blocks to sync"
@@ -70,7 +70,7 @@ echo "-- sleep and wait for tx/blocks to sync"
 new_block_count=0
 echo "-- Waiting for mint config tx to commit to the block chain"
 
-while [[ $block_count -le $new_block_count ]]
+while [[ $block_count -ge $new_block_count ]]
 do
     sleep 15
     new_block_count=$(get_block_count)

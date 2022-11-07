@@ -9,7 +9,6 @@ extern crate alloc;
 
 mod config;
 mod error;
-mod fee_map;
 mod governors_map;
 mod governors_sig;
 mod messages;
@@ -17,7 +16,6 @@ mod messages;
 pub use crate::{
     config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
-    fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2},
     governors_map::{Error as GovernorsMapError, GovernorsMap},
     governors_sig::{
         context as governors_signing_context, Signer as GovernorsSigner,

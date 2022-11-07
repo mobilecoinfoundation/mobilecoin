@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Runtime gRPC Utilities"
@@ -16,7 +16,7 @@ mc-util-serial = { path = "../serial", features = ["std"] }
 mc-util-uri = { path = "../uri" }
 
 base64 = "0.13"
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 cookie = "0.16"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
@@ -28,7 +28,7 @@ lazy_static = "1.4"
 prometheus = "0.13"
 protobuf = "2.27.1"
 rand = "0.8"
-retry = "1.3"
+retry = "2.0"
 serde = "1"
 sha2 = { version = "0.10", default-features = false }
 signal-hook = "0.3"

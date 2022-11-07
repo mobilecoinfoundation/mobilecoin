@@ -8,12 +8,12 @@ use mc_common::logger::{log, Logger};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
+use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_transaction_core::{
     constants::RING_SIZE,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, TokenId,
 };
-use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use rand::thread_rng;
 
 /// A UTXO that has been prepared for transaction building, by collecting

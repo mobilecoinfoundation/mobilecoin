@@ -7,10 +7,11 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::Scalar;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// A TxOut together with its amount shared secret, which can be used to reveal
 /// the amount and token id and check them against the commitment data
-#[derive(Clone, Digestible, PartialEq, Eq, Message, Serialize, Deserialize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct RevealedTxOut {
     /// The TxOut which is being revealed
     #[prost(message, required, tag = "1")]

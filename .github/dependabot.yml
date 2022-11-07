@@ -4,49 +4,61 @@ updates:
   directory: "/"
   schedule:
     interval: daily
+    time: "22:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 25
   labels:
-    - "blocks-v3.x"
+    - "blocks-v4.0.0"
     - "dependencies"
     - "rust"
 - package-ecosystem: cargo
   directory: "/consensus/enclave/trusted/"
   schedule:
     interval: daily
+    time: "23:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
-    - "blocks-v3.x"
+    - "blocks-v4.0.0"
     - "dependencies"
     - "rust"
 - package-ecosystem: cargo
   directory: "/fog/ingest/enclave/trusted/"
   schedule:
     interval: daily
+    time: "00:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
-    - "blocks-v3.x"
+    - "blocks-v4.0.0"
     - "dependencies"
     - "rust"
 - package-ecosystem: cargo
   directory: "/fog/ledger/enclave/trusted/"
   schedule:
     interval: daily
+    time: "01:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
-    - "blocks-v3.x"
+    - "blocks-v4.0.0"
     - "dependencies"
     - "rust"
 - package-ecosystem: cargo
   directory: "/fog/view/enclave/trusted/"
   schedule:
     interval: daily
+    time: "02:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 5
   labels:
-    - "blocks-v3.x"
+    - "blocks-v4.0.0"
     - "dependencies"
     - "rust"
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
     interval: daily
+    time: "03:00"
+    timezone: "America/Los_Angeles"
   open-pull-requests-limit: 10

@@ -11,10 +11,9 @@ use mc_fog_ledger_connection::{Error as LedgerConnectionError, KeyImageQueryErro
 use mc_fog_report_connection::Error as FogResolutionError;
 use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
-use mc_transaction_core::{
-    AmountError, BlockVersionError, SignedContingentInputError, TxOutConversionError,
-};
-use mc_transaction_std::{SignedContingentInputBuilderError, TxBuilderError};
+use mc_transaction_builder::{SignedContingentInputBuilderError, TxBuilderError};
+use mc_transaction_core::{AmountError, BlockVersionError, TxOutConversionError};
+use mc_transaction_extra::SignedContingentInputError;
 use mc_util_uri::UriParseError;
 use std::result::Result as StdResult;
 

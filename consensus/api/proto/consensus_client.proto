@@ -27,6 +27,7 @@ enum MintValidationResultCode {
     NoGovernors = 10;
     NonceAlreadyUsed = 11;
     NoMatchingMintConfig = 12;
+    MintingToFogNotSupported = 13;
 }
 
 message MintValidationResult {

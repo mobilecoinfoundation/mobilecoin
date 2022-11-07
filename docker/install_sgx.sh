@@ -24,7 +24,7 @@ cd /tmp
 (
 	. /etc/os-release
 
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.17/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.17.100.3.bin"
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.17.1/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.17.101.1.bin"
 
 	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
 )
@@ -59,8 +59,8 @@ apt-get install -yq --no-install-recommends \
 
 # Install *after* pkg-config so that they get registered correctly.
 # pkg-config gets pulled in transitively via build-essential
-chmod +x ./sgx_linux_x64_sdk_2.17.100.3.bin
-./sgx_linux_x64_sdk_2.17.100.3.bin --prefix=/opt/intel
+chmod +x ./sgx_linux_x64_sdk_2.17.101.1.bin
+./sgx_linux_x64_sdk_2.17.101.1.bin --prefix=/opt/intel
 
 # Update .bashrc to source sgxsdk
 echo 'source /opt/intel/sgxsdk/environment' >> /root/.bashrc

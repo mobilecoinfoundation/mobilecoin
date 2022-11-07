@@ -1,4 +1,4 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Input rules, described in MCIP #31, specify any additional criteria that the
 //! Tx must satisfy to be valid.
@@ -13,18 +13,20 @@ use crate::{
     tx::{Tx, TxOut},
     BlockVersion, RevealedTxOut, RevealedTxOutError,
 };
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use displaydoc::Display;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::CompressedRistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// A representation of rules on a transaction, imposed by the signer of some
 /// input in the transaction.
 ///
 /// Any rule could conceivably be added here if it can be evaluated against a
 /// `Tx`.
-#[derive(Clone, Digestible, PartialEq, Eq, Message, Serialize, Deserialize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct InputRules {
     /// Outputs that are required to appear in the Tx prefix for the transaction
     /// to be valid
@@ -68,6 +70,26 @@ pub struct InputRules {
 }
 
 impl InputRules {
+    /// Get all TxOut's appearing in these rules, keyed by public key
+    pub fn associated_tx_outs(&self) -> BTreeMap<CompressedRistrettoPublic, TxOut> {
+        let mut result = BTreeMap::default();
+        for output in self.required_outputs.iter() {
+            result.insert(output.public_key, output.clone());
+        }
+        for output in self.partial_fill_outputs.iter() {
+            result.insert(output.tx_out.public_key, output.tx_out.clone());
+        }
+        for output in self.partial_fill_change.iter() {
+            result.insert(output.tx_out.public_key, output.tx_out.clone());
+        }
+        result
+    }
+
+    /// Compute MCIP-52 canonical digest of input rules
+    pub fn canonical_digest(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(b"mc-input-rules")
+    }
+
     /// Verify that a Tx conforms to the rules.
     pub fn verify(&self, block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         // NOTE: If this function gets too busy, we should split it up

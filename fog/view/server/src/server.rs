@@ -78,6 +78,7 @@ where
         let readiness_indicator = ReadinessIndicator::default();
 
         let db_poll_thread = DbPollThread::new(
+            config.clone(),
             enclave.clone(),
             recovery_db.clone(),
             readiness_indicator.clone(),
@@ -247,6 +248,9 @@ where
     DB: RecoveryDb + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
+    /// Config
+    config: MobileAcctViewConfig,
+
     /// Enclave.
     enclave: E,
 
@@ -288,6 +292,7 @@ where
 
     /// Initialize a new DbPollThread object.
     pub fn new(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: DB,
         readiness_indicator: ReadinessIndicator,
@@ -298,6 +303,7 @@ where
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         Self {
+            config,
             enclave,
             db,
             join_handle: None,
@@ -318,6 +324,7 @@ where
             *shared_state = DbPollSharedState::default();
         }
 
+        let thread_config = self.config.clone();
         let thread_enclave = self.enclave.clone();
         let thread_db = self.db.clone();
         let thread_stop_requested = self.stop_requested.clone();
@@ -331,6 +338,7 @@ where
                 .name(format!("DbPoll-{}", std::any::type_name::<E>()))
                 .spawn(move || {
                     Self::thread_entrypoint(
+                        thread_config,
                         thread_enclave,
                         thread_db,
                         thread_stop_requested,
@@ -355,6 +363,7 @@ where
     }
 
     fn thread_entrypoint(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: DB,
         stop_requested: Arc<AtomicBool>,
@@ -366,6 +375,7 @@ where
         log::debug!(logger, "Db poll thread started");
 
         let mut worker = DbPollThreadWorker::new(
+            config,
             stop_requested,
             enclave,
             db,
@@ -452,6 +462,7 @@ where
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     pub fn new(
+        config: MobileAcctViewConfig,
         stop_requested: Arc<AtomicBool>,
         enclave: E,
         db: DB,
@@ -469,6 +480,7 @@ where
                 db,
                 readiness_indicator,
                 sharding_strategy.clone(),
+                config.block_query_batch_size,
                 logger.clone(),
             ),
             enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),

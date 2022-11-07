@@ -12,9 +12,9 @@ use mc_ledger_db::{
     },
     Ledger, LedgerDB,
 };
+use mc_transaction_builder::{DefaultTxOutputsOrdering, TxOutputsOrdering};
 use mc_transaction_core::{tx::Tx, BlockVersion};
 use mc_transaction_core_test_utils::AccountKey;
-use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
 use mc_util_test_helper::{RngType, SeedableRng};
 
 pub use mc_ledger_db::test_utils::INITIALIZE_LEDGER_AMOUNT;

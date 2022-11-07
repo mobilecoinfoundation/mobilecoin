@@ -75,6 +75,7 @@ fn get_test_environment(
             client_auth_token_max_lifetime: Default::default(),
             sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
             postgres_config: Default::default(),
+            block_query_batch_size: 2,
         };
 
         let enclave = SgxViewEnclave::new(

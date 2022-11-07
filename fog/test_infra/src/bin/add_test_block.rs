@@ -63,7 +63,7 @@ struct Config {
     pub seed: u64,
 
     // Fog public key
-    #[clap(long, short, parse(try_from_str = hex::FromHex::from_hex), env = "MC_FOG_PUBKEY")]
+    #[clap(long, short, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_FOG_PUBKEY")]
     pub fog_pubkey: [u8; 32],
 }
 

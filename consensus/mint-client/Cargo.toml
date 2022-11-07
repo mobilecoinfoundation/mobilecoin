@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-mint-client"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -14,19 +14,25 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
 mc-consensus-service-config = { path = "../../consensus/service/config" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-resolver = { path = "../../fog/report/resolver" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
+mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.11.0"
 hex = "0.4"

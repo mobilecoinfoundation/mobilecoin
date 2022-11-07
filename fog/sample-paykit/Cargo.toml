@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sample-paykit"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
@@ -29,8 +29,9 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-sgx-css = { path = "../../sgx/css" }
+mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-std = { path = "../../transaction/std" }
+mc-transaction-extra = { path = "../../transaction/extra" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-telemetry = { path = "../../util/telemetry" }
@@ -51,7 +52,7 @@ mc-fog-view-connection = { path = "../view/connection" }
 mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.11.0"

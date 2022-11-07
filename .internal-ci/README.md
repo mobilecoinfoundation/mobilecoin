@@ -20,11 +20,12 @@ We use [Semver 2](https://semver.org/) for general versioning.
 - `feature/my-awesome-feature` valid characters `[a-z][0-9]-`
 - Feature branch names will be normalized for versioning, namespaces, dns...
   - `feature/` prefix will be removed
-  - semver portion will be set to `v0.0.0`.
+  - namespaces will be prefixed with `mc-`
+  - semver portion will be set to `v0`.
 
 format:
 ```
-v0.0.0-${branch}.${GITHUB_RUN_NUMBER}.sha-${sha}
+v0-${branch}.${GITHUB_RUN_NUMBER}.sha-${sha}
 ```
 
 examples:
@@ -36,58 +37,59 @@ v0.0.0-my-awesome-feature.21.sha-abcd1234
 
 **Release branches**
 
-- `release/v1.2.0` valid characters `v[0-9]+/.[0-9]+/.[0-9]+`
+- `release/v2` valid characters `v[0-9]+`
 - Release branches will be normalized for versioning, namespaces, dns...
-  - namespaces will be prefixed with `release-`
-  - semver will be set to match the branch name.
-  - `-dev` and full tags will be create for the artifacts.
+  - namespaces will be prefixed with `mc-`
+  - semver portion will be set to `v0`.
 
 format:
 ```
-v1.2.3-${GITHUB_RUN_NUMBER}.sha-${sha}
-v1.2.3-dev
+v0-${GITHUB_RUN_NUMBER}.sha-${sha}
 ```
 
 examples:
 ```
-release/v1.2.3
+release/v2
 
-v1.2.3-21.sha-abcd1234
-v1.2.3-dev
+v0-21.sha-abcd1234
+```
+
+**Tags**
+
+- `v2.0.0` valid characters `v[0-9]+\.[0-9]+\.[0-9]+`
+- Tags will be normalized for versioning, namespaces, dns...
+  - namespaces will be prefixed with `mc-`
+  - semver will be set to match the branch name.
+  - tags will create a `v{tag}-dev` release for use in static environments
+
+format:
+```
+v2.0.0-${GITHUB_RUN_NUMBER}.sha-${sha}
+v2.0.0-dev
 ```
 
 ## CI triggers
 
 This workflow is set up to trigger of certain branch patterns.
 
-### Feature Branches - `feature/*`
+### Branches - `feature/*, release/*, master`
 
-Feature branches will trigger a build that will create a dynamic development environment and run integration tests against the environment.
+Branches will trigger a build that will create a dynamic development environment and run integration tests against the environment.
 
 | Tags | SGX_MODE | IAS_MODE | Signer | Description |
 | --- | --- | --- | --- | --- |
 | `v0.0.0-my-awesome-feature.21.sha-abcd1234` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
 
-### Release Branches - `release/*`
+### Semver tags - `v2.0.0`
 
-Release branches will trigger a build that will create a set of release artifacts.
+Tags will trigger a build that will create a set of release artifacts.
 
 TBD: Automatically deploy/destroy this release to the development cluster.
 
 | Tags | SGX_MODE | IAS_MODE | Signer | Description |
 | --- | --- | --- | --- | --- |
-| `v1.0.0-dev` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
+| `v2.0.0-dev` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
 
-### Production Releases - Manual Trigger
-
-⚠️ **Not Yet Implemented**
-
-Once the release branch is tested you can use the manual `workflow-dispatch` actions to build the TestNet and MainNet deployment artifacts. This process will expect a set of externally built signed enclaves uploaded to S3 storage.
-
-| Tags | SGX_MODE | IAS_MODE | Signer | Description |
-| --- | --- | --- | --- | --- |
-| `v1.0.0-test` | `HW` | `PROD` | External Signed TestNet | TestNet Build. |
-| `v1.0.0-prod` | `HW` | `PROD` | External Signed MainNet | MainNet Build. |
 
 ## CI Commit Message Flags
 
@@ -107,10 +109,13 @@ Available skips:
 - `[skip build]` - Skip rust/go builds.
 - `[skip docker]` - Skip docker image build/publish.
 - `[skip charts]` - Skip helm chart build/publish.
-- `[skip dev-reset]` - Skip dev namespace reset.
-- `[skip previous-deploy]` - Skip deploy of the previous consensus/fog release.
-- `[skip previous-test]` - Skip test of previous release.
-- `[skip current-release-v0-deploy]` - Skip current release at block-version=0 deploy.
-- `[skip current-release-v0-test]`- Skip current release at block-version=0 deploy.
-- `[skip current-release-v1-update]` - Skip current release at block-version=1 consensus update.
-- `[skip current-release-v1-test]` - Skip current release at block-version=1 tests.
+- `[skip deploy-v1-bv0-release]` - Skip deploy of v1 at block_version 0
+- `[skip test-v1-bv0-release]` - Skip test of v1 at block_version 0
+- `[skip deploy-v2-bv0-release]` - Skip deploy of v2 at block_version 0
+- `[skip test-v2-bv0-release]` - Skip test of v2 at block_version 0
+- `[skip update-v2-to-bv2-release]` - Skip update of v2 at block_version 2
+- `[skip test-v2-bv2-release]` - Skip test of v2 at block_version 2
+- `[skip deploy-current-bv2-release]` - Skip deploy of current at block_version 2
+- `[skip test-current-bv2-release]` - Skip test of current at block_version 2
+- `[skip update-current-to-bv3]` - Skip update of current at block_version 3
+- `[skip test-current-bv3-release]` - Skip test of current at block_version 3

@@ -2,7 +2,7 @@
 #
 # MobileCoin Core projects - Dispatch (manual) Job - Run integration tests in a development namespace.
 
-name: mobilecoin-dispatch-dev-test
+name: (Manual) Run Tests in Dev Namespace
 
 on:
   workflow_dispatch:
@@ -44,6 +44,7 @@ on:
 
 jobs:
   test:
+    name: Test ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.ingest_color }}
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     with:
       namespace: ${{ github.event.inputs.namespace }}
