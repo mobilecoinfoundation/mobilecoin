@@ -17,6 +17,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
         .as_ref()
         .unwrap()
         .get_db_instance();
+    let store_servers = test_environment.store_servers.as_ref().unwrap();
 
     let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
     let accepted_block_1 = db.new_ingress_key(&ingress_key, 0).unwrap();
@@ -88,9 +89,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     db.decommission_ingest_invocation(&invoc_id1).unwrap();
     mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 5, 20, &txs[16..20]);
 
-    mc_fog_view_server_test_utils::wait_for_server_to_load(&db, test_environment, &logger);
+    mc_fog_view_server_test_utils::wait_for_highest_block_to_load(&db, store_servers, &logger);
 
-    let router_client = test_environment.router_client.as_mut().unwrap();
+    let router_client = test_environment.router_streaming_client.as_mut().unwrap();
     let nonsense_search_keys = vec![vec![50u8]];
 
     // Query 1 should yield 4 events:
@@ -297,8 +298,11 @@ fn test_512() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     const OMAP_CAPACITY: u64 = 512;
     const STORE_COUNT: usize = 6;
+    const BLOCKS_PER_STORE: u64 = 1;
+    let store_block_ranges =
+        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
     let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, STORE_COUNT, logger.clone());
+        RouterTestEnvironment::new(OMAP_CAPACITY, store_block_ranges, logger.clone());
 
     block_on(test_router_integration(
         &mut test_environment,
@@ -311,8 +315,11 @@ fn test_1_million() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     const OMAP_CAPACITY: u64 = 1024 * 1024;
     const STORE_COUNT: usize = 6;
+    const BLOCKS_PER_STORE: u64 = 1;
+    let store_block_ranges =
+        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
     let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, STORE_COUNT, logger.clone());
+        RouterTestEnvironment::new(OMAP_CAPACITY, store_block_ranges, logger.clone());
 
     block_on(test_router_integration(
         &mut test_environment,

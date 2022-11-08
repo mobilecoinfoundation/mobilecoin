@@ -38,7 +38,7 @@ pub struct MobileAcctViewConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: ClientListenUri,
+    pub client_listen_uri: FogViewStoreUri,
 
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
@@ -103,30 +103,6 @@ impl FromStr for ShardingStrategy {
         }
 
         Err("Invalid sharding strategy config.".to_string())
-    }
-}
-
-/// A FogViewServer can either fulfill client requests directly or fulfill Fog
-/// View Router requests, and these types of servers use different URLs.
-#[derive(Clone, Serialize)]
-pub enum ClientListenUri {
-    /// URI used by the FogViewServer when fulfilling direct client requests.
-    ClientFacing(FogViewUri),
-    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
-    Store(FogViewStoreUri),
-}
-
-impl FromStr for ClientListenUri {
-    type Err = String;
-    fn from_str(input: &str) -> Result<Self, String> {
-        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
-            return Ok(ClientListenUri::ClientFacing(fog_view_uri));
-        }
-        if let Ok(fog_view_store_uri) = FogViewStoreUri::from_str(input) {
-            return Ok(ClientListenUri::Store(fog_view_store_uri));
-        }
-
-        Err(format!("Incorrect ClientListenUri string: {}.", input))
     }
 }
 

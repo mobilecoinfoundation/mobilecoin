@@ -4758,6 +4758,7 @@ dependencies = [
  "mc-fog-view-connection",
  "mc-fog-view-enclave",
  "mc-fog-view-enclave-measurement",
+ "mc-fog-view-protocol",
  "mc-fog-view-server",
  "mc-transaction-core",
  "mc-util-from-random",
