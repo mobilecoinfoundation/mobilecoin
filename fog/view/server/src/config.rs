@@ -143,7 +143,7 @@ pub struct FogViewRouterConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: FogViewRouterUri,
+    pub client_listen_uri: RouterClientListenUri,
 
     /// PEM-formatted keypair to send with an Attestation Request.
     #[clap(long, env = "MC_IAS_API_KEY")]
@@ -170,4 +170,43 @@ pub struct FogViewRouterConfig {
     /// Router admin listening URI.
     #[clap(long)]
     pub admin_listen_uri: FogViewRouterAdminUri,
+
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
+    /// Enables authenticating client requests using Authorization tokens using
+    /// the provided hex-encoded 32 bytes shared secret.
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
+    pub client_auth_token_secret: Option<[u8; 32]>,
+
+    /// Maximal client authentication token lifetime, in seconds (only relevant
+    /// when --client-auth-token-secret is used. Defaults to 86400 - 24
+    /// hours).
+    #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
+    pub client_auth_token_max_lifetime: Duration,
+}
+
+/// A FogViewRouterServer can either fulfill streaming or unary requests, and
+/// these different modes require different URIs.
+#[derive(Clone, Serialize)]
+pub enum RouterClientListenUri {
+    /// URI used by the FogViewServer when fulfilling direct client requests.
+    Streaming(FogViewRouterUri),
+    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    Unary(FogViewUri),
+}
+
+impl FromStr for RouterClientListenUri {
+    type Err = String;
+    fn from_str(input: &str) -> Result<Self, String> {
+        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
+            return Ok(RouterClientListenUri::Unary(fog_view_uri));
+        }
+        if let Ok(fog_view_router_uri) = FogViewRouterUri::from_str(input) {
+            return Ok(RouterClientListenUri::Streaming(fog_view_router_uri));
+        }
+
+        Err(format!("Incorrect ClientListenUri string: {}.", input))
+    }
 }
