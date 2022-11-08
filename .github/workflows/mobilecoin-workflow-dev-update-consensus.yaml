@@ -55,11 +55,17 @@ on:
       LEDGER_AWS_SECRET_ACCESS_KEY:
         description: "(from environment) Ledger AWS S3 access"
         required: true
-      MNEMONIC_FOG_KEYS_SEED:
-        description: "(from environment) static wallet seed"
+      MINTING_1_GOVERNOR_1_PRIVATE:
+        description: "(from environment) minting governor key"
         required: true
-      MNEMONIC_KEYS_SEED:
-        description: "(from environment) static wallet seed"
+      MINTING_1_GOVERNOR_1_PUBLIC:
+        description: "(from environment) minting governor key"
+        required: true
+      MINTING_1_SIGNER_1_PRIVATE:
+        description: "(from environment) minting governor key"
+        required: true
+      MINTING_1_SIGNER_1_PUBLIC:
+        description: "(from environment) minting governor key"
         required: true
       MINTING_8192_GOVERNOR_1_PRIVATE:
         description: "(from environment) minting governor key"
@@ -72,6 +78,12 @@ on:
         required: true
       MINTING_8192_SIGNER_1_PUBLIC:
         description: "(from environment) minting signer key"
+        required: true
+      MNEMONIC_FOG_KEYS_SEED:
+        description: "(from environment) static wallet seed"
+        required: true
+      MNEMONIC_KEYS_SEED:
+        description: "(from environment) static wallet seed"
         required: true
       POSTGRESQL_FOG_RECOVERY_PASSWORD:
         description: "password for fog_recovery database"
