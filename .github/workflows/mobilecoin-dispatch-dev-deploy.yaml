@@ -44,7 +44,7 @@ on:
         type: boolean
         required: true
         default: false
-      # true: use GHA secret values, false: generate random seeds
+      # true: use GHA secret values,  false: generate random seeds
       use_static_wallet_seeds:
         description: "Use static wallet seeds"
         type: boolean
