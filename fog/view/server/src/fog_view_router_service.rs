@@ -11,7 +11,9 @@ use mc_fog_api::{
 };
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
-use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
+use mc_util_grpc::{
+    check_request_chain_id, rpc_internal_error, rpc_logger, send_result, Authenticator,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use std::{
     collections::HashMap,
@@ -25,9 +27,7 @@ where
 {
     enclave: E,
     shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
-    chain_id: String,
-    /// GRPC request authenticator.
-    authenticator: Arc<dyn Authenticator + Send + Sync>,
+    unary_api_data: Option<UnaryApiData>,
     logger: Logger,
 }
 
@@ -40,18 +40,24 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     pub fn new(
         enclave: E,
         shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
-        chain_id: String,
-        authenticator: Arc<dyn Authenticator + Send + Sync>,
+        unary_api_data: Option<UnaryApiData>,
         logger: Logger,
     ) -> Self {
         Self {
             enclave,
             shard_clients,
-            chain_id,
-            authenticator,
+            unary_api_data,
             logger,
         }
     }
+}
+
+#[derive(Clone)]
+pub(crate) struct UnaryApiData {
+    ///
+    pub(crate) chain_id: String,
+    /// GRPC request authenticator.
+    pub(crate) authenticator: Arc<dyn Authenticator + Send + Sync>,
 }
 
 impl<E> FogViewRouterApi for FogViewRouterService<E>
@@ -99,22 +105,35 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
-                return send_result(ctx, sink, Err(err), logger);
-            }
+            match &self.unary_api_data {
+                None => {
+                    let rpc_internal_error = rpc_internal_error(
+                         "unary fog view router",
+                         "Internal error: this fog view router instance is not configured to accept unary requests"
+                             .to_string(),
+                         logger,
+                     );
+                    send_result(ctx, sink, Err(rpc_internal_error), logger)
+                }
+                Some(unary_api_data) => {
+                    if let Err(err) = check_request_chain_id(&unary_api_data.chain_id, &ctx) {
+                        return send_result(ctx, sink, Err(err), logger);
+                    }
 
-            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), logger);
-            }
-            let result = router_request_handler::handle_auth_request(
-                self.enclave.clone(),
-                request,
-                self.logger.clone(),
-            )
-            .map(|mut response| response.take_auth());
+                    if let Err(err) = unary_api_data.authenticator.authenticate_rpc(&ctx) {
+                        return send_result(ctx, sink, err.into(), logger);
+                    }
+                    let result = router_request_handler::handle_auth_request(
+                        self.enclave.clone(),
+                        request,
+                        self.logger.clone(),
+                    )
+                    .map(|mut response| response.take_auth());
 
-            send_result(ctx, sink, result, logger);
-        })
+                    send_result(ctx, sink, result, logger);
+                }
+            }
+        });
     }
 
     fn query(
@@ -124,25 +143,30 @@ where
         sink: UnarySink<attest::Message>,
     ) {
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
-                return send_result(ctx, sink, Err(err), logger);
-            }
+            match &self.unary_api_data {
+                None => {
+                    let rpc_internal_error= rpc_internal_error("unary query", "Internal error: this Fog View Router instance is not configured to serve unary requests.", &logger);
+                    return send_result(ctx, sink, Err(rpc_internal_error), logger);
+                }
+                Some(unary_api_data) => {
+                    if let Err(err) = check_request_chain_id(&unary_api_data.chain_id, &ctx) {
+                        return send_result(ctx, sink, Err(err), logger);
+                    }
+                    if let Err(err) = unary_api_data.authenticator.authenticate_rpc(&ctx) {
+                        return send_result(ctx, sink, err.into(), logger);
+                    }
+                    let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
+                    let result = block_on(router_request_handler::handle_query_request(
+                        request,
+                        self.enclave.clone(),
+                        shard_clients.values().cloned().collect(),
+                        self.logger.clone(),
+                    ))
+                    .map(|mut response| response.take_query());
 
-            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), logger);
-            }
-
-            // This will block the async API. We should use some sort of differentiator...
-            let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
-            let result = block_on(router_request_handler::handle_query_request(
-                request,
-                self.enclave.clone(),
-                shard_clients.values().cloned().collect(),
-                self.logger.clone(),
-            ))
-            .map(|mut response| response.take_query());
-
-            send_result(ctx, sink, result, logger)
+                    send_result(ctx, sink, result, logger)
+                }
+            };
         })
     }
 }

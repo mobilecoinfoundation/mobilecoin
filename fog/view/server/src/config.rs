@@ -118,8 +118,8 @@ pub struct FogViewRouterConfig {
     pub client_responder_id: ResponderId,
 
     /// gRPC listening URI for client requests.
-    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: RouterClientListenUri,
+    #[clap(long, env = "MC_CLIENT_STREAMING_LISTEN_URI")]
+    pub client_listen_uri: FogViewRouterUri,
 
     /// gRPC listening URI for Fog View Stores.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
@@ -149,6 +149,18 @@ pub struct FogViewRouterConfig {
     /// Router admin listening URI.
     #[clap(long)]
     pub admin_listen_uri: AdminUri,
+
+    /// Parameters that are necessary for supporting unary FogViewRouter Apis.
+    pub unary_config: Option<FogViewRouterUnaryConfig>,
+}
+
+/// Configuration parameters for the Fog View Router when you wish to support
+/// unary Apis.
+#[derive(Clone, Parser, Serialize)]
+#[clap(version)]
+pub struct FogViewRouterUnaryConfig {
+    #[clap(long, env = "MC_CLIENT_UNARY_LISTEN_URI")]
+    pub client_listen_uri: FogViewUri,
 
     /// The chain id of the network we are a part of
     #[clap(long, env = "MC_CHAIN_ID")]

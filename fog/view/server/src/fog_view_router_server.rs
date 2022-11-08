@@ -5,9 +5,9 @@
 //! stopping it
 
 use crate::{
-    config::{FogViewRouterConfig, RouterClientListenUri},
+    config::FogViewRouterConfig,
     counters,
-    fog_view_router_service::FogViewRouterService,
+    fog_view_router_service::{FogViewRouterService, UnaryApiData},
     router_admin_service::FogViewRouterAdminService,
 };
 use futures::executor::block_on;
@@ -68,16 +68,7 @@ where
                 .build(),
         );
 
-        let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
-            if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
-                Arc::new(TokenAuthenticator::new(
-                    *shared_secret,
-                    config.client_auth_token_max_lifetime,
-                    time_provider,
-                ))
-            } else {
-                Arc::new(AnonymousAuthenticator::default())
-            };
+        let unary_api_data = config.unary_config.map(|unary_config| {});
 
         let fog_view_router_admin_service = view_grpc::create_fog_view_router_admin_api(
             FogViewRouterAdminService::new(shards.clone(), logger.clone()),
@@ -89,16 +80,11 @@ where
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
-        let router_server_builder = match config.client_listen_uri {
-            RouterClientListenUri::Streaming(ref streaming_uri) => {
-                let fog_view_router_service =
-                    view_grpc::create_fog_view_router_api(FogViewRouterService::new(
-                        enclave.clone(),
-                        shards,
-                        config.chain_id.clone(),
-                        client_authenticator,
-                        logger.clone(),
-                    ));
+        let router_server_builder = match config.unary_config {
+            None => {
+                let fog_view_router_service = view_grpc::create_fog_view_router_api(
+                    FogViewRouterService::new(enclave.clone(), shards, None, logger.clone()),
+                );
                 log::debug!(logger, "Constructed Fog View Router streaming GRPC Service");
                 log::info!(
                     logger,
@@ -108,27 +94,40 @@ where
                 grpcio::ServerBuilder::new(env.clone())
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
-                    .bind_using_uri(streaming_uri, logger.clone())
+                    .bind_using_uri(&config.client_listen_uri, logger.clone())
             }
-            RouterClientListenUri::Unary(ref unary_uri) => {
+            Some(unary_config) => {
+                let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
+                    if let Some(shared_secret) = unary_config.client_auth_token_secret.as_ref() {
+                        Arc::new(TokenAuthenticator::new(
+                            *shared_secret,
+                            unary_config.client_auth_token_max_lifetime,
+                            time_provider,
+                        ))
+                    } else {
+                        Arc::new(AnonymousAuthenticator::default())
+                    };
+                let unary_api_data = UnaryApiData {
+                    chain_id: unary_config.chain_id,
+                    authenticator: client_authenticator,
+                };
                 let fog_view_router_service =
                     view_grpc::create_fog_view_api(FogViewRouterService::new(
                         enclave.clone(),
                         shards,
-                        config.chain_id.clone(),
-                        client_authenticator,
+                        Some(unary_api_data),
                         logger.clone(),
                     ));
                 log::debug!(logger, "Constructed Fog View Router unary GRPC Service");
                 log::info!(
                     logger,
                     "Starting Fog View Router unary server on {}",
-                    unary_uri.addr(),
+                    unary_config.client_listen_uri.addr(),
                 );
                 grpcio::ServerBuilder::new(env.clone())
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
-                    .bind_using_uri(unary_uri, logger.clone())
+                    .bind_using_uri(&unary_config.client_listen_uri, logger.clone())
             }
         };
 
