@@ -5,12 +5,17 @@ authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
 
+[features]
+serde = ["dep:serde"]
+alloc = ["serde?/alloc"]
+default = ["serde", "alloc"]
+
 [dependencies]
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }

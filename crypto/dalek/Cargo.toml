@@ -7,22 +7,23 @@ edition = "2021"
 
 [features]
 serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]
+alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc" ]
 
+# `default` feature enables curve25519-dalek target detection for x86_64 with and without AVX
+default = [ "serde", "alloc", "mc-crypto-dalek-backend-u64/default", "mc-crypto-dalek-backend-simd/default" ]
 
-# Use simd backend for x86_64 platforms with `avx` or `avx2` support
-[target.'cfg(all(any(target_feature = "avx2", target_feature = "avx"), target_arch = "x86_64"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly", "simd_backend"] }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
-
-# Use u64 backend for x86_64 platforms without avx or avx2
-[target.'cfg(all(not(any(target_feature = "avx2", target_feature = "avx")), target_arch = "x86_64"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
-
-# Otherwise let the platform folks make their own choices
-[target.'cfg(not(target_arch = "x86_64"))'.dependencies]
+[dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"]  }
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
+
+# We can't have per-target-features, but we can have per-target dependencies with feature gates...
+# This is a wild hack so we can magically pick up backends while allowing them to be disabled when required.
+# if `mc-crypto-dalek/default` is selected we'll pull in the avx or u64 backends based on the target,
+# otherwise backend selection is up to the user
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+mc-crypto-dalek-backend-simd = { path = "./simd", default_features = false }
+
+[target.'cfg(all(not(any(target_feature = "avx2", target_feature = "avx"))))'.dependencies]
+mc-crypto-dalek-backend-u64 = { path = "./u64", default_features = false }

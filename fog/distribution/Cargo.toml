@@ -16,6 +16,7 @@ mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
@@ -37,11 +38,7 @@ rayon = "1.5"
 retry = "2.0"
 tempfile = "3.3"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

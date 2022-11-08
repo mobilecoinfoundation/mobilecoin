@@ -857,6 +857,7 @@ dependencies = [
  "hashbrown",
  "hex",
  "hex_fmt",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -879,6 +880,7 @@ dependencies = [
  "glob",
  "hkdf",
  "mc-core-types",
+ "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "sha2",
@@ -934,7 +936,23 @@ version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
+ "mc-crypto-dalek-backend-simd",
+ "mc-crypto-dalek-backend-u64",
  "x25519-dalek",
+]
+
+[[package]]
+name = "mc-crypto-dalek-backend-simd"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
+]
+
+[[package]]
+name = "mc-crypto-dalek-backend-u64"
+version = "2.0.0"
+dependencies = [
+ "curve25519-dalek",
 ]
 
 [[package]]
@@ -945,6 +963,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
+ "mc-crypto-dalek",
  "mc-crypto-digestible-derive",
  "merlin",
  "x25519-dalek",
@@ -1051,9 +1070,9 @@ version = "2.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
- "hex_fmt",
- "mc-account-keys",
+ "ed25519-dalek",
  "mc-account-keys-types",
+ "mc-core-types",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
@@ -1421,6 +1440,7 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",

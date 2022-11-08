@@ -5,7 +5,9 @@
 
 #![no_std]
 #![deny(missing_docs)]
+#![cfg_attr(not(feature = "alloc"), allow(dead_code))]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 use crate::onetime_keys::create_shared_secret;
@@ -21,8 +23,11 @@ pub mod proptest_fixtures;
 
 pub use amount::{Commitment, CompressedCommitment};
 pub use ring_signature::{
-    generators, CurveScalar, Error, KeyImage, PedersenGens, ReducedTxOut, RingMLSAG, Scalar,
+    generators, CurveScalar, Error, KeyImage, PedersenGens, ReducedTxOut, Scalar,
 };
+
+#[cfg(feature = "alloc")]
+pub use ring_signature::RingMLSAG;
 
 /// Get the shared secret for a transaction output.
 ///
