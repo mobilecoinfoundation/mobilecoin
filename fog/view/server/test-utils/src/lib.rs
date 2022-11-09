@@ -5,8 +5,14 @@
 use grpcio::ChannelBuilder;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_common::{logger::Logger, time::SystemTimeProvider, ResponderId};
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
+use mc_common::{
+    logger::{log, Logger},
+    time::SystemTimeProvider,
+    ResponderId,
+};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
+use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{
@@ -26,6 +32,7 @@ use mc_fog_view_server::{
     server::ViewServer,
     sharding_strategy::EpochShardingStrategy,
 };
+use mc_transaction_core::BlockVersion;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{
@@ -252,7 +259,7 @@ pub async fn assert_e_tx_out_records(
         let result = client.query(0, 0, search_keys.clone()).await.unwrap();
 
         let mut actual_tx_out_search_results =
-            interpret_tx_out_search_results(&result.tx_out_search_results);
+            interpret_tx_out_search_results(result.tx_out_search_results.clone());
         actual_tx_out_search_results.sort_by_key(|result| result.ciphertext.clone());
         assert_eq!(actual_tx_out_search_results[0], expected_results[0]);
         if actual_tx_out_search_results == expected_results {
@@ -266,8 +273,13 @@ pub async fn assert_e_tx_out_records(
     }
 }
 
-fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> Vec<TxOutSearchResult> {
-    results
+/// Interprets the `ciphertext` field given the `payload_length` by discarding
+/// unused bytes.
+pub fn interpret_tx_out_search_results(
+    mut tx_out_search_results: Vec<TxOutSearchResult>,
+) -> Vec<TxOutSearchResult> {
+    tx_out_search_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+    tx_out_search_results
         .iter()
         .map(|result| TxOutSearchResult {
             search_key: result.search_key.clone(),
@@ -276,4 +288,75 @@ fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> Vec<TxOutSe
             payload_length: result.payload_length,
         })
         .collect()
+}
+
+/// Adds block data with sane defaults
+pub fn add_block_data(
+    db: &SqlRecoveryDb,
+    invocation_id: &IngestInvocationId,
+    block_index: BlockIndex,
+    cumulative_tx_out_count: u64,
+    txs: &[ETxOutRecord],
+) -> AddBlockDataStatus {
+    db.add_block_data(
+        invocation_id,
+        &Block::new(
+            BlockVersion::ZERO,
+            &BlockID::default(),
+            block_index,
+            cumulative_tx_out_count,
+            &Default::default(),
+            &Default::default(),
+        ),
+        0,
+        txs,
+    )
+    .unwrap()
+}
+
+/// Wait until first server has added stuff to ORAM. Since all view servers
+/// should load ORAM at the same time, we could choose to wait for any view
+/// server.
+pub fn wait_for_server_to_load(
+    db: &SqlRecoveryDb,
+    test_environment: &RouterTestEnvironment,
+    logger: &Logger,
+) {
+    let mut allowed_tries = 1000usize;
+    loop {
+        let db_num_blocks = db
+            .get_highest_known_block_index()
+            .unwrap()
+            .map(|v| v + 1) // convert index to count
+            .unwrap_or(0);
+        let server_num_blocks = test_environment
+            .store_servers
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|server| server.highest_processed_block_count())
+            .max()
+            .unwrap_or_default();
+        if server_num_blocks > db_num_blocks {
+            panic!(
+                "Server num blocks should never be larger than db num blocks: {} > {}",
+                server_num_blocks, db_num_blocks
+            );
+        }
+        if server_num_blocks == db_num_blocks {
+            log::info!(logger, "Stopping, block {}", server_num_blocks);
+            break;
+        }
+        log::info!(
+            logger,
+            "Waiting for server to catch up to db... {} < {}",
+            server_num_blocks,
+            db_num_blocks
+        );
+        if allowed_tries == 0 {
+            panic!("Server did not catch up to database!");
+        }
+        allowed_tries -= 1;
+        sleep(Duration::from_secs(1));
+    }
 }

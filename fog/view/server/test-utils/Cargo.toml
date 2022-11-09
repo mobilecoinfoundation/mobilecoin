@@ -9,13 +9,16 @@ license = "GPL-3.0"
 # MC
 mc-attest-net = { path = "../../../../attest/net" }
 mc-attest-verifier = { path = "../../../../attest/verifier" }
+mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["log"] }
+mc-transaction-core = { path = "../../../../transaction/core" }
 mc-util-from-random = { path = "../../../../util/from-random" }
 mc-util-grpc = { path = "../../../../util/grpc" }
 mc-util-uri = { path = "../../../../util/uri" }
 
 # Fog
 mc-fog-api = { path = "../../../api" }
+mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
 mc-fog-test-infra = { path = "../../../test_infra" }
 mc-fog-types = { path = "../../../types" }

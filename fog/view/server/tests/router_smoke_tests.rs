@@ -1,21 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use futures::executor::block_on;
-use mc_blockchain_types::{Block, BlockID};
-use mc_common::logger::{create_app_logger, log, o, Logger};
+use mc_common::logger::{create_app_logger, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
-use mc_fog_types::{
-    common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
-    ETxOutRecord,
-};
+use mc_fog_types::{common::BlockRange, view::TxOutSearchResultCode, ETxOutRecord};
 use mc_fog_view_server_test_utils::RouterTestEnvironment;
-use mc_transaction_core::BlockVersion;
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
-use std::{thread::sleep, time::Duration};
 
 async fn test_router_integration(test_environment: &mut RouterTestEnvironment, logger: Logger) {
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -57,35 +50,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
         .new_ingest_invocation(None, &ingress_key, &egress_public_key_1, 0)
         .unwrap();
 
-    db.add_block_data(
-        &invoc_id1,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            0,
-            2,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &txs[0..2],
-    )
-    .unwrap();
-
-    db.add_block_data(
-        &invoc_id1,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            1,
-            6,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &txs[2..6],
-    )
-    .unwrap();
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id1, 0, 2, &txs[0..2]);
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id1, 1, 6, &txs[2..6]);
 
     let egress_public_key_2 = KexRngPubkey {
         public_key: [2; 32].to_vec(),
@@ -95,20 +61,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
         .new_ingest_invocation(None, &ingress_key, &egress_public_key_2, 2)
         .unwrap();
 
-    db.add_block_data(
-        &invoc_id2,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            2,
-            12,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &txs[6..12],
-    )
-    .unwrap();
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 2, 12, &txs[6..12]);
 
     let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
     let accepted_block_2 = db.new_ingress_key(&ingress_key2, 3).unwrap();
@@ -125,112 +78,33 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     )
     .unwrap();
     db.report_lost_ingress_key(ingress_key2).unwrap();
-
-    // Block 3 has no data for the original key
-    // (view server must support this, ingest skips some TxOuts if the decrypted fog
-    // hint is junk)
-    db.add_block_data(
-        &invoc_id2,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            3,
-            12,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &[],
-    )
-    .unwrap();
-
-    db.add_block_data(
-        &invoc_id2,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            4,
-            16,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &txs[12..16],
-    )
-    .unwrap();
-
+    // Block 3 has no data for the original key. This tests mocks this behavior by
+    // adding an empty slice of tx outs for the block.
+    //
+    // Note: View server must support this behavior, ingest skips some TxOuts if the
+    // decrypted fog hint is junk.
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 3, 12, &[]);
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 4, 16, &txs[12..16]);
     db.decommission_ingest_invocation(&invoc_id1).unwrap();
+    mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 5, 20, &txs[16..20]);
 
-    db.add_block_data(
-        &invoc_id2,
-        &Block::new(
-            BlockVersion::ZERO,
-            &BlockID::default(),
-            5,
-            20,
-            &Default::default(),
-            &Default::default(),
-        ),
-        0,
-        &txs[16..20],
-    )
-    .unwrap();
-
-    // Wait until first server has added stuff to ORAM. Since all view servers
-    // should load ORAM at the same time, we could choose to wait for any view
-    // server.
-    let mut allowed_tries = 1000usize;
-    loop {
-        let db_num_blocks = db
-            .get_highest_known_block_index()
-            .unwrap()
-            .map(|v| v + 1) // convert index to count
-            .unwrap_or(0);
-        let server_num_blocks = test_environment
-            .store_servers
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|server| server.highest_processed_block_count())
-            .max()
-            .unwrap_or_default();
-        if server_num_blocks > db_num_blocks {
-            panic!(
-                "Server num blocks should never be larger than db num blocks: {} > {}",
-                server_num_blocks, db_num_blocks
-            );
-        }
-        if server_num_blocks == db_num_blocks {
-            log::info!(logger, "Stopping, block {}", server_num_blocks);
-            break;
-        }
-        log::info!(
-            logger,
-            "Waiting for server to catch up to db... {} < {}",
-            server_num_blocks,
-            db_num_blocks
-        );
-        if allowed_tries == 0 {
-            panic!("Server did not catch up to database!");
-        }
-        allowed_tries -= 1;
-        sleep(Duration::from_secs(1));
-    }
+    mc_fog_view_server_test_utils::wait_for_server_to_load(&db, test_environment, &logger);
 
     let router_client = test_environment.router_client.as_mut().unwrap();
     let nonsense_search_keys = vec![vec![50u8]];
-    let result = router_client
-        .query(0, 0, nonsense_search_keys.clone())
-        .await;
-    assert!(result.is_ok());
-    let mut result = result.unwrap();
 
-    assert_eq!(result.highest_processed_block_count, 6);
-    // 4 events are expected (in the following order):
+    // Query 1 should yield 4 events:
     // - 1 new rng record (for invoc_id1)
     // - 1 new rng record (for invoc_id2)
     // - 1 missing block range
     // - 1 ingest decommissioning (for invoc_id1)
+    let result = router_client
+        .query(0, 0, nonsense_search_keys.clone())
+        .await;
+    assert!(result.is_ok());
+    let mut result = result.unwrap();
+
+    assert_eq!(result.highest_processed_block_count, 6);
     assert_eq!(result.next_start_from_user_event_id, 4);
     assert_eq!(result.rng_records.len(), 2);
     result
@@ -247,6 +121,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 2 is the same as Query 1 and tests that identical queries (when no
+    // blocks have been added etc.) should yield identical results.
     let result = router_client
         .query(0, 0, nonsense_search_keys.clone())
         .await;
@@ -269,9 +145,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 3 starts at user event id 1, which skips the invoc_id1 new rng record
+    // event (which has a user event id of 0).
     let result = router_client
-        // starting at user event id 2 skips invoc_id1
-        // (event id 1 is for invoc_id1)
         .query(1, 0, nonsense_search_keys.clone())
         .await;
     assert!(result.is_ok());
@@ -290,7 +166,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
 
-    // No events after event id 4
+    // Query 4 starts at user event id 4, which skips all events.
     let result = router_client
         .query(4, 0, nonsense_search_keys.clone())
         .await;
@@ -307,6 +183,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges.len(), 0);
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 5 starts at a user event id that is much larger than the last known
+    // event id. This should  skip all events and return this large user event
+    // id.
     let result = router_client
         .query(80, 0, nonsense_search_keys.clone())
         .await;
@@ -323,6 +202,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges.len(), 0);
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 6 starts at user event id 4, and supplies search keys that correspond
+    // to TxOuts. We expect to find these TxOuts.
     let result = router_client
         .query(4, 0, vec![vec![1u8; 16], vec![2u8; 16], vec![3u8; 16]])
         .await;
@@ -333,7 +214,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.rng_records.len(), 0);
     assert_eq!(result.tx_out_search_results.len(), 3);
     {
-        let sort_txs = interpret_tx_out_results(result.tx_out_search_results.clone());
+        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
+            result.tx_out_search_results.clone(),
+        );
         assert_eq!(sort_txs[0].search_key, vec![1u8; 16]);
         assert_eq!(sort_txs[0].result_code, 1);
         assert_eq!(sort_txs[0].ciphertext, vec![1u8; 232]);
@@ -349,6 +232,10 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges.len(), 0); // no range reported since we started at event id 4
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 7 starts at user event id 4, and supplies 2 search keys that correspond
+    // to TxOuts and 1 search key that doesn't correspond to any TxOuts. We to
+    // find the TxOuts for the first 2 search keys and to not find TxOuts for
+    // the last search key.
     let result = router_client
         .query(4, 0, vec![vec![5u8; 16], vec![8u8; 16], vec![200u8; 16]])
         .await;
@@ -359,7 +246,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.rng_records.len(), 0);
     assert_eq!(result.tx_out_search_results.len(), 3);
     {
-        let sort_txs = interpret_tx_out_results(result.tx_out_search_results.clone());
+        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
+            result.tx_out_search_results.clone(),
+        );
         assert_eq!(sort_txs[0].search_key, vec![5u8; 16]);
         assert_eq!(sort_txs[0].result_code, 1);
         assert_eq!(sort_txs[0].ciphertext, vec![5u8; 232]);
@@ -370,13 +259,14 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
         assert_eq!(sort_txs[2].search_key, vec![200u8; 16]);
         assert_eq!(sort_txs[2].result_code, 2);
-        // FIGURE OUT WHAT TO DO HERE
-        assert_eq!(sort_txs[2].ciphertext, vec![0u8; 254]);
+        assert_eq!(sort_txs[2].ciphertext, vec![0u8; 255]);
     }
 
     assert_eq!(result.missed_block_ranges.len(), 0); // no range reported since we started at event id 4
     assert_eq!(result.last_known_block_count, 6);
 
+    // Query 8 supplies an ill-formed seach key, so we expect to find that the TxOut
+    // that's returned indicates this.
     let result = router_client.query(0, 0, vec![vec![200u8; 17]]).await;
     assert!(result.is_ok());
     let mut result = result.unwrap();
@@ -390,7 +280,9 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.rng_records[1].pubkey, egress_public_key_2);
     assert_eq!(result.tx_out_search_results.len(), 1);
     {
-        let sort_txs = interpret_tx_out_results(result.tx_out_search_results.clone());
+        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
+            result.tx_out_search_results.clone(),
+        );
         assert_eq!(sort_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_txs[0].result_code, 3);
         assert_eq!(sort_txs[0].ciphertext, vec![0u8; 232]);
@@ -398,25 +290,6 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges.len(), 1);
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
-}
-
-fn interpret_tx_out_results(
-    mut tx_out_search_results: Vec<TxOutSearchResult>,
-) -> Vec<TxOutSearchResult> {
-    tx_out_search_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
-    tx_out_search_results
-        .iter()
-        .map(|result| {
-            let payload_length = result.ciphertext.len() - (result.ciphertext[0] as usize);
-            TxOutSearchResult {
-                search_key: result.search_key.clone(),
-                result_code: result.result_code,
-                ciphertext: result.ciphertext.clone(),
-                payload_length: payload_length as u32,
-                
-            }
-        })
-        .collect::<Vec<_>>()
 }
 
 #[test]
