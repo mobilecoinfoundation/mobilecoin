@@ -55,6 +55,18 @@ on:
       LEDGER_AWS_SECRET_ACCESS_KEY:
         description: "(from environment) Ledger AWS S3 access"
         required: true
+      MINTING_1_GOVERNOR_1_PRIVATE:
+        description: "(from environment) minting governor key"
+        required: true
+      MINTING_1_GOVERNOR_1_PUBLIC:
+        description: "(from environment) minting governor key"
+        required: true
+      MINTING_1_SIGNER_1_PRIVATE:
+        description: "(from environment) minting governor key"
+        required: true
+      MINTING_1_SIGNER_1_PUBLIC:
+        description: "(from environment) minting governor key"
+        required: true
       MINTING_8192_GOVERNOR_1_PRIVATE:
         description: "(from environment) minting governor key"
         required: true
