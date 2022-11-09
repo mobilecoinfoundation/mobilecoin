@@ -100,6 +100,13 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         self.threshold
     }
 
+    /// Check if this signer set is valid.
+    /// A signer set is considered valid if it has a threshold of at least one,
+    /// and the number of signers is greater than or equal to the threshold.
+    pub fn is_valid(&self) -> bool {
+        0 < self.threshold && self.threshold as usize <= self.signers.len()
+    }
+
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     pub fn verify<
@@ -122,6 +129,11 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     where
         P: Verifier<S>,
     {
+        // Refuse to validate anything if we have an invalid signer set.
+        if !self.is_valid() {
+            return Err(SignatureError::new());
+        }
+
         // If the signature contains less than the threshold number of signers or more
         // than the hardcoded limit, there's no point in trying.
         if multi_sig.signatures.len() < self.threshold as usize
@@ -489,5 +501,46 @@ mod test {
             multi_sig,
             mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap(),
         );
+    }
+
+    #[test]
+    fn test_is_valid() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        // Signer set with threshold = 0 is invalid
+        assert!(!SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            0,
+        )
+        .is_valid());
+
+        // Signer set with threshold > number of signers is invalid
+        assert!(!SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            4,
+        )
+        .is_valid());
+
+        // Signer set with threshol
+        assert!(SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            3,
+        )
+        .is_valid());
     }
 }

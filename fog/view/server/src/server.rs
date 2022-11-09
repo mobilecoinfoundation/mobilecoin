@@ -78,6 +78,7 @@ where
         let readiness_indicator = ReadinessIndicator::default();
 
         let db_poll_thread = DbPollThread::new(
+            config.clone(),
             enclave.clone(),
             recovery_db.clone(),
             readiness_indicator.clone(),
@@ -247,6 +248,9 @@ where
     DB: RecoveryDb + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
+    /// Config
+    config: MobileAcctViewConfig,
+
     /// Enclave.
     enclave: E,
 
@@ -288,6 +292,7 @@ where
 
     /// Initialize a new DbPollThread object.
     pub fn new(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: DB,
         readiness_indicator: ReadinessIndicator,
@@ -298,6 +303,7 @@ where
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         Self {
+            config,
             enclave,
             db,
             join_handle: None,
@@ -318,6 +324,7 @@ where
             *shared_state = DbPollSharedState::default();
         }
 
+        let thread_config = self.config.clone();
         let thread_enclave = self.enclave.clone();
         let thread_db = self.db.clone();
         let thread_stop_requested = self.stop_requested.clone();
@@ -331,6 +338,7 @@ where
                 .name(format!("DbPoll-{}", std::any::type_name::<E>()))
                 .spawn(move || {
                     Self::thread_entrypoint(
+                        thread_config,
                         thread_enclave,
                         thread_db,
                         thread_stop_requested,
@@ -355,6 +363,7 @@ where
     }
 
     fn thread_entrypoint(
+        config: MobileAcctViewConfig,
         enclave: E,
         db: DB,
         stop_requested: Arc<AtomicBool>,
@@ -366,6 +375,7 @@ where
         log::debug!(logger, "Db poll thread started");
 
         let mut worker = DbPollThreadWorker::new(
+            config,
             stop_requested,
             enclave,
             db,
@@ -402,10 +412,11 @@ where
     }
 }
 
-struct DbPollThreadWorker<E, DB>
+struct DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy,
 {
     /// Stop request trigger, used to signal the thread to stop.
     stop_requested: Arc<AtomicBool>,
@@ -424,7 +435,7 @@ where
     db_fetcher: DbFetcher,
 
     /// Keeps track of which blocks we have fed into the enclave.
-    enclave_block_tracker: BlockTracker,
+    enclave_block_tracker: BlockTracker<SS>,
 
     /// Keeps track how long ago it since we made progress, (or complained about
     /// not making progress) When this gets too distant in the past, we log
@@ -444,12 +455,14 @@ pub enum WorkerTickResult {
 /// Telemetry: block indes currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
-impl<E, DB> DbPollThreadWorker<E, DB>
+impl<E, DB, SS> DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
-    pub fn new<SS>(
+    pub fn new(
+        config: MobileAcctViewConfig,
         stop_requested: Arc<AtomicBool>,
         enclave: E,
         db: DB,
@@ -457,17 +470,20 @@ where
         readiness_indicator: ReadinessIndicator,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> Self
-    where
-        SS: ShardingStrategy + Clone + Send + Sync + 'static,
-    {
+    ) -> Self {
         Self {
             stop_requested,
             enclave,
             db: db.clone(),
             shared_state,
-            db_fetcher: DbFetcher::new(db, readiness_indicator, sharding_strategy, logger.clone()),
-            enclave_block_tracker: BlockTracker::new(logger.clone()),
+            db_fetcher: DbFetcher::new(
+                db,
+                readiness_indicator,
+                sharding_strategy.clone(),
+                config.block_query_batch_size,
+                logger.clone(),
+            ),
+            enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
             last_unblocked_at: Instant::now(),
             logger,
         }
@@ -641,14 +657,17 @@ where
                 );
 
                 // Track that this block was processed.
-                self.enclave_block_tracker
-                    .block_processed(ingress_key, block_index);
-                let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
-                shared_state.processed_block_count += 1;
+                if self
+                    .enclave_block_tracker
+                    .block_processed(ingress_key, block_index)
+                {
+                    let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
+                    shared_state.processed_block_count += 1;
 
-                // Update metrics
-                counters::BLOCKS_ADDED_COUNT.inc();
-                counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                    // Update metrics
+                    counters::BLOCKS_ADDED_COUNT.inc();
+                    counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                }
             }
         }
     }

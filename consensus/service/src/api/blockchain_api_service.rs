@@ -10,9 +10,8 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApi,
     empty::Empty,
 };
-use mc_consensus_enclave::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tokens::Mob, BlockVersion, Token};
+use mc_transaction_core::{tokens::Mob, BlockVersion, FeeMap, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;

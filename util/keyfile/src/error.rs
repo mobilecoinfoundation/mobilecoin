@@ -6,7 +6,6 @@
 use crate::mnemonic_acct::Error as MnemonicAccountError;
 use displaydoc::Display;
 use mc_account_keys::Error as AccountKeyError;
-use mc_account_keys_slip10::Error as Slip10Error;
 use prost::{DecodeError as ProstDecodeError, EncodeError as ProstEncodeError};
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
@@ -28,8 +27,6 @@ pub enum Error {
     MnemonicAccount(MnemonicAccountError),
     /// The entropy provided was not the correct size for BIP-39
     MnemonicSize,
-    /// Key derivation error: {0}
-    KeyDerivation(Slip10Error),
     /// Fog details are all or nothing, some were missing
     MissingFogDetails,
 }
@@ -67,11 +64,5 @@ impl From<JsonError> for Error {
 impl From<MnemonicAccountError> for Error {
     fn from(src: MnemonicAccountError) -> Error {
         Error::MnemonicAccount(src)
-    }
-}
-
-impl From<Slip10Error> for Error {
-    fn from(src: Slip10Error) -> Error {
-        Error::KeyDerivation(src)
     }
 }

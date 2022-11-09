@@ -16,7 +16,6 @@ use mc_common::{
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::{CryptoRng, RngCore};
-use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::{KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{

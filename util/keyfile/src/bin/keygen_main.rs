@@ -5,7 +5,7 @@
 
 use bip39::{Language, Mnemonic};
 use clap::Parser;
-use mc_util_keyfile::{config::Config as GeneralConfig, keygen};
+use mc_util_keyfile::{config::KeyConfig, keygen};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 
@@ -13,7 +13,7 @@ use rand_hc::Hc128Rng;
 #[derive(Debug, Parser)]
 struct Config {
     #[clap(flatten)]
-    pub general: GeneralConfig,
+    pub general: KeyConfig,
 
     /// The key name.
     pub name: String,

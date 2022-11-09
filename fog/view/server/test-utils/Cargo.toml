@@ -1,0 +1,30 @@
+[package]
+name = "mc-fog-view-server-test-utils"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+
+[dependencies]
+# MC
+mc-attest-net = { path = "../../../../attest/net" }
+mc-attest-verifier = { path = "../../../../attest/verifier" }
+mc-common = { path = "../../../../common", features = ["log"] }
+mc-util-from-random = { path = "../../../../util/from-random" }
+mc-util-grpc = { path = "../../../../util/grpc" }
+mc-util-uri = { path = "../../../../util/uri" }
+
+# Fog
+mc-fog-api = { path = "../../../api" }
+mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
+mc-fog-test-infra = { path = "../../../test_infra" }
+mc-fog-types = { path = "../../../types" }
+mc-fog-uri = { path = "../../../uri" }
+mc-fog-view-connection = { path = "../../connection" }
+mc-fog-view-enclave = { path = "../../enclave" }
+mc-fog-view-enclave-measurement = { path = "../../enclave/measurement" }
+mc-fog-view-server = { path = "../." }
+
+# Third-party
+grpcio = "0.11.0"
+portpicker = "0.1.1"

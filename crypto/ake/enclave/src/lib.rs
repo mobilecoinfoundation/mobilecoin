@@ -164,7 +164,16 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // INTEL-SA-00615: MMIO Stale Data is handled by using [out] parameters
         // in our ECALL/OCALL definitions (EDLs), and only performing direct
         // writes aligned to quadword (8B) boundaries (e.g. in ORAMStorage)
-        mr_enclave_verifier.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        //
+        // INTEL-SA-00657: xAPIC Stale Data is handled by ensuring reads in/out of the
+        // enclave are aligned to an 8-byte boundary, and performed in multiples
+        // of 8 bytes. In our codebase, this happens within the sgx_edger8r code-gen, so
+        // building against SGX 2.17.1 is sufficient hardening for now.
+        mr_enclave_verifier.allow_hardening_advisories(&[
+            "INTEL-SA-00334",
+            "INTEL-SA-00615",
+            "INTEL-SA-00657",
+        ]);
 
         verifier
             .mr_enclave(mr_enclave_verifier)
@@ -576,8 +585,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .map(|(_, encryptor)| {
                 let aad = sealed_client_message.aad.clone();
                 let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_query_bytes)?;
-                let channel_id =
-                    NonceSession::new(sealed_client_message.channel_id.clone().into(), nonce);
+                let channel_id = NonceSession::new(encryptor.binding().into(), nonce);
                 Ok(EnclaveMessage {
                     aad,
                     channel_id,

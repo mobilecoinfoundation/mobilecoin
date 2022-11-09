@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind-api"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -17,7 +17,7 @@ protobuf = "2.27.1"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
-mc-transaction-std = { path = "../../transaction/std" }
+mc-transaction-builder = { path = "../../transaction/builder" }
 
 hex_fmt = "0.3"
 rand = "0.8"

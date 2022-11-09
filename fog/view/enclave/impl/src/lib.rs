@@ -8,11 +8,10 @@ extern crate alloc;
 
 mod e_tx_out_store;
 mod oblivious_utils;
-
-use alloc::collections::BTreeMap;
-use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
+mod types;
 
 use alloc::vec::Vec;
+use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -26,7 +25,7 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    view::{QueryRequest, QueryResponse, TxOutSearchResult},
+    view::{MultiViewStoreQueryResponse, QueryRequest, QueryResponse, TxOutSearchResult},
     ETxOutRecord,
 };
 use mc_fog_view_enclave_api::{
@@ -35,6 +34,7 @@ use mc_fog_view_enclave_api::{
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
+use types::{BlockData, CommonShardData, DecryptedMultiViewStoreQueryResponse, LastKnownData};
 
 pub struct ViewEnclave<OSC>
 where
@@ -261,10 +261,14 @@ where
             .backend_connect(view_store_id, view_store_auth_response)?)
     }
 
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)> {
+        Ok(self.ake.frontend_accept(req)?)
+    }
+
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -295,69 +299,66 @@ where
     fn create_client_query_response(
         &self,
         client_query_request: QueryRequest,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<QueryResponse> {
-        // Choose any shard query response and use it to supply the skeleton values for
-        // the QueryResponse. The tx_out_search_results and
-        // highest_processed_block_count fields will be set based on all of the
-        // shard query responses.
-        let shard_query_response = shard_query_responses
-            .iter()
-            .next()
-            .expect("Shard query responses must have at least one response.");
-        let shard_query_response_plaintext = self
-            .ake
-            .backend_decrypt(shard_query_response.0, shard_query_response.1)?;
-        let mut shard_query_response: QueryResponse =
-            mc_util_serial::decode(&shard_query_response_plaintext).map_err(|e| {
-                log::error!(self.logger, "Could not decode shard query response: {}", e);
-                Error::ProstDecode
-            })?;
-
         let shard_query_responses = shard_query_responses
             .into_iter()
-            .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
+            .map(|multi_view_store_query_response| {
+                let plaintext_bytes = self.ake.backend_decrypt(
+                    &multi_view_store_query_response.store_responder_id,
+                    &multi_view_store_query_response.encrypted_query_response,
+                )?;
                 let query_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
 
-                Ok(query_response)
+                Ok(DecryptedMultiViewStoreQueryResponse {
+                    query_response,
+                    block_range: multi_view_store_query_response.block_range,
+                })
             })
-            .collect::<Result<Vec<QueryResponse>>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
-        shard_query_response.tx_out_search_results = self.get_collated_tx_out_search_results(
-            client_query_request,
-            shard_query_responses.clone(),
-        )?;
-        shard_query_response.highest_processed_block_count =
-            self.get_minimum_highest_processed_block_count(shard_query_responses);
+        Self::create_response(client_query_request, shard_query_responses)
+    }
 
-        Ok(shard_query_response)
+    fn create_response(
+        client_query_request: QueryRequest,
+        mut responses: Vec<DecryptedMultiViewStoreQueryResponse>,
+    ) -> Result<QueryResponse> {
+        let mut result: QueryResponse = QueryResponse::default();
+        let last_known_data = LastKnownData::from(responses.as_slice());
+        result.last_known_block_count = last_known_data.last_known_block_count;
+        result.last_known_block_cumulative_txo_count =
+            last_known_data.last_known_block_cumulative_txo_count;
+
+        let block_data = BlockData::from(responses.as_mut_slice());
+        result.highest_processed_block_count = block_data.highest_processed_block_count;
+        result.highest_processed_block_signature_timestamp =
+            block_data.highest_processed_block_signature_timestamp;
+
+        let shared_data: CommonShardData = CommonShardData::from(responses.as_slice());
+        result.missed_block_ranges = shared_data.missed_block_ranges;
+        result.rng_records = shared_data.rng_records;
+        result.decommissioned_ingest_invocations = shared_data.decommissioned_ingest_invocations;
+        result.next_start_from_user_event_id = shared_data.next_start_from_user_event_id;
+
+        result.tx_out_search_results =
+            Self::get_collated_tx_out_search_results(client_query_request, &responses)?;
+
+        Ok(result)
     }
 
     fn get_collated_tx_out_search_results(
-        &self,
         client_query_request: QueryRequest,
-        shard_query_responses: Vec<QueryResponse>,
+        responses: &[DecryptedMultiViewStoreQueryResponse],
     ) -> Result<Vec<TxOutSearchResult>> {
-        let plaintext_search_results = shard_query_responses
-            .into_iter()
-            .flat_map(|response| response.tx_out_search_results)
+        let plaintext_search_results = responses
+            .iter()
+            .flat_map(|response| response.query_response.tx_out_search_results.clone())
             .collect::<Vec<TxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
             client_query_request.get_txos,
             plaintext_search_results,
         )
-    }
-
-    fn get_minimum_highest_processed_block_count(
-        &self,
-        shard_query_responses: Vec<QueryResponse>,
-    ) -> u64 {
-        shard_query_responses
-            .into_iter()
-            .map(|query_response| query_response.highest_processed_block_count)
-            .min()
-            .unwrap_or_default()
     }
 }

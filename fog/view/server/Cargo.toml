@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third party
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.11.0"
@@ -24,6 +24,7 @@ itertools = "0.10"
 lazy_static = "1.4"
 
 # mobilecoin
+mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
@@ -66,6 +67,7 @@ mc-fog-types = { path = "../../types" }
 mc-fog-view-connection = { path = "../connection" }
 mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-view-protocol = { path = "../protocol" }
+mc-fog-view-server-test-utils = { path = "./test-utils" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial" }

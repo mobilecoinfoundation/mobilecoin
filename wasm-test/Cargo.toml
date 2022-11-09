@@ -1,6 +1,6 @@
 [package]
 name = "mc-wasm-test"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -13,8 +13,8 @@ crate-type = ["lib", "staticlib", "cdylib"]
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-crypto-keys = { path = "../crypto/keys" }
+mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }
-mc-transaction-std = { path = "../transaction/std" }
 
 # These are required since they enable feature flags needed for wasm builds
 getrandom = { version = "0.2", features = ["js"] }

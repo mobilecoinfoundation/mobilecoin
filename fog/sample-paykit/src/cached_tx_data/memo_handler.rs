@@ -7,7 +7,7 @@ use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash, CHANGE_SUBADD
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_transaction_core::{get_tx_out_shared_secret, subaddress_matches_tx_out, tx::TxOut};
-use mc_transaction_std::{MemoDecodingError, MemoType};
+use mc_transaction_extra::{MemoDecodingError, MemoType};
 use std::collections::HashMap;
 
 /// A handler object that holds a contacts list and tries to recieve and
@@ -119,6 +119,35 @@ impl MemoHandler {
             MemoType::GiftCodeSender(_) => {
                 // TODO: Add Gift Code Validation
                 Ok(Some(memo_type))
+            }
+            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
+                if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
+                    if bool::from(memo.validate(
+                        addr,
+                        &account_key.default_subaddress_view_private(),
+                        &tx_out.public_key,
+                    )) {
+                        Ok(Some(memo_type))
+                    } else {
+                        Err(MemoHandlerError::FailedHmacValidation)
+                    }
+                } else {
+                    Err(MemoHandlerError::UnknownSender)
+                }
+            }
+            MemoType::DestinationWithPaymentRequestId(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
+            }
+            MemoType::DestinationWithPaymentIntentId(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
             }
         }
     }

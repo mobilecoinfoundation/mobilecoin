@@ -4,10 +4,10 @@
 
 use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsVerifier};
+use mc_consensus_enclave_api::{GovernorsMap, GovernorsVerifier};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
-use mc_transaction_core::{tokens::Mob, Token, TokenId};
+use mc_transaction_core::{tokens::Mob, FeeMap, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, ops::Range, path::Path};
 
@@ -177,13 +177,9 @@ impl TokenConfig {
                 return Err(Error::MintConfigNotAllowed(self.token_id));
             }
 
-            // We must have at least one governor.
-            if governors.signers().is_empty() || governors.threshold() == 0 {
-                return Err(Error::NoSigners(self.token_id));
-            }
-
-            if governors.threshold() as usize > governors.signers().len() {
-                return Err(Error::SignerSetThresholdExceedsSigners(self.token_id));
+            // Signer set must be valid.
+            if !governors.is_valid() {
+                return Err(Error::InvalidSignerSet(self.token_id));
             }
         }
 
@@ -837,7 +833,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert!(matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == 2));
+        assert!(
+            matches!(tokens.validate(), Err(Error::InvalidSignerSet(token_id)) if token_id == 2)
+        );
     }
 
     #[test]
@@ -859,7 +857,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert!(matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == 2));
+        assert!(
+            matches!(tokens.validate(), Err(Error::InvalidSignerSet(token_id)) if token_id == 2)
+        );
     }
 
     #[test]

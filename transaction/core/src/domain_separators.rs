@@ -41,11 +41,11 @@ pub const TXOUT_MERKLE_NODE_DOMAIN_TAG: &str = "mc_tx_out_merkle_node";
 /// Domain separator for hashing the "nil" value in a Merkle tree.
 pub const TXOUT_MERKLE_NIL_DOMAIN_TAG: &str = "mc_tx_out_merkle_nil";
 
-/// Domain separator for hashing the confirmation number
-pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";
-
 /// Domain separator for computing the extended message digest
 pub const EXTENDED_MESSAGE_DOMAIN_TAG: &str = "mc_extended_message";
+
+/// Domain separator for computing the extended message and tx summary digest
+pub const EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG: &str = "mc_extended_message_and_tx_summary";
 
 /// Domain separator for hashing MintConfigTxPrefixs
 pub const MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_config_tx_prefix";

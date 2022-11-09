@@ -1,12 +1,14 @@
 [package]
 name = "mc-fog-types"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
 # mobilecoin
+mc-attest-enclave-api = { path = "../../attest/enclave-api" }
+mc-common = { path = "../../common/", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-watcher-api = { path = "../../watcher/api" }

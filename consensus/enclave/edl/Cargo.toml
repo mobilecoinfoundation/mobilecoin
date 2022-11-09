@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-edl"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "consensus_enclave_edl"

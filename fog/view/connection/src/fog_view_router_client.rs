@@ -3,7 +3,7 @@
 //! Makes requests to the fog view router service
 
 use aes_gcm::Aes256Gcm;
-use futures::{SinkExt, TryStreamExt};
+use futures::{executor::block_on, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment};
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
@@ -197,7 +197,14 @@ impl FogViewRouterGrpcClient {
     }
 }
 
+impl Drop for FogViewRouterGrpcClient {
+    fn drop(&mut self) {
+        block_on(self.request_sender.close()).expect("Couldn't close the router request sender");
+    }
+}
+
 /// Errors related to the Fog View Router Client.
+#[derive(Debug)]
 pub enum Error {
     /// Decode errors.
     Decode(DecodeError),

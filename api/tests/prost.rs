@@ -13,11 +13,12 @@ use mc_blockchain_types::{
 };
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
-use mc_transaction_core::{Amount, SignedContingentInput};
-use mc_transaction_std::{
+use mc_transaction_builder::{
     test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
     SignedContingentInputBuilder,
 };
+use mc_transaction_core::Amount;
+use mc_transaction_extra::SignedContingentInput;
 use mc_util_from_random::FromRandom;
 use mc_util_serial::round_trip_message;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};

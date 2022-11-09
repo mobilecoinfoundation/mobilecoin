@@ -55,14 +55,16 @@ message MultiViewStoreQueryRequest {
 
 /// The status associated with a MultiViewStoreQueryResponse
 enum MultiViewStoreQueryResponseStatus {
+    /// Default status. Shouldn't be set explicitly.
+    UNKNOWN = 0;
     /// The Fog View Store successfully fulfilled the request.
-    SUCCESS = 0;
+    SUCCESS = 1;
     /// The Fog View Store is unable to decrypt a query within the MultiViewStoreQuery. It needs to be authenticated
     /// by the router.
-    AUTHENTICATION_ERROR = 1;
+    AUTHENTICATION_ERROR = 2;
     /// The Fog View Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
     /// not loaded enough blocks yet.
-    NOT_READY = 2;
+    NOT_READY = 3;
 }
 
 message MultiViewStoreQueryResponse {
@@ -75,10 +77,15 @@ message MultiViewStoreQueryResponse {
     /// tried to decrypt the MultiViewStoreQueryRequest and failed.
     /// The client should subsequently authenticate with the machine
     /// described by this URI.
-    string fog_view_store_uri = 2;
+    string store_uri = 2;
 
     /// Status that gets returned when the Fog View Store services a MultiViewStoreQueryRequest.
     MultiViewStoreQueryResponseStatus status = 3;
+
+    /// The block range that this view store is responsible for based on the store's sharding strategy. Note that this
+    /// doesn't mean the block ranges that this store has processed. Rather, this is the range of blocks that this
+    /// store is configured to serve once they become available.
+    fog_common.BlockRange block_range = 4;
 }
 
 /// Fulfills requests sent directly by a Fog client, e.g. a mobile phone using the SDK.

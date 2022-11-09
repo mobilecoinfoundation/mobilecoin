@@ -8,7 +8,7 @@
 
 extern crate alloc;
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
@@ -21,7 +21,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
 use mc_crypto_noise::CipherError;
 use mc_fog_recovery_db_iface::FogUserEvent;
-use mc_fog_types::ETxOutRecord;
+use mc_fog_types::{view::MultiViewStoreQueryResponse, ETxOutRecord};
 use mc_sgx_compat::sync::PoisonError;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};
@@ -100,12 +100,11 @@ pub enum ViewEnclaveRequest {
     /// Complete the client connection to a Fog View store that accepted our
     /// client auth request. This is meant to be called after [ViewStoreInit].
     ViewStoreConnect(ResponderId, NonceAuthResponse),
+    /// Accept a connection to a frontend.
+    FrontendAccept(NonceAuthRequest),
     /// Collates shard query responses into a single query response for the
     /// client.
-    CollateQueryResponses(
-        SealedClientMessage,
-        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
-    ),
+    CollateQueryResponses(SealedClientMessage, Vec<MultiViewStoreQueryResponse>),
 }
 
 /// The parameters needed to initialize the view enclave
@@ -148,6 +147,10 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// Begin a connection to a Fog View Store. The enclave calling this method
     /// will act as a client to the Fog View Store.
     fn view_store_init(&self, view_store_id: ResponderId) -> Result<NonceAuthRequest>;
+
+    /// Accept a connection to a Fog View Router instance acting as a frontend
+    /// to the Fog View Store.
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)>;
 
     /// Complete the connection to a Fog View Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
@@ -201,7 +204,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 

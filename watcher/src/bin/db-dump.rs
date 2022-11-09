@@ -20,12 +20,7 @@ use url::Url;
 )]
 pub struct Config {
     /// Path to watcher db (lmdb).
-    #[clap(
-        long,
-        default_value = "/tmp/watcher-db",
-        parse(from_os_str),
-        env = "MC_WATCHER_DB"
-    )]
+    #[clap(long, default_value = "/tmp/watcher-db", env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 }
 

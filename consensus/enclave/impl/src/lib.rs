@@ -46,9 +46,9 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
-    FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
+    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -58,6 +58,7 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::compute_implied_merkle_root,
     mint::{
         validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
@@ -67,7 +68,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Token, TokenId,
+    Amount, Token, TokenId, SMALLEST_MINIMUM_FEE_LOG2,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -459,33 +460,22 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        // Check that fee map is actually well formed
-        FeeMap::is_valid_map(blockchain_config.fee_map.as_ref()).map_err(Error::FeeMap)?;
+        // Ensure the blockchain configuration is valid.
+        let minting_trust_root_public_key =
+            Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                .map_err(Error::ParseMintingTrustRootPublicKey)?;
 
-        // Validate governors signature.
-        if !blockchain_config.governors_map.is_empty() {
-            let signature = blockchain_config
-                .governors_signature
-                .ok_or(Error::MissingGovernorsSignature)?;
+        blockchain_config.validate(&minting_trust_root_public_key)?;
 
-            let minting_trust_root_public_key =
-                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
-                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
-
-            minting_trust_root_public_key
-                .verify_governors_map(&blockchain_config.governors_map, &signature)
-                .map_err(|_| Error::InvalidGovernorsSignature)?;
-        }
-
+        // Set the minimum fee map.
         self.ct_min_fee_map
             .set(Box::new(
                 blockchain_config.fee_map.as_ref().iter().collect(),
             ))
             .expect("enclave was already initialized");
 
+        // Inject the configuration into the peer ResponderId.
         let blockchain_config = BlockchainConfigWithDigest::from(blockchain_config);
-
-        // Inject the fee map and block version into the peer ResponderId.
         let peer_self_id = blockchain_config.responder_id(peer_self_id);
 
         self.blockchain_config
@@ -865,6 +855,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                             value: output_fee,
                             token_id,
                         },
+                        None,
                         outputs.len(),
                     ));
                     total_fee -= output_fee as u128;
@@ -911,6 +902,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     value: mint_tx.prefix.amount,
                     token_id: TokenId::from(mint_tx.prefix.token_id),
                 },
+                mint_tx.prefix.e_fog_hint.clone(),
                 counter,
             )?;
 
@@ -966,6 +958,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// * `parent_block` - The parent block.
 /// * `transactions` - The transactions that are included in the current block.
 /// * `amount` - Output amount.
+/// * `e_fog_hint` - Optional encrypted fog hint to use
 /// * `counter` - An additional counter used to disambiguate hashes, when the
 ///   same amount is minted repeatedly
 ///
@@ -981,6 +974,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 ///
 /// The counter value should be used for each "context" where we mint multiple
 /// outputs to prevent this issue.
+#[allow(clippy::too_many_arguments)]
 fn mint_output<T: Digestible>(
     block_version: BlockVersion,
     recipient: &PublicAddress,
@@ -988,6 +982,7 @@ fn mint_output<T: Digestible>(
     parent_block: &Block,
     transactions: &[T],
     amount: Amount,
+    e_fog_hint: Option<EncryptedFogHint>,
     counter: usize,
 ) -> Result<TxOut> {
     // Check if the token id makes sense right now
@@ -1023,7 +1018,7 @@ fn mint_output<T: Digestible>(
         amount,
         recipient,
         &tx_private_key,
-        Default::default(),
+        e_fog_hint.unwrap_or_default(),
     )
     .map_err(|e| Error::FormBlock(format!("NewTxError: {}", e)))
 }
@@ -1033,7 +1028,7 @@ mod tests {
     use super::*;
     use alloc::vec;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
-    use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
+    use mc_consensus_enclave_api::{GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::{
@@ -1044,7 +1039,7 @@ mod tests {
         tokens::Mob,
         tx::TxOutMembershipHash,
         validation::{validate_tx_out, TransactionValidationError},
-        BlockVersion, Token,
+        BlockVersion, FeeMap, Token,
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
@@ -1079,7 +1074,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_enclave_init_refuses_invalid_governors_signature(logger: Logger) {
+    fn test_enclave_init_validates_blockchain_config(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let token_id1 = TokenId::from(1);
@@ -1093,7 +1088,8 @@ mod tests {
         let block_version = BlockVersion::MAX;
 
         // Can't initialize without a valid governors signature if we are passing a
-        // governors map.
+        // governors map. This proves to us that BlockchainConfig::validate is being
+        // called.
         let blockchain_config = BlockchainConfig {
             block_version,
             governors_map: governors_map1.clone(),

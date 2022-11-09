@@ -2,12 +2,12 @@
 #![deny(missing_docs)]
 //! Create some default keys for use in demos and testing
 use clap::Parser;
-use mc_util_keyfile::config::Config as GeneralConfig;
+use mc_util_keyfile::config::KeyConfig;
 
 #[derive(Debug, Parser)]
 struct Config {
     #[clap(flatten)]
-    pub general: GeneralConfig,
+    pub general: KeyConfig,
 
     /// Number of user keys to generate.
     #[clap(short, long, default_value = "10", env = "MC_NUM")]

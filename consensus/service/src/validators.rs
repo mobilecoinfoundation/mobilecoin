@@ -25,7 +25,7 @@
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_ledger_db::Ledger;
+use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
@@ -168,7 +168,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
         self.ledger
             .get_tx_out_proof_of_memberships(indexes)
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
+            .map_err(|e| match e {
+                LedgerError::TxOutIndexOutOfBounds(index) => {
+                    TransactionValidationError::LedgerTxOutIndexOutOfBounds(index)
+                }
+                e => TransactionValidationError::Ledger(e.to_string()),
+            })
     }
 }
 
@@ -493,6 +498,7 @@ mod combine_tests {
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
         tokens::Mob,
@@ -500,7 +506,6 @@ mod combine_tests {
         Amount, BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
-    use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;

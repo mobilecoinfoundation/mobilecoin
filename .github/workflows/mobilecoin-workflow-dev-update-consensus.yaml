@@ -90,7 +90,7 @@ jobs:
       env:
         MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.MINTING_TRUST_ROOT_PRIVATE }}
       run: |
-        .internal-ci/util/generate_minting_keys.sh
+        .internal-ci/util/generate_minting_keys.sh --token-id 8192
 
     - name: Login to DockerHub
       if: inputs.minting_config_enabled == 'true'

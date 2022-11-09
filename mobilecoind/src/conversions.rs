@@ -13,8 +13,9 @@ use mc_common::HashMap;
 use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutConfirmationNumber},
+    tx::{Tx, TxOut},
 };
+use mc_transaction_extra::TxOutConfirmationNumber;
 use protobuf::RepeatedField;
 
 impl From<&UnspentTxOut> for api::UnspentTxOut {

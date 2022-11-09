@@ -115,6 +115,9 @@ pub enum TransactionValidationError {
     /// Ledger error: `{0}`.
     Ledger(String),
 
+    /// Ledger error: TxOut Index out of bounds: {0}
+    LedgerTxOutIndexOutOfBounds(u64),
+
     /// An error occurred while validating a membership proof.
     MembershipProofValidationError,
 

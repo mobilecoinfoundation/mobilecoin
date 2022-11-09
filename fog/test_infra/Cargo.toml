@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-test-infra"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -29,6 +29,7 @@ mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }
 mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-parse = { path = "../../util/parse" }
 mc-watcher = { path = "../../watcher" }
 mc-watcher-api = { path = "../../watcher/api" }
 
@@ -40,7 +41,7 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
-clap = { version = "3.2", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"

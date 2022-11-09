@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-generate-sample-ledger"
-version = "2.0.0"
+version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -17,9 +17,9 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-parse = { path = "../../util/parse" }
 
-clap = { version = "3.2", features = ["derive", "env"] }
-hex = "0.4"
+clap = { version = "4.0", features = ["derive", "env"] }
 rand = "0.8"
 rand_hc = "0.3"
 

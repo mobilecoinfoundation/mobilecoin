@@ -32,7 +32,7 @@ use mc_transaction_core::{
     tx::TxOut,
     Amount, TokenId,
 };
-use mc_transaction_std::MemoType;
+use mc_transaction_extra::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -1142,6 +1142,19 @@ impl From<InputSelectionError> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn input_selection_heuristic_few_inputs() {
+        let inputs: Vec<u64> = vec![20];
+        assert_eq!(input_selection_heuristic(&inputs, 1, 16), Ok(vec![0]));
+        assert_eq!(input_selection_heuristic(&inputs, 10, 16), Ok(vec![0]));
+        assert_eq!(input_selection_heuristic(&inputs, 19, 16), Ok(vec![0]));
+        assert_eq!(input_selection_heuristic(&inputs, 20, 16), Ok(vec![0]));
+        assert_eq!(
+            input_selection_heuristic(&inputs, 21, 16),
+            Err(InputSelectionError::InsufficientFunds)
+        );
+    }
 
     #[test]
     fn input_selection_heuristic_3_inputs() {

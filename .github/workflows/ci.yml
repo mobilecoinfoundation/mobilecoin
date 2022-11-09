@@ -2,11 +2,15 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+    - '**.md'
   push:
     branches:
       - master
       - main
       - develop
+    paths-ignore:
+    - '**.md'
   workflow_dispatch:
 
 env:
@@ -20,7 +24,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -38,7 +42,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -59,7 +63,7 @@ jobs:
 
   build-and-test-wasm:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -74,7 +78,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -84,14 +88,14 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Run lint script
-        run: ./tools/lint.sh
+        run: ./tools/lint.sh --check
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
 
   build-and-test-go:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -131,7 +135,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -150,7 +154,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     strategy:
       matrix:
@@ -189,7 +193,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     strategy:
       matrix:
@@ -222,7 +226,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     strategy:
       matrix:
@@ -270,7 +274,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -293,7 +297,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -333,7 +337,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -402,12 +406,16 @@ jobs:
           BIN_DIR="$PWD/target/release"
           SCRIPT_DIR="$PWD/tools/fog-local-network"
           export MC_CHAIN_ID="local"
+          export MC_LOG=info
+          # This is needed since we want to capture the output of mc-consensus-tool, and we can't have the
+          # logs getting in the way.
+          export MC_LOG_STDERR=1
 
           cd /tmp/fog-local-network
+          export LEDGER_BASE="$PWD/ledger"
 
           # Run local network in background.
-          MC_LOG="debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
-          LEDGER_BASE="$PWD/ledger" \
+          MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
           python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
 
           # Give it time to spin up
@@ -417,26 +425,21 @@ jobs:
             done
           done
 
+          # Save some typing
+          export MC_PEER=insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/
+
           # Run fog-distribution client to exercise Fog
+          echo "Running fog distro"
           "$BIN_DIR/fog-distribution" \
               --sample-data-dir . \
               --max-threads 1 \
-              --peer insecure-mc://localhost:3200/ \
-              --peer insecure-mc://localhost:3201/ \
-              --peer insecure-mc://localhost:3202/ \
-              --peer insecure-mc://localhost:3203/ \
-              --peer insecure-mc://localhost:3204/ \
               --num-tx-to-send 10
 
           # Give it time to quiet down
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet
 
           # Run test-client
+          echo "Running test client"
           "$BIN_DIR/test_client" \
               --consensus insecure-mc://localhost:3200/ \
               --consensus insecure-mc://localhost:3201/ \
@@ -444,9 +447,50 @@ jobs:
               --consensus insecure-mc://localhost:3203/ \
               --consensus insecure-mc://localhost:3204/ \
               --num-clients 4 \
-              --num-transactions 200 \
+              --num-transactions 40 \
               --consensus-wait 300 \
               --transfer-amount 20 \
+              --fog-view insecure-fog-view://localhost:8200 \
+              --fog-ledger insecure-fog-ledger://localhost:8200 \
+              --key-dir "$PWD/fog_keys"
+
+          PRE_AUTH_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet)
+
+          # Authorize minters
+          echo "Authorizing minters"
+          python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
+
+          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_AUTH_BLOCK_INDEX)
+          echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
+
+          # Mint 1 million token1's to the first 4 fog accounts
+          echo "Minting"
+          for ACCOUNT_NUM in $(seq 0 3); do
+              "$BIN_DIR/mc-consensus-mint-client" \
+                  "generate-and-submit-mint-tx" \
+                  --node insecure-mc://localhost:3200/ \
+                  --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
+                  --recipient $(cat fog_keys/account_keys_${ACCOUNT_NUM}.b58pub) \
+                  --fog-ingest-enclave-css "$BIN_DIR/ingest-enclave.css" \
+                  --token-id 1 \
+                  --amount 1000000
+          done
+
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_MINT_BLOCK_INDEX
+
+          # Run test-client
+          echo "Running test client (tokens 0 and 1)"
+          "$BIN_DIR/test_client" \
+              --consensus insecure-mc://localhost:3200/ \
+              --consensus insecure-mc://localhost:3201/ \
+              --consensus insecure-mc://localhost:3202/ \
+              --consensus insecure-mc://localhost:3203/ \
+              --consensus insecure-mc://localhost:3204/ \
+              --num-clients 4 \
+              --num-transactions 40 \
+              --consensus-wait 300 \
+              --transfer-amount 20 \
+              --token-ids 0,1 \
               --fog-view insecure-fog-view://localhost:8200 \
               --fog-ledger insecure-fog-ledger://localhost:8200 \
               --key-dir "$PWD/fog_keys"
@@ -454,12 +498,7 @@ jobs:
           # Run mobilecoind-dev-faucet
           MC_LOG="info" \
           "$BIN_DIR"/mobilecoind-dev-faucet \
-            --keyfile "$PWD/keys/account_keys_0.json" \
-            --peer insecure-mc://localhost:3200/ \
-            --peer insecure-mc://localhost:3201/ \
-            --peer insecure-mc://localhost:3202/ \
-            --peer insecure-mc://localhost:3203/ \
-            --peer insecure-mc://localhost:3204/ &
+            --keyfile "$PWD/keys/account_keys_0.json" &
 
           # Give it time to spin up
           for i in $(seq 0 60); do
@@ -474,12 +513,7 @@ jobs:
           # Try triggering slam twice and see that it doesn't get stuck
           curl -s localhost:9090/slam -X POST
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet
 
           curl -s localhost:9090/slam -X POST
 
@@ -490,7 +524,7 @@ jobs:
 
   minting-and-burning-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.17
+    container: mobilecoin/builder-install:v0.0.18
 
     steps:
       - name: Check out code
@@ -561,6 +595,12 @@ jobs:
           STRATEGIES_DIR="$PWD/mobilecoind/strategies"
           export MC_CHAIN_ID="local"
           export MC_LOG=info
+          # This is needed since we want to capture the output of mc-consensus-tool, and we can't have the
+          # logs getting in the way.
+          export MC_LOG_STDERR=1
+
+          # Used by mc-consensus-tool
+          export MC_PEER=insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/
 
           cd /tmp/fog-local-network
           export LEDGER_BASE="$PWD/ledger"
@@ -576,16 +616,15 @@ jobs:
             done
           done
 
+          PRE_AUTH_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet)
+
           # Authorize minters
           echo "Authorizing minters"
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          echo "Waiting for quiet after authorizing minters..."
+          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_AUTH_BLOCK_INDEX)
+          echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
 
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
@@ -599,12 +638,9 @@ jobs:
                   --amount 1000000
           done
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet \
-              insecure-mc://localhost:3200/ \
-              insecure-mc://localhost:3201/ \
-              insecure-mc://localhost:3202/ \
-              insecure-mc://localhost:3203/ \
-              insecure-mc://localhost:3204/
+          echo "Waiting for quiet after minting"
+          POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block $PRE_MINT_BLOCK_INDEX)
+          echo "Done waiting, POST_MINT_BLOCK_INDEX = ${POST_MINT_BLOCK_INDEX}"
 
           # Use burn.py to burn some token1
           cd "$STRATEGIES_DIR"

@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use mc_account_keys::{AccountKey, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_test_vectors_definitions::memos::{
@@ -5,7 +7,7 @@ use mc_test_vectors_definitions::memos::{
     CorrectEncryptedSenderWithPaymentRequestIdMemoData, IncorrectEncryptedSenderMemoData,
     IncorrectEncryptedSenderWithPaymentRequestIdMemoData,
 };
-use mc_transaction_std::{
+use mc_transaction_extra::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
     SenderMemoCredential,
 };

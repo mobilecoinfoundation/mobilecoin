@@ -6,7 +6,7 @@
 
 extern crate mc_fog_ocall_oram_storage_untrusted;
 
-use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
+use std::{path, result::Result as StdResult, sync::Arc};
 
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
@@ -19,7 +19,7 @@ use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_keys::X25519Public;
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
-use mc_fog_types::ETxOutRecord;
+use mc_fog_types::{view::MultiViewStoreQueryResponse, ETxOutRecord};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t};
@@ -183,6 +183,12 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn frontend_accept(&self, req: NonceAuthRequest) -> Result<(NonceAuthResponse, NonceSession)> {
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::FrontendAccept(req))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn query(
         &self,
         payload: EnclaveMessage<ClientSession>,
@@ -239,7 +245,7 @@ impl ViewEnclaveApi for SgxViewEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CollateQueryResponses(
             sealed_query,

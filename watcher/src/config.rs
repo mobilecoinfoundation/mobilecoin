@@ -18,12 +18,7 @@ use url::Url;
 /// Configuration for the Watcher Node.
 pub struct WatcherConfig {
     /// Path to watcher db (lmdb).
-    #[clap(
-        long,
-        default_value = "/tmp/watcher-db",
-        parse(from_os_str),
-        env = "MC_WATCHER_DB"
-    )]
+    #[clap(long, default_value = "/tmp/watcher-db", env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// The location of the sources.toml file. This file configures the list of
@@ -36,7 +31,7 @@ pub struct WatcherConfig {
     pub max_block_height: Option<u64>,
 
     /// How many seconds to wait between polling.
-    #[clap(long, default_value = "1", parse(try_from_str = parse_duration_in_seconds), env = "MC_POLL_INTERVAL")]
+    #[clap(long, default_value = "1", value_parser = parse_duration_in_seconds, env = "MC_POLL_INTERVAL")]
     pub poll_interval: Duration,
     /// Store block data for every fetched block.
     #[clap(long, env = "MC_STORE_BLOCK_DATA")]

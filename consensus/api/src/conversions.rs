@@ -49,6 +49,7 @@ impl From<Error> for ProposeTxResult {
             Error::InvalidRistrettoPublicKey => Self::InvalidRistrettoPublicKey,
             Error::InvalidLedgerContext => Self::InvalidLedgerContext,
             Error::Ledger(_) => Self::Ledger,
+            Error::LedgerTxOutIndexOutOfBounds(_) => Self::LedgerTxOutIndexOutOfBounds,
             Error::MembershipProofValidationError => Self::MembershipProofValidationError,
             Error::TxFeeError => Self::TxFeeError,
             Error::KeyError => Self::KeyError,
@@ -149,6 +150,10 @@ impl From<MintValidationError> for MintValidationResult {
                 code: MintValidationResultCode::NoMatchingMintConfig,
                 ..Default::default()
             },
+            MintValidationError::MintingToFogNotSupported => Self {
+                code: MintValidationResultCode::MintingToFogNotSupported,
+                ..Default::default()
+            },
         }
     }
 }
@@ -191,6 +196,9 @@ impl TryInto<MintValidationError> for MintValidationResult {
             MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
             MintValidationResultCode::NoMatchingMintConfig => {
                 Ok(MintValidationError::NoMatchingMintConfig)
+            }
+            MintValidationResultCode::MintingToFogNotSupported => {
+                Ok(MintValidationError::MintingToFogNotSupported)
             }
         }
     }

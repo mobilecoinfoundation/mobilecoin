@@ -38,6 +38,7 @@ This script starts a local mobilecoin consensus network by launching a separate 
 
 - (required) `--network-type` - describes the network topology, one of `dense5`, `a-b-c`, `ring5` or `ring5b`
 - (optional) `--skip-build` - does not rebuild consensus node binaries
+- (optional) `--block-version` - specifies local network block version (defaults to highest available if not specified)
 
 It relies on environment variables for configuration:
 

@@ -4,9 +4,9 @@
 
 use displaydoc::Display;
 use mc_common::ResponderId;
-use mc_consensus_enclave_api::{FeeMapError, GovernorsMapError};
+use mc_consensus_enclave_api::GovernorsMapError;
 use mc_crypto_keys::SignatureError;
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{FeeMapError, TokenId};
 use mc_util_uri::UriConversionError;
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
@@ -27,16 +27,8 @@ pub enum Error {
     /// Mint configuration is not allowed for token id {0}
     MintConfigNotAllowed(TokenId),
 
-    /**
-     * Invalid mint configuration for token id {0}: must have at least one
-     * signer
-     */
-    NoSigners(TokenId),
-
-    /** Invalid mint configuration for token id {0}: signer set threshold
-     * exceeds number of signers
-     */
-    SignerSetThresholdExceedsSigners(TokenId),
+    /// Invalid signer set for token id {0}
+    InvalidSignerSet(TokenId),
 
     /// Cannot figure out file extension
     PathExtension,

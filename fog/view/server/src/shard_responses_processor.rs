@@ -1,14 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::error::RouterServerError;
-use mc_attest_api::attest;
-use mc_common::ResponderId;
-use mc_fog_api::{
-    view::{MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus},
-    view_grpc::FogViewStoreApiClient,
-};
+use mc_common::logger::{log, Logger};
+use mc_fog_api::view_grpc::FogViewStoreApiClient;
+use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
-use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
@@ -24,19 +20,19 @@ pub struct ProcessedShardResponseData {
     pub view_store_uris_for_authentication: Vec<FogViewStoreUri>,
 
     /// New, successfully processed query responses.
-    pub new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
+    pub multi_view_store_query_responses: Vec<MultiViewStoreQueryResponse>,
 }
 
 impl ProcessedShardResponseData {
     pub fn new(
         shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
         view_store_uris_for_authentication: Vec<FogViewStoreUri>,
-        new_query_responses: Vec<(ResponderId, attest::NonceMessage)>,
+        new_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Self {
         ProcessedShardResponseData {
             shard_clients_for_retry,
             view_store_uris_for_authentication,
-            new_query_responses,
+            multi_view_store_query_responses: new_query_responses,
         }
     }
 }
@@ -44,29 +40,36 @@ impl ProcessedShardResponseData {
 /// Processes the MultiViewStoreQueryResponses returned by each Fog View Shard.
 pub fn process_shard_responses(
     clients_and_responses: Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>,
+    logger: Logger,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
     let mut shard_clients_for_retry = Vec::new();
     let mut view_store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
-    for (shard_client, mut response) in clients_and_responses {
-        let store_uri = FogViewStoreUri::from_str(response.get_fog_view_store_uri())?;
-        match response.get_status() {
-            MultiViewStoreQueryResponseStatus::SUCCESS => {
-                let store_responder_id = store_uri.responder_id()?;
-                new_query_responses.push((store_responder_id, response.take_query_response()));
+    for (shard_client, response) in clients_and_responses {
+        match response.status {
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
+                log::error!(
+                    logger,
+                    "Received a response with status 'unknown' from store{}",
+                    FogViewStoreUri::from_str(&response.store_uri)?
+                );
+            }
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::Success => {
+                new_query_responses.push(response.clone());
             }
             // The shard was unable to produce a query response because the Fog View Store
             // it contacted isn't authenticated with the Fog View Router. Therefore
             // we need to (a) retry the query (b) authenticate with the Fog View
             // Store.
-            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR => {
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::AuthenticationError => {
                 shard_clients_for_retry.push(shard_client);
-                view_store_uris_for_authentication.push(store_uri);
+                view_store_uris_for_authentication
+                    .push(FogViewStoreUri::from_str(&response.store_uri)?);
             }
             // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
             // hasn't returned a new query response, and shouldn't be retried yet.
-            MultiViewStoreQueryResponseStatus::NOT_READY => (),
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::NotReady => (),
         }
     }
 
@@ -87,7 +90,7 @@ mod tests {
     use mc_util_uri::UriScheme;
 
     fn create_successful_mvq_response(client_index: usize) -> MultiViewStoreQueryResponse {
-        let mut successful_response = MultiViewStoreQueryResponse::new();
+        let mut successful_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
         let client_auth_request = Vec::new();
         successful_response
             .mut_query_response()
@@ -98,27 +101,32 @@ mod tests {
             client_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
-        successful_response.set_fog_view_store_uri(view_uri_string);
-        successful_response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
+        successful_response.set_store_uri(view_uri_string);
+        successful_response
+            .set_status(mc_fog_api::view::MultiViewStoreQueryResponseStatus::SUCCESS);
 
         successful_response
+            .try_into()
+            .expect("Couldn't convert MultiViewStoreQueryResponse proto to internal struct")
     }
 
     fn create_failed_mvq_response(
         client_index: usize,
-        status: MultiViewStoreQueryResponseStatus,
+        status: mc_fog_api::view::MultiViewStoreQueryResponseStatus,
     ) -> MultiViewStoreQueryResponse {
-        let mut failed_response = MultiViewStoreQueryResponse::new();
+        let mut failed_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
             client_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
-        failed_response.set_fog_view_store_uri(view_uri_string);
+        failed_response.set_store_uri(view_uri_string);
         failed_response.set_status(status);
 
         failed_response
+            .try_into()
+            .expect("Couldn't convert MultiViewStoreQueryResponse proto to internal struct")
     }
 
     fn create_grpc_client(i: usize, logger: Logger) -> Arc<FogViewStoreApiClient> {
@@ -149,7 +157,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -164,7 +172,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -179,11 +187,11 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(client_index);
         let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let new_query_response = result.unwrap().new_query_responses;
+        let new_query_response = result.unwrap().multi_view_store_query_responses;
         assert_eq!(new_query_response.len(), 1);
     }
 
@@ -193,11 +201,11 @@ mod tests {
         let grpc_client = create_grpc_client(client_index, logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
             client_index,
-            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -211,11 +219,11 @@ mod tests {
         let grpc_client = create_grpc_client(client_index, logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
             client_index,
-            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -229,15 +237,15 @@ mod tests {
         let grpc_client = create_grpc_client(client_index, logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
             client_index,
-            MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let new_query_responses = result.unwrap().new_query_responses;
+        let new_query_responses = result.unwrap().multi_view_store_query_responses;
         assert!(new_query_responses.is_empty());
     }
 
@@ -245,15 +253,17 @@ mod tests {
     fn one_not_ready_response_zero_new_query_responses(logger: Logger) {
         let client_index: usize = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response =
-            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let new_query_responses = result.unwrap().new_query_responses;
+        let new_query_responses = result.unwrap().multi_view_store_query_responses;
         assert!(new_query_responses.is_empty());
     }
 
@@ -261,11 +271,13 @@ mod tests {
     fn one_not_ready_response_zero_pending_authentications(logger: Logger) {
         let client_index: usize = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response =
-            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -277,11 +289,13 @@ mod tests {
     fn one_not_ready_response_zero_pending_shard_clients(logger: Logger) {
         let client_index: usize = 0;
         let grpc_client = create_grpc_client(client_index, logger.clone());
-        let failed_mvq_response =
-            create_failed_mvq_response(client_index, MultiViewStoreQueryResponseStatus::NOT_READY);
+        let failed_mvq_response = create_failed_mvq_response(
+            client_index,
+            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+        );
         let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -299,7 +313,7 @@ mod tests {
             let grpc_client = create_grpc_client(i, logger.clone());
             let failed_mvq_response = create_failed_mvq_response(
                 i,
-                MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+                mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
             );
             clients_and_responses.push((grpc_client, failed_mvq_response));
         }
@@ -310,7 +324,7 @@ mod tests {
             clients_and_responses.push((grpc_client, successful_mvq_response));
         }
 
-        let result = process_shard_responses(clients_and_responses);
+        let result = process_shard_responses(clients_and_responses, logger.clone());
         assert!(result.is_ok());
         let processed_shard_response_data = result.unwrap();
 
@@ -325,7 +339,9 @@ mod tests {
             NUMBER_OF_FAILURES
         );
         assert_eq!(
-            processed_shard_response_data.new_query_responses.len(),
+            processed_shard_response_data
+                .multi_view_store_query_responses
+                .len(),
             NUMBER_OF_SUCCESSES
         );
     }

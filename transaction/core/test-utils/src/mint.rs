@@ -123,6 +123,7 @@ pub fn create_mint_tx_to_recipient(
         spend_public_key: *recipient.spend_public_key(),
         nonce,
         tombstone_block: 10,
+        e_fog_hint: None,
     };
 
     let message = prefix.hash();

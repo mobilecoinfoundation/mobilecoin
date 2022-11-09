@@ -66,20 +66,20 @@ pub struct SqlRecoveryDbConnectionConfig {
     /// The idle timeout used by the connection pool.
     /// If set, connections will be closed after sitting idle for at most 30
     /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_IDLE_TIMEOUT")]
+    #[clap(long, default_value = "60", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_IDLE_TIMEOUT")]
     pub postgres_idle_timeout: Duration,
 
     /// The maximum lifetime of connections in the pool.
     /// If set, connections will be closed after existing for at most 30 seconds
     /// beyond this duration. If a connection reaches its maximum lifetime
     /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "120", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_MAX_LIFETIME")]
+    #[clap(long, default_value = "120", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_MAX_LIFETIME")]
     pub postgres_max_lifetime: Duration,
 
     /// Sets the connection timeout used by the pool.
     /// The pool will wait this long for a connection to become available before
     /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_CONNECTION_TIMEOUT")]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_POSTGRES_CONNECTION_TIMEOUT")]
     pub postgres_connection_timeout: Duration,
 
     /// The maximum number of connections managed by the pool.
@@ -625,10 +625,13 @@ impl SqlRecoveryDb {
             // errors.
             Err(Error::Orm(diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
-                _,
-            ))) => Ok(AddBlockDataStatus {
-                block_already_scanned_with_this_key: true,
-            }),
+                details,
+            ))) => {
+                log::info!(self.logger, "Unique constraint violated when adding block {} for ingest invocation id {}: {:?}", block.index, ingest_invocation_id, details);
+                Ok(AddBlockDataStatus {
+                    block_already_scanned_with_this_key: true,
+                })
+            }
             Err(err) => Err(err),
         }
     }
@@ -967,6 +970,78 @@ impl SqlRecoveryDb {
         } else {
             Err(Error::IngestedBlockSchemaViolation(format!("Found {} different entries for ingress_key {:?} and block_index {}, which goes against the constraint", protos.len(), ingress_key, block_index)))
         }
+    }
+
+    /// Get ETxOutRecords for a given ingress key from a block, and subsequent
+    /// blocks, up to some limit. (This is like a batch call to
+    /// get_tx_outs_by_block_and_key_retriable with lookahead, and makes
+    /// sense if there is high network latency.)
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The first block we need ETxOutRecords from
+    /// * block_count: How many consecutive blocks to also request data for.
+    ///
+    /// Returns:
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
+    fn get_tx_outs_by_block_range_and_key_retriable(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+        block_count: usize,
+    ) -> Result<Vec<Vec<ETxOutRecord>>, Error> {
+        let conn = self.pool.get()?;
+
+        // The idea is:
+        // Similar to get_tx_outs_by_block_and_key_retriable, but now
+        // * we have a range of admissible block indices
+        // * we order by the block number
+        // * we also select over the block number so that sql gives us the block number
+        //
+        // This ensures that we can detect any gaps in the data
+        let key_bytes: &[u8] = ingress_key.as_ref();
+        let query = {
+            use schema::ingested_blocks::dsl;
+            dsl::ingested_blocks
+                .filter(dsl::ingress_public_key.eq(key_bytes))
+                .filter(dsl::block_number.ge(block_index as i64))
+                .limit(block_count as i64)
+                .select((dsl::block_number, dsl::proto_ingested_block_data))
+                .order(dsl::block_number.asc())
+        };
+
+        // We will get one row for each hit in the table we found
+        let rows: Vec<(i64, Vec<u8>)> = query.load(&conn)?;
+
+        if rows.len() > block_count {
+            log::warn!(
+                self.logger,
+                "When querying, more responses than expected: {} > {}",
+                rows.len(),
+                block_count
+            );
+        }
+
+        // We want to iterate over the rows we got, make sure there are no gaps in block
+        // indices, and decode the TxOut's and return them. If there are gaps,
+        // we log at warn level, and short-circuit out of this, returning only
+        // whatever we managed to get. That will discard data that we got from
+        // the DB and we will request it again later, but there is no reason for
+        // there to be gaps, that's not how the system works, so it isn't
+        // important to optimize for that case.
+
+        let mut result = Vec::new();
+        for (idx, (block_number, proto)) in rows.into_iter().enumerate() {
+            if block_index + idx as u64 == block_number as u64 {
+                let proto = ProtoIngestedBlockData::decode(&*proto)?;
+                result.push(proto.e_tx_out_records);
+            } else {
+                log::warn!(self.logger, "When querying for block index {} and up to {} blocks on, the {}'th response has block_number {} which is not expected. Gaps in the data?", block_index, block_count, idx, block_number);
+                break;
+            }
+        }
+        Ok(result)
     }
 
     /// Get iid that produced data for given ingress key and a given block
@@ -1391,6 +1466,30 @@ impl RecoveryDb for SqlRecoveryDb {
         })
     }
 
+    /// Get ETxOutRecords for a given ingress key from a block, and subsequent
+    /// blocks, up to some limit. (This is like a batch call to
+    /// get_tx_outs_by_block_and_key with lookahead, and makes sense if
+    /// there is high network latency.)
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The first block we need ETxOutRecords from
+    /// * block_count: How many consecutive blocks to also request data for.
+    ///
+    /// Returns:
+    /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
+    ///   block_index. Empty if not even the block_index'th block exists.
+    fn get_tx_outs_by_block_range_and_key(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+        block_count: usize,
+    ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_tx_outs_by_block_range_and_key_retriable(ingress_key, block_index, block_count)
+        })
+    }
+
     /// Get iid that produced data for given ingress key and a given block
     /// index.
     fn get_invocation_id_by_block_and_key(
@@ -1522,12 +1621,7 @@ where
 }
 
 fn unpack_retry_error(src: RetryError<Error>) -> Error {
-    match src {
-        RetryError::Operation { error, .. } => error,
-        RetryError::Internal(_) => {
-            panic!("This is unreachable, see https://github.com/jimmycuadra/retry/issues/38")
-        }
-    }
+    src.error
 }
 
 #[cfg(test)]
@@ -2343,6 +2437,100 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(tx_outs, records2);
+    }
+
+    #[test_with_logger]
+    fn test_get_tx_outs_by_block_range_and_key(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key, 122).unwrap();
+
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 122)
+            .unwrap();
+
+        let invoc_id2 = db
+            .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let (block1, records1) = random_block(&mut rng, 122, 10);
+        db.add_block_data(&invoc_id1, &block1, 0, &records1)
+            .unwrap();
+
+        let (block2, records2) = random_block(&mut rng, 123, 10);
+        db.add_block_data(&invoc_id2, &block2, 0, &records2)
+            .unwrap();
+
+        // Get tx outs for a key we're not aware of or a block id we're not aware of
+        // should return empty vec
+        let batch_result = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, 124, 2)
+            .unwrap();
+        assert_eq!(batch_result.len(), 0);
+
+        let batch_result = db
+            .get_tx_outs_by_block_range_and_key(
+                CompressedRistrettoPublic::from_random(&mut rng),
+                123,
+                2,
+            )
+            .unwrap();
+        assert_eq!(batch_result.len(), 0);
+
+        // Getting tx outs in a batch should work as expected when requesting things
+        // that exist
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 1)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records1);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 1)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 2);
+        assert_eq!(batch_results[0], records1);
+        assert_eq!(batch_results[1], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 2);
+        assert_eq!(batch_results[0], records1);
+        assert_eq!(batch_results[1], records2);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 1);
+        assert_eq!(batch_results[0], records2);
+
+        // When there is a gap in the data, the gap should suppress any further results
+        // even if there are hits later in the range.
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 1, 2)
+            .unwrap();
+        assert_eq!(batch_results.len(), 0);
+
+        let batch_results = db
+            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 2, 3)
+            .unwrap();
+        assert_eq!(batch_results.len(), 0);
     }
 
     #[test_with_logger]

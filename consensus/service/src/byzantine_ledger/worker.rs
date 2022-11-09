@@ -731,7 +731,7 @@ impl<
                         },
                     );
                 }
-                Err(RetryError::Operation {
+                Err(RetryError {
                     error: PeerError::TxHashesNotInCache(tx_hashes),
                     ..
                 }) => {

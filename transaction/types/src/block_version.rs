@@ -13,9 +13,21 @@ use serde::{Deserialize, Serialize};
 /// the network is not supported, generally by requesting users to upgrade their
 /// software.
 ///
-/// If you need to manipulate block versions that cannot be understood by your
-/// version of `mc-transaction-core`, then you should use u32 to represent
-/// block version numbers.
+/// If you need to manipulate block versions that come from the network, you
+/// should use u32 to represent that.
+///
+/// Then, if you need to e.g. sign a transaction,
+/// you should try to convert them to BlockVersion.
+/// If that conversion fails, it means that this set of rules
+/// is not understood by your version of `mc-transaction-core`.
+/// This means that your build has reached end-of-life, and needs an update.
+///
+/// You should not assume that all block versions you will ever see will be
+/// understood by your version of transaction core, otherwise there will be
+/// no way for your software to help the user to upgrade when you reach EOL.
+///
+/// For example, `BlockVersion::try_from(...).unwrap()` is typically a bug
+/// if it's not in test code.
 #[derive(
     Clone,
     Copy,
@@ -101,6 +113,12 @@ impl BlockVersion {
         self.0 >= 2
     }
 
+    /// Minting_to_fog_addresses is supported in v3
+    /// [MCIP #53](https://github.com/mobilecoinfoundation/mcips/pull/53)
+    pub fn minting_to_fog_addresses_is_supported(&self) -> bool {
+        self.0 >= 3
+    }
+
     /// The extended message digest is used when signing MLSAGs
     /// in v2 and higher. This is described in
     /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25).
@@ -129,6 +147,12 @@ impl BlockVersion {
     /// `BlockData.metadata` is required starting from v3.
     /// [MCIP #43](https://github.com/mobilecoinfoundation/mcips/pull/43)
     pub fn require_block_metadata(&self) -> bool {
+        self.0 >= 3
+    }
+
+    /// MLSAGs sign extended-message-and-tx-summary digest starting from v3.
+    /// [MCIP #52](https://github.com/mobilecoinfoundation/mcips/pull/52)
+    pub fn mlsags_sign_extended_message_and_tx_summary_digest(&self) -> bool {
         self.0 >= 3
     }
 }

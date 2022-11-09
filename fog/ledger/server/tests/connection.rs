@@ -237,7 +237,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 match err {
                     Error::Connection(
                         _,
-                        retry::Error::Operation {
+                        retry::Error {
                             error:
                                 mc_fog_enclave_connection::Error::Rpc(grpcio::Error::RpcFailure(status)),
                             ..

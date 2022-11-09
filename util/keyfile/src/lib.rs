@@ -153,7 +153,7 @@ mod testing {
     use super::*;
     use bip39::{Language, MnemonicType};
     use mc_account_keys::AccountKey;
-    use mc_account_keys_slip10::{Slip10Key, Slip10KeyGenerator};
+    use mc_core::slip10::Slip10KeyGenerator;
 
     /// Test that round-tripping through a keyfile without fog gets the same
     /// result as creating the key directly.
@@ -196,10 +196,11 @@ mod testing {
         )
         .expect("Could not write keyfile");
 
-        let expected = mnemonic
-            .derive_slip10_key(0)
-            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
-            .expect("Could not create expected account key");
+        let expected = AccountKey::from(mnemonic.derive_slip10_key(0)).with_fog(
+            fog_report_url,
+            fog_report_id,
+            fog_authority_spki,
+        );
         let actual = read_keyfile(&path).expect("Could not read keyfile");
         assert_eq!(expected, actual);
     }
@@ -208,11 +209,9 @@ mod testing {
     /// and reading it back without fog details gets the same results.
     #[test]
     fn pubfile_roundtrip_no_fog() {
-        let expected = AccountKey::from(Slip10Key::from(Mnemonic::new(
-            MnemonicType::Words24,
-            Language::English,
-        )))
-        .default_subaddress();
+        let mn = Mnemonic::new(MnemonicType::Words24, Language::English);
+
+        let expected = AccountKey::from(mn.derive_slip10_key(0)).default_subaddress();
 
         let dir = tempfile::tempdir().expect("Could not create temporary directory");
         let path = dir.path().join("pubfile_no_fog");
@@ -234,9 +233,10 @@ mod testing {
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();
-        let expected = Slip10Key::from(Mnemonic::new(MnemonicType::Words24, Language::English))
-            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
-            .expect("Could not create expected account key")
+        let slip10key =
+            Mnemonic::new(MnemonicType::Words24, Language::English).derive_slip10_key(0);
+        let expected = AccountKey::from(slip10key)
+            .with_fog(fog_report_url, fog_report_id, fog_authority_spki)
             .default_subaddress();
 
         let dir = tempfile::tempdir().expect("Could not create temporary directory");

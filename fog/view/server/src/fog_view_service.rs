@@ -9,6 +9,7 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
+    fog_common::BlockRange,
     view::{
         MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus,
     },
@@ -89,7 +90,7 @@ where
         }
     }
 
-    fn auth_impl(
+    fn client_auth(
         &mut self,
         mut request: attest::AuthMessage,
         logger: &Logger,
@@ -112,6 +113,36 @@ where
                 let rpc_permissions_error = rpc_permissions_error(
                     "client_auth",
                     format!("Permission denied: {}", client_error),
+                    logger,
+                );
+                Err(rpc_permissions_error)
+            }
+        }
+    }
+
+    fn frontend_auth(
+        &mut self,
+        mut request: attest::AuthMessage,
+        logger: &Logger,
+    ) -> Result<attest::AuthMessage, RpcStatus> {
+        // TODO: Use the prost message directly, once available
+        match self.enclave.frontend_accept(request.take_data().into()) {
+            Ok((response, _)) => {
+                let mut result = attest::AuthMessage::new();
+                result.set_data(response.into());
+                Ok(result)
+            }
+            Err(frontend_error) => {
+                // This is debug because there's no requirement on the remote party to trigger
+                // it.
+                log::debug!(
+                    logger,
+                    "ViewEnclaveApi::frontend_accept failed: {}",
+                    frontend_error
+                );
+                let rpc_permissions_error = rpc_permissions_error(
+                    "fontend_accept",
+                    format!("Permission denied: {}", frontend_error),
                     logger,
                 );
                 Err(rpc_permissions_error)
@@ -212,7 +243,9 @@ where
         queries: Vec<attest::NonceMessage>,
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
-        response.set_fog_view_store_uri(fog_view_store_uri.url().to_string());
+        response.set_store_uri(fog_view_store_uri.url().to_string());
+        let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
+        response.set_block_range(block_range);
         for query in queries.into_iter() {
             let result = self.query_nonce_impl(query);
             // Only one of the query messages in an MVSQR is intended for this store
@@ -277,7 +310,7 @@ where
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.auth_impl(request, logger), logger);
+            send_result(ctx, sink, self.client_auth(request, logger), logger);
         })
     }
 
@@ -321,7 +354,7 @@ where
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.auth_impl(request, logger), logger);
+            send_result(ctx, sink, self.frontend_auth(request, logger), logger);
         })
     }
 
