@@ -1018,7 +1018,7 @@ impl SqlRecoveryDb {
         // We will get one row for each hit in the table we found
         let rows: Vec<(i64, Vec<u8>)> = query.load(&conn)?;
 
-        if rows.len() > (block_range.len() as usize) {
+        if rows.len() > block_range.len() {
             log::warn!(
                 self.logger,
                 "When querying, more responses than expected: {} > {}",
