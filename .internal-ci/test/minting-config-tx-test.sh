@@ -23,11 +23,6 @@ is_set()
     fi
 }
 
-get_block_count()
-{
-    curl http://mobilecoind-json:9090/ledger/local | jq -r .block_count
-}
-
 while (( "$#" ))
 do
     case "${1}" in
@@ -50,13 +45,9 @@ done
 is_set token_id
 is_set NAMESPACE
 
-# check block height before config tx
-
-block_count=$(get_block_count)
-
 # These should be populated by volume in toolbox container.
-governor_signer_key="/minting-keys/minter${token_id}_governor.private.pem"
-token_signer_key="/minting-keys/token${token_id}_signer.public.pem"
+governor_signer_key="/minting-keys/token_${token_id}_governor_1.private.pem"
+token_signer_key="/minting-keys/token_${token_id}_signer_1.public.pem"
 
 mc-consensus-mint-client generate-and-submit-mint-config-tx \
     --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
@@ -66,13 +57,4 @@ mc-consensus-mint-client generate-and-submit-mint-config-tx \
     --total-mint-limit 10000000000
 
 echo "-- sleep and wait for tx/blocks to sync"
-
-new_block_count=0
-echo "-- Waiting for mint config tx to commit to the block chain"
-
-while [[ $block_count -ge $new_block_count ]]
-do
-    sleep 15
-    new_block_count=$(get_block_count)
-    echo "  Current block count: $new_block_count"
-done
+sleep 15

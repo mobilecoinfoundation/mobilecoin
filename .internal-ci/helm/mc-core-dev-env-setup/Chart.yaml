@@ -26,16 +26,6 @@ dependencies:
   repository: file://../consensus-node-config
   version: 0.0.0
   condition: consensusNodeConfig3.enabled
-- name: consensus-node-config
-  alias: consensusNodeConfig4
-  repository: file://../consensus-node-config
-  version: 0.0.0
-  condition: consensusNodeConfig4.enabled
-- name: consensus-node-config
-  alias: consensusNodeConfig5
-  repository: file://../consensus-node-config
-  version: 0.0.0
-  condition: consensusNodeConfig5.enabled
 - name: fog-ingest-config
   alias: fogIngestConfig
   repository: file://../fog-ingest-config

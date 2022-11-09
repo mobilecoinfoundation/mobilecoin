@@ -11,7 +11,7 @@ declare -a signer_keys_pub
 declare -a signer_keys_pri
 
 count=1
-while [ ${count} -le 5 ]
+while [ ${count} -le 3 ]
 do
   key=$("${location}/generate_ed25519_keys.sh")
   signer_keys_pub+=("$(echo -n "${key}" | grep public | awk -F': ' '{print $2}')")
@@ -41,10 +41,6 @@ global:
           signerPublicKey: ${signer_keys_pub[1]}
         3:
           signerPublicKey: ${signer_keys_pub[2]}
-        4:
-          signerPublicKey: ${signer_keys_pub[3]}
-        5:
-          signerPublicKey: ${signer_keys_pub[4]}
 
     tokensConfig:
       tokensSignedJson: |
@@ -80,16 +76,6 @@ consensusNodeConfig3:
   node:
     msgSignerKey:
       privateKey: ${signer_keys_pri[2]}
-
-consensusNodeConfig4:
-  node:
-    msgSignerKey:
-      privateKey: ${signer_keys_pri[3]}
-
-consensusNodeConfig5:
-  node:
-    msgSignerKey:
-      privateKey: ${signer_keys_pri[4]}
 
 fogServicesConfig:
   fogReport:
