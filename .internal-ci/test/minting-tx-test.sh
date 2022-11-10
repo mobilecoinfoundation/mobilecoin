@@ -52,7 +52,7 @@ is_set token_id
 is_set NAMESPACE
 
 # These should be populated by volume in toolbox container.
-token_signer_key="/minting-keys/token${token_id}_signer.private.pem"
+token_signer_key="/minting-keys/token_${token_id}_signer_1.private.pem"
 
 keys=$(find "${key_dir}" -name "*.b58pub")
 

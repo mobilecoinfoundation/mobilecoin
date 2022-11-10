@@ -9,16 +9,22 @@ name: mobilecoin-workflow-dev-reset
 on:
   workflow_call:
     inputs:
-      namespace:
-        description: "Target Namespace"
-        type: string
-        required: true
       delete_namespace:
         description: "Delete Target Namespace"
         type: boolean
         default: false
         required: false
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
     secrets:
+      LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
       RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
@@ -28,29 +34,25 @@ on:
       RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
-      LEDGER_AWS_ACCESS_KEY_ID:
-        description: "Ledger AWS S3 access"
-        required: true
-      LEDGER_AWS_SECRET_ACCESS_KEY:
-        description: "Ledger AWS S3 access"
-        required: true
 
 jobs:
-  reset-releases:
+  reset-helm:
     runs-on: [self-hosted, Linux, small]
+    environment:
+      name: dev
     strategy:
       matrix:
         chart:
         - consensus-node-1
         - consensus-node-2
         - consensus-node-3
-        - consensus-node-4
-        - consensus-node-5
         - fog-ingest-blue
         - fog-ingest-green
         - fog-recovery-postgresql
         - fog-services
         - mobilecoind
+        - mc-core-common-config
+        - mc-core-dev-env-setup
     steps:
     - name: Delete release
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -62,10 +64,12 @@ jobs:
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
-  reset-storage:
-    needs:
-    - reset-releases
+  reset-k8s:
     runs-on: [self-hosted, Linux, small]
+    needs:
+    - reset-helm
+    environment:
+      name: dev
     steps:
     - name: Delete PersistentVolumeClaims
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -76,12 +80,22 @@ jobs:
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
 
+    - name: Delete namespace
+      if: inputs.delete_namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: namespace-delete
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
   reset-s3:
-    needs:
-    - reset-releases
+    environment:
+      name: dev
     runs-on: [self-hosted, Linux, small]
     container:
-      image: amazon/aws-cli:latest
+      image: mobilecoin/gha-s3-pg-helper:v0
     steps:
     - name: Clear out s3 bucket objects
       env:
@@ -91,23 +105,7 @@ jobs:
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
       run: |
-        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node1.${NAMESPACE}.development.mobilecoin.com
-        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node2.${NAMESPACE}.development.mobilecoin.com
-        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node3.${NAMESPACE}.development.mobilecoin.com
-        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node4.${NAMESPACE}.development.mobilecoin.com
-        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node5.${NAMESPACE}.development.mobilecoin.com
-
-  delete-namespace:
-    if: inputs.delete_namespace
-    needs:
-    - reset-storage
-    runs-on: [self-hosted, Linux, small]
-    steps:
-    - name: Delete namespace
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: namespace-delete
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        for i in 1 2 3
+        do
+          aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com
+        done
