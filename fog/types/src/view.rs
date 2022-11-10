@@ -218,7 +218,7 @@ pub struct TxOutSearchResult {
     #[prost(bytes, tag = "3")]
     pub ciphertext: Vec<u8>,
     /// The payload length
-    #[prost(uint32, tag = "4")]
+    #[prost(fixed32, tag = "4")]
     pub payload_length: u32,
 }
 
