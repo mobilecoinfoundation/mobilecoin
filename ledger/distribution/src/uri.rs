@@ -76,8 +76,12 @@ impl FromStr for Uri {
                     }
                 });
 
-                let region = region_param
-                    .map_or_else(|| Region::default(), |param| Region::from_str(&param).unwrap_or(Region::Custom { name: "custom".to_string(), endpoint: param }));
+                let region = region_param.map_or(Region::default, |param| {
+                    Region::from_str(&param).unwrap_or(Region::Custom {
+                        name: "custom".to_string(),
+                        endpoint: param,
+                    })
+                });
 
                 Destination::S3 {
                     path: PathBuf::from(path),
