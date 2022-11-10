@@ -53,24 +53,24 @@ on:
         required: true
       fog_distribution:
         description: "Run fog-distribution test"
-        type: string
+        type: boolean
         required: false
-        default: 'true'
+        default: true
       testing_block_v0:
         description: "Run block v0 tests"
-        type: string
+        type: boolean
         required: false
-        default: 'true'
+        default: true
       testing_block_v2:
         description: "Run block v2 tests"
-        type: string
+        type: boolean
         required: false
-        default: 'true'
+        default: true
       testing_block_v3:
         description: "Run block v3 tests"
-        type: string
+        type: boolean
         required: false
-        default: 'true'
+        default: true
     secrets:
       RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -81,21 +81,13 @@ on:
       RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
-      FOG_REPORT_SIGNING_CA_CERT:
-        description: "Fog Report Signing CA"
-        required: true
-      CACHE_BUSTER:
-        description: "string to make cache unique"
-        required: true
-      CLIENT_AUTH_USER_VALUE:
-        description: "client auth rendered value"
-        required: false
 
 jobs:
   cd-integration-tests:
     runs-on: [self-hosted, Linux, small]
+    environment:
+      name: dev
     env:
-      FOG_REPORT_SIGNING_CA_CERT_PATH: .tmp/fog_report_signing_ca_cert.pem
       SRC_KEYS_DIR: /tmp/sample_data/keys
       SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
       V2_DST_KEYS_DIR: /tmp/2-testing/keys
@@ -136,7 +128,7 @@ jobs:
           /util/generate_origin_data.sh
 
     - name: Test - fog-distribution
-      if: inputs.fog_distribution == 'true'
+      if: inputs.fog_distribution
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -149,7 +141,7 @@ jobs:
           /test/fog-distribution-test.sh
 
     - name: Test - block-v0 - fog-test-client
-      if: inputs.testing_block_v0 == 'true'
+      if: inputs.testing_block_v0
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -168,11 +160,11 @@ jobs:
             --num-transactions 32 \
             --consensus-wait 300 \
             --transfer-amount 20 \
-            --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
-            --fog-ledger fog-ledger://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+            --fog-view fog-view://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
+            --fog-ledger fog-ledger://fog.${{ inputs.namespace }}.development.mobilecoin.com:443
 
     - name: Test - block-v0 - mobilecoind-grpc (previously Wallet Integration)
-      if: inputs.testing_block_v0 == 'true'
+      if: inputs.testing_block_v0
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -185,7 +177,7 @@ jobs:
           /test/mobilecoind-integration-test.sh
 
     - name: Setup - block-v2 - Copy subset of non-fog keys
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -202,7 +194,7 @@ jobs:
             --end ${{ env.END_KEYS }}
 
     - name: Setup - block-v2 - Copy subset of fog keys
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -219,7 +211,7 @@ jobs:
             --end ${{ env.END_KEYS }}
 
     - name: Test - block-v2 - Minting config tx
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -233,7 +225,7 @@ jobs:
             --token-id 8192
 
     - name: Test - block-v2 - Minting tx
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -248,7 +240,7 @@ jobs:
             --token-id 8192
 
     - name: Test - block-v2 - mobilecoind-json integration
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -262,7 +254,7 @@ jobs:
             --key-dir ${{ env.V2_DST_KEYS_DIR }}
 
     - name: Test - block-v2 - use drain_accounts to transfer id 1 balances to fog keys
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -279,7 +271,7 @@ jobs:
             --token-id 8192
 
     - name: Test - block-v2 - fog-test-client token id 0
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -294,7 +286,7 @@ jobs:
             --token-id 0
 
     - name: Test - block-v2 - fog-test-client token id 1
-      if: inputs.testing_block_v2 == 'true'
+      if: inputs.testing_block_v2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -309,7 +301,7 @@ jobs:
             --token-id 8192
 
     - name: Setup - block-v3 - Copy subset of non-fog keys
-      if: inputs.testing_block_v3 == 'true'
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -326,7 +318,7 @@ jobs:
             --end ${{ env.END_KEYS }}
 
     - name: Setup - block-v3 - Copy subset of fog keys
-      if: inputs.testing_block_v3 == 'true'
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -343,7 +335,7 @@ jobs:
             --end ${{ env.END_KEYS }}
 
     - name: Test - block-v3 - Minting config tx
-      if: inputs.testing_block_v3 == 'true'
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -357,7 +349,7 @@ jobs:
             --token-id 8192
 
     - name: Test - block-v3 - Minting tx
-      if: inputs.testing_block_v3 == 'true'
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -372,7 +364,7 @@ jobs:
             --token-id 8192
 
     - name: Test - block-v3 - mobilecoind-json integration
-      if: inputs.testing_block_v3 == 'true'
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -385,8 +377,8 @@ jobs:
           /test/mobilecoind-json-integration-test.sh \
             --key-dir ${{ env.V3_DST_KEYS_DIR }}
 
-    - name: Test - block-v3 - use drain_accounts to transfer id 1 balances to fog keys
-      if: inputs.testing_block_v3 == 'true'
+    - name: Test - block-v3 - use drain_accounts to transfer id 8192 balances to fog keys
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -402,8 +394,8 @@ jobs:
             --fee 1024 \
             --token-id 8192
 
-    - name: Test - block-v3 - fog-test-client token ids 0,1
-      if: inputs.testing_block_v3 == 'true'
+    - name: Test - block-v3 - fog-test-client token ids 0,8192
+      if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
@@ -416,4 +408,3 @@ jobs:
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --token-ids 0,8192
-

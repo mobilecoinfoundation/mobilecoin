@@ -16,7 +16,7 @@ exists()
 
 location=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 BASE_PATH="${BASE_PATH:-.tmp}"
-minting_path="${BASE_PATH}/seeds/minting"
+MINTING_BASE_PATH="${MINTING_BASE_PATH:-.tmp/minting}"
 
 # check for required files
 exists "${location}/tokens.base.json"
@@ -34,28 +34,41 @@ do
     fi
 
     echo "Token ID: ${id} - Checking for governor ed25519 keys"
-    exists "${minting_path}/minter${id}_governor.public.pem"
-    sha256sum "${minting_path}/minter8192_governor.public.pem"
+    threshold=0
+    governors=""
 
-    echo "Token ID: ${id} - Add governor signer pub keys and threshold to json"
-    minter_governor=$(cat "${minting_path}/minter${id}_governor.public.pem")
+    files="${MINTING_BASE_PATH}/token_${id}_governor_*"
 
-    json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signers) |= \"${minter_governor}\"")
+    # concat governor keys
+    for g in $files
+    do
+        if [[ "${g}" =~ "public" ]]
+        then
+            echo "-- Found governor: ${g}, adding it to the governors list."
+            sha256sum "${g}"
 
-    json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.threshold) |= 1")
+            governors="${governors}$(cat "${g}")"
+            ((threshold+=1))
+        fi
+    done
+
+
+    json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.signers) |= \"${governors}\"")
+
+    json=$(echo "${json}" | jq "(.tokens[] | select(.token_id == ${id}) | .governors.threshold) |= ${threshold}")
 done
 
 #output unsigned tokens
 echo "$json" | jq . > "${BASE_PATH}/tokens.json"
 
 echo "Checking for minting_trust_root ed25519 keys"
-exists "${minting_path}/minting_trust_root.private.pem"
-sha256sum "${minting_path}/minting_trust_root.private.pem"
+exists "${MINTING_BASE_PATH}/minting_trust_root.private.pem"
+sha256sum "${MINTING_BASE_PATH}/minting_trust_root.private.pem"
 
 # Sign tokens file
-echo "Signing tokens file"
+echo "Signing the tokens file"
 mc-consensus-mint-client sign-governors --tokens "${BASE_PATH}/tokens.json" \
-    --signing-key "${minting_path}/minting_trust_root.private.pem" \
+    --signing-key "${MINTING_BASE_PATH}/minting_trust_root.private.pem" \
     --output-json "${BASE_PATH}/tokens.signed.json"  >/dev/null
 
 cat "${BASE_PATH}/tokens.signed.json"
