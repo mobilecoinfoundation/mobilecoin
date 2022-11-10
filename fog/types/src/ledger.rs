@@ -2,6 +2,7 @@
 
 use alloc::vec::Vec;
 use displaydoc::Display;
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
@@ -217,4 +218,40 @@ impl TryFrom<u32> for KeyImageResultCode {
             Err(())
         }
     }
+}
+
+/// Status reported back from a key image store in response to a request.
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum MultiKeyImageStoreResponseStatus {
+    /// Query succeeded
+    Success = 0,
+    /// The store either didn't have an existing Noise Protocol encrypted
+    /// session with the router, or it did but the cryptography failed.
+    AuthenticationError = 1,
+    /// The store has not properly started yet when this query was received.
+    NotReady = 2,
+}
+impl Default for MultiKeyImageStoreResponseStatus {
+    fn default() -> Self {
+        Self::Success
+    }
+}
+
+/// A request sent out by a Fog Ledger Router to the various "store" backends
+/// it is connected to, attempting to check a key image. 
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct MultiKeyImageStoreRequest {
+    /// A key image request re-encrypted for each store. 
+    pub queries: Vec<EnclaveMessage<NonceSession>>,
+}
+
+/// Response from key image stores in reply to a MultiKeyImageStoreRequest.
+#[derive(PartialEq,Clone,Default)]
+pub struct MultiKeyImageStoreResponse {
+    /// The query response itself. 
+    pub query_response: EnclaveMessage<NonceSession>,
+    /// Which ledger store generated this response? 
+    pub fog_ledger_store_uri: alloc::string::String,
+    /// Was this query a success, or was an error encountered? 
+    pub status: MultiKeyImageStoreResponseStatus,
 }

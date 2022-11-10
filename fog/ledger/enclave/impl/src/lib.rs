@@ -13,7 +13,7 @@
 extern crate alloc;
 
 mod key_image_store;
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
 use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -32,7 +32,7 @@ use mc_fog_ledger_enclave_api::{
     Error, KeyImageData, LedgerEnclave, OutputContext, Result, UntrustedKeyImageQueryResponse,
 };
 use mc_fog_types::ledger::{
-    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
+    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse, MultiKeyImageStoreResponse,
 };
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
@@ -197,12 +197,12 @@ where
         Ok(())
     }
 
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
         Ok(self.ake.backend_init(ledger_store_id)?)
     }
 
     #[allow(unused_variables)]
-    fn finish_connecting_to_key_image_store(
+    fn ledger_store_connect(
         &self,
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
@@ -231,7 +231,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiKeyImageStoreResponse>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -348,7 +348,7 @@ where
         Ok(response)
     }
 
-    fn router_accept(&self, auth_request: NonceAuthRequest) 
+    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
         -> Result<(NonceAuthResponse, NonceSession)> {
         self.ake.frontend_accept(auth_request)
             .map_err(|e| e.into())

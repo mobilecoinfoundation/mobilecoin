@@ -22,7 +22,7 @@ use mc_fog_ledger_server::{
     DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
     LedgerStoreConfig,
 };
-use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
+use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery, MultiKeyImageStoreResponse};
 use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri, ConnectionUri};
 use mc_ledger_db::{LedgerDB, test_utils::recreate_ledger_db};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
@@ -138,7 +138,7 @@ lazy_static::lazy_static! {
 }
 
 #[test_with_logger]
-pub fn simple_roundtrip(logger: Logger) {
+pub fn direct_key_image_store_check(logger: Logger) {
     const TEST_NAME: &'static str = "key_image_store_simple_roundtrip";
     const PORT_START: u16 = 3223; 
     const OMAP_CAPACITY: u64 = 768; 
@@ -193,12 +193,12 @@ pub fn simple_roundtrip(logger: Logger) {
 
     // Get the enclave to generate an auth request.
     let client_auth_request = enclave
-        .connect_to_key_image_store(responder_id.clone())
+        .ledger_store_init(responder_id.clone())
         .unwrap();
     // Submit auth request and wait for the response.
-    let (auth_response, router_to_store_session ) = enclave.router_accept(client_auth_request).unwrap(); 
+    let (auth_response, router_to_store_session ) = enclave.frontend_accept(client_auth_request).unwrap(); 
     // Finish the enclave's handshake with itself.
-    enclave.finish_connecting_to_key_image_store(responder_id.clone(), auth_response.into()).unwrap();
+    enclave.ledger_store_connect(responder_id.clone(), auth_response.into()).unwrap();
     println!("router_to_store_session is: {:?}", &router_to_store_session);
 
     // Generate a dummy key image we're going to check against.
@@ -278,7 +278,9 @@ pub fn simple_roundtrip(logger: Logger) {
         max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
     };
 
-    let _result = enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap(); 
+    let result = enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap(); 
+
+    let mut response = MultiKeyImageStoreResponse::default();
 
     report_cache_thread.stop().unwrap();
 }

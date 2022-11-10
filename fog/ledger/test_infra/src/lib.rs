@@ -88,14 +88,14 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn connect_to_key_image_store(
+    fn ledger_store_init(
         &self,
         _ledger_store_id: ResponderId,
     ) -> EnclaveResult<NonceAuthRequest> {
         unimplemented!()
     }
 
-    fn finish_connecting_to_key_image_store(
+    fn ledger_store_connect(
         &self,
         _ledger_store_id: ResponderId,
         _ledger_store_auth_response: NonceAuthResponse,
@@ -136,7 +136,7 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn router_accept(
+    fn frontend_accept(
         &self,
         _auth_message: NonceAuthRequest
     ) -> EnclaveResult<(NonceAuthResponse, NonceSession)> {

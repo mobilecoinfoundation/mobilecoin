@@ -192,7 +192,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     }
 
     // Router/store system.
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
         let inbuf =
             mc_util_serial::serialize(&EnclaveCall::ConnectToKeyImageStore(ledger_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
@@ -200,7 +200,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     }
 
     #[allow(unused_variables)]
-    fn finish_connecting_to_key_image_store(
+    fn ledger_store_connect(
         &self,
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
@@ -260,7 +260,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn router_accept(&self, auth_request: NonceAuthRequest) 
+    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
         -> Result<(NonceAuthResponse, NonceSession)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::RouterAccept(
             auth_request

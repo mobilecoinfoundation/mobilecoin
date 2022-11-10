@@ -327,7 +327,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     logger: Logger,
 ) -> Result<(), RouterServerError> {
     let ledger_store_id = ResponderId::from_str(&ledger_store_url.to_string())?;
-    let client_auth_request = enclave.connect_to_key_image_store(ledger_store_id.clone())?;
+    let client_auth_request = enclave.ledger_store_init(ledger_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("authenticate-ledger-store".to_string())
@@ -342,7 +342,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     let auth_response = auth_unary_receiver.await?;
 
     let result =
-        enclave.finish_connecting_to_key_image_store(ledger_store_id, auth_response.into())?;
+        enclave.ledger_store_connect(ledger_store_id, auth_response.into())?;
 
     Ok(result)
 }

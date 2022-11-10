@@ -13,7 +13,8 @@ pub use crate::{
     error::{AddRecordsError, Error},
     messages::{EnclaveCall, KeyImageData},
 };
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
+use mc_fog_types::ledger::MultiKeyImageStoreResponse;
 use core::result::Result as StdResult;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -107,17 +108,17 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Begin a connection to a Fog Ledger Store. The enclave calling this
     /// method, most likely a router, will act as a client to the Fog Ledger
     /// Store.
-    fn connect_to_key_image_store(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
 
     /// As a "Store" in a Router/Store system, 
     /// accept a connection from a Router. 
-    fn router_accept(&self, auth_request: NonceAuthRequest) 
+    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
         -> Result<(NonceAuthResponse, NonceSession)>;
 
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// NonceAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    fn finish_connecting_to_key_image_store(
+    fn ledger_store_connect(
         &self,
         ledger_store_id: ResponderId,
         ledger_store_auth_response: NonceAuthResponse,
@@ -153,7 +154,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+        shard_query_responses: Vec<MultiKeyImageStoreResponse>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
