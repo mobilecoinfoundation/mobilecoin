@@ -25,8 +25,8 @@ displaydoc = "0.2"
 protobuf = "2.27.1"
 retry = "2.0"
 # TODO: Replace with https://github.com/awslabs/aws-sdk-rust when it is ready.
-rusoto_core = { git = "https://github.com/legokichi/rusoto.git", branch = "enable-http1", features = ["rustls"], default_features = false }
-rusoto_s3 = { git = "https://github.com/legokichi/rusoto.git", branch = "enable-http1", features = ["rustls"], default_features = false }
+rusoto_core = { git = "https://github.com/mobilecoinfoundation/rusoto.git", features = ["rustls"], default_features = false }
+rusoto_s3 = { git = "https://github.com/mobilecoinfoundation/rusoto.git", features = ["rustls"], default_features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["rt-multi-thread"] }

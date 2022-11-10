@@ -7113,7 +7113,7 @@ dependencies = [
 [[package]]
 name = "rusoto_core"
 version = "0.48.0"
-source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
+source = "git+https://github.com/mobilecoinfoundation/rusoto.git#dfbae360f7267782e9d35b59b5db83fd4fdbe799"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -7137,7 +7137,7 @@ dependencies = [
 [[package]]
 name = "rusoto_credential"
 version = "0.48.0"
-source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
+source = "git+https://github.com/mobilecoinfoundation/rusoto.git#dfbae360f7267782e9d35b59b5db83fd4fdbe799"
 dependencies = [
  "async-trait",
  "chrono",
@@ -7154,7 +7154,7 @@ dependencies = [
 [[package]]
 name = "rusoto_s3"
 version = "0.48.0"
-source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
+source = "git+https://github.com/mobilecoinfoundation/rusoto.git#dfbae360f7267782e9d35b59b5db83fd4fdbe799"
 dependencies = [
  "async-trait",
  "bytes 1.1.0",
@@ -7166,7 +7166,7 @@ dependencies = [
 [[package]]
 name = "rusoto_signature"
 version = "0.48.0"
-source = "git+https://github.com/legokichi/rusoto.git?branch=enable-http1#bf26da8fa88b9f05311488754c14b50340e85364"
+source = "git+https://github.com/mobilecoinfoundation/rusoto.git#dfbae360f7267782e9d35b59b5db83fd4fdbe799"
 dependencies = [
  "base64 0.13.1",
  "bytes 1.1.0",
