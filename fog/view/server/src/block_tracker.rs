@@ -154,6 +154,25 @@ where
                     continue;
                 }
 
+                // Skip the the below checks when the next block index is less than the shard's
+                // start block. This prevents prior missed blocks from from impeding the shard's
+                // highest processed block count.
+                //
+                // E.g. Say block index 3 is missed, and this shard is responsible for 5 to 8. Without
+                // this check, the highest processed block count will be stuck on 2 (the
+                // `last_processed_block`). Even if the shard processes blocks 5 through 8, this
+                // highest processed block count would stay at 2 forever.
+                //
+                // Note: we don't skip the below checks for the shard's end block because the shard
+                // may not have seen the higher blocks. Therefore we could potentially be incrementing
+                // the highest processed block count for blocks that don't exist yet. If there
+                // are missed blocks after the shard's end block, then that's fine because the logic
+                // below ensures that each block will be incremented by one until the first processed
+                // block after the missed blocks.
+                if next_block_index < self.sharding_strategy.get_block_range().start_block {
+                    continue;
+                }
+
                 // Check if the last block we actually loaded with this key is less than
                 // next_block_index, if so then this is what we are stuck on
                 if let Some(last_processed_block) =
