@@ -3096,7 +3096,7 @@ mod tests {
 
         // The two mint configs have different nonces for the same token ID.
         // Note that we update the signature since we don't want to fail on it not
-        // matching the govenors for the different token.
+        // matching the governors for the different token.
         let signers1_refs = signers1.iter().collect::<Vec<_>>();
         mint_config_tx2.signature =
             sign_mint_config_tx_prefix(&mint_config_tx2.prefix, &signers1_refs);
@@ -3198,7 +3198,7 @@ mod tests {
         )
         .expect("Mint txs should be valid");
 
-        // Changing the nonce of the second mint cotx to match the first
+        // Changing the nonce of the second mint tx to match the first
         // should cause a failure.
         mint_tx2.prefix.nonce = mint_tx1.prefix.nonce.clone();
         match SgxConsensusEnclave::validate_mint_txs(
