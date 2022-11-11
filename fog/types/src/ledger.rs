@@ -221,7 +221,7 @@ impl TryFrom<u32> for KeyImageResultCode {
 }
 
 /// Status reported back from a key image store in response to a request.
-#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum MultiKeyImageStoreResponseStatus {
     /// Query succeeded
     Success = 0,
@@ -246,7 +246,7 @@ pub struct MultiKeyImageStoreRequest {
 }
 
 /// Response from key image stores in reply to a MultiKeyImageStoreRequest.
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct MultiKeyImageStoreResponse {
     /// The query response itself. 
     pub query_response: EnclaveMessage<NonceSession>,

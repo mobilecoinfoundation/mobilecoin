@@ -13,8 +13,7 @@ pub use crate::{
     error::{AddRecordsError, Error},
     messages::{EnclaveCall, KeyImageData},
 };
-use alloc::vec::Vec;
-use mc_fog_types::ledger::MultiKeyImageStoreResponse;
+use alloc::{vec::Vec, collections::BTreeMap};
 use core::result::Result as StdResult;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -154,7 +153,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: Vec<MultiKeyImageStoreResponse>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 

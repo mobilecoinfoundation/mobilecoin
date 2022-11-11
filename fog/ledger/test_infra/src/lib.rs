@@ -121,9 +121,8 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _sealed_query: mc_attest_enclave_api::SealedClientMessage,
         _shard_query_responses: std::collections::BTreeMap<
-            ResponderId,
-            EnclaveMessage<NonceSession>,
-        >,
+            ResponderId, 
+            EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }

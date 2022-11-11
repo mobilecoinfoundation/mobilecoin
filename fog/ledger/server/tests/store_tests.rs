@@ -1,7 +1,7 @@
 use std::{
     path::PathBuf,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex}, collections::BTreeMap,
 };
 
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
@@ -16,16 +16,17 @@ use mc_common::{
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::{CryptoRng, RngCore};
-use mc_fog_ledger_enclave::{KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE};
+use mc_fog_ledger_enclave::{KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE, CheckKeyImagesResponse};
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{
     DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
     LedgerStoreConfig,
 };
-use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery, MultiKeyImageStoreResponse};
+use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri, ConnectionUri};
 use mc_ledger_db::{LedgerDB, test_utils::recreate_ledger_db};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
+use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::{AnonymousAuthenticator};
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{SeedableRng, RngType, Rng};
@@ -250,7 +251,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // Decrypt and seal
     let sealed_query = enclave.decrypt_and_seal_query(msg).unwrap();
     println!("Client session on sealed_query is {:?}", &sealed_query.channel_id); 
-    let mut multi_query =  enclave.create_multi_key_image_store_query_data(sealed_query).unwrap();
+    let mut multi_query =  enclave.create_multi_key_image_store_query_data(sealed_query.clone()).unwrap();
 
     let mut query: EnclaveMessage<NonceSession> = multi_query.pop().unwrap(); 
     println!("Nonce session on message is {:?}", query.channel_id); 
@@ -280,7 +281,26 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let result = enclave.check_key_image_store(query, untrusted_kiqr.clone()).unwrap(); 
 
-    let mut response = MultiKeyImageStoreResponse::default();
+    let responses_btree: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::from([(responder_id, result)]);
+
+    let client_response = enclave.collate_shard_query_responses(sealed_query, responses_btree).unwrap();
+
+    let plaintext_bytes = noise_connection.decrypt(&client_response.aad, &client_response.data).unwrap();
+
+    let done_response: CheckKeyImagesResponse = mc_util_serial::decode(&plaintext_bytes).unwrap();
+    assert_eq!(done_response.results.len(), 1);
+
+    let test_results: Vec<(KeyImage, u32)> = done_response.results.into_iter()
+        .map(|result| {
+            (result.key_image.clone(), result.key_image_result_code)
+        }).collect();
+
+    // The key image result code for a spent key image is 1.
+    assert!(
+        test_results.contains(
+            &(test_key_image.key_image, 1) 
+        )
+    );
 
     report_cache_thread.stop().unwrap();
 }

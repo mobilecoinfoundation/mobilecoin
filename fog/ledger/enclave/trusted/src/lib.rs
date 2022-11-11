@@ -64,12 +64,12 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 
         // Router / Store system
         // Router-side
-        EnclaveCall::ConnectToKeyImageStore(responder_id) => {
-            serialize(&ENCLAVE.connect_to_key_image_store(responder_id))
+        EnclaveCall::LedgerStoreInit(responder_id) => {
+            serialize(&ENCLAVE.ledger_store_init(responder_id))
         }
-        EnclaveCall::FinishConnectingToKeyImageStore(responder_id, client_auth_response) => {
+        EnclaveCall::LedgerStoreConnect(responder_id, client_auth_response) => {
             serialize(
-                &ENCLAVE.finish_connecting_to_key_image_store(responder_id, client_auth_response),
+                &ENCLAVE.ledger_store_connect(responder_id, client_auth_response),
             )
         }
         EnclaveCall::DecryptAndSealQuery(client_query) => {
@@ -84,8 +84,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::CheckKeyImageStore(req, untrusted_keyimagequery_response) => {
             serialize(&ENCLAVE.check_key_image_store(req, untrusted_keyimagequery_response))
         }
-        EnclaveCall::RouterAccept(auth_message) => {
-            serialize(&ENCLAVE.router_accept(auth_message))
+        EnclaveCall::FrontendAccept(auth_message) => {
+            serialize(&ENCLAVE.frontend_accept(auth_message))
         }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))

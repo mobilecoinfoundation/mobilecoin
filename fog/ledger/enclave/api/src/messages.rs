@@ -2,7 +2,7 @@
 
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{vec::Vec, collections::BTreeMap};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 
 use mc_attest_enclave_api::{
@@ -107,19 +107,19 @@ pub enum EnclaveCall {
     ///  Add key image data to the ORAM.
     AddKeyImageData(Vec<KeyImageData>),
 
-    /// The [LedgerEnclave::connect_to_store()] method.
+    /// The [LedgerEnclave::ledger_store_init()] method.
     ///
     /// Begin a connection to a Fog Ledger Store. The enclave calling this
     /// method, most likely a router, will act as a client to the Fog Ledger
     /// Store.
-    ConnectToKeyImageStore(ResponderId),
+    LedgerStoreInit(ResponderId),
 
-    /// The [LedgerEnclave::finish_connecting_to_store()] method.
+    /// The [LedgerEnclave::ledger_store_connect()] method.
     ///
     /// Complete the connection to a Fog Ledger Store that has accepted our
     /// ClientAuthRequest. This is meant to be called after the enclave has
     /// initialized and discovers a new Fog Ledger Store.
-    FinishConnectingToKeyImageStore(ResponderId, NonceAuthResponse),
+    LedgerStoreConnect(ResponderId, NonceAuthResponse),
 
     /// The [LedgerEnclave::decrypt_and_seal_query()] method.
     ///
@@ -148,8 +148,8 @@ pub enum EnclaveCall {
     /// client.
     CheckKeyImageStore(EnclaveMessage<NonceSession>, UntrustedKeyImageQueryResponse),
 
-    /// The [LedgerEnclave::router_accept()] method.
+    /// The [LedgerEnclave::FrontendAccept()] method.
     /// Called by a Store accepting a Router's incoming
     /// connection.
-    RouterAccept(NonceAuthRequest),
+    FrontendAccept(NonceAuthRequest),
 }

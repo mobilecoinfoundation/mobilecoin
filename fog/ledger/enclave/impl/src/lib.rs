@@ -13,7 +13,7 @@
 extern crate alloc;
 
 mod key_image_store;
-use alloc::vec::Vec;
+use alloc::{vec::Vec, collections::BTreeMap};
 use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -32,7 +32,7 @@ use mc_fog_ledger_enclave_api::{
     Error, KeyImageData, LedgerEnclave, OutputContext, Result, UntrustedKeyImageQueryResponse,
 };
 use mc_fog_types::ledger::{
-    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse, MultiKeyImageStoreResponse,
+    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
 };
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
@@ -231,7 +231,7 @@ where
     fn collate_shard_query_responses(
         &self,
         sealed_query: SealedClientMessage,
-        shard_query_responses: Vec<MultiKeyImageStoreResponse>,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
     ) -> Result<EnclaveMessage<ClientSession>> {
         if shard_query_responses.is_empty() {
             return Ok(EnclaveMessage::default());
@@ -247,8 +247,8 @@ where
 
         let shard_query_responses = shard_query_responses
             .into_iter()
-            .map(|(responder_id, enclave_message)| {
-                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &enclave_message)?;
+            .map(|(responder_id, query_response)| {
+                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &query_response)?;
                 let query_response: CheckKeyImagesResponse =
                     mc_util_serial::decode(&plaintext_bytes)?;
 
