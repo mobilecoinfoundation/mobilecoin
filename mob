@@ -138,6 +138,48 @@ def get_git_commit():
             eprint("Couldn't get git revision")
             return None
 
+def get_cargo_build_jobs():
+    """
+    Return the value to use for the `CARGO_BUILD_JOBS` environment variable. If
+    this is `None` then `CARGO_BUILD_JOBS` should not be set.
+
+    When the `CARGO_BUILD_JOBS` environment variable is already set, it's value
+    will be returned. Otherwise, a value will be provided that tries to maximize
+    resource usage without hitting limits.
+    """
+    jobs = os.environ.get("CARGO_BUILD_JOBS")
+
+    # The user set the jobs value so prefer it.
+    if jobs is not None:
+        return jobs
+
+    try:
+        import psutil
+    except ImportError:
+        return None
+
+    # For many binaries linking takes 2GB per binary. This often happens at the
+    # end of a build which can result in all cores trying to link, thus using
+    # 2GB per core. For a 16 core machine 32GB would need to be available. This
+    # logic will limit the build jobs to prevent out of memory issues.
+    # https://github.com/rust-lang/cargo/issues/9157 talks about trying to fix
+    # this in cargo.
+    cpus = psutil.cpu_count()
+    ram = psutil.virtual_memory().total
+
+    one_gig = 2**30
+
+    # Remove 5GB for local PC overhead
+    max_jobs = (ram - (5 * one_gig)) // (2 * one_gig)
+    jobs = min(max_jobs, cpus)
+
+    # Can happen if `ram` happened to be less than 5GB.
+    if jobs <= 0:
+        return None
+
+    return jobs
+
+
 ##
 # Environment checks
 ##
@@ -248,6 +290,10 @@ if git_commit:
 
 for pair in build_env:
     docker_run.extend(["--env", pair])
+
+jobs = get_cargo_build_jobs()
+if jobs is not None:
+    docker_run.extend(["--env", f"CARGO_BUILD_JOBS={jobs}"])
 
 # If running interactively (with a tty), get a tty in the container also
 # This allows colored build logs when running locally without messing up logs in CI
