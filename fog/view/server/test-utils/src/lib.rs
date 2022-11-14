@@ -29,7 +29,7 @@ use mc_fog_view_server::{
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
     thread::sleep,
@@ -231,16 +231,16 @@ pub async fn assert_e_tx_out_records(
     client: &mut FogViewRouterGrpcClient,
     records: &[ETxOutRecord],
 ) -> Result<QueryResponse, Error> {
-    // Construct an array of expected results that includes both records we expect
-    // to find and records we expect not to find.
-    let mut expected_results = HashSet::new();
-    for record in records {
-        expected_results.insert(TxOutSearchResult {
+    let mut expected_results = records
+        .iter()
+        .map(|record| TxOutSearchResult {
             search_key: record.search_key.clone(),
             result_code: TxOutSearchResultCode::Found as u32,
             ciphertext: record.payload.clone(),
-        });
-    }
+            payload_length: record.payload.len() as u32,
+        })
+        .collect::<Vec<_>>();
+    expected_results.sort_by_key(|result| result.ciphertext.clone());
 
     let search_keys: Vec<_> = expected_results
         .iter()
@@ -251,8 +251,10 @@ pub async fn assert_e_tx_out_records(
     loop {
         let result = client.query(0, 0, search_keys.clone()).await.unwrap();
 
-        let actual_tx_out_search_results: HashSet<TxOutSearchResult> =
+        let mut actual_tx_out_search_results =
             interpret_tx_out_search_results(&result.tx_out_search_results);
+        actual_tx_out_search_results.sort_by_key(|result| result.ciphertext.clone());
+        assert_eq!(actual_tx_out_search_results[0], expected_results[0]);
         if actual_tx_out_search_results == expected_results {
             return Ok(result);
         }
@@ -264,20 +266,14 @@ pub async fn assert_e_tx_out_records(
     }
 }
 
-/// Takes the TxOutSearchResults and interprets the ciphertext as follows:
-/// (1) The first byte is the delta between the max payload length and the
-/// length of this payload.
-/// (2) The rest of the bytes for that length are part of the ciphertext.
-fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> HashSet<TxOutSearchResult> {
+fn interpret_tx_out_search_results(results: &[TxOutSearchResult]) -> Vec<TxOutSearchResult> {
     results
         .iter()
-        .map(|result| {
-            let payload_length = result.ciphertext.len() - (result.ciphertext[0] as usize);
-            TxOutSearchResult {
-                search_key: result.search_key.clone(),
-                result_code: result.result_code,
-                ciphertext: result.ciphertext[1..=payload_length].to_owned(),
-            }
+        .map(|result| TxOutSearchResult {
+            search_key: result.search_key.clone(),
+            result_code: result.result_code,
+            ciphertext: result.ciphertext[0..(result.payload_length as usize)].to_vec(),
+            payload_length: result.payload_length,
         })
         .collect()
 }

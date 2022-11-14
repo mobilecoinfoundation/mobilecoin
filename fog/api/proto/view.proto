@@ -273,6 +273,13 @@ message TxOutSearchResult {
     /// It is be zero-padding in the other cases.
     /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
     bytes ciphertext = 3;
+
+    /// The length of the payload that is encrypted in the ciphertext. Ciphertexts will always be 255 in length, but
+    /// the payload may be less than that, so any additional bytes should not be interpreted by the client. This value
+    /// tells the client which bytes to interpret.
+    /// TODO: Remove this field and replace with an optional `ciphertext_padding` field. This new field will contain
+    /// extra bytes to make up the difference between the shard's ciphertext length and the payload.
+    fixed32 payload_length = 4;
 }
 
 /// Corresponds to and documents values of TxOutSearchResult.result_code

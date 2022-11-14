@@ -433,6 +433,7 @@ impl Sample for mc_fog_types::view::TxOutSearchResult {
             search_key: <[u8; 32]>::sample(rng).to_vec(),
             ciphertext: <[u8; 32]>::sample(rng).to_vec(),
             result_code: 1,
+            payload_length: 32,
         }
     }
 }

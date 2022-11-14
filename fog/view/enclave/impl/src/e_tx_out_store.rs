@@ -135,10 +135,12 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
     }
 
     pub fn find_record(&mut self, search_key: &[u8]) -> TxOutSearchResult {
+        let payload_length = ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize;
         let mut result = TxOutSearchResult {
             search_key: search_key.to_vec(),
             result_code: TxOutSearchResultCode::InternalError as u32,
-            ciphertext: vec![0u8; ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize],
+            ciphertext: vec![0u8; payload_length],
+            payload_length: payload_length as u32,
         };
 
         // Early return for bad search key
