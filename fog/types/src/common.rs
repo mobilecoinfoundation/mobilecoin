@@ -25,6 +25,14 @@ impl BlockRange {
         }
     }
 
+    /// Create a new block range from length
+    pub fn new_from_length(start_block: u64, length: u64) -> Self {
+        Self {
+            start_block,
+            end_block: start_block + length,
+        }
+    }
+
     /// Test if a block index is in the range
     pub fn contains(&self, block: u64) -> bool {
         block >= self.start_block && block < self.end_block
@@ -38,6 +46,16 @@ impl BlockRange {
     /// Test if two block ranges overlap
     pub fn overlaps(&self, other: &BlockRange) -> bool {
         self.start_block < other.end_block && other.start_block < self.end_block
+    }
+
+    /// Returns the length of the BlockRange, i.e. the number of blocks.
+    pub fn len(&self) -> u64 {
+        self.end_block - self.start_block
+    }
+
+    /// Returns true if the BlockRange length is 0.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

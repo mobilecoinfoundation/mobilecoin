@@ -6,7 +6,7 @@ use crate::{block_tracker::BlockTracker, counters, sharding_strategy::ShardingSt
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
-use mc_fog_types::ETxOutRecord;
+use mc_fog_types::{common::BlockRange, ETxOutRecord};
 use mc_util_grpc::ReadinessIndicator;
 use std::{
     sync::{
@@ -303,14 +303,13 @@ where
         );
 
         for (ingress_key, block_index) in next_block_index_per_ingress_key.into_iter() {
-            // Attempt to load data for the next block.
+            let block_range =
+                BlockRange::new_from_length(block_index, self.block_query_batch_size as u64);
+            // Attempt to load data for the block range.
             let get_tx_outs_by_block_result = {
                 let _metrics_timer = counters::GET_TX_OUTS_BY_BLOCK_TIME.start_timer();
-                self.db.get_tx_outs_by_block_range_and_key(
-                    ingress_key,
-                    block_index,
-                    self.block_query_batch_size,
-                )
+                self.db
+                    .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             };
 
             match get_tx_outs_by_block_result {
@@ -327,20 +326,6 @@ where
                         block_index,
                     );
 
-                    // Ingest has produced data for this block, we'd like to keep trying the
-                    // next block on the next loop iteration.
-                    may_have_more_work = true;
-
-                    // Mark that we are done fetching data for this block.
-                    if !self.block_tracker.block_processed(ingress_key, block_index) {
-                        log::trace!(
-                            self.logger,
-                            "Not adding block_index {} TxOuts because this shard is not responsible for it.",
-                            block_index,
-                        );
-                        continue;
-                    }
-
                     if block_results.len() == self.block_query_batch_size {
                         // Ingest has produced as much block data as we asked for,
                         // we'd like to keep trying to download in the next loop iteration.
@@ -350,11 +335,17 @@ where
                     for (idx, tx_outs) in block_results.into_iter().enumerate() {
                         // shadow block_index using the offset from enumerate
                         // block_index is now the index of these tx_outs
-                        let block_index = block_index + idx as u64;
+                        let block_index = block_index + (idx as u64);
                         let num_tx_outs = tx_outs.len();
 
-                        // Mark that we are done fetching data for this block.
-                        self.block_tracker.block_processed(ingress_key, block_index);
+                        if !self.block_tracker.block_processed(ingress_key, block_index) {
+                            log::trace!(
+                            self.logger,
+                            "Not adding block_index {} TxOuts because this shard is not responsible for it.",
+                            block_index,
+                        );
+                            continue;
+                        }
 
                         // Store the fetched records so that they could be consumed by the
                         // enclave when its ready.

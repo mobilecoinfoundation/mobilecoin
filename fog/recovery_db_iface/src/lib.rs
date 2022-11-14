@@ -264,8 +264,7 @@ pub trait RecoveryDb {
     ///
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
-    /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many consecutive blocks to also request data for.
+    /// * block_range: The range of blocks to get ETxOutRecords from.
     ///
     /// Returns:
     /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
@@ -273,8 +272,7 @@ pub trait RecoveryDb {
     fn get_tx_outs_by_block_range_and_key(
         &self,
         ingress_key: CompressedRistrettoPublic,
-        block_index: u64,
-        block_count: usize,
+        block_range: &BlockRange,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error>;
 
     /// Get the invocation id that published this block with this key.
