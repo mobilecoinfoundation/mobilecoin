@@ -303,7 +303,8 @@ where
         );
 
         for (ingress_key, block_index) in next_block_index_per_ingress_key.into_iter() {
-            let block_range = BlockRange::new_from_length(block_index, self.block_query_batch_size);
+            let block_range =
+                BlockRange::new_from_length(block_index, self.block_query_batch_size as u64);
             // Attempt to load data for the block range.
             let get_tx_outs_by_block_result = {
                 let _metrics_timer = counters::GET_TX_OUTS_BY_BLOCK_TIME.start_timer();
@@ -334,7 +335,7 @@ where
                     for (idx, tx_outs) in block_results.into_iter().enumerate() {
                         // shadow block_index using the offset from enumerate
                         // block_index is now the index of these tx_outs
-                        let block_index = block_index + idx as u64;
+                        let block_index = block_index + (idx as u64);
                         let num_tx_outs = tx_outs.len();
 
                         if !self.block_tracker.block_processed(ingress_key, block_index) {

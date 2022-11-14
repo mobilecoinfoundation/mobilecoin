@@ -1012,7 +1012,7 @@ impl SqlRecoveryDb {
         // We will get one row for each hit in the table we found
         let rows: Vec<(i64, Vec<u8>)> = query.load(&conn)?;
 
-        if rows.len() > (block_range.len() as usize) {
+        if (rows.len() as u64) > block_range.len() {
             log::warn!(
                 self.logger,
                 "When querying, more responses than expected: {} > {}",
@@ -1031,7 +1031,7 @@ impl SqlRecoveryDb {
 
         let mut result = Vec::new();
         for (idx, (block_number, proto)) in rows.into_iter().enumerate() {
-            if block_range.start_block + idx as u64 == block_number as u64 {
+            if block_range.start_block + (idx as u64) == block_number as u64 {
                 let proto = ProtoIngestedBlockData::decode(&*proto)?;
                 result.push(proto.e_tx_out_records);
             } else {

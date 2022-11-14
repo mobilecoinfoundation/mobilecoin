@@ -26,10 +26,10 @@ impl BlockRange {
     }
 
     /// Create a new block range from length
-    pub fn new_from_length(start_block: u64, length: usize) -> Self {
+    pub fn new_from_length(start_block: u64, length: u64) -> Self {
         Self {
             start_block,
-            end_block: start_block + (length as u64),
+            end_block: start_block + length,
         }
     }
 
@@ -49,8 +49,8 @@ impl BlockRange {
     }
 
     /// Returns the length of the BlockRange, i.e. the number of blocks.
-    pub fn len(&self) -> usize {
-        (self.end_block - self.start_block) as usize
+    pub fn len(&self) -> u64 {
+        self.end_block - self.start_block
     }
 
     /// Returns true if the BlockRange length is 0.
