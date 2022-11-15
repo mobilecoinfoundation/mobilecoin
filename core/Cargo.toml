@@ -31,7 +31,7 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 [dev-dependencies]
 
 anyhow = { version = "1.0.26" }
-clap = { version = "4.0.15", features = [ "derive" ] }
+clap = { version = "4.0.24", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
 
