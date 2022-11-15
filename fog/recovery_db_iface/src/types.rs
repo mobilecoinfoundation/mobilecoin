@@ -72,32 +72,45 @@ impl IngressPublicKeyRecord {
     ///
     /// The function computes whether the view server needs to try to load a
     /// block connected to this ingress key.
+    pub fn covers_block_index(&self, block_index: u64) -> bool {
+        self.get_block_range().contains(block_index)
+    }
+
+    /// Computes the block range for which this record is responsible for.
     ///
-    /// Behavior:
     /// Intuitively an IngressPublicKeyRecord corresponds to a range of
     /// consecutive block indices, that the view server needs to try to load
     /// for the users to make progress correctly.
     ///
-    /// If the key is not retired or lost, the range is
-    /// [ start_block , infinity )
+    /// If the key is lost, the range is
+    /// [ start_block, last_scanned_block ]
+    ///
     /// If the key is retired and not lost, the range is
     /// [ start_block , pubkey_expiry )
     ///
-    /// If the key is lost, the range is
-    /// [ start_block, last_scanned_block ]
+    /// If the key is neither retired nor lost, the range is
+    /// [ start_block , infinity )
+    ///
     /// and if the key is lost and there is no last scanned block, the range is
     /// empty.
-    pub fn covers_block_index(&self, block_index: u64) -> bool {
+    pub fn get_block_range(&self) -> BlockRange {
         if self.status.lost {
-            self.status.start_block <= block_index
-                && self
-                    .last_scanned_block
-                    .map(|idx| block_index <= idx)
-                    .unwrap_or(false)
-        } else {
-            self.status.start_block <= block_index
-                && (!self.status.retired || block_index < self.status.pubkey_expiry)
+            return self.get_lost_block_range();
         }
+        if self.status.retired {
+            return BlockRange::new(self.status.start_block, self.status.pubkey_expiry);
+        }
+
+        BlockRange::new(self.status.start_block, u64::MAX)
+    }
+
+    fn get_lost_block_range(&self) -> BlockRange {
+        if let Some(last_scanned_block) = self.last_scanned_block {
+            // Add 1 because the last_scanned_block is inclusive.
+            return BlockRange::new(self.status.start_block, last_scanned_block + 1);
+        }
+
+        BlockRange::new(0, 0)
     }
 
     /// The next block index that needs to be scanned with this key.
