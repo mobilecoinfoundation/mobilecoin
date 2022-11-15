@@ -205,9 +205,9 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             // all stores, and then the stores evaluate which message is meant
             // for them.
             if let Ok(attested_message) = self.check_key_image_store_auth(query) {
-                //Needs a different method?
                 response.set_query_response(attested_message);
                 response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
+                //Note that set_fog_ledger_store_uri has been taken care of above.
 
                 return response;
             }
@@ -269,7 +269,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
 }
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<L, E> {
-    #[allow(unused_variables)] //FIXME
     fn auth(
         &mut self,
         ctx: grpcio::RpcContext,
@@ -301,7 +300,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
         });
     }
 
-    #[allow(unused_variables)] //FIXME
     fn multi_key_image_store_query(
         &mut self,
         ctx: grpcio::RpcContext,

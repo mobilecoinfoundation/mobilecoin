@@ -19,7 +19,6 @@ use mc_util_metrics::SVC_COUNTERS;
 
 use crate::router_handlers;
 
-#[allow(dead_code)] // FIXME
 #[derive(Clone)]
 pub struct KeyImageRouterService<E>
 where
@@ -51,7 +50,6 @@ impl<E> LedgerApi for KeyImageRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {
-    #[allow(unused_variables)] // FIXME
     fn request(
         &mut self,
         ctx: RpcContext,

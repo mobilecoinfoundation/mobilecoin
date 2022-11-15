@@ -140,7 +140,7 @@ lazy_static::lazy_static! {
 
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
-    const TEST_NAME: &'static str = "key_image_store_simple_roundtrip";
+    const TEST_NAME: &'static str = "direct_key_image_store_check";
     const PORT_START: u16 = 3223; 
     const OMAP_CAPACITY: u64 = 768; 
 
@@ -253,10 +253,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     println!("Client session on sealed_query is {:?}", &sealed_query.channel_id); 
     let mut multi_query =  enclave.create_multi_key_image_store_query_data(sealed_query.clone()).unwrap();
 
-    let mut query: EnclaveMessage<NonceSession> = multi_query.pop().unwrap(); 
+    let query: EnclaveMessage<NonceSession> = multi_query.pop().unwrap(); 
     println!("Nonce session on message is {:?}", query.channel_id); 
-    // TODO: Figure out why it only works if I do this. 
-    query.channel_id = router_to_store_session;
 
     // Get an untrusted query
     let (

@@ -60,15 +60,14 @@ impl From<LedgerEnclaveError> for RouterServerError {
     }
 }
 
-#[allow(dead_code)] // FIXME when the ledger router is more than just a skeleton.
-#[derive(Debug, Display)]
+#[derive(Display)]
 pub enum LedgerServerError {
     /// Ledger Enclave error: {0}
     Enclave(LedgerEnclaveError),
-    /// Failed to join thread: {0}
-    ThreadJoin(String),
-    /// RPC shutdown failure: {0}
-    RpcShutdown(String),
+    // Failed to join thread: {0}
+    //ThreadJoin(String),
+    // RPC shutdown failure: {0}
+    //RpcShutdown(String),
     /// Report cache error: {0}
     ReportCache(ReportCacheError),
 }

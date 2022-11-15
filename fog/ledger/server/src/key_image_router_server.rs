@@ -25,8 +25,6 @@ pub struct KeyImageRouterServer {
 }
 
 impl KeyImageRouterServer {
-    /// Creates a new ledger router server instance
-    #[allow(dead_code)] // FIXME
     pub fn new<E>(
         config: LedgerRouterConfig,
         enclave: E,

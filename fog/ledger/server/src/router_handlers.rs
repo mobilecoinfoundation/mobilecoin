@@ -24,7 +24,6 @@ const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
 /// routing them out to shards.
-#[allow(dead_code)] //FIXME
 pub async fn handle_requests<E>(
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
