@@ -191,9 +191,9 @@ pub struct FogViewRouterConfig {
 /// these different modes require different URIs.
 #[derive(Clone, Serialize)]
 pub enum RouterClientListenUri {
-    /// URI used by the FogViewServer when fulfilling direct client requests.
+    /// URI used by the FogViewRouterAPI service.
     Streaming(FogViewRouterUri),
-    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
+    /// URI used by the FogViewAPI service.
     Unary(FogViewUri),
 }
 

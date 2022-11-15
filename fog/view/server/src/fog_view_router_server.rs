@@ -102,7 +102,7 @@ where
                 log::debug!(logger, "Constructed Fog View Router streaming GRPC Service");
                 log::info!(
                     logger,
-                    "Starting Fog View Router unary server on {}",
+                    "Starting Fog View Router streaming server on {}",
                     streaming_uri.addr(),
                 );
                 grpcio::ServerBuilder::new(env.clone())
