@@ -183,8 +183,8 @@ mod tests {
 
         let mint_config1 = MintConfig {
             token_id: *token_id,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], 2), /* threshold > number of
-                                                                         * signers */
+            // threshold > number of signers
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 2),
             mint_limit: 10,
         };
 

@@ -43,7 +43,8 @@ message Ed25519MultiSig {
 }
 
 message Ed25519SignerSet {
-    repeated Ed25519Public signers = 1;
+    repeated Ed25519Public individual_signers = 1;
+    repeated Ed25519SignerSet multi_signers = 3;
     uint32 threshold = 2;
 }
 
