@@ -148,39 +148,21 @@ where
             // Go over all known ingress keys and check if
             // any of them need to provide this block and have not provided it
             for rec in ingress_keys {
-                // If this ingress key isn't responsible to provide this block index, we can
-                // move on
-                if !rec.covers_block_index(next_block_index) {
-                    continue;
-                }
-
-                // Skip the the below checks when the next block index is less than the shard's
-                // start block. This prevents prior missed blocks from from impeding the shard's
-                // highest processed block count.
-                //
-                // E.g. Say block index 3 is missed, and this shard is responsible for 5 to 8. Without
-                // this check, the highest processed block count will be stuck on 2 (the
-                // `last_processed_block`). Even if the shard processes blocks 5 through 8, this
-                // highest processed block count would stay at 2 forever.
-                //
-                // Note: we don't skip the below checks for the shard's end block because the shard
-                // may not have seen the higher blocks. Therefore we could potentially be incrementing
-                // the highest processed block count for blocks that don't exist yet. If there
-                // are missed blocks after the shard's end block, then that's fine because the logic
-                // below ensures that each block will be incremented by one until the first processed
-                // block after the missed blocks.
-                if next_block_index < self.sharding_strategy.get_block_range().start_block {
+                let epoch = self.sharding_strategy.get_block_range();
+                let is_key_responsible = rec.get_block_range().overlaps(&epoch)
+                    && rec.covers_block_index(next_block_index);
+                if !is_key_responsible {
                     continue;
                 }
 
                 // Check if the last block we actually loaded with this key is less than
                 // next_block_index, if so then this is what we are stuck on
-                if let Some(last_processed_block) =
+                if let Some(last_processed_block_index) =
                     self.processed_block_per_ingress_key.get(&rec.key)
                 {
-                    if next_block_index > *last_processed_block {
+                    if next_block_index > *last_processed_block_index {
                         // This ingress key needs to provide this block, but we haven't got it yet
-                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block);
+                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block_index);
                         reason_we_stopped = Some(rec.clone());
                         break 'outer;
                     }
