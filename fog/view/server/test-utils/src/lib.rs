@@ -26,7 +26,7 @@ use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_server::{
     config::{
         ClientListenUri::Store, FogViewRouterConfig, MobileAcctViewConfig as ViewConfig,
-        ShardingStrategy, ShardingStrategy::Epoch,
+        RouterClientListenUri, ShardingStrategy, ShardingStrategy::Epoch,
     },
     fog_view_router_server::FogViewRouterServer,
     server::ViewServer,
@@ -93,12 +93,15 @@ impl RouterTestEnvironment {
         ))
         .unwrap();
         let config = FogViewRouterConfig {
+            chain_id: "local".to_string(),
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
             ias_spid: Default::default(),
-            client_listen_uri: router_uri.clone(),
+            client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
+            client_auth_token_max_lifetime: Default::default(),
+            client_auth_token_secret: None,
             omap_capacity,
             admin_listen_uri,
         };
@@ -110,8 +113,14 @@ impl RouterTestEnvironment {
         );
         let ra_client =
             AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-        let mut router_server =
-            FogViewRouterServer::new(config, enclave, ra_client, store_clients, logger.clone());
+        let mut router_server = FogViewRouterServer::new(
+            config,
+            enclave,
+            ra_client,
+            store_clients,
+            SystemTimeProvider::default(),
+            logger.clone(),
+        );
         router_server.start();
         router_server
     }

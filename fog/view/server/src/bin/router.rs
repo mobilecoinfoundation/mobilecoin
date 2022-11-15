@@ -4,7 +4,7 @@
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
 use mc_attest_net::{Client, RaClient};
-use mc_common::logger::log;
+use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
@@ -69,6 +69,7 @@ fn main() {
         sgx_enclave,
         ias_client,
         fog_view_store_grpc_clients,
+        SystemTimeProvider::default(),
         logger,
     );
     router_server.start();
