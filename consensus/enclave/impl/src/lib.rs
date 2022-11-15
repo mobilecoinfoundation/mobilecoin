@@ -336,7 +336,6 @@ impl SgxConsensusEnclave {
     ///   on why this is optional.
     /// * `config` - The current blockchain configuration.
     fn validate_mint_config_txs(
-        &self,
         mint_config_txs: Vec<MintConfigTx>,
         current_block_index: Option<u64>,
         config: &BlockchainConfig,
@@ -346,10 +345,10 @@ impl SgxConsensusEnclave {
 
         for tx in mint_config_txs {
             // Ensure all nonces are unique.
-            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+            if !seen_nonces.insert((tx.prefix.nonce.clone(), tx.prefix.token_id)) {
                 return Err(Error::FormBlock(format!(
-                    "Duplicate MintConfigTx nonce: {:?}",
-                    tx.prefix.nonce
+                    "Duplicate MintConfigTx nonce for token id {}: {:?}",
+                    tx.prefix.token_id, tx.prefix.nonce
                 )));
             }
 
@@ -376,7 +375,6 @@ impl SgxConsensusEnclave {
 
     /// Validate a list of MintTxs.
     fn validate_mint_txs(
-        &self,
         mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
         current_block_index: u64,
         config: &BlockchainConfig,
@@ -387,10 +385,10 @@ impl SgxConsensusEnclave {
         let mut seen_nonces = BTreeSet::default();
         for (mint_tx, mint_config_tx, mint_config) in mint_txs_with_config {
             // The nonce should be unique.
-            if !seen_nonces.insert(mint_tx.prefix.nonce.clone()) {
+            if !seen_nonces.insert((mint_tx.prefix.nonce.clone(), mint_tx.prefix.token_id)) {
                 return Err(Error::FormBlock(format!(
-                    "Duplicate MintTx nonce: {:?}",
-                    mint_tx.prefix.nonce
+                    "Duplicate MintTx nonce for token id {}: {:?}",
+                    mint_tx.prefix.token_id, mint_tx.prefix.nonce
                 )));
             }
 
@@ -415,7 +413,7 @@ impl SgxConsensusEnclave {
             // the ledger, so doing the tombstone check is pointless (and could
             // fail if enough blocks have passed since the MintConfigTx got
             // accepted).
-            self.validate_mint_config_txs(vec![mint_config_tx], None, config)?;
+            Self::validate_mint_config_txs(vec![mint_config_tx], None, config)?;
 
             // The MintTx should be valid.
             validate_mint_tx(
@@ -882,7 +880,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Get the list of MintTxs included in the block.
         let mint_txs =
-            self.validate_mint_txs(inputs.mint_txs_with_config, parent_block.index + 1, config)?;
+            Self::validate_mint_txs(inputs.mint_txs_with_config, parent_block.index + 1, config)?;
 
         // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
@@ -928,7 +926,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        let validated_mint_config_txs = self.validate_mint_config_txs(
+        let validated_mint_config_txs = Self::validate_mint_config_txs(
             inputs.mint_config_txs,
             Some(parent_block.index + 1),
             config,
@@ -1054,7 +1052,8 @@ mod tests {
         BlockVersion, FeeMap, Token,
     };
     use mc_transaction_core_test_utils::{
-        create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx_to_recipient, sign_mint_config_tx_prefix,
+        sign_mint_tx_prefix, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
@@ -3079,5 +3078,183 @@ mod tests {
                 ))
             );
         }
+    }
+
+    #[test]
+    fn validate_mint_config_txs_checks_for_duplicate_nonces() {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mut mint_config_tx2, _signers2) =
+            create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+
+        let governors_map = GovernorsMap::try_from_iter([
+            (token_id1, signer_set1.clone()),
+            (token_id2, signer_set1),
+        ])
+        .unwrap();
+
+        let blockchain_config = BlockchainConfig {
+            block_version: BlockVersion::MAX,
+            governors_map: governors_map.clone(),
+            governors_signature: sign_governors_map(&governors_map),
+            ..Default::default()
+        };
+
+        // The two mint configs have different nonces for the same token ID.
+        // Note that we update the signature since we don't want to fail on it not
+        // matching the governors for the different token.
+        let signers1_refs = signers1.iter().collect::<Vec<_>>();
+        mint_config_tx2.signature =
+            sign_mint_config_tx_prefix(&mint_config_tx2.prefix, &signers1_refs);
+        assert_ne!(mint_config_tx1.prefix.nonce, mint_config_tx2.prefix.nonce);
+        SgxConsensusEnclave::validate_mint_config_txs(
+            vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+            None,
+            &blockchain_config,
+        )
+        .expect("Mint config txs should be valid");
+
+        // Changing the nonce of the second mint config to match the first
+        // should cause a failure.
+        mint_config_tx2.prefix.nonce = mint_config_tx1.prefix.nonce.clone();
+        match SgxConsensusEnclave::validate_mint_config_txs(
+            vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+            None,
+            &blockchain_config,
+        ) {
+            Err(Error::FormBlock(err_str)) => {
+                assert!(err_str.starts_with("Duplicate MintConfigTx nonce for token id 1"));
+            }
+            result => panic!("Unexpected result: {:?}", result),
+        }
+
+        // Same nonce on different token ids should be fine.
+        mint_config_tx2.prefix.token_id = *token_id2;
+        for mint_config in mint_config_tx2.prefix.configs.iter_mut() {
+            mint_config.token_id = mint_config_tx2.prefix.token_id;
+        }
+        mint_config_tx2.signature =
+            sign_mint_config_tx_prefix(&mint_config_tx2.prefix, &signers1_refs);
+        SgxConsensusEnclave::validate_mint_config_txs(
+            vec![mint_config_tx1, mint_config_tx2.clone()],
+            None,
+            &blockchain_config,
+        )
+        .expect("Mint config txs should be valid");
+    }
+
+    #[test]
+    fn validate_mint_txs_checks_for_duplicate_nonces() {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+                .unwrap();
+
+        let blockchain_config = BlockchainConfig {
+            block_version: BlockVersion::MAX,
+            governors_map: governors_map.clone(),
+            governors_signature: sign_governors_map(&governors_map),
+            ..Default::default()
+        };
+
+        let recipient = AccountKey::random(&mut rng);
+
+        let mint_tx1 = create_mint_tx_to_recipient(
+            token_id1,
+            &signers1,
+            12,
+            &recipient.default_subaddress(),
+            &mut rng,
+        );
+        let mut mint_tx2 = create_mint_tx_to_recipient(
+            token_id1,
+            &signers1,
+            200,
+            &recipient.default_subaddress(),
+            &mut rng,
+        );
+
+        // The two mint txs have different nonces for the same token ID.
+        assert_ne!(mint_tx1.prefix.nonce, mint_tx2.prefix.nonce);
+        SgxConsensusEnclave::validate_mint_txs(
+            vec![
+                (
+                    mint_tx1.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1.prefix.configs[0].clone(),
+                ),
+                (
+                    mint_tx2.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1.prefix.configs[0].clone(),
+                ),
+            ],
+            0,
+            &blockchain_config,
+        )
+        .expect("Mint txs should be valid");
+
+        // Changing the nonce of the second mint tx to match the first
+        // should cause a failure.
+        mint_tx2.prefix.nonce = mint_tx1.prefix.nonce.clone();
+        match SgxConsensusEnclave::validate_mint_txs(
+            vec![
+                (
+                    mint_tx1.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1.prefix.configs[0].clone(),
+                ),
+                (
+                    mint_tx2.clone(),
+                    mint_config_tx1.clone(),
+                    mint_config_tx1.prefix.configs[0].clone(),
+                ),
+            ],
+            0,
+            &blockchain_config,
+        ) {
+            Err(Error::FormBlock(err_str)) => {
+                assert!(err_str.starts_with("Duplicate MintTx nonce for token id 1"));
+            }
+            result => panic!("Unexpected result: {:?}", result),
+        }
+
+        // Same nonce on different token ids should be fine.
+        mint_tx2.prefix.token_id = *token_id2;
+        mint_tx2.signature =
+            sign_mint_tx_prefix(&mint_tx2.prefix, &signers2.iter().collect::<Vec<_>>());
+        SgxConsensusEnclave::validate_mint_txs(
+            vec![
+                (
+                    mint_tx1,
+                    mint_config_tx1.clone(),
+                    mint_config_tx1.prefix.configs[0].clone(),
+                ),
+                (
+                    mint_tx2,
+                    mint_config_tx2.clone(),
+                    mint_config_tx2.prefix.configs[0].clone(),
+                ),
+            ],
+            0,
+            &blockchain_config,
+        )
+        .expect("Mint txs should be valid");
     }
 }
