@@ -71,6 +71,11 @@ on:
         type: boolean
         required: false
         default: true
+      generate_and_submit_mint_config_tx_uses_json:
+        description: "Whether the generate-and-submit-mint-config-tx command uses a JSON file (true) or command line arguments (false)"
+        type: boolean
+        required: false
+        default: false
     secrets:
       RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -221,7 +226,12 @@ jobs:
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
+          JSON_FLAG=""
+          if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
+            JSON_FLAG="--json"
+          fi
           /test/minting-config-tx-test.sh \
+            $JSON_FLAG \
             --token-id 8192
 
     - name: Test - block-v2 - Minting tx
@@ -345,7 +355,12 @@ jobs:
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         command: |
+          JSON_FLAG=""
+          if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
+            JSON_FLAG="--json"
+          fi
           /test/minting-config-tx-test.sh \
+            $JSON_FLAG \
             --token-id 8192
 
     - name: Test - block-v3 - Minting tx

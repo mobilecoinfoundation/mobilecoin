@@ -490,6 +490,7 @@ jobs:
       testing_block_v0: false
       testing_block_v2: true
       testing_block_v3: false
+      generate_and_submit_mint_config_tx_uses_json: true
     secrets: inherit
 
 #################################################
@@ -520,6 +521,7 @@ jobs:
       testing_block_v0: false
       testing_block_v2: false
       testing_block_v3: true
+      generate_and_submit_mint_config_tx_uses_json: true
     secrets: inherit
 
 ###############################################################
