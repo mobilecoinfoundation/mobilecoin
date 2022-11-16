@@ -162,7 +162,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
                 self.logger.clone(),
             )?);
 
-            self.db_fetcher = Some(DbFetcher::new(
+            let mut db_fetcher = DbFetcher::new(
                 self.key_image_service.get_ledger(),
                 self.enclave.clone(),
                 EpochShardingStrategy::default(),
@@ -170,7 +170,9 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
                 self.key_image_service.get_db_poll_shared_state(),
                 readiness_indicator.clone(),
                 self.logger.clone(),
-            ));
+            );
+            db_fetcher.start();
+            self.db_fetcher = Some(db_fetcher);
 
             let env = Arc::new(
                 grpcio::EnvBuilder::new()
