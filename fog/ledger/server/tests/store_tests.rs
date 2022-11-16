@@ -26,6 +26,8 @@ use mc_fog_ledger_server::{
     sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageClientListenUri,
     KeyImageService, KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
+use mc_fog_ledger_server::ShardingStrategy;
+use mc_fog_ledger_server::sharding_strategy::EpochShardingStrategy;
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
