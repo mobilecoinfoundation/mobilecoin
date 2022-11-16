@@ -169,7 +169,7 @@ impl<
             logger,
         }
     }
-
+    
     pub fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
         let block_range = self.sharding_strategy.get_block_range();
