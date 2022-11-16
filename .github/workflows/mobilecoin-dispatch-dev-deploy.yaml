@@ -29,6 +29,11 @@ on:
         description: "Consensus block_version"
         type: string
         required: true
+      tokens_json_version:
+        description: "The version of the tokens.json file we will generate"
+        type: string
+        default: '1'
+        required: false
       chart_repo:
         description: "Chart Repo URL"
         type: string
@@ -61,6 +66,7 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:
       block_version: ${{ inputs.block_version }}
+      tokens_json_version: ${{ inputs.tokens_json_version }}
       chart_repo: ${{ inputs.chart_repo }}
       docker_image_org: ${{ inputs.docker_image_org }}
       ingest_color: ${{ inputs.ingest_color }}
