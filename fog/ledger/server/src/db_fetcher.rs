@@ -25,7 +25,6 @@ use std::{
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::{Duration, SystemTime},
-    cmp::min,
 };
 
 /// Telemetry: block index currently being worked on.
@@ -169,7 +168,7 @@ impl<
             logger,
         }
     }
-    
+
     pub fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
         let block_range = self.sharding_strategy.get_block_range();
