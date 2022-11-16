@@ -18,11 +18,12 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, server::DbPollSharedState, KeyImageClientListenUri, KeyImageService, db_fetcher::DbFetcher, sharding_strategy::ShardingStrategy,
+    config::LedgerStoreConfig, db_fetcher::DbFetcher, server::DbPollSharedState,
+    sharding_strategy::ShardingStrategy, KeyImageClientListenUri, KeyImageService,
 };
 
 pub struct KeyImageStoreServer<E, SS>
-where 
+where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
 {
@@ -33,7 +34,7 @@ where
 }
 
 impl<E, SS> KeyImageStoreServer<E, SS>
-where 
+where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
 {
@@ -46,8 +47,7 @@ where
         sharding_strategy: SS,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS>
-    {
+    ) -> KeyImageStoreServer<E, SS> {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
                 Arc::new(TokenAuthenticator::new(
@@ -58,7 +58,7 @@ where
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-        
+
         Self::new(
             config.chain_id,
             client_authenticator,
@@ -80,8 +80,7 @@ where
         watcher: WatcherDB,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS>
-    {
+    ) -> KeyImageStoreServer<E, SS> {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let key_image_service = KeyImageService::new(
@@ -94,7 +93,13 @@ where
             client_authenticator.clone(),
             logger.clone(),
         );
-        Self::new_from_service(key_image_service, client_listen_uri, enclave, sharding_strategy, logger.clone())
+        Self::new_from_service(
+            key_image_service,
+            client_listen_uri,
+            enclave,
+            sharding_strategy,
+            logger,
+        )
     }
 
     pub fn new_from_service(
@@ -103,8 +108,7 @@ where
         enclave: E,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS>
-    {
+    ) -> KeyImageStoreServer<E, SS> {
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
@@ -114,13 +118,16 @@ where
         );
 
         // Health check service
-        let health_service =
-            mc_util_grpc::HealthService::new(Some(readiness_indicator.clone().into()), logger.clone())
-                .into_service();
+        let health_service = mc_util_grpc::HealthService::new(
+            Some(readiness_indicator.clone().into()),
+            logger.clone(),
+        )
+        .into_service();
 
         // Build our store server.
         // Init ledger store service.
-        let ledger_store_service = ledger_grpc::create_key_image_store_api(key_image_service.clone());
+        let ledger_store_service =
+            ledger_grpc::create_key_image_store_api(key_image_service.clone());
         log::debug!(logger, "Constructed Key Image Store GRPC Service");
 
         // Package service into grpc server
@@ -136,7 +143,22 @@ where
             .build_using_uri(&client_listen_uri, logger.clone())
             .unwrap();
 
-        Self { server, client_listen_uri, db_fetcher, logger }
+        let db_fetcher = DbFetcher::new(
+            key_image_service.get_ledger(),
+            enclave.clone(),
+            sharding_strategy,
+            key_image_service.get_watcher(),
+            key_image_service.get_db_poll_shared_state(),
+            readiness_indicator.clone(),
+            logger.clone(),
+        );
+
+        Self {
+            server,
+            client_listen_uri,
+            db_fetcher,
+            logger,
+        }
     }
 
     /// Starts the server
@@ -157,7 +179,7 @@ where
     }
 }
 
-impl<E, SS> Drop for KeyImageStoreServer<E, SS> 
+impl<E, SS> Drop for KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,

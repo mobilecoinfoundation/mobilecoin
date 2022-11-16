@@ -41,17 +41,16 @@ fn main() {
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
     let mut store_server = match config.sharding_strategy.clone() {
-            ShardingStrategy::Epoch(sharding_strategy) => 
-                KeyImageStoreServer::new_from_config(
-                    config.clone(),
-                    enclave,
-                    db,
-                    watcher,
-                    sharding_strategy,
-                    SystemTimeProvider::default(),
-                    logger.clone(),
-                ),
-        };
+        ShardingStrategy::Epoch(sharding_strategy) => KeyImageStoreServer::new_from_config(
+            config.clone(),
+            enclave,
+            db,
+            watcher,
+            sharding_strategy,
+            SystemTimeProvider::default(),
+            logger.clone(),
+        ),
+    };
     store_server.start();
 
     //Initialize the admin api

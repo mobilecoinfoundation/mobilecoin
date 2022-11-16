@@ -18,20 +18,24 @@ use mc_util_telemetry::{
 use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};
 use std::{
+    cmp::min,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::{Duration, SystemTime},
-    cmp::min,
 };
 
 /// Telemetry: block index currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// An object for managing background data fetches from the ledger database.
-pub struct DbFetcher<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy + Send + Sync + 'static> {
+pub struct DbFetcher<
+    DB: Ledger + 'static,
+    E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Send + Sync + 'static,
+> {
     /// Struct representing the thread and its context.
     thread: Option<DbFetcherThread<DB, E, SS>>,
     /// Join handle used to wait for the thread to terminate.
@@ -41,7 +45,12 @@ pub struct DbFetcher<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send 
     stop_requested: Arc<AtomicBool>,
 }
 
-impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy + Send + Sync + 'static> DbFetcher<DB, E, SS> {
+impl<
+        DB: Ledger + 'static,
+        E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
+        SS: ShardingStrategy + Send + Sync + 'static,
+    > DbFetcher<DB, E, SS>
+{
     pub fn new(
         db: DB,
         enclave: E,
@@ -55,15 +64,15 @@ impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = db_poll_shared_state;
         let thread = Some(DbFetcherThread::new(
-                        db,
-                        thread_stop_requested,
-                        sharding_strategy,
-                        enclave,
-                        watcher,
-                        thread_shared_state,
-                        readiness_indicator,
-                        logger,
-                    ));
+            db,
+            thread_stop_requested,
+            sharding_strategy,
+            enclave,
+            watcher,
+            thread_shared_state,
+            readiness_indicator,
+            logger,
+        ));
 
         Self {
             thread,
@@ -71,16 +80,14 @@ impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static
             stop_requested,
         }
     }
-    
+
     /// Start running the DbFetcher thread.
     pub fn start(&mut self) {
         let thread = self.thread.take().unwrap();
         self.join_handle = Some(
             ThreadBuilder::new()
                 .name("LedgerDbFetcher".to_owned())
-                .spawn(move || {
-                    thread.run()
-                })
+                .spawn(move || thread.run())
                 .expect("Could not spawn thread"),
         );
     }
@@ -96,13 +103,22 @@ impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static
     }
 }
 
-impl<DB: Ledger + 'static, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy + Send + Sync + 'static> Drop for DbFetcher<DB, E, SS> {
+impl<
+        DB: Ledger + 'static,
+        E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
+        SS: ShardingStrategy + Send + Sync + 'static,
+    > Drop for DbFetcher<DB, E, SS>
+{
     fn drop(&mut self) {
         let _ = self.stop();
     }
 }
 
-struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy + Send + Sync + 'static> {
+struct DbFetcherThread<
+    DB: Ledger,
+    E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Send + Sync + 'static,
+> {
     db: DB,
     stop_requested: Arc<AtomicBool>,
     sharding_strategy: SS,
@@ -115,7 +131,12 @@ struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync +
 
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database. Add join handle
-impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy + Send + Sync + 'static> DbFetcherThread<DB, E, SS> {
+impl<
+        DB: Ledger,
+        E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
+        SS: ShardingStrategy + Send + Sync + 'static,
+    > DbFetcherThread<DB, E, SS>
+{
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
@@ -140,7 +161,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: Shar
             logger,
         }
     }
-    
+
     pub fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
         let block_range = self.sharding_strategy.get_block_range();
@@ -155,7 +176,10 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: Shar
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while next_block_index < block_range.end_block && self.load_block_data(&mut next_block_index) && !self.stop_requested.load(Ordering::SeqCst) {
+            while next_block_index < block_range.end_block
+                && self.load_block_data(&mut next_block_index)
+                && !self.stop_requested.load(Ordering::SeqCst)
+            {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
                 match self.db.num_blocks() {
                     Ok(num_blocks) => {

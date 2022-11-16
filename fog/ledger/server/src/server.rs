@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService,
-    sharding_strategy::EpochShardingStrategy,
-    KeyImageClientListenUri, KeyImageService, MerkleProofService, UntrustedTxOutService,
+    config::LedgerServerConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::EpochShardingStrategy, BlockService, KeyImageClientListenUri,
+    KeyImageService, MerkleProofService, UntrustedTxOutService,
 };
 use displaydoc::Display;
 use futures::executor::block_on;

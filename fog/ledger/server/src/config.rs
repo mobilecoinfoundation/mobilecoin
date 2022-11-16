@@ -12,7 +12,7 @@ use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, time::Duration, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 
 /// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
@@ -179,7 +179,7 @@ pub struct LedgerStoreConfig {
     /// to disk by linux kernel.
     #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
-    
+
     /// Determines which group of Key Images the Key Image Store instance will
     /// process.
     #[clap(long, default_value = "default")]
