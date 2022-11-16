@@ -41,5 +41,5 @@ jobs:
       version: ${{ inputs.version }}
       chart_repo: ${{ inputs.chart_repo }}
       block_version: "${{ inputs.block_version }}"
-      tokens_json_version: "${{ github.event.inputs.tokens_json_version }}"
+      tokens_json_version: "${{ inputs.tokens_json_version }}"
     secrets: inherit

@@ -105,7 +105,7 @@ on:
       TOKENS_CONFIG_JSON:
         description: "(from environment) signed tokens config json"
         required: true
-      TOKENS_CONFIG_JSON_V2:
+      V2_TOKENS_CONFIG_JSON:
         description: "(from environment) signed tokens config json"
         required: true
 
@@ -198,7 +198,7 @@ jobs:
             echo '${{ secrets.TOKENS_CONFIG_JSON }}' > "${BASE_PATH}/tokens.signed.json"
             ;;
           2)
-            echo '${{ secrets.TOKENS_CONFIG_JSON_V2 }}' > "${BASE_PATH}/tokens.signed.json"
+            echo '${{ secrets.V2_TOKENS_CONFIG_JSON }}' > "${BASE_PATH}/tokens.signed.json"
             ;;
           *)
             echo "Unknown tokens.json version ${{ inputs.tokens_json_version }}"
