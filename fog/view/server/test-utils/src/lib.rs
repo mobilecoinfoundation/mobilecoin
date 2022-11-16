@@ -20,7 +20,7 @@ use mc_fog_types::{
     view::{TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
-use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_fog_view_connection::{fog_view_router_client::FogViewRouterGrpcClient, FogViewGrpcClient};
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
@@ -35,7 +35,7 @@ use mc_fog_view_server::{
 };
 use mc_transaction_core::BlockVersion;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
-use mc_util_uri::ConnectionUri;
+use mc_util_uri::{AdminUri, ConnectionUri};
 use std::{
     collections::HashMap,
     str::FromStr,
@@ -80,11 +80,8 @@ impl RouterTestEnvironment {
             FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{}", port))
                 .unwrap();
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
-        let admin_listen_uri = FogViewRouterAdminUri::from_str(&format!(
-            "insecure-fog-view-router-admin://127.0.0.1:{}",
-            port
-        ))
-        .unwrap();
+        let admin_listen_uri =
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
 
         let config = FogViewRouterConfig {
             chain_id: "local".to_string(),
@@ -122,11 +119,8 @@ impl RouterTestEnvironment {
         let router_uri =
             FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
-        let admin_listen_uri = FogViewRouterAdminUri::from_str(&format!(
-            "insecure-fog-view-router-admin://127.0.0.1:{}",
-            port
-        ))
-        .unwrap();
+        let admin_listen_uri =
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
         let chain_id = "local".to_string();
         let config = FogViewRouterConfig {
             chain_id: chain_id.clone(),

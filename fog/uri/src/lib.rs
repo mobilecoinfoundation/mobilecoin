@@ -18,20 +18,6 @@ impl UriScheme for FogViewRouterScheme {
     const DEFAULT_INSECURE_PORT: u16 = 3225;
 }
 
-/// Fog View Router Admin Scheme
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct FogViewRouterAdminScheme {}
-
-impl UriScheme for FogViewRouterAdminScheme {
-    /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "fog-view-router-admin";
-    const SCHEME_INSECURE: &'static str = "insecure-fog-view-router-admin";
-
-    /// Default port numbers
-    const DEFAULT_SECURE_PORT: u16 = 443;
-    const DEFAULT_INSECURE_PORT: u16 = 3225;
-}
-
 /// Fog View Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct FogViewScheme {}
@@ -107,8 +93,6 @@ pub type FogIngestUri = Uri<FogIngestScheme>;
 /// Uri used when talking to fog-ledger service, with the right default ports
 /// and scheme.
 pub type FogLedgerUri = Uri<FogLedgerScheme>;
-/// Uri used when talking to fog view router admin service.
-pub type FogViewRouterAdminUri = Uri<FogViewRouterAdminScheme>;
 /// Uri used when talking to fog view router service.
 pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
 /// Uri used when talking to fog view store service.
@@ -179,17 +163,6 @@ mod tests {
 
         let uri = FogViewRouterUri::from_str(
             "insecure-fog-view-router://node1.test.mobilecoin.com:3225/",
-        )
-        .unwrap();
-        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
-        assert_eq!(
-            uri.responder_id().unwrap(),
-            ResponderId::from_str("node1.test.mobilecoin.com:3225").unwrap()
-        );
-        assert!(!uri.use_tls());
-
-        let uri = FogViewRouterAdminUri::from_str(
-            "insecure-fog-view-router-admin://node1.test.mobilecoin.com:3225/",
         )
         .unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");

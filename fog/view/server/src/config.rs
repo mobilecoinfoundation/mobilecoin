@@ -7,7 +7,7 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
-use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -145,7 +145,7 @@ pub struct FogViewRouterConfig {
 
     /// Router admin listening URI.
     #[clap(long)]
-    pub admin_listen_uri: FogViewRouterAdminUri,
+    pub admin_listen_uri: AdminUri,
 
     /// The chain id of the network we are a part of
     #[clap(long, env = "MC_CHAIN_ID")]
