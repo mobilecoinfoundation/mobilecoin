@@ -73,7 +73,7 @@ pub struct RouterTestEnvironment {
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
     pub fn new(omap_capacity: u64, store_block_ranges: Vec<BlockRange>, logger: Logger) -> Self {
-        let (db_test_context, store_servers, store_clients) =
+        let (db_test_context, store_servers, store_clients, store_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -89,6 +89,7 @@ impl RouterTestEnvironment {
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
+            shard_uris: store_uris,
             ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
@@ -113,7 +114,7 @@ impl RouterTestEnvironment {
         store_block_ranges: Vec<BlockRange>,
         logger: Logger,
     ) -> Self {
-        let (db_test_context, store_servers, store_clients) =
+        let (db_test_context, store_servers, store_clients, store_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -129,6 +130,7 @@ impl RouterTestEnvironment {
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
             ias_spid: Default::default(),
+            shard_uris: store_uris,
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
@@ -217,11 +219,13 @@ impl RouterTestEnvironment {
         SqlRecoveryDbTestContext,
         Vec<TestViewServer>,
         Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        Vec<FogViewStoreUri>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
         let mut store_clients = HashMap::new();
+        let mut store_uris: Vec<FogViewStoreUri> = Vec::new();
 
         for (i, store_block_range) in store_block_ranges.into_iter().enumerate() {
             let (store, store_uri) = {
@@ -231,6 +235,7 @@ impl RouterTestEnvironment {
                     port
                 ))
                 .unwrap();
+                store_uris.push(uri.clone());
 
                 // Each store is responsible for 1 block. Note that this means that the stores
                 // in this test are not responsible for overlapping block ranges.
@@ -291,7 +296,7 @@ impl RouterTestEnvironment {
 
         let store_clients = Arc::new(RwLock::new(store_clients));
 
-        (db_test_context, store_servers, store_clients)
+        (db_test_context, store_servers, store_clients, store_uris)
     }
 }
 

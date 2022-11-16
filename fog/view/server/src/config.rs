@@ -121,6 +121,10 @@ pub struct FogViewRouterConfig {
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: RouterClientListenUri,
 
+    /// gRPC listening URI for Fog View Stores.
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
+    pub shard_uris: Vec<FogViewStoreUri>,
+
     /// PEM-formatted keypair to send with an Attestation Request.
     #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
@@ -129,7 +133,6 @@ pub struct FogViewRouterConfig {
     #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
-    // TODO: Add shard uris which are of type Vec<FogViewStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
     /// About 75% of this capacity can be used.
     /// The hash table will overflow when there are more TxOut's than this,

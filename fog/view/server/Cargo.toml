@@ -13,6 +13,10 @@ path = "src/lib.rs"
 name = "fog_view_server"
 path = "src/bin/main.rs"
 
+[[bin]]
+name = "fog_view_router"
+path = "src/bin/router.rs"
+
 [dependencies]
 # third party
 clap = { version = "4.0", features = ["derive", "env"] }

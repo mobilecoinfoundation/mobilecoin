@@ -90,7 +90,11 @@ impl UserRngSet {
             if let Ok(code) = TxOutSearchResultCode::try_from(result.result_code) {
                 if code == TxOutSearchResultCode::Found {
                     // TODO: Log any collision when inserting?
-                    tx_result_map.insert(result.search_key.clone(), result.ciphertext.clone());
+                    let payload_length = result.payload_length as usize;
+                    // TODO: Remove payload length logic once InternalTxOutSearchResult is
+                    // implemented.
+                    let ciphertext = result.ciphertext[0..payload_length].to_vec();
+                    tx_result_map.insert(result.search_key.clone(), ciphertext);
                 } else if code != TxOutSearchResultCode::NotFound {
                     failures.push(TxOutRecoveryError::TxOutSearchFailure(
                         code,

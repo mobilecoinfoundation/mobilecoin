@@ -14,6 +14,9 @@ BASE_INGEST_ADMIN_HTTP_GATEWAY_PORT = 4500
 BASE_VIEW_CLIENT_PORT = 5200
 BASE_VIEW_ADMIN_PORT = 5400
 BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT = 5500
+BASE_VIEW_STORE_PORT = 5600
+BASE_VIEW_STORE_ADMIN_PORT = 5700
+BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT = 5800
 
 BASE_REPORT_CLIENT_PORT = 6200
 BASE_REPORT_ADMIN_PORT = 6400
@@ -172,13 +175,64 @@ class FogIngest:
     def report_lost_ingress_key(self, lost_key):
         return self.run_client_command(f'report-lost-ingress-key -k "{lost_key}"')
 
-class FogView:
-    def __init__(self, name, client_responder_id, client_port, admin_port, admin_http_gateway_port, release):
+
+class FogViewRouter:
+    def __init__(self, name, client_responder_id, client_port, admin_port, admin_http_gateway_port, shard_uris, release):
         self.name = name
 
         self.client_responder_id = client_responder_id
         self.client_port = client_port
+        # Use the unary API for now.
         self.client_listen_url = f'insecure-fog-view://{LISTEN_HOST}:{self.client_port}/'
+
+        self.admin_port = admin_port
+        self.admin_http_gateway_port = admin_http_gateway_port
+
+        self.shard_uris = shard_uris
+
+        self.release = release
+        self.target_dir = target_dir(self.release)
+
+        self.view_router_process = None
+        self.admin_http_gateway_process = None
+    def __repr__(self):
+        return self.name
+
+    def start(self):
+        self.stop()
+
+        print(f'Starting fog view router {self.name}')
+        cmd = ' '.join([
+            DATABASE_URL_ENV,
+            f'exec {self.target_dir}/fog_view_router',
+            f'--client-listen-uri={self.client_listen_url}',
+            f'--client-responder-id={self.client_responder_id}',
+            f'--ias-api-key={IAS_API_KEY}',
+            f'--shard-uris={",".join(self.shard_uris)}',
+            f'--ias-spid={IAS_SPID}',
+            f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
+        ])
+        self.view_router_process = log_and_popen_shell(cmd)
+
+        print(f'Starting admin http gateway for fog view router')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
+
+    def stop(self):
+        if self.view_router_process and self.view_router_process.poll() is None:
+            self.view_router_process.terminate()
+            self.view_router_process = None
+
+        if self.admin_http_gateway_process and self.admin_http_gateway_process.poll() is None:
+            self.admin_http_gateway_process.terminate()
+            self.admin_http_gateway_process = None
+
+class FogViewStore:
+    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release):
+        self.name = name
+
+        self.client_port = client_port
+        self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
+        self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/'
 
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
@@ -192,10 +246,13 @@ class FogView:
     def __repr__(self):
         return self.name
 
+    def get_client_listen_uri(self):
+        return self.client_listen_url
+
     def start(self):
         self.stop()
 
-        print(f'Starting fog view {self.name}')
+        print(f'Starting fog view store {self.name}')
         cmd = ' '.join([
             DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_view_server',

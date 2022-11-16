@@ -6,7 +6,6 @@ use grpcio::ChannelBuilder;
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
-use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{
     config::FogViewRouterConfig, fog_view_router_server::FogViewRouterServer,
@@ -16,15 +15,14 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{
     collections::HashMap,
     env,
-    str::FromStr,
     sync::{Arc, RwLock},
 };
 
 fn main() {
     mc_common::setup_panic_handler();
-    let config = FogViewRouterConfig::parse();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    let config = FogViewRouterConfig::parse();
 
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
@@ -49,12 +47,7 @@ fn main() {
             .name_prefix("Main-RPC".to_string())
             .build(),
     );
-    for i in 0..50 {
-        let shard_uri_string = format!(
-            "insecure-fog-view-store://node{}.test.mobilecoin.com:3225",
-            i
-        );
-        let shard_uri = FogViewStoreUri::from_str(&shard_uri_string).unwrap();
+    for shard_uri in config.shard_uris.clone() {
         let fog_view_store_grpc_client = FogViewStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
