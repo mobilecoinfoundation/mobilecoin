@@ -88,7 +88,7 @@ where
             chain_id,
             ledger,
             watcher,
-            enclave,
+            enclave.clone(),
             shared_state,
             client_authenticator.clone(),
             logger.clone(),
@@ -145,11 +145,11 @@ where
 
         let db_fetcher = DbFetcher::new(
             key_image_service.get_ledger(),
-            enclave.clone(),
+            enclave,
             sharding_strategy,
             key_image_service.get_watcher(),
             key_image_service.get_db_poll_shared_state(),
-            readiness_indicator.clone(),
+            readiness_indicator,
             logger.clone(),
         );
 
