@@ -13,13 +13,12 @@ mod router_handlers;
 mod router_server;
 mod router_service;
 mod server;
+pub mod sharding_strategy;
 mod untrusted_tx_out_service;
-
-use mc_util_metrics::ServiceMetrics;
 
 pub use block_service::BlockService;
 pub use config::{
-    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig,
+    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig, ShardingStrategy,
 };
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;

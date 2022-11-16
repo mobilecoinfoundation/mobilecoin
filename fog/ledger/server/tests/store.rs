@@ -25,6 +25,8 @@ use mc_fog_ledger_server::{
     DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
     LedgerStoreConfig,
 };
+use mc_fog_ledger_server::ShardingStrategy;
+use mc_fog_ledger_server::sharding_strategy::EpochShardingStrategy;
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
@@ -123,6 +125,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             omap_capacity,
+            sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
         };
 
         Self {

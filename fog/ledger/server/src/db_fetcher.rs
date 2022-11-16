@@ -3,7 +3,7 @@
 //! A background thread, in the server side, that continuously checks the
 //! LedgerDB for new blocks, then gets all the key images associated to those
 //! blocks and adds them to the enclave.
-use crate::{counters, server::DbPollSharedState};
+use crate::{counters, server::DbPollSharedState, sharding_strategy::ShardingStrategy};
 use mc_common::{
     logger::{log, Logger},
     trace_time,
@@ -24,6 +24,7 @@ use std::{
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::{Duration, SystemTime},
+    cmp::min,
 };
 
 /// Telemetry: block index currently being worked on.
@@ -39,9 +40,10 @@ pub struct DbFetcher {
 }
 
 impl DbFetcher {
-    pub fn new<DB: Ledger + Clone + Send + Sync + 'static, E: LedgerEnclaveProxy>(
+    pub fn new<DB: Ledger + Clone + Send + Sync + 'static, E: LedgerEnclaveProxy, SS: ShardingStrategy + Clone + Send + Sync + 'static>(
         db: DB,
         enclave: E,
+        sharding_strategy: SS,
         watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
@@ -57,7 +59,7 @@ impl DbFetcher {
                     DbFetcherThread::start(
                         db,
                         thread_stop_requested,
-                        0,
+                        sharding_strategy,
                         enclave,
                         watcher,
                         thread_shared_state,
@@ -91,10 +93,10 @@ impl Drop for DbFetcher {
     }
 }
 
-struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> {
+struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy> {
     db: DB,
     stop_requested: Arc<AtomicBool>,
-    next_block_index: u64,
+    sharding_strategy: SS,
     enclave: E,
     watcher: WatcherDB,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
@@ -104,14 +106,14 @@ struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync +
 
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database. Add join handle
-impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetcherThread<DB, E> {
+impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static, SS: ShardingStrategy> DbFetcherThread<DB, E, SS> {
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
     pub fn start(
         db: DB,
         stop_requested: Arc<AtomicBool>,
-        next_block_index: u64,
+        sharding_strategy: SS,
         enclave: E,
         watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
@@ -121,7 +123,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
         let thread = Self {
             db,
             stop_requested,
-            next_block_index,
+            sharding_strategy,
             enclave,
             watcher,
             db_poll_shared_state,
@@ -133,7 +135,8 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
 
     fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
-        self.next_block_index = 0;
+        let block_range = self.sharding_strategy.get_block_range();
+        let mut next_block_index = block_range.start_block;
         loop {
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::info!(self.logger, "Db fetcher thread stop requested.");
@@ -144,11 +147,13 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {
+            while next_block_index < block_range.end_block && self.load_block_data(&mut next_block_index) && !self.stop_requested.load(Ordering::SeqCst) {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
                 match self.db.num_blocks() {
                     Ok(num_blocks) => {
-                        if num_blocks > self.next_block_index + 100 {
+                        // if there are > 100 *available* blocks we haven't loaded yet, set unready
+                        // TODO: 100 should at least be a constant, but this is a hack after all
+                        if min(num_blocks, block_range.end_block) > next_block_index + 100 {
                             self.readiness_indicator.set_unready();
                         }
                     }
@@ -175,20 +180,20 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     /// Attempt to load the next block that we
     /// are aware of and tracking.
     /// Returns true if we might have more block data to load.
-    fn load_block_data(&mut self) -> bool {
+    fn load_block_data(&mut self, next_block_index: &mut u64) -> bool {
         // Default to true: if there is an error, we may have more work, we don't know
         let mut may_have_more_work = true;
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
-        match self.db.get_block_contents(self.next_block_index) {
+        match self.db.get_block_contents(*next_block_index) {
             Err(LedgerError::NotFound) => may_have_more_work = false,
             Err(e) => {
                 log::error!(
                     self.logger,
                     "Unexpected error when checking for block data {}: {:?}",
-                    self.next_block_index,
+                    next_block_index,
                     e
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
@@ -197,18 +202,18 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 // Tracing
                 let tracer = tracer!();
 
-                let mut span = block_span_builder(&tracer, "poll_block", self.next_block_index)
+                let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
                     .with_start_time(start_time)
                     .start(&tracer);
 
-                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
+                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
 
                 let _active = mark_span_as_active(span);
 
                 // Get the timestamp for the block.
                 let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
                     self.watcher
-                        .poll_block_timestamp(self.next_block_index, watcher_timeout)
+                        .poll_block_timestamp(*next_block_index, watcher_timeout)
                 });
 
                 // Add block to enclave.
@@ -217,13 +222,13 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                     .iter()
                     .map(|key_image| KeyImageData {
                         key_image: *key_image,
-                        block_index: self.next_block_index,
+                        block_index: *next_block_index,
                         timestamp,
                     })
                     .collect();
 
                 tracer.in_span("add_records_to_enclave", |_cx| {
-                    self.add_records_to_enclave(self.next_block_index, records);
+                    self.add_records_to_enclave(*next_block_index, records);
                 });
 
                 // Update shared state.
@@ -232,13 +237,13 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                         self.db_poll_shared_state.lock().expect("mutex poisoned");
                     // this is next_block_index + 1 because next_block_index is actually the block
                     // we just processed, so we have fully processed next_block_index + 1 blocks
-                    shared_state.highest_processed_block_count = self.next_block_index + 1;
+                    shared_state.highest_processed_block_count = *next_block_index + 1;
                     match self.db.num_txos() {
                         Err(e) => {
                             log::error!(
                                 self.logger,
                                 "Unexpected error when checking for ledger num txos {}: {:?}",
-                                self.next_block_index,
+                                next_block_index,
                                 e
                             );
                         }
@@ -252,7 +257,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                             log::error!(
                                 self.logger,
                                 "Unexpected error when checking for ledger latest block version {}: {:?}",
-                                self.next_block_index,
+                                next_block_index,
                                 e
                             );
                         }
@@ -262,7 +267,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                     }
                 });
 
-                self.next_block_index += 1;
+                *next_block_index += 1;
             }
         }
         may_have_more_work
