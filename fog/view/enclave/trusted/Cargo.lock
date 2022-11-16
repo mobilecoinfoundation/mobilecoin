@@ -463,9 +463,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.4"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
+checksum = "bff49e947297f3312447abdca79f45f4738097cc82b06e72054d2223f601f1b9"
 dependencies = [
  "serde",
  "typenum",
@@ -915,15 +915,19 @@ dependencies = [
 name = "mc-core"
 version = "2.0.0"
 dependencies = [
+ "aes",
  "anyhow",
  "curve25519-dalek",
  "ed25519-dalek",
+ "generic-array",
  "glob",
  "hkdf",
  "mc-core-types",
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-memo-mac",
+ "mc-crypto-ring-signature",
  "sha2",
  "zeroize",
 ]
@@ -1067,6 +1071,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-memo-mac"
+version = "2.0.0"
+dependencies = [
+ "hmac",
+ "mc-crypto-keys",
+ "sha2",
+]
+
+[[package]]
 name = "mc-crypto-multisig"
 version = "2.1.0-pre0"
 dependencies = [
@@ -1133,6 +1146,7 @@ dependencies = [
 name = "mc-crypto-ring-signature-signer"
 version = "2.1.0-pre0"
 dependencies = [
+ "anyhow",
  "curve25519-dalek",
  "displaydoc",
  "generic-array",

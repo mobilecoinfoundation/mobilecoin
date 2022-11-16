@@ -13,9 +13,10 @@ pub use mc_core_types::{account, keys};
 
 pub mod consts;
 
+pub mod memo;
+
 pub mod subaddress;
 
 pub mod slip10;
 
-#[cfg(feature = "protos")]
-pub mod protos;
+pub mod traits;

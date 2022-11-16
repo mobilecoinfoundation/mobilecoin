@@ -12,4 +12,4 @@ default = [ "curve25519-dalek" ]
 [dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "simd_backend"] }
 ed25519-dalek = { version = "2.0.0-pre.1", optional=true, default-features = false, features = ["nightly", "simd_backend"]  }
-x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false, features = ["nightly"] }
+x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "u64_backend"] }

@@ -3119,10 +3119,12 @@ dependencies = [
 name = "mc-core"
 version = "2.0.0"
 dependencies = [
+ "aes 0.7.5",
  "anyhow",
  "clap 4.0.18",
  "curve25519-dalek",
  "ed25519-dalek",
+ "generic-array",
  "glob 0.3.0",
  "hex",
  "hkdf",
@@ -3131,6 +3133,8 @@ dependencies = [
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-memo-mac",
+ "mc-crypto-ring-signature",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
  "mc-util-test-with-data",
@@ -3311,6 +3315,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-memo-mac"
+version = "2.0.0"
+dependencies = [
+ "hmac 0.12.1",
+ "mc-crypto-keys",
+ "sha2 0.10.6",
+]
+
+[[package]]
 name = "mc-crypto-message-cipher"
 version = "2.1.0-pre0"
 dependencies = [
@@ -3402,6 +3415,7 @@ dependencies = [
 name = "mc-crypto-ring-signature-signer"
 version = "2.1.0-pre0"
 dependencies = [
+ "anyhow",
  "curve25519-dalek",
  "displaydoc",
  "generic-array",
