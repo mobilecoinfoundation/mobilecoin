@@ -27,6 +27,7 @@ mod router_handlers;
 mod router_server;
 mod router_service;
 mod server;
+pub mod sharding_strategy;
 mod untrusted_tx_out_service;
 
 use mc_util_metrics::ServiceMetrics;
