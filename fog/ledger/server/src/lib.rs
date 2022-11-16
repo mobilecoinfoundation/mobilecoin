@@ -18,7 +18,8 @@ mod untrusted_tx_out_service;
 
 pub use block_service::BlockService;
 pub use config::{
-    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig, ShardingStrategy,
+    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig,
+    ShardingStrategy,
 };
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;

@@ -2,8 +2,8 @@
 
 //! Enables a Key Image Store to know for which blocks to process key images.
 //!
-//! By determining which key images to process, we are able to "shard" the set of
-//! key images across Key Image Store instances.
+//! By determining which key images to process, we are able to "shard" the set
+//! of key images across Key Image Store instances.
 
 use mc_blockchain_types::BlockIndex;
 use mc_fog_types::{common::BlockRange, BlockCount};
@@ -26,12 +26,13 @@ pub trait ShardingStrategy {
     fn get_block_range(&self) -> BlockRange;
 }
 
-/// Determines whether or not to process a block's key images based on the "epoch"
-/// sharding strategy, in which a block is processed IFF it falls within the
-/// contiguous range of blocks.
+/// Determines whether or not to process a block's key images based on the
+/// "epoch" sharding strategy, in which a block is processed IFF it falls within
+/// the contiguous range of blocks.
 ///
 /// In practice, the set of Key Image Shards will contain overlapping
-/// [epoch_block_ranges] in order to obfuscate which shard processed the key images.
+/// [epoch_block_ranges] in order to obfuscate which shard processed the key
+/// images.
 #[derive(Clone, Serialize)]
 pub struct EpochShardingStrategy {
     /// If a block falls within this range, then the Key Image Store should
@@ -210,8 +211,7 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy
-            .ready((minimum_processed_block_count - 1).into());
+        let ready = epoch_sharding_strategy.ready((minimum_processed_block_count - 1).into());
 
         assert!(!ready)
     }
@@ -225,8 +225,7 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready =
-            epoch_sharding_strategy.ready(minimum_processed_block_count.into());
+        let ready = epoch_sharding_strategy.ready(minimum_processed_block_count.into());
 
         assert!(ready)
     }
@@ -240,8 +239,7 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy
-            .ready((minimum_processed_block_count + 1).into());
+        let ready = epoch_sharding_strategy.ready((minimum_processed_block_count + 1).into());
 
         assert!(ready)
     }
