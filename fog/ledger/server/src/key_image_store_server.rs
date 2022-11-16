@@ -58,7 +58,7 @@ where
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-
+        
         Self::new(
             config.chain_id,
             client_authenticator,
