@@ -186,8 +186,13 @@ pub fn direct_key_image_store_check(logger: Logger) {
         logger.clone(),
     );
 
-    let mut store_server =
-        KeyImageStoreServer::new_from_service(store_service, client_listen_uri, logger.clone());
+    let mut store_server = KeyImageStoreServer::new_from_service(
+        store_service,
+        client_listen_uri,
+        enclave.clone(),
+        EpochShardingStrategy::default(),
+        logger.clone(),
+    );
     store_server.start();
 
     // Set up IAS verficiation

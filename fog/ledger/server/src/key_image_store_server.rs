@@ -18,27 +18,35 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, server::DbPollSharedState, KeyImageClientListenUri, KeyImageService,
+    config::LedgerStoreConfig, server::DbPollSharedState, KeyImageClientListenUri, KeyImageService, db_fetcher::DbFetcher, sharding_strategy::ShardingStrategy,
 };
 
-pub struct KeyImageStoreServer {
+pub struct KeyImageStoreServer<E, SS>
+where 
+    E: LedgerEnclaveProxy,
+    SS: ShardingStrategy + Send + Sync + 'static,
+{
     server: grpcio::Server,
     client_listen_uri: KeyImageStoreUri,
+    db_fetcher: DbFetcher<LedgerDB, E, SS>,
     logger: Logger,
 }
 
-impl KeyImageStoreServer {
+impl<E, SS> KeyImageStoreServer<E, SS>
+where 
+    E: LedgerEnclaveProxy,
+    SS: ShardingStrategy + Send + Sync + 'static,
+{
     /// Creates a new key image store server instance
-    pub fn new_from_config<E>(
+    pub fn new_from_config(
         config: LedgerStoreConfig,
         enclave: E,
         ledger: LedgerDB,
         watcher: WatcherDB,
+        sharding_strategy: SS,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
-    ) -> KeyImageStoreServer
-    where
-        E: LedgerEnclaveProxy,
+    ) -> KeyImageStoreServer<E, SS>
     {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
@@ -50,7 +58,7 @@ impl KeyImageStoreServer {
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-
+        
         Self::new(
             config.chain_id,
             client_authenticator,
@@ -58,21 +66,21 @@ impl KeyImageStoreServer {
             enclave,
             ledger,
             watcher,
+            sharding_strategy,
             logger,
         )
     }
 
-    pub fn new<E>(
+    pub fn new(
         chain_id: String,
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
         ledger: LedgerDB,
         watcher: WatcherDB,
+        sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer
-    where
-        E: LedgerEnclaveProxy,
+    ) -> KeyImageStoreServer<E, SS>
     {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
@@ -86,16 +94,16 @@ impl KeyImageStoreServer {
             client_authenticator.clone(),
             logger.clone(),
         );
-        Self::new_from_service(key_image_service, client_listen_uri, logger.clone())
+        Self::new_from_service(key_image_service, client_listen_uri, enclave, sharding_strategy, logger.clone())
     }
 
-    pub fn new_from_service<E>(
-        key_image_service: KeyImageService<LedgerDB, E>,
-        client_listen_uri: KeyImageStoreUri,
+    pub fn new_from_service(
+        mut key_image_service: KeyImageService<LedgerDB, E>,
+        client_listen_uri: Uri<KeyImageStoreScheme>,
+        enclave: E,
+        sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer
-    where
-        E: LedgerEnclaveProxy,
+    ) -> KeyImageStoreServer<E, SS>
     {
         let readiness_indicator = ReadinessIndicator::default();
 
@@ -107,12 +115,12 @@ impl KeyImageStoreServer {
 
         // Health check service
         let health_service =
-            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
+            mc_util_grpc::HealthService::new(Some(readiness_indicator.clone().into()), logger.clone())
                 .into_service();
 
         // Build our store server.
         // Init ledger store service.
-        let ledger_store_service = ledger_grpc::create_key_image_store_api(key_image_service);
+        let ledger_store_service = ledger_grpc::create_key_image_store_api(key_image_service.clone());
         log::debug!(logger, "Constructed Key Image Store GRPC Service");
 
         // Package service into grpc server
@@ -128,11 +136,7 @@ impl KeyImageStoreServer {
             .build_using_uri(&client_listen_uri, logger.clone())
             .unwrap();
 
-        Self {
-            server,
-            client_listen_uri,
-            logger,
-        }
+        Self { server, client_listen_uri, db_fetcher, logger }
     }
 
     /// Starts the server
@@ -143,15 +147,21 @@ impl KeyImageStoreServer {
             "API listening on {}",
             self.client_listen_uri.addr()
         );
+        self.db_fetcher.start();
     }
 
     /// Stops the server
     pub fn stop(&mut self) {
         block_on(self.server.shutdown()).expect("Could not stop grpc server");
+        self.db_fetcher.stop().expect("Could not stop DbFetcher");
     }
 }
 
-impl Drop for KeyImageStoreServer {
+impl<E, SS> Drop for KeyImageStoreServer<E, SS> 
+where
+    E: LedgerEnclaveProxy,
+    SS: ShardingStrategy + Send + Sync + 'static,
+{
     fn drop(&mut self) {
         self.stop();
     }
