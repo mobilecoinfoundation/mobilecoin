@@ -25,7 +25,6 @@ use std::{
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::{Duration, SystemTime},
-    cmp::min,
 };
 
 /// Telemetry: block index currently being worked on.

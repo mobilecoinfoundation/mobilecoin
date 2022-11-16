@@ -23,15 +23,14 @@ use mc_fog_ledger_enclave::{
 };
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{
-    DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
-    LedgerStoreConfig,
+    sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageClientListenUri,
+    KeyImageService, KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
-use mc_fog_ledger_server::ShardingStrategy;
-use mc_fog_ledger_server::sharding_strategy::EpochShardingStrategy;
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
+use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::AnonymousAuthenticator;
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
@@ -153,7 +152,7 @@ lazy_static::lazy_static! {
 
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
-    const TEST_NAME: &str = "direct_key_image_store_check";
+    const TEST_NAME: &'static str = "direct_key_image_store_check";
     const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
 
@@ -220,7 +219,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         enclave.frontend_accept(client_auth_request).unwrap();
     // Finish the enclave's handshake with itself.
     enclave
-        .ledger_store_connect(responder_id.clone(), auth_response)
+        .ledger_store_connect(responder_id.clone(), auth_response.into())
         .unwrap();
     println!("router_to_store_session is: {:?}", &router_to_store_session);
 
@@ -305,7 +304,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
 
     let result = enclave
-        .check_key_image_store(query, untrusted_kiqr)
+        .check_key_image_store(query, untrusted_kiqr.clone())
         .unwrap();
 
     let responses_btree: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> =
