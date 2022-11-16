@@ -76,7 +76,7 @@ pub struct LedgerServer<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'stat
     enclave: E,
     ra_client: R,
     report_cache_thread: Option<ReportCacheThread>,
-    db_fetcher: Option<DbFetcher>,
+    db_fetcher: Option<DbFetcher<LedgerDB, E, EpochShardingStrategy>>,
     logger: Logger,
 }
 
