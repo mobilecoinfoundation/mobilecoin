@@ -4,6 +4,7 @@
 
 #![deny(missing_docs)]
 
+use crate::sharding_strategy::EpochShardingStrategy;
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
@@ -11,7 +12,7 @@ use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration, str::FromStr};
 
 /// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
@@ -178,6 +179,33 @@ pub struct LedgerStoreConfig {
     /// to disk by linux kernel.
     #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
+    
+    /// Determines which group of Key Images the Key Image Store instance will
+    /// process.
+    #[clap(long, default_value = "default")]
+    pub sharding_strategy: ShardingStrategy,
+}
+
+/// Enum for parsing strategy from command line w/ clap
+#[derive(Clone, Serialize)]
+pub enum ShardingStrategy {
+    /// Epoch strategy (continuous block range)
+    Epoch(EpochShardingStrategy),
+}
+
+impl FromStr for ShardingStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq("default") {
+            return Ok(ShardingStrategy::Epoch(EpochShardingStrategy::default()));
+        }
+        if let Ok(epoch_sharding_strategy) = EpochShardingStrategy::from_str(s) {
+            return Ok(ShardingStrategy::Epoch(epoch_sharding_strategy));
+        }
+
+        Err("Invalid sharding strategy config.".to_string())
+    }
 }
 
 /// Uri for any node in the key image store system.

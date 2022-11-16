@@ -2,6 +2,7 @@
 
 use crate::{
     config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService,
+    sharding_strategy::EpochShardingStrategy,
     KeyImageClientListenUri, KeyImageService, MerkleProofService, UntrustedTxOutService,
 };
 use displaydoc::Display;
@@ -164,6 +165,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             self.db_fetcher = Some(DbFetcher::new(
                 self.key_image_service.get_ledger(),
                 self.enclave.clone(),
+                EpochShardingStrategy::default(),
                 self.key_image_service.get_watcher(),
                 self.key_image_service.get_db_poll_shared_state(),
                 readiness_indicator.clone(),
