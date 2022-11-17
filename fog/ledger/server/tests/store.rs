@@ -29,7 +29,6 @@ use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
-use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::AnonymousAuthenticator;
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
@@ -37,6 +36,7 @@ use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
+use itertools::Itertools;
 use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
@@ -151,7 +151,7 @@ lazy_static::lazy_static! {
 
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
-    const TEST_NAME: &'static str = "direct_key_image_store_check";
+    const TEST_NAME: &str = "direct_key_image_store_check";
     const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
 
@@ -310,10 +310,14 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let result = enclave
 <<<<<<< HEAD:fog/ledger/server/tests/store.rs
+<<<<<<< HEAD:fog/ledger/server/tests/store.rs
         .check_key_image_store(query, untrusted_kiqr)
         .expect("Checking key image store enclave failed.");
 =======
         .check_key_image_store(query, untrusted_kiqr.clone())
+=======
+        .check_key_image_store(query, untrusted_kiqr)
+>>>>>>> cf43d9e1 (Other clippy and fmt changes):fog/ledger/server/tests/store_tests.rs
         .unwrap();
 >>>>>>> 90dd0fd6 (Run cargo fmt):fog/ledger/server/tests/store_tests.rs
 
