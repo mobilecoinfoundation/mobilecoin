@@ -1,0 +1,13 @@
+{
+    "token_id": null,
+    "total_mint_limit": 10000000000,
+    "configs": [
+        {
+            "mint_limit": 10000000000,
+            "minters": {
+                "type": "Single",
+                "pub_key": ""
+            }
+        }
+    ]
+}

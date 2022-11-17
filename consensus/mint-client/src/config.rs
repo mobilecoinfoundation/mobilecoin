@@ -2,20 +2,18 @@
 
 //! Command line configuration for the consensus mint client.
 
-use crate::{FogContext, TxFile};
+use crate::{FogContext, MintConfigTxFile, TxFile};
 use clap::{Args, Parser, Subcommand};
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
-    DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
+    DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Signature, Signer,
 };
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::MultiSig;
 use mc_sgx_css::Signature;
 use mc_transaction_core::{
-    mint::{
-        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
-    },
+    mint::{constants::NONCE_LENGTH, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix},
     TokenId,
 };
 use mc_util_parse::load_css_file;
@@ -46,31 +44,17 @@ impl From<MintPrivateKey> for Ed25519Private {
 
 #[derive(Args)]
 pub struct MintConfigTxPrefixParams {
-    /// The token id we are minting.
-    #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-    pub token_id: TokenId,
+    /// The JSON file containing the mint config tx.
+    #[clap(long, value_parser = load_mint_config_tx_file_from_path, env = "MC_MINTING_MINT_CONFIG_TX_FILE")]
+    pub mint_config_tx_file: MintConfigTxFile,
 
-    /// Tombstone block.
+    /// Optional tombstone block, overriding whatever is in the JSON file.
     #[clap(long, env = "MC_MINTING_TOMBSTONE")]
     pub tombstone: Option<u64>,
 
-    /// Nonce.
+    /// Optional nonce, overriding whatever is in the JSON file.
     #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; NONCE_LENGTH]>, env = "MC_MINTING_NONCE")]
     pub nonce: Option<[u8; NONCE_LENGTH]>,
-
-    /// Mint configs. Each configuration must be of the format: <mint
-    /// limit>:<signing threshold>:<signer 1 public keyfile>[:<signer 2
-    /// public keyfile....>]. For example:
-    /// 10000:2:signer1.pem:signer2.pem:signer3.pem defines a minting
-    /// configuration capable of minting up to 1000 tokens: and requiring 2
-    /// out of 3 signers.
-    #[clap(long = "config", value_parser = parse_mint_config, required = true, use_value_delimiter = true, env = "MC_MINTING_CONFIGS")]
-    // Tuple of (mint limit, SignerSet)
-    pub configs: Vec<(u64, SignerSet<Ed25519Public>)>,
-
-    /// Total mint limit, shared amongst all configs.
-    #[clap(long, env = "MC_MINTING_TOTAL_LIMIT")]
-    pub total_mint_limit: u64,
 }
 
 impl MintConfigTxPrefixParams {
@@ -78,24 +62,38 @@ impl MintConfigTxPrefixParams {
         self,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintConfigTxPrefix, String> {
-        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
-        let nonce = get_or_generate_nonce(self.nonce);
-        let token_id = self.token_id;
-        Ok(MintConfigTxPrefix {
-            token_id: *token_id,
-            configs: self
-                .configs
-                .into_iter()
-                .map(|(mint_limit, signer_set)| MintConfig {
-                    token_id: *token_id,
-                    mint_limit,
-                    signer_set,
-                })
-                .collect(),
-            nonce,
-            tombstone_block,
-            total_mint_limit: self.total_mint_limit,
-        })
+        let mut mint_config_tx_prefix = MintConfigTxPrefix::try_from(&self.mint_config_tx_file)
+            .map_err(|err| format!("Failed to parse mint config tx file: {}", err))?;
+
+        // Override tombstone block if provided.
+        if let Some(tombstone) = self.tombstone {
+            mint_config_tx_prefix.tombstone_block = tombstone;
+        }
+
+        // Use fallback tombstone if we are still missing one.
+        if mint_config_tx_prefix.tombstone_block == 0 {
+            mint_config_tx_prefix.tombstone_block = fallback_tombstone_block();
+        }
+
+        // Override nonce if provided or if we don't already have one.
+        if self.nonce.is_some() || self.mint_config_tx_file.nonce.is_empty() {
+            mint_config_tx_prefix.nonce = get_or_generate_nonce(self.nonce);
+        }
+
+        // Some sanity checks.
+        if mint_config_tx_prefix.tombstone_block == 0 {
+            return Err("Tombstone block must be non-zero".to_string());
+        }
+
+        if mint_config_tx_prefix.nonce.len() != NONCE_LENGTH {
+            return Err(format!(
+                "Nonce must be {} bytes, got {}",
+                NONCE_LENGTH,
+                mint_config_tx_prefix.nonce.len()
+            ));
+        }
+
+        Ok(mint_config_tx_prefix)
     }
 }
 
@@ -278,6 +276,11 @@ pub enum Commands {
         /// Filename to write the mint configuration to.
         #[clap(long, env = "MC_MINTING_OUT_FILE")]
         out: PathBuf,
+
+        /// Optional URI of consensus node to query for current block index and
+        /// calculate a default tombstone block from.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        tombstone_from_node: Option<ConsensusClientUri>,
 
         #[clap(flatten)]
         params: MintConfigTxParams,
@@ -507,56 +510,6 @@ fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
     }
 }
 
-/// Parses a minting limit and signer set from a string in the format:
-/// mint limit:threshold:keyfile1.pem[:keyfile2.pem...]
-fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), String> {
-    let parts = src.split(':').collect::<Vec<_>>();
-
-    // At the minimum we should have 3 parts: mint limit, signing threshold, one
-    // public key file
-    if parts.len() < 3 {
-        return Err(format!(
-            "mint config '{}' is not in the correct format. Expected format is '<mint_limit>:<signing_threshold>:keyfile1.pem[:keyfile2.pem:...]'",
-            src
-        ));
-    }
-
-    // Parse the mint limit and signing theshold
-    let mint_limit = parts[0]
-        .parse::<u64>()
-        .map_err(|err| format!("failed parsing mint limit '{}': {}", parts[0], err))?;
-    let threshold = parts[1]
-        .parse::<u32>()
-        .map_err(|err| format!("failed parsing signing threshold '{}': {}", parts[1], err))?;
-
-    // Load public keys
-    let public_keys = parts[2..]
-        .iter()
-        .map(|filename| {
-            let bytes = fs::read(filename)
-                .map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
-
-            let parsed_pem = pem::parse(&bytes)
-                .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
-
-            Ed25519Public::try_from_der(&parsed_pem.contents[..])
-                .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Sanity check signing threshold against keys
-    if threshold > public_keys.len() as u32 {
-        return Err(format!(
-            "signing threshold '{}' is greater than the number of public keys '{}'",
-            threshold,
-            public_keys.len()
-        ));
-    }
-
-    // Success.
-    Ok((mint_limit, SignerSet::new(public_keys, threshold)))
-}
-
 /// Parse a tokens file from the command line
 ///
 /// # Arguments:
@@ -576,4 +529,9 @@ fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
 
 fn load_tx_file_from_path(path: &str) -> Result<TxFile, String> {
     TxFile::from_json_file(path).map_err(|e| format!("failed loading file {:?}: {}", path, e))
+}
+
+fn load_mint_config_tx_file_from_path(path: &str) -> Result<MintConfigTxFile, String> {
+    MintConfigTxFile::from_json_file(path)
+        .map_err(|e| format!("failed loading file {:?}: {}", path, e))
 }
