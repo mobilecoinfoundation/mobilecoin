@@ -324,15 +324,13 @@ where
         result.last_known_block_cumulative_txo_count =
             last_known_data.last_known_block_cumulative_txo_count;
 
-        // TODO: Use missed block ranges in HPBC calculation.
         let shared_data: CommonShardData = CommonShardData::from(responses.as_slice());
         result.missed_block_ranges = shared_data.missed_block_ranges;
         result.rng_records = shared_data.rng_records;
         result.decommissioned_ingest_invocations = shared_data.decommissioned_ingest_invocations;
         result.next_start_from_user_event_id = shared_data.next_start_from_user_event_id;
 
-        let block_data =
-            get_block_data(responses.as_mut_slice(), result.missed_block_ranges.clone());
+        let block_data = get_block_data(responses.as_mut_slice(), &result.missed_block_ranges);
         result.highest_processed_block_count = block_data.highest_processed_block_count;
         result.highest_processed_block_signature_timestamp =
             block_data.highest_processed_block_signature_timestamp;
