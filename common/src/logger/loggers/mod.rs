@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Sets chan_size for stdout, gelf, and UDP loggers
-const STDOUT_CHANNEL_SIZE: usize = 100_000;
-const STDERR_CHANNEL_SIZE: usize = 100_000;
+const STD_CHANNEL_SIZE: usize = 100_000;
 const GELF_CHANNEL_SIZE: usize = 100_000;
 const UDP_CHANNEL_SIZE: usize = 100_000;
 
@@ -39,7 +38,7 @@ fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
     );
     slog_async::Async::new(drain)
         .thread_name("slog-stdout".into())
-        .chan_size(STDOUT_CHANNEL_SIZE)
+        .chan_size(STD_CHANNEL_SIZE)
         .build()
         .fuse()
 }
@@ -55,7 +54,7 @@ fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
     );
     slog_async::Async::new(drain)
         .thread_name("slog-stderr".into())
-        .chan_size(STDERR_CHANNEL_SIZE)
+        .chan_size(STD_CHANNEL_SIZE)
         .build()
         .fuse()
 }
@@ -121,6 +120,37 @@ fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
     })
 }
 
+/// Create a json logger suitable for using with stdout/stderr.
+fn create_std_json_logger<W: io::Write + Send + 'static>(
+    writer: W,
+) -> slog::Fuse<slog_async::Async> {
+    let drain = slog_envlogger::new(
+        Json::new(writer)
+            .set_flush(true)
+            .add_key_value(o!(
+                    "ts" => PushFnValue(move |_, ser| {
+                        ser.emit(Local::now().to_rfc3339())
+                    }),
+                    "level_str" => FnValue(move |record| {
+                        record.level().as_short_str()
+                    }),
+                    "level"  => FnValue(move |record| {
+                        record.level().as_usize()
+                    }),
+                    "message" => PushFnValue(move |record, ser| {
+                       ser.emit(record.msg())
+                    }),
+            ))
+            .build()
+            .fuse(),
+    );
+    slog_async::Async::new(drain)
+        .thread_name("slog-stdout".into())
+        .chan_size(STD_CHANNEL_SIZE)
+        .build()
+        .fuse()
+}
+
 /// Create the root logger, which logs to stdout and optionally a GELF endpoint
 /// (if the `MC_LOG_GELF` environment variable is set) or a UDP JSON endpoint
 /// (if the `MC_LOG_UDP_JSON` environment variable is set).
@@ -146,10 +176,14 @@ pub fn create_root_logger() -> Logger {
     };
 
     // Create stdout / stderr sink
-    let std_logger = if env::var("MC_LOG_STDERR") == Ok("1".to_string()) {
-        create_stderr_logger()
-    } else {
-        create_stdout_logger()
+    let std_logger = match (
+        env::var("MC_LOG_JSON").unwrap_or_default().as_ref(),
+        env::var("MC_LOG_STDERR").unwrap_or_default().as_ref(),
+    ) {
+        ("1", "1") => create_std_json_logger(io::stderr()),
+        ("1", _) => create_std_json_logger(io::stdout()),
+        (_, "1") => create_stderr_logger(),
+        (_, _) => create_stdout_logger(),
     };
 
     // Extra context that always gets added to each log message.
