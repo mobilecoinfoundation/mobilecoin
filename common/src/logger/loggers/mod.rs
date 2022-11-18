@@ -1,12 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// Sets chan_size for stdout, gelf, and UDP loggers
-const STD_CHANNEL_SIZE: usize = 100_000;
-const GELF_CHANNEL_SIZE: usize = 100_000;
-const UDP_CHANNEL_SIZE: usize = 100_000;
+/// Sets chan_size (maximal messages that can get queued up) for all channels
+const CHANNEL_SIZE: usize = 100_000;
+
+/// Marker to insert at the end of a message that has been truncated.
+const TRIM_MARKER: &str = "... <trimmed>";
 
 /// Macros to ease with tests/benches that require a Logger instance.
 pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
+use slog_term::TermDecorator;
 
 use super::*;
 
@@ -27,9 +29,8 @@ fn custom_timestamp(io: &mut dyn io::Write) -> io::Result<()> {
     write!(io, "{}", Utc::now())
 }
 
-/// Create a basic stdout logger.
-fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
-    let decorator = slog_term::TermDecorator::new().stdout().build();
+/// Create a basic stdout/stderr logger.
+fn create_std_logger(decorator: TermDecorator) -> slog::Fuse<slog_async::Async> {
     let drain = slog_envlogger::new(
         slog_term::FullFormat::new(decorator)
             .use_custom_timestamp(custom_timestamp)
@@ -37,26 +38,20 @@ fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
             .fuse(),
     );
     slog_async::Async::new(drain)
-        .thread_name("slog-stdout".into())
-        .chan_size(STD_CHANNEL_SIZE)
+        .thread_name("slog-std".into())
+        .chan_size(CHANNEL_SIZE)
         .build()
         .fuse()
 }
 
+/// Create a basic stdout logger.
+fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
+    create_std_logger(slog_term::TermDecorator::new().stdout().build())
+}
+
 /// Create a basic stderr logger.
 fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
-    let decorator = slog_term::TermDecorator::new().stderr().build();
-    let drain = slog_envlogger::new(
-        slog_term::FullFormat::new(decorator)
-            .use_custom_timestamp(custom_timestamp)
-            .build()
-            .fuse(),
-    );
-    slog_async::Async::new(drain)
-        .thread_name("slog-stderr".into())
-        .chan_size(STD_CHANNEL_SIZE)
-        .build()
-        .fuse()
+    create_std_logger(slog_term::TermDecorator::new().stderr().build())
 }
 
 /// Create a GELF (https://docs.graylog.org/en/3.0/pages/gelf.html) logger.
@@ -75,57 +70,29 @@ fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
 
         slog_async::Async::new(drain)
             .thread_name("slog-gelf".into())
-            .chan_size(GELF_CHANNEL_SIZE)
+            .chan_size(CHANNEL_SIZE)
             .build()
             .fuse()
     })
 }
 
-/// Create a UDP JSON logger.
-fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
-    env::var("MC_LOG_UDP_JSON").ok().map(|remote_host_port| {
-        let drain = Json::new(udp_writer::UdpWriter::new(remote_host_port))
-            .set_newlines(false)
-            .set_flush(true)
-            .add_key_value(o!(
-                    "ts" => PushFnValue(move |_, ser| {
-                        ser.emit(Local::now().to_rfc3339())
-                    }),
-                    "level_str" => FnValue(move |record| {
-                        record.level().as_short_str()
-                    }),
-                    "level"  => FnValue(move |record| {
-                        record.level().as_usize()
-                    }),
-                    "message" => PushFnValue(move |record, ser| {
-                        // Cap message at 65000 bytes to increase chances of it fitting in a UDP
-                        // packet.
-                        let mut msg = format!("{}", record.msg());
-                        if msg.len() > 65000 {
-                            msg = format!("{}... <trimmed>", &msg[0..65000]);
-                        }
-                        ser.emit(msg)
-                    }),
-            ))
-            .build()
-            .fuse();
-
-        let drain = slog_envlogger::new(drain);
-
-        slog_async::Async::new(drain)
-            .thread_name("slog-udp".into())
-            .chan_size(UDP_CHANNEL_SIZE)
-            .build()
-            .fuse()
-    })
-}
-
-/// Create a json logger suitable for using with stdout/stderr.
-fn create_std_json_logger<W: io::Write + Send + 'static>(
+/// Create a json logger.
+///
+/// # Arguments:
+/// * `writer` - The writer to use for the logger.
+/// * `new_lines` - Whether to add a new line to the end of each log message.
+/// * `max_message_len` - The maximum length of a log message. If exceeded,
+///   message text will be trimmed.
+fn create_json_logger<W: io::Write + Send + 'static>(
     writer: W,
+    new_lines: bool,
+    cap_message_length: Option<usize>,
 ) -> slog::Fuse<slog_async::Async> {
+    let cap_message_length = cap_message_length.unwrap_or(usize::max_value());
+
     let drain = slog_envlogger::new(
         Json::new(writer)
+            .set_newlines(new_lines)
             .set_flush(true)
             .add_key_value(o!(
                     "ts" => PushFnValue(move |_, ser| {
@@ -138,17 +105,31 @@ fn create_std_json_logger<W: io::Write + Send + 'static>(
                         record.level().as_usize()
                     }),
                     "message" => PushFnValue(move |record, ser| {
-                       ser.emit(record.msg())
+                        let mut msg = record.msg().to_string();
+                        if msg.len() > cap_message_length{
+                            msg = format!("{}{}", &msg[0..cap_message_length - TRIM_MARKER.len()], TRIM_MARKER);
+                        }
+                        ser.emit(msg)
                     }),
             ))
             .build()
             .fuse(),
     );
     slog_async::Async::new(drain)
-        .thread_name("slog-stdout".into())
-        .chan_size(STD_CHANNEL_SIZE)
+        .thread_name("slog-json".into())
+        .chan_size(CHANNEL_SIZE)
         .build()
         .fuse()
+}
+
+/// Create a UDP JSON logger.
+fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
+    env::var("MC_LOG_UDP_JSON").ok().map(|remote_host_port| {
+        let writer = udp_writer::UdpWriter::new(remote_host_port);
+        // Cap message at 65000 bytes to increase chances of it fitting in a UDP
+        // packet.
+        create_json_logger(writer, false, Some(65000))
+    })
 }
 
 /// Create the root logger, which logs to stdout and optionally a GELF endpoint
@@ -180,8 +161,8 @@ pub fn create_root_logger() -> Logger {
         env::var("MC_LOG_JSON").unwrap_or_default().as_ref(),
         env::var("MC_LOG_STDERR").unwrap_or_default().as_ref(),
     ) {
-        ("1", "1") => create_std_json_logger(io::stderr()),
-        ("1", _) => create_std_json_logger(io::stdout()),
+        ("1", "1") => create_json_logger(io::stderr(), true, None),
+        ("1", _) => create_json_logger(io::stdout(), true, None),
         (_, "1") => create_stderr_logger(),
         (_, _) => create_stdout_logger(),
     };
