@@ -8,7 +8,6 @@ const TRIM_MARKER: &str = "... <trimmed>";
 
 /// Macros to ease with tests/benches that require a Logger instance.
 pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
-use slog_term::TermDecorator;
 
 use super::*;
 
@@ -22,6 +21,7 @@ use sentry_logger::SentryLogger;
 use slog::Drain;
 use slog_gelf::Gelf;
 use slog_json::Json;
+use slog_term::TermDecorator;
 use std::{env, io, sync::Mutex};
 
 /// Custom timestamp function for use with slog-term
