@@ -124,9 +124,10 @@ async fn main() -> Result<(), rocket::Error> {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+
     let config = Config::parse();
 
-    let (logger, _global_logger_guard) = create_app_logger(o!());
     log::info!(
         logger,
         "Starting admin HTTP gateway on {}:{}, connecting to {}",

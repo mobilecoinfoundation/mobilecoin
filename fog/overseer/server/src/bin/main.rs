@@ -16,8 +16,9 @@ use mc_util_cli::ParserWithBuildInfo;
 async fn main() -> Result<(), rocket::Error> {
     mc_common::setup_panic_handler();
     let _sentry_guard = sentry::init();
-    let config = OverseerConfig::parse();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
+
+    let config = OverseerConfig::parse();
 
     // Open the database.
     let database_url =
