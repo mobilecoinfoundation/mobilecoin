@@ -8,9 +8,8 @@ use fog_stub_server::{Config, Server};
 use mc_common::logger;
 
 fn main() {
-    mc_common::setup_panic_handler();
-
     let (logger, _global_logger_guard) = logger::create_app_logger(logger::o!());
+    mc_common::setup_panic_handler();
 
     let config = Config::parse();
 

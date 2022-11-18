@@ -18,10 +18,10 @@ use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
 
 fn main() {
+    let (logger, _global_logger_guard) = create_app_logger(o!());
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = LedgerServerConfig::parse();
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(

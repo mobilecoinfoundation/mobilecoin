@@ -28,9 +28,6 @@ use std::{
 };
 
 fn main() -> Result<(), ConsensusServiceError> {
-    mc_common::setup_panic_handler();
-    let _sentry_guard = mc_common::sentry::init();
-
     let config = Config::parse();
     let local_node_id = config.node_id();
     let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
@@ -42,6 +39,8 @@ fn main() -> Result<(), ConsensusServiceError> {
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
     ));
+    mc_common::setup_panic_handler();
+    let _sentry_guard = mc_common::sentry::init();
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         env!("CARGO_PKG_NAME"),

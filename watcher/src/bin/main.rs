@@ -27,8 +27,9 @@ use std::{
 };
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+    let _sentry_guard = mc_common::sentry::init();
 
     let config = WatcherConfig::parse();
     let sources_config = config.sources_config();

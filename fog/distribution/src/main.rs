@@ -115,8 +115,8 @@ struct SpendableTxOut {
 }
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
 
     let config = Config::parse();
 
