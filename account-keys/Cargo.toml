@@ -8,15 +8,20 @@ readme = "README.md"
 [features]
 std = ["mc-util-repr-bytes/alloc"]
 prost = ["dep:prost", "mc-util-repr-bytes/prost", "mc-crypto-keys/prost"]
-serde = ["mc-crypto-keys/serde"]
+serde = ["dep:serde", "mc-crypto-keys/serde"]
 default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/default", "mc-crypto-hashes/default", "mc-crypto-keys/default"]
 
 [dependencies]
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 # External dependencies
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 displaydoc = { version = "0.2", default-features = false }
 hkdf = "0.12.3"
+prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "*", optional = true }
+subtle = { version = "2", default-features = false }
+zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "types" }
@@ -28,10 +33,7 @@ mc-fog-sig-authority = { path = "../fog/sig/authority" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../util/serial", optional = true }
-prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
-rand_core = { version = "0.6", default-features = false }
-subtle = { version = "2", default-features = false }
-zeroize = { version = "1", default-features = false }
+
 
 [dev-dependencies]
 criterion = "0.4"

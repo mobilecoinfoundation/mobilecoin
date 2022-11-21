@@ -60,6 +60,42 @@ impl Account {
     }
 }
 
+/// MobileCoin view only account object.
+///
+/// Derived from an [Account] object, used where spend key custody is external (offline or via hardware)
+#[derive(Debug, Zeroize)]
+pub struct ViewAccount {
+    /// Root view private key
+    view_private: RootViewPrivate,
+    /// Root spend public key
+    spend_public: RootSpendPublic,
+}
+
+impl ViewAccount {
+    /// Create an view-only account from existing private keys
+    pub fn new(view_private: RootViewPrivate, spend_public: RootSpendPublic) -> Self {
+        Self {
+            view_private,
+            spend_public,
+        }
+    }
+
+    /// Fetch account view public key
+    pub fn view_public_key(&self) -> RootViewPublic {
+        RootViewPublic::from(&self.view_private)
+    }
+
+    /// Fetch account spend public key
+    pub fn spend_public_key(&self) -> &RootSpendPublic {
+        &self.spend_public
+    }
+
+    /// Fetch account view private key
+    pub fn view_private_key(&self) -> &RootViewPrivate {
+        &self.view_private
+    }
+}
+
 /// MobileCoin spend subaddress object.
 ///
 /// Contains view and spend private keys.

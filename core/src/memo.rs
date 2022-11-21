@@ -13,7 +13,6 @@ use generic_array::{
     typenum::{U32, U48},
 };
 
-
 use mc_core_types::{
     keys::{
         SubaddressSpendPrivate, SubaddressSpendPublic,

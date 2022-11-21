@@ -39,9 +39,12 @@ pub type RootSpendPublic = Key<Root, Spend, RistrettoPublic>;
 /// Generic key object, see type aliases for use
 #[derive(Clone, Debug, Zeroize)]
 pub struct Key<ADDR, KIND, KEY: Default + Zeroize> {
+    /// Key data
     key: KEY,
+    /// Address (root, sub, etc.) marker
     #[zeroize(skip)]
     _addr: PhantomData<ADDR>,
+    /// Kind (view, spend, etc.) marker
     #[zeroize(skip)]
     _kind: PhantomData<KIND>,
 }

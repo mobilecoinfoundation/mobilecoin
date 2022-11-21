@@ -36,6 +36,8 @@ use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerif
 use mc_util_from_random::FromRandom;
 #[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
@@ -46,6 +48,7 @@ pub use mc_core::consts::{
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Digestible)]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.
     #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
