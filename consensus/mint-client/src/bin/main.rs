@@ -11,7 +11,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, FogContext, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer, Verifier};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -362,6 +362,15 @@ fn main() {
             tx_file
                 .write_json(&tx_file_path)
                 .expect("failed writing tx file");
+        },
+
+        Commands::CheckSig {
+            signature,
+            hash,
+            pubkey,
+        } => {
+            let result = pubkey.verify(&hash, &signature);
+            println!("Verification result = {:?}", result);
         }
     }
 }
