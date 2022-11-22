@@ -369,8 +369,19 @@ fn main() {
             hash,
             pubkey,
         } => {
-            let result = pubkey.verify(&hash, &signature);
-            println!("Verification result = {:?}", result);
+            // terminate with an exit code of 0 for success and 1 for failure
+            // allowing whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            match pubkey.verify(&hash, &signature) {
+                Ok(()) => {
+                    println!("signature Ok");
+                    exit(0)
+                }
+                Err(e) => {
+                    println!("{:?}", e);
+                    exit(1)
+                }
+            }
         }
     }
 }
