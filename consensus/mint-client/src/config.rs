@@ -450,7 +450,7 @@ pub enum Commands {
         /// <key_identifier>`
         #[clap(
             long = "signature",
-            value_parser = load_or_parse_ed25519_signature, env = "MC_MINTING_SIGNATURES"
+            value_parser = load_or_parse_ed25519_signature, env = "MC_MINTING_SIGNATURE"
         )]
         signature: Ed25519Signature,
 
