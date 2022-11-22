@@ -4,6 +4,12 @@
 
 use zeroize::Zeroize;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
+#[cfg(feature = "serde")]
+use super::helpers::{pri_key_hex, pub_key_hex};
+
 use crate::keys::{
     RootSpendPrivate, RootSpendPublic, RootViewPrivate, RootViewPublic, SubaddressSpendPrivate,
     SubaddressSpendPublic, SubaddressViewPrivate, SubaddressViewPublic,
@@ -62,12 +68,21 @@ impl Account {
 
 /// MobileCoin view only account object.
 ///
-/// Derived from an [Account] object, used where spend key custody is external (offline or via hardware)
-#[derive(Debug, Zeroize)]
+/// Derived from an [Account] object, used where spend key custody is external (offline or via hardware).
+/// Protobuf encoding is equivalent to [mc_account_keys::ViewAccountKey]
+#[derive(Zeroize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "prost", derive(prost::Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct ViewAccount {
     /// Root view private key
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
+    #[cfg_attr(feature = "serde", serde(with = "pri_key_hex"))]
     view_private: RootViewPrivate,
+
     /// Root spend public key
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "2"))]
+    #[cfg_attr(feature = "serde", serde(with = "pub_key_hex"))]
     spend_public: RootSpendPublic,
 }
 
@@ -93,6 +108,15 @@ impl ViewAccount {
     /// Fetch account view private key
     pub fn view_private_key(&self) -> &RootViewPrivate {
         &self.view_private
+    }
+}
+
+impl From<&Account> for ViewAccount {
+    fn from(a: &Account) -> Self {
+        Self {
+            view_private: a.view_private_key().clone(),
+            spend_public: a.spend_public_key(),
+        }
     }
 }
 
@@ -135,10 +159,14 @@ impl SpendSubaddress {
 ///
 /// Contains view private and spend public key.
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ViewSubaddress {
     /// sub-address view private key
+    #[cfg_attr(feature = "serde", serde(with = "pri_key_hex"))]
     pub view_private: SubaddressViewPrivate,
+
     /// sub-address spend private key
+    #[cfg_attr(feature = "serde", serde(with = "pub_key_hex"))]
     pub spend_public: SubaddressSpendPublic,
 }
 

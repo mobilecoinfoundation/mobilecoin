@@ -10,7 +10,7 @@ use core::{
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use zeroize::Zeroize;
 
-use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic, ReprBytes};
 
 use crate::markers::*;
 
@@ -35,6 +35,13 @@ pub type RootSpendPrivate = Key<Root, Spend, RistrettoPrivate>;
 pub type RootViewPublic = Key<Root, View, RistrettoPublic>;
 /// Root spend public key
 pub type RootSpendPublic = Key<Root, Spend, RistrettoPublic>;
+
+
+/// Transaction public key
+pub type TxPublic = Key<Tx, Public, RistrettoPublic>;
+/// Transaction target public key
+pub type TxTargetPublic = Key<Tx, Target, RistrettoPublic>;
+
 
 /// Generic key object, see type aliases for use
 #[derive(Clone, Debug, Zeroize)]
@@ -74,6 +81,29 @@ impl<ADDR, KIND, KEY: Default + Zeroize> Default for Key<ADDR, KIND, KEY> {
     }
 }
 
+/// Expose [`ReprBytes`] for internal `KEY` types implementing this
+impl <ADDR, KIND, KEY> ReprBytes for Key<ADDR, KIND, KEY> 
+where
+    KEY: ReprBytes + Default + Zeroize,
+{
+    type Size = <KEY as ReprBytes>::Size;
+
+    type Error = <KEY as ReprBytes>::Error;
+
+    fn from_bytes(src: &mc_crypto_keys::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        let key = <KEY as ReprBytes>::from_bytes(src)?;
+        Ok(Key{
+            key,
+            _addr: PhantomData,
+            _kind: PhantomData,
+        })
+    }
+
+    fn to_bytes(&self) -> mc_crypto_keys::GenericArray<u8, Self::Size> {
+        <KEY as ReprBytes>::to_bytes(&self.key)
+    }
+}
+
 // Shared public key methods
 
 impl<ADDR, KIND> Key<ADDR, KIND, RistrettoPublic> {
@@ -82,6 +112,7 @@ impl<ADDR, KIND> Key<ADDR, KIND, RistrettoPublic> {
         self.key.to_bytes()
     }
 }
+
 
 /// Fetch the public key for a private key instance
 impl<ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPrivate>> for Key<ADDR, KIND, RistrettoPublic> {
@@ -117,6 +148,16 @@ impl<ADDR, KIND> TryFrom<&[u8; 32]> for Key<ADDR, KIND, RistrettoPublic> {
             _addr: PhantomData,
             _kind: PhantomData,
         })
+    }
+}
+
+/// Attempt to create a public key from a compressed point, wrapping
+/// [`RistrettoPublic::try_from`]
+impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPublic> {
+    type Error = KeyError;
+
+    fn try_from(p: [u8; 32]) -> Result<Self, Self::Error> {
+        Self::try_from(&p)
     }
 }
 
@@ -224,6 +265,16 @@ impl<ADDR, KIND> TryFrom<&[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
             _addr: PhantomData,
             _kind: PhantomData,
         })
+    }
+}
+
+/// Attempt to create a private key from a compressed point, wrapping
+/// [`RistrettoPrivate::try_from`]
+impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
+    type Error = KeyError;
+
+    fn try_from(p: [u8; 32]) -> Result<Self, Self::Error> {
+        Self::try_from(&p)
     }
 }
 
@@ -335,5 +386,42 @@ where
             Ok(v) => Ok(v),
             Err(e) => Err(E::custom(e)),
         }
+    }
+}
+
+/// Expose [`prost::Message`] for internal `KEY` types implementing this
+#[cfg(feature = "prost")]
+impl <ADDR, KIND, KEY> prost::Message for Key<ADDR, KIND, KEY> 
+where
+    ADDR: Send + Sync + Debug,
+    KIND: Send + Sync + Debug,
+    KEY: prost::Message + Zeroize + Default + Debug,
+{
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: prost::bytes::BufMut,
+        Self: Sized {
+        <KEY as prost::Message>::encode_raw(&self.key, buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: prost::encoding::WireType,
+        buf: &mut B,
+        ctx: prost::encoding::DecodeContext,
+    ) -> Result<(), prost::DecodeError>
+    where
+        B: prost::bytes::Buf,
+        Self: Sized {
+        <KEY as prost::Message>::merge_field(&mut self.key, tag, wire_type, buf, ctx)
+    }
+
+    fn encoded_len(&self) -> usize {
+        <KEY as prost::Message>::encoded_len(&self.key)
+    }
+
+    fn clear(&mut self) {
+        <KEY as prost::Message>::clear(&mut self.key)
     }
 }
