@@ -8,7 +8,7 @@ use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
-    DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer
+    DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
 };
 use mc_crypto_multisig::MultiSig;
 use mc_sgx_css::Signature;
@@ -441,12 +441,13 @@ pub enum Commands {
         signatures: Vec<Ed25519Signature>,
     },
 
-    /// Verify that the signature of a hash used the private key corresponding to the provided
-    /// public-key
+    /// Verify that the signature of a hash used the private key corresponding
+    /// to the provided public-key
     CheckSig {
-	    /// The signature to verify
+        /// The signature to verify
         /// 
-        /// can be created with ledger-agent -e ed25519 --sign-blob <hash> <key_identifier>`
+        /// can be created with ledger-agent -e ed25519 --sign-blob <hash>
+        /// <key_identifier>`
         #[clap(
             long = "signature",
             value_parser = load_or_parse_ed25519_signature, env = "MC_MINTING_SIGNATURES"
@@ -454,8 +455,9 @@ pub enum Commands {
         signature: Ed25519Signature,
 
         /// The hash that was signed.
-    	///
-    	/// An example hash may be created with `hash-tx-file --tx-file mintconfig.json`
+        ///
+        /// An example hash may be created with `hash-tx-file --tx-file
+        /// mintconfig.json`
         #[clap(
             long = "hash",
             value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_MINTING_HASH"
@@ -463,8 +465,9 @@ pub enum Commands {
         hash: [u8; 32],
 
         /// The public key to verify with the signature.
-    	///
-    	/// This pemfile can be created with `ledger-agent -e ed25519 --pemout <outfile>.pub <key_identifier>`
+        ///
+        /// This pemfile can be created with `ledger-agent -e ed25519 --pemout
+        /// <outfile>.pub <key_identifier>`
         #[clap(
             long = "public-key",
             value_parser = load_key_from_pem::<Ed25519Public>, env = "MC_MINTING_PUBLIC_KEY")]
@@ -482,8 +485,9 @@ pub struct Config {
     pub command: Commands,
 }
 
-// a purpose-build pem loader for MintPrivateKey to avoid implementing DistinguishedEncoding trait
-// MintPrivateKey was needed to implement Clone trait for use with clap
+// a purpose-build pem loader for MintPrivateKey to avoid implementing
+// DistinguishedEncoding trait. MintPrivateKey was needed to implement Clone
+// trait for use with clap
 pub fn load_mint_private_key_from_pem(filename: &str) -> Result<MintPrivateKey, String> {
     let bytes =
         fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;

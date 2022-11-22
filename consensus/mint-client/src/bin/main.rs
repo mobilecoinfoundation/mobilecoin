@@ -362,7 +362,7 @@ fn main() {
             tx_file
                 .write_json(&tx_file_path)
                 .expect("failed writing tx file");
-        },
+        }
 
         Commands::CheckSig {
             signature,
