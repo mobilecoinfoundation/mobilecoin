@@ -485,7 +485,7 @@ pub struct Config {
     pub command: Commands,
 }
 
-// a purpose-build pem loader for MintPrivateKey to avoid implementing
+// a purpose-built pem loader for MintPrivateKey to avoid implementing
 // DistinguishedEncoding trait. MintPrivateKey was needed to implement Clone
 // trait for use with clap
 pub fn load_mint_private_key_from_pem(filename: &str) -> Result<MintPrivateKey, String> {
