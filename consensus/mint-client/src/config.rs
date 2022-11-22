@@ -445,7 +445,7 @@ pub enum Commands {
     /// to the provided public-key
     CheckSig {
         /// The signature to verify
-        /// 
+        ///
         /// can be created with ledger-agent -e ed25519 --sign-blob <hash>
         /// <key_identifier>`
         #[clap(
