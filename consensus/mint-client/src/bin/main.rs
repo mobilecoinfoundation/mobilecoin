@@ -373,10 +373,7 @@ fn main() {
             // allowing whoever started this binary to easily determine if submitting the
             // transaction succeeded.
             match pubkey.verify(&hash, &signature) {
-                Ok(()) => {
-                    println!("signature Ok");
-                    exit(0)
-                }
+                Ok(()) => println!("signature Ok"),
                 Err(e) => {
                     println!("{:?}", e);
                     exit(1)
