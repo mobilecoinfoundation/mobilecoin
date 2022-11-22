@@ -8,6 +8,100 @@ import "fog_common.proto";
 package fog_ledger;
 option go_package = "mobilecoin/api";
 
+import "google/protobuf/empty.proto";
+
+////
+// Ledger router API
+////
+
+service LedgerAPI {
+    rpc request(stream LedgerRequest) returns (stream LedgerResponse) {}
+}
+
+service LedgerRouterAdminAPI {
+    // Adds a shard to the Fog View Router's list of shards to query.
+    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
+}
+
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
+}
+
+
+/// Fulfills requests sent by the Fog Ledger Router. This is not meant to fulfill requests sent directly by the client.
+service KeyImageStoreAPI {
+    /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
+    /// Input should be an encrypted MultiKeyImageStoreRequest, result is an encrypted response.
+    rpc MultiKeyImageStoreQuery(MultiKeyImageStoreRequest) returns (MultiKeyImageStoreResponse) {}
+}
+
+message LedgerRequest {
+    oneof request_data { 
+        attest.AuthMessage auth = 1;
+        attest.Message check_key_images = 2;
+        // TODO: Fill in block query service and merkele proof service.
+        // Potentially untrusted_tx_out_service? To be decided.     
+    }
+}
+
+message LedgerResponse {
+    oneof response_data { 
+        attest.AuthMessage auth = 1;
+        attest.Message check_key_image_response = 2;
+        // TODO: Fill in block query service and merkele proof service.
+        // Potentially untrusted_tx_out_service? To be decided.     
+    }
+}
+
+// Identical to FogViewStoreDecryptionError - TODO, determine if we should unify these types.
+message FogLedgerStoreDecryptionError {
+    /// The FogLedgerStoreUri for the specific Fog Ledger Store that
+    /// tried to decrypt the MultiKeyImageStoreRequest and failed.
+    /// The client should subsequently authenticate with the machine
+    /// described by this URI.
+    string store_uri = 1;
+
+    /// An error message that describes the decryption error.
+    string error_message = 2;
+}
+
+// Identical to MultiViewStoreQueryRequest - TODO, determine if we should unify these types.
+message MultiKeyImageStoreRequest {
+    /// A list of queries encrypted for Fog Ledger Stores.
+    repeated attest.NonceMessage queries = 1;
+}
+
+
+/// The status associated with a MultiViewStoreQueryResponse
+enum MultiKeyImageStoreResponseStatus {
+    /// The Fog Ledger Store successfully fulfilled the request.
+    SUCCESS = 0;
+    /// The Fog Ledger Store is unable to decrypt a query within the MultiKeyImageStoreRequest. It needs to be authenticated
+    /// by the router.
+    AUTHENTICATION_ERROR = 1;
+    /// The Fog Ledger Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
+    /// not loaded enough blocks yet.
+    NOT_READY = 2;
+}
+
+message MultiKeyImageStoreResponse {
+    /// Optional field that gets set when the Fog Ledger Store is able to decrypt a query
+    /// included in the MultiKeyImageStoreRequest and create a query response for that
+    //  query. This is an encrypted CheckKeyImagesResponse.
+    attest.NonceMessage query_response = 1;
+
+    /// The FogViewStoreUri for the specific Fog View Store that
+    /// tried to decrypt the MultiViewStoreQueryRequest and failed.
+    /// The client should subsequently authenticate with the machine
+    /// described by this URI.
+    string fog_ledger_store_uri = 2;
+
+    /// Status that gets returned when the Fog Ledger Store services a MultiKeyImageStoreRequest.
+    MultiKeyImageStoreResponseStatus status = 3;
+}
+
 ////
 // Merkle proofs
 ////
