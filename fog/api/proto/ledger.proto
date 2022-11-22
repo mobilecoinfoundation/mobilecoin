@@ -20,14 +20,8 @@ service LedgerAPI {
 
 service LedgerRouterAdminAPI {
     // Adds a shard to the Fog View Router's list of shards to query.
-    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
+    rpc addShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
 }
-
-message AddShardRequest {
-    // The shard's URI in string format.
-    string shard_uri = 1;
-}
-
 
 /// Fulfills requests sent by the Fog Ledger Router. This is not meant to fulfill requests sent directly by the client.
 service KeyImageStoreAPI {
