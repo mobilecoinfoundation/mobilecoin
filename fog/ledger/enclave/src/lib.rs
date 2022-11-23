@@ -28,7 +28,7 @@ use mc_sgx_types::{
     sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t, sgx_status_t,
 };
 use mc_sgx_urts::SgxEnclave;
-use std::{path, result::Result as StdResult, sync::Arc, collections::BTreeMap};
+use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the fog ledger's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libledger-enclave.signed.so";
@@ -193,8 +193,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
 
     // Router/store system.
     fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
-        let inbuf =
-            mc_util_serial::serialize(&EnclaveCall::LedgerStoreInit(ledger_store_id))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::LedgerStoreInit(ledger_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -260,11 +259,11 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
-        -> Result<(NonceAuthResponse, NonceSession)> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::FrontendAccept(
-            auth_request
-        ))?;
+    fn frontend_accept(
+        &self,
+        auth_request: NonceAuthRequest,
+    ) -> Result<(NonceAuthResponse, NonceSession)> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::FrontendAccept(auth_request))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

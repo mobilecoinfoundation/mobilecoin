@@ -68,9 +68,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
             serialize(&ENCLAVE.ledger_store_init(responder_id))
         }
         EnclaveCall::LedgerStoreConnect(responder_id, client_auth_response) => {
-            serialize(
-                &ENCLAVE.ledger_store_connect(responder_id, client_auth_response),
-            )
+            serialize(&ENCLAVE.ledger_store_connect(responder_id, client_auth_response))
         }
         EnclaveCall::DecryptAndSealQuery(client_query) => {
             serialize(&ENCLAVE.decrypt_and_seal_query(client_query))

@@ -13,7 +13,7 @@
 extern crate alloc;
 
 mod key_image_store;
-use alloc::{vec::Vec, collections::BTreeMap};
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -348,10 +348,11 @@ where
         Ok(response)
     }
 
-    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
-        -> Result<(NonceAuthResponse, NonceSession)> {
-        self.ake.frontend_accept(auth_request)
-            .map_err(|e| e.into())
+    fn frontend_accept(
+        &self,
+        auth_request: NonceAuthRequest,
+    ) -> Result<(NonceAuthResponse, NonceSession)> {
+        self.ake.frontend_accept(auth_request).map_err(|e| e.into())
     }
 }
 

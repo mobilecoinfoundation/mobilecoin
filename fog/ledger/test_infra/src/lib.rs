@@ -88,10 +88,7 @@ impl LedgerEnclave for MockEnclave {
         unimplemented!()
     }
 
-    fn ledger_store_init(
-        &self,
-        _ledger_store_id: ResponderId,
-    ) -> EnclaveResult<NonceAuthRequest> {
+    fn ledger_store_init(&self, _ledger_store_id: ResponderId) -> EnclaveResult<NonceAuthRequest> {
         unimplemented!()
     }
 
@@ -121,8 +118,9 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _sealed_query: mc_attest_enclave_api::SealedClientMessage,
         _shard_query_responses: std::collections::BTreeMap<
-            ResponderId, 
-            EnclaveMessage<NonceSession>>,
+            ResponderId,
+            EnclaveMessage<NonceSession>,
+        >,
     ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
@@ -137,7 +135,7 @@ impl LedgerEnclave for MockEnclave {
 
     fn frontend_accept(
         &self,
-        _auth_message: NonceAuthRequest
+        _auth_message: NonceAuthRequest,
     ) -> EnclaveResult<(NonceAuthResponse, NonceSession)> {
         unimplemented!()
     }
