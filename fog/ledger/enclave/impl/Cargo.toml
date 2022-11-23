@@ -18,6 +18,7 @@ mc-crypto-ake-enclave = { path = "../../../../crypto/ake/enclave", default-featu
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../../../crypto/rand" }
 mc-sgx-compat = { path = "../../../../sgx/compat", default-features = false }
+mc-sgx-debug = { path = "../../../../sgx/debug" }
 mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../../transaction/core" }
 mc-util-serial = { path = "../../../../util/serial" }
