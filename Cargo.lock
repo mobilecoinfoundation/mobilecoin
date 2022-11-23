@@ -3890,6 +3890,7 @@ dependencies = [
  "aligned-cmov",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-ake-enclave",
  "mc-crypto-keys",
@@ -3900,6 +3901,7 @@ dependencies = [
  "mc-oblivious-ram",
  "mc-oblivious-traits",
  "mc-sgx-compat",
+ "mc-sgx-debug",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-serial",
@@ -5176,6 +5178,10 @@ dependencies = [
  "hex_fmt",
  "mc-sgx-css",
 ]
+
+[[package]]
+name = "mc-sgx-debug"
+version = "2.1.0-pre0"
 
 [[package]]
 name = "mc-sgx-debug-edl"

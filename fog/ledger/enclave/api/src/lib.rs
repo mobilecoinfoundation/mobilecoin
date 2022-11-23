@@ -13,9 +13,12 @@ pub use crate::{
     error::{AddRecordsError, Error},
     messages::{EnclaveCall, KeyImageData},
 };
-use alloc::vec::Vec;
+use alloc::{vec::Vec, collections::BTreeMap};
 use core::result::Result as StdResult;
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
+};
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
 pub use mc_fog_types::ledger::{
@@ -32,7 +35,7 @@ pub type Result<T> = StdResult<T, Error>;
 /// gather data that will be encrypted for the client in `outputs_for_client`.
 ///
 /// Key image check is now in ORAM, replacing untrusted
-/// which was doing the check directly.
+/// which was doing the check directly.Sha
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct OutputContext {
     /// The global txout indices being requested
@@ -98,6 +101,60 @@ pub trait LedgerEnclave: ReportableEnclave {
 
     /// Add a key image data to the oram Using thrm -rf targete key image
     fn add_key_image_data(&self, records: Vec<KeyImageData>) -> Result<()>;
+
+    // LEDGER ROUTER / STORE SYSTEM
+
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this
+    /// method, most likely a router, will act as a client to the Fog Ledger
+    /// Store.
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
+
+    /// As a "Store" in a Router/Store system, 
+    /// accept a connection from a Router. 
+    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
+        -> Result<(NonceAuthResponse, NonceSession)>;
+
+    /// Complete the connection to a Fog Ledger Store that has accepted our
+    /// NonceAuthRequest. This is meant to be called after the enclave has
+    /// initialized and discovers a new Fog Ledger Store.
+    fn ledger_store_connect(
+        &self,
+        ledger_store_id: ResponderId,
+        ledger_store_auth_response: NonceAuthResponse,
+    ) -> Result<()>;
+
+    /// Extract context data to be handed back to untrusted so that it could
+    /// collect the information required.
+    fn check_key_image_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> Result<EnclaveMessage<NonceSession>>;
+
+    /// Decrypts a client query message and converts it into a
+    /// SealedClientMessage which can be unsealed multiple times to
+    /// construct the MultiKeyImageStoreRequest.
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage>;
+
+    /// Transforms a client query request into a list of query request data.
+    ///
+    /// The returned list is meant to be used to construct the
+    /// MultiKeyImageStoreRequest, which is sent to each shard.
+    fn create_multi_key_image_store_query_data(
+        &self,
+        sealed_query: SealedClientMessage,
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>>;
+
+    /// Receives all of the shards' query responses and collates them into one
+    /// query response for the client.
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side

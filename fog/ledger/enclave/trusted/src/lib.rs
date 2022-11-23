@@ -61,6 +61,32 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         }
         // Add Key Image Data
         EnclaveCall::AddKeyImageData(records) => serialize(&ENCLAVE.add_key_image_data(records)),
+
+        // Router / Store system
+        // Router-side
+        EnclaveCall::LedgerStoreInit(responder_id) => {
+            serialize(&ENCLAVE.ledger_store_init(responder_id))
+        }
+        EnclaveCall::LedgerStoreConnect(responder_id, client_auth_response) => {
+            serialize(
+                &ENCLAVE.ledger_store_connect(responder_id, client_auth_response),
+            )
+        }
+        EnclaveCall::DecryptAndSealQuery(client_query) => {
+            serialize(&ENCLAVE.decrypt_and_seal_query(client_query))
+        }
+        EnclaveCall::CreateMultiKeyImageStoreQueryData(msg) => {
+            serialize(&ENCLAVE.create_multi_key_image_store_query_data(msg))
+        }
+        EnclaveCall::CollateQueryResponses(sealed_query, shard_query_responses) => {
+            serialize(&ENCLAVE.collate_shard_query_responses(sealed_query, shard_query_responses))
+        }
+        EnclaveCall::CheckKeyImageStore(req, untrusted_keyimagequery_response) => {
+            serialize(&ENCLAVE.check_key_image_store(req, untrusted_keyimagequery_response))
+        }
+        EnclaveCall::FrontendAccept(auth_message) => {
+            serialize(&ENCLAVE.frontend_accept(auth_message))
+        }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }

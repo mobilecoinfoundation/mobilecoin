@@ -14,7 +14,10 @@ pub use mc_fog_ledger_enclave_api::{
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
+};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_keys::X25519Public;
@@ -25,7 +28,7 @@ use mc_sgx_types::{
     sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t, sgx_status_t,
 };
 use mc_sgx_urts::SgxEnclave;
-use std::{path, result::Result as StdResult, sync::Arc};
+use std::{path, result::Result as StdResult, sync::Arc, collections::BTreeMap};
 
 /// The default filename of the fog ledger's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libledger-enclave.signed.so";
@@ -184,6 +187,84 @@ impl LedgerEnclave for LedgerSgxEnclave {
     // Add a key image data to the oram in the key image
     fn add_key_image_data(&self, records: Vec<KeyImageData>) -> Result<()> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::AddKeyImageData(records))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    // Router/store system.
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
+        let inbuf =
+            mc_util_serial::serialize(&EnclaveCall::LedgerStoreInit(ledger_store_id))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    #[allow(unused_variables)]
+    fn ledger_store_connect(
+        &self,
+        ledger_store_id: ResponderId,
+        ledger_store_auth_response: NonceAuthResponse,
+    ) -> Result<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::LedgerStoreConnect(
+            ledger_store_id,
+            ledger_store_auth_response,
+        ))?;
+
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::DecryptAndSealQuery(client_query))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn create_multi_key_image_store_query_data(
+        &self,
+        sealed_query: SealedClientMessage,
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CreateMultiKeyImageStoreQueryData(
+            sealed_query,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CollateQueryResponses(
+            sealed_query,
+            shard_query_responses,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn check_key_image_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> Result<EnclaveMessage<NonceSession>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImageStore(
+            msg,
+            untrusted_keyimagequery_response,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn frontend_accept(&self, auth_request: NonceAuthRequest) 
+        -> Result<(NonceAuthResponse, NonceSession)> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::FrontendAccept(
+            auth_request
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

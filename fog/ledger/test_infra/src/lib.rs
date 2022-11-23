@@ -3,7 +3,10 @@
 //! Functionality for mocking and testing components in the ledger server
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession,
+};
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -82,6 +85,60 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _records: Vec<KeyImageData>,
     ) -> Result<(), mc_fog_ledger_enclave::Error> {
+        unimplemented!()
+    }
+
+    fn ledger_store_init(
+        &self,
+        _ledger_store_id: ResponderId,
+    ) -> EnclaveResult<NonceAuthRequest> {
+        unimplemented!()
+    }
+
+    fn ledger_store_connect(
+        &self,
+        _ledger_store_id: ResponderId,
+        _ledger_store_auth_response: NonceAuthResponse,
+    ) -> EnclaveResult<()> {
+        unimplemented!()
+    }
+
+    fn decrypt_and_seal_query(
+        &self,
+        _client_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<mc_attest_enclave_api::SealedClientMessage> {
+        unimplemented!()
+    }
+
+    fn create_multi_key_image_store_query_data(
+        &self,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
+    ) -> EnclaveResult<Vec<EnclaveMessage<NonceSession>>> {
+        unimplemented!()
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
+        _shard_query_responses: std::collections::BTreeMap<
+            ResponderId, 
+            EnclaveMessage<NonceSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
+        unimplemented!()
+    }
+
+    fn check_key_image_store(
+        &self,
+        _msg: EnclaveMessage<NonceSession>,
+        _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+    ) -> EnclaveResult<EnclaveMessage<NonceSession>> {
+        unimplemented!()
+    }
+
+    fn frontend_accept(
+        &self,
+        _auth_message: NonceAuthRequest
+    ) -> EnclaveResult<(NonceAuthResponse, NonceSession)> {
         unimplemented!()
     }
 }
