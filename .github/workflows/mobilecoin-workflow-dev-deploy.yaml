@@ -39,76 +39,15 @@ on:
         default: '1'
         required: false
     secrets:
-      RANCHER_CLUSTER:
-        description: "(from environment) Rancher cluster name"
+      DEV_RANCHER_CLUSTER:
+        description: "Rancher cluster name"
         required: true
-      RANCHER_URL:
-        description: "(from environment) Rancher server URL"
+      DEV_RANCHER_URL:
+        description: "Rancher server URL"
         required: true
-      RANCHER_TOKEN:
-        description: "(from environment) Rancher access token"
+      DEV_RANCHER_TOKEN:
+        description: "Rancher access token"
         required: true
-      LEDGER_AWS_ACCESS_KEY_ID:
-        description: "(from environment) Ledger AWS S3 access"
-        required: true
-      LEDGER_AWS_SECRET_ACCESS_KEY:
-        description: "(from environment) Ledger AWS S3 access"
-        required: true
-      IAS_KEY:
-        description: "(from environment) IAS"
-        required: true
-      IAS_SPID:
-        description: "(from environment) IAS"
-        required: true
-      FOG_REPORT_SIGNING_CERT:
-        description: "(from environment) Fog Report signing cert pem"
-        required: true
-      FOG_REPORT_SIGNING_CERT_KEY:
-        description: "(from environment) Fog Report signing cert key"
-        required: true
-      FOG_REPORT_SIGNING_CA_CERT:
-        description: "(from environment) Fog Report signing CA cert"
-        required: true
-      IP_INFO_TOKEN:
-        description: "ipinfo.io token for authenticated access"
-        required: true
-      INITIAL_KEYS_SEED:
-        description: "(from environment) static wallet seed"
-        required: true
-      FOG_KEYS_SEED:
-        description: "(from environment) static wallet seed"
-        required: true
-      MINTING_1_GOVERNOR_1_PRIVATE:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_1_GOVERNOR_1_PUBLIC:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_1_SIGNER_1_PRIVATE:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_1_SIGNER_1_PUBLIC:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_8192_GOVERNOR_1_PRIVATE:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_8192_GOVERNOR_1_PUBLIC:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_8192_SIGNER_1_PRIVATE:
-        description: "(from environment) minting governor key"
-        required: true
-      MINTING_8192_SIGNER_1_PUBLIC:
-        description: "(from environment) minting governor key"
-        required: true
-      MNEMONIC_KEYS_SEED:
-        description: "(from environment) static wallet seed"
-        required: true
-      MNEMONIC_FOG_KEYS_SEED:
-        description: "(from environment) static wallet seed"
-        required: true
-
 
 env:
   FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
@@ -129,8 +68,6 @@ jobs:
     needs:
     - setup-environment
     runs-on: [self-hosted, Linux, small]
-    environment:
-      name: dev
     strategy:
       matrix:
         release_name:
@@ -141,8 +78,8 @@ jobs:
     # use values file because intel.com/sgx is hard to escape on the --set option.
     - name: Generate consensus-node values file
       run: |
-        mkdir -p ${VALUES_BASE_PATH}
-        cat <<EOF > ${VALUES_BASE_PATH}/consensus-node-values.yaml
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
         global:
@@ -168,16 +105,14 @@ jobs:
         chart_wait_timeout: 10m
         release_name: ${{ matrix.release_name }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   mobilecoind-deploy:
     needs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
-    environment:
-      name: dev
     steps:
     - name: Deploy Consensus nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -191,21 +126,19 @@ jobs:
         chart_wait_timeout: 5m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   fog-services-deploy:
     needs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
-    environment:
-      name: dev
     steps:
     - name: Generate fog-services values file
       run: |
-        mkdir -p ${VALUES_BASE_PATH}
-        cat <<EOF > ${VALUES_BASE_PATH}/fog-services-values.yaml
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-services-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
         global:
@@ -238,21 +171,19 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-services-values.yaml
         release_name: fog-services
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   fog-ingest-deploy:
     needs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
-    environment:
-      name: dev
     steps:
     - name: Generate fog-ingest values file
       run: |
-        mkdir -p ${VALUES_BASE_PATH}
-        cat <<EOF > ${VALUES_BASE_PATH}/fog-ingest-values.yaml
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
         fogIngest:
@@ -276,9 +207,9 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ingest-values.yaml
         release_name: fog-ingest-${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
     - name: Run fog-recovery database migrations
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
@@ -286,9 +217,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           fog-sql-recovery-db-migrations
 
@@ -298,9 +229,9 @@ jobs:
         action: fog-ingest-activate
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
     - name: Delete retired flipside ingest (if exists)
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
@@ -308,6 +239,6 @@ jobs:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
         release_name: fog-ingest-${{ env.FLIPSIDE }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}

@@ -81,6 +81,7 @@ jobs:
     runs-on: [self-hosted, Linux, large-cd]
     container:
       image: mobilecoin/rust-sgx-base:v0.0.20
+
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
       MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
@@ -174,7 +175,7 @@ jobs:
         for i in *.signed.so
         do
           css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
-          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile ${css}.css
+          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile "${css}.css"
         done
 
     - name: Check artifacts
