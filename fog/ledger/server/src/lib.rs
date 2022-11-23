@@ -4,10 +4,14 @@ mod block_service;
 mod config;
 mod counters;
 mod db_fetcher;
+mod error;
 mod key_image_service;
 mod merkle_proof_service;
 mod server;
 mod untrusted_tx_out_service;
+
+mod key_image_router_service;
+mod router_handlers;
 
 pub use block_service::BlockService;
 pub use config::LedgerServerConfig;
