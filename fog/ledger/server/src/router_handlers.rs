@@ -19,7 +19,6 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-#[allow(dead_code)] //FIXME
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
