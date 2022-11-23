@@ -77,21 +77,19 @@ on:
         required: false
         default: false
     secrets:
-      RANCHER_CLUSTER:
+      DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
-      RANCHER_URL:
+      DEV_RANCHER_URL:
         description: "Rancher server URL"
         required: true
-      RANCHER_TOKEN:
+      DEV_RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
 
 jobs:
   cd-integration-tests:
     runs-on: [self-hosted, Linux, small]
-    environment:
-      name: dev
     env:
       SRC_KEYS_DIR: /tmp/sample_data/keys
       SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
@@ -111,9 +109,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           rm -rf /tmp/sample_data
 
@@ -124,9 +122,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           INITIALIZE_LEDGER="true" \
           FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
@@ -139,9 +137,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/fog-distribution-test.sh
 
@@ -152,9 +150,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           test_client \
             --key-dir /tmp/sample_data/fog_keys \
@@ -175,9 +173,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/mobilecoind-integration-test.sh
 
@@ -188,9 +186,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_KEYS_DIR }} \
@@ -205,9 +203,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_FOG_KEYS_DIR }} \
@@ -222,9 +220,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           JSON_FLAG=""
           if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
@@ -241,9 +239,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.V2_DST_KEYS_DIR }} \
@@ -256,9 +254,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/mobilecoind-json-integration-test.sh \
             --key-dir ${{ env.V2_DST_KEYS_DIR }}
@@ -270,9 +268,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/drain_accounts.sh \
             --src ${{ env.V2_DST_KEYS_DIR }} \
@@ -287,9 +285,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
@@ -302,9 +300,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
@@ -317,9 +315,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_KEYS_DIR }} \
@@ -334,9 +332,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_FOG_KEYS_DIR }} \
@@ -351,9 +349,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           JSON_FLAG=""
           if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
@@ -370,9 +368,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.V3_DST_KEYS_DIR }} \
@@ -385,9 +383,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/mobilecoind-json-integration-test.sh \
             --key-dir ${{ env.V3_DST_KEYS_DIR }}
@@ -399,9 +397,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /util/drain_accounts.sh \
             --src ${{ env.V3_DST_KEYS_DIR }} \
@@ -416,9 +414,9 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
