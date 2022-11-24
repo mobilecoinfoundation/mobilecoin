@@ -359,6 +359,11 @@ pub enum Commands {
         #[clap(long, env = "MC_CHAIN_ID")]
         chain_id: Option<String>,
 
+        /// Optional URI of consensus node to query for current block index and
+        /// calculate a default tombstone block from.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        tombstone_from_node: Option<ConsensusClientUri>,
+
         #[clap(flatten)]
         params: MintTxParams,
     },
