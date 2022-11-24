@@ -3153,7 +3153,6 @@ name = "mc-core-types"
 version = "2.0.0"
 dependencies = [
  "curve25519-dalek",
- "hex",
  "mc-crypto-keys",
  "prost",
  "serde",
@@ -5421,6 +5420,7 @@ dependencies = [
  "anyhow",
  "clap 4.0.26",
  "displaydoc",
+ "hex",
  "log",
  "mc-account-keys",
  "mc-common",

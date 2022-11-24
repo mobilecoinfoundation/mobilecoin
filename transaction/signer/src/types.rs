@@ -1,10 +1,68 @@
-//! Helpers for encoding / decoding core types
-//! 
+//! Serializable types for sync between full-service and offline / hardware wallet implementations.
+
+use serde::{Serialize, Deserialize};
+
+use mc_core::{
+    keys::{TxOutPublic, RootSpendPublic, RootViewPrivate},
+};
+use mc_crypto_ring_signature::{KeyImage};
+
+/// View account credentials for sync with full-service
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ViewAccount {
+    /// Root view private key
+    #[serde(with = "pri_key_hex")]
+    pub view_private: RootViewPrivate,
+
+    /// Root spend public key
+    #[serde(with = "pub_key_hex")]
+    pub spend_public: RootSpendPublic,
+}
+
+/// Convert a serializable signer [ViewAccount] object to the `mc_core` version
+impl From<ViewAccount> for mc_core::account::ViewAccount {
+    fn from(v: ViewAccount) -> Self {
+        mc_core::account::ViewAccount::new(v.view_private, v.spend_public)
+    }
+}
+
+/// Convert an `mc_core` [ViewAccount] object to the serializable signer version
+impl From<mc_core::account::ViewAccount> for ViewAccount {
+    fn from(v: mc_core::account::ViewAccount) -> Self {
+        ViewAccount{
+            view_private: v.view_private_key().clone(), 
+            spend_public: v.spend_public_key().clone(),
+        }
+    }
+}
+
+/// Unsynced TxOut instance for resolving key images
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxoUnsynced {
+    /// Subaddress for unsynced TxOut
+    pub subaddress: u64,
+
+    /// tx_out_public_key for unsynced TxOut
+    #[serde(with = "pub_key_hex")]
+    pub tx_out_public_key: TxOutPublic,
+}
+
+/// Synced TxOut instance, contains public key and resolved key image for owned TxOuts
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxoSynced {
+    /// tx_out_public_key for synced TxOut
+    #[serde(with = "pub_key_hex")]
+    pub tx_out_public_key: TxOutPublic,
+
+    /// recovered key image for synced TxOut
+    #[serde(with = "const_array_hex")]
+    pub key_image: KeyImage,
+}
+
 
 /// Public key hex encoding support for serde
-#[cfg(feature = "serde")]
 pub mod pub_key_hex {
-    use crate::keys::Key;
+    use mc_core::keys::Key;
     use mc_crypto_keys::{RistrettoPublic};
     use serde::de::{Deserializer, Error};
 
@@ -31,9 +89,8 @@ pub mod pub_key_hex {
 }
 
 /// Private key hex encoding support for serde
-#[cfg(feature = "serde")]
 pub mod pri_key_hex {
-    use crate::keys::Key;
+    use mc_core::keys::Key;
     use mc_crypto_keys::{RistrettoPrivate};
     use serde::de::{Deserializer, Error};
 
@@ -84,11 +141,9 @@ pub mod const_array_hex {
 
 
 /// Serde visitor for hex encoded fixed length byte arrays
-#[cfg(feature = "serde")]
 pub struct ConstArrayVisitor<const N: usize = 32>;
 
 /// Serde visitor implementation for fixed length arrays of hex-encoded bytes
-#[cfg(feature = "serde")]
 impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
     type Value = [u8; N];
 

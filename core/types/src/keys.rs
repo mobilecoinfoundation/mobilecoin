@@ -38,9 +38,9 @@ pub type RootSpendPublic = Key<Root, Spend, RistrettoPublic>;
 
 
 /// Transaction public key
-pub type TxPublic = Key<Tx, Public, RistrettoPublic>;
+pub type TxOutPublic = Key<Tx, Public, RistrettoPublic>;
 /// Transaction target public key
-pub type TxTargetPublic = Key<Tx, Target, RistrettoPublic>;
+pub type TxOutTargetPublic = Key<Tx, Target, RistrettoPublic>;
 
 
 /// Generic key object, see type aliases for use

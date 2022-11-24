@@ -20,6 +20,3 @@ pub mod subaddress;
 pub mod slip10;
 
 pub mod traits;
-
-#[cfg(feature = "alloc")]
-pub mod rpc;
