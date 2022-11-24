@@ -73,7 +73,7 @@ where
                 responses,
                 logger.clone(),
             )
-            .map_err(move |err: grpcio::Error| log::error!(&logger, "failed to reply: {}", err))
+            .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))
             // TODO: Do more with the error than just push it to the log.
             .map(|_| ());
 
