@@ -15,7 +15,6 @@ use mc_fog_api::{
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-//use mc_fog_ledger_enclave_api::LedgerEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
