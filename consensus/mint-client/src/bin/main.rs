@@ -194,17 +194,30 @@ fn main() {
             out,
             chain_id,
             fog_ingest_enclave_css,
+            tombstone_from_node,
             params,
         } => {
             let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
                 chain_id: chain_id.expect("Chain id should be passed when fog is used"),
                 css_signature: signature,
-                grpc_env: env,
+                grpc_env: env.clone(),
                 logger: logger.clone(),
             });
 
             let tx = params
-                .try_into_mint_tx(maybe_fog_bits, || panic!("missing tombstone block"))
+                .try_into_mint_tx(maybe_fog_bits, || {
+                    if let Some(node) = &tombstone_from_node {
+                        let ch = ChannelBuilder::default_channel_builder(env.clone())
+                            .connect_to_uri(node, &logger);
+                        let blockchain_api = BlockchainApiClient::new(ch);
+                        let last_block_info = blockchain_api
+                            .get_last_block_info(&Empty::new())
+                            .expect("get last block info");
+                        last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                    } else {
+                        panic!("missing tombstone block")
+                    }
+                })
                 .expect("failed creating tx");
 
             TxFile::from(tx)
