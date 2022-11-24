@@ -64,10 +64,6 @@ impl From<LedgerEnclaveError> for RouterServerError {
 pub enum LedgerServerError {
     /// Ledger Enclave error: {0}
     Enclave(LedgerEnclaveError),
-    // Failed to join thread: {0}
-    //ThreadJoin(String),
-    // RPC shutdown failure: {0}
-    //RpcShutdown(String),
     /// Report cache error: {0}
     ReportCache(ReportCacheError),
 }
