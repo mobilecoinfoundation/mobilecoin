@@ -16,6 +16,3 @@ pub mod consts;
 pub mod subaddress;
 
 pub mod slip10;
-
-#[cfg(feature = "protos")]
-pub mod protos;
