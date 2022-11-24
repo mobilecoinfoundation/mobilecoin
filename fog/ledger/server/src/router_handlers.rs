@@ -112,7 +112,7 @@ impl ProcessedShardResponseData {
     }
 }
 
-/// Processes the MultiLedgerStoreQueryResponses returned by each Ledger Shard.
+/// Processes the MultiKeyImageStoreResponses returned by each Ledger Shard.
 pub fn process_shard_responses(
     clients_and_responses: Vec<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse)>,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
