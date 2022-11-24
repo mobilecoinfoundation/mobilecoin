@@ -17,3 +17,15 @@ pub struct View;
 /// Spend key marker type
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Spend;
+
+/// Transaction key marker type
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Tx;
+
+/// Transaction public key marker type
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Public;
+
+/// Transaction target key marker type
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Target;

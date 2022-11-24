@@ -6,6 +6,7 @@
 
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
+use mc_core_types::account::{PublicSubaddress, ViewAccount};
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
@@ -84,6 +85,7 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPublic) {
     }
 }
 
+/// [Subaddress] implementation for base account
 impl Subaddress for Account {
     type Output = SpendSubaddress;
 
@@ -95,6 +97,22 @@ impl Subaddress for Account {
         SpendSubaddress {
             view_private,
             spend_private,
+        }
+    }
+}
+
+/// [Subaddress] implementation for view-only account
+impl Subaddress for ViewAccount {
+    type Output = PublicSubaddress;
+
+    /// Fetch private keys for the i^th subaddress
+    fn subaddress(&self, index: u64) -> Self::Output {
+        let (view_public, spend_public) =
+            (self.view_private_key(), self.spend_public_key()).subaddress(index);
+
+        PublicSubaddress {
+            view_public,
+            spend_public,
         }
     }
 }
