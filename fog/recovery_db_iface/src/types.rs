@@ -110,6 +110,8 @@ impl IngressPublicKeyRecord {
             return BlockRange::new(self.status.start_block, last_scanned_block + 1);
         }
 
+        // If we lost this key before it scanned anything, then return a
+        // default "empty" block range.
         BlockRange::new(0, 0)
     }
 
