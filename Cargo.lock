@@ -5429,7 +5429,6 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
  "mc-crypto-ring-signature-signer",
- "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-extra",
  "mc-util-serial",
