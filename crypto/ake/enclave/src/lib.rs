@@ -17,7 +17,7 @@ use mc_attest_core::{
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
     NonceAuthResponse, NonceSession, PeerAuthRequest, PeerAuthResponse, PeerSession, Result,
-    SealedClientMessage,
+    SealedClientMessage, SealedClientRequest,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
@@ -543,7 +543,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let aad = incoming_client_message.aad.clone();
         let channel_id = incoming_client_message.channel_id.clone();
         let client_query_bytes = self.client_decrypt(incoming_client_message)?;
-        let sealed_data = IntelSealed::seal_raw(&client_query_bytes, &[])?;
+        let sealed_client_query = SealedClientRequest {
+            client_request_bytes: client_query_bytes,
+            channel_id: channel_id.clone().into(),
+        };
+        let sealed_client_query_bytes = mc_util_serial::serialize(&sealed_client_query)?;
+        let sealed_data = IntelSealed::seal_raw(&sealed_client_query_bytes, &[])?;
 
         Ok(SealedClientMessage {
             channel_id,
@@ -555,7 +560,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// Unseals the data component of a sealed client message and returns the
     /// plaintext
     pub fn unseal(&self, sealed_message: &SealedClientMessage) -> Result<Vec<u8>> {
-        Ok(sealed_message.data.unseal_raw()?.0)
+        let (sealed_client_request_bytes, _) = sealed_message.data.unseal_raw()?;
+        let sealed_client_request: SealedClientRequest =
+            mc_util_serial::deserialize(&sealed_client_request_bytes)?;
+
+        Ok(sealed_client_request.client_request_bytes)
     }
 
     /// Transforms a sealed client message, i.e. a message sent from a client
@@ -569,14 +578,13 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         sealed_client_message: &SealedClientMessage,
     ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
-        let (client_query_bytes, _) = sealed_client_message.data.unseal_raw()?;
-
+        let client_request_bytes = self.unseal(sealed_client_message)?;
         let mut backends = self.backends.lock()?;
         let backend_messages = backends
             .iter_mut()
             .map(|(_, encryptor)| {
                 let aad = sealed_client_message.aad.clone();
-                let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_query_bytes)?;
+                let (data, nonce) = encryptor.encrypt_with_nonce(&aad, &client_request_bytes)?;
                 let channel_id = NonceSession::new(encryptor.binding().into(), nonce);
                 Ok(EnclaveMessage {
                     aad,

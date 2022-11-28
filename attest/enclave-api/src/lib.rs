@@ -87,6 +87,19 @@ pub struct SealedClientMessage {
     pub data: IntelSealed,
 }
 
+/// SealedClientRequest structure, which is used in the enclave during the Intel
+/// sealing process. Ensures that the data being passed to Intel is not empty.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct SealedClientRequest {
+    /// The decrypted client request bytes
+    pub client_request_bytes: Vec<u8>,
+
+    /// The channel_id associated with the QueryRequest. Since the channel_id
+    /// will never be 0, this struct will never serialize into an empty byte
+    /// array.
+    pub channel_id: Vec<u8>,
+}
+
 /// The response to a request for a new report. The enclave will expect the
 /// QuoteNonce to be used when the report is quoted, and both the quote and
 /// report to be returned to the enclave during the verify_quote() phase.

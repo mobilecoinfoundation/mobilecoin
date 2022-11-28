@@ -2,6 +2,7 @@
 
 //! Enclave API Errors
 
+use alloc::{format, string::String};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
@@ -70,6 +71,12 @@ pub enum Error {
     /// Too many IAS reports are already in-flight
     TooManyPendingReports,
 
+    /// Encoding error
+    Encode(String),
+
+    /// Decoding error
+    Decode(String),
+
     /// Connection not found by node ID or session
     NotFound,
 }
@@ -125,5 +132,17 @@ impl From<IntelSealingError> for Error {
 impl From<ParseSealedError> for Error {
     fn from(src: ParseSealedError) -> Error {
         Error::Unseal(src)
+    }
+}
+
+impl From<mc_util_serial::encode::Error> for Error {
+    fn from(src: mc_util_serial::encode::Error) -> Self {
+        Error::Encode(format!("{}", src))
+    }
+}
+
+impl From<mc_util_serial::decode::Error> for Error {
+    fn from(src: mc_util_serial::decode::Error) -> Self {
+        Error::Decode(format!("{}", src))
     }
 }
