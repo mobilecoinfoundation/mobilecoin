@@ -9,6 +9,7 @@ use mc_consensus_api::{
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::Error as EnclaveError;
+use mc_consensus_service_config::Error as ConfigError;
 use mc_ledger_db::Error as LedgerError;
 use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 
@@ -37,6 +38,9 @@ pub enum ConsensusGrpcError {
 
     /// Invalid argument `{0}`
     InvalidArgument(String),
+
+    /// Configuration error `{0}`
+    Config(ConfigError),
 
     /// Other error `{0}`
     Other(String),
@@ -95,6 +99,12 @@ impl From<MintTxManagerError> for ConsensusGrpcError {
     }
 }
 
+impl From<ConfigError> for ConsensusGrpcError {
+    fn from(src: ConfigError) -> Self {
+        Self::Config(src)
+    }
+}
+
 impl From<ConsensusGrpcError> for RpcStatus {
     fn from(src: ConsensusGrpcError) -> Self {
         match src {
@@ -143,6 +153,13 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
             }
+            ConsensusGrpcError::Enclave(EnclaveError::FeeMapDigestMismatch) => {
+                let mut resp = ProposeTxResponse::new();
+                resp.set_err_msg(EnclaveError::FeeMapDigestMismatch.to_string());
+                resp.set_result(ProposeTxResult::FeeMapDigestMismatch);
+                Ok(resp)
+            }
+
             _ => Err(RpcStatus::from(src)),
         }
     }

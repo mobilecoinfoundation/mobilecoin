@@ -9,7 +9,7 @@ on:
 
 jobs:
   metadata:
-    if: startsWith(github.event.ref, 'feature/') || startsWith(github.event.ref, 'release/')
+    if: startsWith(github.event.ref, 'feature/')
     runs-on: [self-hosted, Linux, small]
     outputs:
       namespace: ${{ steps.meta.outputs.namespace }}
@@ -33,19 +33,4 @@ jobs:
     with:
       namespace: ${{ needs.metadata.outputs.namespace }}
       delete_namespace: true
-    secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
-      RANCHER_URL: ${{ secrets.RANCHER_URL }}
-      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
-
-  why-was-this-skipped:
-    if: always() && needs.metadata.result == 'skipped'
-    needs:
-      - metadata
-    runs-on: [self-hosted, Linux, small]
-    steps:
-    - name: details
-      run: |
-        echo "Deleted branch: ${{ github.event.ref }} did not match feature/* or release/*"
+    secrets: inherit

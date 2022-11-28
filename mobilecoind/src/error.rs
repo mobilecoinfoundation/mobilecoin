@@ -9,6 +9,7 @@ use mc_connection::Error as ConnectionError;
 use mc_consensus_api::ConversionError;
 use mc_crypto_keys::KeyError;
 use mc_ledger_db::Error as LedgerDbError;
+use mc_transaction_core::FeeMapError;
 use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::{decode::Error as DecodeError, encode::Error as EncodeError};
 use prost::DecodeError as ProstDecodeError;
@@ -111,6 +112,9 @@ pub enum Error {
 
     /// Db encryption: {0}
     DbCrypto(DbCryptoError),
+
+    /// Fee map: {0}
+    FeeMap(FeeMapError),
 }
 
 impl From<RetryError<ConnectionError>> for Error {
@@ -182,5 +186,11 @@ impl From<MetadataStoreError> for Error {
 impl From<DbCryptoError> for Error {
     fn from(e: DbCryptoError) -> Self {
         Self::DbCrypto(e)
+    }
+}
+
+impl From<FeeMapError> for Error {
+    fn from(e: FeeMapError) -> Self {
+        Self::FeeMap(e)
     }
 }

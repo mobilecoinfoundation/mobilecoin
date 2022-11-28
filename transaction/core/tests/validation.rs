@@ -381,6 +381,10 @@ fn test_validate_ring_elements_are_unique() {
                 validate_ring_elements_are_unique(&tx_prefix),
                 Err(TransactionValidationError::DuplicateRingElements)
             );
+
+            // The transaction should be valid if one of these inputs has rules.
+            tx_prefix.inputs.last_mut().unwrap().input_rules = Some(Default::default());
+            assert_eq!(validate_ring_elements_are_unique(&tx_prefix), Ok(()));
         }
     }
 }

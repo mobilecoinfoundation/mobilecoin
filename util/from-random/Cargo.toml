@@ -7,4 +7,4 @@ description = "A trait for constructing an object from a random number generator
 readme = "README.md"
 
 [dependencies]
-rand_core = "0.6"
+rand_core = { version = "0.6", default_features = false }

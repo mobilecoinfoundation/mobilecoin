@@ -17,7 +17,8 @@ pub use mc_transaction_core::{
 pub use mc_util_serial::round_trip_message;
 pub use mint::{
     create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
-    create_mint_tx_to_recipient, mint_config_tx_to_validated,
+    create_mint_tx_to_recipient, mint_config_tx_to_validated, sign_mint_config_tx_prefix,
+    sign_mint_tx_prefix,
 };
 
 use mc_crypto_keys::RistrettoPrivate;

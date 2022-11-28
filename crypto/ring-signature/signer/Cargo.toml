@@ -5,26 +5,32 @@ authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
 
+[features]
+serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-dalek/serde"]
+alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "mc-crypto-dalek/alloc"]
+
+default = ["serde", "alloc", "mc-crypto-dalek/default"]
+
 [dependencies]
+
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
-rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys", default-features = false }
-mc-crypto-dalek = { path = "../../dalek" }
+mc-crypto-dalek = { path = "../../dalek", default-features = false }
 mc-crypto-keys = { path = "../../keys", default-features = false }
-mc-crypto-ring-signature = { path = "..", default-features = false }
+mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc", "serde", "prost" ] }
 mc-transaction-types = { path = "../../../transaction/types" }
 mc-util-serial = { path = "../../../util/serial" }
-
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }

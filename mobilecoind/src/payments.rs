@@ -26,7 +26,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, TokenId,
+    Amount, FeeMap, TokenId,
 };
 use mc_transaction_extra::TxOutConfirmationNumber;
 use mc_util_uri::FogUri;
@@ -131,29 +131,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     }
 }
 
-fn get_network_block_version(block_infos: &[BlockInfo]) -> u32 {
-    block_infos
-        .iter()
-        .map(|block_info| block_info.network_block_version)
-        .max()
-        .unwrap_or(0)
-}
-
-fn get_fee(block_infos: &[BlockInfo], token_id: TokenId, opt_fee: u64) -> u64 {
-    if opt_fee > 0 {
-        opt_fee
-    } else if block_infos.is_empty() {
-        FALLBACK_FEE
-    } else {
-        // iterate an owned list of connections in parallel, get the block info for
-        // each, and extract the fee. If no fees are returned, use the hard-coded
-        // minimum.
-        block_infos
-            .iter()
-            .filter_map(|block_info| block_info.minimum_fee_or_none(&token_id))
-            .max()
-            .unwrap_or(FALLBACK_FEE)
+/// Get the most common BlockInfo out of a list of BlockInfos.
+/// The assumption is that in the majority of cases, all the BlockInfos
+/// would be the same. They will only differ during a network upgrade
+/// or if a node is left running with an old configuration.
+fn get_majority_block_info(block_infos: &[BlockInfo]) -> Option<BlockInfo> {
+    let mut block_info_counts = HashMap::default();
+    for block_info in block_infos {
+        *block_info_counts.entry(block_info).or_insert(0) += 1;
     }
+
+    block_info_counts
+        .into_iter()
+        .max_by_key(|(_block_info, count)| *count)
+        .map(|(block_info, _count)| block_info.clone())
 }
 
 impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver>
@@ -184,21 +175,49 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &self,
         token_id: TokenId,
         opt_fee: u64,
-        block_infos: &[BlockInfo],
+        last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless opt_fee is non-zero
+        // Figure out the block_version and fee, taking into account if opt_fee is
+        // nonzero
         let candidate_block_version = self.ledger_db.get_latest_block()?.version;
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
         } else {
-            let fee = get_fee(block_infos, token_id, opt_fee);
+            let fee = last_block_info
+                .minimum_fee_or_none(&token_id)
+                .unwrap_or(FALLBACK_FEE);
             let block_version = max(
                 candidate_block_version,
-                get_network_block_version(block_infos),
+                last_block_info.network_block_version,
             );
             (fee, block_version)
         })
+    }
+
+    // A helper for figuring ou the minimum fee, fee map and block version from a
+    // list of BlockInfo objects.
+    // # Arguments
+    // * `last_block_info` - The last block info we have from each node
+    // * `token_id` - The token id we are interested in
+    // * `opt_fee` - If nonzero, use this fee instead of the network fee
+    fn get_fee_info_and_block_version(
+        &self,
+        last_block_infos: &[BlockInfo],
+        token_id: TokenId,
+        opt_fee: u64,
+    ) -> Result<(u64, FeeMap, BlockVersion), Error> {
+        let last_block_info = get_majority_block_info(last_block_infos)
+            .ok_or_else(|| Error::TxBuild("No block info available".into()))?;
+
+        let (fee, block_version) =
+            self.get_network_fee_and_block_version(token_id, opt_fee, &last_block_info)?;
+
+        let fee_map = FeeMap::try_from(last_block_info.minimum_fees)?;
+
+        let block_version =
+            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+
+        Ok((fee, fee_map, block_version))
     }
 
     /// Create a TxProposal.
@@ -255,14 +274,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             total_value
         );
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless opt_fee is non-zero)
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
-
-        // Confirm that we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        // Figure out the block version, fee and minimum fee map.
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // Select the UTXOs to be used for this transaction.
         let selected_utxos =
@@ -324,6 +338,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tombstone_block,
             &self.fog_resolver_factory,
             opt_memo_builder,
+            fee_map,
             &mut rng,
             &self.logger,
         )?;
@@ -361,14 +376,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless fee arg is non-zero)
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
-
-        // Make sure we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        // Figure out the block version, fee and minimum fee map.
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // Select UTXOs that will be spent by this transaction.
         let selected_utxos = {
@@ -450,6 +460,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tombstone_block,
             &self.fog_resolver_factory,
             None,
+            fee_map,
             &mut rng,
             &self.logger,
         )?;
@@ -494,14 +505,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
-        // Figure out the block_version and fee (involves network round-trips to
-        // consensus, unless fee arg is non-zero)
-        let (fee, block_version) =
-            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
-
-        // Make sure we understand this block version
-        let block_version =
-            BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
+        // Figure out the block version, fee and minimum fee map.
+        let (fee, fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
 
         // All inputs are to be spent, except those with wrong token id
         let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
@@ -557,6 +563,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tombstone_block,
             &self.fog_resolver_factory,
             None,
+            fee_map,
             &mut rng,
             &self.logger,
         )?;
@@ -834,8 +841,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
+    /// * `fee_map` - The current minimum fee map consensus is configured with.
     /// * `rng` - randomness
     /// * `logger` - Logger
+    #[allow(clippy::too_many_arguments)]
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
@@ -848,6 +857,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         tombstone_block: BlockIndex,
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+        fee_map: FeeMap,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -890,6 +900,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .map_err(|err| {
                     Error::TxBuild(format!("Error creating transaction builder: {}", err))
                 })?;
+        tx_builder.set_fee_map(fee_map);
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings

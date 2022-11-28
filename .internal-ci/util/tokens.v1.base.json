@@ -6,6 +6,14 @@
             "minimum_fee": 400000000
         },
         {
+            "token_id": 1,
+            "minimum_fee": 1024,
+            "governors": {
+                "signers": "",
+                "threshold": 1
+            }
+        },
+        {
             "token_id": 8192,
             "minimum_fee": 1024,
             "governors": {

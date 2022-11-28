@@ -43,9 +43,9 @@ pub enum Command {
 }
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    mc_common::setup_panic_handler();
     let config = Config::parse();
 
     let env = Arc::new(grpcio::EnvBuilder::new().build());

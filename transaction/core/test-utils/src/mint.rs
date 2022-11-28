@@ -2,7 +2,7 @@
 //! Test helpers for minting transactions
 
 use mc_account_keys::PublicAddress;
-use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
@@ -68,8 +68,10 @@ pub fn create_mint_config_tx_and_signers(
         total_mint_limit: configs[0].mint_limit + configs[1].mint_limit + configs[2].mint_limit,
     };
 
-    let message = prefix.hash();
-    let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
+    let signature = sign_mint_config_tx_prefix(
+        &prefix,
+        &[&signer_1, &signer_2, &signer_3, &signer_4, &signer_5],
+    );
 
     (
         MintConfigTx { prefix, signature },
@@ -96,6 +98,24 @@ pub fn mint_config_tx_to_validated(mint_config_tx: &MintConfigTx) -> ValidatedMi
         mint_config_tx: mint_config_tx.clone(),
         signer_set: SignerSet::default(),
     }
+}
+
+/// Sign a MintConfigTxPrefix.
+///
+/// # Arguments
+/// * `prefix` - The prefix to sign.
+/// * `signers` - The signers to use.
+pub fn sign_mint_config_tx_prefix(
+    mint_config_tx_prefix: &MintConfigTxPrefix,
+    signers: &[&Ed25519Pair],
+) -> MultiSig<Ed25519Signature> {
+    let message = mint_config_tx_prefix.hash();
+    MultiSig::new(
+        signers
+            .iter()
+            .map(|signer| signer.sign(message.as_ref()))
+            .collect(),
+    )
 }
 
 /// Generate a random, valid mint tx
@@ -126,13 +146,7 @@ pub fn create_mint_tx_to_recipient(
         e_fog_hint: None,
     };
 
-    let message = prefix.hash();
-
-    let signatures = signers
-        .iter()
-        .map(|signer| signer.try_sign(message.as_ref()).unwrap())
-        .collect();
-    let signature = MultiSig::new(signatures);
+    let signature = sign_mint_tx_prefix(&prefix, &signers.iter().collect::<Vec<_>>());
 
     MintTx { prefix, signature }
 }
@@ -155,4 +169,22 @@ pub fn create_mint_tx(
         &RistrettoPublic::from_random(rng),
     );
     create_mint_tx_to_recipient(token_id, signers, amount, &public_address, rng)
+}
+
+/// Sign a MintTxPrefix.
+///
+/// # Arguments
+/// * `prefix` - The prefix to sign.
+/// * `signers` - The signers to use.
+pub fn sign_mint_tx_prefix(
+    mint_tx_prefix: &MintTxPrefix,
+    signers: &[&Ed25519Pair],
+) -> MultiSig<Ed25519Signature> {
+    let message = mint_tx_prefix.hash();
+    MultiSig::new(
+        signers
+            .iter()
+            .map(|signer| signer.sign(message.as_ref()))
+            .collect(),
+    )
 }

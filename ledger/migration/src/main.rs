@@ -18,11 +18,11 @@ pub struct Config {
 }
 
 fn main() {
-    let config = Config::parse();
-
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+
+    let config = Config::parse();
 
     migrate(&config.ledger_db, &logger);
 

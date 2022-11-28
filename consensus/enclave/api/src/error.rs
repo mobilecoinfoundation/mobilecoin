@@ -6,11 +6,12 @@ use alloc::string::String;
 use displaydoc::Display;
 use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
+use mc_blockchain_types::BlockVersion;
 use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
 use mc_transaction_core::{
-    mint::MintValidationError, validation::TransactionValidationError, FeeMapError,
+    mint::MintValidationError, validation::TransactionValidationError, FeeMapError, TokenId,
 };
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
@@ -77,6 +78,14 @@ pub enum Error {
 
     /// Failed parsing minting trust root public key
     ParseMintingTrustRootPublicKey(KeyError),
+
+    /// Fee Map Digest Mismatch
+    FeeMapDigestMismatch,
+
+    /** Nested multi-sig governors for token id {0} not supported at block
+     * version {1}
+     */
+    NestedMultiSigGovernorsNotSupported(TokenId, BlockVersion),
 }
 
 impl From<ParseSealedError> for Error {

@@ -10,10 +10,10 @@ use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
 
 fn main() {
+    let (logger, _global_logger_guard) = logger::create_app_logger(logger::o!());
+
     mc_common::setup_panic_handler();
     let _sentry_guard = sentry::init();
-
-    let (logger, _global_logger_guard) = logger::create_app_logger(logger::o!());
 
     let config = Config::parse();
 

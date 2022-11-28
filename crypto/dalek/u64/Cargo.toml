@@ -1,0 +1,15 @@
+[package]
+name = "mc-crypto-dalek-backend-u64"
+description = "MobileCoin Dalek Crypto Backend Helper (u64)"
+version = "2.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+
+[features]
+default = [ "curve25519-dalek" ]
+
+[dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "u64_backend"] }
+ed25519-dalek = { version = "2.0.0-pre.1", optional=true, default-features = false, features = ["nightly", "u64_backend"]  }
+x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "u64_backend"] }

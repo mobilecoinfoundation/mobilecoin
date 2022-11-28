@@ -12,8 +12,8 @@ use mc_ledger_db::{create_ledger_in, Ledger};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
 
     let config = LedgerFromArchiveConfig::parse();
 

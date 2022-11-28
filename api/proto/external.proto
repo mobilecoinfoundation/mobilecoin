@@ -43,7 +43,8 @@ message Ed25519MultiSig {
 }
 
 message Ed25519SignerSet {
-    repeated Ed25519Public signers = 1;
+    repeated Ed25519Public individual_signers = 1;
+    repeated Ed25519SignerSet multi_signers = 3;
     uint32 threshold = 2;
 }
 
@@ -352,6 +353,13 @@ message Tx {
 
     // The RingCT signature on the prefix.
     SignatureRctBulletproofs signature = 2;
+
+    // Client's belief about the minimum fee map, expressed as a merlin digest.
+    //
+    // The enclave must reject the proposal if this doesn't match the enclave's
+    // belief, to protect the client from information disclosure attacks.
+    // (This is TOB-MCCT-5)
+    bytes fee_map_digest = 3;
 }
 
 message TxHash {

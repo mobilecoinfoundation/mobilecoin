@@ -8,7 +8,7 @@ use mc_common::{
     logger::{test_with_logger, Logger},
     ResponderId,
 };
-use mc_consensus_enclave::{ConsensusEnclave, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
+use mc_consensus_enclave::{ConsensusEnclave, ConsensusServiceSgxEnclave, Error, ENCLAVE_FILE};
 use mc_consensus_enclave_api::BlockchainConfig;
 use mc_crypto_keys::X25519;
 use mc_crypto_rand::McRng;
@@ -37,6 +37,7 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
     let responder_id = ResponderId::from_str("127.0.0.1:3000").unwrap();
     let block_version = BlockVersion::MAX;
     let fee_map = FeeMap::default();
+    let fee_map_digest = fee_map.canonical_digest();
 
     let blockchain_config = BlockchainConfig {
         block_version,
@@ -105,8 +106,10 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
         &mut rng,
     );
 
-    // Try to propose the Tx
-    let req = tx;
+    // Try to propose the Tx. Note that this Tx does not currently contain a fee map
+    // digest, so this test confirms it can be proposed successfully without
+    // including it.
+    let req = tx.clone();
 
     let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 
@@ -129,4 +132,33 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let result = enclave.client_tx_propose(msg.into());
     assert!(result.is_err(), "unexpected success with bad serialized Tx");
+
+    // Try to propose a Tx with a fee map digest that doesn't match the enclave's
+    let mut req = tx.clone();
+    req.fee_map_digest = [1u8; 32].to_vec();
+
+    let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
+
+    let mut msg = Message::new();
+    msg.set_channel_id(Vec::from(initiator.binding()));
+    msg.set_data(ciphertext);
+
+    assert_eq!(
+        enclave.client_tx_propose(msg.into()),
+        Err(Error::FeeMapDigestMismatch)
+    );
+
+    // Including the correct fee map digest allows propose to succeed.
+    let mut req = tx;
+    req.fee_map_digest = fee_map_digest.to_vec();
+
+    let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
+
+    let mut msg = Message::new();
+    msg.set_channel_id(Vec::from(initiator.binding()));
+    msg.set_data(ciphertext);
+
+    enclave
+        .client_tx_propose(msg.into())
+        .expect("unexpected failure to propose tx");
 }

@@ -8,7 +8,7 @@ use mc_transaction_core::{
         SignatureRctBulletproofs, SigningData,
     },
     tx::{Tx, TxPrefix},
-    TxSummary,
+    FeeMap, TxSummary,
 };
 use mc_transaction_types::{Amount, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};
@@ -42,6 +42,7 @@ impl UnsignedTx {
     pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
         &self,
         signer: &S,
+        fee_map: Option<&FeeMap>,
         rng: &mut RNG,
     ) -> Result<Tx, RingCtError> {
         let prefix = self.tx_prefix.clone();
@@ -54,8 +55,15 @@ impl UnsignedTx {
             signer,
             rng,
         )?;
+        let fee_map_digest = fee_map
+            .map(|fm| fm.canonical_digest().to_vec())
+            .unwrap_or_default();
 
-        Ok(Tx { prefix, signature })
+        Ok(Tx {
+            prefix,
+            signature,
+            fee_map_digest,
+        })
     }
 
     /// Get prepared (but unsigned) ringct bulletproofs which can be signed

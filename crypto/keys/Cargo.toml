@@ -7,10 +7,10 @@ description = "MobileCoin Diffie-Hellman Key Exchange and Digital Signatures"
 readme = "README.md"
 
 [features]
-alloc = ["base64/alloc", "ed25519-dalek/alloc", "ed25519-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc"]
-serde = ["dep:serde", "ed25519/serde", "ed25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
-prost = []
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default"]
+alloc = ["base64/alloc", "mc-crypto-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
+serde = ["dep:serde", "ed25519/serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde"]
+prost = ["mc-util-repr-bytes/prost"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default"]
 
 [dependencies]
 
@@ -19,11 +19,11 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 ed25519 = { version = "1.5", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = [ "rand" ] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 
-mc-crypto-dalek = { path = "../../crypto/dalek" }
+mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
