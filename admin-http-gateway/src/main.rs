@@ -121,10 +121,9 @@ fn metrics(state: &rocket::State<State>) -> Result<String, String> {
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
 
     let config = Config::parse();
 
