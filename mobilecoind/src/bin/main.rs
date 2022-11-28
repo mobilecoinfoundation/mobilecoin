@@ -19,14 +19,14 @@ use std::{
 };
 
 fn main() {
+    let _sentry_guard = mc_common::sentry::init();
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+
     let config = Config::parse();
     if !cfg!(debug_assertions) && !config.offline {
         config.validate_host().expect("Could not validate host");
     }
-
-    mc_common::setup_panic_handler();
-    let _sentry_guard = mc_common::sentry::init();
-    let (logger, _global_logger_guard) = create_app_logger(o!());
 
     let _tracer =
         setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer");

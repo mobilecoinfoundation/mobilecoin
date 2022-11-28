@@ -778,12 +778,12 @@ fn get_mixins(
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
 
     let config = Config::parse();
 
-    let (logger, _global_logger_guard) = create_app_logger(o!());
     log::info!(
         logger,
         "Starting mobilecoind HTTP gateway on {}:{}, connecting to {}",

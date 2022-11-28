@@ -12,10 +12,10 @@ use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
 
 fn main() {
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    mc_common::setup_panic_handler();
     let config = MobileAcctViewConfig::parse();
 
     let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
