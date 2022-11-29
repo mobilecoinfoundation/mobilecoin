@@ -95,6 +95,10 @@ pub struct QueryResponse {
     /// clients sample for mixins.
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// The results of each tx out search query
+    #[prost(message, repeated, tag = "10")]
+    pub fixed_tx_out_search_results: Vec<FixedTxOutSearchResult>,
 }
 
 /// Internal representation of the `MultiViewStoreQueryResponseStance` proto
@@ -208,6 +212,24 @@ impl TryFrom<u32> for TxOutSearchResultCode {
 /// A struct representing the result of a fog view Txo query
 #[derive(Clone, Eq, Hash, PartialEq, Message, Serialize, Deserialize)]
 pub struct TxOutSearchResult {
+    /// The search key that yielded this result
+    #[prost(bytes, tag = "1")]
+    pub search_key: Vec<u8>,
+    /// This is a TxOutSearchResultCode
+    #[prost(fixed32, tag = "2")]
+    pub result_code: u32,
+    /// The ciphertext payload
+    #[prost(bytes, tag = "3")]
+    pub ciphertext: Vec<u8>,
+    /// The payload length
+    #[prost(bytes, tag = "4")]
+    pub padding: Vec<u8>,
+}
+
+/// A struct representing the result of a fog view Txo query with a fixed
+/// ciphertext length. This View Stores return this to the router.
+#[derive(Clone, Eq, Hash, PartialEq, Message, Serialize, Deserialize)]
+pub struct FixedTxOutSearchResult {
     /// The search key that yielded this result
     #[prost(bytes, tag = "1")]
     pub search_key: Vec<u8>,

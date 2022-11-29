@@ -221,6 +221,8 @@ message QueryResponse {
     repeated DecommissionedIngestInvocation decommissioned_ingest_invocations = 6;
 
     /// Any TxOutSearchResults from the get_txos in the request.
+    /// TODO: Deprecate this field once clients have been given enough time to upgrade to the new
+    /// fixed_tx_out_search_result field.
     repeated TxOutSearchResult tx_out_search_results = 7;
 
     /// Extra data: The index of the last known block.
@@ -232,6 +234,10 @@ message QueryResponse {
     /// This can be used by the client as a hint when choosing cryptonote mixin indices.
     /// This field doesn't have the same "cursor" semantics as the other fields.
     uint64 last_known_block_cumulative_txo_count = 9;
+
+    /// Any FixedTxOutSearchResults from the get_txos in the request. Will be filled alongside the TxOutSearchResult
+    /// field and contains the same payload data, but in a different format.
+    repeated FixedTxOutSearchResult fixed_tx_out_search_results = 10;
 }
 
 /// A record of an Rng created by a fog ingest enclave.
@@ -274,11 +280,31 @@ message TxOutSearchResult {
     /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
     bytes ciphertext = 3;
 
-    /// The length of the payload that is encrypted in the ciphertext. Ciphertexts will always be 255 in length, but
-    /// the payload may be less than that, so any additional bytes should not be interpreted by the client. This value
-    /// tells the client which bytes to interpret.
-    /// TODO: Remove this field and replace with an optional `ciphertext_padding` field. This new field will contain
-    /// extra bytes to make up the difference between the shard's ciphertext length and the payload.
+    /// Unused padding that needs to be returned to maintain internal obliviousness.
+    bytes padding = 4;
+
+}
+
+/// Contains the same payload data as a TxOutSearchResult, but the payload is contained within a ciphertext of fixed
+// length.
+message FixedTxOutSearchResult {
+    /// The search key associated to this result
+    bytes search_key = 1;
+    /// The result code for the query.
+    /// This is logically an enum, but should not be an enum because protobuf
+    /// requires that enums are encoded using the "varint" encoding which is not fixed size.
+    /// We want that e.g. "Found" and "NotFound" have the same length on the wire to avoid leaking that.
+    /// So it is a fixed32 in protobuf, and the 0 (default) value is intentionally unused.
+    fixed32 result_code = 2;
+
+    /// A ciphertext, which is a view-key encrypted TxOutRecord in case result_code == 1.
+    /// It is be zero-padding in the other cases.
+    /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
+    bytes ciphertext = 3;
+
+    /// The length of the payload that is encrypted in the ciphertext. Ciphertexts will always be of fixed length, but
+    /// the contained the payload may be less than this length, so the rest of the ciphertext is zeroed out. These
+    /// zeroed bytes should not be interpreted by the client, and this value tells the client which bytes to interpret.
     fixed32 payload_length = 4;
 }
 
