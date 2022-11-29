@@ -10,6 +10,7 @@ mod e_tx_out_store;
 mod oblivious_utils;
 mod types;
 
+use crate::types::get_block_data;
 use alloc::vec::Vec;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -34,7 +35,7 @@ use mc_fog_view_enclave_api::{
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-use types::{BlockData, CommonShardData, DecryptedMultiViewStoreQueryResponse, LastKnownData};
+use types::{CommonShardData, DecryptedMultiViewStoreQueryResponse, LastKnownData};
 
 pub struct ViewEnclave<OSC>
 where
@@ -323,16 +324,16 @@ where
         result.last_known_block_cumulative_txo_count =
             last_known_data.last_known_block_cumulative_txo_count;
 
-        let block_data = BlockData::from(responses.as_mut_slice());
-        result.highest_processed_block_count = block_data.highest_processed_block_count;
-        result.highest_processed_block_signature_timestamp =
-            block_data.highest_processed_block_signature_timestamp;
-
         let shared_data: CommonShardData = CommonShardData::from(responses.as_slice());
         result.missed_block_ranges = shared_data.missed_block_ranges;
         result.rng_records = shared_data.rng_records;
         result.decommissioned_ingest_invocations = shared_data.decommissioned_ingest_invocations;
         result.next_start_from_user_event_id = shared_data.next_start_from_user_event_id;
+
+        let block_data = get_block_data(responses.as_mut_slice(), &result.missed_block_ranges);
+        result.highest_processed_block_count = block_data.highest_processed_block_count;
+        result.highest_processed_block_signature_timestamp =
+            block_data.highest_processed_block_signature_timestamp;
 
         result.tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &responses)?;
