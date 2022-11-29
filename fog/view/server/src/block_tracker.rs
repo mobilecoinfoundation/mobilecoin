@@ -148,20 +148,21 @@ where
             // Go over all known ingress keys and check if
             // any of them need to provide this block and have not provided it
             for rec in ingress_keys {
-                // If this ingress key isn't responsible to provide this block index, we can
-                // move on
-                if !rec.covers_block_index(next_block_index) {
+                let epoch = self.sharding_strategy.get_block_range();
+                let is_key_responsible = rec.get_block_range().overlaps(&epoch)
+                    && rec.covers_block_index(next_block_index);
+                if !is_key_responsible {
                     continue;
                 }
 
                 // Check if the last block we actually loaded with this key is less than
                 // next_block_index, if so then this is what we are stuck on
-                if let Some(last_processed_block) =
+                if let Some(last_processed_block_index) =
                     self.processed_block_per_ingress_key.get(&rec.key)
                 {
-                    if next_block_index > *last_processed_block {
+                    if next_block_index > *last_processed_block_index {
                         // This ingress key needs to provide this block, but we haven't got it yet
-                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block);
+                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block_index);
                         reason_we_stopped = Some(rec.clone());
                         break 'outer;
                     }
