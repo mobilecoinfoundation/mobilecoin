@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::common::BlockRange;
-use alloc::{string::String, vec::Vec};
+use alloc::{string::String, vec, vec::Vec};
 use crc::Crc;
 use displaydoc::Display;
 use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
@@ -16,6 +16,9 @@ use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 pub use mc_fog_kex_rng::KexRngPubkey;
+
+/// The length of the ciphertext in the FixedTxOutSearchResult.
+pub const FIXED_CIPHERTEXT_LENGTH: usize = 255;
 
 // User <-> enclave proto schema types
 // These are synced with types in fog_api view.proto, and tests enforce that
@@ -313,6 +316,28 @@ impl From<&MaskedAmount> for TxOutAmountMaskedTokenId {
                     masked_amount.masked_token_id.clone(),
                 )
             }
+        }
+    }
+}
+
+/// This conversion must be constant time.
+impl From<FixedTxOutSearchResult> for TxOutSearchResult {
+    fn from(src: FixedTxOutSearchResult) -> Self {
+        // The ciphertext field's length will always be FIXED_CIPHERTEXT_LENGTH, so this
+        // is constant time.
+        let mut ciphertext = src.ciphertext.clone();
+        let mut padding = vec![0; FIXED_CIPHERTEXT_LENGTH];
+
+        // TODO: Add comment explaining why this is truncate step is always CT time.
+        ciphertext.truncate(src.payload_length as usize);
+        let padding_length = FIXED_CIPHERTEXT_LENGTH - (src.payload_length as usize);
+        padding.truncate(padding_length);
+
+        TxOutSearchResult {
+            search_key: src.search_key,
+            result_code: src.result_code,
+            ciphertext,
+            padding,
         }
     }
 }
@@ -660,5 +685,84 @@ mod view_tests {
         let result = fog_tx_out.try_recover_tx_out(&view_private_key);
 
         assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
+mod tx_out_search_results_conversion {
+    use crate::view::{FixedTxOutSearchResult, TxOutSearchResult, FIXED_CIPHERTEXT_LENGTH};
+    use alloc::{vec, vec::Vec};
+
+    #[test]
+    fn small_payload_length() {
+        const SMALL_PAYLOAD_LENGTH: u32 = 232;
+        const MAX_CIPHERTEXT_LENGTH: usize = 232;
+        let mut fixed_tx_out_search_results = Vec::new();
+        for i in 0..10 {
+            let fixed_tx_out_search_result = FixedTxOutSearchResult {
+                search_key: vec![i as u8],
+                result_code: 0,
+                ciphertext: vec![i; MAX_CIPHERTEXT_LENGTH],
+                payload_length: SMALL_PAYLOAD_LENGTH,
+            };
+            fixed_tx_out_search_results.push(fixed_tx_out_search_result);
+        }
+
+        let tx_out_search_results = fixed_tx_out_search_results
+            .iter()
+            .map(|result| result.clone().into())
+            .collect::<Vec<TxOutSearchResult>>();
+
+        for (i, result) in tx_out_search_results.iter().enumerate() {
+            assert_eq!(result.search_key, fixed_tx_out_search_results[i].search_key);
+            assert_eq!(
+                result.result_code,
+                fixed_tx_out_search_results[i].result_code
+            );
+            let payload_length = fixed_tx_out_search_results[i].payload_length as usize;
+            assert_eq!(
+                result.ciphertext,
+                fixed_tx_out_search_results[i].ciphertext[0..payload_length]
+            );
+            let padding_length =
+                FIXED_CIPHERTEXT_LENGTH - (fixed_tx_out_search_results[i].payload_length as usize);
+            assert_eq!(result.padding, vec![0; padding_length])
+        }
+    }
+
+    #[test]
+    fn max_payload_length() {
+        const MAX_CIPHERTEXT_LENGTH: usize = 232;
+        let mut fixed_tx_out_search_results = Vec::new();
+        for i in 0..10 {
+            let fixed_tx_out_search_result = FixedTxOutSearchResult {
+                search_key: vec![i as u8],
+                result_code: 0,
+                ciphertext: vec![i; 255],
+                payload_length: MAX_CIPHERTEXT_LENGTH as u32,
+            };
+            fixed_tx_out_search_results.push(fixed_tx_out_search_result);
+        }
+
+        let tx_out_search_results = fixed_tx_out_search_results
+            .iter()
+            .map(|result| result.clone().into())
+            .collect::<Vec<TxOutSearchResult>>();
+
+        for (i, result) in tx_out_search_results.iter().enumerate() {
+            assert_eq!(result.search_key, fixed_tx_out_search_results[i].search_key);
+            assert_eq!(
+                result.result_code,
+                fixed_tx_out_search_results[i].result_code
+            );
+            let payload_length = fixed_tx_out_search_results[i].payload_length as usize;
+            assert_eq!(
+                result.ciphertext,
+                fixed_tx_out_search_results[i].ciphertext[0..payload_length]
+            );
+            let padding_length =
+                FIXED_CIPHERTEXT_LENGTH - (fixed_tx_out_search_results[i].payload_length as usize);
+            assert_eq!(result.padding, vec![0; padding_length])
+        }
     }
 }

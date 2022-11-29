@@ -11,15 +11,13 @@ use aligned_cmov::{
     CMov,
 };
 use alloc::{vec, vec::Vec};
-use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode};
+use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH};
 
 /// The default TxOutSearchResultCode used when collating the shard responses.
 ///   Warning: Do not change this without careful thought because the logic in
 ///            the [should_over_write_tx_out_search_result] method assumes that
 ///            the default code is NotFound.
 const DEFAULT_TX_OUT_SEARCH_RESULT_CODE: TxOutSearchResultCode = TxOutSearchResultCode::NotFound;
-/// The length of the ciphertext returned to the client.
-const CLIENT_CIPHERTEXT_LENGTH: usize = 255;
 
 #[allow(dead_code)]
 pub fn collate_shard_tx_out_search_results(
@@ -31,8 +29,8 @@ pub fn collate_shard_tx_out_search_results(
         .map(|client_search_key| FixedTxOutSearchResult {
             search_key: client_search_key.to_vec(),
             result_code: DEFAULT_TX_OUT_SEARCH_RESULT_CODE as u32,
-            ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH],
-            payload_length: CLIENT_CIPHERTEXT_LENGTH as u32,
+            ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
+            payload_length: FIXED_CIPHERTEXT_LENGTH as u32,
         })
         .collect();
 
@@ -131,7 +129,6 @@ mod tests {
     extern crate std;
 
     use super::*;
-    use crate::oblivious_utils::CLIENT_CIPHERTEXT_LENGTH;
     use itertools::Itertools;
     use std::collections::HashSet;
 
@@ -155,13 +152,13 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
 
@@ -180,13 +177,13 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
 
@@ -206,13 +203,13 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
 
@@ -232,13 +229,13 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
 
@@ -258,14 +255,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -278,7 +275,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
         result = should_overwrite_tx_out_search_result(
@@ -291,7 +288,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         result = should_overwrite_tx_out_search_result(
@@ -304,7 +301,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -317,7 +314,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::Found,
         );
         result = should_overwrite_tx_out_search_result(
@@ -335,14 +332,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -355,7 +352,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -373,14 +370,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -393,7 +390,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -410,14 +407,14 @@ mod tests {
         let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -430,7 +427,7 @@ mod tests {
         client_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -448,14 +445,14 @@ mod tests {
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::BadSearchKey,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
@@ -468,7 +465,7 @@ mod tests {
         shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
-            CLIENT_CIPHERTEXT_LENGTH - 1,
+            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::RateLimited,
         );
         result = should_overwrite_tx_out_search_result(
@@ -488,7 +485,7 @@ mod tests {
                 create_test_tx_out_search_result(
                     search_key.clone(),
                     0,
-                    CLIENT_CIPHERTEXT_LENGTH - 1,
+                    FIXED_CIPHERTEXT_LENGTH - 1,
                     TxOutSearchResultCode::Found,
                 )
             })
@@ -530,7 +527,7 @@ mod tests {
                 create_test_tx_out_search_result(
                     search_key.clone(),
                     0,
-                    CLIENT_CIPHERTEXT_LENGTH - 1,
+                    FIXED_CIPHERTEXT_LENGTH - 1,
                     result_code,
                 )
             })
@@ -569,8 +566,8 @@ mod tests {
             .map(|search_key| FixedTxOutSearchResult {
                 search_key: search_key.clone(),
                 result_code: TxOutSearchResultCode::NotFound as u32,
-                ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH + 1],
-                payload_length: (CLIENT_CIPHERTEXT_LENGTH + 1) as u32,
+                ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH + 1],
+                payload_length: (FIXED_CIPHERTEXT_LENGTH + 1) as u32,
             })
             .collect();
 
@@ -614,18 +611,18 @@ mod tests {
                 .sorted_by(|a, b| Ord::cmp(&a.ciphertext[0], &b.ciphertext[0]))
                 .collect();
 
-        let mut expected_first_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let mut expected_first_result = [0u8; FIXED_CIPHERTEXT_LENGTH];
         expected_first_result[0] = ciphertext_values[0];
         assert_eq!(results[0].ciphertext, expected_first_result);
         assert_eq!(results[0].payload_length, ciphertext_lengths[0]);
 
-        let mut expected_second_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let mut expected_second_result = [0u8; FIXED_CIPHERTEXT_LENGTH];
         expected_second_result[0] = ciphertext_values[1];
         expected_second_result[1] = ciphertext_values[1];
         assert_eq!(results[1].ciphertext, expected_second_result);
         assert_eq!(results[1].payload_length, ciphertext_lengths[1]);
 
-        let mut expected_third_result = [0u8; CLIENT_CIPHERTEXT_LENGTH];
+        let mut expected_third_result = [0u8; FIXED_CIPHERTEXT_LENGTH];
         expected_third_result[0] = ciphertext_values[2];
         expected_third_result[1] = ciphertext_values[2];
         expected_third_result[2] = ciphertext_values[2];
