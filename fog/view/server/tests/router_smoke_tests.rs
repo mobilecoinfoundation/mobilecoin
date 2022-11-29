@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use futures::executor::block_on;
-use mc_common::logger::{create_app_logger, o, Logger};
+use mc_common::logger::{create_app_logger, o};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
@@ -9,8 +9,21 @@ use mc_fog_types::{common::BlockRange, view::TxOutSearchResultCode, ETxOutRecord
 use mc_fog_view_server_test_utils::RouterTestEnvironment;
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
+use yare::parameterized;
 
-async fn test_router_integration(test_environment: &mut RouterTestEnvironment, logger: Logger) {
+#[parameterized(
+small_omap_one_store = { 512, 1, 6 },
+small_omap_multiple_stores = { 512, 6, 1 },
+large_omap_one_store = { 1048576, 1, 6 },
+large_omap_multiple_stores = { 1048576, 6, 1 },
+)]
+fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per_store: u64) {
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let store_block_ranges =
+        mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
+    let mut test_environment =
+        RouterTestEnvironment::new(omap_capacity, store_block_ranges, logger.clone());
+
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     let db = test_environment
         .db_test_context
@@ -99,9 +112,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     // - 1 new rng record (for invoc_id2)
     // - 1 missing block range
     // - 1 ingest decommissioning (for invoc_id1)
-    let result = router_client
-        .query(0, 0, nonsense_search_keys.clone())
-        .await;
+    let result = block_on(router_client.query(0, 0, nonsense_search_keys.clone()));
     assert!(result.is_ok());
     let mut result = result.unwrap();
 
@@ -124,9 +135,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
     // Query 2 is the same as Query 1 and tests that identical queries (when no
     // blocks have been added etc.) should yield identical results.
-    let result = router_client
-        .query(0, 0, nonsense_search_keys.clone())
-        .await;
+    let result = block_on(router_client.query(0, 0, nonsense_search_keys.clone()));
     assert!(result.is_ok());
     let mut result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -148,9 +157,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
     // Query 3 starts at user event id 1, which skips the invoc_id1 new rng record
     // event (which has a user event id of 0).
-    let result = router_client
-        .query(1, 0, nonsense_search_keys.clone())
-        .await;
+    let result = block_on(router_client.query(1, 0, nonsense_search_keys.clone()));
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -168,9 +175,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.last_known_block_count, 6);
 
     // Query 4 starts at user event id 4, which skips all events.
-    let result = router_client
-        .query(4, 0, nonsense_search_keys.clone())
-        .await;
+    let result = block_on(router_client.query(4, 0, nonsense_search_keys.clone()));
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -187,9 +192,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     // Query 5 starts at a user event id that is much larger than the last known
     // event id. This should  skip all events and return this large user event
     // id.
-    let result = router_client
-        .query(80, 0, nonsense_search_keys.clone())
-        .await;
+    let result = block_on(router_client.query(80, 0, nonsense_search_keys));
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -205,9 +208,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
     // Query 6 starts at user event id 4, and supplies search keys that correspond
     // to TxOuts. We expect to find these TxOuts.
-    let result = router_client
-        .query(4, 0, vec![vec![1u8; 16], vec![2u8; 16], vec![3u8; 16]])
-        .await;
+    let result =
+        block_on(router_client.query(4, 0, vec![vec![1u8; 16], vec![2u8; 16], vec![3u8; 16]]));
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -237,9 +239,8 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     // to TxOuts and 1 search key that doesn't correspond to any TxOuts. We to
     // find the TxOuts for the first 2 search keys and to not find TxOuts for
     // the last search key.
-    let result = router_client
-        .query(4, 0, vec![vec![5u8; 16], vec![8u8; 16], vec![200u8; 16]])
-        .await;
+    let result =
+        block_on(router_client.query(4, 0, vec![vec![5u8; 16], vec![8u8; 16], vec![200u8; 16]]));
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.highest_processed_block_count, 6);
@@ -268,7 +269,7 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
 
     // Query 8 supplies an ill-formed seach key, so we expect to find that the TxOut
     // that's returned indicates this.
-    let result = router_client.query(0, 0, vec![vec![200u8; 17]]).await;
+    let result = block_on(router_client.query(0, 0, vec![vec![200u8; 17]]));
     assert!(result.is_ok());
     let mut result = result.unwrap();
     result
@@ -291,38 +292,4 @@ async fn test_router_integration(test_environment: &mut RouterTestEnvironment, l
     assert_eq!(result.missed_block_ranges.len(), 1);
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
-}
-
-#[test]
-fn test_512() {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-    const OMAP_CAPACITY: u64 = 512;
-    const STORE_COUNT: usize = 6;
-    const BLOCKS_PER_STORE: u64 = 1;
-    let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
-    let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, store_block_ranges, logger.clone());
-
-    block_on(test_router_integration(
-        &mut test_environment,
-        logger.clone(),
-    ))
-}
-
-#[test]
-fn test_1_million() {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-    const OMAP_CAPACITY: u64 = 1024 * 1024;
-    const STORE_COUNT: usize = 6;
-    const BLOCKS_PER_STORE: u64 = 1;
-    let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
-    let mut test_environment =
-        RouterTestEnvironment::new(OMAP_CAPACITY, store_block_ranges, logger.clone());
-
-    block_on(test_router_integration(
-        &mut test_environment,
-        logger.clone(),
-    ))
 }

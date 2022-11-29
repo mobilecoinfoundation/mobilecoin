@@ -9,31 +9,32 @@
 // its way into the client.
 
 use mc_blockchain_types::{Block, BlockID, BlockVersion};
-use mc_common::logger::{create_app_logger, log, o, Logger};
+use mc_common::logger::{create_app_logger, o};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
 use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
-use mc_fog_types::{
-    common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
-    ETxOutRecord,
-};
-use mc_fog_view_connection::FogViewGrpcClient;
+use mc_fog_types::{common::BlockRange, view::TxOutSearchResultCode, ETxOutRecord};
 use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server_test_utils::RouterTestEnvironment;
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
 use std::{thread::sleep, time::Duration};
+use yare::parameterized;
 
-// Smoke tests that if we add stuff to recovery database, client can see
-// results when they hit a view server.
-fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
+/// Smoke tests that if we add stuff to recovery database, client can see
+/// results when they hit a view server.
+#[parameterized(
+small_omap_one_store = { 512, 1, 6 },
+small_omap_multiple_stores = { 512, 6, 1 },
+large_omap_one_store = { 1048576, 1, 6 },
+large_omap_multiple_stores = { 1048576, 6, 1 },
+)]
+fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per_store: u64) {
+    let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-    const STORE_COUNT: usize = 6;
-    const BLOCKS_PER_STORE: u64 = 1;
     let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
+        mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
         RouterTestEnvironment::new_unary(view_omap_capacity, store_block_ranges, logger.clone());
     let db = test_environment
@@ -369,102 +370,23 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     assert_eq!(result.missed_block_ranges.len(), 1);
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
     assert_eq!(result.last_known_block_count, 6);
-}
-
-#[test]
-fn test_view_sql_512() {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-    test_view_integration(512, logger);
 
     // Sleep before exiting to give view server threads time to join
     sleep(Duration::from_millis(1000));
-}
-
-#[test]
-fn test_view_sql_1mil() {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-    test_view_integration(1024 * 1024, logger);
-
-    // Sleep before exiting to give view server threads time to join
-    sleep(Duration::from_millis(1000));
-}
-
-/// Ensure that all provided ETxOutRecords are in the enclave, and that
-/// non-existing ones aren't.
-fn assert_e_tx_out_records_sanity(
-    client: &mut FogViewGrpcClient,
-    records: &[ETxOutRecord],
-    logger: &Logger,
-) {
-    // Construct an array of expected results that includes both records we expect
-    // to find and records we expect not to find.
-    let mut expected_results = Vec::new();
-    for record in records {
-        expected_results.push(TxOutSearchResult {
-            search_key: record.search_key.clone(),
-            result_code: TxOutSearchResultCode::Found as u32,
-            ciphertext: record.payload.clone(),
-            payload_length: record.payload.len() as u32,
-        });
-    }
-    for i in 0..3 {
-        let payload_length = 255;
-        expected_results.push(TxOutSearchResult {
-            search_key: vec![i + 1; 16], // Search key of all zeros is invalid.
-            result_code: TxOutSearchResultCode::NotFound as u32,
-            ciphertext: vec![0; payload_length],
-            payload_length: payload_length as u32,
-        });
-    }
-    expected_results.sort_by_key(|result| result.search_key.clone());
-
-    let search_keys: Vec<_> = expected_results
-        .iter()
-        .map(|result| result.search_key.clone())
-        .collect();
-
-    let mut allowed_tries = 60usize;
-    loop {
-        let result = client.request(0, 0, search_keys.clone()).unwrap();
-
-        let mut actual_results = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
-            result.tx_out_search_results.clone(),
-        );
-        actual_results.sort_by_key(|result| result.search_key.clone());
-        for (idx, actual_result) in actual_results.iter().enumerate() {
-            let expected_result = &expected_results[idx];
-            if actual_result != expected_result {
-                log::info!(logger, "oops");
-                break;
-            }
-        }
-        if actual_results == expected_results {
-            break;
-        }
-
-        log::info!(logger, "Len of expected {}", expected_results.len());
-        log::info!(logger, "Len of actual {}", actual_results.len());
-        log::info!(logger, "Allowed tries {}", allowed_tries);
-
-        if allowed_tries == 0 {
-            panic!("Server did not catch up to database!");
-        }
-        allowed_tries -= 1;
-        sleep(Duration::from_millis(1000));
-    }
 }
 
 /// Test that view server behaves correctly when there is some overlap between
 /// two currently active ingest invocations.
-#[test]
-fn test_overlapping_ingest_ranges() {
+#[parameterized(
+one_store = { 1, 40 },
+multiple_stores = { 5, 8 },
+)]
+fn test_overlapping_ingest_ranges(store_count: usize, blocks_per_store: u64) {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
-    const STORE_COUNT: usize = 5;
-    const BLOCKS_PER_STORE: u64 = 8;
     let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
+        mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
         RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
     let view_client = test_environment.router_unary_client.as_mut().unwrap();
@@ -511,7 +433,7 @@ fn test_overlapping_ingest_ranges() {
         mc_fog_view_server_test_utils::get_highest_processed_block_count(store_servers);
     assert_eq!(highest_processed_block_count, block_count);
 
-    assert_e_tx_out_records_sanity(view_client, &expected_records, &logger);
+    mc_fog_view_server_test_utils::assert_e_tx_out_records(view_client, &expected_records);
 
     // Give server time to process some more blocks, although it shouldn't.
     sleep(Duration::from_millis(1000));
@@ -543,15 +465,17 @@ fn test_overlapping_ingest_ranges() {
     assert_eq!(highest_processed_block_count, block_count);
 
     // Give server time to process some more blocks, although it shouldn't.
-    mc_fog_view_server_test_utils::wait_for_highest_processed_and_last_known(view_client, block_count, 20);
+    mc_fog_view_server_test_utils::wait_for_highest_processed_and_last_known(
+        view_client,
+        block_count,
+        20,
+    );
     let highest_processed_block_count =
         mc_fog_view_server_test_utils::get_highest_processed_block_count(store_servers);
     assert_eq!(highest_processed_block_count, block_count);
 
     // See that we get a sane client response.
-    let result = view_client
-        .request(0, 0, nonsense_search_keys.clone())
-        .unwrap();
+    let result = view_client.request(0, 0, nonsense_search_keys).unwrap();
     assert_eq!(result.highest_processed_block_count, 15);
     assert_eq!(result.last_known_block_count, 20); // The last known block is not tied to the serial processing of blocks.
 
@@ -576,12 +500,15 @@ fn test_overlapping_ingest_ranges() {
     // See that we get a sane client response.
     mc_fog_view_server_test_utils::wait_for_highest_processed_and_last_known(view_client, 20, 30);
     // Ensure all ETxOutRecords are searchable
-    assert_e_tx_out_records_sanity(view_client, &expected_records, &logger);
+    mc_fog_view_server_test_utils::assert_e_tx_out_records(view_client, &expected_records);
 }
 
 /// Test that view server behaves correctly when there is a missing range before
 /// any ingest invocations.
-#[test]
+#[parameterized(
+one_store = { 1, 40 },
+multiple_stores = { 5, 8 },
+)]
 fn test_start_with_missing_range() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -637,12 +564,15 @@ fn test_start_with_missing_range() {
         mc_fog_view_server_test_utils::get_highest_processed_block_count(store_servers);
     assert_eq!(highest_processed_block_count, 15);
 
-    assert_e_tx_out_records_sanity(view_client, &expected_records, &logger);
+    mc_fog_view_server_test_utils::assert_e_tx_out_records(view_client, &expected_records);
 }
 
 /// Test that view server behaves correctly when there is a missing range
 /// between two ingest invocations.
-#[test]
+#[parameterized(
+one_store = { 1, 40 },
+multiple_stores = { 5, 8 },
+)]
 fn test_middle_missing_range_with_decommission() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -736,5 +666,5 @@ fn test_middle_missing_range_with_decommission() {
         mc_fog_view_server_test_utils::get_highest_processed_block_count(store_servers);
     assert_eq!(highest_processed_block_count, 15);
 
-    assert_e_tx_out_records_sanity(view_client, &expected_records, &logger);
+    mc_fog_view_server_test_utils::assert_e_tx_out_records(view_client, &expected_records);
 }

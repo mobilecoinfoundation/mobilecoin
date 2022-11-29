@@ -11,22 +11,19 @@ use mc_common::{
     time::SystemTimeProvider,
     ResponderId,
 };
-use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{
     common::BlockRange,
-    view::{QueryResponse, TxOutSearchResult, TxOutSearchResultCode},
+    view::{TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
 use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
-use mc_fog_view_connection::{
-    fog_view_router_client::{Error, FogViewRouterGrpcClient},
-    FogViewGrpcClient,
-};
+use mc_fog_view_connection::{fog_view_router_client::FogViewRouterGrpcClient, FogViewGrpcClient};
 use mc_fog_view_enclave::SgxViewEnclave;
+use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
     config::{
         FogViewRouterConfig, MobileAcctViewConfig as ViewConfig, RouterClientListenUri,
@@ -321,20 +318,28 @@ impl Drop for RouterTestEnvironment {
 
 /// Ensure that all provided ETxOutRecords are in the enclave, and that
 /// non-existing ones aren't.
-pub async fn assert_e_tx_out_records(
-    client: &mut FogViewRouterGrpcClient,
-    records: &[ETxOutRecord],
-) -> Result<QueryResponse, Error> {
-    let mut expected_results = records
-        .iter()
-        .map(|record| TxOutSearchResult {
+pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOutRecord]) {
+    // Construct an array of expected results that includes both records we expect
+    // to find and records we expect not to find.
+    let mut expected_results = Vec::new();
+    for record in records {
+        expected_results.push(TxOutSearchResult {
             search_key: record.search_key.clone(),
             result_code: TxOutSearchResultCode::Found as u32,
             ciphertext: record.payload.clone(),
             payload_length: record.payload.len() as u32,
-        })
-        .collect::<Vec<_>>();
-    expected_results.sort_by_key(|result| result.ciphertext.clone());
+        });
+    }
+    for i in 0..3 {
+        let payload_length = 255;
+        expected_results.push(TxOutSearchResult {
+            search_key: vec![i + 1; 16], // Search key of all zeros is invalid.
+            result_code: TxOutSearchResultCode::NotFound as u32,
+            ciphertext: vec![0; payload_length],
+            payload_length: payload_length as u32,
+        });
+    }
+    expected_results.sort_by_key(|result| result.search_key.clone());
 
     let search_keys: Vec<_> = expected_results
         .iter()
@@ -343,13 +348,13 @@ pub async fn assert_e_tx_out_records(
 
     let mut allowed_tries = 60usize;
     loop {
-        let result = client.query(0, 0, search_keys.clone()).await.unwrap();
+        let result = client.request(0, 0, search_keys.clone()).unwrap();
 
         let mut actual_results =
             interpret_tx_out_search_results(result.tx_out_search_results.clone());
-        actual_results.sort_by_key(|result| result.ciphertext.clone());
+        actual_results.sort_by_key(|result| result.search_key.clone());
         if actual_results == expected_results {
-            return Ok(result);
+            break;
         }
         if allowed_tries == 0 {
             panic!("Server did not catch up to database!");
@@ -463,12 +468,18 @@ pub fn wait_for_block_to_load(block_count: u64, store_servers: &[TestViewServer]
 }
 
 /// Wait until a server has added a specific number of blocks to load.
-pub fn wait_for_highest_processed_and_last_known(view_client: &mut FogViewGrpcClient, highest_processed_block_count: u64, last_known_block_count: u64) {
+pub fn wait_for_highest_processed_and_last_known(
+    view_client: &mut FogViewGrpcClient,
+    highest_processed_block_count: u64,
+    last_known_block_count: u64,
+) {
     let mut allowed_tries = 60usize;
     loop {
         let nonsense_search_keys = vec![vec![50u8]];
         let result = view_client.request(0, 0, nonsense_search_keys).unwrap();
-        if result.highest_processed_block_count == highest_processed_block_count && result.last_known_block_count == last_known_block_count {
+        if result.highest_processed_block_count == highest_processed_block_count
+            && result.last_known_block_count == last_known_block_count
+        {
             break;
         }
 
