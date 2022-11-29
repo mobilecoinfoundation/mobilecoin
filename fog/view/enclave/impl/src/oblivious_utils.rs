@@ -11,7 +11,7 @@ use aligned_cmov::{
     CMov,
 };
 use alloc::{vec, vec::Vec};
-use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
+use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode};
 
 /// The default TxOutSearchResultCode used when collating the shard responses.
 ///   Warning: Do not change this without careful thought because the logic in
@@ -24,11 +24,11 @@ const CLIENT_CIPHERTEXT_LENGTH: usize = 255;
 #[allow(dead_code)]
 pub fn collate_shard_tx_out_search_results(
     client_search_keys: Vec<Vec<u8>>,
-    shard_tx_out_search_results: Vec<TxOutSearchResult>,
-) -> Result<Vec<TxOutSearchResult>> {
-    let mut client_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+    shard_tx_out_search_results: Vec<FixedTxOutSearchResult>,
+) -> Result<Vec<FixedTxOutSearchResult>> {
+    let mut client_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
         .iter()
-        .map(|client_search_key| TxOutSearchResult {
+        .map(|client_search_key| FixedTxOutSearchResult {
             search_key: client_search_key.to_vec(),
             result_code: DEFAULT_TX_OUT_SEARCH_RESULT_CODE as u32,
             ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH],
@@ -49,21 +49,21 @@ pub fn collate_shard_tx_out_search_results(
 }
 
 fn maybe_overwrite_tx_out_search_result(
-    client_tx_out_search_result: &mut TxOutSearchResult,
-    shard_tx_out_search_result: &TxOutSearchResult,
+    client_tx_out_search_result: &mut FixedTxOutSearchResult,
+    shard_tx_out_search_result: &FixedTxOutSearchResult,
 ) {
     let should_overwrite_tx_out_search_result = should_overwrite_tx_out_search_result(
         client_tx_out_search_result,
         shard_tx_out_search_result,
     );
-    let shard_ciphertext_length = shard_tx_out_search_result.ciphertext.len();
     client_tx_out_search_result
         .payload_length
         .conditional_assign(
-            &(shard_ciphertext_length as u32),
+            &(shard_tx_out_search_result.payload_length),
             should_overwrite_tx_out_search_result,
         );
-    for idx in 0..shard_ciphertext_length {
+
+    for idx in 0..shard_tx_out_search_result.ciphertext.len() {
         client_tx_out_search_result.ciphertext[idx].conditional_assign(
             &shard_tx_out_search_result.ciphertext[idx],
             should_overwrite_tx_out_search_result,
@@ -76,8 +76,8 @@ fn maybe_overwrite_tx_out_search_result(
 }
 
 fn should_overwrite_tx_out_search_result(
-    client_tx_out_search_result: &TxOutSearchResult,
-    shard_tx_out_search_result: &TxOutSearchResult,
+    client_tx_out_search_result: &FixedTxOutSearchResult,
+    shard_tx_out_search_result: &FixedTxOutSearchResult,
 ) -> Choice {
     let do_search_keys_match = client_tx_out_search_result
         .search_key
@@ -140,8 +140,8 @@ mod tests {
         ciphertext_number: u8,
         ciphertext_length: usize,
         result_code: TxOutSearchResultCode,
-    ) -> TxOutSearchResult {
-        TxOutSearchResult {
+    ) -> FixedTxOutSearchResult {
+        FixedTxOutSearchResult {
             search_key,
             result_code: result_code as u32,
             ciphertext: vec![ciphertext_number; ciphertext_length],
@@ -482,7 +482,7 @@ mod tests {
     #[test]
     fn collate_shard_query_responses_shards_find_all_tx_outs() {
         let client_search_keys: Vec<Vec<u8>> = (0..10).map(|num| vec![num; 10]).collect();
-        let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+        let shard_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
             .iter()
             .map(|search_key| {
                 create_test_tx_out_search_result(
@@ -519,7 +519,7 @@ mod tests {
     #[test]
     fn collate_shard_query_responses_shards_one_not_found() {
         let client_search_keys: Vec<Vec<u8>> = (0..10).map(|num| vec![num; 10]).collect();
-        let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+        let shard_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
             .iter()
             .enumerate()
             .map(|(i, search_key)| {
@@ -564,9 +564,9 @@ mod tests {
     #[test]
     fn collate_shard_query_responses_ciphertext_is_greater_than_client_ciphertext_length_panics() {
         let client_search_keys: Vec<Vec<u8>> = (0..10).map(|num| vec![num; 10]).collect();
-        let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+        let shard_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
             .iter()
-            .map(|search_key| TxOutSearchResult {
+            .map(|search_key| FixedTxOutSearchResult {
                 search_key: search_key.clone(),
                 result_code: TxOutSearchResultCode::NotFound as u32,
                 ciphertext: vec![0u8; CLIENT_CIPHERTEXT_LENGTH + 1],
@@ -590,13 +590,13 @@ mod tests {
         let client_search_keys: Vec<Vec<u8>> = (0..3).map(|num| vec![num; 10]).collect();
         let ciphertext_values = [5u8, 28u8, 128u8];
         let ciphertext_lengths: [u32; 3] = [1, 2, 3];
-        let shard_tx_out_search_results: Vec<TxOutSearchResult> = client_search_keys
+        let shard_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
             .iter()
             .enumerate()
             .map(|(idx, search_key)| {
                 let ciphertext = vec![ciphertext_values[idx]; ciphertext_lengths[idx] as usize];
                 let payload_length = ciphertext.len() as u32;
-                TxOutSearchResult {
+                FixedTxOutSearchResult {
                     search_key: search_key.clone(),
                     result_code: TxOutSearchResultCode::Found as u32,
                     ciphertext,
@@ -605,7 +605,7 @@ mod tests {
             })
             .collect();
 
-        let results: Vec<TxOutSearchResult> =
+        let results: Vec<FixedTxOutSearchResult> =
             collate_shard_tx_out_search_results(client_search_keys, shard_tx_out_search_results)
                 .unwrap()
                 .into_iter()

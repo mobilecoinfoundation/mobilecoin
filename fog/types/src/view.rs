@@ -244,6 +244,36 @@ pub struct FixedTxOutSearchResult {
     pub payload_length: u32,
 }
 
+impl FixedTxOutSearchResult {
+    /// Creates a new [FixedTxOutSearchResult]
+    pub fn new(search_key: Vec<u8>, payload: &[u8], result_code: TxOutSearchResultCode) -> Self {
+        let mut ciphertext = vec![0u8; FIXED_CIPHERTEXT_LENGTH];
+        let payload_length = payload.len();
+        ciphertext[0..payload_length].clone_from_slice(payload);
+
+        FixedTxOutSearchResult {
+            search_key,
+            result_code: result_code as u32,
+            ciphertext,
+            payload_length: payload_length as u32,
+        }
+    }
+
+    /// Creates a new [FixedTxOutSearchResult] with
+    /// [TxOutSearchResult::NotFound]
+    pub fn new_not_found(search_key: Vec<u8>) -> Self {
+        let ciphertext = vec![0u8; FIXED_CIPHERTEXT_LENGTH];
+        let payload_length = ciphertext.len() as u32;
+
+        FixedTxOutSearchResult {
+            search_key,
+            result_code: TxOutSearchResultCode::NotFound as u32,
+            ciphertext,
+            payload_length,
+        }
+    }
+}
+
 /// An enum capturing the Oneof in the proto file around masked token id bytes
 /// This is an enum because the options are used to capture which version of
 /// masked amount was serialized.

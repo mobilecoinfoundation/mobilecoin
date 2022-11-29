@@ -16,7 +16,7 @@ use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{
     common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
+    view::{FixedTxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
 use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
@@ -317,7 +317,7 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
     // to find and records we expect not to find.
     let mut expected_results = Vec::new();
     for record in records {
-        expected_results.push(TxOutSearchResult {
+        expected_results.push(FixedTxOutSearchResult {
             search_key: record.search_key.clone(),
             result_code: TxOutSearchResultCode::Found as u32,
             ciphertext: record.payload.clone(),
@@ -326,7 +326,7 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
     }
     for i in 0..3 {
         let payload_length = 255;
-        expected_results.push(TxOutSearchResult {
+        expected_results.push(FixedTxOutSearchResult {
             search_key: vec![i + 1; 16], // Search key of all zeros is invalid.
             result_code: TxOutSearchResultCode::NotFound as u32,
             ciphertext: vec![0; payload_length],
@@ -344,8 +344,9 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
     loop {
         let result = client.request(0, 0, search_keys.clone()).unwrap();
 
+        // TODO: Check `tx_out_search_result` too?
         let mut actual_results =
-            interpret_tx_out_search_results(result.tx_out_search_results.clone());
+            interpret_tx_out_search_results(result.fixed_tx_out_search_results.clone());
         actual_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
         if actual_results == expected_results {
             break;
@@ -361,12 +362,12 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
 /// Interprets the `ciphertext` field given the `payload_length` by discarding
 /// unused bytes.
 pub fn interpret_tx_out_search_results(
-    mut tx_out_search_results: Vec<TxOutSearchResult>,
-) -> Vec<TxOutSearchResult> {
+    mut tx_out_search_results: Vec<FixedTxOutSearchResult>,
+) -> Vec<FixedTxOutSearchResult> {
     tx_out_search_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
     tx_out_search_results
         .iter()
-        .map(|result| TxOutSearchResult {
+        .map(|result| FixedTxOutSearchResult {
             search_key: result.search_key.clone(),
             result_code: result.result_code,
             ciphertext: result.ciphertext[0..(result.payload_length as usize)].to_vec(),

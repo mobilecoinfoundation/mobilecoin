@@ -14,7 +14,7 @@ use chrono::NaiveDateTime;
 use core::fmt::{Debug, Display};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
-use mc_fog_types::view::TxOutSearchResult;
+use mc_fog_types::view::FixedTxOutSearchResult;
 
 pub use mc_blockchain_types::Block;
 pub use mc_fog_types::{common::BlockRange, ETxOutRecord};
@@ -226,13 +226,13 @@ pub trait RecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Self::Error>;
+    ) -> Result<Vec<FixedTxOutSearchResult>, Self::Error>;
 
     /// Mark a given ingest invocation as still being alive.
     fn update_last_active_at(

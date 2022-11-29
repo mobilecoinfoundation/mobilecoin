@@ -239,6 +239,7 @@ mod last_known_data_tests {
             tx_out_search_results: vec![],
             last_known_block_count,
             last_known_block_cumulative_txo_count,
+            fixed_tx_out_search_results: vec![],
         }
     }
 
@@ -340,6 +341,7 @@ mod shared_data_tests {
             tx_out_search_results: vec![],
             last_known_block_count: 0,
             last_known_block_cumulative_txo_count: 0,
+            fixed_tx_out_search_results: vec![],
         }
     }
 
@@ -521,6 +523,7 @@ mod get_block_data_tests {
             tx_out_search_results: vec![],
             last_known_block_count: highest_processed_block_count,
             last_known_block_cumulative_txo_count: 0,
+            fixed_tx_out_search_results: vec![],
         }
     }
 

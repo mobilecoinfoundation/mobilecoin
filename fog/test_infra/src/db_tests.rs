@@ -627,10 +627,17 @@ fn test_recovery_db_txs_new_apis(
     let results = db.get_tx_outs(0, &search_keys[..]).unwrap();
 
     for row in test_rows {
-        assert!(results.iter().any(|res| &res.search_key[..]
-            == AsRef::<[u8]>::as_ref(&row.search_key)
-            && res.ciphertext == row.payload
-            && res.result_code == TxOutSearchResultCode::Found as u32));
+        assert!(results.iter().any(|fixed_result| {
+            let search_keys_match =
+                &fixed_result.search_key[..] == AsRef::<[u8]>::as_ref(&row.search_key);
+            let payload_length = fixed_result.payload_length as usize;
+            let result_payload = fixed_result.ciphertext[0..payload_length].to_vec();
+            let payloads_match = result_payload == row.payload;
+            let result_codes_match =
+                fixed_result.result_code == TxOutSearchResultCode::Found as u32;
+
+            search_keys_match && payloads_match && result_codes_match
+        }));
     }
 
     assert!(results.iter().any(|res| res.search_key == random_search_key

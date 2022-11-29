@@ -26,7 +26,7 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    view::{MultiViewStoreQueryResponse, QueryRequest, QueryResponse, TxOutSearchResult},
+    view::{FixedTxOutSearchResult, MultiViewStoreQueryResponse, QueryRequest, QueryResponse},
     ETxOutRecord,
 };
 use mc_fog_view_enclave_api::{
@@ -102,6 +102,7 @@ where
             last_known_block_count: untrusted_query_response.last_known_block_count,
             last_known_block_cumulative_txo_count: untrusted_query_response
                 .last_known_block_cumulative_txo_count,
+            fixed_tx_out_search_results: Default::default(),
         };
 
         // Do the txos part, scope lock of e_tx_out_store
@@ -109,7 +110,7 @@ where
             let mut lk = self.e_tx_out_store.lock()?;
             let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
 
-            resp.tx_out_search_results = req
+            resp.fixed_tx_out_search_results = req
                 .get_txos
                 .iter()
                 .map(|key| store.find_record(&key[..]))
@@ -335,7 +336,7 @@ where
         result.highest_processed_block_signature_timestamp =
             block_data.highest_processed_block_signature_timestamp;
 
-        result.tx_out_search_results =
+        result.fixed_tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &responses)?;
 
         Ok(result)
@@ -344,11 +345,11 @@ where
     fn get_collated_tx_out_search_results(
         client_query_request: QueryRequest,
         responses: &[DecryptedMultiViewStoreQueryResponse],
-    ) -> Result<Vec<TxOutSearchResult>> {
+    ) -> Result<Vec<FixedTxOutSearchResult>> {
         let plaintext_search_results = responses
             .iter()
-            .flat_map(|response| response.query_response.tx_out_search_results.clone())
-            .collect::<Vec<TxOutSearchResult>>();
+            .flat_map(|response| response.query_response.fixed_tx_out_search_results.clone())
+            .collect::<Vec<FixedTxOutSearchResult>>();
 
         oblivious_utils::collate_shard_tx_out_search_results(
             client_query_request.get_txos,
