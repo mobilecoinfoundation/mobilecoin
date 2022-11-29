@@ -545,7 +545,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let client_query_bytes = self.client_decrypt(incoming_client_message)?;
         let sealed_client_query = SealedClientRequest {
             client_request_bytes: client_query_bytes,
-            channel_id: channel_id.clone().into(),
+            channel_id: channel_id.clone(),
         };
         let sealed_client_query_bytes = mc_util_serial::serialize(&sealed_client_query)?;
         let sealed_data = IntelSealed::seal_raw(&sealed_client_query_bytes, &[])?;

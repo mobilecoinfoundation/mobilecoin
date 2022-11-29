@@ -97,7 +97,7 @@ pub struct SealedClientRequest {
     /// The channel_id associated with the QueryRequest. Since the channel_id
     /// will never be 0, this struct will never serialize into an empty byte
     /// array.
-    pub channel_id: Vec<u8>,
+    pub channel_id: ClientSession,
 }
 
 /// The response to a request for a new report. The enclave will expect the

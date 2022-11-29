@@ -2,7 +2,7 @@
 
 //! Enclave API Errors
 
-use alloc::{format, string::String};
+use alloc::string::{String, ToString};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
@@ -137,12 +137,12 @@ impl From<ParseSealedError> for Error {
 
 impl From<mc_util_serial::encode::Error> for Error {
     fn from(src: mc_util_serial::encode::Error) -> Self {
-        Error::Encode(format!("{}", src))
+        Error::Encode(src.to_string())
     }
 }
 
 impl From<mc_util_serial::decode::Error> for Error {
     fn from(src: mc_util_serial::decode::Error) -> Self {
-        Error::Decode(format!("{}", src))
+        Error::Decode(src.to_string())
     }
 }
