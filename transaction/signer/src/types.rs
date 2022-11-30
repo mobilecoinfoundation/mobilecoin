@@ -59,7 +59,7 @@ pub struct TxoUnsynced {
     pub tx_out_public_key: TxOutPublic,
 }
 
-/// Synced TxOut response
+/// Synced TxOut response, returned to full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoSyncResp {
     /// MOB AccountId for account matching
@@ -83,7 +83,7 @@ pub struct TxoSynced {
 }
 
 
-/// TODO
+/// Transaction signing request from full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxSignReq {
     /// MOB AccountId for account matching
@@ -98,7 +98,7 @@ pub struct TxSignReq {
     pub tx: UnsignedTx,
 }
 
-/// TODO
+/// Transaction signing response, returned to full service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxSignResp {
     /// MOB AccountId for account matching
