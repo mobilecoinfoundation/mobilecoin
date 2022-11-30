@@ -16,7 +16,7 @@ use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{
     common::BlockRange,
-    view::{FixedTxOutSearchResult, TxOutSearchResultCode},
+    view::{FixedTxOutSearchResult, TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
 use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
@@ -315,27 +315,28 @@ impl Drop for RouterTestEnvironment {
 pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOutRecord]) {
     // Construct an array of expected results that includes both records we expect
     // to find and records we expect not to find.
-    let mut expected_results = Vec::new();
+    let mut expected_fixed_results = Vec::new();
     for record in records {
-        expected_results.push(FixedTxOutSearchResult {
-            search_key: record.search_key.clone(),
-            result_code: TxOutSearchResultCode::Found as u32,
-            ciphertext: record.payload.clone(),
-            payload_length: record.payload.len() as u32,
-        });
+        let fixed_result = FixedTxOutSearchResult::new(
+            record.search_key.clone(),
+            &record.payload,
+            TxOutSearchResultCode::Found,
+        );
+        expected_fixed_results.push(fixed_result);
     }
     for i in 0..3 {
-        let payload_length = 255;
-        expected_results.push(FixedTxOutSearchResult {
-            search_key: vec![i + 1; 16], // Search key of all zeros is invalid.
-            result_code: TxOutSearchResultCode::NotFound as u32,
-            ciphertext: vec![0; payload_length],
-            payload_length: payload_length as u32,
-        });
+        let search_key = vec![i + 1; 16];
+        let not_found_fixed_result = FixedTxOutSearchResult::new_not_found(search_key);
+        expected_fixed_results.push(not_found_fixed_result);
     }
-    expected_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
+    expected_fixed_results.sort_by_key(|result| result.search_key.clone());
+    let expected_results = expected_fixed_results
+        .iter()
+        .cloned()
+        .map(|fixed_result| fixed_result.into())
+        .collect::<Vec<TxOutSearchResult>>();
 
-    let search_keys: Vec<_> = expected_results
+    let search_keys: Vec<_> = expected_fixed_results
         .iter()
         .map(|result| result.search_key.clone())
         .collect();
@@ -344,11 +345,14 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
     loop {
         let result = client.request(0, 0, search_keys.clone()).unwrap();
 
-        // TODO: Check `tx_out_search_result` too?
-        let mut actual_results =
-            interpret_tx_out_search_results(result.fixed_tx_out_search_results.clone());
-        actual_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
-        if actual_results == expected_results {
+        let mut actual_fixed_results = result.fixed_tx_out_search_results.clone();
+        actual_fixed_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+        let mut actual_results = result.tx_out_search_results.clone();
+        actual_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+
+        let actual_fixed_matches = actual_fixed_results == expected_fixed_results;
+        let actual_matches = actual_results == expected_results;
+        if actual_fixed_matches && actual_matches {
             break;
         }
         if allowed_tries == 0 {
@@ -357,23 +361,6 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
         allowed_tries -= 1;
         sleep(Duration::from_millis(1000));
     }
-}
-
-/// Interprets the `ciphertext` field given the `payload_length` by discarding
-/// unused bytes.
-pub fn interpret_tx_out_search_results(
-    mut tx_out_search_results: Vec<FixedTxOutSearchResult>,
-) -> Vec<FixedTxOutSearchResult> {
-    tx_out_search_results.sort_by(|x, y| x.search_key.cmp(&y.search_key));
-    tx_out_search_results
-        .iter()
-        .map(|result| FixedTxOutSearchResult {
-            search_key: result.search_key.clone(),
-            result_code: result.result_code,
-            ciphertext: result.ciphertext[0..(result.payload_length as usize)].to_vec(),
-            payload_length: result.payload_length,
-        })
-        .collect()
 }
 
 /// Adds block data with sane defaults

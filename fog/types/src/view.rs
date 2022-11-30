@@ -328,7 +328,6 @@ impl From<FixedTxOutSearchResult> for TxOutSearchResult {
         let mut ciphertext = src.ciphertext.clone();
         let mut padding = vec![0; FIXED_CIPHERTEXT_LENGTH];
 
-        // TODO: Add comment explaining why this is truncate step is always CT time.
         ciphertext.truncate(src.payload_length as usize);
         let padding_length = FIXED_CIPHERTEXT_LENGTH - (src.payload_length as usize);
         padding.truncate(padding_length);

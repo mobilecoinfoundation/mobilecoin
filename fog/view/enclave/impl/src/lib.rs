@@ -26,7 +26,10 @@ use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_recovery_db_iface::FogUserEvent;
 use mc_fog_types::{
-    view::{FixedTxOutSearchResult, MultiViewStoreQueryResponse, QueryRequest, QueryResponse},
+    view::{
+        FixedTxOutSearchResult, MultiViewStoreQueryResponse, QueryRequest, QueryResponse,
+        TxOutSearchResult,
+    },
     ETxOutRecord,
 };
 use mc_fog_view_enclave_api::{
@@ -338,6 +341,12 @@ where
 
         result.fixed_tx_out_search_results =
             Self::get_collated_tx_out_search_results(client_query_request, &responses)?;
+        result.tx_out_search_results = result
+            .fixed_tx_out_search_results
+            .iter()
+            .cloned()
+            .map(TxOutSearchResult::from)
+            .collect();
 
         Ok(result)
     }

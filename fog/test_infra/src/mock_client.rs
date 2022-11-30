@@ -82,11 +82,11 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
             self.db.get_tx_outs(start_from_block_index, &search_keys)?;
 
         resp.tx_out_search_results = resp
-                .fixed_tx_out_search_results
-                .iter()
-                .cloned()
-                .map(|result| result.into())
-                .collect();
+            .fixed_tx_out_search_results
+            .iter()
+            .cloned()
+            .map(|result| result.into())
+            .collect();
 
         Ok(resp)
     }
