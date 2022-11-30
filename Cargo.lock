@@ -3139,6 +3139,7 @@ dependencies = [
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "merlin",
  "prost",
  "serde",
  "serde_json",

@@ -20,3 +20,5 @@ pub mod subaddress;
 pub mod slip10;
 
 pub mod traits;
+
+pub mod account_id;

@@ -79,15 +79,21 @@ impl Commands {
     /// Fetch view account credentials
     /// 
     /// output - file to write view account information
-    pub fn get_account(ctx: impl ViewAccountProvider, output: &str) -> anyhow::Result<()> {
+    pub fn get_account(ctx: impl ViewAccountProvider, account_index: u32, output: &str) -> anyhow::Result<()> {
         debug!("Loading view account keys");
-        let keys: ViewAccount = match ctx.account() {
-            Ok(v) => v.into(),
+        let keys = match ctx.account() {
+            Ok(v) => v,
             Err(e) => return Err(anyhow::anyhow!("Failed to load view account keys: {:?}", e)),
         };
 
+        let info = AccountInfo{
+            account_index,
+            view_private: keys.view_private_key().clone(),
+            spend_public: keys.spend_public_key().clone(),
+        };
+
         debug!("Writing view account information to: {}", output);
-        write_output(output, &keys)?;
+        write_output(output, &info)?;
 
         Ok(())
     }
@@ -99,13 +105,13 @@ impl Commands {
     pub fn sync_txos(ctx: impl KeyImageComputer, input: &str, output: &str) -> anyhow::Result<()> {
         // Load unsynced txout_public_key pairs
         debug!("Reading unsynced TxOuts from '{}'", input);
-        let unsynced: Vec<TxoUnsynced> = read_input(input)?;
+        let req: TxoSyncReq = read_input(input)?;
 
         // Compute key images
         // Since we're provided with a subaddress index,
         // assume TxOut ownership is correct.
         let mut synced: Vec<TxoSynced> = Vec::new();
-        for TxoUnsynced{subaddress, tx_out_public_key} in unsynced {
+        for TxoUnsynced{subaddress, tx_out_public_key} in req.txos {
 
             let key_image = match ctx.compute_key_image(subaddress, &tx_out_public_key) {
                 Ok(v) => v,
@@ -118,9 +124,14 @@ impl Commands {
             });
         }
 
+        let resp = TxoSyncResp{
+            account_id: req.account_id,
+            txos: synced,
+        };
+
         // Write matched key images
         debug!("Writing synced TxOuts to '{}'", output);
-        write_output(output, &synced)?;
+        write_output(output, &resp)?;
 
         Ok(())
     }
@@ -133,19 +144,24 @@ impl Commands {
     pub fn sign_tx(ctx: impl RingSigner, input: &str, output: &str) -> anyhow::Result<()> {
         // Load unsigned transaction object
         debug!("Reading unsigned transaction from '{}'", input);
-        let unsigned_tx: UnsignedTx = read_input(input)?;
+        let req: TxSignReq = read_input(input)?;
 
         // Sign transaction
-        let signed_tx = match unsigned_tx.sign(&ctx, None, &mut OsRng{}) {
+        let signed_tx = match req.tx.sign(&ctx, None, &mut OsRng{}) {
             Ok(v) => v,
             Err(e) => {
                 return Err(anyhow::anyhow!("Failed to sign transaction: {:?}", e));
             }
         };
 
+        let resp = TxSignResp {
+            account_id: req.account_id,
+            tx: signed_tx,
+        };
+
         // Write signed transaction output
         debug!("Writing signed transaction to '{}'", output);
-        write_output(output, &signed_tx)?;
+        write_output(output, &resp)?;
 
         Ok(())
     }

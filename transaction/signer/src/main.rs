@@ -35,10 +35,6 @@ struct Args {
 enum Actions {
     /// Create a new offline account, writing secrets to the output file
     Create {
-        /// Optional account name
-        #[clap(short, long)]
-        name: Option<String>,
-
         /// File name for account secrets to be written to
         #[clap(short, long)]
         output: String,
@@ -64,10 +60,8 @@ enum Actions {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 struct AccountSecrets {
-    name: Option<String>,
     mnemonic: String,
 }
-
 
 fn main() -> anyhow::Result<()> {
 
@@ -76,7 +70,7 @@ fn main() -> anyhow::Result<()> {
     
     // Run commands
     match &args.action {
-        Actions::Create { name, output } | Actions::Import { name, output, .. } => {
+        Actions::Create { output } | Actions::Import { output, .. } => {
             // Generate or parse mnemonic
             let mnemonic = match &args.action {
                 Actions::Import{ mnemonic, .. } => Mnemonic::from_phrase(&mnemonic, Language::English).unwrap(),
@@ -85,7 +79,6 @@ fn main() -> anyhow::Result<()> {
 
             // Generate secrets object
             let s = AccountSecrets{
-                name: name.clone(),
                 mnemonic: mnemonic.to_string(),
             };
 
@@ -115,7 +108,7 @@ fn main() -> anyhow::Result<()> {
 
             // Handle standard commands
             match c {
-                Commands::GetAccount { output, .. } => Commands::get_account(&a, output)?,
+                Commands::GetAccount { output, .. } => Commands::get_account(&a, account_index, output)?,
                 Commands::SyncTxos { input, output, .. } => Commands::sync_txos(&a, input, output)?,
                 Commands::SignTx { input, output, .. } => {
                     // Setup local ring signer

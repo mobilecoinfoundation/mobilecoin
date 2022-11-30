@@ -1,15 +1,18 @@
 //! Serializable types for sync between full-service and offline / hardware wallet implementations.
 
 use serde::{Serialize, Deserialize};
-
 use mc_core::{
     keys::{TxOutPublic, RootSpendPublic, RootViewPrivate},
+    account_id::AccountId,
 };
 use mc_crypto_ring_signature::{KeyImage};
+use mc_transaction_core::tx::Tx;
+use mc_transaction_extra::UnsignedTx;
+
 
 /// View account credentials for sync with full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct ViewAccount {
+pub struct AccountInfo {
     /// Root view private key
     #[serde(with = "pri_key_hex")]
     pub view_private: RootViewPrivate,
@@ -17,26 +20,35 @@ pub struct ViewAccount {
     /// Root spend public key
     #[serde(with = "pub_key_hex")]
     pub spend_public: RootSpendPublic,
+
+    /// SLIP-0010 account index used for key derivation
+    pub account_index: u32,
 }
 
 /// Convert a serializable signer [ViewAccount] object to the `mc_core` version
-impl From<ViewAccount> for mc_core::account::ViewAccount {
-    fn from(v: ViewAccount) -> Self {
+impl From<AccountInfo> for mc_core::account::ViewAccount {
+    fn from(v: AccountInfo) -> Self {
         mc_core::account::ViewAccount::new(v.view_private, v.spend_public)
     }
 }
 
-/// Convert an `mc_core` [ViewAccount] object to the serializable signer version
-impl From<mc_core::account::ViewAccount> for ViewAccount {
-    fn from(v: mc_core::account::ViewAccount) -> Self {
-        ViewAccount{
-            view_private: v.view_private_key().clone(), 
-            spend_public: v.spend_public_key().clone(),
-        }
-    }
+/// Request to sync TxOuts for the provided account
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxoSyncReq {
+    /// MOB AccountId for account matching
+    #[serde(with = "const_array_hex")]
+    pub account_id: AccountId,
+
+    /// SLIP-0010 account index for wallet derivation (currently easier as a command line arg)
+    #[cfg(nyet)]
+    pub account_index: u32,
+
+    /// TxOut subaddress and public key pairs to be synced
+    pub txos: Vec<TxoUnsynced>,
 }
 
-/// Unsynced TxOut instance for resolving key images
+
+/// Unsynced TxOut subaddress and public key pair for resolving key images
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoUnsynced {
     /// Subaddress for unsynced TxOut
@@ -45,6 +57,17 @@ pub struct TxoUnsynced {
     /// tx_out_public_key for unsynced TxOut
     #[serde(with = "pub_key_hex")]
     pub tx_out_public_key: TxOutPublic,
+}
+
+/// Synced TxOut response
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxoSyncResp {
+    /// MOB AccountId for account matching
+    #[serde(with = "const_array_hex")]
+    pub account_id: AccountId,
+
+    /// public keys and key images for synced TxOuts
+    pub txos: Vec<TxoSynced>,
 }
 
 /// Synced TxOut instance, contains public key and resolved key image for owned TxOuts
@@ -57,6 +80,33 @@ pub struct TxoSynced {
     /// recovered key image for synced TxOut
     #[serde(with = "const_array_hex")]
     pub key_image: KeyImage,
+}
+
+
+/// TODO
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxSignReq {
+    /// MOB AccountId for account matching
+    #[serde(with = "const_array_hex")]
+    pub account_id: AccountId,
+
+    /// SLIP-0010 account index for wallet derivation (currently easier as a command line arg)
+    #[cfg(nyet)]
+    pub account_index: u32,
+
+    /// Unsigned transaction
+    pub tx: UnsignedTx,
+}
+
+/// TODO
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct TxSignResp {
+    /// MOB AccountId for account matching
+    #[serde(with = "const_array_hex")]
+    pub account_id: AccountId,
+
+    /// Signed transaction
+    pub tx: Tx,
 }
 
 
@@ -121,7 +171,7 @@ pub mod const_array_hex {
     use serde::de::{Deserializer, Error};
     use super::ConstArrayVisitor;
 
-    pub fn serialize<S: serde::ser::Serializer>(t: impl AsRef<[u8]>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: serde::ser::Serializer, const N: usize>(t: impl AsRef<[u8; N]>, serializer: S) -> Result<S::Ok, S::Error> {
         let s = hex::encode(t.as_ref());
         serializer.serialize_str(&s)
     }
