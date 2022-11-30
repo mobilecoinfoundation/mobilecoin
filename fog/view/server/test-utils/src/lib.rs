@@ -235,9 +235,6 @@ impl RouterTestEnvironment {
                 .unwrap();
                 store_uris.push(uri.clone());
 
-                // Each store is responsible for 1 block. Note that this means that the stores
-                // in this test are not responsible for overlapping block ranges.
-                //let store_block_range = BlockRange::new(i as u64, (i + 1) as u64);
                 let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range);
 
                 let config = ViewConfig {
@@ -500,12 +497,9 @@ pub fn get_highest_processed_block_count(store_servers: &[TestViewServer]) -> u6
 
 /// Creates a list of BlockRanges for store servers.
 pub fn create_block_ranges(store_count: usize, blocks_per_store: u64) -> Vec<BlockRange> {
-    let mut store_block_ranges = Vec::new();
-    for i in 0..store_count {
-        let start_block = (i as u64) * blocks_per_store;
-        let block_range = BlockRange::new_from_length(start_block, blocks_per_store);
-        store_block_ranges.push(block_range);
-    }
-
-    store_block_ranges
+    let total_block_count = store_count * (blocks_per_store as usize);
+    (0..total_block_count)
+        .step_by(blocks_per_store as usize)
+        .map(|i| BlockRange::new_from_length(i as u64, blocks_per_store))
+        .collect::<Vec<_>>()
 }
