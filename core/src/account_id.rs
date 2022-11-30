@@ -1,6 +1,10 @@
 //! [AccountId] provides a unique identifier for a given MOB account
 //! 
 
+use mc_core_types::account::{Account, ViewAccount, RingCtAddress};
+
+use crate::{consts::DEFAULT_SUBADDRESS_INDEX, subaddress::Subaddress};
+
 /// Account ID object, derived from the default subaddress and used
 /// to identify individual accounts.
 #[derive(Clone, Eq, PartialEq, Hash)]
