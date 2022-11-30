@@ -16,8 +16,8 @@ use mc_attest_core::{
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
-    NonceAuthResponse, NonceSession, PeerAuthRequest, PeerAuthResponse, PeerSession, Result,
-    SealedClientMessage, SealedClientRequest,
+    NonceAuthResponse, NonceSession, PeerAuthRequest, PeerAuthResponse, PeerSession,
+    PlaintextClientRequest, Result, SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
@@ -543,7 +543,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let aad = incoming_client_message.aad.clone();
         let channel_id = incoming_client_message.channel_id.clone();
         let client_query_bytes = self.client_decrypt(incoming_client_message)?;
-        let sealed_client_query = SealedClientRequest {
+        let sealed_client_query = PlaintextClientRequest {
             client_request_bytes: client_query_bytes,
             channel_id: channel_id.clone(),
         };
@@ -561,7 +561,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// plaintext
     pub fn unseal(&self, sealed_message: &SealedClientMessage) -> Result<Vec<u8>> {
         let (sealed_client_request_bytes, _) = sealed_message.data.unseal_raw()?;
-        let sealed_client_request: SealedClientRequest =
+        let sealed_client_request: PlaintextClientRequest =
             mc_util_serial::deserialize(&sealed_client_request_bytes)?;
 
         Ok(sealed_client_request.client_request_bytes)

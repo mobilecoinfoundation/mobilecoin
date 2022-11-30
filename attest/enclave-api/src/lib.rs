@@ -87,10 +87,10 @@ pub struct SealedClientMessage {
     pub data: IntelSealed,
 }
 
-/// SealedClientRequest structure, which is used in the enclave during the Intel
-/// sealing process. Ensures that the data being passed to Intel is not empty.
+/// Helper struct that is used in the enclave during the Intel
+/// sealing process. Ensures that the data being sealed is not empty.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct SealedClientRequest {
+pub struct PlaintextClientRequest {
     /// The decrypted client request bytes
     pub client_request_bytes: Vec<u8>,
 
