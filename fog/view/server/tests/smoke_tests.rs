@@ -509,14 +509,12 @@ fn test_overlapping_ingest_ranges(store_count: usize, blocks_per_store: u64) {
 one_store = { 1, 40 },
 multiple_stores = { 5, 8 },
 )]
-fn test_start_with_missing_range() {
+fn test_start_with_missing_range(store_count: usize, blocks_per_store: u64) {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
-    const STORE_COUNT: usize = 5;
-    const BLOCKS_PER_STORE: u64 = 8;
     let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
+        mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
         RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
     let db = test_environment
@@ -573,14 +571,12 @@ fn test_start_with_missing_range() {
 one_store = { 1, 40 },
 multiple_stores = { 5, 8 },
 )]
-fn test_middle_missing_range_with_decommission() {
+fn test_middle_missing_range_with_decommission(store_count: usize, blocks_per_store: u64) {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
-    const STORE_COUNT: usize = 5;
-    const BLOCKS_PER_STORE: u64 = 8;
     let store_block_ranges =
-        mc_fog_view_server_test_utils::create_block_ranges(STORE_COUNT, BLOCKS_PER_STORE);
+        mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
         RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
     let db = test_environment

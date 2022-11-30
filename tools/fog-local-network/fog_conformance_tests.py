@@ -909,8 +909,8 @@ class FogConformanceTest:
         # Test what happens when we restart the view server
         #######################################################################
 
-        # Restarting the view server should not impact things.
-        print("Restarting fog view server")
+        # Restarting the view store should not impact things.
+        print("Restarting fog view store")
         self.fog_view_store.stop()
         self.fog_view_store.start()
         time.sleep(10 if self.release else 30)

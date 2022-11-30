@@ -96,7 +96,7 @@ class FogNetwork(Network):
             client_port = BASE_VIEW_STORE_PORT,
             admin_port = BASE_VIEW_STORE_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
-            release =True,
+            release = True,
         )
         self.fog_view_store.start()
 
@@ -106,7 +106,7 @@ class FogNetwork(Network):
             client_port = BASE_VIEW_CLIENT_PORT,
             admin_port = BASE_VIEW_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
-            release =True,
+            release = True,
             shard_uris = [self.fog_view_store.get_client_listen_uri()],
         )
         self.fog_view_router.start()

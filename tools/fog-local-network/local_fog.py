@@ -195,6 +195,7 @@ class FogViewRouter:
 
         self.view_router_process = None
         self.admin_http_gateway_process = None
+
     def __repr__(self):
         return self.name
 
