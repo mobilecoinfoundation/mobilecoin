@@ -8,4 +8,4 @@ readme = "README.md"
 
 [dependencies]
 displaydoc = "0.2"
-heapless = { version = "0.7", default-features = false }
+heapless = { version = "0.8", default-features = false }

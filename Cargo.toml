@@ -214,16 +214,13 @@ lto = "thin"
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
 
-# This version contains iOS build fixes
-cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d7789832963bffdb2dcb5939e6199c" }
-
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "6f5bd68166a2c12fa3922867a6a6bd68904243d3" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "6f5bd68166a2c12fa3922867a6a6bd68904243d3" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }

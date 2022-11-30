@@ -1839,14 +1839,12 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
+version = "0.8.0"
 dependencies = [
  "atomic-polyfill",
  "hash32",
- "rustc_version 0.4.0",
- "spin 0.9.3",
+ "rustc_version",
+ "spin 0.9.4",
  "stable_deref_trait",
 ]
 
@@ -2329,7 +2327,7 @@ dependencies = [
  "rs-libc",
  "serde",
  "serde_derive",
- "spin 0.9.3",
+ "spin 0.9.4",
  "yasna",
 ]
 
@@ -5991,11 +5989,11 @@ checksum = "1fafa6961cabd9c63bcd77a45d7e3b7f3b552b70417831fb0f56db717e72407e"
 
 [[package]]
 name = "multer"
-version = "2.0.2"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f8f35e687561d5c1667590911e6698a8cb714a134a7505718a182e7bc9d3836"
+checksum = "6ed4198ce7a4cbd2a57af78d28c6fbb57d81ac5f1d6ad79ac6c5587419cbdf22"
 dependencies = [
- "bytes 1.1.0",
+ "bytes",
  "encoding_rs",
  "futures-util",
  "http",
@@ -6003,9 +6001,9 @@ dependencies = [
  "log",
  "memchr",
  "mime",
- "spin 0.9.3",
+ "spin 0.9.4",
  "tokio",
- "tokio-util 0.6.9",
+ "tokio-util",
  "version_check",
 ]
 
@@ -7943,9 +7941,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spin"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
+checksum = "7f6002a767bff9e83f8eeecf883ecb8011875a21ae8da43bffb817a57e78cc09"
 dependencies = [
  "lock_api",
 ]
