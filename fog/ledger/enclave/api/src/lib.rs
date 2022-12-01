@@ -35,7 +35,7 @@ pub type Result<T> = StdResult<T, Error>;
 /// gather data that will be encrypted for the client in `outputs_for_client`.
 ///
 /// Key image check is now in ORAM, replacing untrusted
-/// which was doing the check directly.Sha
+/// which was doing the check directly.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct OutputContext {
     /// The global txout indices being requested
