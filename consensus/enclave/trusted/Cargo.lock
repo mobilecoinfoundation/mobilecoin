@@ -771,6 +771,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-crypto-noise",
  "mc-sgx-compat",
+ "mc-util-serial",
  "serde",
 ]
 
@@ -1017,6 +1018,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
+ "mc-util-serial",
  "sha2",
 ]
 
