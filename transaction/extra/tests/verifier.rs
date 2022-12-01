@@ -8,7 +8,8 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
 use mc_transaction_builder::{
     test_utils::{get_input_credentials, get_unsigned_transaction},
-    DefaultTxOutputsOrdering, EmptyMemoBuilder, ReservedSubaddresses, TransactionBuilder,
+    DefaultTxOutputsOrdering, EmptyMemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
+    TransactionBuilder,
 };
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
@@ -563,4 +564,251 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             Amount::new(Mob::MINIMUM_FEE, token_id.clone())
         );
     }
+}
+
+// Build a transaction using a signed contingent input, and test TxSummary
+// verifier
+#[test]
+fn test_sci_tx_summary_verification() {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let block_version = BlockVersion::MAX;
+
+    let fog_resolver = MockFogResolver::default();
+
+    let alice = AccountKey::random(&mut rng);
+    let bob = AccountKey::random(&mut rng);
+
+    let value = 1475 * MILLIMOB_TO_PICOMOB;
+    let amount = Amount::new(value, Mob::ID);
+    let token2 = TokenId::from(2);
+    let value2 = 100_000;
+    let amount2 = Amount::new(value2, token2);
+
+    // Alice provides amount of Mob
+    let input_credentials =
+        get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
+
+    let proofs = input_credentials.membership_proofs.clone();
+
+    let mut builder = SignedContingentInputBuilder::new(
+        block_version,
+        input_credentials,
+        fog_resolver.clone(),
+        EmptyMemoBuilder::default(),
+    )
+    .unwrap();
+
+    // Alice requests amount2 worth of token id 2 in exchange
+    let (_txout, _confirmation) = builder
+        .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
+        .unwrap();
+
+    let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+    // The contingent input should have a valid signature.
+    sci.validate().unwrap();
+
+    // Bob has 3x worth of token id 2
+    let input_credentials = get_input_credentials(
+        block_version,
+        Amount::new(300_000, token2),
+        &bob,
+        &fog_resolver,
+        &mut rng,
+    );
+
+    let mut builder = TransactionBuilder::new(
+        block_version,
+        Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+        fog_resolver,
+        EmptyMemoBuilder::default(),
+    )
+    .unwrap();
+
+    // Bob supplies his (excess) token id 2
+    builder.add_input(input_credentials);
+
+    // Bob adds the presigned input, which also adds the required outputs
+    sci.tx_in.proofs = proofs;
+    builder.add_presigned_input(sci).unwrap();
+
+    let bob_change_dest = ReservedSubaddresses::from(&bob);
+
+    // Bob keeps the change from token id 2
+    builder
+        .add_change_output(Amount::new(200_000, token2), &bob_change_dest, &mut rng)
+        .unwrap();
+
+    // Bob keeps the Mob that Alice supplies, less fees
+    builder
+        .add_output(
+            Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
+            &bob.default_subaddress(),
+            &mut rng,
+        )
+        .unwrap();
+
+    let unsigned_tx = builder
+        .build_unsigned::<DefaultTxOutputsOrdering>()
+        .unwrap();
+
+    let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
+        unsigned_tx.get_signing_data(&mut rng).unwrap();
+
+    let (mlsag_signing_digest, report) = verify_tx_summary(
+        &extended_message_digest.0.try_into().unwrap(),
+        &tx_summary,
+        &tx_summary_unblinding_data,
+        *bob.view_private_key(),
+    )
+    .unwrap();
+    assert_eq!(
+        &mlsag_signing_digest[..],
+        &signing_data.mlsag_signing_digest[..]
+    );
+
+    let balance_changes: Vec<_> = report
+        .balance_changes
+        .iter()
+        .map(|(x, y)| (x.clone(), *y))
+        .collect();
+    let mut expected = vec![
+        (
+            (TransactionEntity::Ourself, Mob::ID),
+            ((value - Mob::MINIMUM_FEE) as i64),
+        ),
+        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
+        ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
+        ((TransactionEntity::Swap, token2), (value2 as i64)),
+    ];
+    expected.sort();
+
+    assert_eq!(balance_changes, expected);
+    assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, Mob::ID));
+}
+
+// Build a transaction using a signed contingent input that sends to a friend,
+// and test TxSummary verifier
+#[test]
+fn test_sci_three_way_tx_summary_verification() {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let block_version = BlockVersion::MAX;
+
+    let fog_resolver = MockFogResolver::default();
+
+    let alice = AccountKey::random(&mut rng);
+    let bob = AccountKey::random(&mut rng);
+    let charlie = AccountKey::random(&mut rng);
+
+    let value = 1475 * MILLIMOB_TO_PICOMOB;
+    let amount = Amount::new(value, Mob::ID);
+    let token2 = TokenId::from(2);
+    let value2 = 100_000;
+    let amount2 = Amount::new(value2, token2);
+
+    // Alice provides amount of Mob
+    let input_credentials =
+        get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
+
+    let proofs = input_credentials.membership_proofs.clone();
+
+    let mut builder = SignedContingentInputBuilder::new(
+        block_version,
+        input_credentials,
+        fog_resolver.clone(),
+        EmptyMemoBuilder::default(),
+    )
+    .unwrap();
+
+    // Alice requests amount2 worth of token id 2 in exchange
+    let (_txout, _confirmation) = builder
+        .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
+        .unwrap();
+
+    let mut sci = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+
+    // The contingent input should have a valid signature.
+    sci.validate().unwrap();
+
+    // Bob has 3x worth of token id 2
+    let input_credentials = get_input_credentials(
+        block_version,
+        Amount::new(300_000, token2),
+        &bob,
+        &fog_resolver,
+        &mut rng,
+    );
+
+    let mut builder = TransactionBuilder::new(
+        block_version,
+        Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+        fog_resolver,
+        EmptyMemoBuilder::default(),
+    )
+    .unwrap();
+
+    // Bob supplies his (excess) token id 2
+    builder.add_input(input_credentials);
+
+    // Bob adds the presigned input, which also adds the required outputs
+    sci.tx_in.proofs = proofs;
+    builder.add_presigned_input(sci).unwrap();
+
+    let bob_change_dest = ReservedSubaddresses::from(&bob);
+
+    // Bob keeps the change from token id 2
+    builder
+        .add_change_output(Amount::new(200_000, token2), &bob_change_dest, &mut rng)
+        .unwrap();
+
+    // Bob sends the Mob that Alice supplies, less fees, to his friend Charlie
+    builder
+        .add_output(
+            Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
+            &charlie.default_subaddress(),
+            &mut rng,
+        )
+        .unwrap();
+
+    let unsigned_tx = builder
+        .build_unsigned::<DefaultTxOutputsOrdering>()
+        .unwrap();
+
+    let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
+        unsigned_tx.get_signing_data(&mut rng).unwrap();
+
+    let (mlsag_signing_digest, report) = verify_tx_summary(
+        &extended_message_digest.0.try_into().unwrap(),
+        &tx_summary,
+        &tx_summary_unblinding_data,
+        *bob.view_private_key(),
+    )
+    .unwrap();
+    assert_eq!(
+        &mlsag_signing_digest[..],
+        &signing_data.mlsag_signing_digest[..]
+    );
+
+    let balance_changes: Vec<_> = report
+        .balance_changes
+        .iter()
+        .map(|(x, y)| (x.clone(), *y))
+        .collect();
+
+    let charlie_hash = ShortAddressHash::from(&charlie.default_subaddress());
+    let mut expected = vec![
+        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
+        (
+            (TransactionEntity::Address(charlie_hash), Mob::ID),
+            ((value - Mob::MINIMUM_FEE) as i64),
+        ),
+        ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
+        ((TransactionEntity::Swap, token2), (value2 as i64)),
+    ];
+    expected.sort();
+
+    assert_eq!(balance_changes, expected);
+    assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, Mob::ID));
 }
