@@ -347,20 +347,17 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             .collect();
         let expected = vec![
             (
-                (TransactionEntity::Ourself, token_id.clone()),
+                (TransactionEntity::Ourself, token_id),
                 -((value + value2 - change_value) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (TransactionEntity::Address(recipient_hash), token_id),
                 (value + value2 - change_value - Mob::MINIMUM_FEE) as i64,
             ),
         ];
 
         assert_eq!(balance_changes, expected);
-        assert_eq!(
-            report.network_fee,
-            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
-        );
+        assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
 
@@ -442,20 +439,17 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             .collect();
         let expected = vec![
             (
-                (TransactionEntity::Ourself, token_id.clone()),
+                (TransactionEntity::Ourself, token_id),
                 -((value - change_value) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (TransactionEntity::Address(recipient_hash), token_id),
                 (value - change_value - Mob::MINIMUM_FEE) as i64,
             ),
         ];
 
         assert_eq!(balance_changes, expected);
-        assert_eq!(
-            report.network_fee,
-            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
-        );
+        assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
 
@@ -541,28 +535,22 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             .collect();
         let mut expected = vec![
             (
-                (TransactionEntity::Ourself, token_id.clone()),
+                (TransactionEntity::Ourself, token_id),
                 -((value + value2 + Mob::MINIMUM_FEE) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (TransactionEntity::Address(recipient_hash), token_id),
                 (value as i64),
             ),
             (
-                (
-                    TransactionEntity::Address(recipient2_hash),
-                    token_id.clone(),
-                ),
+                (TransactionEntity::Address(recipient2_hash), token_id),
                 (value2 as i64),
             ),
         ];
         expected.sort();
 
         assert_eq!(balance_changes, expected);
-        assert_eq!(
-            report.network_fee,
-            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
-        );
+        assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
 
