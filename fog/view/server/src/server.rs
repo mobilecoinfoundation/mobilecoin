@@ -103,6 +103,7 @@ where
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
+        log::debug!(logger, "Starting View Store GRPC Service");
         let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
             enclave.clone(),
             Arc::new(recovery_db),
@@ -112,7 +113,7 @@ where
             sharding_strategy,
             logger.clone(),
         ));
-        log::debug!(logger, "Constructed View Store GRPC Service");
+
         // Package service into grpc server
         log::info!(
             logger,

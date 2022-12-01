@@ -9,7 +9,6 @@ use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
-    ResponderId,
 };
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
@@ -194,9 +193,8 @@ impl RouterTestEnvironment {
         logger: Logger,
     ) -> FogViewGrpcClient {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let mut mr_signer_verifier =
+        let mr_signer_verifier =
             MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
@@ -244,7 +242,7 @@ impl RouterTestEnvironment {
 
                 let config = ViewConfig {
                     chain_id: "local".to_string(),
-                    client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
+                    client_responder_id: uri.responder_id().unwrap(),
                     client_listen_uri: uri.clone(),
                     client_auth_token_secret: None,
                     omap_capacity,
@@ -338,7 +336,7 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
             payload_length: payload_length as u32,
         });
     }
-    expected_results.sort_by_key(|result| result.search_key.clone());
+    expected_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
 
     let search_keys: Vec<_> = expected_results
         .iter()
@@ -351,7 +349,7 @@ pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOut
 
         let mut actual_results =
             interpret_tx_out_search_results(result.tx_out_search_results.clone());
-        actual_results.sort_by_key(|result| result.search_key.clone());
+        actual_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
         if actual_results == expected_results {
             break;
         }
