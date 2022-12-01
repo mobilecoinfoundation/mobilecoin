@@ -13,7 +13,7 @@ use crate::{
 
 /// MLSAG Verification object
 pub struct MlsagVerify<'a, R: Ring> {
-    /// Key image too be verified
+    /// Key image to be verified
     pub key_image: &'a KeyImage,
     /// Zero-th challenge scalar
     pub c_zero: &'a CurveScalar,

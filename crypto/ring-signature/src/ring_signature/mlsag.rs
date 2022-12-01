@@ -116,8 +116,6 @@ impl RingMLSAG {
         output_blinding: &Scalar,
         generator: &PedersenGens,
         check_value_is_preserved: bool,
-        // Note: this `mut rng` can just be `rng` if this is merged upstream:
-        // https://github.com/dalek-cryptography/curve25519-dalek/pull/394
         rng: &mut dyn CryptoRngCore,
     ) -> Result<Self, Error> {
         let ring_size = ring.len();
