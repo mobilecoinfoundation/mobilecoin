@@ -60,20 +60,6 @@ impl UriScheme for FogLedgerScheme {
     const DEFAULT_INSECURE_PORT: u16 = 3223;
 }
 
-/// Fog Ledger Router Admin Scheme
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct FogLedgerRouterAdminScheme {}
-
-impl UriScheme for FogLedgerRouterAdminScheme {
-    /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "fog-ledger-router-admin";
-    const SCHEME_INSECURE: &'static str = "insecure-fog-ledger-router-admin";
-
-    /// Default port numbers
-    const DEFAULT_SECURE_PORT: u16 = 443;
-    const DEFAULT_INSECURE_PORT: u16 = 3223;
-}
-
 /// Key Image Store (for use with router) Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct KeyImageStoreScheme {}
@@ -193,17 +179,6 @@ mod tests {
         );
         assert!(!uri.use_tls());
 
-        let uri = FogLedgerRouterAdminUri::from_str(
-            "insecure-fog-ledger-router-admin://node1.test.mobilecoin.com:3223/",
-        )
-        .unwrap();
-        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3223");
-        assert_eq!(
-            uri.responder_id().unwrap(),
-            ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
-        );
-        assert!(!uri.use_tls());
-
         let uri = KeyImageStoreUri::from_str(
             "insecure-key-image-store://node1.test.mobilecoin.com:3223/",
         )
@@ -307,17 +282,6 @@ mod tests {
 
         let uri = FogViewRouterUri::from_str(
             "insecure-fog-view-router://node1.test.mobilecoin.com:3225/",
-        )
-        .unwrap();
-        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
-        assert_eq!(
-            uri.responder_id().unwrap(),
-            ResponderId::from_str("node1.test.mobilecoin.com:3225").unwrap()
-        );
-        assert!(!uri.use_tls());
-
-        let uri = FogViewRouterAdminUri::from_str(
-            "insecure-fog-view-router-admin://node1.test.mobilecoin.com:3225/",
         )
         .unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
