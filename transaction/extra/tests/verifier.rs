@@ -6,11 +6,15 @@ use mc_account_keys::{AccountKey, ShortAddressHash};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
-use mc_transaction_builder::test_utils::get_unsigned_transaction;
+use mc_transaction_builder::{
+    test_utils::{get_input_credentials, get_unsigned_transaction},
+    DefaultTxOutputsOrdering, EmptyMemoBuilder, ReservedSubaddresses, TransactionBuilder,
+};
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MAX_OUTPUTS, RING_SIZE},
+    constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
+    tokens::Mob,
     tx::Tx,
-    Amount, BlockVersion, TokenId,
+    Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_extra::{verify_tx_summary, TransactionEntity, UnsignedTx};
 use mc_util_from_random::FromRandom;
@@ -253,4 +257,310 @@ fn test_min_size_tx_summary_verification() {
         ]
     );
     assert_eq!(report.network_fee, Amount::new(990, TokenId::from(0)));
+}
+
+// Build a transaction with two inputs using the transaction builder and test
+// TxSummary verifier
+#[test]
+fn test_two_input_tx_with_change_tx_summary_verification() {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let block_version = BlockVersion::MAX;
+    for token_id in [TokenId::from(0), TokenId::from(1)] {
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ReservedSubaddresses::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_address = recipient.default_subaddress();
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let value2 = 1000 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+
+        let mut transaction_builder = TransactionBuilder::new(
+            block_version,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
+            fog_resolver.clone(),
+            EmptyMemoBuilder::default(),
+        )
+        .unwrap();
+
+        transaction_builder.set_tombstone_block(2000);
+
+        let input_credentials = get_input_credentials(
+            block_version,
+            Amount::new(value, token_id),
+            &sender,
+            &fog_resolver,
+            &mut rng,
+        );
+        transaction_builder.add_input(input_credentials);
+        let input_credentials = get_input_credentials(
+            block_version,
+            Amount::new(value2, token_id),
+            &sender,
+            &fog_resolver,
+            &mut rng,
+        );
+        transaction_builder.add_input(input_credentials);
+
+        transaction_builder
+            .add_output(
+                Amount::new(value + value2 - change_value - Mob::MINIMUM_FEE, token_id),
+                &recipient_address,
+                &mut rng,
+            )
+            .unwrap();
+
+        transaction_builder
+            .add_change_output(
+                Amount::new(change_value, token_id),
+                &sender_change_dest,
+                &mut rng,
+            )
+            .unwrap();
+
+        let unsigned_tx = transaction_builder
+            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .unwrap();
+
+        let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
+            unsigned_tx.get_signing_data(&mut rng).unwrap();
+
+        let (mlsag_signing_digest, report) = verify_tx_summary(
+            &extended_message_digest.0.try_into().unwrap(),
+            &tx_summary,
+            &tx_summary_unblinding_data,
+            *sender.view_private_key(),
+        )
+        .unwrap();
+        assert_eq!(
+            &mlsag_signing_digest[..],
+            &signing_data.mlsag_signing_digest[..]
+        );
+
+        let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
+        let balance_changes: Vec<_> = report
+            .balance_changes
+            .iter()
+            .map(|(x, y)| (x.clone(), *y))
+            .collect();
+        let expected = vec![
+            (
+                (TransactionEntity::Ourself, token_id.clone()),
+                -((value + value2 - change_value) as i64),
+            ),
+            (
+                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (value + value2 - change_value - Mob::MINIMUM_FEE) as i64,
+            ),
+        ];
+
+        assert_eq!(balance_changes, expected);
+        assert_eq!(
+            report.network_fee,
+            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
+        );
+    }
+}
+
+// Build a basic transaction using the transaction builder and test TxSummary
+// verifier
+#[test]
+fn test_simple_tx_with_change_tx_summary_verification() {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let block_version = BlockVersion::MAX;
+    for token_id in [TokenId::from(0), TokenId::from(1)] {
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ReservedSubaddresses::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_address = recipient.default_subaddress();
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+
+        let mut transaction_builder = TransactionBuilder::new(
+            block_version,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
+            fog_resolver.clone(),
+            EmptyMemoBuilder::default(),
+        )
+        .unwrap();
+
+        transaction_builder.set_tombstone_block(2000);
+
+        let input_credentials = get_input_credentials(
+            block_version,
+            Amount { value, token_id },
+            &sender,
+            &fog_resolver,
+            &mut rng,
+        );
+        transaction_builder.add_input(input_credentials);
+
+        transaction_builder
+            .add_output(
+                Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+                &recipient_address,
+                &mut rng,
+            )
+            .unwrap();
+
+        transaction_builder
+            .add_change_output(
+                Amount::new(change_value, token_id),
+                &sender_change_dest,
+                &mut rng,
+            )
+            .unwrap();
+
+        let unsigned_tx = transaction_builder
+            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .unwrap();
+
+        let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
+            unsigned_tx.get_signing_data(&mut rng).unwrap();
+
+        let (mlsag_signing_digest, report) = verify_tx_summary(
+            &extended_message_digest.0.try_into().unwrap(),
+            &tx_summary,
+            &tx_summary_unblinding_data,
+            *sender.view_private_key(),
+        )
+        .unwrap();
+        assert_eq!(
+            &mlsag_signing_digest[..],
+            &signing_data.mlsag_signing_digest[..]
+        );
+
+        let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
+        let balance_changes: Vec<_> = report
+            .balance_changes
+            .iter()
+            .map(|(x, y)| (x.clone(), *y))
+            .collect();
+        let expected = vec![
+            (
+                (TransactionEntity::Ourself, token_id.clone()),
+                -((value - change_value) as i64),
+            ),
+            (
+                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (value - change_value - Mob::MINIMUM_FEE) as i64,
+            ),
+        ];
+
+        assert_eq!(balance_changes, expected);
+        assert_eq!(
+            report.network_fee,
+            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
+        );
+    }
+}
+
+// Build a transaction with two recipients using the transaction builder and
+// test TxSummary verifier
+#[test]
+fn test_two_output_tx_with_change_tx_summary_verification() {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let block_version = BlockVersion::MAX;
+    for token_id in [TokenId::from(0), TokenId::from(1)] {
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ReservedSubaddresses::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_address = recipient.default_subaddress();
+        let recipient2 = AccountKey::random(&mut rng);
+        let recipient2_address = recipient2.default_subaddress();
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let value2 = 1000 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+
+        let mut transaction_builder = TransactionBuilder::new(
+            block_version,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
+            fog_resolver.clone(),
+            EmptyMemoBuilder::default(),
+        )
+        .unwrap();
+
+        transaction_builder.set_tombstone_block(2000);
+
+        let input_credentials = get_input_credentials(
+            block_version,
+            Amount::new(value + value2 + change_value + Mob::MINIMUM_FEE, token_id),
+            &sender,
+            &fog_resolver,
+            &mut rng,
+        );
+        transaction_builder.add_input(input_credentials);
+
+        transaction_builder
+            .add_output(Amount::new(value, token_id), &recipient_address, &mut rng)
+            .unwrap();
+
+        transaction_builder
+            .add_output(Amount::new(value2, token_id), &recipient2_address, &mut rng)
+            .unwrap();
+
+        transaction_builder
+            .add_change_output(
+                Amount::new(change_value, token_id),
+                &sender_change_dest,
+                &mut rng,
+            )
+            .unwrap();
+
+        let unsigned_tx = transaction_builder
+            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .unwrap();
+
+        let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
+            unsigned_tx.get_signing_data(&mut rng).unwrap();
+
+        let (mlsag_signing_digest, report) = verify_tx_summary(
+            &extended_message_digest.0.try_into().unwrap(),
+            &tx_summary,
+            &tx_summary_unblinding_data,
+            *sender.view_private_key(),
+        )
+        .unwrap();
+        assert_eq!(
+            &mlsag_signing_digest[..],
+            &signing_data.mlsag_signing_digest[..]
+        );
+
+        let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
+        let recipient2_hash = ShortAddressHash::from(&recipient2.default_subaddress());
+        let balance_changes: Vec<_> = report
+            .balance_changes
+            .iter()
+            .map(|(x, y)| (x.clone(), *y))
+            .collect();
+        let mut expected = vec![
+            (
+                (TransactionEntity::Ourself, token_id.clone()),
+                -((value + value2 + Mob::MINIMUM_FEE) as i64),
+            ),
+            (
+                (TransactionEntity::Address(recipient_hash), token_id.clone()),
+                (value as i64),
+            ),
+            (
+                (
+                    TransactionEntity::Address(recipient2_hash),
+                    token_id.clone(),
+                ),
+                (value2 as i64),
+            ),
+        ];
+        expected.sort();
+
+        assert_eq!(balance_changes, expected);
+        assert_eq!(
+            report.network_fee,
+            Amount::new(Mob::MINIMUM_FEE, token_id.clone())
+        );
+    }
 }
