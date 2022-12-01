@@ -18,7 +18,7 @@ use mc_crypto_ring_signature_signer::{RingSigner};
 pub use mc_transaction_extra::UnsignedTx;
 pub use mc_transaction_core::{AccountKey, tx::Tx};
 
-mod types;
+pub mod types;
 use types::*;
 
 /// Command enumeration for offline / detached / hardware signing
