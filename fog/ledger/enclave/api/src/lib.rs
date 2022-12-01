@@ -35,7 +35,7 @@ pub type Result<T> = StdResult<T, Error>;
 /// gather data that will be encrypted for the client in `outputs_for_client`.
 ///
 /// Key image check is now in ORAM, replacing untrusted
-/// which was doing the check directly.Sha
+/// which was doing the check directly.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct OutputContext {
     /// The global txout indices being requested
@@ -109,8 +109,8 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Store.
     fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest>;
 
-    /// As a "Store" in a Router/Store system,
-    /// accept a connection from a Router.
+    /// Called by a ledger store server to accept an incoming connection from a
+    /// Fog Ledger Router instance acting as a frontend to the Ledger Store.
     fn frontend_accept(
         &self,
         auth_request: NonceAuthRequest,

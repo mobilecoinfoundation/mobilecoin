@@ -191,14 +191,12 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    // Router/store system.
     fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::LedgerStoreInit(ledger_store_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    #[allow(unused_variables)]
     fn ledger_store_connect(
         &self,
         ledger_store_id: ResponderId,

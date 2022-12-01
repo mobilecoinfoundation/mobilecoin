@@ -201,7 +201,6 @@ where
         Ok(self.ake.backend_init(ledger_store_id)?)
     }
 
-    #[allow(unused_variables)]
     fn ledger_store_connect(
         &self,
         ledger_store_id: ResponderId,
@@ -238,7 +237,6 @@ where
         }
         let channel_id = sealed_query.channel_id.clone();
         let client_query_plaintext = self.ake.unseal(&sealed_query)?;
-        // TODO this will (possibly?) be used when we implement obliviousness
         let _client_query_request: CheckKeyImagesRequest =
             mc_util_serial::decode(&client_query_plaintext).map_err(|e| {
                 log::error!(self.logger, "Could not decode client query request: {}", e);
@@ -326,8 +324,7 @@ where
             latest_block_version: untrusted_key_image_query_response.latest_block_version,
             max_block_version: untrusted_key_image_query_response.max_block_version,
         };
-
-        // Do the scope lock of keyimagetore
+        
         {
             let mut lk = self.key_image_store.lock()?;
             let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
