@@ -125,8 +125,9 @@ pub trait LedgerEnclave: ReportableEnclave {
         ledger_store_auth_response: NonceAuthResponse,
     ) -> Result<()>;
 
-    /// Extract context data to be handed back to untrusted so that it could
-    /// collect the information required.
+    /// Check to see if a particular key image is present on this key image
+    /// store. Used by the store server in a router/store system to respond 
+    /// to requests from a ledger router. 
     fn check_key_image_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
