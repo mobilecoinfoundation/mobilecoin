@@ -226,14 +226,9 @@ fn main() {
                 .expect("failed writing output file");
         }
 
-        Commands::HashTxFile { tx_file } => match tx_file {
-            TxFile::MintConfigTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
-            }
-            TxFile::MintTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
-            }
-        },
+        Commands::HashTxFile { tx_file } => {
+            println!("{}", hex::encode(&tx_file.hash_tx_prefix()));
+        }
 
         Commands::HashMintTx { params } => {
             let tx_prefix = params
@@ -333,16 +328,10 @@ fn main() {
                 TxFile::from_json_file(&tx_file_path).expect("failed loading tx file");
 
             // Append any existing signatures.
-            signatures.extend(match &tx_file {
-                TxFile::MintConfigTx(tx) => tx.signature.signatures().to_vec(),
-                TxFile::MintTx(tx) => tx.signature.signatures().to_vec(),
-            });
+            signatures.extend(tx_file.signatures().to_vec());
 
             // The message we are signing.
-            let message = match &tx_file {
-                TxFile::MintConfigTx(tx) => tx.prefix.hash(),
-                TxFile::MintTx(tx) => tx.prefix.hash(),
-            };
+            let message = tx_file.hash_tx_prefix();
 
             // Append signatures using the keys provided.
             signatures.extend(

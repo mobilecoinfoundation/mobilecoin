@@ -6,6 +6,7 @@
 //! to get a deserialization error.
 
 use displaydoc::Display;
+use mc_crypto_keys::Ed25519Signature;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
@@ -84,6 +85,22 @@ impl TxFile {
             .iter()
             .map(|filename| T::try_from(TxFile::from_json_file(filename)?))
             .collect::<Result<Vec<T>, TxFileError>>()
+    }
+
+    /// Get the hash of the underlying tx prefix object
+    pub fn hash_tx_prefix(&self) -> [u8; 32] {
+        match self {
+            TxFile::MintConfigTx(tx) => tx.prefix.hash(),
+            TxFile::MintTx(tx) => tx.prefix.hash(),
+        }
+    }
+
+    /// Get the list of signatures included in the underlying tx object
+    pub fn signatures(&self) -> &[Ed25519Signature] {
+        match self {
+            TxFile::MintConfigTx(tx) => &tx.signature.signatures(),
+            TxFile::MintTx(tx) => &tx.signature.signatures(),
+        }
     }
 }
 
