@@ -75,7 +75,7 @@ where
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid LedgerRequest request",
-            "Neither the query nor auth fields were set".to_string(),
+            "Neither the check_key_images nor auth fields were set".to_string(),
             &logger,
         );
         Err(rpc_status)
@@ -121,9 +121,6 @@ pub fn process_shard_responses(
     let mut new_query_responses = Vec::new();
 
     for (shard_client, mut response) in clients_and_responses {
-        // We did not receive a query_response for this shard.Therefore, we need to:
-        //  (a) retry the query
-        //  (b) authenticate with the Ledger Store that returned the decryption_error
         let store_uri = KeyImageStoreUri::from_str(response.get_fog_ledger_store_uri())?;
         match response.get_status() {
             MultiKeyImageStoreResponseStatus::SUCCESS => {
@@ -131,6 +128,9 @@ pub fn process_shard_responses(
                 new_query_responses.push((store_responder_id, response.take_query_response()));
             }
             MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => {
+                // We did not receive a query response for this shard.Therefore, we need to:
+                //  (a) retry the query
+                //  (b) authenticate with the Ledger Store that returned the decryption_error
                 shard_clients_for_retry.push(shard_client);
                 store_uris_for_authentication.push(store_uri);
             }
@@ -181,7 +181,7 @@ where
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
             router_server_err_to_rpc_status(
-                "Query: internal encryption error",
+                "Key Images Query: internal encryption error",
                 err.into(),
                 logger.clone(),
             )
@@ -200,7 +200,7 @@ where
             .create_multi_key_image_store_query_data(sealed_query.clone())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
-                    "Query: internal encryption error",
+                    "Key Images Query: internal encryption error",
                     err.into(),
                     logger.clone(),
                 )
@@ -211,7 +211,7 @@ where
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
-                        "Query: internal query routing error",
+                        "Key Images Query: internal query routing error",
                         err,
                         logger.clone(),
                     )
@@ -220,7 +220,7 @@ where
         let processed_shard_response_data = process_shard_responses(clients_and_responses)
             .map_err(|err| {
                 router_server_err_to_rpc_status(
-                    "Query: internal query response processing",
+                    "Key Images Query: internal query response processing",
                     err,
                     logger.clone(),
                 )
@@ -252,7 +252,7 @@ where
 
     if remaining_retries == 0 {
         return Err(router_server_err_to_rpc_status(
-            "Query: timed out connecting to key image stores",
+            "Key Images Query: timed out connecting to key image stores",
             RouterServerError::LedgerStoreError(format!(
                 "Received {} responses which failed to advance the MultiKeyImageStoreRequest",
                 RETRY_COUNT
@@ -265,7 +265,7 @@ where
         .collate_shard_query_responses(sealed_query, query_responses)
         .map_err(|err| {
             router_server_err_to_rpc_status(
-                "Query: shard response collation",
+                "Key Images Query: shard response collation error",
                 RouterServerError::Enclave(err),
                 logger.clone(),
             )
@@ -310,7 +310,7 @@ async fn authenticate_ledger_stores<E: LedgerEnclaveProxy>(
 
     try_join_all(pending_auth_requests).await.map_err(|err| {
         router_server_err_to_rpc_status(
-            "Query: cannot authenticate with each Fog Ledger Store:",
+            "Key Images Query: cannot authenticate with each Fog Ledger Store:",
             err,
             logger.clone(),
         )
