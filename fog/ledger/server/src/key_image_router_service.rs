@@ -26,6 +26,7 @@ where
 {
     enclave: E,
     shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
+    query_retries: usize,
     logger: Logger,
 }
 
@@ -36,11 +37,13 @@ impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     pub fn new(
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
+        query_retries: usize,
         logger: Logger,
     ) -> Self {
         Self {
             enclave,
             shards,
+            query_retries,
             logger,
         }
     }
@@ -70,6 +73,7 @@ where
                 self.enclave.clone(),
                 requests,
                 responses,
+                self.query_retries,
                 logger.clone(),
             )
             .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))
