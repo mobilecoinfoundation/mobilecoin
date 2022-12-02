@@ -176,7 +176,7 @@ where
     E: LedgerEnclaveProxy,
 {
     let mut query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> = BTreeMap::new();
-    let mut shard_clients = shard_clients.clone();
+    let mut shards_to_query = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
@@ -207,7 +207,7 @@ where
             })?
             .into();
         let clients_and_responses =
-            route_query(&multi_ledger_store_query_request, shard_clients.clone())
+            route_query(&multi_ledger_store_query_request, shards_to_query.clone())
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
@@ -237,8 +237,8 @@ where
             break;
         }
 
-        shard_clients = processed_shard_response_data.shard_clients_for_retry;
-        if !shard_clients.is_empty() {
+        shards_to_query = processed_shard_response_data.shard_clients_for_retry;
+        if !shards_to_query.is_empty() {
             authenticate_ledger_stores(
                 enclave.clone(),
                 processed_shard_response_data.store_uris_for_authentication,
