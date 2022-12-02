@@ -98,8 +98,8 @@ impl TxFile {
     /// Get the list of signatures included in the underlying tx object
     pub fn signatures(&self) -> &[Ed25519Signature] {
         match self {
-            TxFile::MintConfigTx(tx) => &tx.signature.signatures(),
-            TxFile::MintTx(tx) => &tx.signature.signatures(),
+            TxFile::MintConfigTx(tx) => tx.signature.signatures(),
+            TxFile::MintTx(tx) => tx.signature.signatures(),
         }
     }
 }
