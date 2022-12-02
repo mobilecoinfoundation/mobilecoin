@@ -84,7 +84,7 @@ impl UserRngSet {
         // Maps search keys to the associated payloads (ciphertexts)
         let mut tx_result_map = HashMap::<Vec<u8>, Vec<u8>>::default();
 
-        // Build tx_result_map from te results list,
+        // Build tx_result_map from the results list,
         // We drop anything that didn't have TxResultCode::Found
         for result in results.iter() {
             if let Ok(code) = TxOutSearchResultCode::try_from(result.result_code) {
