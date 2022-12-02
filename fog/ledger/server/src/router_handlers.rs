@@ -18,8 +18,6 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
-const RETRY_COUNT: usize = 3;
-
 /// Handles a series of requests sent by the Fog Ledger Router client,
 /// routing them out to shards.
 pub async fn handle_requests<E>(
@@ -27,6 +25,7 @@ pub async fn handle_requests<E>(
     enclave: E,
     mut requests: RequestStream<LedgerRequest>,
     mut responses: DuplexSink<LedgerResponse>,
+    query_retries: usize,
     logger: Logger,
 ) -> Result<(), grpcio::Error>
 where
@@ -37,6 +36,7 @@ where
             request,
             shard_clients.clone(),
             enclave.clone(),
+            query_retries,
             logger.clone(),
         )
         .await;
@@ -55,6 +55,7 @@ pub async fn handle_request<E>(
     mut request: LedgerRequest,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
+    query_retries: usize,
     logger: Logger,
 ) -> Result<LedgerResponse, RpcStatus>
 where
@@ -67,6 +68,7 @@ where
             request.take_check_key_images(),
             enclave,
             shard_clients,
+            query_retries,
             logger,
         )
         .await
@@ -170,6 +172,7 @@ async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
+    query_retries: usize,
     logger: Logger,
 ) -> Result<LedgerResponse, RpcStatus>
 where
@@ -188,13 +191,13 @@ where
         })?;
 
     // The retry logic here is:
-    // Set retries remaining to RETRY_COUNT
+    // Set retries remaining to query_retries
     // Send query and process responses
     // If there's a response from every shard, we're done
     // If there's a new store, repeat
     // If there's no new store and we don't have enough responses, decrement
-    // RETRY_COUNT and loop
-    let mut remaining_retries = RETRY_COUNT;
+    // remaining_retries and loop
+    let mut remaining_retries = query_retries;
     while remaining_retries > 0 {
         let multi_ledger_store_query_request = enclave
             .create_multi_key_image_store_query_data(sealed_query.clone())
@@ -255,7 +258,7 @@ where
             "Key Images Query: timed out connecting to key image stores",
             RouterServerError::LedgerStoreError(format!(
                 "Received {} responses which failed to advance the MultiKeyImageStoreRequest",
-                RETRY_COUNT
+                query_retries
             )),
             logger.clone(),
         ));
