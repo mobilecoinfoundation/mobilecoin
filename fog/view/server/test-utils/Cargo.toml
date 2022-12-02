@@ -26,6 +26,7 @@ mc-fog-uri = { path = "../../../uri" }
 mc-fog-view-connection = { path = "../../connection" }
 mc-fog-view-enclave = { path = "../../enclave" }
 mc-fog-view-enclave-measurement = { path = "../../enclave/measurement" }
+mc-fog-view-protocol = { path = "../../protocol" }
 mc-fog-view-server = { path = "../." }
 
 # Third-party

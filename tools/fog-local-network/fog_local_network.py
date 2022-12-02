@@ -91,15 +91,25 @@ class FogNetwork(Network):
         )
         self.fog_ingest.start()
 
-        self.fog_view = FogView(
-            'view1',
-            f'localhost:{BASE_NGINX_CLIENT_PORT}',
-            BASE_VIEW_CLIENT_PORT,
-            BASE_VIEW_ADMIN_PORT,
-            BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
-            release=True,
+        self.fog_view_store = FogViewStore(
+            name = 'view1',
+            client_port = BASE_VIEW_STORE_PORT,
+            admin_port = BASE_VIEW_STORE_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            release = True,
         )
-        self.fog_view.start()
+        self.fog_view_store.start()
+
+        self.fog_view_router = FogViewRouter(
+            name = 'router1',
+            client_responder_id = f'localhost:{BASE_NGINX_CLIENT_PORT}',
+            client_port = BASE_VIEW_CLIENT_PORT,
+            admin_port = BASE_VIEW_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
+            release = True,
+            shard_uris = [self.fog_view_store.get_client_listen_uri()],
+        )
+        self.fog_view_router.start()
 
         self.fog_report = FogReport(
             'report1',
@@ -142,7 +152,8 @@ class FogNetwork(Network):
 
         stop_server("fog_ledger")
         stop_server("fog_report")
-        stop_server("fog_view")
+        stop_server("fog_view_store")
+        stop_server("fog_view_router")
         stop_server("fog_ingest")
 
 if __name__ == '__main__':

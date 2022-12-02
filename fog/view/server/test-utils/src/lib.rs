@@ -9,7 +9,6 @@ use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
-    ResponderId,
 };
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
@@ -17,30 +16,36 @@ use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{
     common::BlockRange,
-    view::{QueryResponse, TxOutSearchResult, TxOutSearchResultCode},
+    view::{TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
-use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri};
-use mc_fog_view_connection::fog_view_router_client::{Error, FogViewRouterGrpcClient};
+use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_view_connection::{fog_view_router_client::FogViewRouterGrpcClient, FogViewGrpcClient};
 use mc_fog_view_enclave::SgxViewEnclave;
+use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
     config::{
-        ClientListenUri::Store, FogViewRouterConfig, MobileAcctViewConfig as ViewConfig,
-        RouterClientListenUri, ShardingStrategy, ShardingStrategy::Epoch,
+        FogViewRouterConfig, MobileAcctViewConfig as ViewConfig, RouterClientListenUri,
+        ShardingStrategy, ShardingStrategy::Epoch,
     },
     fog_view_router_server::FogViewRouterServer,
     server::ViewServer,
     sharding_strategy::EpochShardingStrategy,
 };
 use mc_transaction_core::BlockVersion;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
-use mc_util_uri::ConnectionUri;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
+use mc_util_uri::{AdminUri, ConnectionUri};
 use std::{
     collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
     thread::sleep,
     time::Duration,
+};
+
+const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
+    grpc_retry_count: 3,
+    grpc_retry_millis: 20,
 };
 
 /// Contains the core structs used by router integration tests and manages their
@@ -52,52 +57,38 @@ use std::{
 /// order is defined by the field definition order, which is prone to error. I.e
 /// simply reordering the fields would cause the test to fail without a clear
 /// explanation as to why.
+
+type TestViewServer =
+    ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>;
+
 pub struct RouterTestEnvironment {
     pub router_server: Option<FogViewRouterServer<SgxViewEnclave, AttestClient>>,
-    pub router_client: Option<FogViewRouterGrpcClient>,
-    pub store_servers:
-        Option<Vec<ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>>>,
+    pub router_streaming_client: Option<FogViewRouterGrpcClient>,
+    pub router_unary_client: Option<FogViewGrpcClient>,
+    pub store_servers: Option<Vec<TestViewServer>>,
     pub db_test_context: Option<SqlRecoveryDbTestContext>,
 }
 
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
-    pub fn new(omap_capacity: u64, store_count: usize, logger: Logger) -> Self {
-        let (db_test_context, store_servers, store_clients) =
-            Self::create_view_stores(omap_capacity, store_count, logger.clone());
+    pub fn new(omap_capacity: u64, store_block_ranges: Vec<BlockRange>, logger: Logger) -> Self {
+        let (db_test_context, store_servers, store_clients, store_uris) =
+            Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
             FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{}", port))
                 .unwrap();
-        let router_server =
-            Self::create_router_server(&router_uri, omap_capacity, store_clients, &logger);
-        let router_client = Self::create_router_client(router_uri, logger);
-        Self {
-            db_test_context: Some(db_test_context),
-            router_server: Some(router_server),
-            router_client: Some(router_client),
-            store_servers: Some(store_servers),
-        }
-    }
-
-    fn create_router_server(
-        router_uri: &FogViewRouterUri,
-        omap_capacity: u64,
-        store_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
-        logger: &Logger,
-    ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
-        let admin_listen_uri = FogViewRouterAdminUri::from_str(&format!(
-            "insecure-fog-view-router-admin://127.0.0.1:{}",
-            port
-        ))
-        .unwrap();
+        let admin_listen_uri =
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
+
         let config = FogViewRouterConfig {
             chain_id: "local".to_string(),
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
+            shard_uris: store_uris,
             ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
@@ -105,6 +96,63 @@ impl RouterTestEnvironment {
             omap_capacity,
             admin_listen_uri,
         };
+        let router_server = Self::create_router_server(config, store_clients, &logger);
+        let router_client = Self::create_router_streaming_client(router_uri, logger);
+        Self {
+            db_test_context: Some(db_test_context),
+            router_server: Some(router_server),
+            router_streaming_client: Some(router_client),
+            router_unary_client: None,
+            store_servers: Some(store_servers),
+        }
+    }
+
+    /// Creates a `RouterTestEnvironment` for the router integration tests.
+    pub fn new_unary(
+        omap_capacity: u64,
+        store_block_ranges: Vec<BlockRange>,
+        logger: Logger,
+    ) -> Self {
+        let (db_test_context, store_servers, store_clients, store_uris) =
+            Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
+        let port = portpicker::pick_unused_port().expect("pick_unused_port");
+        let router_uri =
+            FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
+        let port = portpicker::pick_unused_port().expect("pick_unused_port");
+        let admin_listen_uri =
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
+        let chain_id = "local".to_string();
+        let config = FogViewRouterConfig {
+            chain_id: chain_id.clone(),
+            client_responder_id: router_uri
+                .responder_id()
+                .expect("Could not get responder id for Fog View Router."),
+            ias_api_key: Default::default(),
+            ias_spid: Default::default(),
+            shard_uris: store_uris,
+            client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
+            client_auth_token_max_lifetime: Default::default(),
+            client_auth_token_secret: None,
+            omap_capacity,
+            admin_listen_uri,
+        };
+        let router_server = Self::create_router_server(config, store_clients, &logger);
+        let router_client = Self::create_router_unary_client(chain_id, router_uri, logger);
+
+        Self {
+            db_test_context: Some(db_test_context),
+            router_server: Some(router_server),
+            router_unary_client: Some(router_client),
+            router_streaming_client: None,
+            store_servers: Some(store_servers),
+        }
+    }
+
+    fn create_router_server(
+        config: FogViewRouterConfig,
+        store_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        logger: &Logger,
+    ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
         let enclave = SgxViewEnclave::new(
             get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
             config.client_responder_id.clone(),
@@ -125,7 +173,7 @@ impl RouterTestEnvironment {
         router_server
     }
 
-    fn create_router_client(
+    fn create_router_streaming_client(
         router_uri: FogViewRouterUri,
         logger: Logger,
     ) -> FogViewRouterGrpcClient {
@@ -139,39 +187,63 @@ impl RouterTestEnvironment {
         FogViewRouterGrpcClient::new(router_uri, verifier, grpcio_env, logger)
     }
 
+    fn create_router_unary_client(
+        chain_id: String,
+        router_uri: FogViewUri,
+        logger: Logger,
+    ) -> FogViewGrpcClient {
+        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
+        let mr_signer_verifier =
+            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
+        let mut verifier = Verifier::default();
+        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+
+        FogViewGrpcClient::new(
+            chain_id,
+            router_uri,
+            GRPC_RETRY_CONFIG,
+            verifier,
+            grpcio_env,
+            logger,
+        )
+    }
+
     /// Creates fog view stores with sane defaults.
     fn create_view_stores(
         omap_capacity: u64,
-        store_count: usize,
+        store_block_ranges: Vec<BlockRange>,
         logger: Logger,
     ) -> (
         SqlRecoveryDbTestContext,
-        Vec<ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>>,
+        Vec<TestViewServer>,
         Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        Vec<FogViewStoreUri>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
         let mut store_clients = HashMap::new();
+        let mut store_uris: Vec<FogViewStoreUri> = Vec::new();
 
-        for i in 0..store_count {
+        for (i, store_block_range) in store_block_ranges.into_iter().enumerate() {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
-                let store_uri = FogViewStoreUri::from_str(&format!(
+                let uri = FogViewStoreUri::from_str(&format!(
                     "insecure-fog-view-store://127.0.0.1:{}",
                     port
                 ))
                 .unwrap();
+                store_uris.push(uri.clone());
 
                 // Each store is responsible for 1 block. Note that this means that the stores
                 // in this test are not responsible for overlapping block ranges.
-                let store_block_range = BlockRange::new(i as u64, (i + 1) as u64);
+                //let store_block_range = BlockRange::new(i as u64, (i + 1) as u64);
                 let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range);
 
                 let config = ViewConfig {
                     chain_id: "local".to_string(),
-                    client_responder_id: ResponderId::from_str(&store_uri.addr()).unwrap(),
-                    client_listen_uri: Store(store_uri.clone()),
+                    client_responder_id: uri.responder_id().unwrap(),
+                    client_listen_uri: uri.clone(),
                     client_auth_token_secret: None,
                     omap_capacity,
                     ias_spid: Default::default(),
@@ -204,7 +276,7 @@ impl RouterTestEnvironment {
                     logger.clone(),
                 );
                 store.start();
-                (store, store_uri)
+                (store, uri)
             };
             store_servers.push(store);
 
@@ -222,7 +294,7 @@ impl RouterTestEnvironment {
 
         let store_clients = Arc::new(RwLock::new(store_clients));
 
-        (db_test_context, store_servers, store_clients)
+        (db_test_context, store_servers, store_clients, store_uris)
     }
 }
 
@@ -232,7 +304,7 @@ impl Drop for RouterTestEnvironment {
     fn drop(&mut self) {
         // This needs to be dropped first because failure to do so keeps the gRPC
         // connection alive and the router server will never close down.
-        self.router_client = None;
+        self.router_streaming_client = None;
         self.router_server = None;
         self.store_servers = None;
         // This needs to be dropped after the servers because they have threads that are
@@ -243,20 +315,28 @@ impl Drop for RouterTestEnvironment {
 
 /// Ensure that all provided ETxOutRecords are in the enclave, and that
 /// non-existing ones aren't.
-pub async fn assert_e_tx_out_records(
-    client: &mut FogViewRouterGrpcClient,
-    records: &[ETxOutRecord],
-) -> Result<QueryResponse, Error> {
-    let mut expected_results = records
-        .iter()
-        .map(|record| TxOutSearchResult {
+pub fn assert_e_tx_out_records(client: &mut FogViewGrpcClient, records: &[ETxOutRecord]) {
+    // Construct an array of expected results that includes both records we expect
+    // to find and records we expect not to find.
+    let mut expected_results = Vec::new();
+    for record in records {
+        expected_results.push(TxOutSearchResult {
             search_key: record.search_key.clone(),
             result_code: TxOutSearchResultCode::Found as u32,
             ciphertext: record.payload.clone(),
             payload_length: record.payload.len() as u32,
-        })
-        .collect::<Vec<_>>();
-    expected_results.sort_by_key(|result| result.ciphertext.clone());
+        });
+    }
+    for i in 0..3 {
+        let payload_length = 255;
+        expected_results.push(TxOutSearchResult {
+            search_key: vec![i + 1; 16], // Search key of all zeros is invalid.
+            result_code: TxOutSearchResultCode::NotFound as u32,
+            ciphertext: vec![0; payload_length],
+            payload_length: payload_length as u32,
+        });
+    }
+    expected_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
 
     let search_keys: Vec<_> = expected_results
         .iter()
@@ -265,14 +345,13 @@ pub async fn assert_e_tx_out_records(
 
     let mut allowed_tries = 60usize;
     loop {
-        let result = client.query(0, 0, search_keys.clone()).await.unwrap();
+        let result = client.request(0, 0, search_keys.clone()).unwrap();
 
-        let mut actual_tx_out_search_results =
+        let mut actual_results =
             interpret_tx_out_search_results(result.tx_out_search_results.clone());
-        actual_tx_out_search_results.sort_by_key(|result| result.ciphertext.clone());
-        assert_eq!(actual_tx_out_search_results[0], expected_results[0]);
-        if actual_tx_out_search_results == expected_results {
-            return Ok(result);
+        actual_results.sort_by(|a, b| a.search_key.cmp(&b.search_key));
+        if actual_results == expected_results {
+            break;
         }
         if allowed_tries == 0 {
             panic!("Server did not catch up to database!");
@@ -326,9 +405,9 @@ pub fn add_block_data(
 /// Wait until first server has added stuff to ORAM. Since all view servers
 /// should load ORAM at the same time, we could choose to wait for any view
 /// server.
-pub fn wait_for_server_to_load(
+pub fn wait_for_highest_block_to_load(
     db: &SqlRecoveryDb,
-    test_environment: &RouterTestEnvironment,
+    store_servers: &[TestViewServer],
     logger: &Logger,
 ) {
     let mut allowed_tries = 1000usize;
@@ -338,14 +417,7 @@ pub fn wait_for_server_to_load(
             .unwrap()
             .map(|v| v + 1) // convert index to count
             .unwrap_or(0);
-        let server_num_blocks = test_environment
-            .store_servers
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|server| server.highest_processed_block_count())
-            .max()
-            .unwrap_or_default();
+        let server_num_blocks = get_highest_processed_block_count(store_servers);
         if server_num_blocks > db_num_blocks {
             panic!(
                 "Server num blocks should never be larger than db num blocks: {} > {}",
@@ -368,4 +440,72 @@ pub fn wait_for_server_to_load(
         allowed_tries -= 1;
         sleep(Duration::from_secs(1));
     }
+}
+
+/// Wait until a server has added a specific number of blocks to load.
+pub fn wait_for_block_to_load(block_count: u64, store_servers: &[TestViewServer], logger: &Logger) {
+    let mut allowed_tries = 60usize;
+    loop {
+        let server_num_blocks = get_highest_processed_block_count(store_servers);
+        if server_num_blocks >= block_count {
+            break;
+        }
+        log::info!(
+            logger,
+            "Waiting for server to catch up to db... {} < {}",
+            server_num_blocks,
+            block_count,
+        );
+        if allowed_tries == 0 {
+            panic!("Server did not catch up to database!");
+        }
+        allowed_tries -= 1;
+        sleep(Duration::from_millis(1000));
+    }
+}
+
+/// Wait until a server has added a specific number of blocks to load.
+pub fn wait_for_highest_processed_and_last_known(
+    view_client: &mut FogViewGrpcClient,
+    highest_processed_block_count: u64,
+    last_known_block_count: u64,
+) {
+    let mut allowed_tries = 60usize;
+    loop {
+        let nonsense_search_keys = vec![vec![50u8]];
+        let result = view_client.request(0, 0, nonsense_search_keys).unwrap();
+        if result.highest_processed_block_count == highest_processed_block_count
+            && result.last_known_block_count == last_known_block_count
+        {
+            break;
+        }
+
+        if allowed_tries == 0 {
+            panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
+        }
+        allowed_tries -= 1;
+        sleep(Duration::from_millis(1000));
+    }
+}
+
+/// Find the highest processed number of blocks in a collection of store
+/// servers.
+pub fn get_highest_processed_block_count(store_servers: &[TestViewServer]) -> u64 {
+    store_servers
+        .iter()
+        .map(|server| server.highest_processed_block_count())
+        .max()
+        .unwrap_or_default()
+}
+
+/// Creates a list of BlockRanges for store servers.
+pub fn create_block_ranges(store_count: usize, blocks_per_store: u64) -> Vec<BlockRange> {
+    let mut store_block_ranges = Vec::new();
+    for i in 0..store_count {
+        let start_block = (i as u64) * blocks_per_store;
+        let block_range = BlockRange::new_from_length(start_block, blocks_per_store);
+        store_block_ranges.push(block_range);
+    }
+
+    store_block_ranges
 }

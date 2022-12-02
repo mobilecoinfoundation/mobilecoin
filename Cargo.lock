@@ -4738,6 +4738,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempdir",
+ "yare",
 ]
 
 [[package]]
@@ -4758,6 +4759,7 @@ dependencies = [
  "mc-fog-view-connection",
  "mc-fog-view-enclave",
  "mc-fog-view-enclave-measurement",
+ "mc-fog-view-protocol",
  "mc-fog-view-server",
  "mc-transaction-core",
  "mc-util-from-random",
@@ -8993,6 +8995,26 @@ name = "yansi"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"
+
+[[package]]
+name = "yare"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df119f412cd2150ab3e88ebee015a615b00140ff81acd07746262df4a4678c47"
+dependencies = [
+ "yare-macro",
+]
+
+[[package]]
+name = "yare-macro"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9467ac0aa6668b663fa80addde47e40ac364dc9d9a243b4df26ba647e4605633"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "yasna"

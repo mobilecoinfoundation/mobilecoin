@@ -5,12 +5,8 @@
 //! stopping it
 
 use crate::{
-    block_tracker::BlockTracker,
-    config::{ClientListenUri, MobileAcctViewConfig},
-    counters,
-    db_fetcher::DbFetcher,
-    fog_view_service::FogViewService,
-    sharding_strategy::ShardingStrategy,
+    block_tracker::BlockTracker, config::MobileAcctViewConfig, counters, db_fetcher::DbFetcher,
+    fog_view_service::FogViewService, sharding_strategy::ShardingStrategy,
 };
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
@@ -23,7 +19,6 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::view_grpc;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ETxOutRecord;
-use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
@@ -108,50 +103,27 @@ where
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
-        let server_builder = match config.client_listen_uri {
-            ClientListenUri::ClientFacing(ref fog_view_uri) => {
-                let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
-                    config.clone(),
-                    enclave.clone(),
-                    Arc::new(recovery_db),
-                    db_poll_thread.get_shared_state(),
-                    client_authenticator,
-                    config.client_listen_uri.clone(),
-                    sharding_strategy,
-                    logger.clone(),
-                ));
-                log::debug!(logger, "Constructed client-facing View GRPC Service");
-                // Package service into grpc server
-                log::info!(logger, "Starting View server on {}", fog_view_uri.addr(),);
-                grpcio::ServerBuilder::new(env)
-                    .register_service(fog_view_service)
-                    .register_service(health_service)
-                    .bind_using_uri(fog_view_uri, logger.clone())
-            }
-            ClientListenUri::Store(ref fog_view_store_uri) => {
-                let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
-                    config.clone(),
-                    enclave.clone(),
-                    Arc::new(recovery_db),
-                    db_poll_thread.get_shared_state(),
-                    client_authenticator,
-                    config.client_listen_uri.clone(),
-                    sharding_strategy,
-                    logger.clone(),
-                ));
-                log::debug!(logger, "Constructed View Store GRPC Service");
-                // Package service into grpc server
-                log::info!(
-                    logger,
-                    "Starting View Store server on {}",
-                    fog_view_store_uri.addr(),
-                );
-                grpcio::ServerBuilder::new(env)
-                    .register_service(fog_view_service)
-                    .register_service(health_service)
-                    .bind_using_uri(fog_view_store_uri, logger.clone())
-            }
-        };
+        log::debug!(logger, "Starting View Store GRPC Service");
+        let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+            enclave.clone(),
+            Arc::new(recovery_db),
+            db_poll_thread.get_shared_state(),
+            config.client_listen_uri.clone(),
+            client_authenticator,
+            sharding_strategy,
+            logger.clone(),
+        ));
+
+        // Package service into grpc server
+        log::info!(
+            logger,
+            "Starting View Store server on {}",
+            config.client_listen_uri,
+        );
+        let server_builder = grpcio::ServerBuilder::new(env)
+            .register_service(fog_view_service)
+            .register_service(health_service)
+            .bind_using_uri(&config.client_listen_uri, logger.clone());
 
         let server = server_builder.build().unwrap();
 

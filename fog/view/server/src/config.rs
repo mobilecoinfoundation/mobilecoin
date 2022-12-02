@@ -7,7 +7,7 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
-use mc_fog_uri::{FogViewRouterAdminUri, FogViewRouterUri, FogViewStoreUri, FogViewUri};
+use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -38,7 +38,7 @@ pub struct MobileAcctViewConfig {
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
-    pub client_listen_uri: ClientListenUri,
+    pub client_listen_uri: FogViewStoreUri,
 
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
@@ -106,30 +106,6 @@ impl FromStr for ShardingStrategy {
     }
 }
 
-/// A FogViewServer can either fulfill client requests directly or fulfill Fog
-/// View Router requests, and these types of servers use different URLs.
-#[derive(Clone, Serialize)]
-pub enum ClientListenUri {
-    /// URI used by the FogViewServer when fulfilling direct client requests.
-    ClientFacing(FogViewUri),
-    /// URI used by the FogViewServer when fulfilling Fog View Router requests.
-    Store(FogViewStoreUri),
-}
-
-impl FromStr for ClientListenUri {
-    type Err = String;
-    fn from_str(input: &str) -> Result<Self, String> {
-        if let Ok(fog_view_uri) = FogViewUri::from_str(input) {
-            return Ok(ClientListenUri::ClientFacing(fog_view_uri));
-        }
-        if let Ok(fog_view_store_uri) = FogViewStoreUri::from_str(input) {
-            return Ok(ClientListenUri::Store(fog_view_store_uri));
-        }
-
-        Err(format!("Incorrect ClientListenUri string: {}.", input))
-    }
-}
-
 /// Configuration parameters for the Fog View Router.
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
@@ -145,6 +121,10 @@ pub struct FogViewRouterConfig {
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: RouterClientListenUri,
 
+    /// gRPC listening URI for Fog View Stores.
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
+    pub shard_uris: Vec<FogViewStoreUri>,
+
     /// PEM-formatted keypair to send with an Attestation Request.
     #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
@@ -153,7 +133,6 @@ pub struct FogViewRouterConfig {
     #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
-    // TODO: Add shard uris which are of type Vec<FogViewStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
     /// About 75% of this capacity can be used.
     /// The hash table will overflow when there are more TxOut's than this,
@@ -169,7 +148,7 @@ pub struct FogViewRouterConfig {
 
     /// Router admin listening URI.
     #[clap(long)]
-    pub admin_listen_uri: FogViewRouterAdminUri,
+    pub admin_listen_uri: AdminUri,
 
     /// The chain id of the network we are a part of
     #[clap(long, env = "MC_CHAIN_ID")]

@@ -109,7 +109,7 @@ where
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
             router_server_err_to_rpc_status(
-                "Query: internal encryption error",
+                "Query: internal decrypt and seal error",
                 err.into(),
                 logger.clone(),
             )
@@ -120,7 +120,7 @@ where
             .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
                 router_server_err_to_rpc_status(
-                    "Query: internal encryption error",
+                    "Query: internal encryption error for MultiViewStoreQueryData",
                     err.into(),
                     logger.clone(),
                 )
