@@ -17,6 +17,7 @@ type HmacSha512 = Hmac<Sha512>;
 /// This HMAC key is always first the 32 bytes of a shared secret, then the 32
 /// bytes of the TxOut public key, then all the bytes of the decrypted memo,
 /// omitting the last 16 which are the HMAC.
+/// Test Comment
 ///
 /// Arguments:
 /// * shared_secret, produced in some way between sender and recipient.
