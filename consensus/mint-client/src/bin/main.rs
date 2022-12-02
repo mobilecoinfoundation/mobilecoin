@@ -10,7 +10,8 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
-use mc_consensus_mint_client::{printers, Commands, Config, FogContext, TxFile};
+use mc_consensus_mint_client::{printers, Commands, Config, FogContext};
+use mc_consensus_mint_client_types::TxFile;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer, Verifier};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
