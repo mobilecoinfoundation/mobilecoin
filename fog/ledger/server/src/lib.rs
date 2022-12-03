@@ -18,7 +18,7 @@ mod router_admin_service;
 use mc_util_metrics::ServiceMetrics;
 
 pub use block_service::BlockService;
-pub use config::LedgerServerConfig;
+pub use config::{LedgerRouterConfig, LedgerServerConfig};
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;
 pub use server::LedgerServer;
