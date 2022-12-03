@@ -11,6 +11,8 @@ mod merkle_proof_service;
 mod router_handlers;
 mod server;
 mod untrusted_tx_out_service;
+mod key_image_router_service;
+mod router_admin_service;
 
 pub use block_service::BlockService;
 pub use config::LedgerServerConfig;
