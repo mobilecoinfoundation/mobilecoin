@@ -96,8 +96,8 @@ pub struct LedgerRouterConfig {
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: AdminUri,
 
-    /// Number of query attempts with no forward progress before reporting an
-    /// error.
+    /// Number of query attempts with no forward progress
+    /// before reporting an error.
     #[clap(long, default_value = "3")]
     pub query_retries: usize,
 
