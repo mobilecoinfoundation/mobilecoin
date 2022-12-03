@@ -8,6 +8,329 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## Unreleased
 
+## [4.0.0]
+
+### Added
+
+- [MCIP 42]: Partial-fill rules for signed contingent input transactions
+- [MCIP 43]: Consensus nodes will now sign and publish metadata about blocks
+- [MCIP 54]: Transaction builder support for TxO memo fields for payment intent and request IDs
+- [MCIP 55]: Nested multi-sig for minting transactions
+- Services can now output JSON-formatted messages to stdout/stderr
+- `mc-consensus-mint-client` now supports `--tombstone-from-node [mc://URI]` to set the tombstone block automatically
+- `mc-consensus-mint-client` now supports `MintConfigTx` parameters from JSON files
+
+### Changed
+
+- [MCIP 52]: Transactions now sign a `TxSummary` instead of the previous `TxPrefix`, to aid with hardware wallet confirmations
+- [MCIP 53]: Extend the `MintTx` to allow direct minting to fog-enabled addresses
+- [MCIP 57]: Relax some constraints around ring signature contents in SCI transactions
+
+#### Github Actions
+
+- Bump `actions/checkout` from 2 to 3 ([#2113])
+- Bump `actions/setup-python` from 3 to 4 ([#2114])
+- Bump `docker/build-push-action` from 2 to 3 ([#2425])
+- Bump `docker/login-action` from 1 to 2 ([#2428])
+- Bump `docker/metadata-action` from 3 to 4 ([#2426])
+- Bump `docker/setup-buildx-action` from 1 to 2 ([#2427])
+
+#### Python Dependencies
+
+- Bump `protobuf` from 3.19.4 to 3.19.5 in /mobilecoind/strategies ([#2602])
+
+#### Rust Dependencies
+
+- Bump `anyhow` from 1.0.57 to 1.0.61 ([#2177], [#2365], [#2389])
+- Bump `assert_cmd` from 2.0.4 to 2.0.5 ([#2742])
+- Bump `async-channel` from 1.6.1 to 1.7.1 ([#2364], [#2386])
+- Bump `backtrace` from 0.3.65 to 0.3.66 ([#2237])
+- Bump `base64` from 0.13.0 to 0.13.1 ([#2755], [#2752], [#2754], [#2751], [#2753])
+- Bump `cargo_metadata` from 0.14.2 to 0.15.1 ([#2186], [#2768])
+- Bump `cbindgen` from 0.23.0 to 0.24.3 ([#2103], [#2117])
+- Bump `cc` from 1.0.73 to 1.0.74 ([#2795], [#2797], [#2798], [#2799], [#2800])
+- Bump `chrono` from 0.4.19 to 0.4.22 ([#2349], [#2381], [#2404])
+- Bump `clap` from 3.1.18 to 4.0.18 ([#2135], [#2152], [#2182], [#2217], [#2263], [#2264], [#2327], [#2470], [#2561], [#2665], [#2715], [#2756])
+- Bump `cookie` from 0.16.0 to 0.16.1 ([#2610])
+- Bump `criterion` from 0.3.5 to 0.4.0 ([#2238], [#2510])
+- Bump `crossbeam-channel` from 0.5.4 to 0.5.6 ([#2154], [#2301])
+- Bump `digest` from 0.10.3 to 0.10.5 ([#2560], [#2596], [#2556], [#2553])
+- Bump `futures` from 0.3.21 to 0.3.25 ([#2403], [#2451], [#2743])
+- Bump `generic-array` from 0.14.5 to 0.14.6 ([#2336])
+- Bump `getrandom` from 0.2.6 to 0.2.8 ([#2138], [#2137], [#2744])
+- Bump `grpcio` from 0.10.2 to 0.11.0 ([#2207], [#2529])
+- Bump `hashbrown` from 0.12.1 to 0.12.3 ([#2247])
+- Bump `iana-time-zone` from 0.1.44 to 0.1.47 ([#2453])
+- Bump `itertools` from 0.10.3 to 0.10.5 ([#2574])
+- Bump `libc` from 0.2.126 to 0.2.137 ([#2384], [#2409], [#2569], [#2631], [#2702], [#2769], [#2775])
+- Bump `libz-sys` from 1.1.6 to 1.1.8 ([#2069])
+- Bump `link-cplusplus` from 1.0.6 to 1.0.7 ([#2423])
+- Bump `mockall` from 0.11.1 to 0.11.3 ([#2300], [#2727])
+- Bump `more-asserts` from 0.2.2 to 0.3.1 ([#2087], [#2645])
+- Bump `num_cpus` from 1.13.1 to 1.14.0 ([#2825])
+- Bump `once_cell` from 1.10.0 to 1.16.0 ([#2016], [#2229], [#2410], [#2408], [#2480], [#2579], [#2796])
+- Bump `pem` from 1.0.2 to 1.1.0 ([#2262])
+- Bump `percent-encoding` from 2.1.0 to 2.2.0 ([#2499])
+- Bump `pkg-config` from 0.3.25 to 0.3.26 ([#2774], [#2778], [#2779], [#2776], [#2777])
+- Bump `primitive-types` from 0.11.1 to 0.12.1 ([#2575][#2787])
+- Bump `proc-macro2` from 1.0.39 to 1.0.47 ([#2173], [#2346], [#2633], [#2723])
+- Bump `prometheus` from 0.13.1 to 0.13.3 ([#2498], [#2758])
+- Bump `prost` from 0.11.0 to 0.11.2 ([#2051], [#2048], [#2049], [#2047], [#2050], [#2320], [#2824], [#2818], [#2819], [#2820])
+- Bump `quote` from 1.0.18 to 1.0.21 ([#2175], [#2190], [#2343])
+- Bump `r2d2` from 0.8.9 to 0.8.10 ([#2187])
+- Bump `rand_core` from 0.6.3 to 0.6.4 ([#2541], [#2538], [#2534], [#2539], [#2537])
+- Bump `regex` from 1.5.4 to 1.7.0 ([#2091], [#2230], [#2841])
+- Bump `reqwest` from 0.11.10 to 0.11.12 ([#2128], [#2578])
+- Bump `retry` from 1.3.1 to 2.0.0 ([#2570])
+- Bump `semver` from 1.0.9 to 1.0.14 ([#2124], [#2219], [#2344], [#2540])
+- Bump `sentry` from 0.26.0 to 0.27.0 ([#2176])
+- Bump `serde` from 1.0.137 to 1.0.147 ([#2248], [#2244], [#2246], [#2242], [#2245], [#2372], [#2368], [#2370], [#2369], [#2371], [#2424], [#2420], [#2418], [#2422], [#2594], [#2592], [#2598], [#2599], [#2597], [#2757], [#2748], [#2749], [#2747], [#2750])
+- Bump `serde_json` from 1.0.81 to 1.0.87 ([#2213], [#2345], [#2421], [#2701], [#2740])
+- Bump `serial_test` from 0.6.0 to 0.9.0 ([#2090], [#2201], [#2385])
+- Bump `sha2` from 0.10.2 to 0.10.6 ([#2482], [#2475], [#2476], [#2477], [#2479], [#2559], [#2551], [#2554], [#2557], [#2558])
+- Bump `sha3` from 0.10.1 to 0.10.6 ([#2330], [#2358], [#2481], [#2478], [#2562], [#2603], [#2741], [#2738])
+- Bump `signature` from 1.5.0 to 1.6.4 ([#2402], [#2511], [#2669])
+- Bump `smallvec` from 1.2.0 to 1.8.0 ([#2161], [#2160], [#2158], [#2159])
+- Bump `syn` from 1.0.95 to 1.0.103 ([#2082], [#2174], [#2347], [#2568], [#2608], [#2677], [#2739])
+- Bump `thread_local` from 1.0.1 to 1.1.4 ([#2162])
+- Bump `tiny-bip39` from 0.8.2 to 1.0.0 ([#2146])
+- Bump `url` from 2.2.2 to 2.3.1 ([#2490], [#2496], [#2495], [#2494], [#2497], [#2523])
+- Bump `wasm-bindgen` from 0.2.82 to 0.2.83 ([#2509])
+- Bump `wasm-bindgen-test` from 0.3.28 to 0.3.33 ([#2508], [#2646])
+- Bump `zeroize` from 1.5.5 to 1.5.7 ([#2212], [#2210], [#2211], [#2209], [#2294], [#2292], [#2291], [#2293])
+
+### Removed
+
+- [`libmobilecoin`](https://github.com/mobilecoinofficial/libmobilecoin) and [`android-bindings`](https://github.com/mobilecoinofficial/android-bindings) have been moved to external repositories
+
+### Security
+
+- [MCIP 56]: Make the enclave enforce unique nonces per-token (improved fix for TOB-MCCT-4).
+- TOB-MCCT-5: Reject transactions where the client's fee map differs from the consensus enclave's.
+
+[MCIP 42]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0042-partial-fill-rules.md
+[MCIP 43]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0043-block-metadata.md
+[MCIP 52]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0052-tx-summary-digest.md
+[MCIP 53]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0053-minting-to-fog-addresses.md
+[MCIP 54]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0054-rth-payment-id-memos.md
+[MCIP 55]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0055-nested-multi-sigs.md
+[MCIP 56]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0056-tx-fee-map-digest.md
+[MCIP 57]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0057-update-mixin-uniqueness-rules-for-scis.md
+[#2113]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2113
+[#2114]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2114
+[#2425]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2425
+[#2428]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2428
+[#2426]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2426
+[#2427]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2427
+[#2602]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2602
+[#2177]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2177
+[#2365]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2365
+[#2389]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2389
+[#2742]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2742
+[#2364]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2364
+[#2386]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2386
+[#2237]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2237
+[#2755]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2755
+[#2752]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2752
+[#2754]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2754
+[#2751]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2751
+[#2753]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2753
+[#2186]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2186
+[#2768]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2768
+[#2103]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2103
+[#2117]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2117
+[#2795]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2795
+[#2797]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2797
+[#2798]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2798
+[#2799]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2799
+[#2800]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2800
+[#2349]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2349
+[#2381]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2381
+[#2404]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2404
+[#2135]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2135
+[#2152]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2152
+[#2182]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2182
+[#2217]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2217
+[#2263]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2263
+[#2264]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2264
+[#2327]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2327
+[#2470]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2470
+[#2561]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2561
+[#2665]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2665
+[#2715]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2715
+[#2756]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2756
+[#2610]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2610
+[#2238]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2238
+[#2510]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2510
+[#2154]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2154
+[#2301]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2301
+[#2560]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2560
+[#2596]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2596
+[#2556]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2556
+[#2553]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2553
+[#2403]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2403
+[#2451]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2451
+[#2743]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2743
+[#2336]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2336
+[#2138]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2138
+[#2137]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2137
+[#2744]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2744
+[#2207]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2207
+[#2529]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2529
+[#2247]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2247
+[#2453]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2453
+[#2574]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2574
+[#2384]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2384
+[#2409]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2409
+[#2569]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2569
+[#2631]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2631
+[#2702]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2702
+[#2769]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2769
+[#2775]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2775
+[#2069]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2069
+[#2423]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2423
+[#2300]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2300
+[#2727]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2727
+[#2087]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2087
+[#2645]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2645
+[#2825]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2825
+[#2016]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2016
+[#2229]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2229
+[#2410]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2410
+[#2408]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2408
+[#2480]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2480
+[#2579]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2579
+[#2796]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2796
+[#2262]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2262
+[#2499]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2499
+[#2774]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2774
+[#2778]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2778
+[#2779]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2779
+[#2776]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2776
+[#2777]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2777
+[#2575]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2575
+[#2787]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2787
+[#2173]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2173
+[#2346]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2346
+[#2633]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2633
+[#2723]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2723
+[#2498]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2498
+[#2758]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2758
+[#2051]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2051
+[#2048]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2048
+[#2049]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2049
+[#2047]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2047
+[#2050]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2050
+[#2320]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2320
+[#2824]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2824
+[#2818]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2818
+[#2819]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2819
+[#2820]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2820
+[#2175]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2175
+[#2190]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2190
+[#2343]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2343
+[#2187]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2187
+[#2541]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2541
+[#2538]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2538
+[#2534]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2534
+[#2539]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2539
+[#2537]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2537
+[#2091]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2091
+[#2230]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2230
+[#2841]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2841
+[#2128]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2128
+[#2578]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2578
+[#2570]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2570
+[#2124]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2124
+[#2219]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2219
+[#2344]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2344
+[#2540]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2540
+[#2176]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2176
+[#2248]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2248
+[#2244]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2244
+[#2246]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2246
+[#2242]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2242
+[#2245]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2245
+[#2372]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2372
+[#2368]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2368
+[#2370]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2370
+[#2369]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2369
+[#2371]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2371
+[#2424]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2424
+[#2420]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2420
+[#2418]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2418
+[#2422]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2422
+[#2594]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2594
+[#2592]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2592
+[#2598]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2598
+[#2599]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2599
+[#2597]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2597
+[#2757]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2757
+[#2748]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2748
+[#2749]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2749
+[#2747]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2747
+[#2750]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2750
+[#2213]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2213
+[#2345]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2345
+[#2421]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2421
+[#2701]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2701
+[#2740]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2740
+[#2090]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2090
+[#2201]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2201
+[#2385]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2385
+[#2482]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2482
+[#2475]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2475
+[#2476]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2476
+[#2477]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2477
+[#2479]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2479
+[#2559]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2559
+[#2551]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2551
+[#2554]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2554
+[#2557]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2557
+[#2558]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2558
+[#2330]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2330
+[#2358]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2358
+[#2481]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2481
+[#2478]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2478
+[#2562]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2562
+[#2603]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2603
+[#2741]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2741
+[#2738]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2738
+[#2402]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2402
+[#2511]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2511
+[#2669]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2669
+[#2161]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2161
+[#2160]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2160
+[#2158]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2158
+[#2159]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2159
+[#2082]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2082
+[#2174]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2174
+[#2347]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2347
+[#2568]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2568
+[#2608]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2608
+[#2677]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2677
+[#2739]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2739
+[#2162]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2162
+[#2146]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2146
+[#2490]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2490
+[#2496]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2496
+[#2495]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2495
+[#2494]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2494
+[#2497]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2497
+[#2523]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2523
+[#2509]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2509
+[#2508]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2508
+[#2646]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2646
+[#2212]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2212
+[#2210]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2210
+[#2211]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2211
+[#2209]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2209
+[#2294]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2294
+[#2292]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2292
+[#2291]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2291
+[#2293]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2293
+
+
 ## [3.0.0]
 
 ### Added
