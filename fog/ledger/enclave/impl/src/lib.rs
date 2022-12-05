@@ -324,7 +324,7 @@ where
             latest_block_version: untrusted_key_image_query_response.latest_block_version,
             max_block_version: untrusted_key_image_query_response.max_block_version,
         };
-        
+
         {
             let mut lk = self.key_image_store.lock()?;
             let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;

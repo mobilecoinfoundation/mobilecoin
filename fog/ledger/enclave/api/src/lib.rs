@@ -126,8 +126,8 @@ pub trait LedgerEnclave: ReportableEnclave {
     ) -> Result<()>;
 
     /// Check to see if a particular key image is present on this key image
-    /// store. Used by the store server in a router/store system to respond 
-    /// to requests from a ledger router. 
+    /// store. Used by the store server in a router/store system to respond
+    /// to requests from a ledger router.
     fn check_key_image_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
