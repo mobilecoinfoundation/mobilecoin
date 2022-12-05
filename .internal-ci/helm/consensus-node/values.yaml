@@ -113,7 +113,7 @@ node:
         # rate limit attest endpoint to 20 requests/min from any single IP.
         annotations:
           haproxy.org/rate-limit-status-code: "429"
-          haproxy.org/rate-limit-requests: "10"
+          haproxy.org/rate-limit-requests: "20"
           haproxy.org/rate-limit-period: 1m
 
     ingress:
