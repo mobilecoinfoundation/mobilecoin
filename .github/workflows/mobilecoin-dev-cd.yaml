@@ -7,7 +7,6 @@ name: Mobilecoin CD
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  RELEASE_1X_TAG: v1.1.3-dev
   RELEASE_3X_TAG: v3.0.0-dev
 
 on:
@@ -50,7 +49,6 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
-      release_1x_tag: ${{ env.RELEASE_1X_TAG }}
       release_3x_tag: ${{ env.RELEASE_3X_TAG }}
 
     steps:
@@ -389,75 +387,15 @@ jobs:
 ################################################
 # Bootstrap namespace to v1.1.3-dev from backup
 ################################################
-  bootstrap-v1-bv0:
+  bootstrap-v3-bv2:
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
     needs:
-    - generate-metadata
-    with:
-      block_version: 0
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.release_1x_tag }}
-    secrets: inherit
-
-###############################################
-# Deploy v3.x to namespace at block v0
-###############################################
-  deploy-v3-bv0-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
-    needs:
-    - bootstrap-v1-bv0
-    - generate-metadata
-    with:
-      block_version: 0
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
-      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.RELEASE_3X_TAG }}
-    secrets: inherit
-
-  test-v3-bv0-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
-    needs:
-    - deploy-v3-bv0-release
-    - generate-metadata
-    with:
-      fog_distribution: false
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: true
-      testing_block_v2: false
-      testing_block_v3: false
-    secrets: inherit
-
-###############################################
-# Upgrade v3.x to block v2
-###############################################
-  update-v3-to-bv2:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
-    needs:
-    - test-v3-bv0-release
     - generate-metadata
     with:
       block_version: 2
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.RELEASE_3X_TAG }}
-    secrets: inherit
-
-  test-v3-bv2-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
-    needs:
-    - update-v3-to-bv2
-    - generate-metadata
-    with:
-      fog_distribution: false
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: false
-      testing_block_v2: true
-      testing_block_v3: false
+      version: ${{ needs.generate-metadata.outputs.release_3x_tag }}
     secrets: inherit
 
 ###############################################
@@ -466,7 +404,7 @@ jobs:
   deploy-current-bv2-release:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
-    - test-v3-bv2-release
+    - bootstrap-v3-bv2
     - charts
     - generate-metadata
     with:
