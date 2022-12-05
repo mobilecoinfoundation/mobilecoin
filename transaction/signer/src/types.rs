@@ -6,8 +6,7 @@ use mc_core::{
     account_id::AccountId,
 };
 use mc_crypto_ring_signature::{KeyImage};
-use mc_transaction_core::tx::Tx;
-use mc_transaction_extra::UnsignedTx;
+use mc_transaction_core::{tx::{Tx, TxPrefix}, ring_ct::{InputRing, OutputSecret}, BlockVersion};
 
 
 /// View account credentials for sync with full-service
@@ -52,6 +51,7 @@ pub struct TxoSyncReq {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoUnsynced {
     /// Subaddress for unsynced TxOut
+    #[serde(with = "u64_hex")]
     pub subaddress: u64,
 
     /// tx_out_public_key for unsynced TxOut
@@ -94,8 +94,17 @@ pub struct TxSignReq {
     #[cfg(nyet)]
     pub account_index: u32,
 
-    /// Unsigned transaction
-    pub tx: UnsignedTx,
+    /// The fully constructed TxPrefix.
+    pub tx_prefix: TxPrefix,
+
+    /// rings
+    pub rings: Vec<InputRing>,
+
+    /// Output secrets
+    pub output_secrets: Vec<OutputSecret>,
+
+    /// Block version
+    pub block_version: BlockVersion,
 }
 
 /// Transaction signing response, returned to full service
@@ -190,8 +199,27 @@ pub mod const_array_hex {
 }
 
 
+/// u64 hex encoding for serde (use via `#[serde(with = "u64_hex")]`)
+pub mod u64_hex {
+    use super::ConstArrayVisitor;
+
+    pub fn serialize<S: serde::ser::Serializer>(t: &u64, serializer: S) -> Result<S::Ok, S::Error> {
+        let b = t.to_le_bytes();
+        let s = hex::encode(b.as_ref());
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, 'a, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let v = deserializer.deserialize_str(ConstArrayVisitor::<8>{})?;
+
+        Ok(u64::from_le_bytes(v))
+    }
+}
 /// Serde visitor for hex encoded fixed length byte arrays
-pub struct ConstArrayVisitor<const N: usize = 32>;
+pub(crate) struct ConstArrayVisitor<const N: usize = 32>;
 
 /// Serde visitor implementation for fixed length arrays of hex-encoded bytes
 impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
@@ -208,6 +236,29 @@ impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
         let mut b = [0u8; N];
 
         hex::decode_to_slice(s, &mut b)
+            .map_err(|e| E::custom(e))?;
+
+        Ok(b)
+    }
+}
+
+
+/// Serde visitor for hex encoded variable length byte arrays
+pub(crate) struct VarArrayVisitor;
+
+/// Serde visitor implementation for variable length arrays of hex-encoded protobufs
+impl<'de> serde::de::Visitor<'de> for VarArrayVisitor {
+    type Value = Vec<u8>;
+
+    fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(
+            formatter,
+            concat!("A hex encoded array of bytes")
+        )
+    }
+
+    fn visit_str<E: serde::de::Error>(self, s: &str) -> Result<Self::Value, E> {
+        let b = hex::decode(s)
             .map_err(|e| E::custom(e))?;
 
         Ok(b)

@@ -4,11 +4,12 @@ use std::path::Path;
 
 use clap::Parser;
 use log::{debug};
+use mc_transaction_core::{ring_ct::{SignatureRctBulletproofs, SigningData, ExtendedMessageDigest}, TokenId, Amount, TxSummary};
 use serde::{
     Serialize,
     de::DeserializeOwned,
 };
-use rand_core::OsRng;
+use rand_core::{OsRng, CryptoRng, RngCore};
 
 use mc_core::{
     traits::{KeyImageComputer, ViewAccountProvider},
@@ -16,7 +17,7 @@ use mc_core::{
 use mc_crypto_ring_signature_signer::{RingSigner};
 
 pub use mc_transaction_extra::UnsignedTx;
-pub use mc_transaction_core::{AccountKey, tx::Tx};
+pub use mc_transaction_core::{AccountKey, tx::Tx, ring_ct::{Error as RingCtError}};
 
 pub mod types;
 use types::*;
@@ -147,16 +148,29 @@ impl Commands {
         let req: TxSignReq = read_input(input)?;
 
         // Sign transaction
-        let signed_tx = match req.tx.sign(&ctx, None, &mut OsRng{}) {
+        let prefix = req.tx_prefix.clone();
+        let signature = match SignatureRctBulletproofs::sign(
+            req.block_version,
+            &prefix,
+            req.rings.as_slice(),
+            req.output_secrets.as_slice(),
+            Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
+            &ctx,
+            &mut OsRng{},
+        ) {
             Ok(v) => v,
             Err(e) => {
                 return Err(anyhow::anyhow!("Failed to sign transaction: {:?}", e));
             }
         };
 
-        let resp = TxSignResp {
+        let resp = TxSignResp{
             account_id: req.account_id,
-            tx: signed_tx,
+            tx: Tx{
+                prefix,
+                signature,
+                fee_map_digest: vec![],
+            },
         };
 
         // Write signed transaction output
@@ -204,4 +218,27 @@ pub fn write_output(file_name: &str, value: &impl Serialize) -> anyhow::Result<(
     }
 
     Ok(())
+}
+
+impl TxSignReq {
+    /// Get prepared (but unsigned) ringct bulletproofs for later signing,
+    /// note only one instance of this must be used between operations.
+    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+        &self,
+        rng: &mut RNG,
+    ) -> Result<(SigningData, TxSummary, ExtendedMessageDigest), RingCtError> {
+        let fee_amount = Amount::new(
+            self.tx_prefix.fee,
+            TokenId::from(self.tx_prefix.fee_token_id),
+        );
+        SigningData::new_with_summary(
+            self.block_version,
+            &self.tx_prefix,
+            &self.rings,
+            &self.output_secrets,
+            fee_amount,
+            true,
+            rng,
+        )
+    }
 }
