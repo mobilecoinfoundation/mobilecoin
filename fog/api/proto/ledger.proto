@@ -35,7 +35,7 @@ message LedgerRequest {
     oneof request_data { 
         attest.AuthMessage auth = 1;
         attest.Message check_key_images = 2;
-        // TODO: Fill in block query service and merkele proof service.
+        // TODO: Fill in block query service and merkle proof service.
         // Potentially untrusted_tx_out_service? To be decided.     
     }
 }
@@ -44,12 +44,12 @@ message LedgerResponse {
     oneof response_data { 
         attest.AuthMessage auth = 1;
         attest.Message check_key_image_response = 2;
-        // TODO: Fill in block query service and merkele proof service.
+        // TODO: Fill in block query service and merkle proof service.
         // Potentially untrusted_tx_out_service? To be decided.     
     }
 }
 
-// Identical to FogViewStoreDecryptionError - TODO, determine if we should unify these types.
+// Identical to FogViewStoreDecryptionError
 message FogLedgerStoreDecryptionError {
     /// The FogLedgerStoreUri for the specific Fog Ledger Store that
     /// tried to decrypt the MultiKeyImageStoreRequest and failed.
@@ -70,14 +70,16 @@ message MultiKeyImageStoreRequest {
 
 /// The status associated with a MultiViewStoreQueryResponse
 enum MultiKeyImageStoreResponseStatus {
+    /// Ensure default value (unfilled status) doesn't falsely appear to be a success 
+    UNKNOWN = 0;
     /// The Fog Ledger Store successfully fulfilled the request.
-    SUCCESS = 0;
+    SUCCESS = 1;
     /// The Fog Ledger Store is unable to decrypt a query within the MultiKeyImageStoreRequest. It needs to be authenticated
     /// by the router.
-    AUTHENTICATION_ERROR = 1;
+    AUTHENTICATION_ERROR = 2;
     /// The Fog Ledger Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
     /// not loaded enough blocks yet.
-    NOT_READY = 2;
+    NOT_READY = 3;
 }
 
 message MultiKeyImageStoreResponse {
@@ -86,11 +88,11 @@ message MultiKeyImageStoreResponse {
     //  query. This is an encrypted CheckKeyImagesResponse.
     attest.NonceMessage query_response = 1;
 
-    /// The FogViewStoreUri for the specific Fog View Store that
-    /// tried to decrypt the MultiViewStoreQueryRequest and failed.
+    /// The FogLedgerStore for the specific Fog View Store that
+    /// tried to decrypt the MultiLedgerStoreQueryRequest and failed.
     /// The client should subsequently authenticate with the machine
     /// described by this URI.
-    string fog_ledger_store_uri = 2;
+    string store_uri = 2;
 
     /// Status that gets returned when the Fog Ledger Store services a MultiKeyImageStoreRequest.
     MultiKeyImageStoreResponseStatus status = 3;
