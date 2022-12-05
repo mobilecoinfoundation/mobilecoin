@@ -8,13 +8,13 @@ use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from, typenum::U32, LengthMismatch,
 };
+use zeroize::Zeroize;
 
 #[cfg(feature = "prost")]
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroize;
 
 #[derive(Clone, Copy, Default, Digestible, Zeroize)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]

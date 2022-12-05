@@ -34,7 +34,7 @@ pub struct ReducedTxOut {
 /// MLSAG for a ring of public keys and amount commitments.
 /// Note: Serialize and Deserialize appear to be cruft left over from
 /// sdk_json_interface.
-#[derive(Clone, Digestible, PartialEq, Eq, Serialize, Deserialize, Message, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
     #[prost(message, required, tag = "1")]
