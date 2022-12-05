@@ -15,7 +15,7 @@ use mc_util_repr_bytes::{
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{
     amount::MaskedAmount,
@@ -103,8 +103,9 @@ impl fmt::Debug for TxHash {
 }
 
 /// A CryptoNote-style transaction.
-#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible, Zeroize)]
-#[zeroize(drop)]
+#[derive(
+    Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible, Zeroize, ZeroizeOnDrop,
+)]
 pub struct Tx {
     /// The transaction contents.
     #[prost(message, required, tag = "1")]
