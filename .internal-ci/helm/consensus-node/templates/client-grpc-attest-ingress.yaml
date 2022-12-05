@@ -1,11 +1,15 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
+# split out attest endpoint for client port so we can set rate limiting.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "consensusNode.fullname" . }}-client-grpc
+  name: {{ include "consensusNode.fullname" . }}-client-grpc-attest
   annotations:
     {{- if .Values.global.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
+    {{- end }}
+    {{- if .Values.node.client.attest.rateLimits.enabled }}
+    {{- toYaml .Values.node.client.attest.rateLimits.annotations | nindent 4 }}
     {{- end }}
     {{- toYaml .Values.node.client.ingress.annotations | nindent 4 }}
   labels:
@@ -19,21 +23,7 @@ spec:
   - host: {{ include "consensusNode.clientHostname" . }}
     http:
       paths:
-      - path: /build_info.BuildInfoApi
-        pathType: Prefix
-        backend:
-          service:
-            name: {{ include "consensusNode.fullname" . }}
-            port:
-              number: 3223
-      - path: /consensus_common.BlockchainAPI
-        pathType: Prefix
-        backend:
-          service:
-            name: {{ include "consensusNode.fullname" . }}
-            port:
-              number: 3223
-      - path: /consensus_client.ConsensusClientAPI
+      - path: /attest.AttestedApi
         pathType: Prefix
         backend:
           service:
