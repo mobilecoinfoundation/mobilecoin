@@ -2930,7 +2930,7 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let outputs = tx.prefix.outputs;
+            let outputs = tx.prefix.outputs.clone();
             let mut expected_outputs = outputs.clone();
             expected_outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
             assert_eq!(outputs, expected_outputs);
@@ -2961,7 +2961,7 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let inputs = tx.prefix.inputs;
+            let inputs = tx.prefix.inputs.clone();
             let mut expected_inputs = inputs.clone();
             expected_inputs.sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
             assert_eq!(inputs, expected_inputs);

@@ -4137,7 +4137,7 @@ mod test {
         {
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
             let key_images = tx_proposal.tx.key_images();
-            let outputs = tx_proposal.tx.prefix.outputs;
+            let outputs = tx_proposal.tx.prefix.outputs.clone();
             add_txos_and_key_images_to_ledger(
                 &mut ledger_db,
                 BLOCK_VERSION,
@@ -5286,7 +5286,7 @@ mod test {
 
         let submitted_tx = opt_submitted_tx.unwrap();
         let mut change_subaddress_found = false;
-        for tx_out in submitted_tx.prefix.outputs {
+        for tx_out in submitted_tx.prefix.outputs.iter() {
             let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
             let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
