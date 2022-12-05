@@ -19,7 +19,7 @@ service LedgerAPI {
 }
 
 service LedgerRouterAdminAPI {
-    // Adds a shard to the Fog View Router's list of shards to query.
+    // Adds a shard to the Fog Ledger Router's list of shards to query.
     rpc addShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
 }
 
@@ -61,14 +61,14 @@ message FogLedgerStoreDecryptionError {
     string error_message = 2;
 }
 
-// Identical to MultiViewStoreQueryRequest - TODO, determine if we should unify these types.
+// Identical to MultiViewStoreQueryRequest
 message MultiKeyImageStoreRequest {
     /// A list of queries encrypted for Fog Ledger Stores.
     repeated attest.NonceMessage queries = 1;
 }
 
 
-/// The status associated with a MultiViewStoreQueryResponse
+/// The status associated with a MultiKeyImageStoreQueryResponse
 enum MultiKeyImageStoreResponseStatus {
     /// Ensure default value (unfilled status) doesn't falsely appear to be a success 
     UNKNOWN = 0;
@@ -77,7 +77,7 @@ enum MultiKeyImageStoreResponseStatus {
     /// The Fog Ledger Store is unable to decrypt a query within the MultiKeyImageStoreRequest. It needs to be authenticated
     /// by the router.
     AUTHENTICATION_ERROR = 2;
-    /// The Fog Ledger Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
+    /// The Fog Ledger Store is not ready to service a MultiLedgerStoreQueryRequest. This might be because the store has
     /// not loaded enough blocks yet.
     NOT_READY = 3;
 }
@@ -88,7 +88,7 @@ message MultiKeyImageStoreResponse {
     //  query. This is an encrypted CheckKeyImagesResponse.
     attest.NonceMessage query_response = 1;
 
-    /// The FogLedgerStore for the specific Fog View Store that
+    /// The FogLedgerStore for the specific Fog Ledger Store that
     /// tried to decrypt the MultiLedgerStoreQueryRequest and failed.
     /// The client should subsequently authenticate with the machine
     /// described by this URI.
