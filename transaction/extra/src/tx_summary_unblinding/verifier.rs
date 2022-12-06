@@ -307,7 +307,7 @@ impl TxSummaryStreamingVerifier {
     ///
     /// Arguments:
     /// * fee (from TxSummary)
-    /// * tombstone_block (from Txsummary)
+    /// * tombstone_block (from TxSummary)
     ///
     /// Returns:
     /// * extended-message-and-tx-summary digest
