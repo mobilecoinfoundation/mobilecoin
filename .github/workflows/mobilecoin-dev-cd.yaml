@@ -385,7 +385,7 @@ jobs:
         chart_path: .internal-ci/helm/${{ matrix.chart }}
 
 ################################################
-# Bootstrap namespace to v1.1.3-dev from backup
+# Bootstrap namespace to v3.0.0-dev from backup
 ################################################
   bootstrap-v3-bv2:
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
