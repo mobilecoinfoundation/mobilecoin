@@ -57,7 +57,6 @@ retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
 url = "2.3"
-itertools = "0.10"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
