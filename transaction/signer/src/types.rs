@@ -51,7 +51,6 @@ pub struct TxoSyncReq {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoUnsynced {
     /// Subaddress for unsynced TxOut
-    #[serde(with = "u64_hex")]
     pub subaddress: u64,
 
     /// tx_out_public_key for unsynced TxOut
@@ -199,25 +198,6 @@ pub mod const_array_hex {
 }
 
 
-/// u64 hex encoding for serde (use via `#[serde(with = "u64_hex")]`)
-pub mod u64_hex {
-    use super::ConstArrayVisitor;
-
-    pub fn serialize<S: serde::ser::Serializer>(t: &u64, serializer: S) -> Result<S::Ok, S::Error> {
-        let b = t.to_le_bytes();
-        let s = hex::encode(b.as_ref());
-        serializer.serialize_str(&s)
-    }
-
-    pub fn deserialize<'de, 'a, D>(deserializer: D) -> Result<u64, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        let v = deserializer.deserialize_str(ConstArrayVisitor::<8>{})?;
-
-        Ok(u64::from_le_bytes(v))
-    }
-}
 /// Serde visitor for hex encoded fixed length byte arrays
 pub(crate) struct ConstArrayVisitor<const N: usize = 32>;
 
