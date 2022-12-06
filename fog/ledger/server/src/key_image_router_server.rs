@@ -51,6 +51,7 @@ impl KeyImageRouterServer {
         let ledger_router_service = ledger_grpc::create_ledger_api(KeyImageRouterService::new(
             enclave,
             shards.clone(),
+            config.query_retries,
             logger.clone(),
         ));
         log::debug!(logger, "Constructed Key Image Router GRPC Service");
