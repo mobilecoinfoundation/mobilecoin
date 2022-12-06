@@ -2,10 +2,11 @@
 
 //! Command line configuration for the consensus mint client.
 
-use crate::{FogContext, MintConfigTxFile, TxFile};
+use crate::FogContext;
 use clap::{Args, Parser, Subcommand};
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
+use mc_consensus_mint_client_types::{MintConfigTxFile, TxFile};
 use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
     DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,

@@ -2933,6 +2933,7 @@ dependencies = [
  "mc-common",
  "mc-consensus-api",
  "mc-consensus-enclave-api",
+ "mc-consensus-mint-client-types",
  "mc-consensus-service-config",
  "mc-crypto-keys",
  "mc-crypto-multisig",
@@ -2949,6 +2950,19 @@ dependencies = [
  "pem",
  "protobuf",
  "rand 0.8.5",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "mc-consensus-mint-client-types"
+version = "2.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "mc-consensus-service-config",
+ "mc-crypto-keys",
+ "mc-transaction-core",
  "serde",
  "serde_json",
 ]
