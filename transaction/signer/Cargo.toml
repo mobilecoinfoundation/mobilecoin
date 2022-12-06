@@ -1,0 +1,39 @@
+[package]
+name = "mc-transaction-signer"
+version = "2.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[features]
+
+
+[dependencies]
+# External dependencies
+anyhow = "1.0.61"
+displaydoc = { version = "0.2", default-features = false }
+serde = { version = "1.0",  default-features = false, features = ["derive"] }
+serde_json = "*"
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
+clap = { version = "4.0.18", features = [ "derive" ]}
+tiny-bip39 = "1.0"
+log = "0.4.17"
+hex = { version = "0.4.2", default_features = false }
+rand_core = "0.6.4"
+
+# MobileCoin dependencies
+mc-account-keys = { path = "../../account-keys" }
+mc-common = { path = "../../common", default-features = false, features = ["loggers"] }
+mc-core = { path = "../../core", features = [ "serde" ] }
+mc-core-types = { path = "../../core/types", features = [ "serde" ] }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-extra = { path = "../../transaction/extra" }
+mc-util-serial = { path = "../../util/serial", default-features = false }
+
+[[bin]]
+name = "mc-transaction-signer"
+path = "src/main.rs"
