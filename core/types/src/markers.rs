@@ -18,9 +18,9 @@ pub struct View;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Spend;
 
-/// Transaction key marker type
+/// TxOut key marker type
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Tx;
+pub struct TxOut;
 
 /// Transaction public key marker type
 #[derive(Copy, Clone, PartialEq, Debug)]

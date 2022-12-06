@@ -30,9 +30,9 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPrivate) {
     type Output = (SubaddressViewPrivate, SubaddressSpendPrivate);
 
     fn subaddress(&self, index: u64) -> Self::Output {
-        let (view_private, spend_private) = (&self.0, &self.1);
+        let (view_private, spend_private) = (self.0, self.1);
 
-        let a: &Scalar = view_private.as_ref();
+        let a = Scalar::from(view_private);
 
         // `Hs(a || n)`
         let Hs: Scalar = {
@@ -45,7 +45,7 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPrivate) {
         };
 
         // Return private subaddress keys
-        let b: &Scalar = spend_private.as_ref();
+        let b = Scalar::from(spend_private);
         (
             SubaddressViewPrivate::from(RistrettoPrivate::from(a * (Hs + b))),
             SubaddressSpendPrivate::from(RistrettoPrivate::from(Hs + b)),
@@ -58,10 +58,10 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPublic) {
     type Output = (SubaddressViewPublic, SubaddressSpendPublic);
 
     fn subaddress(&self, index: u64) -> Self::Output {
-        let (view_private, spend_public) = (&self.0, &self.1);
+        let (view_private, spend_public) = (self.0, self.1);
 
         // Generate spend public
-        let a: &Scalar = view_private.as_ref();
+        let a = Scalar::from(view_private);
 
         // `Hs(a || n)`
         let Hs: Scalar = {
@@ -77,7 +77,7 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPublic) {
         let B = RistrettoPublic::from(&b);
 
         // Return public subaddress keys
-        let C: RistrettoPoint = B.as_ref() + spend_public.as_ref();
+        let C: RistrettoPoint = B.as_ref() + &RistrettoPoint::from(spend_public);
         (
             SubaddressViewPublic::from(RistrettoPublic::from(a * C)),
             SubaddressSpendPublic::from(RistrettoPublic::from(C)),

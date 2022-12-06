@@ -37,9 +37,9 @@ pub type RootViewPublic = Key<Root, View, RistrettoPublic>;
 pub type RootSpendPublic = Key<Root, Spend, RistrettoPublic>;
 
 /// TxOut public key
-pub type TxOutPublic = Key<Tx, Public, RistrettoPublic>;
+pub type TxOutPublic = Key<TxOut, Public, RistrettoPublic>;
 /// TxOut target public key
-pub type TxOutTargetPublic = Key<Tx, Target, RistrettoPublic>;
+pub type TxOutTargetPublic = Key<TxOut, Target, RistrettoPublic>;
 
 /// Generic key object, see type aliases for use
 #[derive(Clone, Debug, Zeroize)]
@@ -158,10 +158,10 @@ impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPublic> {
     }
 }
 
-/// Access underlying [`RistrettoPoint`] for public keys using [`AsRef`]
-impl<ADDR, KIND> AsRef<RistrettoPoint> for Key<ADDR, KIND, RistrettoPublic> {
-    fn as_ref(&self) -> &RistrettoPoint {
-        self.key.as_ref()
+/// Access underlying [`RistrettoPoint`] for public key containers
+impl<ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPublic>> for RistrettoPoint {
+    fn from(k: &Key<ADDR, KIND, RistrettoPublic>) -> Self {
+        *k.key.as_ref()
     }
 }
 
@@ -186,7 +186,7 @@ impl<ADDR, KIND> PartialEq<Key<ADDR, KIND, RistrettoPublic>> for RistrettoPublic
     }
 }
 
-/// [`core::fmt::Display`] for public key objects
+/// [core::fmt::Display] for public key objects
 impl<ADDR, KIND> Display for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
@@ -197,7 +197,7 @@ impl<ADDR, KIND> Display for Key<ADDR, KIND, RistrettoPublic> {
     }
 }
 
-/// [`core::fmt::LowerHex`] for public key objects
+/// [core::fmt::LowerHex] for public key objects
 impl<ADDR, KIND> core::fmt::LowerHex for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
@@ -208,7 +208,7 @@ impl<ADDR, KIND> core::fmt::LowerHex for Key<ADDR, KIND, RistrettoPublic> {
     }
 }
 
-/// [`core::fmt::UpperHex`] for public key objects
+/// [core::fmt::UpperHex] for public key objects
 impl<ADDR, KIND> core::fmt::UpperHex for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
@@ -251,7 +251,7 @@ impl<ADDR, KIND> From<Key<ADDR, KIND, RistrettoPrivate>> for Key<ADDR, KIND, Ris
 }
 
 /// Attempt to create a private key from a compressed point, wrapping
-/// [`RistrettoPrivate::try_from`]
+/// [RistrettoPrivate::try_from]
 impl<ADDR, KIND> TryFrom<&[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
     type Error = KeyError;
 
@@ -266,7 +266,7 @@ impl<ADDR, KIND> TryFrom<&[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
 }
 
 /// Attempt to create a private key from a compressed point, wrapping
-/// [`RistrettoPrivate::try_from`]
+/// [RistrettoPrivate::try_from]
 impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
     type Error = KeyError;
 
@@ -275,14 +275,14 @@ impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
     }
 }
 
-/// Access underlying [`Scalar`] for private keys using [`AsRef`]
-impl<ADDR, KIND> AsRef<Scalar> for Key<ADDR, KIND, RistrettoPrivate> {
-    fn as_ref(&self) -> &Scalar {
-        self.key.as_ref()
+/// Access underlying [Scalar] for private key objects
+impl <ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPrivate>> for Scalar {
+    fn from(k: &Key<ADDR, KIND, RistrettoPrivate>) -> Self {
+        *k.key.as_ref()
     }
 }
 
-/// Create private keys from raw [`Scalar`]
+/// Create a private key from raw [Scalar]
 impl<ADDR, KIND> From<Scalar> for Key<ADDR, KIND, RistrettoPrivate> {
     fn from(s: Scalar) -> Self {
         Self {
@@ -293,35 +293,35 @@ impl<ADDR, KIND> From<Scalar> for Key<ADDR, KIND, RistrettoPrivate> {
     }
 }
 
-/// [`PartialEq`] via public key conversion for Private key objects
+/// [PartialEq] via public key conversion for Private key objects
 impl<ADDR, KIND> PartialEq for Key<ADDR, KIND, RistrettoPrivate> {
     fn eq(&self, other: &Self) -> bool {
         RistrettoPublic::from(&self.key) == RistrettoPublic::from(&other.key)
     }
 }
 
-/// PartialEq for backwards compatibility with private key objects
+/// [PartialEq] for backwards compatibility with private key objects
 impl<ADDR, KIND> PartialEq<RistrettoPrivate> for Key<ADDR, KIND, RistrettoPrivate> {
     fn eq(&self, other: &RistrettoPrivate) -> bool {
         RistrettoPublic::from(&self.key) == RistrettoPublic::from(other)
     }
 }
 
-/// PartialEq for backwards compatibility with private key objects
+/// [PartialEq] for backwards compatibility with private key objects
 impl<ADDR, KIND> PartialEq<Key<ADDR, KIND, RistrettoPrivate>> for RistrettoPrivate {
     fn eq(&self, other: &Key<ADDR, KIND, RistrettoPrivate>) -> bool {
         RistrettoPublic::from(self) == RistrettoPublic::from(&other.key)
     }
 }
 
-/// [`core::fmt::Display`] for private key objects
+/// [core::fmt::Display] for private key objects
 impl<ADDR, KIND> Display for Key<ADDR, KIND, RistrettoPrivate> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "pub({})", RistrettoPublic::from(&self.key))
     }
 }
 
-/// [`serde::Serialize`] implementation for private key types
+/// [serde::Serialize] implementation for private key types
 #[cfg(feature = "serde")]
 impl<ADDR, KIND> serde::ser::Serialize for Key<ADDR, KIND, RistrettoPrivate> {
     fn serialize<S: serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -329,7 +329,7 @@ impl<ADDR, KIND> serde::ser::Serialize for Key<ADDR, KIND, RistrettoPrivate> {
     }
 }
 
-/// [`serde::Serialize`] implementation for public key types
+/// [serde::Serialize] implementation for public key types
 #[cfg(feature = "serde")]
 impl<ADDR, KIND> serde::ser::Serialize for Key<ADDR, KIND, RistrettoPublic> {
     fn serialize<S: serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -337,7 +337,7 @@ impl<ADDR, KIND> serde::ser::Serialize for Key<ADDR, KIND, RistrettoPublic> {
     }
 }
 
-/// [`serde::Deserialize`] implementation for all key types
+/// [serde::Deserialize] implementation for all key types
 #[cfg(feature = "serde")]
 impl<'de, ADDR, KIND, KEY> serde::de::Deserialize<'de> for Key<ADDR, KIND, KEY>
 where
@@ -362,7 +362,7 @@ where
 #[cfg(feature = "serde")]
 struct KeyVisitor<KEY>(PhantomData<KEY>);
 
-/// Visitor implementation for [`Key`] types supporting `TryFrom<&[u8]>`
+/// Visitor implementation for [Key] types supporting `TryFrom<&[u8]>`
 #[cfg(feature = "serde")]
 impl<'de, KEY> serde::de::Visitor<'de> for KeyVisitor<KEY>
 where
@@ -386,7 +386,7 @@ where
     }
 }
 
-/// Expose [`prost::Message`] for internal `KEY` types implementing this
+/// [Key] implementation of [prost::Message] when its inner `KEY` type implements [prost::Message].
 #[cfg(feature = "prost")]
 impl<ADDR, KIND, KEY> prost::Message for Key<ADDR, KIND, KEY>
 where
