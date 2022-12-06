@@ -96,6 +96,11 @@ pub struct LedgerRouterConfig {
     #[clap(long)]
     pub admin_listen_uri: AdminUri,
 
+    /// Number of query attempts with no forward progress before reporting an
+    /// error.
+    #[clap(long, default_value = "3")]
+    pub query_retries: usize,
+
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
     /// About 75% of this capacity can be used.
