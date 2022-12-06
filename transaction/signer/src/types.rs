@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Serializable types for sync between full-service and offline / hardware
 //! wallet implementations.
 
@@ -144,6 +146,9 @@ pub struct TxSignResp {
 
     /// Signed transaction
     pub tx: Tx,
+
+    /// Mapping of real Tx public keys to key images
+    pub txos: Vec<TxoSynced>,
 }
 
 /// Public key hex encoding support for serde

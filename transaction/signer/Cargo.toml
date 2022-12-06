@@ -7,20 +7,19 @@ readme = "README.md"
 
 [features]
 
-
 [dependencies]
 # External dependencies
 anyhow = "1.0.61"
+clap = { version = "4.0.18", features = [ "derive" ] }
 displaydoc = { version = "0.2", default-features = false }
-serde = { version = "1.0",  default-features = false, features = ["derive"] }
+hex = { version = "0.4.2", default_features = false }
+log = "0.4.17"
+rand_core = "0.6.4"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "*"
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1", default-features = false }
-clap = { version = "4.0.18", features = [ "derive" ]}
 tiny-bip39 = "1.0"
-log = "0.4.17"
-hex = { version = "0.4.2", default_features = false }
-rand_core = "0.6.4"
+zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }

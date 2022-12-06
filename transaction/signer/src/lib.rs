@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Transaction signer types, used for communication with external signer
 //! implementations
 
@@ -5,15 +7,21 @@ use std::path::Path;
 
 use clap::Parser;
 use log::debug;
-use mc_transaction_core::{
-    ring_ct::{ExtendedMessageDigest, SignatureRctBulletproofs, SigningData},
-    Amount, TokenId, TxSummary,
-};
+
+use mc_crypto_keys::RistrettoPublic;
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 
+use mc_core::keys::TxOutPublic;
 use mc_crypto_ring_signature_signer::RingSigner;
-use mc_transaction_core::{ring_ct::Error as RingCtError, tx::Tx};
+use mc_transaction_core::{
+    ring_ct::{
+        Error as RingCtError, ExtendedMessageDigest, InputRing, SignatureRctBulletproofs,
+        SigningData,
+    },
+    tx::Tx,
+    Amount, TokenId, TxSummary,
+};
 
 pub mod types;
 use types::*;
@@ -169,6 +177,22 @@ impl Commands {
             }
         };
 
+        // Map key images to real inputs via public key
+        let mut txos = vec![];
+        for (i, r) in req.rings.iter().enumerate() {
+            let tx_out_public_key = match r {
+                InputRing::Signable(r) => r.members[r.real_input_index].public_key,
+                InputRing::Presigned(_) => panic!("Pre-signed rings unsupported"),
+            };
+
+            txos.push(TxoSynced {
+                tx_out_public_key: TxOutPublic::from(
+                    RistrettoPublic::try_from(&tx_out_public_key).unwrap(),
+                ),
+                key_image: signature.ring_signatures[i].key_image,
+            });
+        }
+
         let resp = TxSignResp {
             account_id: req.account_id,
             tx: Tx {
@@ -176,6 +200,7 @@ impl Commands {
                 signature,
                 fee_map_digest: vec![],
             },
+            txos,
         };
 
         // Write signed transaction output
