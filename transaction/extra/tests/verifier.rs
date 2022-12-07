@@ -148,7 +148,7 @@ fn test_max_size_tx_payload_sizes() {
 }
 
 #[bench]
-fn bench_max_size_zeroize(b: &mut Bencher) {
+fn bench_max_size_clone_and_zeroize(b: &mut Bencher) {
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
     let (unsigned_tx, _sender, _recipient) = get_current_max_size_transaction(&mut rng);
@@ -164,6 +164,25 @@ fn bench_max_size_zeroize(b: &mut Bencher) {
     };
 
     b.iter(|| tx.clone());
+}
+
+#[bench]
+fn bench_max_size_clone_no_zeroize(b: &mut Bencher) {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let (unsigned_tx, _sender, _recipient) = get_current_max_size_transaction(&mut rng);
+    let (signing_data, _tx_summary, _tx_summary_unblinding_data, _extended_message_digest) =
+        unsigned_tx.get_signing_data(&mut rng).unwrap();
+    let signature_rct = signing_data
+        .sign(&unsigned_tx.rings, &NoKeysRingSigner {}, &mut rng)
+        .unwrap();
+    let tx = Tx {
+        prefix: unsigned_tx.tx_prefix.clone(),
+        signature: signature_rct,
+        fee_map_digest: Default::default(),
+    };
+
+    b.iter(|| std::mem::forget(tx.clone()));
 }
 
 #[test]
