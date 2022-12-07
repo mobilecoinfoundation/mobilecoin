@@ -1304,7 +1304,7 @@ mod test_build_transaction_helper {
 
             // Each TxIn should contain a ring of `ring_size` elements. If `ring_size` is
             // zero, the ring will have size 1 after the input is included.
-            for tx_in in tx.prefix.inputs {
+            for tx_in in tx.prefix.inputs.iter() {
                 assert_eq!(tx_in.ring.len(), ring_size);
             }
 
