@@ -234,9 +234,8 @@ impl TxSummaryStreamingVerifier {
             {
                 return Err(Error::AmountVerificationFailed);
             }
-            let amount = Amount::new(value, token_id.into());
             self.report
-                .balance_add(TransactionEntity::Swap, amount.token_id, amount.value)?;
+                .balance_add(TransactionEntity::Swap, token_id.into(), value)?;
         }
 
         // We've now verified the tx_out_summary and added it to the report.
@@ -279,19 +278,16 @@ impl TxSummaryStreamingVerifier {
         if expected_commitment != tx_in_summary.pseudo_output_commitment {
             return Err(Error::AmountVerificationFailed);
         }
-        let amount = Amount::new(value, token_id.into());
 
         // Now understand whose input this is. There are two cases
-        if !tx_in_summary.input_rules_digest.is_empty() {
-            self.report
-                .balance_subtract(TransactionEntity::Swap, amount.token_id, amount.value)?;
+        let entity = if tx_in_summary.input_rules_digest.is_empty() {
+            TransactionEntity::Ourself
         } else {
-            self.report.balance_subtract(
-                TransactionEntity::Ourself,
-                amount.token_id,
-                amount.value,
-            )?;
-        }
+            TransactionEntity::Swap
+        };
+
+        self.report
+            .balance_subtract(entity, token_id.into(), value)?;
 
         // We've now verified the tx_in_summary and added it to the report.
         // Now we need to add it to the digest

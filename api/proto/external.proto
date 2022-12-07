@@ -613,13 +613,11 @@ message UnsignedTx {
     /// A "ring" of transaction outputs.
     repeated InputRing rings = 2;
 
-    /// The amount and blinding factors of each of the outputs we are creating.
-    repeated OutputSecret output_secrets = 3 [deprecated = true];
-
     /// The block version that this transaction is valid for.
     uint32 block_version = 4;
 
     /// The unblinding data for each of the outputs we are creating.
+    /// This also contains the output secrets needed for building the signature.
     repeated TxOutSummaryUnblindingData tx_out_unblinding_data = 5;
 }
 
