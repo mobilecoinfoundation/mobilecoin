@@ -33,7 +33,7 @@ mc-attest-net = { path = "../net" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 rand_hc = "0.3"
 sha2 = { version = "0.10", default-features = false }
 
