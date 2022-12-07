@@ -310,7 +310,7 @@ pub fn initialize_ledger(
                 );
 
                 let key_images = tx.key_images();
-                (tx.prefix.outputs, key_images)
+                (tx.prefix.outputs.clone(), key_images)
             }
             None => {
                 // Create an origin block.

@@ -102,7 +102,7 @@ pub struct SignedInputRing {
 /// having the view private key for a set of input TxOuts, and it can then be
 /// moved to a separate machine/service that then takes it + the spend private
 /// key and uses that to generate a fully signed transaction.
-#[derive(Clone, Debug, Deserialize, Digestible, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
 pub struct SigningData {
     /// The bytes actually signed by MLSAG signatures.
     /// This is different depending on what block version we are in.
@@ -507,7 +507,7 @@ impl SigningData {
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
     #[prost(message, repeated, tag = "1")]

@@ -10,7 +10,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPubli
 use prost::Message;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::{
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
@@ -34,7 +34,7 @@ pub struct ReducedTxOut {
 /// MLSAG for a ring of public keys and amount commitments.
 /// Note: Serialize and Deserialize appear to be cruft left over from
 /// sdk_json_interface.
-#[derive(Clone, Digestible, PartialEq, Eq, Serialize, Deserialize, Message)]
+#[derive(Clone, Deserialize, Digestible, Message, PartialEq, Eq, Serialize, Zeroize)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
     #[prost(message, required, tag = "1")]
