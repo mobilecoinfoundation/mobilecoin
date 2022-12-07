@@ -77,7 +77,7 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPublic) {
         let B = RistrettoPublic::from(&b);
 
         // Return public subaddress keys
-        let C: RistrettoPoint = B.as_ref() + &RistrettoPoint::from(spend_public);
+        let C: RistrettoPoint = B.as_ref() + RistrettoPoint::from(spend_public);
         (
             SubaddressViewPublic::from(RistrettoPublic::from(a * C)),
             SubaddressSpendPublic::from(RistrettoPublic::from(C)),
