@@ -313,7 +313,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &excluded_tx_out_indices,
             )?
         };
-        log::trace!(logger, "Got {} rings", rings.len());
+        log::trace!(logger, "Got {} rings!", rings.len());
 
         // Come up with tombstone block.
         let tombstone_block = if opt_tombstone > 0 {
