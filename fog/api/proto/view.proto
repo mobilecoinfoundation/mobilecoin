@@ -20,12 +20,7 @@ service FogViewRouterAPI {
 
 service FogViewRouterAdminAPI {
     // Adds a shard to the Fog View Router's list of shards to query.
-    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
-}
-
-message AddShardRequest {
-    // The shard's URI in string format.
-    string shard_uri = 1;
+    rpc addShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
 }
 
 message FogViewRouterRequest {
