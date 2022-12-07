@@ -71,7 +71,7 @@ impl<'a> MlsagSignParams<'a> {
         ring.check()?;
 
         // Setup signing context
-        let mut sign_ctx = MlsagSignCtx::init(&self, rng, responses)?;
+        let mut sign_ctx = MlsagSignCtx::init(self, rng, responses)?;
 
         // Iterate around the ring, starting at real_index.
         // NOTE: THIS REORDERING IS CRITICAL FOR PIECEWISE COMPUTATION
@@ -79,11 +79,11 @@ impl<'a> MlsagSignParams<'a> {
             let i = (self.real_index + n) % ring_size;
             let tx_out = &ring.index(i)?;
 
-            sign_ctx.update(&self, i, tx_out)?;
+            sign_ctx.update(self, i, tx_out)?;
         }
 
         // "Close the loop" by computing responses for the real index.
-        let (key_image, c_zero) = sign_ctx.finalise(&self)?;
+        let (key_image, c_zero) = sign_ctx.finalise(self)?;
 
         Ok((key_image, c_zero))
     }
@@ -256,7 +256,7 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
 
         // Cache the real input for balance checking
         if i == *real_index {
-            self.real_input = Some(tx_out.clone());
+            self.real_input = Some(*tx_out);
         }
 
         // This logic is a little strange because we're generating the (i+1)th
@@ -266,16 +266,16 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
         // If the next entry is the real entry, store the challenge for balance checking
         if (i + 1) % ring_size == *real_index {
             // Cache real challenge
-            self.real_challenge = Some(c.clone());
+            self.real_challenge = Some(c);
         }
 
         // If the next entry is the zeroth entry, store c_zero
         if (i + 1) % ring_size == 0 {
-            self.zeroth_challenge = Some(c.clone());
+            self.zeroth_challenge = Some(c);
         }
 
         // Store the generated challenge for the next iteration
-        self.last_challenge = Some(c.clone());
+        self.last_challenge = Some(c);
 
         self.ring_count += 1;
 
@@ -328,7 +328,7 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
 
         self.complete = true;
 
-        Ok((self.key_image.clone(), CurveScalar::from(_c_zero)))
+        Ok((self.key_image, CurveScalar::from(_c_zero)))
     }
 
     /// Fetch responses from a -completed- signer context

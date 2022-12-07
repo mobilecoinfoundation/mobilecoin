@@ -100,7 +100,7 @@ impl<'a, R: Ring> MlsagVerify<'a, R> {
                 + c_i * (output_commitment.point - input_commitment.point);
 
             recomputed_c[(i + 1) % ring_size] =
-                challenge(self.message, &self.key_image, &L0, &R0, &L1);
+                challenge(self.message, self.key_image, &L0, &R0, &L1);
         }
 
         let res = match self.c_zero.scalar == recomputed_c[0] {
