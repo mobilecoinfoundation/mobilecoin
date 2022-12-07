@@ -618,6 +618,7 @@ message UnsignedTx {
 
     /// The unblinding data for each of the outputs we are creating.
     /// This also contains the output secrets needed for building the signature.
+    /// (Those were previously at tag value 3)
     repeated TxOutSummaryUnblindingData tx_out_unblinding_data = 5;
 }
 
