@@ -85,7 +85,7 @@ fn purge_expired_cert(path: &Path) {
             .last()
             .expect("no certs")
             .not_after()
-            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {:?}", e));
+            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {e:?}"));
         Utc.with_ymd_and_hms(
             ts.year as i32,
             ts.month as u32,
@@ -95,7 +95,7 @@ fn purge_expired_cert(path: &Path) {
             ts.second as u32,
         )
         .single()
-        .expect("Invalid expiration time for chrono crate.")
+        .unwrap_or_else(|| panic!("Invalid expiration time: {ts:?}."))
     }) {
         Ok(not_after) => {
             let utc_now = Utc::now();
