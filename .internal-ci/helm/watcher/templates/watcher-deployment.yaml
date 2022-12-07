@@ -94,7 +94,7 @@ spec:
               mountPath: /config
 {{- if eq $.Values.watcher.backupEnabled true }}
         - name: watcherdb-backup
-          image: "amazon/aws-cli:2.0.19"
+          image: "mobilecoin/infra-replication-sidecar:v0.0.4"
           imagePullPolicy: Always
           command: [ "/bin/bash" ]
           env:

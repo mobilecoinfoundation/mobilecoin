@@ -11,12 +11,15 @@ data:
     #!/bin/bash
     set -e
 
-    YEAR=$(date '+%Y')
-    MONTH=$(date '+%m')
-    DAY=$(date '+%d')
-    HOUR=$(date '+%H')
-    MINUTE=$(date '+%M')
-    SECOND=$(date '+%S')
+    MDB_STAT="/usr/bin/mdb_stat"
+    EPOCH=`date '+%s'`
+
+    YEAR=$(date -d@$EPOCH '+%Y')
+    MONTH=$(date -d@$EPOCH '+%m')
+    DAY=$(date -d@$EPOCH '+%d')
+    HOUR=$(date -d@$EPOCH '+%H')
+    MINUTE=$(date -d@$EPOCH '+%M')
+    SECOND=$(date -d@$EPOCH '+%S')
 
     BACKUP_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/${YEAR}/${MONTH}/${DAY}/backup-${YEAR}${MONTH}${DAY}${HOUR}${MINUTE}${SECOND}-data.mdb"
     LATEST_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/latest-backup-data.mdb"
@@ -49,12 +52,29 @@ data:
     # Set sha256 signing
     ${AWS} configure set default payload_signing_enabled=true
 
+    # Create the copy directory
+    mkdir -p /watcher-backup
+
     # Copy the db file for stable upload
-    cp /watcher/data.mdb /tmp/data.mdb
+    mdb_copy /watcher /watcher-backup
+
+    cd /watcher-backup
+    $MDB_STAT -s watcher_db:block_signatures . 2> /dev/null
+    if [ $? -ne 0 ]
+    then
+            echo "Bad backup, giving up"
+            # SEND SLACK NOTICE
+            exit 1
+
+    fi
+
+
+
+
 
     # Copy to S3
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+    ${AWS} s3 cp /watcher-backup/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
+    ${AWS} s3 cp /watcher-backup/data.mdb s3://${AWS_BUCKET}/${LATEST_FILEPATH}
 
   restore.sh: |
     #!/bin/bash
