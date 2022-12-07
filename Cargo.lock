@@ -1784,16 +1784,16 @@ dependencies = [
 
 [[package]]
 name = "grpcio"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1132252c65fd51bd7d1dc7920e2931201fc3a2c9e3fbce6c27f8762e7a2ff3ed"
+checksum = "55edb2eaa4b13b9a8a07f1a1bbaadc8a5bf4132c2b1fa6358d2be14afd18a2c3"
 dependencies = [
  "futures-executor",
  "futures-util",
  "grpcio-sys",
  "libc",
  "log",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "protobuf",
 ]
 
@@ -1808,9 +1808,9 @@ dependencies = [
 
 [[package]]
 name = "grpcio-sys"
-version = "0.10.3+1.44.0-patched"
+version = "0.12.0+1.46.5-patched"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f23adc509a3c4dea990e0ab8d2add4a65389ee69c288b7851d75dd1df7a6d6c6"
+checksum = "3e37f6f61ce8fab679051f2cb157f1de3a0c821827441e7f9a561765d98c7d50"
 dependencies = [
  "bindgen 0.59.2",
  "boringssl-src",
