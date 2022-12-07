@@ -284,7 +284,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let mut outputs: Vec<TxOut> = Vec::new();
         for (tx, _proofs) in transactions_with_proofs {
             key_images.extend(tx.key_images().into_iter());
-            outputs.extend(tx.prefix.outputs.into_iter());
+            outputs.extend(tx.prefix.outputs.iter().cloned());
         }
 
         let minted_tx_outs = get_outputs(

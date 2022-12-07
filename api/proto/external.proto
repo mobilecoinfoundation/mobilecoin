@@ -613,11 +613,30 @@ message UnsignedTx {
     /// A "ring" of transaction outputs.
     repeated InputRing rings = 2;
 
-    /// The amount and blinding factors of each of the outputs we are creating.
-    repeated OutputSecret output_secrets = 3;
-
     /// The block version that this transaction is valid for.
     uint32 block_version = 4;
+
+    /// The unblinding data for each of the outputs we are creating.
+    /// This also contains the output secrets needed for building the signature.
+    repeated TxOutSummaryUnblindingData tx_out_unblinding_data = 5;
+}
+
+message TxOutSummaryUnblindingData {
+    /// An unmasked amount, corresponding to the MaskedAmount field
+    /// The block version appears in the TxSummaryUnblindingData.
+    UnmaskedAmount unmasked_amount = 1;
+
+    /// The public address to which this TxOut is addressed.
+    /// If this output comes from an SCI then we may not know the public
+    /// address.
+    PublicAddress address = 2;
+
+    /// The tx_private_key generated for this TxOut. This is an entropy source
+    /// which introduces randomness into the cryptonote stealth addresses
+    /// (tx_public_key and tx_target_key) of the TxOut.
+    ///
+    /// If this output comes from an SCI then we may not know this.
+    RistrettoPrivate tx_private_key = 3;
 }
 
 /// A structure that contains all the data required to sign a transaction that

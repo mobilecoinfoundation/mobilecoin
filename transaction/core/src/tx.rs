@@ -15,7 +15,7 @@ use mc_util_repr_bytes::{
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{
     amount::MaskedAmount,
@@ -103,7 +103,9 @@ impl fmt::Debug for TxHash {
 }
 
 /// A CryptoNote-style transaction.
-#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
+#[derive(
+    Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible, Zeroize, ZeroizeOnDrop,
+)]
 pub struct Tx {
     /// The transaction contents.
     #[prost(message, required, tag = "1")]
@@ -160,7 +162,7 @@ impl Tx {
 ///
 /// Note: If you add something here, consider if it should be added to the
 /// TxSummary also for hardware wallet visibility.
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxPrefix {
     /// List of inputs to the transaction.
     #[prost(message, repeated, tag = "1")]
@@ -244,7 +246,7 @@ impl TxPrefix {
 }
 
 /// An "input" to a transaction.
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxIn {
     /// A "ring" of outputs containing the single output that is being spent.
     /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works
@@ -571,8 +573,8 @@ pub struct TxOutMembershipElement {
     #[prost(message, required, tag = "1")]
     pub range: Range,
 
-    #[prost(message, required, tag = "2")]
     /// The internal hash value.
+    #[prost(message, required, tag = "2")]
     pub hash: TxOutMembershipHash,
 }
 

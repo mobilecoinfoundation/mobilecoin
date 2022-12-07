@@ -710,6 +710,7 @@ version = "4.0.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
+ "hex_fmt",
  "hkdf",
  "mc-account-keys-types",
  "mc-core",
@@ -722,6 +723,7 @@ dependencies = [
  "mc-util-serial",
  "prost",
  "rand_core",
+ "serde",
  "subtle",
  "zeroize",
 ]

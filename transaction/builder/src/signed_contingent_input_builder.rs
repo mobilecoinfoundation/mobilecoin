@@ -249,14 +249,15 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (hint, pubkey_expiry) =
             crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
-        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
-            self.block_version,
-            amount,
-            recipient,
-            hint,
-            memo_fn,
-            rng,
-        )?;
+        let (tx_out, shared_secret, _tx_private_key) =
+            crate::transaction_builder::create_output_with_fog_hint(
+                self.block_version,
+                amount,
+                recipient,
+                hint,
+                memo_fn,
+                rng,
+            )?;
 
         let (amount, blinding) = tx_out
             .get_masked_amount()
@@ -411,14 +412,15 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (hint, pubkey_expiry) =
             crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
-        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
-            self.block_version,
-            amount,
-            recipient,
-            hint,
-            memo_fn,
-            rng,
-        )?;
+        let (tx_out, shared_secret, _tx_private_key) =
+            crate::transaction_builder::create_output_with_fog_hint(
+                self.block_version,
+                amount,
+                recipient,
+                hint,
+                memo_fn,
+                rng,
+            )?;
         self.impose_tombstone_block_limit(pubkey_expiry);
 
         let amount_shared_secret =
