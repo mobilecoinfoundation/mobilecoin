@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 /// The idea is that this can be generated without having the spend private key,
 /// and then transferred to an offline/hardware service that does have the spend
 /// private key, which can then be used together with the data here to produce a
-/// valid, signed Tx. Notw that whether the UnsignedTx can be signed on its own
+/// valid, signed Tx. Note that whether the UnsignedTx can be signed on its own
 /// or requires the spend private key will depend on the contents of the
 /// InputRings.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
