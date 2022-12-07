@@ -8,7 +8,7 @@ use crate::{
 use grpcio::{ChannelBuilder, RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
-    view::AddShardRequest,
+    fog_common::AddShardRequest,
     view_grpc::{FogViewRouterAdminApi, FogViewStoreApiClient},
 };
 use mc_fog_uri::FogViewStoreUri;
