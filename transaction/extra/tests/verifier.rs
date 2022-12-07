@@ -2,6 +2,9 @@
 
 //! Tests of the streaming verifier
 
+#![feature(test)]
+extern crate test;
+
 use mc_account_keys::{AccountKey, ShortAddressHash};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
@@ -18,6 +21,7 @@ use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};
 use rand_core::CryptoRngCore;
 use std::collections::BTreeMap;
+use test::Bencher;
 
 // Get an unsigned Tx and the sender account keys with the maximum allowed size
 // right now
@@ -141,6 +145,25 @@ fn test_max_size_tx_payload_sizes() {
 
     let tx_in_summary_unblinding_wire = encode(&tx_summary_unblinding_data.inputs[0]);
     assert_eq!(tx_in_summary_unblinding_wire.len(), 45);
+}
+
+#[bench]
+fn bench_max_size_zeroize(b: &mut Bencher) {
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+    let (unsigned_tx, _sender, _recipient) = get_current_max_size_transaction(&mut rng);
+    let (signing_data, _tx_summary, _tx_summary_unblinding_data, _extended_message_digest) =
+        unsigned_tx.get_signing_data(&mut rng).unwrap();
+    let signature_rct = signing_data
+        .sign(&unsigned_tx.rings, &NoKeysRingSigner {}, &mut rng)
+        .unwrap();
+    let tx = Tx {
+        prefix: unsigned_tx.tx_prefix.clone(),
+        signature: signature_rct,
+        fee_map_digest: Default::default(),
+    };
+
+    b.iter(|| tx.clone());
 }
 
 #[test]
