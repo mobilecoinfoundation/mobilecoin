@@ -1,26 +1,33 @@
-//! Transaction signer types, used for communication with external signer implementations
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Transaction signer types, used for communication with external signer
+//! implementations
 
 use std::path::Path;
 
 use clap::Parser;
-use log::{debug};
-use mc_transaction_core::{ring_ct::{SignatureRctBulletproofs, SigningData, ExtendedMessageDigest}, TokenId, Amount, TxSummary};
-use serde::{
-    Serialize,
-    de::DeserializeOwned,
-};
-use rand_core::{OsRng, CryptoRng, RngCore};
+use log::debug;
 
-use mc_core::{
-    traits::{KeyImageComputer, ViewAccountProvider},
-};
-use mc_crypto_ring_signature_signer::{RingSigner};
+use mc_crypto_keys::RistrettoPublic;
+use rand_core::{CryptoRng, OsRng, RngCore};
+use serde::{de::DeserializeOwned, Serialize};
 
-pub use mc_transaction_extra::UnsignedTx;
-pub use mc_transaction_core::{AccountKey, tx::Tx, ring_ct::{Error as RingCtError}};
+use mc_core::keys::TxOutPublic;
+use mc_crypto_ring_signature_signer::RingSigner;
+use mc_transaction_core::{
+    ring_ct::{
+        Error as RingCtError, ExtendedMessageDigest, InputRing, SignatureRctBulletproofs,
+        SigningData,
+    },
+    tx::Tx,
+    Amount, TokenId, TxSummary,
+};
 
 pub mod types;
 use types::*;
+
+pub mod traits;
+use traits::*;
 
 /// Command enumeration for offline / detached / hardware signing
 #[derive(Clone, PartialEq, Debug, Parser)]
@@ -67,7 +74,6 @@ pub enum Commands {
 }
 
 impl Commands {
-
     /// Fetch account index for a given command
     pub fn account_index(&self) -> u32 {
         match self {
@@ -78,16 +84,20 @@ impl Commands {
     }
 
     /// Fetch view account credentials
-    /// 
+    ///
     /// output - file to write view account information
-    pub fn get_account(ctx: impl ViewAccountProvider, account_index: u32, output: &str) -> anyhow::Result<()> {
+    pub fn get_account(
+        ctx: impl ViewAccountProvider,
+        account_index: u32,
+        output: &str,
+    ) -> anyhow::Result<()> {
         debug!("Loading view account keys");
         let keys = match ctx.account() {
             Ok(v) => v,
             Err(e) => return Err(anyhow::anyhow!("Failed to load view account keys: {:?}", e)),
         };
 
-        let info = AccountInfo{
+        let info = AccountInfo {
             account_index,
             view_private: keys.view_private_key().clone(),
             spend_public: keys.spend_public_key().clone(),
@@ -100,9 +110,10 @@ impl Commands {
     }
 
     /// Sync TxOuts
-    /// 
-    /// input - file containing a list of subaddress indices and tx_out_public_keys
-    /// output - file to write list of tx_out_public_keys and resolved key_images
+    ///
+    /// input - file containing a list of subaddress indices and
+    /// tx_out_public_keys output - file to write list of tx_out_public_keys
+    /// and resolved key_images
     pub fn sync_txos(ctx: impl KeyImageComputer, input: &str, output: &str) -> anyhow::Result<()> {
         // Load unsynced txout_public_key pairs
         debug!("Reading unsynced TxOuts from '{}'", input);
@@ -112,20 +123,23 @@ impl Commands {
         // Since we're provided with a subaddress index,
         // assume TxOut ownership is correct.
         let mut synced: Vec<TxoSynced> = Vec::new();
-        for TxoUnsynced{subaddress, tx_out_public_key} in req.txos {
-
+        for TxoUnsynced {
+            subaddress,
+            tx_out_public_key,
+        } in req.txos
+        {
             let key_image = match ctx.compute_key_image(subaddress, &tx_out_public_key) {
                 Ok(v) => v,
                 Err(e) => return Err(anyhow::anyhow!("Failed to compute key image: {:?}", e)),
             };
 
-            synced.push(TxoSynced{
+            synced.push(TxoSynced {
                 tx_out_public_key: tx_out_public_key.clone(),
                 key_image,
             });
         }
 
-        let resp = TxoSyncResp{
+        let resp = TxoSyncResp {
             account_id: req.account_id,
             txos: synced,
         };
@@ -137,9 +151,8 @@ impl Commands {
         Ok(())
     }
 
-
     /// Sync an unsigned transaction
-    /// 
+    ///
     /// input - file containing the unsigned transaction object
     /// output - file to write the signed transaction output
     pub fn sign_tx(ctx: impl RingSigner, input: &str, output: &str) -> anyhow::Result<()> {
@@ -156,7 +169,7 @@ impl Commands {
             req.output_secrets.as_slice(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
             &ctx,
-            &mut OsRng{},
+            &mut OsRng {},
         ) {
             Ok(v) => v,
             Err(e) => {
@@ -164,13 +177,30 @@ impl Commands {
             }
         };
 
-        let resp = TxSignResp{
+        // Map key images to real inputs via public key
+        let mut txos = vec![];
+        for (i, r) in req.rings.iter().enumerate() {
+            let tx_out_public_key = match r {
+                InputRing::Signable(r) => r.members[r.real_input_index].public_key,
+                InputRing::Presigned(_) => panic!("Pre-signed rings unsupported"),
+            };
+
+            txos.push(TxoSynced {
+                tx_out_public_key: TxOutPublic::from(
+                    RistrettoPublic::try_from(&tx_out_public_key).unwrap(),
+                ),
+                key_image: signature.ring_signatures[i].key_image,
+            });
+        }
+
+        let resp = TxSignResp {
             account_id: req.account_id,
-            tx: Tx{
+            tx: Tx {
                 prefix,
                 signature,
                 fee_map_digest: vec![],
             },
+            txos,
         };
 
         // Write signed transaction output
@@ -180,7 +210,6 @@ impl Commands {
         Ok(())
     }
 }
-
 
 /// Helper to read and deserialize input files
 pub fn read_input<T: DeserializeOwned>(file_name: &str) -> anyhow::Result<T> {
@@ -192,7 +221,7 @@ pub fn read_input<T: DeserializeOwned>(file_name: &str) -> anyhow::Result<T> {
     let p = Path::new(file_name);
 
     // Decode based on input extension
-    let v = match p.extension().map(|e| e.to_str() ).flatten() {
+    let v = match p.extension().map(|e| e.to_str()).flatten() {
         // Encode to JSON for `.json` files
         Some("json") => serde_json::from_str(&s)?,
         _ => return Err(anyhow::anyhow!("unsupported output file format")),
@@ -201,19 +230,18 @@ pub fn read_input<T: DeserializeOwned>(file_name: &str) -> anyhow::Result<T> {
     Ok(v)
 }
 
-
 /// Helper to serialize and write output files
 pub fn write_output(file_name: &str, value: &impl Serialize) -> anyhow::Result<()> {
     debug!("Writing output to '{}'", file_name);
 
     // Determine format from file name
     let p = Path::new(file_name);
-    match p.extension().map(|e| e.to_str() ).flatten() {
+    match p.extension().map(|e| e.to_str()).flatten() {
         // Encode to JSON for `.json` files
         Some("json") => {
             let s = serde_json::to_string(value)?;
             std::fs::write(p, s)?;
-        },
+        }
         _ => return Err(anyhow::anyhow!("unsupported output file format")),
     }
 
