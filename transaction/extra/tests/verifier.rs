@@ -389,7 +389,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
 
         let input_credentials = get_input_credentials(
             block_version,
-            Amount { value, token_id },
+            Amount::new(value, token_id),
             &sender,
             &fog_resolver,
             &mut rng,
