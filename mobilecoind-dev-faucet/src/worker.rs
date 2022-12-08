@@ -773,7 +773,7 @@ impl WorkerTokenState {
                         .in_flight_defragmentation_key_images
                         .contains(&key_image)
             }) {
-                log::trace!(
+                log::info!(
                     logger,
                     "Backing off before sending a rebalancing tx {}",
                     self.token_id
