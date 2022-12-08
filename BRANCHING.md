@@ -7,7 +7,8 @@ Changes are created via PRs, reviewed, and squash-merged into `master`.
 
 Sometimes long running feature branches are created. These are, still, eventually
 squash merged into `master`. (Alternatively, this could be a normal git merge
-and not a squash merge, it doesn't much matter.)
+and not a squash merge, it doesn't much matter since the feature branch goes away
+after it is merged.)
 
 Release branches
 ----------------
