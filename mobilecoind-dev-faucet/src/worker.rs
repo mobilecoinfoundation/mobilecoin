@@ -827,7 +827,7 @@ impl WorkerTokenState {
         // or so, so they will all still be similar in value, and next time around
         // we can do the parallel split again.
         if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
-            log::trace!(logger, "Attempting to split on token id {}", self.token_id);
+            log::info!(logger, "Attempting to split on token id {}", self.token_id);
 
             // Generate an outlay
             // We will repeat this outlay MAX_OUTPUTS - 1 times
