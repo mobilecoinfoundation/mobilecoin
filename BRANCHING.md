@@ -17,6 +17,8 @@ of master.
 Minor releases are created by creating a release branch e.g. `release/v4.1` off of
 the predecessor `release/v4.0`.
 
+Any bugs that are found are fixed in the release branch first.
+
 Release candidates are tagged on release branches.
 
 Propagating changes
@@ -56,8 +58,8 @@ Currently, we want this merge to happen via a PR and go through (usually perfunc
 review. Reviewers should check that this is not a squash merge or a rebase merge.
 
 Right now we think it's desirable that whenever the release branch moves forwards,
-a PR could be opened automatically that proposes merges the release branch to master,
-exposing any git conflicts, which can then be reviewed and resolved.
+a PR could be opened automatically that proposes to merge the release branch to master,
+exposing any git conflicts, which can then be reviewed and resolved in this PR.
 
 Making changes
 --------------
