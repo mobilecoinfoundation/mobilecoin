@@ -7,6 +7,7 @@ use crate::{
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
+use mc_attest_enclave_api::SealedClientMessage;
 use mc_common::logger::Logger;
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
@@ -102,9 +103,6 @@ pub async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: Vec<MultiViewStoreQueryResponse> =
-        Vec::with_capacity(shard_clients.len());
-    let mut shard_clients = shard_clients.clone();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
@@ -114,8 +112,43 @@ where
                 logger.clone(),
             )
         })?;
-    // TODO: use retry crate?
-    for _ in 0..RETRY_COUNT {
+
+    let query_responses = get_query_responses(
+        sealed_query.clone(),
+        enclave.clone(),
+        shard_clients.clone(),
+        logger.clone(),
+    )
+    .await?;
+
+    let query_response = enclave
+        .collate_shard_query_responses(sealed_query, query_responses)
+        .map_err(|err| {
+            router_server_err_to_rpc_status(
+                "Query: shard response collation",
+                RouterServerError::Enclave(err),
+                logger.clone(),
+            )
+        })?;
+
+    let mut response = FogViewRouterResponse::new();
+    response.set_query(query_response.into());
+    Ok(response)
+}
+
+async fn get_query_responses<E>(
+    sealed_query: SealedClientMessage,
+    enclave: E,
+    mut shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    logger: Logger,
+) -> Result<Vec<MultiViewStoreQueryResponse>, RpcStatus>
+where
+    E: ViewEnclaveProxy,
+{
+    let mut query_responses: Vec<MultiViewStoreQueryResponse> =
+        Vec::with_capacity(shard_clients.len());
+    let mut remaining_tries = RETRY_COUNT;
+    while remaining_tries > 0 {
         let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
@@ -161,27 +194,32 @@ where
             break;
         }
 
-        authenticate_view_stores(
-            enclave.clone(),
-            processed_shard_response_data.view_store_uris_for_authentication,
-            logger.clone(),
-        )
-        .await?;
-    }
-
-    let query_response = enclave
-        .collate_shard_query_responses(sealed_query, query_responses)
-        .map_err(|err| {
-            router_server_err_to_rpc_status(
-                "Query: shard response collation",
-                RouterServerError::Enclave(err),
+        let view_store_uris_for_authentication =
+            processed_shard_response_data.view_store_uris_for_authentication;
+        if !view_store_uris_for_authentication.is_empty() {
+            authenticate_view_stores(
+                enclave.clone(),
+                view_store_uris_for_authentication,
                 logger.clone(),
             )
-        })?;
+            .await?;
+        } else {
+            remaining_tries -= 1;
+        }
+    }
 
-    let mut response = FogViewRouterResponse::new();
-    response.set_query(query_response.into());
-    Ok(response)
+    if remaining_tries == 0 {
+        return Err(router_server_err_to_rpc_status(
+            "Query: timed out connecting to view stores",
+            RouterServerError::ViewStoreError(format!(
+                "Received {} responses which failed to advance the MultiViewStoreRequest",
+                RETRY_COUNT
+            )),
+            logger.clone(),
+        ));
+    }
+
+    Ok(query_responses)
 }
 
 /// Sends a client's query request to all of the Fog View shards.
