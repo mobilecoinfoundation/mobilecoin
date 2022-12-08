@@ -288,11 +288,12 @@ fn main() {
         logger.clone(),
     ));
 
-    let server_builder = grpcio::ServerBuilder::new(grpc_env)
-        .register_service(remote_wallet_service)
-        .bind_using_uri(&config.listen_uri, logger.clone());
+    let server_builder =
+        grpcio::ServerBuilder::new(grpc_env).register_service(remote_wallet_service);
 
-    let mut server = server_builder.build().expect("failed building grpc server");
+    let mut server = server_builder
+        .build_using_uri(&config.listen_uri, logger.clone())
+        .expect("failed building grpc server");
     server.start();
 
     log::info!(logger, "Server started");

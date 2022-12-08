@@ -349,7 +349,7 @@ mod client_api_tests {
     use clap::Parser;
     use grpcio::{
         CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder,
-        RpcStatusCode, Server, ServerBuilder,
+        RpcStatusCode, Server, ServerBuilder, ServerCredentials,
     };
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -390,11 +390,12 @@ mod client_api_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .unwrap();
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = ConsensusClientApiClient::new(ch);
         (client, server)

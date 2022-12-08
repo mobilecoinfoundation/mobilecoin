@@ -146,10 +146,11 @@ impl Service {
             .register_service(admin_service)
             .register_service(build_info_service)
             .register_service(health_service)
-            .register_service(mobilecoind_service)
-            .bind_using_uri(listen_uri, logger.clone());
+            .register_service(mobilecoind_service);
 
-        let mut server = server_builder.build().unwrap();
+        let mut server = server_builder
+            .build_using_uri(listen_uri, logger.clone())
+            .unwrap();
         server.start();
 
         Self {

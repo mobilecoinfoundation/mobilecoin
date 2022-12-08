@@ -118,10 +118,11 @@ where
         );
         let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(fog_view_service)
-            .register_service(health_service)
-            .bind_using_uri(&config.client_listen_uri, logger.clone());
+            .register_service(health_service);
 
-        let server = server_builder.build().unwrap();
+        let server = server_builder
+            .build_using_uri(&config.client_listen_uri, logger.clone())
+            .unwrap();
 
         Self {
             config,
@@ -150,9 +151,11 @@ where
         self.db_poll_thread.start();
 
         self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "API listening on {}",
+            self.config.client_listen_uri.addr()
+        );
     }
 
     /// Stop the server and all worker threads

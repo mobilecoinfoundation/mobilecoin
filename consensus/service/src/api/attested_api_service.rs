@@ -141,6 +141,7 @@ mod peer_tests {
     use super::*;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+        ServerCredentials,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
@@ -154,11 +155,12 @@ mod peer_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .unwrap();
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = AttestedApiClient::new(ch);
         (client, server)
@@ -203,6 +205,7 @@ mod client_tests {
     use super::*;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+        ServerCredentials,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
@@ -218,11 +221,12 @@ mod client_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .unwrap();
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = AttestedApiClient::new(ch);
         (client, server)

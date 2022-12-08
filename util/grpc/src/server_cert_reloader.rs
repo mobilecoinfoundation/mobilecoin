@@ -143,7 +143,10 @@ mod tests {
         health_api::PingRequest, health_api_grpc::HealthClient, ConnectionUriGrpcioServer,
         HealthService,
     };
-    use grpcio::{ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder};
+    use grpcio::{
+        ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder,
+        ServerCredentials,
+    };
     use mc_common::logger::test_with_logger;
     use mc_crypto_x509_test_vectors::{ok_self_signed_1, ok_self_signed_2};
     use mc_util_uri::ConsensusClientUri;
@@ -157,18 +160,19 @@ mod tests {
         let env = Arc::new(EnvBuilder::new().build());
         let service = HealthService::new(None, logger.clone()).into_service();
 
+        let server_creds = ServerCredentials::with_fetcher(
+            Box::new(ServerCertReloader::new(&cert_file, &key_file, logger.clone()).unwrap()),
+            CertificateRequestType::DontRequestClientCertificate,
+        );
+
         let mut server = ServerBuilder::new(env)
             .register_service(service)
-            .bind_with_fetcher(
-                "localhost",
-                0,
-                Box::new(ServerCertReloader::new(&cert_file, &key_file, logger.clone()).unwrap()),
-                CertificateRequestType::DontRequestClientCertificate,
-            )
             .build()
             .unwrap();
+        let port = server
+            .add_listening_port("localhost:0", server_creds)
+            .unwrap();
         server.start();
-        let port = server.bind_addrs().next().unwrap().1;
 
         log::info!(logger, "Server started on port {}", port);
 
@@ -182,7 +186,8 @@ mod tests {
             .build();
         let ch = ChannelBuilder::new(env)
             .override_ssl_target(ssl_target)
-            .secure_connect(&format!("localhost:{}", port), cred);
+            .set_credentials(cred)
+            .connect(&format!("localhost:{}", port));
         HealthClient::new(ch)
     }
 
@@ -387,14 +392,13 @@ mod tests {
         ))
         .unwrap();
 
-        // Start server using bind_using_uri.
+        // Start server using build_using_uri.
         let env = Arc::new(EnvBuilder::new().build());
         let service = HealthService::new(None, logger.clone()).into_service();
 
         let mut server = ServerBuilder::new(env)
             .register_service(service)
-            .bind_using_uri(&uri, logger.clone())
-            .build()
+            .build_using_uri(&uri, logger.clone())
             .unwrap();
         server.start();
 

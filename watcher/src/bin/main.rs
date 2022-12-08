@@ -17,6 +17,7 @@ use futures::executor::block_on;
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_util_grpc::{ConnectionUriGrpcioServer, HealthCheckStatus, HealthService};
+use mc_util_uri::ConnectionUri;
 use std::{
     io::Error as IOError,
     sync::{
@@ -66,16 +67,18 @@ fn main() {
             .build(),
     );
 
-    let server_builder = ServerBuilder::new(env)
-        .register_service(health_service)
-        .bind_using_uri(&config.client_listen_uri, logger.clone());
+    let server_builder = ServerBuilder::new(env).register_service(health_service);
 
-    let mut server = server_builder.build().unwrap();
+    let mut server = server_builder
+        .build_using_uri(&config.client_listen_uri, logger.clone())
+        .unwrap();
     server.start();
 
-    for (host, port) in server.bind_addrs() {
-        log::info!(logger, "gRPC API listening on {}:{}", host, port);
-    }
+    log::info!(
+        logger,
+        "gRPC API listening on {}",
+        config.client_listen_uri.addr()
+    );
 
     // Wait forever for sync thread to exit. If it ever exits, shut down the gRPC
     // server.
