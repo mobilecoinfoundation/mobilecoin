@@ -757,7 +757,7 @@ impl WorkerTokenState {
             // So we will likely not meet the criteria after this rebalancing
             // operation, and there will not be an infinite loop of rebalancing
             // operations which don't refill the queue.
-            log::trace!(
+            log::info!(
                 logger,
                 "Attempting a rebalancing Tx for split tx parallelism on token id {}",
                 self.token_id
