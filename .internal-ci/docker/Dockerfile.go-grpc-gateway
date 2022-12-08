@@ -5,7 +5,8 @@
 # Runtime Image for the json -> grpc gateway service.
 
 ARG REPO_ORG=mobilecoin
-FROM ${REPO_ORG}/runtime-base:latest
+ARG BASE_TAG=latest
+FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 ARG GO_BIN_PATH=go-grpc-gateway
 COPY ${GO_BIN_PATH}/grpc-proxy /usr/bin/go-grpc-gateway
