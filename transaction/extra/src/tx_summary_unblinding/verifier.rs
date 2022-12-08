@@ -314,6 +314,9 @@ impl TxSummaryStreamingVerifier {
         fee: Amount,
         tombstone_block: u64,
     ) -> Result<([u8; 32], TxSummaryUnblindingReport), Error> {
+        if self.output_count != self.expected_num_outputs {
+            return Err(Error::StillExpectingMoreOutputs);
+        }
         if self.input_count != self.expected_num_inputs {
             return Err(Error::StillExpectingMoreInputs);
         }
