@@ -268,7 +268,7 @@ impl SlamState {
                 // was likely already logged.
                 log::error!(
                     logger,
-                    "Slam worker error on join; see previous logs for details"
+                    "Slam worker error on join; see previous logs for detailss"
                 );
             }
         }
