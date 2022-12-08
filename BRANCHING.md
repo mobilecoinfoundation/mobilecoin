@@ -156,9 +156,12 @@ The main drawbacks of this are:
   can lead to additional git conflicts.
 * Changes are sometimes cherry-picked from release to master in reverse order
   to how they occurred on release. This can create confusion and additional git conflicts.
+  Sometimes, git ends up pulling "fragments" of the earlier commit that was not cherry-picked
+  yet forwards into master, which is very confusing for developers and reviewers because
+  seemingly unrelated changes appear in the diff.
 * Sometimes changes in release are forgotten about and never cherry-picked to master.
   This leads to regressions in the next release. Because we never merge the release
   branch back to master, and all the cherry-picks have different hashes from their
   originals, it's very hard to ever be sure that we got all the changes.
 
-This merge-based proposal hopes to rectify these issues.
+This merge-based policy hopes to rectify these issues.
