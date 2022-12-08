@@ -631,7 +631,7 @@ fn test_recovery_db_txs_new_apis(
             let search_keys_match =
                 &fixed_result.search_key[..] == AsRef::<[u8]>::as_ref(&row.search_key);
             let payload_length = fixed_result.payload_length as usize;
-            let result_payload = fixed_result.ciphertext[0..payload_length].to_vec();
+            let result_payload = &fixed_result.ciphertext[0..payload_length];
             let payloads_match = result_payload == row.payload;
             let result_codes_match =
                 fixed_result.result_code == TxOutSearchResultCode::Found as u32;

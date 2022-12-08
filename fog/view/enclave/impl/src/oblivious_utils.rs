@@ -10,28 +10,23 @@ use aligned_cmov::{
     subtle::{Choice, ConditionallySelectable, ConstantTimeEq},
     CMov,
 };
-use alloc::{vec, vec::Vec};
-use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH};
-
-/// The default TxOutSearchResultCode used when collating the shard responses.
-///   Warning: Do not change this without careful thought because the logic in
-///            the [should_over_write_tx_out_search_result] method assumes that
-///            the default code is NotFound.
-const DEFAULT_TX_OUT_SEARCH_RESULT_CODE: TxOutSearchResultCode = TxOutSearchResultCode::NotFound;
+use alloc::vec::Vec;
+use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode};
 
 #[allow(dead_code)]
 pub fn collate_shard_tx_out_search_results(
     client_search_keys: Vec<Vec<u8>>,
     shard_tx_out_search_results: Vec<FixedTxOutSearchResult>,
 ) -> Result<Vec<FixedTxOutSearchResult>> {
+    // The default [FixedTxOutSearchResult] has a [TxOutSearchResultCode::NotFound]
+    // `result_code`.
+    //
+    // Warning: Do not change this without careful thought because the logic in the
+    // [should_over_write_tx_out_search_result] method assumes that
+    // the default code is NotFound.
     let mut client_tx_out_search_results: Vec<FixedTxOutSearchResult> = client_search_keys
-        .iter()
-        .map(|client_search_key| FixedTxOutSearchResult {
-            search_key: client_search_key.to_vec(),
-            result_code: DEFAULT_TX_OUT_SEARCH_RESULT_CODE as u32,
-            ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
-            payload_length: FIXED_CIPHERTEXT_LENGTH as u32,
-        })
+        .into_iter()
+        .map(FixedTxOutSearchResult::new_not_found)
         .collect();
 
     for shard_tx_out_search_result in shard_tx_out_search_results.iter() {
@@ -130,7 +125,8 @@ mod tests {
 
     use super::*;
     use itertools::Itertools;
-    use std::collections::HashSet;
+    use mc_fog_types::view::FIXED_CIPHERTEXT_LENGTH;
+    use std::{collections::HashSet, vec};
 
     fn create_test_tx_out_search_result(
         search_key: Vec<u8>,

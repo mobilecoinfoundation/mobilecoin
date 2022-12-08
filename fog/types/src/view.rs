@@ -265,15 +265,7 @@ impl FixedTxOutSearchResult {
     /// Creates a new [FixedTxOutSearchResult] with
     /// [TxOutSearchResult::NotFound]
     pub fn new_not_found(search_key: Vec<u8>) -> Self {
-        let ciphertext = vec![0u8; FIXED_CIPHERTEXT_LENGTH];
-        let payload_length = ciphertext.len() as u32;
-
-        FixedTxOutSearchResult {
-            search_key,
-            result_code: TxOutSearchResultCode::NotFound as u32,
-            ciphertext,
-            payload_length,
-        }
+        Self::new(search_key, &[], TxOutSearchResultCode::NotFound)
     }
 }
 
@@ -688,60 +680,27 @@ mod view_tests {
 }
 
 #[cfg(test)]
-mod tx_out_search_results_conversion {
-    use crate::view::{FixedTxOutSearchResult, TxOutSearchResult, FIXED_CIPHERTEXT_LENGTH};
+mod tests {
+    use crate::view::{
+        FixedTxOutSearchResult, TxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH,
+    };
     use alloc::{vec, vec::Vec};
+    use yare::parameterized;
 
-    #[test]
-    fn small_payload_length() {
-        const SMALL_PAYLOAD_LENGTH: u32 = 232;
-        const MAX_CIPHERTEXT_LENGTH: usize = 232;
-        let mut fixed_tx_out_search_results = Vec::new();
-        for i in 0..10 {
-            let fixed_tx_out_search_result = FixedTxOutSearchResult {
-                search_key: vec![i as u8],
-                result_code: 0,
-                ciphertext: vec![i; MAX_CIPHERTEXT_LENGTH],
-                payload_length: SMALL_PAYLOAD_LENGTH,
-            };
-            fixed_tx_out_search_results.push(fixed_tx_out_search_result);
-        }
-
-        let tx_out_search_results = fixed_tx_out_search_results
-            .iter()
-            .map(|result| result.clone().into())
-            .collect::<Vec<TxOutSearchResult>>();
-
-        for (i, result) in tx_out_search_results.iter().enumerate() {
-            assert_eq!(result.search_key, fixed_tx_out_search_results[i].search_key);
-            assert_eq!(
-                result.result_code,
-                fixed_tx_out_search_results[i].result_code
-            );
-            let payload_length = fixed_tx_out_search_results[i].payload_length as usize;
-            assert_eq!(
-                result.ciphertext,
-                fixed_tx_out_search_results[i].ciphertext[0..payload_length]
-            );
-            let padding_length =
-                FIXED_CIPHERTEXT_LENGTH - (fixed_tx_out_search_results[i].payload_length as usize);
-            assert_eq!(result.padding, vec![0; padding_length])
-        }
-    }
-
-    #[test]
-    fn max_payload_length() {
-        const MAX_CIPHERTEXT_LENGTH: usize = 232;
-        let mut fixed_tx_out_search_results = Vec::new();
-        for i in 0..10 {
-            let fixed_tx_out_search_result = FixedTxOutSearchResult {
-                search_key: vec![i as u8],
-                result_code: 0,
-                ciphertext: vec![i; 255],
-                payload_length: MAX_CIPHERTEXT_LENGTH as u32,
-            };
-            fixed_tx_out_search_results.push(fixed_tx_out_search_result);
-        }
+    #[parameterized(
+    payload_length_is_0 = { 0 },
+    payload_length_is_1 = { 1 },
+    payload_length_smaller_than_ciphertext = { 232 },
+    payload_length_is_254 = { 254 },
+    payload_length_equals_ciphertext = { 255 },
+    )]
+    fn tx_out_search_result_conversion(payload_length: usize) {
+        let fixed_tx_out_search_results = (0..10)
+            .map(|i| {
+                let payload = vec![i; payload_length as usize];
+                FixedTxOutSearchResult::new(vec![i], &payload, TxOutSearchResultCode::Found)
+            })
+            .collect::<Vec<_>>();
 
         let tx_out_search_results = fixed_tx_out_search_results
             .iter()
@@ -754,10 +713,11 @@ mod tx_out_search_results_conversion {
                 result.result_code,
                 fixed_tx_out_search_results[i].result_code
             );
-            let payload_length = fixed_tx_out_search_results[i].payload_length as usize;
+            let fixed_result_payload_length =
+                fixed_tx_out_search_results[i].payload_length as usize;
             assert_eq!(
                 result.ciphertext,
-                fixed_tx_out_search_results[i].ciphertext[0..payload_length]
+                fixed_tx_out_search_results[i].ciphertext[0..fixed_result_payload_length]
             );
             let padding_length =
                 FIXED_CIPHERTEXT_LENGTH - (fixed_tx_out_search_results[i].payload_length as usize);

@@ -235,7 +235,7 @@ message QueryResponse {
     /// This field doesn't have the same "cursor" semantics as the other fields.
     uint64 last_known_block_cumulative_txo_count = 9;
 
-    /// Any FixedTxOutSearchResults from the get_txos in the request. Will be filled alongside the TxOutSearchResult
+    /// Any FixedTxOutSearchResults from the get_txos in the request. Will be filled alongside the tx_out_search_result
     /// field and contains the same payload data, but in a different format.
     repeated FixedTxOutSearchResult fixed_tx_out_search_results = 10;
 }
@@ -303,7 +303,7 @@ message FixedTxOutSearchResult {
     bytes ciphertext = 3;
 
     /// The length of the payload that is encrypted in the ciphertext. Ciphertexts will always be of fixed length, but
-    /// the contained the payload may be less than this length, so the rest of the ciphertext is zeroed out. These
+    /// the contained payload may be less than this length, so the rest of the ciphertext is zeroed out. These
     /// zeroed bytes should not be interpreted by the client, and this value tells the client which bytes to interpret.
     fixed32 payload_length = 4;
 }

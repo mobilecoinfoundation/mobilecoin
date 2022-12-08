@@ -32,3 +32,4 @@ mc-util-test-with-data = { path = "../../util/test-with-data" }
 
 # third-party
 hex = "0.4"
+yare = "1.0.2"
