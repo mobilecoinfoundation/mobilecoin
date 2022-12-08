@@ -3,7 +3,7 @@ Branching and Releasing
 
 `master` is the primary development branch in `mobilecoin.git`.
 
-Changes are created via PRs, reviewed, and squash-merged into `master`.
+Changes are typically created on topic branches, reviewed as PRs, and squash-merged into `master`.
 
 Sometimes long running feature branches are created. These are, still, eventually
 squash merged into `master`. (Alternatively, this could be a normal git merge
@@ -13,10 +13,10 @@ after it is merged.)
 Release branches
 ----------------
 
-Major releases are created by creating a release branch e.g. `release/v4.0` off
-of master.
+Major releases are started by creating a release branch e.g. `release/v4.0` off
+of `master`.
 
-Minor releases are created by creating a release branch e.g. `release/v4.1` off of
+Minor releases are started by creating a release branch e.g. `release/v4.1` off of
 the predecessor `release/v4.0`.
 
 Any bugs that are found are fixed in the release branch first.
@@ -66,9 +66,9 @@ exposing any git conflicts, which can then be reviewed and resolved in this PR.
 Making changes
 --------------
 
-Developers make changes using PRs the same way as always, and are free to
-squash-merge their development PRs as they historically have. (It doesn't much
-matter for this workflow whether or not developer PRs are squash merges.)
+Developers make changes using topic branches and PRs, and are free to
+squash-merge their topic branches as they historically have. (It doesn't much
+matter for this workflow whether or not topic branches are squash merged.)
 
 When a developer wants to make a change, they should ask themselves, should this
 go in the latest release branch, or in master?
@@ -134,10 +134,10 @@ Comparisons
 
 Historically, `mobilecoin.git` did not use merging at all when handling release branches.
 
-* We branch for release e.g. `release/v2.0` of off master.
+* We branch for release e.g. `release/v2.0` of off `master`.
 * Developers (usually) make bug fix commits in release branch, or,
   cherry-pick them back to release branch.
-* We tag release candidates and releases on release branch.
+* We tag release candidates and releases on the release branch.
 * If a point release is needed off of a major release, then we branch e.g.
   `release/v2.1` off of `release/v2.0` and make more commits.
 * After the release is done, the release branch is abandoned and nothing more is done with it.
@@ -145,7 +145,7 @@ Historically, `mobilecoin.git` did not use merging at all when handling release 
 In this model:
 
 * Release branches are never merged anywhere
-* Any changes that need to be in master and release (which is most changes)
+* Any changes that need to be in master and release (which is most bug fixes)
   get cherry-picked.
 
 This is an example of what this looks like:
