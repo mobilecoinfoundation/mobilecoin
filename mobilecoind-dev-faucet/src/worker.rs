@@ -677,20 +677,19 @@ impl WorkerTokenState {
         Ok(())
     }
 
-    // This handles part 3 of the polling loop, where we maybe submit split and
-    // fragmentation txs.
+    // This handles part 3 of the polling loop, where we maybe submit split or
+    // rebalancing txs.
     //
     // * Check on the "rebalancing" Tx process, which tries to make sure that the
-    //   highest value 16 candidates are similar in value, and rebalances them if
-    //   not.
-    // * If the top 16 are rebalanced, and we need more target value utxos, then
-    //   make split tx's off of these in parallel, except the ones that are already
-    //   being used this way.
+    //   top utxos are similar in value, and rebalances them if not.
+    // * Then, if we don't rebalance the top utxos, and we need more target value
+    //   utxos, make split tx's off of the top utxos in parallel (except those
+    //   already being split this way)
     //
     // Returns:
     // * An error if we get a mobilecoind error
-    // * True if funds are depleted among the top NUM_OUTPUTS utxos
-    // * False if funds are not depleted among the top NUM_OUTPUTS utxos
+    // * True if funds are depleted among the top utxos
+    // * False if funds are not depleted among the top utxos
     //
     // Assumes:
     // top_utxos is sorted in decreasing order by value and only
@@ -715,7 +714,7 @@ impl WorkerTokenState {
         let smallest_interesting_split_tx_value =
             self.target_value * (MAX_OUTPUTS - 1) + self.minimum_fee_value;
 
-        // First check on the in-flight fragmentation tx, if one is in-flight
+        // First check on the in-flight rebalancing tx, if one is in-flight
         // then there's nothing else to do.
         if let Some(prev_tx) = self.in_flight_rebalancing_tx_state.as_ref() {
             if is_tx_still_in_flight(client, prev_tx, "Rebalancing", logger) {
@@ -829,6 +828,11 @@ impl WorkerTokenState {
         // We know rebalancing is not in progress and was not attempted,
         // so hopefully all (or at least some) of these are above the
         // smallest_interesting_split_tx_value.
+        //
+        // Hopefully, this does not cause (a) to be re-entered next time, since
+        // all of these utxos will decrease by smallest_interesting_split_tx_value,
+        // so they will all still be similar in value, and next time around we
+        // can do the parallel split again.
         if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
             log::trace!(logger, "Attempting to split on token id {}", self.token_id);
 
