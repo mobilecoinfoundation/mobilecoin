@@ -38,10 +38,6 @@ considered by a future merge and can never create a conflict in a future merge.
 (This is a major difference with squash merging and rebase merging. This is very
 important when merging long-lived branches and not small PRs.)
 
-This leads to a diagram like the following:
-
-[![](https://mermaid.ink/img/pako:eNqtU8FuwjAM_ZXIZ7aBaJbR86addto1F5OYNippq5CiIcS_L5QxlS2FViKnOO8lfn6O96AqTZACCysz_t1hncuStUtV1hofj5YOS5UzR2vCDT1tk0saMzqVgAlfSIghy2fx8g_xmAVomzxOO1BOqqgazyyaMi7FksuoV8mg6JzkejlqNu0pRwsxv6F5oMqbSn5Nmt0n4Yge81jpxPk8bspKiGRUI7uXvxYdq_-Uwvvd6kLO7R5qo4rIg4M-wxUzBym46Bcf-alPEUwgZA4sHUZ0f8Qk-JwsSUjDVqMrjq8eAg8bX33uSgWpdw1NoKk1eno1mDm0kK5wvQmnpI2v3Mdp5tvRPzPfWuSHePgGwSE-5w?type=png)](https://mermaid.live/edit#pako:eNqtU8FuwjAM_ZXIZ7aBaJbR86addto1F5OYNippq5CiIcS_L5QxlS2FViKnOO8lfn6O96AqTZACCysz_t1hncuStUtV1hofj5YOS5UzR2vCDT1tk0saMzqVgAlfSIghy2fx8g_xmAVomzxOO1BOqqgazyyaMi7FksuoV8mg6JzkejlqNu0pRwsxv6F5oMqbSn5Nmt0n4Yge81jpxPk8bspKiGRUI7uXvxYdq_-Uwvvd6kLO7R5qo4rIg4M-wxUzBym46Bcf-alPEUwgZA4sHUZ0f8Qk-JwsSUjDVqMrjq8eAg8bX33uSgWpdw1NoKk1eno1mDm0kK5wvQmnpI2v3Mdp5tvRPzPfWuSHePgGwSE-5w)
-
 When to merge the release branch
 --------------------------------
 
@@ -93,6 +89,10 @@ should have gone to the release branch.
 * You will have to resolve this conflict, which usually won't be too hard.
 * To avoid this situation, make sure you consider whether a change should go
   to master or the release branch. If in doubt, ask in the channel.
+
+This leads to a git history like the following:
+
+[![](https://mermaid.ink/img/pako:eNqtU8FuwjAM_ZXIZ7aBaJbR86addto1F5OYNippq5CiIcS_L5QxlS2FViKnOO8lfn6O96AqTZACCysz_t1hncuStUtV1hofj5YOS5UzR2vCDT1tk0saMzqVgAlfSIghy2fx8g_xmAVomzxOO1BOqqgazyyaMi7FksuoV8mg6JzkejlqNu0pRwsxv6F5oMqbSn5Nmt0n4Yge81jpxPk8bspKiGRUI7uXvxYdq_-Uwvvd6kLO7R5qo4rIg4M-wxUzBym46Bcf-alPEUwgZA4sHUZ0f8Qk-JwsSUjDVqMrjq8eAg8bX33uSgWpdw1NoKk1eno1mDm0kK5wvQmnpI2v3Mdp5tvRPzPfWuSHePgGwSE-5w?type=png)](https://mermaid.live/edit#pako:eNqtU8FuwjAM_ZXIZ7aBaJbR86addto1F5OYNippq5CiIcS_L5QxlS2FViKnOO8lfn6O96AqTZACCysz_t1hncuStUtV1hofj5YOS5UzR2vCDT1tk0saMzqVgAlfSIghy2fx8g_xmAVomzxOO1BOqqgazyyaMi7FksuoV8mg6JzkejlqNu0pRwsxv6F5oMqbSn5Nmt0n4Yge81jpxPk8bspKiGRUI7uXvxYdq_-Uwvvd6kLO7R5qo4rIg4M-wxUzBym46Bcf-alPEUwgZA4sHUZ0f8Qk-JwsSUjDVqMrjq8eAg8bX33uSgWpdw1NoKk1eno1mDm0kK5wvQmnpI2v3Mdp5tvRPzPfWuSHePgGwSE-5w)
 
 Multiple concurrent releases
 ----------------------------
