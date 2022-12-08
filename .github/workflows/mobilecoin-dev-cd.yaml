@@ -275,7 +275,7 @@ jobs:
 
 #########################################
 # Build/Publish public artifacts
-######################################### 1a94367
+#########################################
   docker:
     runs-on: [self-hosted, Linux, small]
     needs:
