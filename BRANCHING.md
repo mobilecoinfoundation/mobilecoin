@@ -6,7 +6,8 @@ Branching and Releasing
 Changes are created via PRs, reviewed, and squash-merged into `master`.
 
 Sometimes long running feature branches are created. These are, still, eventually
-squash merged into `master`.
+squash merged into `master`. (Alternatively, this could be a normal git merge
+and not a squash merge, it doesn't much matter.)
 
 Release branches
 ----------------
