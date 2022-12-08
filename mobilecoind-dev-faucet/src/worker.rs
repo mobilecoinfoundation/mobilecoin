@@ -725,9 +725,6 @@ impl WorkerTokenState {
                 is_tx_still_in_flight(client, submit_tx_response, "Split", logger)
             });
 
-        // We want the top NUM_OUTPUTS utxos to be interesting to split.
-        // If there is not enough value among these for this, then we are out of funds,
-        // assuming nothing else is happening.
         let total_value = top_utxos.iter().map(|utxo| utxo.value).sum::<u64>();
         let avg_value = total_value / MAX_OUTPUTS;
 
@@ -803,14 +800,14 @@ impl WorkerTokenState {
 
             let mut resp = client
                 .generate_tx(&req)
-                .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+                .map_err(|err| format!("Failed to generate rebalancing tx: {}", err))?;
 
             // Submit the Tx
             let mut req = api::SubmitTxRequest::new();
             req.set_tx_proposal(resp.take_tx_proposal());
             let submit_tx_response = client
                 .submit_tx(&req)
-                .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+                .map_err(|err| format!("Failed to submit rebalancing tx: {}", err))?;
 
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does
@@ -826,9 +823,9 @@ impl WorkerTokenState {
         // smallest_interesting_split_tx_value.
         //
         // Hopefully, this does not cause (a) to be re-entered next time, since
-        // all of these utxos will decrease by smallest_interesting_split_tx_value,
-        // so they will all still be similar in value, and next time around we
-        // can do the parallel split again.
+        // all of these utxos will decrease by smallest_interesting_split_tx_value
+        // or so, so they will all still be similar in value, and next time around
+        // we can do the parallel split again.
         if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
             log::trace!(logger, "Attempting to split on token id {}", self.token_id);
 
@@ -894,15 +891,18 @@ impl WorkerTokenState {
         Ok(false)
     }
 
-    // This maybe sends a defragmentation tx, opportunistically splitting off
-    // some target-value Txs
+    // This maybe sends a "defragmentation tx", which means taking the largest
+    // utxos which are not in-flight, opportunistically splitting off
+    // some target-value TxOuts if possible, and sending the rest back as a
+    // change TxOut.
+    //
     // Returns:
     // * An error if we get a mobilecoind error
     // * True if a defragmentation tx is in flight
     // * False if a defragmentation tx is not in flight and could not be built
     //
     // Assumes:
-    // bottom_utxos is sorted in decreasing order by value and only
+    // utxos is sorted in decreasing order by value and only
     // contains the right token id.
     fn maybe_send_defragmentation_tx(
         &mut self,
@@ -946,8 +946,9 @@ impl WorkerTokenState {
             .map(|utxo| utxo.value)
             .sum::<u64>();
 
-        // If the total value after the largest is the fee, then even if we do this,
-        // the largest one will have less value, so this is pointless.
+        // If the total value after the largest is less than the fee, then even
+        // if we do this, the change txo will have less value than the largest
+        // one we had before this, so this is pointless, we just have dust now.
         if total_value_skip_first <= self.minimum_fee_value {
             return Ok(false);
         }
