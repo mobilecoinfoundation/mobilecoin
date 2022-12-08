@@ -423,6 +423,8 @@ struct WorkerTokenState {
     // Only one of these will be used at a time, and this only chooses from the lesser
     // of the utxos.
     in_flight_defragmentation_tx_state: Option<SubmitTxResponse>,
+    // Track the key images associated to utxos int he defragmentation tx in flight (if any)
+    in_flight_defragmentation_key_images: HashSet<KeyImage>,
     // A shared flag we use to signal if have insufficient funds for this token id
     funds_depleted: Arc<AtomicBool>,
     // A shared counter used to indicate roughly how many items are in the queue
@@ -464,6 +466,7 @@ impl WorkerTokenState {
                 in_flight_rebalancing_tx_state: None,
                 in_flight_split_tx_states: Default::default(),
                 in_flight_defragmentation_tx_state: None,
+                in_flight_defragmentation_key_images: Default::default(),
                 funds_depleted,
                 queue_depth,
             },
@@ -599,12 +602,9 @@ impl WorkerTokenState {
         non_target_value_utxos.sort_by(|a, b| b.value.cmp(&a.value));
 
         // Take the MAX_OUTPUTS largest utxos, these will be passed to
-        // "maybe_send_split_txs" for consideration The rest will be considered
-        // for defragmentation.
-        let (top_utxos, bottom_utxos) = non_target_value_utxos.split_at(core::cmp::min(
-            MAX_OUTPUTS as usize,
-            non_target_value_utxos.len(),
-        ));
+        // "maybe_send_split_txs" for consideration.
+        let top_utxos = &non_target_value_utxos
+            [0..core::cmp::min(MAX_OUTPUTS as usize, non_target_value_utxos.len())];
 
         // (3) Maybe send split txs using the top several UTXOs
         //
@@ -629,7 +629,6 @@ impl WorkerTokenState {
         //     split tx's. We only take a TxOut for this purpose if it is not already
         //     the subject of an in-flight split tx. Also, before doing anything
         //     we check up on the in-flight split tx's.
-
         let funds_are_depleted_in_top_utxos = self.maybe_send_split_txs(
             top_utxos,
             client,
@@ -640,16 +639,9 @@ impl WorkerTokenState {
         )?;
 
         // (4) Maybe send a defragmentation tx, if funds are depleted in top utxos
-        //
-        // Note: We could continuously check for and send rebalancing utxos,
-        // but we may want to make the two calls a little smarter so that they
-        // can avoid stepping on eachothers' utxos.
-        //
-        // In the main use-case for the faucet, it is provided (by minting)
-        // one massive utxo, so the defragmentation part is less interesting.
         let defragmentation_in_progress = if funds_are_depleted_in_top_utxos {
             self.maybe_send_defragmentation_tx(
-                bottom_utxos,
+                &non_target_value_utxos,
                 client,
                 monitor_id,
                 public_address,
@@ -774,11 +766,15 @@ impl WorkerTokenState {
                 self.token_id
             );
 
-            // Check if any of these UTXOs were used by an in-flight split tx. If so then we
+            // Check if any of these UTXOs were used by an in-flight split tx or
+            // defrag tx. If so then we
             // should back off and wait for it to clear and re-evaluate.
             if top_utxos.iter().any(|utxo| {
-                self.in_flight_split_tx_states
-                    .contains_key(&utxo.get_key_image().try_into().unwrap())
+                let key_image = utxo.get_key_image().try_into().unwrap();
+                self.in_flight_split_tx_states.contains_key(&key_image)
+                    || self
+                        .in_flight_defragmentation_key_images
+                        .contains(&key_image)
             }) {
                 log::trace!(
                     logger,
@@ -846,20 +842,32 @@ impl WorkerTokenState {
 
             // Try to split any top-value utxos that are not already in-flight.
             for utxo in top_utxos {
-                if utxo.value < smallest_interesting_split_tx_value {
+                if utxo.value < self.minimum_fee_value + self.target_value {
                     continue;
                 }
                 let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
                 if self.in_flight_split_tx_states.contains_key(&key_image) {
                     continue;
                 }
+                if self
+                    .in_flight_defragmentation_key_images
+                    .contains(&key_image)
+                {
+                    continue;
+                }
+
+                // See how many target_value UTXOs we can create, capping at MAX_OUTPUTS - 1
+                let num_target_value_utxos = core::cmp::min(
+                    MAX_OUTPUTS - 1,
+                    (utxo.value - self.minimum_fee_value) / self.target_value,
+                ) as usize;
 
                 // Generate a Tx
                 let mut req = api::GenerateTxRequest::new();
                 req.set_sender_monitor_id(monitor_id.to_vec());
                 req.set_token_id(*self.token_id);
                 req.set_input_list(vec![utxo.clone()].into());
-                req.set_outlay_list(vec![outlay.clone(); MAX_OUTPUTS_USIZE - 1].into());
+                req.set_outlay_list(vec![outlay.clone(); num_target_value_utxos].into());
 
                 let mut resp = client
                     .generate_tx(&req)
@@ -898,7 +906,7 @@ impl WorkerTokenState {
     // contains the right token id.
     fn maybe_send_defragmentation_tx(
         &mut self,
-        bottom_utxos: &[UnspentTxOut],
+        utxos: &[UnspentTxOut],
         client: &MobilecoindApiClient,
         monitor_id: &[u8],
         public_address: &PublicAddress,
@@ -914,33 +922,43 @@ impl WorkerTokenState {
             // At this point, the previous in-flight tx resolved somehow and if it was an
             // error we logged it
             self.in_flight_defragmentation_tx_state = None;
+            self.in_flight_defragmentation_key_images = Default::default();
         }
 
         // We can only use at most MAX_INPUTS of these utxos at once
         // Avoid anything that's somehow part of an in-flight split tx
-        let bottom_utxos = bottom_utxos
+        let (key_images, selected_utxos): (HashSet<KeyImage>, Vec<_>) = utxos
             .iter()
-            .filter(|utxo| {
+            .filter_map(|utxo| {
                 let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
-                !self.in_flight_split_tx_states.contains_key(&key_image)
+                if self.in_flight_split_tx_states.contains_key(&key_image) {
+                    None
+                } else {
+                    Some((key_image, utxo.clone()))
+                }
             })
             .take(MAX_INPUTS as usize)
-            .cloned()
-            .collect::<Vec<_>>();
+            .unzip();
 
-        let total_value = bottom_utxos.iter().map(|utxo| utxo.value).sum::<u64>();
+        let total_value_skip_first = selected_utxos
+            .iter()
+            .skip(1)
+            .map(|utxo| utxo.value)
+            .sum::<u64>();
 
-        // If the total value is less than 2x fee, then we can't do anything useful with
-        // this.
-        if total_value < 2 * self.minimum_fee_value {
+        // If the total value after the largest is the fee, then even if we do this,
+        // the largest one will have less value, so this is pointless.
+        if total_value_skip_first <= self.minimum_fee_value {
             return Ok(false);
         }
+
+        let total_value = total_value_skip_first + selected_utxos[0].value;
 
         // See how many target_value UTXOs we can create, capping at MAX_OUTPUTS - 1
         let num_target_value_utxos = core::cmp::min(
             MAX_OUTPUTS - 1,
             (total_value - self.minimum_fee_value) / self.target_value,
-        );
+        ) as usize;
 
         // Generate an outlay
         let mut outlay = api::Outlay::new();
@@ -951,8 +969,8 @@ impl WorkerTokenState {
         let mut req = api::GenerateTxRequest::new();
         req.set_sender_monitor_id(monitor_id.to_vec());
         req.set_token_id(*self.token_id);
-        req.set_input_list(bottom_utxos.iter().cloned().collect());
-        req.set_outlay_list(vec![outlay; num_target_value_utxos as usize].into());
+        req.set_input_list(selected_utxos.iter().cloned().collect());
+        req.set_outlay_list(vec![outlay; num_target_value_utxos].into());
 
         let mut resp = client
             .generate_tx(&req)
@@ -968,6 +986,7 @@ impl WorkerTokenState {
         // This lets us keep tabs on when this split payment has resolved, so that we
         // can avoid sending another payment until it does
         self.in_flight_defragmentation_tx_state = Some(submit_tx_response);
+        self.in_flight_defragmentation_key_images = key_images;
 
         Ok(true)
     }
