@@ -149,6 +149,7 @@ jobs:
           -p mc-ledger-migration \
           -p mc-mobilecoind \
           -p mc-mobilecoind-json \
+          -p mc-mobilecoind-dev-faucet \
           -p mc-util-generate-sample-ledger \
           -p mc-util-grpc-admin-tool \
           -p mc-util-grpc-token-generator \
