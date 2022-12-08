@@ -326,7 +326,7 @@ impl Worker {
                     target_queue_depth,
                     &logger,
                 ) {
-                    log::error!(logger, "{}, {}", state.token_id, err_str);
+                    log::error!(logger, "token id {}: {}", state.token_id, err_str);
                 }
             }
             log::trace!(logger, "Worker sleeping");
