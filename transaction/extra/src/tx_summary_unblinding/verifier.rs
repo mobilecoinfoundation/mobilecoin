@@ -60,7 +60,7 @@ pub fn verify_tx_summary(
     let (digest, report) = verifier.finalize(
         Amount::new(tx_summary.fee, tx_summary.fee_token_id.into()),
         tx_summary.tombstone_block,
-    );
+    )?;
 
     // In a debug build, confirm the digest by computing it in a non-streaming way
     //
@@ -313,7 +313,14 @@ impl TxSummaryStreamingVerifier {
         mut self,
         fee: Amount,
         tombstone_block: u64,
-    ) -> ([u8; 32], TxSummaryUnblindingReport) {
+    ) -> Result<([u8; 32], TxSummaryUnblindingReport), Error> {
+        if self.output_count != self.expected_num_outputs {
+            return Err(Error::StillExpectingMoreOutputs);
+        }
+        if self.input_count != self.expected_num_inputs {
+            return Err(Error::StillExpectingMoreInputs);
+        }
+
         self.report.network_fee = fee;
         self.report.tombstone_block = tombstone_block;
         self.report.sort();
@@ -330,7 +337,7 @@ impl TxSummaryStreamingVerifier {
         let mut digest = [0u8; 32];
         self.transcript.extract_digest(&mut digest);
 
-        (digest, self.report)
+        Ok((digest, self.report))
     }
 
     // Internal: Check if TxOutSummary matches to our view private key
