@@ -60,6 +60,10 @@ $ git push origin merge-release-v4.0
 Here, we create a topic branch (off of master), merge the release branch into it,
 resolve any conflicts, and then propose to merge this to master.
 
+If there are no conflicts, then this can be simplified, we can simply open a PR
+from `release/v4.0` to `master`. If there are conflicts, then we wouldn't be able
+to merge that PR without making changes to `release/v4.0`, which is undesirable.
+
 When to merge the release branch
 --------------------------------
 
