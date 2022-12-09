@@ -726,12 +726,12 @@ impl WorkerTokenState {
             });
 
         let total_value = top_utxos.iter().map(|utxo| utxo.value).sum::<u64>();
-        let avg_value = total_value / MAX_OUTPUTS;
+        let avg_value = (total_value - self.minimum_fee_value) / MAX_OUTPUTS;
 
         // (a) Check if rebalancing makes sense to attempt.
         // This is the case if:
         // * The average value is at least the smallest interesting split tx value,
-        //   otherwise rebalancing will produce uninteresting txs.
+        //   otherwise rebalancing will produce uninteresting txos.
         // * Things are currently somewhat out of whack -- there are less than
         //   NUM_OUTPUTS utxos, or the largest is > 2x the value of the smallest.
         //
