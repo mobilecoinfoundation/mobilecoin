@@ -107,6 +107,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - [MCIP 56]: Make the enclave enforce unique nonces per-token (improved fix for TOB-MCCT-4).
 - TOB-MCCT-5: Reject transactions where the client's fee map differs from the consensus enclave's.
+- Update SGX SDK to 2.18.
 
 [MCIP 42]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0042-partial-fill-rules.md
 [MCIP 43]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0043-block-metadata.md
