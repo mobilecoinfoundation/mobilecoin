@@ -42,6 +42,24 @@ considered by a future merge and can never create a conflict in a future merge.
 (This is a major difference with squash merging and rebase merging. This is very
 important when merging long-lived branches and not small PRs.)
 
+The local workflow for this may look something like this:
+
+```
+$ git status
+On branch master
+$ git checkout -b merge-release-v4.0
+$ git merge release/v4.0
+
+(resolve conflicts now)
+
+$ git push origin merge-release-v4.0
+
+(open pull request from this branch targetting master)
+```
+
+Here, we create a topic branch (off of master), merge the release branch into it,
+resolve any conflicts, and then propose to merge this to master.
+
 When to merge the release branch
 --------------------------------
 
