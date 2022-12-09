@@ -31,7 +31,7 @@ by *merging* the release branch into master.
 
 * The release branch is not deleted after this merge.
 * This is a normal git merge and not a squash merge or a rebase merge.
-  The purpose of this is to avoid git conflicts.
+  The purpose of this is to avoid git conflicts. ([More on this](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squashing-and-merging-a-long-running-branch))
 
 Merging means that git will look at the state of the release branch, check if
 any commits on it have not already been merged into master, and if not, attempt
@@ -167,3 +167,26 @@ The main drawbacks of this are:
   originals, it's very hard to ever be sure that we got all the changes.
 
 This merge-based policy hopes to rectify these issues.
+
+Why squash merge at all
+-----------------------
+
+The best argument for why topic branches should be squash merged is that,
+often topic branches have a lot of small commits, and maybe only the last one
+builds and passes tests. If we squash the PR into one commit, then we know that
+the commit that lands on master builds and passes tests. If we do a merge commit,
+then it's possible that during `git bisect` you will hit a commit that does not
+build or pass tests.
+
+In some projects, the convention is that all the commits in the PR should build
+and pass tests, and you are supposed to use `git rebase` to either fix all the
+commits or squash the ones that don't build. However, simply squash merging it all
+is much less effort from the developer. Historically mobilecoin developers have
+preferred to click squash merge.
+
+Squash merging also means that if you have to revert, your only option is to
+revert the whole PR (and not an individual commit). However, historically that's
+usually what we want to do.
+
+Historically, we have rarely used `git bisect` to investigate regressions, but it
+could be useful in the future.
