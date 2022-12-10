@@ -202,9 +202,16 @@ build or pass tests.
 
 In some projects, the convention is that all the commits in the PR should build
 and pass tests, and you are supposed to use `git rebase` to either fix all the
-commits or squash the ones that don't build. However, simply squash merging it all
-is much less effort from the developer. Historically mobilecoin developers have
-preferred to click squash merge.
+commits or squash the ones that don't build.
+
+However,
+* Usually you won't run CI on every single commit, because it's prohibitive.
+  So you will sometimes end up having commits under master that don't build.
+* Simply squash merging it all is much less effort from the developer.
+* More junior developers who aren't experts with `git rebase` won't have to learn
+  all of those techniques.
+
+Historically mobilecoin developers have preferred to click squash merge.
 
 Squash merging also means that if you have to revert, your only option is to
 revert the whole PR (and not an individual commit). However, historically that's
