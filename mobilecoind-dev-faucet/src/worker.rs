@@ -41,6 +41,8 @@ use std::{
 };
 use tokio::sync::oneshot::{self, error::TryRecvError};
 
+const MAX_OUTPUTS_USIZE: usize = MAX_OUTPUTS as usize;
+
 /// A record the worker hands to faucet threads about a UTXO they can use.
 /// It expects to be notified if the UTXO is successfully submitted.
 /// If the one-shot sender is dropped, the worker assumes that there was an
@@ -605,8 +607,8 @@ impl WorkerTokenState {
 
         // Take the MAX_OUTPUTS largest utxos, these will be passed to
         // "maybe_send_split_txs" for consideration.
-        let top_utxos = &non_target_value_utxos
-            [0..core::cmp::min(MAX_OUTPUTS as usize, non_target_value_utxos.len())];
+        let top_utxos =
+            &non_target_value_utxos[0..non_target_value_utxos.len().min(MAX_OUTPUTS_USIZE)];
 
         // (3) Maybe send split txs using the top several UTXOs
         //
@@ -726,7 +728,6 @@ impl WorkerTokenState {
         target_queue_depth: usize,
         logger: &Logger,
     ) -> Result<bool, String> {
-        const MAX_OUTPUTS_USIZE: usize = MAX_OUTPUTS as usize;
         assert!(
             top_utxos.len() <= MAX_OUTPUTS_USIZE,
             "too many top utxos, this is a logic error"
