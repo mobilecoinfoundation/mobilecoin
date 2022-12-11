@@ -42,6 +42,14 @@ considered by a future merge and can never create a conflict in a future merge.
 (This is a major difference with squash merging and rebase merging. This is very
 important when merging long-lived branches and not small PRs.)
 
+If there are no conflicts, we can simply open a PR from e.g. `release/v4.0` to
+`master` in github. The release branches are protected, so merging this PR will
+not delete the branch.
+
+If there are conflicts, this won't exactly work, because we will have to resolve
+the conflicts, but we don't want to push more commits to `release/v4.0` to accomplish
+this.
+
 The local workflow for this may look something like this:
 
 ```
@@ -59,10 +67,6 @@ $ git push origin merge-release-v4.0
 
 Here, we create a topic branch (off of master), merge the release branch into it,
 resolve any conflicts, and then propose to merge this to master.
-
-If there are no conflicts, then this can be simplified, we can simply open a PR
-from `release/v4.0` to `master`. If there are conflicts, then we wouldn't be able
-to merge that PR without making changes to `release/v4.0`, which is undesirable.
 
 When to merge the release branch
 --------------------------------
