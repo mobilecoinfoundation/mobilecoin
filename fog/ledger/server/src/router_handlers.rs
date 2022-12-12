@@ -5,7 +5,10 @@ use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
-use mc_common::{logger::Logger, ResponderId};
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_fog_api::{
     ledger::{
         LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
@@ -117,13 +120,14 @@ impl ProcessedShardResponseData {
 /// Processes the MultiKeyImageStoreResponses returned by each Ledger Shard.
 pub fn process_shard_responses(
     clients_and_responses: Vec<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse)>,
+    logger: Logger,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
     let mut shard_clients_for_retry = Vec::new();
     let mut store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
     for (shard_client, mut response) in clients_and_responses {
-        let store_uri = KeyImageStoreUri::from_str(response.get_fog_ledger_store_uri())?;
+        let store_uri = KeyImageStoreUri::from_str(response.get_store_uri())?;
         match response.get_status() {
             MultiKeyImageStoreResponseStatus::SUCCESS => {
                 let store_responder_id = store_uri.responder_id()?;
@@ -138,6 +142,14 @@ pub fn process_shard_responses(
             }
             // This call will be retried as part of the larger retry logic
             MultiKeyImageStoreResponseStatus::NOT_READY => (),
+            // This is an unexpected error - we should never see this
+            MultiKeyImageStoreResponseStatus::UNKNOWN => {
+                log::error!(
+                    logger,
+                    "Received a response with status 'UNKNOWN' from store {}",
+                    KeyImageStoreUri::from_str(&response.store_uri)?
+                );
+            }
         }
     }
 
@@ -220,8 +232,8 @@ where
                     )
                 })?;
 
-        let processed_shard_response_data = process_shard_responses(clients_and_responses)
-            .map_err(|err| {
+        let processed_shard_response_data =
+            process_shard_responses(clients_and_responses, logger.clone()).map_err(|err| {
                 router_server_err_to_rpc_status(
                     "Key Images Query: internal query response processing",
                     err,
