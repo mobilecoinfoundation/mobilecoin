@@ -174,12 +174,9 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn check_key_images(
         &self,
         msg: EnclaveMessage<ClientSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImages(
-            msg,
-            untrusted_keyimagequery_response,
-        ))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImages(msg, response))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -247,12 +244,9 @@ impl LedgerEnclave for LedgerSgxEnclave {
     fn check_key_image_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        response: UntrustedKeyImageQueryResponse,
     ) -> Result<EnclaveMessage<NonceSession>> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImageStore(
-            msg,
-            untrusted_keyimagequery_response,
-        ))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::CheckKeyImageStore(msg, response))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

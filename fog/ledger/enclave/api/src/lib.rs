@@ -96,7 +96,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn check_key_images(
         &self,
         msg: EnclaveMessage<ClientSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>>;
 
     /// Add a key image data to the oram Using thrm -rf targete key image
@@ -131,7 +131,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn check_key_image_store(
         &self,
         msg: EnclaveMessage<NonceSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        response: UntrustedKeyImageQueryResponse,
     ) -> Result<EnclaveMessage<NonceSession>>;
 
     /// Decrypts a client query message and converts it into a
