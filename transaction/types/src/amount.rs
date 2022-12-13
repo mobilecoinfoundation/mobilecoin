@@ -25,3 +25,9 @@ impl Amount {
         Self { value, token_id }
     }
 }
+
+impl Default for Amount {
+    fn default() -> Self {
+        Amount::new(0, 0.into())
+    }
+}

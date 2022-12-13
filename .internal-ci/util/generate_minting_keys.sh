@@ -7,11 +7,14 @@
 
 set -e
 
+location=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
 usage()
 {
     echo "Usage:"
     echo "${0} --token-id 8192"
     echo "    --token-id - id to generate keys for"
+    echo "    --key-id - default:1 - sig name for key files. use for multi sig"
 }
 
 is_set()
@@ -36,6 +39,10 @@ do
             token_id="${2}"
             shift 2
             ;;
+        --key-id )
+            key_id="${2}"
+            shift 2
+        ;;
         *)
             break
             ;;
@@ -44,37 +51,37 @@ done
 
 is_set token_id
 
-location=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-
-BASE_PATH="${BASE_PATH:-.tmp/seeds/minting}"
+key_id=${key_id:-1}
+BASE_PATH="${BASE_PATH:-.tmp/minting}"
 mkdir -p "${BASE_PATH}"
 
 # Token governor keys
 # This key pair is used to validate MintConfigTxs
-if [[ ! -f "${BASE_PATH}/minter${token_id}_governor.private.pem" ]]
+if [[ ! -f "${BASE_PATH}/token_${token_id}_governor_${key_id}.private.pem" ]]
 then
+    echo "Writing token_${token_id}_governor_${key_id} keys"
     "${location}/generate_ed25519_keys.sh" \
-        --public-out "${BASE_PATH}/minter${token_id}_governor.public.pem" \
-        --private-out "${BASE_PATH}/minter${token_id}_governor.private.pem"
+        --public-out "${BASE_PATH}/token_${token_id}_governor_${key_id}.public.pem" \
+        --private-out "${BASE_PATH}/token_${token_id}_governor_${key_id}.private.pem"
 else
-    echo "minter${token_id}_governor keys already exist"
+    echo "minter ${token_id}_governor_${key_id} keys already exist"
 fi
-sha256sum "${BASE_PATH}/minter${token_id}_governor.private.pem"
-sha256sum "${BASE_PATH}/minter${token_id}_governor.public.pem"
+sha256sum "${BASE_PATH}/token_${token_id}_governor_${key_id}.private.pem"
+sha256sum "${BASE_PATH}/token_${token_id}_governor_${key_id}.public.pem"
 
 # Token signer keys
 # This key pair is used to validate MintTX
-if [[ ! -f "${BASE_PATH}/token_signer.private.pem" ]]
+if [[ ! -f "${BASE_PATH}/token_${token_id}_signer_${key_id}.private.pem" ]]
 then
-    echo "Writing token${token_id}_signer keys"
+    echo "Writing token_${token_id}_signer_${key_id} keys"
     "${location}/generate_ed25519_keys.sh" \
-        --public-out "${BASE_PATH}/token${token_id}_signer.public.pem" \
-        --private-out "${BASE_PATH}/token${token_id}_signer.private.pem"
+        --public-out "${BASE_PATH}/token_${token_id}_signer_${key_id}.public.pem" \
+        --private-out "${BASE_PATH}/token_${token_id}_signer_${key_id}.private.pem"
 else
-    echo "token${token_id}_signer keys already exist"
+    echo "token ${token_id}_signer_${key_id} keys already exist"
 fi
-sha256sum "${BASE_PATH}/token${token_id}_signer.private.pem"
-sha256sum "${BASE_PATH}/token${token_id}_signer.public.pem"
+sha256sum "${BASE_PATH}/token_${token_id}_signer_${key_id}.private.pem"
+sha256sum "${BASE_PATH}/token_${token_id}_signer_${key_id}.public.pem"
 
 # Write minting trust root private key if its defined.
 if [[ -n "${MINTING_TRUST_ROOT_PRIVATE}" ]]

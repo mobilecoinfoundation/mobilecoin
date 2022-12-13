@@ -19,12 +19,12 @@ use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
 
 fn main() {
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let config = IngestConfig::parse();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(
         o!("mc.local_node_id" => config.local_node_id.to_string()),
     );
+    mc_common::setup_panic_handler();
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         env!("CARGO_PKG_NAME"),

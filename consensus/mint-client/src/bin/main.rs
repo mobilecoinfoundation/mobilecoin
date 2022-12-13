@@ -10,8 +10,9 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
-use mc_consensus_mint_client::{printers, Commands, Config, FogContext, TxFile};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer};
+use mc_consensus_mint_client::{printers, Commands, Config, FogContext};
+use mc_consensus_mint_client_types::TxFile;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Signer, Verifier};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -61,9 +62,25 @@ fn main() {
             exit(resp.get_result().get_code().value());
         }
 
-        Commands::GenerateMintConfigTx { out, params } => {
+        Commands::GenerateMintConfigTx {
+            out,
+            tombstone_from_node,
+            params,
+        } => {
             let tx = params
-                .try_into_mint_config_tx(|| panic!("missing tombstone block"))
+                .try_into_mint_config_tx(|| {
+                    if let Some(node) = &tombstone_from_node {
+                        let ch = ChannelBuilder::default_channel_builder(env.clone())
+                            .connect_to_uri(node, &logger);
+                        let blockchain_api = BlockchainApiClient::new(ch);
+                        let last_block_info = blockchain_api
+                            .get_last_block_info(&Empty::new())
+                            .expect("get last block info");
+                        last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                    } else {
+                        panic!("missing tombstone block")
+                    }
+                })
                 .expect("failed creating tx");
 
             TxFile::from(tx)
@@ -178,17 +195,30 @@ fn main() {
             out,
             chain_id,
             fog_ingest_enclave_css,
+            tombstone_from_node,
             params,
         } => {
             let maybe_fog_bits = fog_ingest_enclave_css.map(|signature| FogContext {
                 chain_id: chain_id.expect("Chain id should be passed when fog is used"),
                 css_signature: signature,
-                grpc_env: env,
+                grpc_env: env.clone(),
                 logger: logger.clone(),
             });
 
             let tx = params
-                .try_into_mint_tx(maybe_fog_bits, || panic!("missing tombstone block"))
+                .try_into_mint_tx(maybe_fog_bits, || {
+                    if let Some(node) = &tombstone_from_node {
+                        let ch = ChannelBuilder::default_channel_builder(env.clone())
+                            .connect_to_uri(node, &logger);
+                        let blockchain_api = BlockchainApiClient::new(ch);
+                        let last_block_info = blockchain_api
+                            .get_last_block_info(&Empty::new())
+                            .expect("get last block info");
+                        last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                    } else {
+                        panic!("missing tombstone block")
+                    }
+                })
                 .expect("failed creating tx");
 
             TxFile::from(tx)
@@ -196,14 +226,9 @@ fn main() {
                 .expect("failed writing output file");
         }
 
-        Commands::HashTxFile { tx_file } => match tx_file {
-            TxFile::MintConfigTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
-            }
-            TxFile::MintTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
-            }
-        },
+        Commands::HashTxFile { tx_file } => {
+            println!("{}", hex::encode(&tx_file.hash_tx_prefix()));
+        }
 
         Commands::HashMintTx { params } => {
             let tx_prefix = params
@@ -265,7 +290,6 @@ fn main() {
         Commands::SignGovernors {
             signing_key,
             mut tokens,
-            output_toml,
             output_json,
         } => {
             let governors_map = tokens
@@ -278,11 +302,6 @@ fn main() {
             println!("Put this signature in the governors configuration file in the key \"governors_signature\".");
 
             tokens.governors_signature = Some(signature);
-
-            if let Some(path) = output_toml {
-                let toml_str = toml::to_string_pretty(&tokens).expect("failed serializing toml");
-                fs::write(path, toml_str).expect("failed writing output file");
-            }
 
             if let Some(path) = output_json {
                 let json_str =
@@ -309,16 +328,10 @@ fn main() {
                 TxFile::from_json_file(&tx_file_path).expect("failed loading tx file");
 
             // Append any existing signatures.
-            signatures.extend(match &tx_file {
-                TxFile::MintConfigTx(tx) => tx.signature.signatures().to_vec(),
-                TxFile::MintTx(tx) => tx.signature.signatures().to_vec(),
-            });
+            signatures.extend(tx_file.signatures().to_vec());
 
             // The message we are signing.
-            let message = match &tx_file {
-                TxFile::MintConfigTx(tx) => tx.prefix.hash(),
-                TxFile::MintTx(tx) => tx.prefix.hash(),
-            };
+            let message = tx_file.hash_tx_prefix();
 
             // Append signatures using the keys provided.
             signatures.extend(
@@ -352,6 +365,23 @@ fn main() {
             tx_file
                 .write_json(&tx_file_path)
                 .expect("failed writing tx file");
+        }
+
+        Commands::CheckSig {
+            signature,
+            hash,
+            pubkey,
+        } => {
+            // terminate with an exit code of 0 for success and 1 for failure
+            // allowing whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            match pubkey.verify(&hash, &signature) {
+                Ok(()) => println!("signature Ok"),
+                Err(e) => {
+                    println!("{:?}", e);
+                    exit(1)
+                }
+            }
         }
     }
 }

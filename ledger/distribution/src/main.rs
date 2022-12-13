@@ -293,11 +293,11 @@ impl BlockHandler for LocalBlockWriter {
 
 // Implements the ledger db polling loop
 fn main() {
-    let config = Config::parse();
-
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+
+    let config = Config::parse();
 
     let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
         .expect("Failed setting telemetry tracer");

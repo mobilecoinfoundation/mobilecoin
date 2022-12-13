@@ -4,6 +4,8 @@
 
 name: (Manual) Run Tests in Dev Namespace
 
+run-name: Test ${{ inputs.namespace }} - ${{ inputs.ingest_color }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -13,9 +15,12 @@ on:
         required: true
       ingest_color:
         description: "Fog Ingest blue/green"
-        type: string
+        type: choice
         required: true
         default: blue
+        options:
+        - blue
+        - green
       fog_distribution:
         description: "Run fog-distribution test"
         type: boolean
@@ -36,27 +41,15 @@ on:
         type: boolean
         required: false
         default: true
-      client_auth_enabled:
-        description: "Is client auth enabled?"
-        type: boolean
-        required: false
-        default: false
 
 jobs:
   test:
-    name: Test ${{ github.event.inputs.namespace }} - ${{ github.event.inputs.ingest_color }}
     uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
     with:
-      namespace: ${{ github.event.inputs.namespace }}
-      ingest_color: ${{ github.event.inputs.ingest_color }}
-      fog_distribution: ${{ github.event.inputs.fog_distribution == 'true' && 'true' || 'false' }}
-      testing_block_v0 : ${{ github.event.inputs.testing_block_v0 == 'true' && 'true' || 'false' }}
-      testing_block_v2: ${{ github.event.inputs.testing_block_v2 == 'true' && 'true' || 'false' }}
-      testing_block_v3: ${{ github.event.inputs.testing_block_v3 == 'true' && 'true' || 'false' }}
-    secrets:
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
-      RANCHER_URL: ${{ secrets.RANCHER_URL }}
-      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
-      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
-      CLIENT_AUTH_USER_VALUE:  ${{ github.event.inputs.client_auth_enabled == 'true' && secrets.DEV_CLIENT_AUTH_USER_VALUE || '' }}
+      namespace: ${{ inputs.namespace }}
+      ingest_color: ${{ inputs.ingest_color }}
+      fog_distribution: ${{ inputs.fog_distribution }}
+      testing_block_v0 : ${{ inputs.testing_block_v0 }}
+      testing_block_v2: ${{ inputs.testing_block_v2 }}
+      testing_block_v3: ${{ inputs.testing_block_v3 }}
+    secrets: inherit

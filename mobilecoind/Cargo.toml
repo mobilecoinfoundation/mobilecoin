@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind"
-version = "2.1.0-pre0"
+version = "4.0.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -59,7 +59,7 @@ displaydoc = "0.2"
 grpcio = "0.11.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
-num_cpus = "1.13"
+num_cpus = "1.14"
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"
 rand = "0.8"

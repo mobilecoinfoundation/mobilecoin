@@ -1,6 +1,6 @@
 [package]
 name = "mc-account-keys"
-version = "2.1.0-pre0"
+version = "4.0.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
@@ -16,10 +16,11 @@ default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/defa
 # External dependencies
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 displaydoc = { version = "0.2", default-features = false }
+hex_fmt = "0.3"
 hkdf = "0.12.3"
 prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0.0", optional = true }
+serde = { version = "1.0.0", default-features = false, optional = true }
 subtle = { version = "2", default-features = false }
 zeroize = { version = "1", default-features = false }
 

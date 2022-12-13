@@ -2,10 +2,8 @@
 
 mod config;
 mod fog;
-mod tx_file;
 
 pub mod printers;
 
 pub use config::{Commands, Config};
 pub use fog::FogContext;
-pub use tx_file::TxFile;

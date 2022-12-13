@@ -16,6 +16,7 @@ mod memo;
 mod signed_contingent_input;
 mod tx_out_confirmation_number;
 mod tx_out_gift_code;
+mod tx_summary_unblinding;
 mod unsigned_tx;
 
 pub use memo::{
@@ -30,6 +31,10 @@ pub use signed_contingent_input::{
 };
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;
+pub use tx_summary_unblinding::{
+    verify_tx_summary, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryStreamingVerifier,
+    TxSummaryUnblindingData, TxSummaryUnblindingReport,
+};
 pub use unsigned_tx::UnsignedTx;
 
 // Re-export this to help the exported macros work

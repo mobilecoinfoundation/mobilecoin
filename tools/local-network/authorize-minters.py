@@ -8,10 +8,10 @@
 #
 # This is a way to prepare the network for running the mint auditor integration tests
 
-import argparse
+import json
 import os
 import subprocess
-import time
+import tempfile
 
 from local_network import *
 
@@ -25,24 +25,57 @@ if not os.path.exists(f'{MINTING_KEYS_DIR}/minter2'):
     subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/minter2 -out {MINTING_KEYS_DIR}/minter2.pub', shell=True)
 
 # Submit a MintConfigTx that allows minter1.private to mint up to 1 billion token 1 tokens.
-subprocess.check_output(' '.join([
-    f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
-    'generate-and-submit-mint-config-tx',
-    f'--node insecure-mc://localhost:{BASE_CLIENT_PORT}',
-    f'--signing-key {MINTING_KEYS_DIR}/governor1',
-    f'--token-id 1',
-    f'--config 1000000000:1:{MINTING_KEYS_DIR}/minter1.pub',
-    '--total-mint-limit 10000000000'
-]), shell=True)
+with tempfile.NamedTemporaryFile(mode='w') as tf:
+    json.dump({
+        'token_id': 1,
+        'total_mint_limit': 10000000000,
+        'configs': [
+            {
+                'mint_limit': 1000000000,
+                'minters': {
+                    'type': 'Single',
+                    'pub_key': open(os.path.join(MINTING_KEYS_DIR, 'minter1.pub'), 'r').read()
+                }
+            }
+        ]
+    }, tf)
+    tf.flush()
+
+    output = subprocess.check_output(' '.join([
+        f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
+        'generate-and-submit-mint-config-tx',
+        f'--node insecure-mc://localhost:{BASE_CLIENT_PORT}',
+        f'--signing-key {MINTING_KEYS_DIR}/governor1',
+        f'--mint-config-tx-file {tf.name}',
+    ]), shell=True)
+    print('Token 1 client output:')
+    print(output.decode('utf-8'))
+    print()
 
 # Submit a MintConfigTx that allows minter2.private to mint up to 1 billion token 2 tokens.
-subprocess.check_output(' '.join([
-    f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
-    'generate-and-submit-mint-config-tx',
-    f'--node insecure-mc://localhost:{BASE_CLIENT_PORT}',
-    f'--signing-key {MINTING_KEYS_DIR}/governor2',
-    f'--token-id 2',
-    f'--config 1000000000:1:{MINTING_KEYS_DIR}/minter2.pub',
-    '--total-mint-limit 10000000000'
-]), shell=True)
+with tempfile.NamedTemporaryFile(mode='w') as tf:
+    json.dump({
+        'token_id': 2,
+        'total_mint_limit': 10000000000,
+        'configs': [
+            {
+                'mint_limit': 1000000000,
+                'minters': {
+                    'type': 'Single',
+                    'pub_key': open(os.path.join(MINTING_KEYS_DIR, 'minter2.pub'), 'r').read()
+                }
+            }
+        ]
+    }, tf)
+    tf.flush()
 
+    output = subprocess.check_output(' '.join([
+        f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
+        'generate-and-submit-mint-config-tx',
+        f'--node insecure-mc://localhost:{BASE_CLIENT_PORT}',
+        f'--signing-key {MINTING_KEYS_DIR}/governor2',
+        f'--mint-config-tx-file {tf.name}',
+    ]), shell=True)
+    print('Token 2 client output:')
+    print(output.decode('utf-8'))
+    print()

@@ -28,7 +28,7 @@ run the tests in `SGX_MODE=HW`. (See below for an explanation.)
 
 ##### IDE Support using the docker environment
 
-You can use `./mob prompt --cmd <command>` to run `<command>` from within
+You can use `./mob '<command>'` to run `<command>` from within
 the docker environment. For IDE support, this can be used to run `cargo check`.
 
 An example workspace configuration for Rust Analyzer is provided below:
@@ -36,23 +36,11 @@ An example workspace configuration for Rust Analyzer is provided below:
 ```json
 "rust-analyzer.checkOnSave.overrideCommand": [
     "./mob",
-    "prompt",
-    "--cmd",
-    "cargo",
-    "check",
-    "--workspace",
-    "--message-format=json",
-    "--all-targets"
+    "cargo check --workspace --message-format=json --all-targets"
 ],
 "rust-analyzer.cargo.buildScripts.overrideCommand": [
     "./mob",
-    "prompt",
-    "--cmd",
-    "cargo",
-    "check",
-    "--workspace",
-    "--message-format=json",
-    "--all-targets"
+    "cargo check --workspace --message-format=json --all-targets"
 ],
 "rust-analyzer.cargo.buildScripts.useRustcWrapper": false,
 "rust-analyzer.cargo.buildScripts.enable": false,

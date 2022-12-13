@@ -78,14 +78,8 @@ impl GovernorsMap {
 
         // Validate individual entries.
         for (token_id, signer_set) in map.iter() {
-            // Must have at least as many signers as the threshold.
-            if signer_set.threshold() as usize > signer_set.signers().len() {
-                return Err(Error::InsufficientSigners(*token_id));
-            }
-
-            // Must have at least one signer.
-            if signer_set.signers().is_empty() {
-                return Err(Error::InsufficientSigners(*token_id));
+            if !signer_set.is_valid() {
+                return Err(Error::InvalidSignerSet(*token_id));
             }
         }
 
@@ -110,8 +104,8 @@ pub enum Error {
     /// Mob token is not allowed to have governors.
     MobTokenNotAllowed,
 
-    /// Token `{0}` has insufficient signers
-    InsufficientSigners(TokenId),
+    /// Token `{0}` has an invalid signer set
+    InvalidSignerSet(TokenId),
 }
 
 #[cfg(test)]
@@ -180,14 +174,14 @@ mod test {
                 test_token_id,
                 SignerSet::new(vec![], 0)
             )])),
-            Err(Error::InsufficientSigners(test_token_id)),
+            Err(Error::InvalidSignerSet(test_token_id)),
         );
         assert_eq!(
             GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
                 SignerSet::new(vec![], 1)
             )])),
-            Err(Error::InsufficientSigners(test_token_id)),
+            Err(Error::InvalidSignerSet(test_token_id)),
         );
 
         // Threshold > signers not allowed
@@ -196,7 +190,7 @@ mod test {
                 test_token_id,
                 SignerSet::new(vec![Ed25519Public::default()], 2)
             )])),
-            Err(Error::InsufficientSigners(test_token_id)),
+            Err(Error::InvalidSignerSet(test_token_id)),
         );
     }
 }

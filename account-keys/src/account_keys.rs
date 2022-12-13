@@ -45,8 +45,11 @@ pub use mc_core::consts::{
     CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
+
 /// A MobileCoin user's public subaddress.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Digestible)]
+#[derive(
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
+)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PublicAddress {

@@ -1,0 +1,253 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - Deploy core apps to to the development namespace.
+
+name: mobilecoin-workflow-dev-setup-environment
+
+on:
+  workflow_call:
+    inputs:
+      block_version:
+        description: "block_version"
+        type: string
+        required: true
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: false
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      tokens_json_version:
+        description: "The version of the tokens.json file we will generate"
+        type: string
+        default: '1'
+        required: false
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+    secrets:
+      DEV_FOG_REPORT_SIGNING_CA_CERT:
+        description: "Fog Report signing CA cert"
+        required: true
+      DEV_FOG_REPORT_SIGNING_CERT:
+        description: "Fog Report signing cert pem"
+        required: true
+      DEV_FOG_REPORT_SIGNING_CERT_KEY:
+        description: "Fog Report signing cert key"
+        required: true
+      DEV_IAS_KEY:
+        description: "IAS"
+        required: true
+      DEV_IAS_SPID:
+        description: "IAS"
+        required: true
+      DEV_KEYS_SEED_FOG:
+        description: "static wallet seed"
+        required: true
+      DEV_KEYS_SEED_INITIAL:
+        description: "static wallet seed"
+        required: true
+      DEV_KEYS_SEED_MNEMONIC:
+        description: "static wallet seed"
+        required: true
+      DEV_KEYS_SEED_MNEMONIC_FOG:
+        description: "static wallet seed"
+        required: true
+      DEV_LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      DEV_LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
+      DEV_MINTING_1_GOVERNOR_1_PRIVATE:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_1_GOVERNOR_1_PUBLIC:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_1_SIGNER_1_PRIVATE:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_1_SIGNER_1_PUBLIC:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_8192_GOVERNOR_1_PRIVATE:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_8192_GOVERNOR_1_PUBLIC:
+        description: "minting governor key"
+        required: true
+      DEV_MINTING_8192_SIGNER_1_PRIVATE:
+        description: "minting signer key"
+        required: true
+      DEV_MINTING_8192_SIGNER_1_PUBLIC:
+        description: "minting signer key"
+        required: true
+      DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD:
+        description: "password for fog_recovery database"
+        required: true
+      DEV_RANCHER_CLUSTER:
+        description: "Rancher cluster name"
+        required: true
+      DEV_RANCHER_URL:
+        description: "Rancher server URL"
+        required: true
+      DEV_RANCHER_TOKEN:
+        description: "Rancher access token"
+        required: true
+      DEV_TOKENS_CONFIG_V1_JSON:
+        description: "signed tokens config json"
+        required: true
+      DEV_TOKENS_CONFIG_V2_JSON:
+        description: "signed tokens config json"
+        required: true
+      IP_INFO_TOKEN:
+        description: "ipinfo.io token for authenticated access"
+        required: true
+
+jobs:
+  setup-environment:
+    runs-on: [self-hosted, Linux, small]
+    env:
+      BASE_PATH: .tmp
+      MINTING_BASE_PATH: .tmp/minting
+      SEEDS_BASE_PATH: .tmp/seeds
+      VALUES_BASE_PATH: .tmp/values
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Create namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: namespace-create
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Write seeds and fog-report values
+      run: |
+        # Create seeds dir.
+        mkdir -p "${SEEDS_BASE_PATH}"
+
+        # Write values to be used as k8s secret values.
+        echo -n "${{ secrets.DEV_KEYS_SEED_INITIAL }}" > "${SEEDS_BASE_PATH}/INITIAL_KEYS_SEED"
+        echo -n "${{ secrets.DEV_KEYS_SEED_FOG }}" > "${SEEDS_BASE_PATH}/FOG_KEYS_SEED"
+        echo -n "${{ secrets.DEV_KEYS_SEED_MNEMONIC }}" > "${SEEDS_BASE_PATH}/MNEMONIC_KEYS_SEED"
+        echo -n "${{ secrets.DEV_KEYS_SEED_MNEMONIC_FOG }}" > "${SEEDS_BASE_PATH}/MNEMONIC_FOG_KEYS_SEED"
+        echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}" > "${SEEDS_BASE_PATH}/FOG_REPORT_SIGNING_CA_CERT"
+        echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > "${SEEDS_BASE_PATH}/FOG_REPORT_SIGNING_CA_CERT_PATH"
+        echo -n "fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" > "${SEEDS_BASE_PATH}/FOG_REPORT_URL"
+
+    - name: Create wallet key secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: sample-keys-seeds
+        src: ${{ env.SEEDS_BASE_PATH }}
+
+    - name: Write minting keys
+      run: |
+        # Create minting secrets dir
+        mkdir -p "${MINTING_BASE_PATH}"
+
+        # Write values to be used as k8s secret values.
+        echo -n "${{ secrets.DEV_MINTING_1_GOVERNOR_1_PRIVATE }}" > "${MINTING_BASE_PATH}/token_1_governor_1.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_1_GOVERNOR_1_PUBLIC }}" > "${MINTING_BASE_PATH}/token_1_governor_1.public.pem"
+        echo -n "${{ secrets.DEV_MINTING_1_SIGNER_1_PRIVATE }}" > "${MINTING_BASE_PATH}/token_1_signer_1.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_1_SIGNER_1_PUBLIC }}" > "${MINTING_BASE_PATH}/token_1_signer_1.public.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_GOVERNOR_1_PRIVATE }}" > "${MINTING_BASE_PATH}/token_8192_governor_1.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_GOVERNOR_1_PUBLIC }}" > "${MINTING_BASE_PATH}/token_8192_governor_1.public.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_SIGNER_1_PRIVATE }}" > "${MINTING_BASE_PATH}/token_8192_signer_1.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_SIGNER_1_PUBLIC }}" > "${MINTING_BASE_PATH}/token_8192_signer_1.public.pem"
+
+        # values for v3.0.0-dev release
+        echo -n "${{ secrets.DEV_MINTING_8192_GOVERNOR_1_PRIVATE }}" > "${MINTING_BASE_PATH}/minter8192_governor.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_GOVERNOR_1_PUBLIC }}" > "${MINTING_BASE_PATH}/minter8192_governor.public.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_SIGNER_1_PRIVATE }}" > "${MINTING_BASE_PATH}/token8192_signer.private.pem"
+        echo -n "${{ secrets.DEV_MINTING_8192_SIGNER_1_PUBLIC }}" > "${MINTING_BASE_PATH}/token8192_signer.public.pem"
+
+    - name: Create minting key secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-minting-secrets
+        src: ${{ env.MINTING_BASE_PATH }}
+
+    - name: Write tokens.signed.json
+      run: |
+        echo "Tokens json version: ${{ inputs.tokens_json_version }}"
+        mkdir -p "${BASE_PATH}"
+        case "${{ inputs.tokens_json_version }}" in
+          1)
+            echo '${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}' > "${BASE_PATH}/tokens.signed.json"
+            ;;
+          2)
+            echo '${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}' > "${BASE_PATH}/tokens.signed.json"
+            ;;
+          *)
+            echo "Unknown tokens.json version ${{ inputs.tokens_json_version }}"
+            exit 1
+            ;;
+          esac
+
+    - name: Generate environment values file
+      env:
+        IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+        IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+        FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
+        FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+        IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        .internal-ci/util/generate_dev_values.sh > "${VALUES_BASE_PATH}/mc-core-dev-env-values.yaml"
+
+    - name: Deploy environment setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mc-core-dev-env-setup
+        chart_version: ${{ inputs.version }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/mc-core-dev-env-values.yaml
+        chart_set: |
+          --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
+          --set=fogIngestConfig.fogRecoveryDatabase.password=${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
+        release_name: mc-core-dev-env-setup
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Deploy PostgreSQL instance
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: https://charts.bitnami.com/bitnami
+        chart_name: postgresql
+        chart_version: 11.2.3
+        chart_set: |
+          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
+          --set=global.postgresql.auth.database=fog_recovery
+          --set=architecture=replication
+        chart_wait_timeout: 5m
+        release_name: fog-recovery-postgresql
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}

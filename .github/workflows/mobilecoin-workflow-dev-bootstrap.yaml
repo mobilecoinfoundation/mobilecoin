@@ -1,0 +1,107 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - Restore dev env to previous release level.
+
+name: mobilecoin-workflow-dev-bootstrap
+
+on:
+  workflow_call:
+    inputs:
+      block_version:
+        description: "block_version"
+        type: string
+        required: true
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: false
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+    secrets:
+      DEV_LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      DEV_LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
+      DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD:
+        description: "password for fog_recovery database"
+        required: true
+
+jobs:
+  reset:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ inputs.namespace }}
+      delete_namespace: true
+    secrets: inherit
+
+  restore-s3-archive:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - reset
+    container:
+      image: mobilecoin/gha-s3-pg-helper:v0
+    steps:
+    - name: Restore Ledger Archive from S3
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: eu-central-1
+        BUCKET: mobilecoin.eu.development.chain
+        NAMESPACE: ${{ inputs.namespace }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        for i in 1 2 3
+        do
+          aws s3 cp --only-show-errors --recursive --acl public-read \
+            "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
+            "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com"
+        done
+
+  setup-environment:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-setup-environment.yaml
+    needs:
+    - reset
+    with:
+      namespace: ${{ inputs.namespace }}
+      block_version: ${{ inputs.block_version }}
+      chart_repo: ${{ inputs.chart_repo }}
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  #  We now have a db with setup-environment
+  #  Note this only works if we are in the same cluster as the dev env.
+  restore-db-from-archive:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - setup-environment
+    container:
+      image: mobilecoin/gha-s3-pg-helper:v0
+    steps:
+    - name: restore-db
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: eu-central-1
+        BUCKET: mobilecoin.eu.development.chain
+        PGDATABASE: postgres
+        PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
+        PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
+        PGUSER: postgres
+        VERSION: ${{ inputs.version }}
+      run: |
+        # Copy sql from S3
+        aws s3 cp --only-show-errors \
+          "s3://${BUCKET}/prebuilt/${VERSION}/sql/fog_recovery.sql" \
+          /tmp/fog_recovery.sql
+
+        # Restore to PG
+        psql < /tmp/fog_recovery.sql

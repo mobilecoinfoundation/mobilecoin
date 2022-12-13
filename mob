@@ -44,7 +44,7 @@ it is an error if it can't find one.
 
 .mobconf sections:
 
-[image]
+[image-name]
 url = The image URL to pass to docker run
 tag = Image tag/version to use
 """
@@ -60,36 +60,36 @@ import subprocess
 import sys
 
 parser = argparse.ArgumentParser(prog="mob", description="Perform an action or get a prompt in docker build environment")
-parser.add_argument("action", choices=["prompt", "run"], help="""
+parser.add_argument("action", help="""
                     (prompt) Run bash in the build environment
-                    (run) Run the given command (passed to `docker run`)
+                    OR
+                    run arbitrary command(s) in the container, quote commands with options (i.e. ./mob --no-pull "ls -al")
                     """)
-parser.add_argument("--name", nargs='?', default=None, help="The name for the container, run with prompt")
+parser.add_argument("--dry-run", action="store_true", help="Don't run docker, show how we would invoke docker.")
 parser.add_argument("--hw", action="store_true", help="Set SGX_MODE=HW. Default is SGX_MODE=SW")
 parser.add_argument("--ias-prod", action="store_true", help="Set IAS_MODE=PROD. Default is IAS_MODE=DEV. This affects which IAS endpoints we use.")
-parser.add_argument("--dry-run", action="store_true", help="Don't run docker, show how we would invoke docker.")
+parser.add_argument("--image", choices=["builder-install", "signing-tools"], default="builder-install", help="[default: builder-install] mobilecoin image to run")
+parser.add_argument("--name", nargs='?', default=None, help="The name for the container, run with prompt")
 parser.add_argument("--no-pull", action='store_true', help='Skip the `docker image pull` step.')
+parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
+parser.add_argument("--no-publish", action='store_true', help='Don\'t share image default ports with the host OS.')
+parser.add_argument("--no-ssh-dir", action='store_true', help="Don\'t share your user .ssh directory with the container.")
+parser.add_argument("--env", nargs='+', default=None, help="Any additional environment variables to set")
+parser.add_argument("--run-as-root", action='store_true', help="run prompt as root instead of local user")
 parser.add_argument("--tag", default=None, type=str, help="Use given tag for image rather than the one in .mobconf")
 parser.add_argument("--verbose", action="store_true", help="Show the commands on stdout. True by default when noninteractive, implied by dry-run")
-parser.add_argument("--ssh-dir", action='store_true', help='Mount $HOME/.ssh directory into /root/.ssh for ssh key access')
-parser.add_argument("--ssh-agent", action='store_true', help='Use ssh-agent on host machine for ssh authentication. Also controlled by SSH_AUTH_SOCK env variable')
-parser.add_argument("--expose", nargs='+', default=None, help="Any additional ports to expose")
-parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
-parser.add_argument("--cmd", nargs='+', default=None, help="Run this command inside the bash shell instead of an interactive prompt")
-parser.add_argument("--run-as-root", action='store_true', help="run prompt as root instead of local user")
 
 args = parser.parse_args()
 
-###
+##
 # Implement forced settings
-###
+##
 if args.dry_run or not sys.stdout.isatty():
     args.verbose = True
 
-###
+##
 # Implement verbose, dry_run settings
-###
-
+##
 def eprint(*argv, **kwargs):
     """
     When python is invoked from docker in CI, we won't see anything because of
@@ -110,19 +110,28 @@ def vprint_command(cmd):
         cmd = ' '.join(cmd)
     vprint(f'$ {cmd}')
 
+##
 # Run a command, unless we are in dry_run mode and should not do that
 # Print the command if in verbose mode
 def maybe_run(cmd, **kwargs):
     vprint_command(cmd)
     if not args.dry_run:
-        return subprocess.check_call(cmd, **kwargs)
+            return subprocess.check_call(cmd, **kwargs)
 
+##
+# Run a command but suppress output
+def maybe_run_quiet(cmd, **kwargs):
+    if not args.dry_run:
+            return subprocess.check_call(cmd, **kwargs, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+##
 # Change directory.
 # Print the command if in verbose mode
 def verbose_chdir(path):
     vprint_command(['cd', path])
     os.chdir(path)
 
+##
 # Check if we have a git commit and compute outside the container
 # Sometimes git cannot be used in the container, if building in public dir,
 # or if you used git worktree to make a new worktree.
@@ -138,22 +147,72 @@ def get_git_commit():
             eprint("Couldn't get git revision")
             return None
 
+def get_cargo_build_jobs():
+    """
+    Return the value to use for the `CARGO_BUILD_JOBS` environment variable. If
+    this is `None` then `CARGO_BUILD_JOBS` should not be set.
+
+    When the `CARGO_BUILD_JOBS` environment variable is already set, it's value
+    will be returned. Otherwise, a value will be provided that tries to maximize
+    resource usage without hitting limits.
+    """
+    jobs = os.environ.get("CARGO_BUILD_JOBS")
+
+    # The user set the jobs value so prefer it.
+    if jobs is not None:
+        return jobs
+
+    try:
+        import psutil
+    except ImportError:
+        return None
+
+    # For many binaries linking takes 2GB per binary. This often happens at the
+    # end of a build which can result in all cores trying to link, thus using
+    # 2GB per core. For a 16 core machine 32GB would need to be available. This
+    # logic will limit the build jobs to prevent out of memory issues.
+    # https://github.com/rust-lang/cargo/issues/9157 talks about trying to fix
+    # this in cargo.
+    cpus = psutil.cpu_count()
+    ram = psutil.virtual_memory().total
+
+    one_gig = 2**30
+
+    # Remove 5GB for local PC overhead
+    max_jobs = (ram - (5 * one_gig)) // (2 * one_gig)
+    jobs = min(max_jobs, cpus)
+
+    # Can happen if `ram` happened to be less than 5GB.
+    if jobs <= 0:
+        return None
+
+    return jobs
+
+##
+# get_image - check cli args and mobconf to construct a docker image path
+# return: str - docker image org/repo:tag
+def get_image(conf=str, image=str, tag=str) -> str:
+    mobconf = configparser.ConfigParser()
+    mobconf.read(conf)
+
+    conf = mobconf[image]
+    conf_url = conf['url'] if 'url' in conf else ''
+    conf_tag = tag or conf['tag'] if 'tag' in conf else ''
+
+    if not conf_url:
+       raise Exception("Missing image.url in .mobconf")
+
+    if not conf_tag:
+        raise Exception("Pass a tag via --tag or image.tag in .mobconf")
+
+    return '{}:{}'.format(conf_url, conf_tag)
+
 ##
 # Environment checks
 ##
-
 # Check if docker is available and bail out early with a message if appropriate
 if not args.dry_run:
     maybe_run("command -v docker > /dev/null 2>&1", shell=True)
-
-# Check for any SSH handling
-if "SSH_AUTH_SOCK" in os.environ:
-    if platform.system().lower() != "linux":
-        vprint("SSH Auth Socket found, but not running on linux")
-        args.ssh_dir = True
-    else:
-        vprint("Mapping SSH_AUTH_SOCKET into container")
-        args.ssh_agent = True
 
 # Find work directory and change directory there
 # This is based on searching for nearest .mobconf file, moving upwards from CWD
@@ -167,153 +226,201 @@ while not os.path.exists(os.path.join(top_level, ".mobconf")):
 
 verbose_chdir(top_level)
 
-mobconf = configparser.ConfigParser()
-mobconf.read(".mobconf")
-image_conf = mobconf['image'] or {}
-
-image_url = image_conf['url'] if 'url' in image_conf else ''
-if not image_url:
-    raise Exception("Missing image.url in .mobconf")
-
-tag = args.tag or image_conf['tag'] if 'tag' in image_conf else ''
-if not tag:
-    raise Exception("Pass a tag via --tag or image.tag in .mobconf")
-
-image_and_tag = f'{image_url}:{tag}'
-
-if not args.no_pull:
-    maybe_run(["docker", "image", "pull", image_and_tag])
+##
+# Set up docker environment and base options
+##
+ports = []
+container_ssh_dir = ""
+docker_run = ["docker", "run", "--rm"]
 
 ##
-# docker run flags
+# Turn off entrypoint messages when not in verbose mode
 ##
+if args.verbose:
+    docker_run.append('--env=ENTRYPOINT_VERBOSE=1')
 
-# Compute mount_point, mount_from, and workdir
+##
+# Mount the local repo at /tmp/mobilenode
+##
 mount_point = "/tmp/mobilenode"
-workdir = mount_point
 mount_from = top_level
+docker_run.append('--volume={}:{}'.format(mount_from, mount_point))
+docker_run.append('--workdir={}'.format(mount_point))
 
-# docker-run parameters:
-docker_run = ["docker",
-              "run",
-              # Remove container afterwards.
-              "--rm",
-              # Give docker its own subdirectory under target so it doesn't trash
-              # the host target directory, but will still be cleaned up with it.
-              "--env", "CARGO_TARGET_DIR=" + mount_point + "/target/docker",
-              # This is required to run the fog unit tests
-              "--env", "TEST_DATABASE_URL=postgres://localhost",
-              # This is consumed by servers when running locally in the container
-              "--env", "MC_CHAIN_ID=local",
-              "--volume", mount_from + ":" + mount_point,
-              "--workdir", workdir]
-
-# the entrypoint script will pick up these vars and set up the user.
-if not args.run_as_root:
-    # figure out user and group
+##
+# Set option for when we run as root
+##
+if args.run_as_root:
+    container_ssh_dir = '/root/.ssh'
+else:
+    # Run processes in the container as root or your local user ID
     uid = os.getuid()
     gid = os.getgid()
     username = getpass.getuser()
     groupname = grp.getgrgid(gid)[0]
     docker_run.extend([
-            "--env", "EXTERNAL_UID=" + str(uid),
-            "--env", "EXTERNAL_GID=" + str(gid),
-            "--env", "EXTERNAL_USER=" + username,
-            "--env", "EXTERNAL_GROUP=" + groupname
+            '--env=EXTERNAL_UID={}'.format(str(uid)),
+            '--env=EXTERNAL_GID={}'.format(str(gid)),
+            '--env=EXTERNAL_USER={}'.format(username),
+            '--env=EXTERNAL_GROUP={}'.format(groupname)
     ])
+    # Entrypoint script will need to link/copy these files after creating the user.
+    container_ssh_dir = '/var/tmp/user/.ssh'
 
-# Add /dev/isgx if HW mode, and it is available
-# Mimicking bash checks `if [ -c /dev/isgx ]`
-# The purpose of this check is that it is possible to build in HW mode, and even
-# to run many tests, without installing sgx on the host and enabling this device in docker,
-# but sometimes you really do need it, if you want to run consensus nodes etc.
-# The friendliest thing seems to be, pass on the device if possible, maybe print a warning if not.
-if args.hw:
-    if pathlib.Path("/dev/isgx").is_char_device():
-        docker_run.extend(["--device", "/dev/isgx"])
+##
+# Set up env for builder-install or hsm-tools
+##
+if args.image == 'builder-install':
+    # Override cargo target dir so we don't conflict with a non-container build.
+    docker_run.append('--env=CARGO_TARGET_DIR={}/target/docker'.format(mount_point))
+    # Add chain id
+    docker_run.append('--env=MC_CHAIN_ID=local')
+    # Add default database url
+    docker_run.append('--env=TEST_DATABASE_URL=postgres://localhost')
+    # Add RUST_BACKTRACE
+    docker_run.append('--env=RUST_BACKTRACE=1')
+
+    # Set limits based on available cores/memory
+    jobs = get_cargo_build_jobs()
+    if jobs is not None:
+        docker_run.append("--env=CARGO_BUILD_JOBS={}".format(jobs))
+
+    # set SGX_MODE options
+    if args.hw:
+        docker_run.append('--env=SGX_MODE=HW')
+        if pathlib.Path("/dev/isgx").is_char_device():
+            docker_run.append("--device=/dev/isgx")
     else:
-        eprint("Did not find /dev/isgx on the host, skipping")
+        docker_run.append('--env=SGX_MODE=SW')
 
-# Add build environment
-build_env = [
-    "RUST_BACKTRACE=full",
-    "SGX_MODE=HW" if args.hw else "SGX_MODE=SW",
-    "IAS_MODE=PROD" if args.ias_prod else "IAS_MODE=DEV",
-]
+    # set IAS_MODE options
+    if args.ias_prod:
+        docker_run.append('--env=IAS_MODE=PROD')
+    else:
+        docker_run.append('--env=IAS_MODE=DEV')
 
-# Add GIT_COMMIT if present
-git_commit = get_git_commit()
-if git_commit:
-    build_env.extend([f'GIT_COMMIT={git_commit}'])
+    # Set git commit
+    git_commit = get_git_commit()
+    if git_commit:
+        docker_run.append('--env=GIT_COMMIT={}'.format(git_commit))
 
-for pair in build_env:
-    docker_run.extend(["--env", pair])
-
-# If running interactively (with a tty), get a tty in the container also
-# This allows colored build logs when running locally without messing up logs in CI
-if sys.stdout.isatty():
-    docker_run.extend(["-t"])
-
-ports = []
-# in prompt, use -i to get user input
-if args.action == "prompt":
-    docker_run.extend(["-i"])
-
-    # ports might be exposed to run clients or a local network
-    ports = [
-        "8080",
-        "8081",
-        "8443",
-        "3223",
-        "3225",
-        "3226",
-        "3228",
-        "4444",
-    ]
+    # Set up default ports to share with the Host OS
+    if not args.no_publish:
+        ports = [
+            "8080",
+            "8081",
+            "8443",
+            "3223",
+            "3225",
+            "3226",
+            "3228",
+            "4444",
+        ]
 
     # debug options allow us to attach gdb when debugging failing tests
-    docker_run.extend([
-        "--cap-add", "SYS_PTRACE",
-    ])
+    docker_run.append('--cap-add=SYS_PTRACE')
 
-ports.extend(args.expose or [])
+elif args.image == 'signing-tools':
+    # place holder for now, Set up default ports to share with the Host OS
+    if not args.no_publish:
+        ports = []
+
+    # if we're running on linux and have an X11 environment set up, share the host network and xauth.
+    if platform.system().lower() == 'linux':
+        xauthority = os.environ.get('XAUTHORITY')
+        if xauthority:
+            docker_run.extend([
+                '--net=host',
+                '--env=DISPLAY',
+                '--env=XAUTHORITY',
+                '--volume={0}:{0}:ro'.format(xauthority)
+            ])
+
+else:
+    raise Exception('Unknown image')
+
+##
+# set interactive/tty if tty is available
+##
+if sys.stdout.isatty():
+    docker_run.append("-it")
+
+##
+# Add ports
+##
+if args.publish:
+    ports.extend(args.publish)
 for port in ports:
-    docker_run.extend(["--expose", port])
-
-for port in args.publish or []:
     docker_run.extend(["--publish", "{}:{}".format(port, port)])
 
-# Map in the ssh directory, or the ssh-agent socket
-if args.ssh_dir:
-    eprint("SSH Agent authentication disabled. You will need to run the following commands to build: ")
-    eprint('eval `ssh-agent`')
-    eprint('ssh-add /root/.ssh/<your-ssh-private-key>')
-    docker_run.extend(["--volume", os.path.expanduser("~/.ssh") + ":" + "/root/.ssh"])
-elif args.ssh_agent:
-    docker_run.extend(["--env", "SSH_AUTH_SOCK=/tmp/ssh_auth_sock"])
-    docker_run.extend(["--volume", os.environ["SSH_AUTH_SOCK"] + ":" + "/tmp/ssh_auth_sock"])
+##
+# Add extra environment variables.
+##
+if args.env:
+    for e in args.env:
+        docker_run.append('--env={}'.format(e))
 
+##
+# Map in the ssh-agent socket
+##
+if "SSH_AUTH_SOCK" in os.environ:
+    vprint("Mapping SSH_AUTH_SOCKET into container.")
+    if platform.system().lower() == "darwin":
+        # for MacOS we need to use the "magic" socket and not SSH_AUTH_SOCK
+        # Entrypoint will need to chown the magic socket to user.
+        vprint('MacOS, try to use the "magic" socket')
+        ssh_sock='/run/host-services/ssh-auth.sock'
+        docker_run.append('--env=SSH_AUTH_SOCK={}'.format(ssh_sock))
+        docker_run.append('--volume={0}:{0}'.format(ssh_sock))
+    elif platform.system().lower() == "linux":
+        docker_run.append('--env=SSH_AUTH_SOCK')
+        docker_run.append('--volume={0}:{0}'.format(os.environ["SSH_AUTH_SOCK"]))
+    else:
+        vprint("Unknown OS, Skipping mapping SSH_AUTH_SOCKET.")
+
+if not args.no_ssh_dir:
+    user_ssh_dir=os.path.expanduser("~/.ssh")
+    docker_run.append('--volume={}:/var/tmp/user/.ssh'.format(user_ssh_dir))
+
+##
 # Name the container if a name was provided
+##
 if args.name:
-    docker_run.extend(["--name", args.name])
+    docker_run.append('--name={}'.format(args.name))
 
-# Add image name and command
-docker_run.extend([image_and_tag])
+##
+# Check to see if image url and tag are set and pull
+##
+image_and_tag = get_image(conf='.mobconf', image=args.image, tag=args.tag)
+if not args.no_pull:
+    pull_image_command = ["docker", "image", "pull", image_and_tag]
 
-docker_run.extend(["/bin/bash"])
+    if args.verbose:
+        maybe_run(pull_image_command)
+    else:
+        maybe_run_quiet(pull_image_command)
 
-if args.cmd:
-    cmd = ' '.join(args.cmd)
-    vprint('Running command in docker:', cmd)
-    docker_run.extend(["-c", cmd])
+docker_run.append(image_and_tag)
 
+##
+# prompt or list of commands
+##
+docker_run.append('/bin/bash')
+
+if args.action != 'prompt':
+    # set login shell so we pick up .bashrc followed by a list of commands.
+    docker_run.append('-ic')
+    docker_run.append('"{}"'.format(args.action))
+
+##
+# execute docker run and catch returns
+##
 try:
     maybe_run(docker_run)
 except subprocess.CalledProcessError as exception:
-    if args.cmd:
-        # Make sure custom commands have their expected return codes
-        sys.exit(exception.returncode)
     if args.action == 'prompt' and exception.returncode == 130:
         # This is a normal exit of prompt
         sys.exit(0)
-    raise  # rethrow
+    else:
+        # Make sure custom commands have their expected return codes
+        sys.exit(exception.returncode)

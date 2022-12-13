@@ -25,7 +25,7 @@ use crate::{
 /// MLSAG for a ring of public keys and amount commitments.
 /// Note: Serialize and Deserialize appear to be cruft left over from
 /// sdk_json_interface.
-#[derive(Clone, Digestible, PartialEq, Eq)]
+#[derive(Clone, Digestible, PartialEq, Eq, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct RingMLSAG {

@@ -24,7 +24,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -42,7 +42,7 @@ jobs:
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -63,7 +63,7 @@ jobs:
 
   build-and-test-wasm:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -78,7 +78,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -95,7 +95,7 @@ jobs:
 
   build-and-test-go:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -135,7 +135,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -154,7 +154,7 @@ jobs:
 
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     strategy:
       matrix:
@@ -177,13 +177,17 @@ jobs:
             grep -v -e mc-fog -e mc-consensus | \
             awk "{ print \"-p \" \$1 }" | \
             sort > /tmp/test-packages
-          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+
+          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
             tee /tmp/mc-test-packages
+
           # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
           # TODO: Replace with artifact deps when that does not require
           # additional cargo flags.
-          grep -q generate-sample-ledger /tmp/mc-test-packages && \
-            echo '-p mc-util-keyfile' >> /tmp/mc-test-packages || true
+          if grep -q generate-sample-ledger /tmp/mc-test-packages
+          then
+            echo '-p mc-util-keyfile' >> /tmp/mc-test-packages
+          fi
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
@@ -193,7 +197,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     strategy:
       matrix:
@@ -215,7 +219,7 @@ jobs:
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
             awk "/mc-consensus/ { print \"-p \" \$1 }" | \
             sort > /tmp/test-packages
-          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
             tee /tmp/consensus-test-packages
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
@@ -226,7 +230,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     strategy:
       matrix:
@@ -249,14 +253,17 @@ jobs:
             awk "/mc-fog/ { print \"-p \" \$1 }" | \
             grep -v mc-fog-ingest | \
             sort > /tmp/test-packages
-          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
+          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
             tee /tmp/fog-test-packages
+
           # Hack: mc-fog-distribution needs bins from
           # mc-util-{keyfile,generate-sample-ledger}.
           # TODO: Replace with artifact deps when that does not require
           # additional cargo flags.
-          grep -q fog-distribution /tmp/fog-test-packages && \
-            echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages || true
+          if grep -q fog-distribution /tmp/fog-test-packages
+          then
+            echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages
+          fi
       - name: Start postgres
         run: service postgresql start
       - name: Run tests
@@ -274,7 +281,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -297,7 +304,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -337,7 +344,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -394,7 +401,7 @@ jobs:
           "$BIN_DIR/generate-sample-ledger" --txs 100
 
           # Generate sample Fog keys.
-          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
+          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root "$FOG_AUTHORITY_ROOT"
 
           service postgresql start
       - name: Run local network
@@ -420,13 +427,13 @@ jobs:
 
           # Give it time to spin up
           for PORT in 3200 3201 3202 3203 3204 4444; do
-            for i in $(seq 0 60); do
+            for _unused in $(seq 0 60); do
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
 
           # Save some typing
-          export MC_PEER=insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/
+          export MC_PEER="insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/"
 
           # Run fog-distribution client to exercise Fog
           echo "Running fog distro"
@@ -460,7 +467,7 @@ jobs:
           echo "Authorizing minters"
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
 
-          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_AUTH_BLOCK_INDEX)
+          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block="$PRE_AUTH_BLOCK_INDEX")
           echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
 
           # Mint 1 million token1's to the first 4 fog accounts
@@ -470,13 +477,13 @@ jobs:
                   "generate-and-submit-mint-tx" \
                   --node insecure-mc://localhost:3200/ \
                   --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
-                  --recipient $(cat fog_keys/account_keys_${ACCOUNT_NUM}.b58pub) \
+                  --recipient "$(cat "fog_keys/account_keys_${ACCOUNT_NUM}.b58pub")" \
                   --fog-ingest-enclave-css "$BIN_DIR/ingest-enclave.css" \
                   --token-id 1 \
                   --amount 1000000
           done
 
-          "$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_MINT_BLOCK_INDEX
+          "$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block="$PRE_MINT_BLOCK_INDEX"
 
           # Run test-client
           echo "Running test client (tokens 0 and 1)"
@@ -501,7 +508,7 @@ jobs:
             --keyfile "$PWD/keys/account_keys_0.json" &
 
           # Give it time to spin up
-          for i in $(seq 0 60); do
+          for _unused in $(seq 0 60); do
             if ss -l | grep -q ":9090"; then break; else sleep 1; fi;
           done
 
@@ -524,7 +531,7 @@ jobs:
 
   minting-and-burning-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.18
+    container: mobilecoin/builder-install:v0.0.21
 
     steps:
       - name: Check out code
@@ -573,7 +580,7 @@ jobs:
 
           # Run in temp dir to appease check-dirty-git.
           mkdir -p /tmp/fog-local-network
-          cd /tmp/fog-local-network
+          cd /tmp/fog-local-network || exit 1
 
           # Generate sample keys and ledger.
           FOG_AUTHORITY_ROOT=$("$BIN_DIR/mc-crypto-x509-test-vectors" --type=chain --test-name=ok_rsa_head)
@@ -581,7 +588,7 @@ jobs:
           "$BIN_DIR/generate-sample-ledger" --txs 100
 
           # Generate sample Fog keys.
-          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
+          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root "$FOG_AUTHORITY_ROOT"
 
           service postgresql start
       - name: Run local network
@@ -600,7 +607,7 @@ jobs:
           export MC_LOG_STDERR=1
 
           # Used by mc-consensus-tool
-          export MC_PEER=insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/
+          export MC_PEER="insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/"
 
           cd /tmp/fog-local-network
           export LEDGER_BASE="$PWD/ledger"
@@ -611,7 +618,7 @@ jobs:
 
           # Give it time to spin up
           for PORT in 3200 3201 3202 3203 3204 4444; do
-            for i in $(seq 0 60); do
+            for _unused in $(seq 0 60); do
               if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
             done
           done
@@ -623,27 +630,27 @@ jobs:
           python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
 
           echo "Waiting for quiet after authorizing minters..."
-          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block=$PRE_AUTH_BLOCK_INDEX)
+          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block="$PRE_AUTH_BLOCK_INDEX")
           echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
 
           # Mint 1 million token1's to the first 4 accounts
           echo "Minting"
           for ACCOUNT_NUM in $(seq 0 4); do
               "$BIN_DIR/mc-consensus-mint-client" \
-                  "generate-and-submit-mint-tx" \
+                  generate-and-submit-mint-tx \
                   --node insecure-mc://localhost:3200/ \
                   --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
-                  --recipient $(cat keys/account_keys_${ACCOUNT_NUM}.b58pub) \
+                  --recipient "$(cat "keys/account_keys_${ACCOUNT_NUM}.b58pub")" \
                   --token-id 1 \
                   --amount 1000000
           done
 
           echo "Waiting for quiet after minting"
-          POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block $PRE_MINT_BLOCK_INDEX)
+          POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block "$PRE_MINT_BLOCK_INDEX")
           echo "Done waiting, POST_MINT_BLOCK_INDEX = ${POST_MINT_BLOCK_INDEX}"
 
           # Use burn.py to burn some token1
-          cd "$STRATEGIES_DIR"
+          cd "$STRATEGIES_DIR" || exit 1
           ./compile_proto.sh
           python3 burn.py \
                --mobilecoind-host localhost \

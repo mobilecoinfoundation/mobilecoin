@@ -15,8 +15,9 @@ mod db_cleaner;
 static EXPIRATION_DAYS: i64 = 2;
 
 fn main() {
-    let config = SqlRecoveryDbCleanupConfig::parse();
     let (logger, _global_logger_guard) = create_app_logger(mc_common::logger::o!());
+
+    let config = SqlRecoveryDbCleanupConfig::parse();
 
     let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
     let db = SqlRecoveryDb::new_from_url(&database_url, Default::default(), logger.clone())

@@ -70,7 +70,9 @@ v2.0.0-dev
 
 ## CI triggers
 
-This workflow is set up to trigger of certain branch patterns.
+This workflow is set up to trigger off certain branch patterns.
+
+*NOTE:* The branch must contain some change to a source-code file for the CI to be triggered (i.e. branching off `master` to create a feature branch environment without any changes will not trigger CI)
 
 ### Branches - `feature/*, release/*, master`
 
@@ -90,6 +92,11 @@ TBD: Automatically deploy/destroy this release to the development cluster.
 | --- | --- | --- | --- | --- |
 | `v2.0.0-dev` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
 
+### Deployment Status & Environment Info
+
+ * Inspect the `Actions` tab for the workflow for your branchname to monitor for completion/success
+ * From the `Jobs` list, select `Environment Info`, and expand `Print Environment Details` for the deployed Environment Information
+ * The environment lifetime is tied to the branch lifetime, and will be torn down when the branch is deleted
 
 ## CI Commit Message Flags
 
