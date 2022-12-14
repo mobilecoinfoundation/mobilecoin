@@ -35,3 +35,5 @@ lazy_static::lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
 }
 pub use router_server::LedgerRouterServer;
+pub use key_image_store_server::KeyImageStoreServer;
+pub use server::DbPollSharedState;
