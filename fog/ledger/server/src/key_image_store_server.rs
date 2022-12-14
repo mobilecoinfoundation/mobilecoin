@@ -15,6 +15,7 @@ use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
+use mc_util_uri::Uri;
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
