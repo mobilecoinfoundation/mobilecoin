@@ -24,7 +24,7 @@ COPY ${RUST_BIN_PATH}/sample-keys /usr/bin/
 # Add attest test_certs
 COPY attest/test_certs/ /var/lib/mobilecoin/attest/test_certs
 
-COPY .internal-cl/util/sample-keys.1.13 /util/
+COPY .internal-ci/util/sample-keys.1.1.3 /util/
 COPY .internal-ci/util/generate_origin_data.sh /usr/bin/
 COPY .internal-ci/docker/entrypoints/mobilecoind.sh /usr/bin/entrypoint.sh
 
