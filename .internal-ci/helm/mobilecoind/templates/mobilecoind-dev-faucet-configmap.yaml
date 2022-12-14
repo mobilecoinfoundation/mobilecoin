@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mobilecoind.fullname" . }}-supervisord-mobilecoind-dev-faucet
+  labels:
+    {{- include "mobilecoind.labels" . | nindent 4 }}
+data:
+  dev-faucet.conf: |
+    [program:dev-faucet]
+    command=/usr/bin/mobilecoind-dev-faucet
+      --listen-host 0.0.0.0
+      --listen-port 9091
+      --mobilecoind-uri insecure-mobilecoind://localhost:3229
+      --keyfile /tmp/sample_data/keys/account_keys_700.json
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true
