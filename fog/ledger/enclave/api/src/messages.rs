@@ -2,9 +2,14 @@
 
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientSession, EnclaveMessage};
+
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
+    NonceSession, SealedClientMessage,
+};
+
 use mc_common::ResponderId;
 use mc_fog_types::ledger::GetOutputsResponse;
 use mc_transaction_core::ring_signature::KeyImage;
@@ -34,7 +39,7 @@ pub struct KeyImageData {
 
 /// An enumeration of API calls and their arguments for use across serialization
 /// boundaries.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum EnclaveCall {
     /// The [LedgerEnclave::enclave_init()] method.
     EnclaveInit(ResponderId, u64),
@@ -101,4 +106,50 @@ pub enum EnclaveCall {
     ///
     ///  Add key image data to the ORAM.
     AddKeyImageData(Vec<KeyImageData>),
+
+    /// The [LedgerEnclave::ledger_store_init()] method.
+    ///
+    /// Begin a connection to a Fog Ledger Store. The enclave calling this
+    /// method, most likely a router, will act as a client to the Fog Ledger
+    /// Store.
+    LedgerStoreInit(ResponderId),
+
+    /// The [LedgerEnclave::ledger_store_connect()] method.
+    ///
+    /// Complete the connection to a Fog Ledger Store that has accepted our
+    /// ClientAuthRequest. This is meant to be called after the enclave has
+    /// initialized and discovers a new Fog Ledger Store.
+    LedgerStoreConnect(ResponderId, NonceAuthResponse),
+
+    /// The [LedgerEnclave::decrypt_and_seal_query()] method.
+    ///
+    /// Takes a client query message and returns a SealedClientMessage
+    /// sealed for the current enclave.
+    DecryptAndSealQuery(EnclaveMessage<ClientSession>),
+
+    /// The [LedgerEnclave::create_multi_key_image_store_query()] method.
+    ///
+    /// Transforms a client query request into a list of query request data.
+    ///
+    /// The returned list is meant to be used to construct the
+    /// MultiKeyImageStoreRequest, which is sent to each shard.
+    CreateMultiKeyImageStoreQueryData(SealedClientMessage),
+
+    /// Collates shard query responses into a single query response for the
+    /// client.
+    CollateQueryResponses(
+        SealedClientMessage,
+        BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+    ),
+
+    /// The [LedgerEnclave::client_check_key_image_store()] method.
+    /// Store-side Ledger/Router system equivalent to
+    /// [EnclaveCall::CheckKeyImages] Start a new key image check from a
+    /// client.
+    CheckKeyImageStore(EnclaveMessage<NonceSession>, UntrustedKeyImageQueryResponse),
+
+    /// The [LedgerEnclave::FrontendAccept()] method.
+    /// Called by a Store accepting a Router's incoming
+    /// connection.
+    FrontendAccept(NonceAuthRequest),
 }
