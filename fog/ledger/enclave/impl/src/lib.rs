@@ -13,10 +13,15 @@
 extern crate alloc;
 
 mod key_image_store;
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession, SealedClientMessage,
+};
+use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -190,6 +195,161 @@ where
         }
 
         Ok(())
+    }
+
+    fn ledger_store_init(&self, ledger_store_id: ResponderId) -> Result<NonceAuthRequest> {
+        Ok(self.ake.backend_init(ledger_store_id)?)
+    }
+
+    fn ledger_store_connect(
+        &self,
+        ledger_store_id: ResponderId,
+        ledger_store_auth_response: NonceAuthResponse,
+    ) -> Result<()> {
+        Ok(self
+            .ake
+            .backend_connect(ledger_store_id, ledger_store_auth_response)?)
+    }
+
+    fn decrypt_and_seal_query(
+        &self,
+        client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<SealedClientMessage> {
+        Ok(self.ake.decrypt_client_message_for_enclave(client_query)?)
+    }
+
+    fn create_multi_key_image_store_query_data(
+        &self,
+        sealed_query: SealedClientMessage,
+    ) -> Result<Vec<EnclaveMessage<NonceSession>>> {
+        Ok(self
+            .ake
+            .reencrypt_sealed_message_for_backends(&sealed_query)?)
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        sealed_query: SealedClientMessage,
+        shard_query_responses: BTreeMap<ResponderId, EnclaveMessage<NonceSession>>,
+    ) -> Result<EnclaveMessage<ClientSession>> {
+        if shard_query_responses.is_empty() {
+            return Ok(EnclaveMessage::default());
+        }
+        let channel_id = sealed_query.channel_id.clone();
+        let client_query_plaintext = self.ake.unseal(&sealed_query)?;
+        let _client_query_request: CheckKeyImagesRequest =
+            mc_util_serial::decode(&client_query_plaintext).map_err(|e| {
+                log::error!(self.logger, "Could not decode client query request: {}", e);
+                Error::ProstDecode
+            })?;
+
+        let shard_query_responses = shard_query_responses
+            .into_iter()
+            .map(|(responder_id, query_response)| {
+                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &query_response)?;
+                let query_response: CheckKeyImagesResponse =
+                    mc_util_serial::decode(&plaintext_bytes)?;
+
+                Ok(query_response)
+            })
+            .collect::<Result<Vec<CheckKeyImagesResponse>>>()?;
+
+        // NOTES:
+        // num_blocks = min(responses.num_blocks)
+        // global_txo_count = min(global_txo_count) TODO CONFIRM
+        // results = cat(responses.results)
+        // latest_block_version = max(responses.latest_block_version)
+        // max_block_version = max(latest_block_version,
+        // mc_transaction_core::MAX_BLOCK_VERSION
+
+        // TODO no unwraps
+        let num_blocks = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.num_blocks)
+            .min()
+            .unwrap();
+        let global_txo_count = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.global_txo_count)
+            .min()
+            .unwrap();
+        let latest_block_version = shard_query_responses
+            .iter()
+            .map(|query_response| query_response.latest_block_version)
+            .max()
+            .unwrap();
+        // TODO I believe this needs to be implemented in an oblivious way to meet the
+        // security requirements. I'm not 100% sure what an oblivious approach
+        // to this looks like, though. In general this kind of thing needs to be
+        // talked about.
+        let results = shard_query_responses
+            .into_iter()
+            .flat_map(|query_response| query_response.results)
+            .collect();
+        let max_block_version = max(latest_block_version, *MAX_BLOCK_VERSION);
+
+        let client_query_response = CheckKeyImagesResponse {
+            num_blocks,
+            global_txo_count,
+            results,
+            latest_block_version,
+            max_block_version,
+        };
+        let response_plaintext_bytes = mc_util_serial::encode(&client_query_response);
+        let response =
+            self.ake
+                .client_encrypt(&channel_id, &sealed_query.aad, &response_plaintext_bytes)?;
+
+        Ok(response)
+    }
+
+    fn check_key_image_store(
+        &self,
+        msg: EnclaveMessage<NonceSession>,
+        untrusted_key_image_query_response: UntrustedKeyImageQueryResponse,
+    ) -> Result<EnclaveMessage<NonceSession>> {
+        let channel_id = msg.channel_id.clone();
+        let user_plaintext = self.ake.frontend_decrypt(msg)?;
+
+        let req: CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
+            log::error!(self.logger, "Could not decode user request: {}", e);
+            Error::ProstDecode
+        })?;
+
+        let mut resp = CheckKeyImagesResponse {
+            num_blocks: untrusted_key_image_query_response.highest_processed_block_count,
+            results: Default::default(),
+            global_txo_count: untrusted_key_image_query_response
+                .last_known_block_cumulative_txo_count,
+            latest_block_version: untrusted_key_image_query_response.latest_block_version,
+            max_block_version: untrusted_key_image_query_response.max_block_version,
+        };
+
+        {
+            let mut lk = self.key_image_store.lock()?;
+            let store = lk.as_mut().ok_or(Error::EnclaveNotInitialized)?;
+
+            resp.results = req
+                .queries
+                .iter() //  get the key images used to find the key image data using the oram
+                .map(|key| store.find_record(&key.key_image))
+                .collect();
+        }
+
+        // Encrypt for return to router
+        let response_plaintext_bytes = mc_util_serial::encode(&resp);
+        let response = self
+            .ake
+            .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
+
+        Ok(response)
+    }
+
+    fn frontend_accept(
+        &self,
+        auth_request: NonceAuthRequest,
+    ) -> Result<(NonceAuthResponse, NonceSession)> {
+        self.ake.frontend_accept(auth_request).map_err(|e| e.into())
     }
 }
 
