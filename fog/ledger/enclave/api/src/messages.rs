@@ -4,12 +4,10 @@
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::{collections::BTreeMap, vec::Vec};
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
-
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, SealedClientMessage,
 };
-
 use mc_common::ResponderId;
 use mc_fog_types::ledger::GetOutputsResponse;
 use mc_transaction_core::ring_signature::KeyImage;
