@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.0-pre0"
 dependencies = [
  "aes",
  "anyhow",
@@ -993,6 +993,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-memo-mac",
  "mc-crypto-ring-signature",
+ "merlin",
  "sha2",
  "zeroize",
 ]
@@ -1137,7 +1138,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "2.0.0"
+version = "4.0.0-pre0"
 dependencies = [
  "hmac",
  "mc-crypto-keys",

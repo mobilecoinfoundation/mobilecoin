@@ -36,7 +36,7 @@ members = [
     "core",
     "core/types",
     "crypto/box",
-    crypto/dalek",
+    "crypto/dalek",
     "crypto/digestible",
     "crypto/digestible/derive/test",
     "crypto/digestible/signature",
