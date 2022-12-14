@@ -862,6 +862,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-blockchain-types"
+version = "2.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "prost",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-common"
 version = "4.0.2"
 dependencies = [
@@ -881,6 +904,18 @@ dependencies = [
  "sha3",
  "siphasher",
  "slog",
+]
+
+[[package]]
+name = "mc-consensus-scp-types"
+version = "2.1.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "prost",
+ "serde",
 ]
 
 [[package]]
@@ -1180,6 +1215,7 @@ dependencies = [
  "aligned-cmov",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-ake-enclave",
  "mc-crypto-keys",
