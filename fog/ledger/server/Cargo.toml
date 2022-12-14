@@ -17,6 +17,10 @@ path = "src/bin/main.rs"
 name = "ledger_router"
 path = "src/bin/router.rs"
 
+[[bin]]
+name = "ledger_store"
+path = "src/bin/key_image_store.rs"
+
 [dependencies]
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
@@ -61,6 +65,7 @@ retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
 url = "2.3"
+itertools = "0.10"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
@@ -70,9 +75,13 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-attest-ake = { path = "../../../attest/ake" }
 mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
+mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
@@ -83,4 +92,9 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
+aes-gcm = "0.9.4"
+pem = "1.1"
+sha2 = "0.10"
 tempdir = "0.3"
+x509-signature = "0.5"
+portpicker = "0.1.1"
