@@ -15,12 +15,12 @@ import "google/protobuf/empty.proto";
 ////
 
 service LedgerAPI {
-    rpc request(stream LedgerRequest) returns (stream LedgerResponse) {}
+    rpc Request(stream LedgerRequest) returns (stream LedgerResponse) {}
 }
 
 service LedgerRouterAdminAPI {
     // Adds a shard to the Fog Ledger Router's list of shards to query.
-    rpc addShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
+    rpc AddShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
 }
 
 /// Fulfills requests sent by the Fog Ledger Router. This is not meant to fulfill requests sent directly by the client.
