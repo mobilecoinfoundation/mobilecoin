@@ -391,10 +391,10 @@ mod client_api_tests {
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
         let port = server
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
-            .unwrap();
+            .expect("Could not create anonymous bind");
         server.start();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = ConsensusClientApiClient::new(ch);
