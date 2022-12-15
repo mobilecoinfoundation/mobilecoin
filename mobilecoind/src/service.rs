@@ -150,7 +150,7 @@ impl Service {
 
         let mut server = server_builder
             .build_using_uri(listen_uri, logger.clone())
-            .unwrap();
+            .expect("Could not build gRPC server for the listen URI");
         server.start();
 
         Self {

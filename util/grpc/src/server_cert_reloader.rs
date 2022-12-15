@@ -171,7 +171,7 @@ mod tests {
             .unwrap();
         let port = server
             .add_listening_port("localhost:0", server_creds)
-            .unwrap();
+            .expect("Could not create anonymous bind on localhost");
         server.start();
 
         log::info!(logger, "Server started on port {}", port);
@@ -187,7 +187,7 @@ mod tests {
         let ch = ChannelBuilder::new(env)
             .override_ssl_target(ssl_target)
             .set_credentials(cred)
-            .connect(&format!("localhost:{}", port));
+            .connect(format!("localhost:{}", port));
         HealthClient::new(ch)
     }
 

@@ -393,7 +393,7 @@ impl<
 
         let mut server = server_builder
             .build_using_uri(&self.config.client_listen_uri, self.logger.clone())
-            .unwrap();
+            .expect("Could not bind to client listen URI");
         server.start();
 
         log::info!(
@@ -492,7 +492,7 @@ impl<
 
         let mut server = server_builder
             .build_using_uri(&self.config.peer_listen_uri, self.logger.clone())
-            .unwrap();
+            .expect("Could not bind to peer listen URI");
         server.start();
 
         log::info!(

@@ -53,7 +53,7 @@ impl Server {
 
         let server = server_builder
             .build_using_uri(client_listen_uri, logger.clone())
-            .unwrap();
+            .expect("Could not build a server using the client listen URI");
 
         Self {
             server,

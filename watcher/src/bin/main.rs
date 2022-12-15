@@ -71,7 +71,7 @@ fn main() {
 
     let mut server = server_builder
         .build_using_uri(&config.client_listen_uri, logger.clone())
-        .unwrap();
+        .expect("Could not build server for client listen URI");
     server.start();
 
     log::info!(

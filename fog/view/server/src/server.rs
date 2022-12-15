@@ -122,7 +122,7 @@ where
 
         let server = server_builder
             .build_using_uri(&config.client_listen_uri, logger.clone())
-            .unwrap();
+            .expect("Could not bind to client listen URI");
 
         Self {
             config,
