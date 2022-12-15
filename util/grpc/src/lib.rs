@@ -289,9 +289,7 @@ pub fn run_server(
         server_builder = server_builder.register_service(service);
     }
 
-    let mut server = server_builder
-        .build()
-        .expect("Could not build server");
+    let mut server = server_builder.build().expect("Could not build server");
 
     let port = server
         .add_listening_port(&format!("0.0.0.0:{port}"), ServerCredentials::insecure())

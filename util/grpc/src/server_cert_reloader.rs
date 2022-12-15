@@ -187,7 +187,7 @@ mod tests {
         let ch = ChannelBuilder::new(env)
             .override_ssl_target(ssl_target)
             .set_credentials(cred)
-            .connect(format!("localhost:{}", port));
+            .connect(&format!("localhost:{}", port));
         HealthClient::new(ch)
     }
 
