@@ -49,6 +49,33 @@ impl From<[u8; 32]> for AccountId {
         Self(value)
     }
 }
+
+impl TryFrom<&[u8]> for AccountId {
+    type Error = mc_util_repr_bytes::LengthMismatch;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        if src.len() != 32 {
+            return Err(mc_util_repr_bytes::LengthMismatch {
+                expected: 32,
+                found: src.len(),
+            });
+        }
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(src);
+        Ok(Self(hash))
+    }
+}
+
+impl TryFrom<&str> for AccountId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut hash = [0u8; 32];
+        hex::decode_to_slice(value, &mut hash)?;
+        Ok(Self(hash))
+    }
+}
+
 /// View account credentials for sync with full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AccountInfo {
