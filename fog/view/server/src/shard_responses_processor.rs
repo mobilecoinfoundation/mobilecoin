@@ -54,6 +54,7 @@ pub fn process_shard_responses(
                     "Received a response with status 'unknown' from store{}",
                     FogViewStoreUri::from_str(&response.store_uri)?
                 );
+                shard_clients_for_retry.push(shard_client);
             }
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Success => {
                 new_query_responses.push(response.clone());
