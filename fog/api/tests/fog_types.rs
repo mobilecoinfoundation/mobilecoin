@@ -129,11 +129,12 @@ fn fog_view_query_response_round_trip() {
                 .map(|_| mc_fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
                 .collect(),
             missed_block_ranges: Default::default(),
-            tx_out_search_results: (0..40)
-                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
+            fixed_tx_out_search_results: (0..40)
+                .map(|_| mc_fog_types::view::FixedTxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            tx_out_search_results: vec![],
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
@@ -152,11 +153,12 @@ fn fog_view_query_response_round_trip() {
                 .map(|_| mc_fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
                 .collect(),
             missed_block_ranges: Default::default(),
-            tx_out_search_results: (0..40)
-                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
+            fixed_tx_out_search_results: (0..40)
+                .map(|_| mc_fog_types::view::FixedTxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            tx_out_search_results: vec![],
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
@@ -182,11 +184,12 @@ fn fog_view_query_response_round_trip() {
                     )
                 })
                 .collect(),
-            tx_out_search_results: (0..40)
-                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
+            fixed_tx_out_search_results: (0..40)
+                .map(|_| mc_fog_types::view::FixedTxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            tx_out_search_results: vec![],
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
@@ -427,7 +430,7 @@ impl Sample for mc_fog_types::view::DecommissionedIngestInvocation {
     }
 }
 
-impl Sample for mc_fog_types::view::TxOutSearchResult {
+impl Sample for mc_fog_types::view::FixedTxOutSearchResult {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self {
             search_key: <[u8; 32]>::sample(rng).to_vec(),

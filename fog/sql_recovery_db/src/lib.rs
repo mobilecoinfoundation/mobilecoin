@@ -41,7 +41,7 @@ use mc_fog_recovery_db_iface::{
 };
 use mc_fog_types::{
     common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
+    view::{FixedTxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
 use mc_util_parse::parse_duration_in_seconds;
@@ -885,13 +885,13 @@ impl SqlRecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs_retriable(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Error> {
+    ) -> Result<Vec<FixedTxOutSearchResult>, Error> {
         let conn = self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -909,23 +909,12 @@ impl SqlRecoveryDb {
         let mut results = Vec::new();
         for search_key in search_keys {
             results.push(match search_key_to_payload.get(search_key) {
-                Some(payload) => TxOutSearchResult {
-                    search_key: search_key.clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: payload.clone(),
-                    payload_length: payload.len() as u32,
-                },
-
-                None => {
-                    let ciphertext: Vec<u8> = Default::default();
-                    let payload_length = ciphertext.len() as u32;
-                    TxOutSearchResult {
-                        search_key: search_key.clone(),
-                        result_code: TxOutSearchResultCode::NotFound as u32,
-                        ciphertext,
-                        payload_length,
-                    }
-                }
+                Some(payload) => FixedTxOutSearchResult::new(
+                    search_key.clone(),
+                    payload,
+                    TxOutSearchResultCode::Found,
+                ),
+                None => FixedTxOutSearchResult::new_not_found(search_key.clone()),
             });
         }
 
@@ -1428,13 +1417,13 @@ impl RecoveryDb for SqlRecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Self::Error> {
+    ) -> Result<Vec<FixedTxOutSearchResult>, Self::Error> {
         our_retry(self.get_retries(), || {
             self.get_tx_outs_retriable(start_block, search_keys)
         })
@@ -1636,6 +1625,7 @@ mod tests {
     };
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
+    use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
@@ -2243,12 +2233,7 @@ mod tests {
                 results,
                 test_case
                     .iter()
-                    .map(|search_key| TxOutSearchResult {
-                        search_key: search_key.clone(),
-                        result_code: TxOutSearchResultCode::NotFound as u32,
-                        ciphertext: vec![],
-                        payload_length: 0,
-                    })
+                    .map(|search_key| FixedTxOutSearchResult::new_not_found(search_key.clone()))
                     .collect::<Vec<_>>()
             );
         }
@@ -2265,36 +2250,23 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[0].payload.clone(),
-                    payload_length: records1[0].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[5].payload.clone(),
-                    payload_length: records1[5].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                    payload_length: records2[3].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[1].clone(),
+                    &records1[0].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[2].clone(),
+                    &records1[5].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2302,36 +2274,23 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[0].payload.clone(),
-                    payload_length: records1[0].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[5].payload.clone(),
-                    payload_length: records1[5].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                    payload_length: records2[3].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[1].clone(),
+                    &records1[0].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[2].clone(),
+                    &records1[5].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2341,36 +2300,11 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[1].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[2].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[3].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2378,36 +2312,15 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                    payload_length: records2[3].payload.len() as u32,
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![],
-                    payload_length: 0,
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[1].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[2].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
     }

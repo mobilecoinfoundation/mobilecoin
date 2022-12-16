@@ -75,9 +75,18 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
             tx_out_search_results: Default::default(),
             last_known_block_count: highest_known_block_count,
             last_known_block_cumulative_txo_count: cumulative_txo_count,
+            fixed_tx_out_search_results: Default::default(),
         };
 
-        resp.tx_out_search_results = self.db.get_tx_outs(start_from_block_index, &search_keys)?;
+        resp.fixed_tx_out_search_results =
+            self.db.get_tx_outs(start_from_block_index, &search_keys)?;
+
+        resp.tx_out_search_results = resp
+            .fixed_tx_out_search_results
+            .iter()
+            .cloned()
+            .map(|result| result.into())
+            .collect();
 
         Ok(resp)
     }

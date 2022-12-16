@@ -76,7 +76,7 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
             &Default::default(),
         ),
         0,
-        &txs[0..2],
+        &txs[..2],
     )
     .unwrap();
 
@@ -207,8 +207,13 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.rng_records[0].pubkey, pubkey1);
     assert_eq!(result.rng_records[1].pubkey, pubkey2);
     assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     assert_eq!(
         TxOutSearchResultCode::try_from(result.tx_out_search_results[0].result_code).unwrap(),
+        TxOutSearchResultCode::BadSearchKey
+    );
+    assert_eq!(
+        TxOutSearchResultCode::try_from(result.fixed_tx_out_search_results[0].result_code).unwrap(),
         TxOutSearchResultCode::BadSearchKey
     );
     assert_eq!(result.missed_block_ranges.len(), 1);
@@ -229,8 +234,13 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.rng_records[0].pubkey, pubkey1);
     assert_eq!(result.rng_records[1].pubkey, pubkey2);
     assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     assert_eq!(
         TxOutSearchResultCode::try_from(result.tx_out_search_results[0].result_code).unwrap(),
+        TxOutSearchResultCode::BadSearchKey
+    );
+    assert_eq!(
+        TxOutSearchResultCode::try_from(result.fixed_tx_out_search_results[0].result_code).unwrap(),
         TxOutSearchResultCode::BadSearchKey
     );
     assert_eq!(result.missed_block_ranges.len(), 1);
@@ -248,8 +258,13 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.rng_records[0].pubkey, pubkey2);
     assert_eq!(result.rng_records[0].start_block, 2);
     assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     assert_eq!(
         TxOutSearchResultCode::try_from(result.tx_out_search_results[0].result_code).unwrap(),
+        TxOutSearchResultCode::BadSearchKey
+    );
+    assert_eq!(
+        TxOutSearchResultCode::try_from(result.fixed_tx_out_search_results[0].result_code).unwrap(),
         TxOutSearchResultCode::BadSearchKey
     );
     assert_eq!(result.missed_block_ranges.len(), 1);
@@ -264,8 +279,13 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.next_start_from_user_event_id, 4);
     assert_eq!(result.rng_records.len(), 0);
     assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     assert_eq!(
         TxOutSearchResultCode::try_from(result.tx_out_search_results[0].result_code).unwrap(),
+        TxOutSearchResultCode::BadSearchKey
+    );
+    assert_eq!(
+        TxOutSearchResultCode::try_from(result.fixed_tx_out_search_results[0].result_code).unwrap(),
         TxOutSearchResultCode::BadSearchKey
     );
     assert_eq!(result.missed_block_ranges.len(), 0);
@@ -279,8 +299,13 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.next_start_from_user_event_id, 80);
     assert_eq!(result.rng_records.len(), 0);
     assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     assert_eq!(
         TxOutSearchResultCode::try_from(result.tx_out_search_results[0].result_code).unwrap(),
+        TxOutSearchResultCode::BadSearchKey
+    );
+    assert_eq!(
+        TxOutSearchResultCode::try_from(result.fixed_tx_out_search_results[0].result_code).unwrap(),
         TxOutSearchResultCode::BadSearchKey
     );
     assert_eq!(result.missed_block_ranges.len(), 0);
@@ -294,22 +319,74 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.highest_processed_block_count, 6);
     assert_eq!(result.next_start_from_user_event_id, 4);
     assert_eq!(result.rng_records.len(), 0);
-    assert_eq!(result.tx_out_search_results.len(), 3);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 3);
     {
-        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
-            result.tx_out_search_results.clone(),
-        );
+        let mut sort_txs = result.tx_out_search_results.clone();
+        sort_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
         assert_eq!(sort_txs[0].search_key, vec![1u8; 16]);
         assert_eq!(sort_txs[0].result_code, 1);
         assert_eq!(sort_txs[0].ciphertext, vec![1u8; 232]);
+        assert_eq!(sort_txs[0].padding, vec![0u8; 23]);
 
         assert_eq!(sort_txs[1].search_key, vec![2u8; 16]);
         assert_eq!(sort_txs[1].result_code, 1);
         assert_eq!(sort_txs[1].ciphertext, vec![2u8; 232]);
+        assert_eq!(sort_txs[1].padding, vec![0u8; 23]);
 
         assert_eq!(sort_txs[2].search_key, vec![3u8; 16]);
         assert_eq!(sort_txs[2].result_code, 1);
         assert_eq!(sort_txs[2].ciphertext, vec![3u8; 232]);
+        assert_eq!(sort_txs[2].padding, vec![0u8; 23]);
+    }
+    {
+        let mut sort_fixed_txs = result.fixed_tx_out_search_results.clone();
+        sort_fixed_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+        let expected_payload_length = 232;
+
+        assert_eq!(sort_fixed_txs[0].search_key, vec![1u8; 16]);
+        assert_eq!(sort_fixed_txs[0].result_code, 1);
+        assert_eq!(
+            sort_fixed_txs[0].ciphertext[..expected_payload_length],
+            vec![1u8; expected_payload_length]
+        );
+        assert_eq!(
+            sort_fixed_txs[0].ciphertext[expected_payload_length..],
+            vec![0; 23]
+        );
+        assert_eq!(
+            sort_fixed_txs[0].payload_length as usize,
+            expected_payload_length
+        );
+
+        assert_eq!(sort_fixed_txs[1].search_key, vec![2u8; 16]);
+        assert_eq!(sort_fixed_txs[1].result_code, 1);
+        assert_eq!(
+            sort_fixed_txs[1].ciphertext[..expected_payload_length],
+            vec![2u8; expected_payload_length]
+        );
+        assert_eq!(
+            sort_fixed_txs[1].ciphertext[expected_payload_length..],
+            vec![0; 23]
+        );
+        assert_eq!(
+            sort_fixed_txs[1].payload_length as usize,
+            expected_payload_length
+        );
+
+        assert_eq!(sort_fixed_txs[2].search_key, vec![3u8; 16]);
+        assert_eq!(sort_fixed_txs[2].result_code, 1);
+        assert_eq!(
+            sort_fixed_txs[2].ciphertext[..expected_payload_length],
+            vec![3u8; expected_payload_length]
+        );
+        assert_eq!(
+            sort_fixed_txs[2].ciphertext[expected_payload_length..],
+            vec![0; 23]
+        );
+        assert_eq!(
+            sort_fixed_txs[2].payload_length as usize,
+            expected_payload_length
+        );
     }
     assert_eq!(result.missed_block_ranges.len(), 0); // no range reported since we started at event id 4
     assert_eq!(result.last_known_block_count, 6);
@@ -324,29 +401,70 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.highest_processed_block_count, 6);
     assert_eq!(result.next_start_from_user_event_id, 4);
     assert_eq!(result.rng_records.len(), 0);
-    assert_eq!(result.tx_out_search_results.len(), 3);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 3);
     {
-        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
-            result.tx_out_search_results.clone(),
-        );
+        let mut sort_txs = result.tx_out_search_results.clone();
+        sort_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
         assert_eq!(sort_txs[0].search_key, vec![5u8; 16]);
         assert_eq!(sort_txs[0].result_code, 1);
         assert_eq!(sort_txs[0].ciphertext, vec![5u8; 232]);
+        assert_eq!(sort_txs[0].padding, vec![0u8; 23]);
 
         assert_eq!(sort_txs[1].search_key, vec![8u8; 16]);
         assert_eq!(sort_txs[1].result_code, 1);
         assert_eq!(sort_txs[1].ciphertext, vec![8u8; 232]);
+        assert_eq!(sort_txs[1].padding, vec![0u8; 23]);
 
         assert_eq!(sort_txs[2].search_key, vec![200u8; 16]);
         assert_eq!(sort_txs[2].result_code, 2);
-        assert_eq!(sort_txs[2].ciphertext, vec![0u8; 255]);
+        assert_eq!(sort_txs[2].ciphertext, Vec::<u8>::new());
+        assert_eq!(sort_txs[2].padding, vec![0u8; 255]);
     }
+    {
+        let mut sort_fixed_txs = result.fixed_tx_out_search_results.clone();
+        sort_fixed_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+        let expected_payload_length = 232;
 
+        assert_eq!(sort_fixed_txs[0].search_key, vec![5u8; 16]);
+        assert_eq!(sort_fixed_txs[0].result_code, 1);
+        assert_eq!(
+            sort_fixed_txs[0].ciphertext[..expected_payload_length],
+            vec![5u8; expected_payload_length]
+        );
+        assert_eq!(
+            sort_fixed_txs[0].ciphertext[expected_payload_length..],
+            vec![0; 23]
+        );
+        assert_eq!(
+            sort_fixed_txs[0].payload_length as usize,
+            expected_payload_length
+        );
+
+        assert_eq!(sort_fixed_txs[1].search_key, vec![8u8; 16]);
+        assert_eq!(sort_fixed_txs[1].result_code, 1);
+        assert_eq!(
+            sort_fixed_txs[1].ciphertext[..expected_payload_length],
+            vec![8u8; expected_payload_length]
+        );
+        assert_eq!(
+            sort_fixed_txs[1].ciphertext[expected_payload_length..],
+            vec![0; 23]
+        );
+        assert_eq!(
+            sort_fixed_txs[1].payload_length as usize,
+            expected_payload_length
+        );
+
+        assert_eq!(sort_fixed_txs[2].search_key, vec![200u8; 16]);
+        assert_eq!(sort_fixed_txs[2].result_code, 2);
+        assert_eq!(sort_fixed_txs[2].ciphertext, vec![0u8; 255]);
+        assert_eq!(sort_fixed_txs[2].payload_length, 0);
+    }
     assert_eq!(result.missed_block_ranges.len(), 0); // no range reported since we started at event id 4
     assert_eq!(result.last_known_block_count, 6);
 
-    // Query 8 supplies an ill-formed seach key, so we expect to find that the TxOut
-    // that's returned indicates this.
+    // Query 8 supplies an ill-formed search key, so we expect to find that the
+    // TxOut that's returned indicates this.
     let result = view_client.request(0, 0, vec![vec![200u8; 17]]);
     assert!(result.is_ok());
     let mut result = result.unwrap();
@@ -358,14 +476,23 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
     assert_eq!(result.rng_records.len(), 2);
     assert_eq!(result.rng_records[0].pubkey, pubkey1);
     assert_eq!(result.rng_records[1].pubkey, pubkey2);
-    assert_eq!(result.tx_out_search_results.len(), 1);
+    assert_eq!(result.fixed_tx_out_search_results.len(), 1);
     {
-        let sort_txs = mc_fog_view_server_test_utils::interpret_tx_out_search_results(
-            result.tx_out_search_results.clone(),
-        );
+        let mut sort_txs = result.tx_out_search_results.clone();
+        sort_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
         assert_eq!(sort_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_txs[0].result_code, 3);
         assert_eq!(sort_txs[0].ciphertext, vec![0u8; 232]);
+        assert_eq!(sort_txs[0].padding, vec![0u8; 23]);
+    }
+    {
+        let mut sort_fixed_txs = result.fixed_tx_out_search_results.clone();
+        sort_fixed_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
+
+        assert_eq!(sort_fixed_txs[0].search_key, vec![200u8; 17]);
+        assert_eq!(sort_fixed_txs[0].result_code, 3);
+        assert_eq!(sort_fixed_txs[0].ciphertext, vec![0u8; 255]);
+        assert_eq!(sort_fixed_txs[0].payload_length, 232);
     }
     assert_eq!(result.missed_block_ranges.len(), 1);
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));

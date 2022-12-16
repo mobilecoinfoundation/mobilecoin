@@ -4501,6 +4501,7 @@ dependencies = [
  "mc-watcher-api",
  "prost",
  "serde",
+ "yare",
 ]
 
 [[package]]

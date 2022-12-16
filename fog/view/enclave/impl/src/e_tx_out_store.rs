@@ -14,7 +14,7 @@ use aligned_cmov::{
 use alloc::boxed::Box;
 use mc_common::logger::Logger;
 use mc_crypto_rand::McRng;
-use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
+use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH};
 use mc_fog_view_enclave_api::AddRecordsError;
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
@@ -134,12 +134,13 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         Ok(())
     }
 
-    pub fn find_record(&mut self, search_key: &[u8]) -> TxOutSearchResult {
+    // Should this return a FixedTxOutSearchResult or just a TxOutSearchResult?
+    pub fn find_record(&mut self, search_key: &[u8]) -> FixedTxOutSearchResult {
         let payload_length = ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize;
-        let mut result = TxOutSearchResult {
+        let mut result = FixedTxOutSearchResult {
             search_key: search_key.to_vec(),
             result_code: TxOutSearchResultCode::InternalError as u32,
-            ciphertext: vec![0u8; payload_length],
+            ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
             payload_length: payload_length as u32,
         };
 
@@ -184,12 +185,17 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             );
         }
 
-        // Copy the data in value[1..] to result.ciphertext, resizing if needed
-        result
-            .ciphertext
-            .resize(ValueSize::USIZE - 1 - value[0] as usize, 0u8);
+        // TOOO: Per https://github.com/mobilecoinfoundation/mobilecoin/issues/2965, use a
+        // a constant time comparison function to always copy the same number of bytes.
+        // NOTE: As of right now, this code is not constant time and therefore
+        // blocks the v5 release.
+        // Code to implement:
+        // const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH,
+        // ValueSize::USIZE - 1); (&result.ciphertext[..LENGTH_TO_COPY]).
+        // copy_from_slice(&value[1..LENGTH_TO_COPY]);
         let data_end = ValueSize::USIZE - value[0] as usize;
-        result.ciphertext.copy_from_slice(&value[1..data_end]);
+        let payload = &value[1..data_end];
+        result.ciphertext[0..payload_length].copy_from_slice(payload);
 
         result
     }
