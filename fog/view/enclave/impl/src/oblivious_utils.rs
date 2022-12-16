@@ -13,7 +13,6 @@ use aligned_cmov::{
 use alloc::vec::Vec;
 use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode};
 
-#[allow(dead_code)]
 pub fn collate_shard_tx_out_search_results(
     client_search_keys: Vec<Vec<u8>>,
     shard_tx_out_search_results: Vec<FixedTxOutSearchResult>,
