@@ -185,6 +185,14 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             );
         }
 
+        // TOOO: Per https://github.com/mobilecoinfoundation/mobilecoin/issues/2965, use a
+        // a constant time comparison function to always copy the same number of bytes.
+        // NOTE: As of right now, this code is not constant time and therefore
+        // blocks the v5 release.
+        // Code to implement:
+        // const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH,
+        // ValueSize::USIZE - 1); (&result.ciphertext[..LENGTH_TO_COPY]).
+        // copy_from_slice(&value[1..LENGTH_TO_COPY]);
         let data_end = ValueSize::USIZE - value[0] as usize;
         let payload = &value[1..data_end];
         result.ciphertext[0..payload_length].copy_from_slice(payload);
