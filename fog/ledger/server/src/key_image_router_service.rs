@@ -33,7 +33,6 @@ where
 impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     /// Creates a new LedgerRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
-    #[allow(dead_code)] // FIXME
     pub fn new(
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
