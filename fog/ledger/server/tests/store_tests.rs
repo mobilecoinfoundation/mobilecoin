@@ -115,7 +115,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let config = LedgerStoreConfig {
             chain_id: test_name.to_string(),
             client_responder_id: responder_id.clone(),
-            client_listen_uri: test_uri.clone(),
+            client_listen_uri: test_uri,
             ledger_db: ledger_path,
             watcher_db: PathBuf::from(db_tmp.path()),
             ias_api_key: Default::default(),
@@ -150,7 +150,7 @@ lazy_static::lazy_static! {
 
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
-    const TEST_NAME: &'static str = "direct_key_image_store_check";
+    const TEST_NAME: &str = "direct_key_image_store_check";
     const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
 
@@ -185,7 +185,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let mut store_server = KeyImageStoreServer::new_from_service(
         store_service,
-        client_listen_uri.clone(),
+        client_listen_uri,
         logger.clone(),
     );
     store_server.start();
@@ -197,7 +197,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let mut report_cache_thread = Some(
         ReportCacheThread::start(
             enclave.clone(),
-            ias_client.clone(),
+            ias_client,
             store_config.ias_spid,
             &TEST_ENCLAVE_REPORT_TIMESTAMP,
             logger.clone(),
@@ -215,7 +215,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         enclave.frontend_accept(client_auth_request).unwrap();
     // Finish the enclave's handshake with itself.
     enclave
-        .ledger_store_connect(responder_id.clone(), auth_response.into())
+        .ledger_store_connect(responder_id.clone(), auth_response)
         .unwrap();
     println!("router_to_store_session is: {:?}", &router_to_store_session);
 
@@ -228,7 +228,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         timestamp: 255,
     };
     enclave
-        .add_key_image_data(vec![test_key_image.clone()])
+        .add_key_image_data(vec![test_key_image])
         .unwrap();
 
     // Set up the client's end of the encrypted connection.
@@ -254,7 +254,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     //Construct our request.
     let key_images_request = CheckKeyImagesRequest {
         queries: vec![KeyImageQuery {
-            key_image: test_key_image.key_image.clone(),
+            key_image: test_key_image.key_image,
             start_block: 1,
         }],
     };
@@ -302,7 +302,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
 
     let result = enclave
-        .check_key_image_store(query, untrusted_kiqr.clone())
+        .check_key_image_store(query, untrusted_kiqr)
         .unwrap();
 
     let responses_btree: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> =
@@ -322,7 +322,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let test_results: Vec<(KeyImage, u32)> = done_response
         .results
         .into_iter()
-        .map(|result| (result.key_image.clone(), result.key_image_result_code))
+        .map(|result| (result.key_image, result.key_image_result_code))
         .collect();
 
     // The key image result code for a spent key image is 1.
