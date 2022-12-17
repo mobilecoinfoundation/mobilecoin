@@ -79,14 +79,14 @@ impl KeyImageStoreServer {
         let key_image_service = KeyImageService::new(
             KeyImageClientListenUri::Store(client_listen_uri.clone()),
             chain_id,
-            ledger.clone(),
-            watcher.clone(),
+            ledger,
+            watcher,
             enclave,
             shared_state,
             client_authenticator.clone(),
             logger.clone(),
         );
-        Self::new_from_service(key_image_service, client_listen_uri.clone(), logger.clone())
+        Self::new_from_service(key_image_service, client_listen_uri, logger.clone())
     }
 
     pub fn new_from_service<E>(

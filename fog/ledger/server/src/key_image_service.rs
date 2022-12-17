@@ -247,9 +247,9 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            match self.auth_impl(request.into(), &logger) {
+            match self.auth_impl(request, logger) {
                 Ok(response) => {
-                    send_result(ctx, sink, Ok(response.into()), logger);
+                    send_result(ctx, sink, Ok(response), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -280,9 +280,9 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            match self.auth_impl(req.into(), &logger) {
+            match self.auth_impl(req, logger) {
                 Ok(response) => {
-                    send_result(ctx, sink, Ok(response.into()), logger);
+                    send_result(ctx, sink, Ok(response), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
