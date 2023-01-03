@@ -13,6 +13,7 @@ use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{ServiceMetrics, SVC_COUNTERS};
+use mc_util_telemetry::tracer;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -134,11 +135,13 @@ where
 
             // This will block the async API. We should use some sort of differentiator...
             let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
+            let tracer = tracer!();
             let result = block_on(router_request_handler::handle_query_request(
                 request,
                 self.enclave.clone(),
                 shard_clients.values().cloned().collect(),
                 self.logger.clone(),
+                &tracer,
             ))
             .map(|mut response| response.take_query());
 

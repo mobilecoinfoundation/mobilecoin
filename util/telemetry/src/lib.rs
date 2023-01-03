@@ -3,7 +3,8 @@
 //! OpenTelemetry wrappers and helper utilities.
 
 pub use opentelemetry::{
-    trace::{mark_span_as_active, Span, SpanKind, TraceContextExt, Tracer},
+    global::BoxedTracer,
+    trace::{mark_span_as_active, FutureExt, Span, SpanKind, TraceContextExt, Tracer},
     Context, Key,
 };
 
@@ -12,8 +13,6 @@ use opentelemetry::{
     trace::{SpanBuilder, TraceId, TracerProvider},
 };
 use std::borrow::Cow;
-
-pub use opentelemetry::global::BoxedTracer;
 
 #[macro_export]
 macro_rules! tracer {
@@ -50,6 +49,14 @@ pub fn versioned_tracer(
     schema_url: Option<&'static str>,
 ) -> BoxedTracer {
     tracer_provider().versioned_tracer(name, version, schema_url)
+}
+
+pub fn create_async_context<T>(tracer: &BoxedTracer, name: T) -> Context
+where
+    T: Into<Cow<'static, str>>,
+{
+    let span = tracer.start(name);
+    Context::current_with_span(span)
 }
 
 /// A utility method to create a predictable trace ID out of a block index.
