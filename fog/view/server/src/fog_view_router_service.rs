@@ -64,7 +64,6 @@ where
         requests: RequestStream<FogViewRouterRequest>,
         responses: DuplexSink<FogViewRouterResponse>,
     ) {
-        log::info!(self.logger, "Request received in request fn");
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
