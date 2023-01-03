@@ -82,11 +82,9 @@ pub fn send_result<T>(
     logger: &Logger,
 ) {
     let logger = logger.clone();
-    let success = resp.is_ok();
-    let code = match &resp {
-        Ok(_) => RpcStatusCode::OK,
-        Err(e) => e.code(),
-    };
+    let response_status = ResponseStatus::new(&resp);
+    let is_success = response_status.is_success;
+    let code = response_status.code;
 
     match resp {
         Ok(ok) => ctx.spawn(
@@ -101,8 +99,31 @@ pub fn send_result<T>(
         ),
     }
 
-    SVC_COUNTERS.resp(&ctx, success);
+    SVC_COUNTERS.resp(&ctx, is_success);
     SVC_COUNTERS.status_code(&ctx, code);
+}
+
+/// Helper struct that provides information related to a gRPC response.
+pub struct ResponseStatus {
+    /// True if the gRPC response is ok.
+    pub is_success: bool,
+
+    /// RpcStatusCode that corresponds to the response.
+    pub code: RpcStatusCode,
+}
+
+impl ResponseStatus {
+    /// Creates a `ResponseStatus` struct from a gRPC response.
+    #[inline]
+    pub fn new<T>(response: &Result<T, RpcStatus>) -> Self {
+        let is_success = response.is_ok();
+        let code = match response {
+            Ok(_) => RpcStatusCode::OK,
+            Err(e) => e.code(),
+        };
+
+        ResponseStatus { is_success, code }
+    }
 }
 
 macro_rules! report_err_with_code(
