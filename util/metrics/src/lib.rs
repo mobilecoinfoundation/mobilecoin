@@ -20,7 +20,7 @@ pub use prometheus::{
     register, register_histogram, Histogram, HistogramOpts, HistogramVec, IntCounter,
     IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
-pub use service_metrics::ServiceMetrics;
+pub use service_metrics::{GrpcMethodName, ServiceMetrics};
 
 lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered();

@@ -16,7 +16,8 @@ use mc_fog_api::{
 use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
-use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
+use mc_util_metrics::{GrpcMethodName, SVC_COUNTERS};
 use mc_util_uri::ConnectionUri;
 use std::sync::Arc;
 
@@ -24,6 +25,7 @@ const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
 pub async fn handle_requests<E>(
+    method_name: GrpcMethodName,
     shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     enclave: E,
     mut requests: RequestStream<FogViewRouterRequest>,
@@ -34,6 +36,7 @@ where
     E: ViewEnclaveProxy,
 {
     while let Some(request) = requests.try_next().await? {
+        let _timer = SVC_COUNTERS.req_impl(&method_name);
         let result = handle_request(
             request,
             shard_clients.clone(),
@@ -41,6 +44,13 @@ where
             logger.clone(),
         )
         .await;
+
+        // Perform prometheus logic before the match statement to ensure that
+        // this logic is executed.
+        let response_status = ResponseStatus::new(&result);
+        SVC_COUNTERS.resp_impl(&method_name, response_status.is_success);
+        SVC_COUNTERS.status_code_impl(&method_name, response_status.code);
+
         match result {
             Ok(response) => responses.send((response, WriteFlags::default())).await?,
             Err(rpc_status) => return responses.fail(rpc_status).await,

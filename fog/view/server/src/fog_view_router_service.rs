@@ -12,7 +12,7 @@ use mc_fog_api::{
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use mc_util_metrics::SVC_COUNTERS;
+use mc_util_metrics::{ServiceMetrics, SVC_COUNTERS};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -64,13 +64,14 @@ where
         requests: RequestStream<FogViewRouterRequest>,
         responses: DuplexSink<FogViewRouterResponse>,
     ) {
-        let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
             // TODO: Confirm that we don't need to perform the authenticator logic. I think
             // we don't  because of streaming...
             let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
+            let method_name = ServiceMetrics::get_method_name(&ctx);
             let future = router_request_handler::handle_requests(
+                method_name,
                 shard_clients.values().cloned().collect(),
                 self.enclave.clone(),
                 requests,
