@@ -28,7 +28,7 @@ use mc_fog_view_server::{
         FogViewRouterConfig, MobileAcctViewConfig as ViewConfig, RouterClientListenUri,
         ShardingStrategy, ShardingStrategy::Epoch,
     },
-    fog_view_router_server::FogViewRouterServer,
+    fog_view_router_server::{FogViewRouterServer, Shard},
     server::ViewServer,
     sharding_strategy::EpochShardingStrategy,
 };
@@ -36,7 +36,6 @@ use mc_transaction_core::BlockVersion;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::{AdminUri, ConnectionUri};
 use std::{
-    collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
     thread::sleep,
@@ -151,7 +150,7 @@ impl RouterTestEnvironment {
 
     fn create_router_server(
         config: FogViewRouterConfig,
-        store_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        shards: Arc<RwLock<Vec<Shard>>>,
         logger: &Logger,
     ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
         let enclave = SgxViewEnclave::new(
@@ -166,7 +165,7 @@ impl RouterTestEnvironment {
             config,
             enclave,
             ra_client,
-            store_clients,
+            shards,
             SystemTimeProvider::default(),
             logger.clone(),
         );
@@ -217,14 +216,14 @@ impl RouterTestEnvironment {
     ) -> (
         SqlRecoveryDbTestContext,
         Vec<TestViewServer>,
-        Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        Arc<RwLock<Vec<Shard>>>,
         Vec<FogViewStoreUri>,
         Vec<ShardingStrategy>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
-        let mut store_clients = HashMap::new();
+        let mut shards = Vec::new();
         let mut shard_uris: Vec<FogViewStoreUri> = Vec::new();
         let mut sharding_strategies: Vec<ShardingStrategy> = Vec::new();
 
@@ -237,7 +236,7 @@ impl RouterTestEnvironment {
                 ))
                 .unwrap();
 
-                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range);
+                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
                 let sharding_strategy = Epoch(epoch_sharding_strategy);
                 shard_uris.push(uri.clone());
                 sharding_strategies.push(sharding_strategy.clone());
@@ -291,10 +290,11 @@ impl RouterTestEnvironment {
                 ChannelBuilder::default_channel_builder(grpc_env)
                     .connect_to_uri(&store_uri, &logger),
             );
-            store_clients.insert(store_uri, Arc::new(store_client));
+            let shard = Shard::new(store_uri, Arc::new(store_client), store_block_range);
+            shards.push(shard);
         }
 
-        let store_clients = Arc::new(RwLock::new(store_clients));
+        let store_clients = Arc::new(RwLock::new(shards));
 
         (
             db_test_context,

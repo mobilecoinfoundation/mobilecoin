@@ -2,6 +2,7 @@
 
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
+    fog_view_router_server::Shard,
     shard_responses_processor, SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
@@ -27,7 +28,7 @@ const RETRY_COUNT: usize = 3;
 /// Handles a series of requests sent by the Fog Router client.
 pub async fn handle_requests<E>(
     method_name: GrpcMethodName,
-    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    shards: Vec<Shard>,
     enclave: E,
     mut requests: RequestStream<FogViewRouterRequest>,
     mut responses: DuplexSink<FogViewRouterResponse>,
@@ -38,13 +39,7 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
-        let result = handle_request(
-            request,
-            shard_clients.clone(),
-            enclave.clone(),
-            logger.clone(),
-        )
-        .await;
+        let result = handle_request(request, shards.clone(), enclave.clone(), logger.clone()).await;
 
         // Perform prometheus logic before the match statement to ensure that
         // this logic is executed.
@@ -65,7 +60,7 @@ where
 /// query.
 pub async fn handle_request<E>(
     mut request: FogViewRouterRequest,
-    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    shards: Vec<Shard>,
     enclave: E,
     logger: Logger,
 ) -> Result<FogViewRouterResponse, RpcStatus>
@@ -78,15 +73,9 @@ where
             handle_auth_request(enclave, request.take_auth(), logger)
         })
     } else if request.has_query() {
-        handle_query_request(
-            request.take_query(),
-            enclave,
-            shard_clients,
-            logger,
-            &tracer,
-        )
-        .with_context(create_context(&tracer, "router_query"))
-        .await
+        handle_query_request(request.take_query(), enclave, shards, logger, &tracer)
+            .with_context(create_context(&tracer, "router_query"))
+            .await
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid FogViewRouterRequest request",
@@ -119,7 +108,7 @@ where
 pub async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
-    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    shards: Vec<Shard>,
     logger: Logger,
     tracer: &BoxedTracer,
 ) -> Result<FogViewRouterResponse, RpcStatus>
@@ -139,7 +128,7 @@ where
     let query_responses = get_query_responses(
         sealed_query.clone(),
         enclave.clone(),
-        shard_clients.clone(),
+        shards.clone(),
         logger.clone(),
     )
     .with_context(create_context(tracer, "router_get_query_responses"))
@@ -165,14 +154,13 @@ where
 async fn get_query_responses<E>(
     sealed_query: SealedClientMessage,
     enclave: E,
-    mut shard_clients: Vec<Arc<FogViewStoreApiClient>>,
+    mut shards: Vec<Shard>,
     logger: Logger,
 ) -> Result<Vec<MultiViewStoreQueryResponse>, RpcStatus>
 where
     E: ViewEnclaveProxy,
 {
-    let mut query_responses: Vec<MultiViewStoreQueryResponse> =
-        Vec::with_capacity(shard_clients.len());
+    let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
     while remaining_tries > 0 {
         let multi_view_store_query_request = enclave
@@ -185,16 +173,15 @@ where
                 )
             })?
             .into();
-        let clients_and_responses =
-            route_query(&multi_view_store_query_request, shard_clients.clone())
-                .await
-                .map_err(|err| {
-                    router_server_err_to_rpc_status(
-                        "Query: internal query routing error",
-                        err,
-                        logger.clone(),
-                    )
-                })?;
+        let clients_and_responses = route_query(&multi_view_store_query_request, shards.clone())
+            .await
+            .map_err(|err| {
+                router_server_err_to_rpc_status(
+                    "Query: internal query routing error",
+                    err,
+                    logger.clone(),
+                )
+            })?;
 
         let processed_shard_response_data = shard_responses_processor::process_shard_responses(
             clients_and_responses,
@@ -215,8 +202,8 @@ where
             query_responses.push(multi_view_store_query_response);
         }
 
-        shard_clients = processed_shard_response_data.shard_clients_for_retry;
-        if shard_clients.is_empty() {
+        shards = processed_shard_response_data.shards_for_retry;
+        if shards.is_empty() {
             break;
         }
 
@@ -251,9 +238,9 @@ where
 /// Sends a client's query request to all of the Fog View shards.
 async fn route_query(
     request: &MultiViewStoreQueryRequest,
-    shard_clients: Vec<Arc<FogViewStoreApiClient>>,
-) -> Result<Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>, RouterServerError> {
-    let responses = shard_clients
+    shards: Vec<Shard>,
+) -> Result<Vec<(Shard, MultiViewStoreQueryResponse)>, RouterServerError> {
+    let responses = shards
         .into_iter()
         .map(|shard_client| query_shard(request, shard_client));
     try_join_all(responses).await
@@ -262,12 +249,12 @@ async fn route_query(
 /// Sends a client's query request to one of the Fog View shards.
 async fn query_shard(
     request: &MultiViewStoreQueryRequest,
-    shard_client: Arc<FogViewStoreApiClient>,
-) -> Result<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse), RouterServerError> {
-    let client_unary_receiver = shard_client.multi_view_store_query_async(request)?;
+    shard: Shard,
+) -> Result<(Shard, MultiViewStoreQueryResponse), RouterServerError> {
+    let client_unary_receiver = shard.grpc_client.multi_view_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
-    Ok((shard_client, response.try_into()?))
+    Ok((shard, response.try_into()?))
 }
 
 /// Authenticates Fog View Stores that have previously not been authenticated.
