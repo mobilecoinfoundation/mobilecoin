@@ -1,23 +1,19 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::router_request_handler;
+use crate::{fog_view_router_server::Shard, router_request_handler};
 use futures::{executor::block_on, FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
-    view_grpc::{FogViewApi, FogViewRouterApi, FogViewStoreApiClient},
+    view_grpc::{FogViewApi, FogViewRouterApi},
 };
-use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{ServiceMetrics, SVC_COUNTERS};
 use mc_util_telemetry::tracer;
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct FogViewRouterService<E>
@@ -25,7 +21,7 @@ where
     E: ViewEnclaveProxy,
 {
     enclave: E,
-    shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+    shards: Arc<RwLock<Vec<Shard>>>,
     chain_id: String,
     /// GRPC request authenticator.
     authenticator: Arc<dyn Authenticator + Send + Sync>,
@@ -40,14 +36,14 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     /// perform view store authentication on each one.
     pub fn new(
         enclave: E,
-        shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        shards: Arc<RwLock<Vec<Shard>>>,
         chain_id: String,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
             enclave,
-            shard_clients,
+            shards,
             chain_id,
             authenticator,
             logger,
@@ -69,11 +65,11 @@ where
             let logger = logger.clone();
             // TODO: Confirm that we don't need to perform the authenticator logic. I think
             // we don't  because of streaming...
-            let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
+            let shards = self.shards.read().expect("RwLock poisoned");
             let method_name = ServiceMetrics::get_method_name(&ctx);
             let future = router_request_handler::handle_requests(
                 method_name,
-                shard_clients.values().cloned().collect(),
+                shards.clone(),
                 self.enclave.clone(),
                 requests,
                 responses,
@@ -134,12 +130,12 @@ where
             }
 
             // This will block the async API. We should use some sort of differentiator...
-            let shard_clients = self.shard_clients.read().expect("RwLock poisoned");
+            let shards = self.shards.read().expect("RwLock poisoned");
             let tracer = tracer!();
             let result = block_on(router_request_handler::handle_query_request(
                 request,
                 self.enclave.clone(),
-                shard_clients.values().cloned().collect(),
+                shards.clone(),
                 self.logger.clone(),
                 &tracer,
             ))

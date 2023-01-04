@@ -1,18 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::error::RouterServerError;
+use crate::{error::RouterServerError, fog_view_router_server::Shard};
 use mc_common::logger::{log, Logger};
-use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 /// The result of processing the MultiViewStoreQueryResponse from each Fog View
 /// Shard.
 pub struct ProcessedShardResponseData {
     /// gRPC clients for Shards that need to be retried for a successful
     /// response.
-    pub shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
+    pub shards_for_retry: Vec<Shard>,
 
     /// Uris for *individual* Fog View Stores that need to be authenticated with
     /// by the Fog Router. It should only have entries if
@@ -25,12 +24,12 @@ pub struct ProcessedShardResponseData {
 
 impl ProcessedShardResponseData {
     pub fn new(
-        shard_clients_for_retry: Vec<Arc<FogViewStoreApiClient>>,
+        shards_for_retry: Vec<Shard>,
         view_store_uris_for_authentication: Vec<FogViewStoreUri>,
         new_query_responses: Vec<MultiViewStoreQueryResponse>,
     ) -> Self {
         ProcessedShardResponseData {
-            shard_clients_for_retry,
+            shards_for_retry,
             view_store_uris_for_authentication,
             multi_view_store_query_responses: new_query_responses,
         }
@@ -39,14 +38,16 @@ impl ProcessedShardResponseData {
 
 /// Processes the MultiViewStoreQueryResponses returned by each Fog View Shard.
 pub fn process_shard_responses(
-    clients_and_responses: Vec<(Arc<FogViewStoreApiClient>, MultiViewStoreQueryResponse)>,
+    shards_and_responses: Vec<(Shard, MultiViewStoreQueryResponse)>,
     logger: Logger,
 ) -> Result<ProcessedShardResponseData, RouterServerError> {
-    let mut shard_clients_for_retry = Vec::new();
+    let mut shards_for_retry = Vec::new();
     let mut view_store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
-    for (shard_client, response) in clients_and_responses {
+    for (shard, response) in shards_and_responses {
+        // TODO: Add check here and throw appropriate error if the shard provides the
+        // wrong block range.
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
                 log::error!(
@@ -54,7 +55,7 @@ pub fn process_shard_responses(
                     "Received a response with status 'unknown' from store{}",
                     FogViewStoreUri::from_str(&response.store_uri)?
                 );
-                shard_clients_for_retry.push(shard_client);
+                shards_for_retry.push(shard);
             }
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Success => {
                 new_query_responses.push(response.clone());
@@ -64,7 +65,7 @@ pub fn process_shard_responses(
             // we need to (a) retry the query (b) authenticate with the Fog View
             // Store.
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::AuthenticationError => {
-                shard_clients_for_retry.push(shard_client);
+                shards_for_retry.push(shard);
                 view_store_uris_for_authentication
                     .push(FogViewStoreUri::from_str(&response.store_uri)?);
             }
@@ -75,7 +76,7 @@ pub fn process_shard_responses(
     }
 
     Ok(ProcessedShardResponseData::new(
-        shard_clients_for_retry,
+        shards_for_retry,
         view_store_uris_for_authentication,
         new_query_responses,
     ))
@@ -84,13 +85,20 @@ pub fn process_shard_responses(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sharding_strategy::{EpochShardingStrategy, ShardingStrategy};
     use grpcio::ChannelBuilder;
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_fog_api::view_grpc::FogViewStoreApiClient;
+    use mc_fog_types::common::BlockRange;
     use mc_fog_uri::FogViewStoreScheme;
     use mc_util_grpc::ConnectionUriGrpcioChannel;
     use mc_util_uri::UriScheme;
+    use std::sync::Arc;
 
-    fn create_successful_mvq_response(client_index: usize) -> MultiViewStoreQueryResponse {
+    fn create_successful_mvq_response(
+        shard_index: usize,
+        block_range: BlockRange,
+    ) -> MultiViewStoreQueryResponse {
         let mut successful_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
         let client_auth_request = Vec::new();
         successful_response
@@ -99,10 +107,11 @@ mod tests {
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
-            client_index,
+            shard_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         successful_response.set_store_uri(view_uri_string);
+        successful_response.set_block_range(mc_fog_api::fog_common::BlockRange::from(&block_range));
         successful_response
             .set_status(mc_fog_api::view::MultiViewStoreQueryResponseStatus::SUCCESS);
 
@@ -112,17 +121,19 @@ mod tests {
     }
 
     fn create_failed_mvq_response(
-        client_index: usize,
+        shard_index: usize,
+        block_range: BlockRange,
         status: mc_fog_api::view::MultiViewStoreQueryResponseStatus,
     ) -> MultiViewStoreQueryResponse {
         let mut failed_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
-            client_index,
+            shard_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         failed_response.set_store_uri(view_uri_string);
+        failed_response.set_block_range(mc_fog_api::fog_common::BlockRange::from(&block_range));
         failed_response.set_status(status);
 
         failed_response
@@ -130,14 +141,14 @@ mod tests {
             .expect("Couldn't convert MultiViewStoreQueryResponse proto to internal struct")
     }
 
-    fn create_grpc_client(i: usize, logger: Logger) -> Arc<FogViewStoreApiClient> {
+    fn create_shard(i: usize, block_range: BlockRange, logger: Logger) -> Shard {
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
             i,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
-        let view_uri = FogViewStoreUri::from_str(&view_uri_string).unwrap();
+        let uri = FogViewStoreUri::from_str(&view_uri_string).unwrap();
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("processor-test".to_string())
@@ -145,35 +156,39 @@ mod tests {
         );
 
         let grpc_client = FogViewStoreApiClient::new(
-            ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_uri, &logger),
+            ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger),
         );
 
-        Arc::new(grpc_client)
+        Shard::new(uri, Arc::new(grpc_client), block_range)
     }
 
     #[test_with_logger]
-    fn one_successful_response_no_shard_clients(logger: Logger) {
-        let client_index = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response(client_index);
-        let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
+    fn one_successful_response_no_shards(logger: Logger) {
+        let shard_index = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
+        let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let shard_clients_for_retry = result.unwrap().shard_clients_for_retry;
-        assert!(shard_clients_for_retry.is_empty());
+        let shards_for_retry = result.unwrap().shards_for_retry;
+        assert!(shards_for_retry.is_empty());
     }
 
     #[test_with_logger]
     fn one_successful_response_no_pending_authentications(logger: Logger) {
-        let client_index = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response(client_index);
-        let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
+        let shard_index = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
+        let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -183,12 +198,14 @@ mod tests {
 
     #[test_with_logger]
     fn one_successful_response_one_new_query_response(logger: Logger) {
-        let client_index = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
-        let successful_mvq_response = create_successful_mvq_response(client_index);
-        let clients_and_responses = vec![(grpc_client, successful_mvq_response)];
+        let shard_index = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
+        let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
+        let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -197,34 +214,40 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn one_auth_error_response_one_pending_shard_client(logger: Logger) {
-        let client_index = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+    fn one_auth_error_response_one_pending_shard(logger: Logger) {
+        let shard_index = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let shard_clients_for_retry = result.unwrap().shard_clients_for_retry;
-        assert_eq!(shard_clients_for_retry.len(), 1);
+        let shards_for_retry = result.unwrap().shards_for_retry;
+        assert_eq!(shards_for_retry.len(), 1);
     }
 
     #[test_with_logger]
     fn one_auth_error_response_one_pending_authentications(logger: Logger) {
-        let client_index: usize = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let shard_index: usize = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -234,15 +257,18 @@ mod tests {
 
     #[test_with_logger]
     fn one_auth_error_response_zero_new_query_responses(logger: Logger) {
-        let client_index: usize = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let shard_index: usize = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -252,15 +278,18 @@ mod tests {
 
     #[test_with_logger]
     fn one_not_ready_response_zero_new_query_responses(logger: Logger) {
-        let client_index: usize = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let shard_index: usize = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -270,15 +299,18 @@ mod tests {
 
     #[test_with_logger]
     fn one_not_ready_response_zero_pending_authentications(logger: Logger) {
-        let client_index: usize = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let shard_index: usize = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
@@ -288,19 +320,21 @@ mod tests {
 
     #[test_with_logger]
     fn one_not_ready_response_zero_pending_shard_clients(logger: Logger) {
-        let client_index: usize = 0;
-        let grpc_client = create_grpc_client(client_index, logger.clone());
+        let shard_index: usize = 0;
+        let sharding_strategy = EpochShardingStrategy::default();
+        let block_range = sharding_strategy.get_block_range();
+        let shard = create_shard(shard_index, block_range.clone(), logger.clone());
         let failed_mvq_response = create_failed_mvq_response(
-            client_index,
+            shard_index,
+            block_range,
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
         );
-        let clients_and_responses = vec![(grpc_client, failed_mvq_response)];
-
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let shards_and_responses = vec![(shard, failed_mvq_response)];
+        let result = process_shard_responses(shards_and_responses, logger.clone());
 
         assert!(result.is_ok());
 
-        let shard_clients_for_retry = result.unwrap().shard_clients_for_retry;
+        let shard_clients_for_retry = result.unwrap().shards_for_retry;
         assert_eq!(shard_clients_for_retry.len(), 0);
     }
 
@@ -309,28 +343,31 @@ mod tests {
         const NUMBER_OF_FAILURES: usize = 11;
         const NUMBER_OF_SUCCESSES: usize = 8;
 
-        let mut clients_and_responses = Vec::new();
+        let mut shards_and_clients = Vec::new();
         for i in 0..NUMBER_OF_FAILURES {
-            let grpc_client = create_grpc_client(i, logger.clone());
+            let block_range = BlockRange::new_from_length(i as u64, 1);
+            let shard = create_shard(i, block_range.clone(), logger.clone());
             let failed_mvq_response = create_failed_mvq_response(
                 i,
+                block_range,
                 mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
             );
-            clients_and_responses.push((grpc_client, failed_mvq_response));
+            shards_and_clients.push((shard, failed_mvq_response));
         }
         for i in 0..NUMBER_OF_SUCCESSES {
-            let client_index = i + NUMBER_OF_FAILURES;
-            let grpc_client = create_grpc_client(client_index, logger.clone());
-            let successful_mvq_response = create_successful_mvq_response(client_index);
-            clients_and_responses.push((grpc_client, successful_mvq_response));
+            let shard_index = i + NUMBER_OF_FAILURES;
+            let block_range = BlockRange::new_from_length(shard_index as u64, 1);
+            let shard = create_shard(shard_index, block_range.clone(), logger.clone());
+            let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
+            shards_and_clients.push((shard, successful_mvq_response));
         }
 
-        let result = process_shard_responses(clients_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_clients, logger.clone());
         assert!(result.is_ok());
         let processed_shard_response_data = result.unwrap();
 
         assert_eq!(
-            processed_shard_response_data.shard_clients_for_retry.len(),
+            processed_shard_response_data.shards_for_retry.len(),
             NUMBER_OF_FAILURES
         );
         assert_eq!(
