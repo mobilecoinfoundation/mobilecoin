@@ -24,7 +24,7 @@ mc-account-keys = { path = "../../../account-keys", default-features = false }
 mc-crypto-dalek = { path = "../../dalek", default-features = false }
 mc-crypto-keys = { path = "../../keys", default-features = false }
 mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc", "serde", "prost" ] }
-mc-transaction-types = { path = "../../../transaction/types" }
+mc-transaction-types = { path = "../../../transaction/types", default_features = false }
 mc-util-serial = { path = "../../../util/serial" }
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }

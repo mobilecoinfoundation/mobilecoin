@@ -4,7 +4,7 @@
 //! low-level types. This crate is intended to have a small footprint
 //! and be maximally portable.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(missing_docs)]
 
 mod amount;

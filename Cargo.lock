@@ -3201,7 +3201,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.0-pre0"
 dependencies = [
  "aes 0.7.5",
  "anyhow",
@@ -3403,7 +3403,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "2.0.0"
+version = "4.0.0-pre0"
 dependencies = [
  "hmac 0.12.1",
  "mc-crypto-keys",
@@ -3484,7 +3484,6 @@ dependencies = [
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -5502,7 +5501,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-signer"
-version = "2.1.0-pre0"
+version = "4.0.0-pre0"
 dependencies = [
  "anyhow",
  "clap 4.0.29",
@@ -5518,6 +5517,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-util-repr-bytes",
  "mc-util-serial",
  "rand_core 0.6.4",
  "serde",
@@ -5532,7 +5532,11 @@ name = "mc-transaction-types"
 version = "4.0.0-pre0"
 dependencies = [
  "displaydoc",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "prost",
  "serde",
  "subtle",
  "zeroize",
