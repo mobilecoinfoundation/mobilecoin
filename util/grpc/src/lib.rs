@@ -82,7 +82,7 @@ pub fn send_result<T>(
     logger: &Logger,
 ) {
     let logger = logger.clone();
-    let response_status = ResponseStatus::new(&resp);
+    let response_status = ResponseStatus::from(&resp);
     let is_success = response_status.is_success;
     let code = response_status.code;
 
@@ -112,17 +112,15 @@ pub struct ResponseStatus {
     pub code: RpcStatusCode,
 }
 
-impl ResponseStatus {
-    /// Creates a `ResponseStatus` struct from a gRPC response.
-    #[inline]
-    pub fn new<T>(response: &Result<T, RpcStatus>) -> Self {
+impl<T> From<&Result<T, RpcStatus>> for ResponseStatus {
+    fn from(response: &Result<T, RpcStatus>) -> Self {
         let is_success = response.is_ok();
         let code = match response {
             Ok(_) => RpcStatusCode::OK,
             Err(e) => e.code(),
         };
 
-        ResponseStatus { is_success, code }
+        Self { is_success, code }
     }
 }
 

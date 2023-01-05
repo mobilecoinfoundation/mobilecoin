@@ -47,7 +47,7 @@ where
 
         // Perform prometheus logic before the match statement to ensure that
         // this logic is executed.
-        let response_status = ResponseStatus::new(&result);
+        let response_status = ResponseStatus::from(&result);
         SVC_COUNTERS.resp_impl(&method_name, response_status.is_success);
         SVC_COUNTERS.status_code_impl(&method_name, response_status.code);
 
