@@ -240,7 +240,7 @@ jobs:
         action: helm-deploy
         chart_repo: https://charts.bitnami.com/bitnami
         chart_name: postgresql
-        chart_version: 11.2.3
+        chart_version: 11.9.3
         chart_set: |
           --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
           --set=global.postgresql.auth.database=fog_recovery
