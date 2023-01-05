@@ -50,7 +50,9 @@ pub use crate::{
 };
 
 use futures::prelude::*;
-use grpcio::{CallOption, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode, UnarySink};
+use grpcio::{
+    CallOption, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerCredentials, UnarySink,
+};
 use mc_common::logger::{log, o, Level, Logger};
 use mc_util_metrics::SVC_COUNTERS;
 use rand::Rng;
@@ -281,17 +283,21 @@ pub fn run_server(
     use grpcio::ServerBuilder;
 
     // FIXME: This should default to localhost and you should have to provide the IP
-    let mut server = ServerBuilder::new(env);
+    let mut server_builder = ServerBuilder::new(env);
 
     for service in services {
-        server = server.register_service(service);
+        server_builder = server_builder.register_service(service);
     }
 
-    let mut server = server.bind("0.0.0.0", port).build().unwrap();
+    let mut server = server_builder.build().expect("Could not build server");
+
+    let port = server
+        .add_listening_port(&format!("0.0.0.0:{port}"), ServerCredentials::insecure())
+        .expect("Could not create anonymous bind");
     server.start();
-    for (host, port) in server.bind_addrs() {
-        log::info!(logger, "API listening on {}:{}", host, port);
-    }
+
+    log::info!(logger, "API listening on 0.0.0.0:{port}");
+
     server
 }
 
