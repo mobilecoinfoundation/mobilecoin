@@ -18,6 +18,8 @@
 //! The worker does not require to be launched from the context of a tokio
 //! runtime.
 
+#![allow(clippy::assertions_on_constants)]
+
 use api::{
     external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
     TxStatus, UnspentTxOut,
@@ -1009,10 +1011,10 @@ impl WorkerTokenState {
 
     // Check if a key image is part of an in-flight transaction
     fn key_image_is_in_flight(&self, key_image: &KeyImage) -> bool {
-        self.in_flight_split_tx_states.contains_key(&key_image)
+        self.in_flight_split_tx_states.contains_key(key_image)
             || self
                 .in_flight_defragmentation_key_images
-                .contains(&key_image)
+                .contains(key_image)
     }
 }
 
