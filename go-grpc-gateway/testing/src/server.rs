@@ -10,6 +10,7 @@ use std::sync::Arc;
 /// The application server
 pub struct Server {
     server: GrpcioServer,
+    uri: FogUri,
     logger: Logger,
 }
 
@@ -38,20 +39,23 @@ impl Server {
         );
         let server_builder = ServerBuilder::new(env)
             .register_service(report_service)
-            .register_service(health_service)
-            .bind_using_uri(client_listen_uri, logger.clone());
+            .register_service(health_service);
 
-        let server = server_builder.build().unwrap();
+        let server = server_builder
+            .build_using_uri(client_listen_uri, logger.clone())
+            .expect("Could not bind to client listen URI");
 
-        Self { server, logger }
+        Self {
+            server,
+            uri: client_listen_uri.clone(),
+            logger,
+        }
     }
 
     /// Start the server.
     pub fn start(&mut self) {
         self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
-        }
+        log::info!(self.logger, "API listening on {}", self.uri.addr());
     }
 
     /// Stop the server.

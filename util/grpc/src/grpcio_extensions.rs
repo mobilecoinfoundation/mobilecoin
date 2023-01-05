@@ -6,7 +6,7 @@
 use crate::ServerCertReloader;
 use grpcio::{
     CertificateRequestType, Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment,
-    ServerBuilder,
+    Result, Server, ServerBuilder, ServerCredentials,
 };
 use mc_common::logger::{log, Logger};
 use mc_util_uri::ConnectionUri;
@@ -42,7 +42,8 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 
             log::debug!(logger, "Creating secure gRPC connection to {}", uri.addr());
 
-            self.secure_connect(&uri.addr(), creds)
+            self = self.set_credentials(creds);
+            self.connect(&uri.addr())
         } else {
             log::warn!(
                 logger,
@@ -57,10 +58,9 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 
 /// A trait to ease grpio server construction from URIs.
 pub trait ConnectionUriGrpcioServer {
-    /// Bind a ServerBuilder using information from a URI and enable support for
-    /// hot-reloading certificates when TLS is used.
-    #[must_use]
-    fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
+    /// Build a Server from a ServerBuilder using information from a URI and
+    /// enable support for hot-reloading certificates when TLS is used.
+    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server>;
 
     /// Create the default channel settings for server
     fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
@@ -77,7 +77,7 @@ pub trait ConnectionUriGrpcioServer {
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {
-    fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self {
+    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server> {
         if uri.use_tls() {
             let tls_chain_path = uri
                 .tls_chain_path()
@@ -96,12 +96,14 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 uri.port(),
             );
 
-            self.bind_with_fetcher(
-                uri.host(),
-                uri.port(),
+            let server_creds = ServerCredentials::with_fetcher(
                 Box::new(reloader),
                 CertificateRequestType::DontRequestClientCertificate,
-            )
+            );
+
+            let mut server = self.build()?;
+            server.add_listening_port(uri.addr(), server_creds)?;
+            Ok(server)
         } else {
             log::warn!(
                 logger,
@@ -110,7 +112,9 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 uri.port(),
             );
 
-            self.bind(uri.host(), uri.port())
+            let mut server = self.build()?;
+            server.add_listening_port(uri.addr(), ServerCredentials::insecure())?;
+            Ok(server)
         }
     }
 

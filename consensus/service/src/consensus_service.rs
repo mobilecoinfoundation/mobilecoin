@@ -389,15 +389,18 @@ impl<
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
-            .set_default_channel_args(env)
-            .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
+            .set_default_channel_args(env);
 
-        let mut server = server_builder.build().unwrap();
+        let mut server = server_builder
+            .build_using_uri(&self.config.client_listen_uri, self.logger.clone())
+            .expect("Could not bind to client listen URI");
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Peer GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Peer GRPC API listening on {}",
+            self.config.client_listen_uri.addr()
+        );
 
         self.user_rpc_server = Some(server);
 
@@ -485,15 +488,18 @@ impl<
             .register_service(peer_service)
             .register_service(health_service)
             .register_service(attested_service)
-            .register_service(build_info_service)
-            .bind_using_uri(&self.config.peer_listen_uri, self.logger.clone());
+            .register_service(build_info_service);
 
-        let mut server = server_builder.build().unwrap();
+        let mut server = server_builder
+            .build_using_uri(&self.config.peer_listen_uri, self.logger.clone())
+            .expect("Could not bind to peer listen URI");
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Peer GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Peer GRPC API listening on {}",
+            self.config.peer_listen_uri.addr()
+        );
 
         self.consensus_rpc_server = Some(server);
 

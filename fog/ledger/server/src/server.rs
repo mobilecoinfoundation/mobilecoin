@@ -202,10 +202,10 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
                 .register_service(merkle_proof_service)
                 .register_service(block_service)
                 .register_service(untrusted_tx_out_service)
-                .register_service(health_service)
-                .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
+                .register_service(health_service);
 
-            let mut server = server_builder.build()?;
+            let mut server = server_builder
+                .build_using_uri(&self.config.client_listen_uri, self.logger.clone())?;
             server.start();
 
             self.server = Some(server);
