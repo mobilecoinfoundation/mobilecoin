@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-recovery-db-iface"
-version = "4.0.0-pre0"
+version = "4.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
