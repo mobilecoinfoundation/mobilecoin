@@ -1258,7 +1258,8 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-aes-gcm"
 version = "0.10.1"
-source = "git+https://github.com/mobilecoinfoundation/oblivious-aes-gcm.git?rev=0855242eaee83ca9eb01d729482f8c029a49ef0b#0855242eaee83ca9eb01d729482f8c029a49ef0b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7be589d425ac3950edf94eb4185e625b4ca509d8caeab7ab461e107a73c3ebfb"
 dependencies = [
  "aead",
  "aes",

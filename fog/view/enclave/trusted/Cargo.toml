@@ -85,9 +85,6 @@ ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.g
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
 
-# mc-oblivious-aes-gcm patched to 0.10.1
-mc-oblivious-aes-gcm = { git = "https://github.com/mobilecoinfoundation/oblivious-aes-gcm.git", rev = "0855242eaee83ca9eb01d729482f8c029a49ef0b" }
-
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
 
