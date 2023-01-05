@@ -23,5 +23,5 @@ mc-fog-uri = { path = "../../uri" }
 mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 retry = "2.0"
