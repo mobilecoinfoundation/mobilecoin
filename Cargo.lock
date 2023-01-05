@@ -2521,7 +2521,7 @@ dependencies = [
 name = "mc-attest-ake"
 version = "4.0.0"
 dependencies = [
- "aead 0.4.3",
+ "aead 0.5.1",
  "aes-gcm 0.9.4",
  "cargo-emit",
  "digest 0.10.5",
@@ -2546,7 +2546,7 @@ dependencies = [
 name = "mc-attest-api"
 version = "4.0.0"
 dependencies = [
- "aead 0.4.3",
+ "aead 0.5.1",
  "cargo-emit",
  "digest 0.10.5",
  "futures",
@@ -3260,7 +3260,7 @@ dependencies = [
 name = "mc-crypto-box"
 version = "4.0.0"
 dependencies = [
- "aead 0.4.3",
+ "aead 0.5.1",
  "digest 0.10.5",
  "displaydoc",
  "hkdf",
@@ -3426,7 +3426,7 @@ dependencies = [
 name = "mc-crypto-noise"
 version = "4.0.0"
 dependencies = [
- "aead 0.4.3",
+ "aead 0.5.1",
  "aes-gcm 0.9.4",
  "digest 0.10.5",
  "displaydoc",

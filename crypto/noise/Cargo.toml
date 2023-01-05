@@ -8,7 +8,7 @@ edition = "2021"
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 
-aead = "0.4"
+aead = "0.5"
 aes-gcm = "0.9.4"
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
