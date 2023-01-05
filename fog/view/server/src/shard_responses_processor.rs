@@ -46,8 +46,9 @@ pub fn process_shard_responses(
     let mut new_query_responses = Vec::new();
 
     for (shard, response) in shards_and_responses {
-        // TODO: Add check here and throw appropriate error if the shard provides the
-        // wrong block range.
+        if response.block_range != shard.block_range {
+            return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));
+        }
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
                 log::error!(
@@ -382,5 +383,20 @@ mod tests {
                 .len(),
             NUMBER_OF_SUCCESSES
         );
+    }
+
+    #[test_with_logger]
+    fn shard_block_range_does_not_match_configured_block_range(logger: Logger) {
+        let shard_index: usize = 0;
+        let configured_block_range = BlockRange::new(0, 10);
+        let shard = create_shard(shard_index, configured_block_range, logger.clone());
+
+        let response_block_range = BlockRange::new(100, 110);
+        let response = create_successful_mvq_response(shard_index, response_block_range);
+        let shards_and_responses = vec![(shard, response)];
+
+        let result = process_shard_responses(shards_and_responses, logger.clone());
+
+        assert!(result.is_err());
     }
 }
