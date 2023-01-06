@@ -55,7 +55,6 @@ LOG_BRANCH = os.getenv('LOG_BRANCH', None)
 LOGSTASH_HOST = os.getenv('LOGSTASH_HOST', None)
 GRAFANA_PASSWORD = os.getenv('GRAFANA_PASSWORD', None)
 
-
 class CloudLogging:
     def __init__(self):
         self.filebeat_process = None
@@ -68,6 +67,9 @@ class CloudLogging:
 
         if LOGSTASH_HOST:
             self.start_filebeat(LOG_BRANCH, LOGSTASH_HOST)
+
+        if not GRAFANA_PASSWORD:
+            print('No grafana password - logs will not be pushed to grafana.')
 
         hosts = ', '.join(
             f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
@@ -99,21 +101,12 @@ class CloudLogging:
         print(f'Starting prometheus, branch={log_branch}')
         os.mkdir(os.path.join(WORK_DIR, 'prometheus'))
         template = open(os.path.join(PROJECT_DIR, 'tools', 'local-network', 'prometheus.yml.template')).read()
-        # Add some stuff about grafana push if we have a grafana password
-        template_extra = '''
-remote_write:
-- url: https://prometheus-us-central1.grafana.net/api/prom/push
-  basic_auth:
-    username: 8687
-    password: ${GRAFANA_PASSWORD}
-        '''.replace('${GRAFANA_PASSWORD}', grafana_password) if grafana_password else ""
-
-        # Write promtheus.yml by replacing in template, and appending template_extra
         with open(os.path.join(WORK_DIR, 'prometheus.yml'), 'w') as f:
             f.write(template
                 .replace('${BRANCH}', log_branch)
                 .replace('${HOSTS}', hosts)
-            + template_extra)
+                .replace('${GRAFANA_PASSWORD}', grafana_password or "")
+            )
 
         cmd = ' '.join([
             'prometheus',
