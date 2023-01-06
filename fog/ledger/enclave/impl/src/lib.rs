@@ -29,7 +29,8 @@ use mc_common::{
 use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
 use mc_fog_ledger_enclave_api::{
-    Error, KeyImageData, LedgerEnclave, OutputContext, Result, UntrustedKeyImageQueryResponse,
+    Error, KeyImageData, KeyImageResult, LedgerEnclave, OutputContext, Result,
+    UntrustedKeyImageQueryResponse,
 };
 use mc_fog_types::ledger::{
     CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
@@ -280,14 +281,14 @@ where
             .max()
             .expect("this is only None when the iterator is empty but we early-exit in that case");
 
-        let plaintext_results = shard_query_responses
+        let plaintext_results: Vec<KeyImageResult> = shard_query_responses
             .into_iter()
             .flat_map(|query_response| query_response.results)
             .collect();
 
         let oblivious_results = oblivious_utils::collate_shard_key_image_search_results(
             client_query_request.queries,
-            plaintext_results,
+            &plaintext_results,
         );
 
         let max_block_version = max(latest_block_version, *MAX_BLOCK_VERSION);

@@ -35,3 +35,4 @@ mc-fog-types = { path = "../../../types" }
 
 [dev-dependencies]
 mc-common = { path = "../../../../common", features = ["loggers"] }
+yare = "1.0.2"
