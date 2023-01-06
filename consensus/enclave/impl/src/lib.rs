@@ -9,6 +9,7 @@
 //! of irony...
 
 #![no_std]
+#![allow(clippy::result_large_err)]
 
 extern crate alloc;
 
@@ -288,8 +289,7 @@ impl SgxConsensusEnclave {
             let tx_hash = tx.tx_hash();
             if tx_hashes.contains(&tx_hash) {
                 return Err(Error::FormBlock(format!(
-                    "Duplicate transaction: {}",
-                    tx_hash
+                    "Duplicate transaction: {tx_hash}"
                 )));
             }
             tx_hashes.insert(tx_hash);
@@ -301,8 +301,7 @@ impl SgxConsensusEnclave {
             for key_image in tx.key_images() {
                 if used_key_images.contains(&key_image) {
                     return Err(Error::FormBlock(format!(
-                        "Duplicate key image: {:?}",
-                        key_image
+                        "Duplicate key image: {key_image:?}"
                     )));
                 }
                 used_key_images.insert(key_image);
@@ -315,8 +314,7 @@ impl SgxConsensusEnclave {
             for public_key in tx.output_public_keys() {
                 if seen_output_public_keys.contains(&public_key) {
                     return Err(Error::FormBlock(format!(
-                        "Duplicate output public key: {:?}",
-                        public_key
+                        "Duplicate output public key: {public_key:?}"
                     )));
                 }
                 seen_output_public_keys.insert(public_key);
@@ -403,8 +401,7 @@ impl SgxConsensusEnclave {
             // The specific MintConfig used should be part of the provided MintConfigTx.
             if !mint_config_tx.prefix.configs.contains(&mint_config) {
                 return Err(Error::FormBlock(format!(
-                    "MintTx {} referenced a MintConfig that is not part of the MintConfigTx",
-                    mint_tx,
+                    "MintTx {mint_tx} referenced a MintConfig that is not part of the MintConfigTx",
                 )));
             }
 
@@ -529,10 +526,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn get_fee_recipient(&self) -> Result<FeePublicKey> {
         let spend_public_key = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).map_err(|e| {
-            Error::FeePublicAddress(format!("Could not get fee spend public: {:?}", e))
+            Error::FeePublicAddress(format!("Could not get fee spend public: {e:?}"))
         })?;
         let view_public_key = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).map_err(|e| {
-            Error::FeePublicAddress(format!("Could not get fee view public: {:?}", e))
+            Error::FeePublicAddress(format!("Could not get fee view public: {e:?}"))
         })?;
         Ok(FeePublicKey {
             spend_public_key,
@@ -797,7 +794,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Compute the fee recipient public address
         let fee_public_key = self.get_fee_recipient().map_err(|e| {
-            Error::FeePublicAddress(format!("Could not get fee public address: {:?}", e))
+            Error::FeePublicAddress(format!("Could not get fee public address: {e:?}"))
         })?;
         let fee_recipient = PublicAddress::new(
             &fee_public_key.spend_public_key,
@@ -1030,7 +1027,7 @@ fn mint_output<T: Digestible>(
         &tx_private_key,
         e_fog_hint.unwrap_or_default(),
     )
-    .map_err(|e| Error::FormBlock(format!("NewTxError: {}", e)))
+    .map_err(|e| Error::FormBlock(format!("NewTxError: {e}")))
 }
 
 #[cfg(test)]
@@ -1096,7 +1093,7 @@ mod tests {
         let governors_map1 =
             GovernorsMap::try_from_iter([(token_id1, signer_set1.clone())]).unwrap();
         let governors_map2 = GovernorsMap::try_from_iter([(token_id2, signer_set1)]).unwrap();
-        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let enclave = SgxConsensusEnclave::new(logger);
         let block_version = BlockVersion::MAX;
 
         // Can't initialize without a valid governors signature if we are passing a
@@ -1341,7 +1338,7 @@ mod tests {
             initialize_ledger(block_version, &mut ledger, n_blocks, &account_key, &mut rng);
 
             let n_proofs = 10;
-            let indexes: Vec<u64> = (0..n_proofs as u64).into_iter().collect();
+            let indexes: Vec<u64> = (0..n_proofs as u64).collect();
             let mut membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
             // Modify one of the proofs to have a different root hash.
             let inconsistent_proof = &mut membership_proofs[7];
@@ -1795,8 +1792,7 @@ mod tests {
 
             // Check
             let expected = Err(Error::FormBlock(format!(
-                "Duplicate key image: {:?}",
-                expected_duplicate_key_image
+                "Duplicate key image: {expected_duplicate_key_image:?}"
             )));
 
             assert_eq!(form_block_result, expected);
@@ -1913,8 +1909,7 @@ mod tests {
 
             // Check
             let expected = Err(Error::FormBlock(format!(
-                "Duplicate output public key: {:?}",
-                expected_duplicate_output_public_key
+                "Duplicate output public key: {expected_duplicate_output_public_key:?}"
             )));
 
             assert_eq!(form_block_result, expected);
@@ -2430,7 +2425,7 @@ mod tests {
             &mut rng,
         );
 
-        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let enclave = SgxConsensusEnclave::new(logger);
         let blockchain_config = BlockchainConfig {
             block_version,
             governors_map: governors_map.clone(),
@@ -2603,7 +2598,7 @@ mod tests {
             &mut rng,
         );
 
-        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let enclave = SgxConsensusEnclave::new(logger);
         let blockchain_config = BlockchainConfig {
             block_version,
             governors_map: governors_map.clone(),

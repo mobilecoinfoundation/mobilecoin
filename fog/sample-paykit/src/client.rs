@@ -276,8 +276,7 @@ impl Client {
                                     }
                                     MALFORMED_REQUEST => {
                                         panic!(
-                                            "Server reported our request {:?} was malformed",
-                                            public_key
+                                            "Server reported our request {public_key:?} was malformed"
                                         );
                                     }
                                     DATABASE_ERROR => {
@@ -294,7 +293,7 @@ impl Client {
                                         }
                                     }
                                     other => {
-                                        panic!("Server returned an unknown status code: {}", other);
+                                        panic!("Server returned an unknown status code: {other}");
                                     }
                                 };
                             }
@@ -370,7 +369,7 @@ impl Client {
         let fee_map = self.get_fee_map(true)?;
 
         // Make fog resolver
-        let fog_uris = (&[&self.account_key.change_subaddress(), target_address])
+        let fog_uris = [&self.account_key.change_subaddress(), target_address]
             .iter()
             .filter_map(|addr| addr.fog_report_url())
             .map(FogUri::from_str)
@@ -423,8 +422,8 @@ impl Client {
         assert_eq!(inputs.len(), 1);
         assert_eq!(rings.len(), 1);
 
-        let (input, input_proof) = (&inputs[0]).clone();
-        let ring = (&rings[0]).clone();
+        let (input, input_proof) = inputs[0].clone();
+        let ring = rings[0].clone();
 
         // Check amount found, calculate change
         let input_amount = input.amount;
@@ -556,8 +555,7 @@ impl Client {
             match result.status() {
                 Err(err) => {
                     return Err(Error::FogMerkleProof(format!(
-                        "Server failed to compute a merkle proof: {}",
-                        err
+                        "Server failed to compute a merkle proof: {err}"
                     )))
                 }
                 Ok(None) => {
@@ -788,8 +786,7 @@ impl Client {
                 }
                 match result.status() {
                     Err(err) => Err(Error::FogMerkleProof(format!(
-                        "Server failed to compute a merkle proof: {}",
-                        err
+                        "Server failed to compute a merkle proof: {err}"
                     ))),
                     Ok(None) => Err(Error::FogMerkleProof(
                         "Server did not find one of the outputs we need".to_string(),
@@ -881,10 +878,9 @@ impl Client {
                     panic!("unhandled: Server returned indices in an unexpected order");
                 }
                 match result.status() {
-                    Err(err) => panic!(
-                        "unhandled: Server failed to computer a merkle proof: {}",
-                        err
-                    ),
+                    Err(err) => {
+                        panic!("unhandled: Server failed to computer a merkle proof: {err}")
+                    }
                     Ok(None) => panic!("unhandled: Server did not find one of the outputs we need"),
                     Ok(Some(res)) => res,
                 }

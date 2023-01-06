@@ -13,11 +13,7 @@ fn main() {
 
     let config = Config::parse();
 
-    let mut server = Server::new(
-        &config.client_listen_uri,
-        config.chain_id.clone(),
-        logger.clone(),
-    );
+    let mut server = Server::new(&config.client_listen_uri, config.chain_id.clone(), logger);
     server.start();
 
     loop {

@@ -227,7 +227,7 @@ impl Worker {
         for (token_id, value) in target_amounts.iter() {
             let minimum_fee_value = minimum_fees
                 .get(token_id)
-                .unwrap_or_else(|| panic!("Missing minimum fee for {}", token_id));
+                .unwrap_or_else(|| panic!("Missing minimum fee for {token_id}"));
             let (state, receiver) = WorkerTokenState::new(*token_id, *minimum_fee_value, *value);
             worker_token_states.push(state);
             receivers.insert(*token_id, receiver);
@@ -540,7 +540,7 @@ impl WorkerTokenState {
             let key_image: KeyImage = utxo
                 .get_key_image()
                 .try_into()
-                .map_err(|err| format!("invalid key image: {}", err))?;
+                .map_err(|err| format!("invalid key image: {err}"))?;
             if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
                 // We found a utxo not in the cache, let's queue and add to cache
                 log::trace!(
@@ -632,14 +632,14 @@ impl WorkerTokenState {
 
             let mut resp = client
                 .generate_tx(&req)
-                .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+                .map_err(|err| format!("Failed to generate split tx: {err}"))?;
 
             // Submit the Tx
             let mut req = api::SubmitTxRequest::new();
             req.set_tx_proposal(resp.take_tx_proposal());
             let submit_tx_response = client
                 .submit_tx(&req)
-                .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+                .map_err(|err| format!("Failed to submit split tx: {err}"))?;
 
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does

@@ -42,7 +42,7 @@ fn load_spki_from_pemfile(src: &str) -> Result<Vec<u8>, String> {
             .map_err(|e| e.to_string())?
             .contents,
     )
-    .map_err(|e| format!("{:?}", e))
+    .map_err(|e| format!("{e:?}"))
     .map(|cert| cert.subject_public_key_info().spki().to_vec())
 }
 

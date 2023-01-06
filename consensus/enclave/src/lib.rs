@@ -2,6 +2,7 @@
 
 //! The Consensus Service SGX Enclave Proxy
 
+#![allow(clippy::result_large_err)]
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey,
     FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx,
@@ -60,7 +61,7 @@ impl ConsensusServiceSgxEnclave {
             misc_select: 0,
         };
         let enclave = SgxEnclave::create(
-            &enclave_path,
+            enclave_path,
             DEBUG_ENCLAVE as i32,
             &mut launch_token,
             &mut launch_token_updated,

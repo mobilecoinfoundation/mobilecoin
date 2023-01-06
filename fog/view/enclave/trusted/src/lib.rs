@@ -19,14 +19,16 @@ use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
 use mc_util_serial::{deserialize, serialize};
 
 lazy_static::lazy_static! {
-    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
+    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(ecall_dispatcher);
 }
 
 /// The entry point implementation for test_enclave_api
 ///
 /// See test_enclave_api declaration for more information
+/// # Safety
+/// This method dereferences raw pointers and is therefore unsafe.
 #[no_mangle]
-pub extern "C" fn viewenclave_call(
+pub unsafe extern "C" fn viewenclave_call(
     inbuf: *const u8,
     inbuf_len: usize,
     outbuf: *mut u8,

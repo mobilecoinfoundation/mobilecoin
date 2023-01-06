@@ -63,7 +63,7 @@ impl HardcodedCredentialsProvider {
 
 impl<URI: ConnectionUri> From<&URI> for HardcodedCredentialsProvider {
     fn from(src: &URI) -> Self {
-        Self::new(&src.username(), &src.password())
+        Self::new(src.username(), src.password())
     }
 }
 

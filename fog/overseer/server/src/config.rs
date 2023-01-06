@@ -40,7 +40,7 @@ mod tests {
     use mc_fog_uri::ConnectionUri;
     #[test]
     fn ingest_server_config_example() {
-        let config = OverseerConfig::try_parse_from(&[
+        let config = OverseerConfig::try_parse_from([
             "/usr/bin/fog_overseer_server",
             "--overseer-listen-host",
             "www.mycoolhost.com",

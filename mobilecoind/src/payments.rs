@@ -18,8 +18,7 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_builder::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
-    TxOutContext,
+    InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder, TxOutContext,
 };
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
@@ -247,14 +246,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         opt_tombstone: u64,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     ) -> Result<TxProposal, Error> {
-        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
+        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{outlays:?}")));
         log::trace!(logger, "Building pending transaction...");
 
         // All inputs must be of the correct token id.
         if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
             return Err(Error::InvalidArgument(
                 "inputs".to_string(),
-                format!("All inputs must be of token_id {}", token_id),
+                format!("All inputs must be of token_id {token_id}"),
             ));
         }
 
@@ -501,7 +500,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
             return Err(Error::InvalidArgument(
                 "inputs".to_string(),
-                format!("All inputs must be of token_id {}", token_id),
+                format!("All inputs must be of token_id {token_id}"),
             ));
         }
 
@@ -696,7 +695,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
             return Err(Error::InvalidArgument(
                 "inputs".to_string(),
-                format!("All inputs must be of token_id {}", token_id),
+                format!("All inputs must be of token_id {token_id}"),
             ));
         }
 
@@ -891,14 +890,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Create tx_builder.
         // TODO (GH #1522): Use RTH memo builder, optionally?
-        let memo_builder: Box<dyn MemoBuilder + Send + Sync> =
-            opt_memo_builder.unwrap_or_else(|| Box::new(EmptyMemoBuilder::default()));
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
+            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
 
         let fee_amount = Amount::new(fee, token_id);
         let mut tx_builder =
             TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
                 .map_err(|err| {
-                    Error::TxBuild(format!("Error creating transaction builder: {}", err))
+                    Error::TxBuild(format!("Error creating transaction builder: {err}"))
                 })?;
         tx_builder.set_fee_map(fee_map);
 
@@ -996,7 +995,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 ..
             } = tx_builder
                 .add_output(amount, &outlay.receiver, rng)
-                .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
+                .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
             outlay_confirmation_numbers.push(confirmation);
@@ -1032,7 +1031,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
             tx_builder
                 .add_change_output(change_amount, &change_dest, rng)
-                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
+                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {err}")))?;
         }
 
         // Set tombstone block.
@@ -1041,7 +1040,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Build tx.
         let tx = tx_builder
             .build(&NoKeysRingSigner {}, rng)
-            .map_err(|err| Error::TxBuild(format!("build tx failed: {}", err)))?;
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
 
         // Map each TxOut in the constructed transaction to its respective outlay.
         let outlay_index_to_tx_out_index = tx
@@ -1064,7 +1063,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .get(&i)
                 .expect("index not in map");
             if !found_tx_out_indices.insert(tx_out_index) {
-                panic!("duplicate index {} found in map", tx_out_index);
+                panic!("duplicate index {tx_out_index} found in map");
             }
         }
 
@@ -1089,7 +1088,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
     if let Some(string) = addr.fog_report_url() {
         Ok(Some(FogUri::from_str(string).map_err(|err| {
-            Error::Fog(format!("Could not parse recipient Fog Url: {}", err))
+            Error::Fog(format!("Could not parse recipient Fog Url: {err}"))
         })?))
     } else {
         Ok(None)

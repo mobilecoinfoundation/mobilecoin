@@ -61,7 +61,7 @@ impl FogContext {
         public_address: &PublicAddress,
     ) -> Result<FullyValidatedFogPubkey, String> {
         let fog_uri = FogUri::from_str(public_address.fog_report_url().ok_or("Missing fog url")?)
-            .map_err(|err| format!("Invalid fog uri: {}", err))?;
+            .map_err(|err| format!("Invalid fog uri: {err}"))?;
 
         let conn = GrpcFogReportConnection::new(
             self.chain_id.clone(),
@@ -71,14 +71,14 @@ impl FogContext {
 
         let responses = conn
             .fetch_fog_reports([fog_uri].into_iter())
-            .map_err(|err| format!("Error fetching fog reports: {}", err))?;
+            .map_err(|err| format!("Error fetching fog reports: {err}"))?;
 
         let verifier = get_fog_ingest_verifier(self.css_signature.clone());
         let resolver = FogResolver::new(responses, &verifier)
-            .map_err(|err| format!("Error building FogResolver: {}", err))?;
+            .map_err(|err| format!("Error building FogResolver: {err}"))?;
         resolver
             .get_fog_pubkey(public_address)
-            .map_err(|err| format!("Could not validate fog pubkey: {}", err))
+            .map_err(|err| format!("Could not validate fog pubkey: {err}"))
     }
 }
 

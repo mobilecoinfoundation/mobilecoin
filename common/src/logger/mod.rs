@@ -98,7 +98,7 @@ cfg_if::cfg_if! {
                     + (self.start.elapsed().subsec_nanos() as f64 / 1_000_000.0);
 
                 let time = match time_in_ms as u64 {
-                    0..=3000 => format!("{}ms", time_in_ms),
+                    0..=3000 => format!("{time_in_ms}ms"),
                     3001..=60000 => format!("{:.2}s", time_in_ms / 1000.0),
                     _ => format!("{:.2}m", time_in_ms / 1000.0 / 60.0),
                 };
@@ -119,7 +119,7 @@ cfg_if::cfg_if! {
             fn basic_trace_time() {
                 let logger = create_test_logger("basic_trace_time".to_string());
 
-                slog_scope::scope(&logger.clone(), || {
+                slog_scope::scope(&logger, || {
                     trace_time!(global_logger(), "test global");
 
                     {

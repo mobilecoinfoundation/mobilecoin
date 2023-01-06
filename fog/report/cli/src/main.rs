@@ -115,12 +115,12 @@ fn get_fog_response_with_retries(
             Err(Error::NoReports(_)) => {
                 std::thread::sleep(Duration::from_millis(500));
                 if Instant::now() > deadline {
-                    eprintln!("No reports after {:?} time retrying", retry_duration);
+                    eprintln!("No reports after {retry_duration:?} time retrying");
                     exit(1)
                 }
             }
             Err(err) => {
-                eprintln!("Could not get fog response ({}): {}", fog_uri, err);
+                eprintln!("Could not get fog response ({fog_uri}): {err}");
                 exit(1);
             }
         }
@@ -281,11 +281,8 @@ fn main() {
     // if show-expiry is selected, we show key and expiry, formatted as json
     // else just print the hex bytes of key
     if config.show_expiry {
-        print!(
-            "{{ \"pubkey\": \"{}\", \"pubkey_expiry\": {} }}",
-            hex_str, pubkey_expiry
-        );
+        print!("{{ \"pubkey\": \"{hex_str}\", \"pubkey_expiry\": {pubkey_expiry} }}");
     } else {
-        print!("{}", hex_str);
+        print!("{hex_str}");
     }
 }

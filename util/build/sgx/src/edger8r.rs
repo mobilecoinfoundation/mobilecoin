@@ -163,7 +163,7 @@ impl Edger8r {
         let mut command = Command::new(&self.edger8r_path);
 
         for path in &self.search_paths {
-            command.args(&[
+            command.args([
                 "--search-path",
                 path.as_os_str()
                     .to_str()
@@ -173,16 +173,16 @@ impl Edger8r {
 
         if self.output_kind == OutputKind::Trusted {
             command
-                .arg(&"--trusted")
+                .arg("--trusted")
                 .arg(&self.edl_path)
-                .arg(&"--trusted-dir");
+                .arg("--trusted-dir");
         } else {
             command
-                .arg(&"--untrusted")
+                .arg("--untrusted")
                 .arg(&self.edl_path)
-                .arg(&"--untrusted-dir");
+                .arg("--untrusted-dir");
         }
-        command.arg(&self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
+        command.arg(self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
 
         let output = command.output()?;
 
@@ -190,7 +190,7 @@ impl Edger8r {
             Ok(self)
         } else {
             Err(Error::Generate(
-                format!("{:?}", command),
+                format!("{command:?}"),
                 String::from_utf8(output.stdout)?,
                 String::from_utf8(output.stderr)?,
             ))

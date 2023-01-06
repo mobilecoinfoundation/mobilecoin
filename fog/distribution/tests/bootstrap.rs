@@ -15,11 +15,11 @@ use tempfile::TempDir;
 fn test_find_spendable_tx_outs() {
     let me = PathBuf::from(args().next().unwrap());
     let bin = me.parent().unwrap().parent().unwrap();
-    println!("bin = {:?}", bin);
+    println!("bin = {bin:?}");
 
     let dir = TempDir::new().unwrap();
     set_current_dir(dir.path()).unwrap();
-    println!("dir = {:?}", dir);
+    println!("dir = {dir:?}");
 
     assert!(Command::new(bin.join("sample-keys"))
         .args([

@@ -353,7 +353,7 @@ impl CachedTxData {
 
         let tx_values: Vec<u64> = available.iter().map(|txo| txo.amount.value).collect();
 
-        let selected = input_selection_heuristic(&tx_values, amount.value, max_inputs)?;
+        let selected = input_selection_heuristic(tx_values, amount.value, max_inputs)?;
 
         Ok(selected
             .into_iter()
@@ -855,7 +855,7 @@ impl CachedTxData {
             self.rng_set.get_rngs().len()
         ));
         for owned_tx_out in self.owned_tx_outs.values() {
-            lines.push(format!("{:?}\n", owned_tx_out));
+            lines.push(format!("{owned_tx_out:?}\n"));
         }
         lines.join("\n")
     }

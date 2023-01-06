@@ -4,6 +4,7 @@
 
 #![deny(missing_docs)]
 #![feature(proc_macro_hygiene, decl_macro)]
+#![allow(clippy::let_unit_value)]
 
 use clap::Parser;
 use mc_common::logger::{create_app_logger, log, o};

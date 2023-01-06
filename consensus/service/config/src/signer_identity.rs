@@ -23,9 +23,9 @@ impl FromStr for PemEd25519Public {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let pem = pem::parse(s).map_err(|e| format!("Failed to parse PEM {:?}: {}", s, e))?;
+        let pem = pem::parse(s).map_err(|e| format!("Failed to parse PEM {s:?}: {e}"))?;
         let public_key = Ed25519Public::try_from_der(&pem.contents)
-            .map_err(|e| format!("Failed to parse public key {:?}: {}", s, e))?;
+            .map_err(|e| format!("Failed to parse public key {s:?}: {e}"))?;
         Ok(PemEd25519Public(public_key))
     }
 }

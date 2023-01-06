@@ -15,16 +15,16 @@ pub trait TestVector: Sized {
     {
         let filename = format!("{}/{}/{}.jsonl", dir, Self::MODULE_SUBDIR, Self::FILE_NAME);
         let file = File::open(filename.clone())
-            .unwrap_or_else(|_| panic!("cannot read file '{}'", filename));
+            .unwrap_or_else(|_| panic!("cannot read file '{filename}'"));
 
         BufReader::new(file)
             .lines()
             .enumerate()
             .map(|(i, line)| {
-                let line = line
-                    .unwrap_or_else(|_| panic!("cannot read line {} of file '{}'", i, filename));
+                let line =
+                    line.unwrap_or_else(|_| panic!("cannot read line {i} of file '{filename}'"));
                 serde_json::from_str(&line)
-                    .unwrap_or_else(|_| panic!("cannot parse line {} of file '{}'", i, filename))
+                    .unwrap_or_else(|_| panic!("cannot parse line {i} of file '{filename}'"))
             })
             .collect()
     }
