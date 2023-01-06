@@ -69,9 +69,9 @@ pub struct ServiceMetrics {
     message_size: HistogramVec,
 }
 
-impl ServiceMetrics {
+impl Default for ServiceMetrics {
     /// Create a default constructor that initializes all metrics
-    pub fn default() -> ServiceMetrics {
+    fn default() -> ServiceMetrics {
         let message_size_buckets = exponential_buckets(2.0, 2.0, 22)
             .expect("Could not create buckets for message-size histogram");
 
@@ -99,7 +99,9 @@ impl ServiceMetrics {
             .unwrap(),
         }
     }
+}
 
+impl ServiceMetrics {
     /// Register Prometheus metrics family
     pub fn new_and_registered() -> ServiceMetrics {
         let svc = ServiceMetrics::default();

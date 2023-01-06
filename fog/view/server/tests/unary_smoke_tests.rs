@@ -643,7 +643,7 @@ fn test_start_with_missing_range(store_count: usize, blocks_per_store: u64) {
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
-        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
+        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger);
     let db = test_environment
         .db_test_context
         .as_ref()
@@ -705,7 +705,7 @@ fn test_middle_missing_range_with_decommission(store_count: usize, blocks_per_st
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
-        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
+        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger);
     let db = test_environment
         .db_test_context
         .as_ref()

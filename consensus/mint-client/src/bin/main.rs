@@ -53,7 +53,7 @@ fn main() {
             let resp = client_api
                 .propose_mint_config_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
-            println!("response: {:?}", resp);
+            println!("response: {resp:?}");
 
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
@@ -140,7 +140,7 @@ fn main() {
                     common_headers_call_option(&chain_id),
                 )
                 .expect("propose tx");
-            println!("response: {:?}", resp);
+            println!("response: {resp:?}");
 
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
@@ -182,7 +182,7 @@ fn main() {
             let resp = client_api
                 .propose_mint_tx_opt(&(&tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
-            println!("response: {:?}", resp);
+            println!("response: {resp:?}");
 
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
@@ -227,10 +227,10 @@ fn main() {
 
         Commands::HashTxFile { tx_file } => match tx_file {
             TxFile::MintConfigTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
+                println!("{}", hex::encode(tx.prefix.hash()));
             }
             TxFile::MintTx(tx) => {
-                println!("{}", hex::encode(&tx.prefix.hash()));
+                println!("{}", hex::encode(tx.prefix.hash()));
             }
         },
 
@@ -283,7 +283,7 @@ fn main() {
             let resp = client_api
                 .propose_mint_tx_opt(&(&merged_tx).into(), common_headers_call_option(&chain_id))
                 .expect("propose tx");
-            println!("response: {:?}", resp);
+            println!("response: {resp:?}");
 
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
@@ -350,7 +350,7 @@ fn main() {
                     .map(|signer| {
                         Ed25519Pair::from(Ed25519Private::from(signer))
                             .try_sign(message.as_ref())
-                            .map_err(|e| format!("Failed to sign: {}", e))
+                            .map_err(|e| format!("Failed to sign: {e}"))
                     })
                     .collect::<Result<Vec<_>, _>>()
                     .expect("failed signing"),
@@ -388,7 +388,7 @@ fn main() {
             match pubkey.verify(&hash, &signature) {
                 Ok(()) => println!("signature Ok"),
                 Err(e) => {
-                    println!("{:?}", e);
+                    println!("{e:?}");
                     exit(1)
                 }
             }

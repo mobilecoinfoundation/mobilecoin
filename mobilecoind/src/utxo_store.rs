@@ -133,9 +133,9 @@ impl UtxoStore {
 
     /// Append a discovered transaction to the list stored for a given
     /// subaddress.
-    pub fn append_utxo<'env>(
+    pub fn append_utxo(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         index: u64,
         utxo: &UnspentTxOut,
@@ -188,9 +188,9 @@ impl UtxoStore {
     }
 
     /// Removes all utxos associated with a given address.
-    pub fn remove_utxos<'env>(
+    pub fn remove_utxos(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         index: u64,
     ) -> Result<(), Error> {
@@ -231,9 +231,9 @@ impl UtxoStore {
     /// Removes utxos based on a list of key images.
     /// This method silently ignores key images that were not found in the
     /// database. It returns the list of utxos that were removed.
-    pub fn remove_utxos_by_key_images<'env>(
+    pub fn remove_utxos_by_key_images(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         key_images: &[KeyImage],
     ) -> Result<Vec<UnspentTxOut>, Error> {
@@ -348,9 +348,9 @@ impl UtxoStore {
 
     /// Update a list of UnspentTxOuts attempted_spend_height and
     /// attempted_spend_tombstone.
-    pub fn update_attempted_spend<'env>(
+    pub fn update_attempted_spend(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         utxo_ids: &[UtxoId],
         attempted_spend_height: u64,
         attempted_spend_tombstone: u64,
@@ -393,7 +393,7 @@ impl UtxoStore {
     ) -> Result<Vec<UtxoId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.subaddress_id_to_utxo_id)?;
         cursor
-            .iter_dup_of(&subaddress_id.to_vec())
+            .iter_dup_of(subaddress_id.to_vec())
             .map(|result| {
                 result
                     .map_err(Error::from)
@@ -586,7 +586,7 @@ mod test {
                     ) {
                         Ok(_) => panic!("unexpected success"),
                         Err(Error::DuplicateUnspentTxOut) => {}
-                        Err(err) => panic!("unexpected error {:?}", err),
+                        Err(err) => panic!("unexpected error {err:?}"),
                     }
                 }
             }

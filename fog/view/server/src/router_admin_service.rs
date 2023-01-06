@@ -39,7 +39,7 @@ impl FogViewRouterAdminService {
         let view_store_uri = FogViewStoreUri::from_str(shard_uri).map_err(|_| {
             rpc_invalid_arg_error(
                 "add_shard",
-                format!("Shard uri string {} is invalid", shard_uri),
+                format!("Shard uri string {shard_uri} is invalid"),
                 logger,
             )
         })?;
@@ -52,7 +52,7 @@ impl FogViewRouterAdminService {
         {
             let error = rpc_precondition_error(
                 "add_shard",
-                format!("Shard uri {} already exists in the shard list", shard_uri),
+                format!("Shard uri {shard_uri} already exists in the shard list"),
                 logger,
             );
             return Err(error);

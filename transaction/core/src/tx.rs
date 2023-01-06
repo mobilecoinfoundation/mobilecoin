@@ -98,7 +98,7 @@ impl fmt::Display for TxHash {
 
 impl fmt::Debug for TxHash {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tx#{}", self)
+        write!(f, "Tx#{self}")
     }
 }
 

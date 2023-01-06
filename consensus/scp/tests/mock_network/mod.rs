@@ -449,7 +449,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_value failed: {:?}", err);
+                    panic!("send_value failed: {err:?}");
                 }
             },
         }
@@ -462,7 +462,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_msg failed: {:?}", err);
+                    panic!("send_msg failed: {err:?}");
                 }
             },
         }
@@ -474,7 +474,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_stop failed: {:?}", err);
+                    panic!("send_stop failed: {err:?}");
                 }
             },
         }

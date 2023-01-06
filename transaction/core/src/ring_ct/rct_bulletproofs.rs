@@ -1520,7 +1520,7 @@ mod rct_bulletproofs_tests {
             ) {
                 Err(Error::ValueNotConserved) => {} // Expected
                 Err(e) => {
-                    panic!("Unexpected error {}", e);
+                    panic!("Unexpected error {e}");
                 }
                 _ => panic!("Unexpected success")
             }

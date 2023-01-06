@@ -18,7 +18,7 @@ const BASE_PORT: u16 = 8750;
 fn active_key_is_retired_not_outstanding_idle_nodes_have_different_keys_new_key_is_set_node_activated(
     logger: Logger,
 ) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let nodes = helper.make_nodes(3);
 

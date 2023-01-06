@@ -63,7 +63,7 @@ impl MintConfigTxPrefixParams {
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintConfigTxPrefix, String> {
         let mut mint_config_tx_prefix = MintConfigTxPrefix::try_from(&self.mint_config_tx_file)
-            .map_err(|err| format!("Failed to parse mint config tx file: {}", err))?;
+            .map_err(|err| format!("Failed to parse mint config tx file: {err}"))?;
 
         // Override tombstone block if provided.
         if let Some(tombstone) = self.tombstone {
@@ -137,7 +137,7 @@ impl MintConfigTxParams {
             .map(|signer| {
                 Ed25519Pair::from(Ed25519Private::from(signer))
                     .try_sign(message.as_ref())
-                    .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {}", e))
+                    .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {e}"))
             })
             .collect::<Result<Vec<_>, _>>()?;
         signatures.extend(self.signatures);
@@ -182,8 +182,7 @@ impl MintTxPrefixParams {
         let mut tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
         let e_fog_hint = self.recipient.fog_report_url().map(|fog_url| -> Result<_, String> {
             let fog_bits = fog_bits.ok_or_else(|| format!(
-                "This recipient has a fog url, but a CSS to validate fog public keys was not supplied: '{}'",
-                fog_url,
+                "This recipient has a fog url, but a CSS to validate fog public keys was not supplied: '{fog_url}'",
             ))?;
             let (e_fog_hint, pubkey_expiry) = fog_bits.get_e_fog_hint(&self.recipient)?;
             tombstone_block = tombstone_block.min(pubkey_expiry);
@@ -242,7 +241,7 @@ impl MintTxParams {
             .map(|signer| {
                 Ed25519Pair::from(Ed25519Private::from(signer))
                     .try_sign(message.as_ref())
-                    .map_err(|e| format!("Failed to sign MintTxPrefix: {}", e))
+                    .map_err(|e| format!("Failed to sign MintTxPrefix: {e}"))
             })
             .collect::<Result<Vec<_>, _>>()?;
         signatures.extend(self.signatures);
@@ -495,25 +494,25 @@ pub struct Config {
 // trait for use with clap
 pub fn load_mint_private_key_from_pem(filename: &str) -> Result<MintPrivateKey, String> {
     let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+        fs::read(filename).map_err(|err| format!("Failed reading file '{filename}': {err}"))?;
 
-    let parsed_pem = pem::parse(&bytes)
-        .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
+    let parsed_pem =
+        pem::parse(bytes).map_err(|err| format!("Failed parsing PEM file '{filename}': {err}"))?;
 
     let key = Ed25519Private::try_from_der(&parsed_pem.contents[..])
-        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))?;
+        .map_err(|err| format!("Failed parsing DER from PEM file '{filename}': {err}"))?;
     Ok(MintPrivateKey(key))
 }
 
 pub fn load_key_from_pem<K: DistinguishedEncoding>(filename: &str) -> Result<K, String> {
     let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+        fs::read(filename).map_err(|err| format!("Failed reading file '{filename}': {err}"))?;
 
-    let parsed_pem = pem::parse(&bytes)
-        .map_err(|err| format!("Failed parsing PEM file '{}': {}", filename, err))?;
+    let parsed_pem =
+        pem::parse(bytes).map_err(|err| format!("Failed parsing PEM file '{filename}': {err}"))?;
 
     let key = K::try_from_der(&parsed_pem.contents[..])
-        .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))?;
+        .map_err(|err| format!("Failed parsing DER from PEM file '{filename}': {err}"))?;
     Ok(key)
 }
 
@@ -522,44 +521,37 @@ pub fn load_or_parse_ed25519_signature(
 ) -> Result<Ed25519Signature, String> {
     // Check if the signature provided is a filename.
     let bytes = if Path::new(filename_or_hex_signature).exists() {
-        let bytes = fs::read(filename_or_hex_signature).map_err(|err| {
-            format!(
-                "Failed reading file '{}': {}",
-                filename_or_hex_signature, err
-            )
-        })?;
+        let bytes = fs::read(filename_or_hex_signature)
+            .map_err(|err| format!("Failed reading file '{filename_or_hex_signature}': {err}"))?;
 
-        let parsed_pem = pem::parse(&bytes).map_err(|err| {
-            format!(
-                "Failed parsing PEM file '{}': {}",
-                filename_or_hex_signature, err
-            )
+        let parsed_pem = pem::parse(bytes).map_err(|err| {
+            format!("Failed parsing PEM file '{filename_or_hex_signature}': {err}")
         })?;
 
         parsed_pem.contents
     } else if filename_or_hex_signature.len() == Ed25519Signature::BYTE_SIZE * 2 {
         // *2 due to hex encoding
         hex::decode(filename_or_hex_signature)
-            .map_err(|err| format!("Failed decoding hex signature: {}", err))?
+            .map_err(|err| format!("Failed decoding hex signature: {err}"))?
     } else {
         return Err("Signature must either be a PEM file or a hex-encoded string".to_string());
     };
 
     Ed25519Signature::try_from(&bytes[..])
-        .map_err(|err| format!("Failed parsing Ed25519 signature: {}", err))
+        .map_err(|err| format!("Failed parsing Ed25519 signature: {err}"))
 }
 
 fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
     let printable_wrapper = PrintableWrapper::b58_decode(b58.into())
-        .map_err(|err| format!("failed parsing b58 address '{}': {}", b58, err))?;
+        .map_err(|err| format!("failed parsing b58 address '{b58}': {err}"))?;
 
     if printable_wrapper.has_public_address() {
         let public_address = PublicAddress::try_from(printable_wrapper.get_public_address())
-            .map_err(|err| format!("failed converting b58 public address '{}': {}", b58, err))?;
+            .map_err(|err| format!("failed converting b58 public address '{b58}': {err}"))?;
 
         Ok(public_address)
     } else {
-        Err(format!("b58 address '{}' is not a public address", b58))
+        Err(format!("b58 address '{b58}' is not a public address"))
     }
 }
 
@@ -581,10 +573,9 @@ fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
 }
 
 fn load_tx_file_from_path(path: &str) -> Result<TxFile, String> {
-    TxFile::from_json_file(path).map_err(|e| format!("failed loading file {:?}: {}", path, e))
+    TxFile::from_json_file(path).map_err(|e| format!("failed loading file {path:?}: {e}"))
 }
 
 fn load_mint_config_tx_file_from_path(path: &str) -> Result<MintConfigTxFile, String> {
-    MintConfigTxFile::from_json_file(path)
-        .map_err(|e| format!("failed loading file {:?}: {}", path, e))
+    MintConfigTxFile::from_json_file(path).map_err(|e| format!("failed loading file {path:?}: {e}"))
 }

@@ -3,6 +3,7 @@
 //! APIs for report-caching enclaves.
 
 #![no_std]
+#![allow(clippy::result_large_err)]
 
 use core::result::Result as StdResult;
 use displaydoc::Display;

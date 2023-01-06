@@ -50,7 +50,7 @@ impl StateFile {
         let proto_data = state_data.write_to_bytes().map_err(|e| {
             Error::new(
                 ErrorKind::Other,
-                format!("failed serializing state data: {}", e),
+                format!("failed serializing state data: {e}"),
             )
         })?;
         let mut file = fs::File::create(&self.file_path)?;
@@ -62,7 +62,7 @@ impl StateFile {
     /// fails, in order to prevent a crash loop.
     pub fn move_to_bak(&self) -> Result<()> {
         let bak = self.file_path.with_extension("bak");
-        std::fs::rename(&self.file_path, &bak)?;
+        std::fs::rename(&self.file_path, bak)?;
         Ok(())
     }
 }

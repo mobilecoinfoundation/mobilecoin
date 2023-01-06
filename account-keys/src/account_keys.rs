@@ -89,7 +89,7 @@ impl fmt::Display for PublicAddress {
             .iter()
             .chain(self.view_public_key().to_bytes().iter())
         {
-            write!(f, "{:02X}", byte)?;
+            write!(f, "{byte:02X}")?;
         }
         if !self.fog_report_url.is_empty() {
             write!(f, ":'{}'", self.fog_report_url)?;

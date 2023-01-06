@@ -175,7 +175,7 @@ pub trait ConnectionUri:
     fn tls_chain(&self) -> StdResult<Vec<u8>, String> {
         let path = self.tls_chain_path()?;
         std::fs::read(path.clone())
-            .map_err(|e| format!("Failed reading TLS chain from {}: {:?}", path, e))
+            .map_err(|e| format!("Failed reading TLS chain from {path}: {e:?}"))
     }
 
     /// Retrieve the TLS key file path to use for this connection.
@@ -188,7 +188,7 @@ pub trait ConnectionUri:
     fn tls_key(&self) -> StdResult<Vec<u8>, String> {
         let path = self.tls_key_path()?;
         std::fs::read(path.clone())
-            .map_err(|e| format!("Failed reading TLS key from {}: {:?}", path, e))
+            .map_err(|e| format!("Failed reading TLS key from {path}: {e:?}"))
     }
 }
 

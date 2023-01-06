@@ -437,9 +437,9 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
         let thread_append_after_block = append_after_block.clone();
         let logger = logger.clone();
         thread::Builder::new()
-            .name(format!("GetBlocks:{}", conn))
+            .name(format!("GetBlocks:{conn}"))
             .spawn(move || {
-                let &(ref lock, ref condvar) = &*thread_results_and_condvar;
+                let (lock, condvar) = &*thread_results_and_condvar;
 
                 // Perform call to get the blocks from the peer. Blocks are later verified by `identify_safe_blocks`.
                 let start = thread_append_after_block.index + 1;
@@ -485,7 +485,7 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     }
 
     // Wait until either we get all results, or a timeout happens.
-    let &(ref lock, ref condvar) = &*results_and_condvar;
+    let (lock, condvar) = &*results_and_condvar;
     let (worker_results, _wait_timeout_result) = condvar
         .wait_timeout_while(lock.lock().unwrap(), timeout, |ref mut results| {
             results.len() != manager.len()
@@ -622,9 +622,9 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         let thread_safe_responder_ids = safe_responder_ids.to_owned();
 
         let thread_handle = thread::Builder::new()
-            .name(format!("LedgerSync::GetTxs:{}", worker_num))
+            .name(format!("LedgerSync::GetTxs:{worker_num}"))
             .spawn(move || {
-                let &(ref lock, ref condvar) = &*thread_results_and_condvar;
+                let (lock, condvar) = &*thread_results_and_condvar;
 
                 for msg in thread_receiver.iter() {
                     match msg {
@@ -745,7 +745,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
     // Wait until we get all results, or we timeout. Note that timeout checking is
     // handled inside the worker threads.
     log::trace!(logger, "Waiting on {} results", blocks.len());
-    let &(ref lock, ref condvar) = &*results_and_condvar;
+    let (lock, condvar) = &*results_and_condvar;
     let results = condvar
         .wait_while(lock.lock().unwrap(), |ref mut results| {
             results.len() != blocks.len()
@@ -911,7 +911,7 @@ mod tests {
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         assert!(!sync_service.is_behind(&network_state));
     }
@@ -935,7 +935,7 @@ mod tests {
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         // Node A has externalized a higher slot.
         // The set {Node A} is blocking, but {Node A} \union {local node} is not a
@@ -1230,7 +1230,7 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         let (responder_ids, block_index, potentially_safe_blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
@@ -1309,7 +1309,7 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         let (responder_ids, slot_index, blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
@@ -1363,15 +1363,12 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         if let Some((responder_ids, block_index, blocks)) =
             sync_service.get_potentially_safe_blocks(&network_state, 100)
         {
-            panic!(
-                "Node IDs: {:?}, block index: {:?}, blocks: {:?}",
-                responder_ids, block_index, blocks
-            );
+            panic!("Node IDs: {responder_ids:?}, block index: {block_index:?}, blocks: {blocks:?}");
         }
     }
 
@@ -1537,7 +1534,7 @@ mod tests {
 
         for (_block_index, block_id_to_nodes) in grouping.iter().rev() {
             for (block_id, nodes) in block_id_to_nodes.iter() {
-                println!("BlockID: {:?} to nodes {:?}", block_id, nodes);
+                println!("BlockID: {block_id:?} to nodes {nodes:?}");
             }
         }
 
@@ -1585,7 +1582,7 @@ mod tests {
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         let mut blocks = get_test_ledger_blocks(15);
         blocks.drain(0..10);
@@ -1628,7 +1625,7 @@ mod tests {
             ledger,
             conn_manager,
             transactions_fetcher,
-            logger.clone(),
+            logger,
         );
 
         let mut blocks = get_test_ledger_blocks(15);

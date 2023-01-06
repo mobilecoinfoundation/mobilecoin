@@ -153,7 +153,7 @@ impl Config {
     pub fn tokens(&self) -> TokensConfig {
         if let Some(tokens_path) = &self.tokens_path {
             TokensConfig::load_from_path(tokens_path).unwrap_or_else(|_| {
-                panic!("failed loading tokens configuration from {:?}", tokens_path)
+                panic!("failed loading tokens configuration from {tokens_path:?}")
             })
         } else {
             TokensConfig::default()
@@ -167,10 +167,10 @@ impl Config {
 /// * `private_key` - A DER formatted, Base64 encoded Ed25519 private key.
 fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let privkey_bytes = base64::decode_config(private_key, base64::STANDARD)
-        .map_err(|err| format!("Could not decode private key from base64 {:?}", err))?;
+        .map_err(|err| format!("Could not decode private key from base64 {err:?}"))?;
 
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
-        .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
+        .map_err(|err| format!("Could not get Ed25519Private from der {err:?}"))?;
     Ok(Arc::new(Ed25519Pair::from(secret_key)))
 }
 

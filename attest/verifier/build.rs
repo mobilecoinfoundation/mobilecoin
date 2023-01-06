@@ -85,7 +85,7 @@ fn purge_expired_cert(path: &Path) {
             .last()
             .expect("no certs")
             .not_after()
-            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {:?}", e));
+            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {e:?}"));
         Utc.ymd(ts.year as i32, ts.month as u32, ts.day as u32)
             .and_hms(ts.hour as u32, ts.minute as u32, ts.second as u32)
     }) {
@@ -96,15 +96,14 @@ fn purge_expired_cert(path: &Path) {
             // regenerated.
             if utc_now + Duration::hours(24) > not_after {
                 remove_file(path)
-                    .unwrap_or_else(|e| panic!("failed deleting expired cert {:?}: {:?}", path, e));
+                    .unwrap_or_else(|e| panic!("failed deleting expired cert {path:?}: {e:?}"));
             }
         }
         Err(_) => {
             // Failed getting expiration date from certificate, delete it so it gets
             // regenerated.
-            remove_file(path).unwrap_or_else(|e| {
-                panic!("failed deleting non-parseable cert {:?}: {:?}", path, e)
-            });
+            remove_file(path)
+                .unwrap_or_else(|e| panic!("failed deleting non-parseable cert {path:?}: {e:?}"));
         }
     }
 }
@@ -267,7 +266,7 @@ fn main() {
             .write_pem_string(&mut csprng)
             .expect("Could not create PEM string of certificate");
 
-        write(chain_path, &(root_cert_pem + &signer_cert_pem)).expect("Unable to write cert chain");
+        write(chain_path, root_cert_pem + &signer_cert_pem).expect("Unable to write cert chain");
     }
 
     let env = Environment::default();

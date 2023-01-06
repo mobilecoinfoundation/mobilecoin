@@ -335,10 +335,9 @@ mod consensus_peer_uri_tests {
 
         let mut seeded_rng: FixedRng = SeedableRng::from_seed([0u8; 32]);
         let signer_key = Ed25519Pair::from_random(&mut seeded_rng);
-        let hex_pubkey = hex::encode(&signer_key.public_key());
+        let hex_pubkey = hex::encode(signer_key.public_key());
         let uri = PeerUri::from_str(&format!(
-            "mcp://node1.test.mobilecoin.com/?consensus-msg-key={}",
-            hex_pubkey
+            "mcp://node1.test.mobilecoin.com/?consensus-msg-key={hex_pubkey}"
         ))
         .unwrap();
         assert_eq!(

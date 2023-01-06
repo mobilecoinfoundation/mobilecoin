@@ -447,7 +447,7 @@ impl Digestible for Ed25519Signature {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"ed25519-sig", &self);
+        transcript.append_primitive(context, b"ed25519-sig", self);
     }
 }
 
@@ -610,15 +610,15 @@ mod ed25519_tests {
     fn openssl_version() {
         run_and_log("openssl", &["version"]);
 
-        let output = Command::new("openssl").args(&["version"]).output().unwrap();
+        let output = Command::new("openssl").args(["version"]).output().unwrap();
         let output_string = String::from_utf8(output.stdout).unwrap();
         let mut iter = output_string.split(' ');
         iter.next();
         let ver_string = iter.next().unwrap();
-        eprintln!("version: {}", ver_string);
+        eprintln!("version: {ver_string}");
         let ver = Version::parse(ver_string).unwrap();
         let ver_req = VersionReq::parse(">= 1.1").unwrap();
-        assert!(ver_req.matches(&ver), "Version of openssl should be {}, install a better one and put it in path (or run in docker)", ver_req);
+        assert!(ver_req.matches(&ver), "Version of openssl should be {ver_req}, install a better one and put it in path (or run in docker)");
     }
 
     // This test is only run in nightly, because it has a dependency on host version

@@ -56,7 +56,7 @@ fn main() {
         let sharding_strategy = config
             .sharding_strategies
             .get(i)
-            .unwrap_or_else(|| panic!("Couldn't find shard at index {}", i));
+            .unwrap_or_else(|| panic!("Couldn't find shard at index {i}"));
         let Epoch(epoch_sharding_strategy) = sharding_strategy;
         let block_range = epoch_sharding_strategy.get_block_range();
         let shard = Shard::new(

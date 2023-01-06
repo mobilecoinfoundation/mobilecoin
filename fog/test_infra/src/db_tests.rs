@@ -82,8 +82,7 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
                 .count();
             assert_eq!(
                 num_rng_events, SEEDS_PER_ROUND,
-                "unexpected number of rng events: found {} expected {}",
-                num_rng_events, SEEDS_PER_ROUND
+                "unexpected number of rng events: found {num_rng_events} expected {SEEDS_PER_ROUND}"
             );
 
             assert_rng_record_rows_were_recovered(
@@ -134,8 +133,7 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
             assert_eq!(user_events.len(), 0);
             assert_eq!(
                 next_start_from_user_event_id, start_from_user_event_id,
-                "expected next_start_from_user_event_id not to be different: found {} expected {}",
-                next_start_from_user_event_id, start_from_user_event_id
+                "expected next_start_from_user_event_id not to be different: found {next_start_from_user_event_id} expected {start_from_user_event_id}"
             );
         }
     }

@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin Fog View target
+#![allow(clippy::result_large_err)]
 
 pub mod config;
 pub mod error;

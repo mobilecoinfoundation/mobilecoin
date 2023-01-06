@@ -129,7 +129,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             config.chain_id.clone(),
             ledger,
             watcher,
-            client_authenticator.clone(),
+            client_authenticator,
             logger.clone(),
         );
 

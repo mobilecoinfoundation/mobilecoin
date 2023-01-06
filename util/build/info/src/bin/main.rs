@@ -28,7 +28,7 @@ fn main() {
         } else if args[1] == "--all" {
             let mut result = String::new();
             mc_util_build_info::write_report(&mut result).unwrap();
-            print!("{}", result);
+            print!("{result}");
             return;
         }
     }

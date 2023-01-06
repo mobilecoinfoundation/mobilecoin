@@ -19,7 +19,7 @@ const BASE_PORT: u16 = 8550;
 fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_and_original_key_is_reported_lost(
     logger: Logger,
 ) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let mut nodes = VecDeque::from(helper.make_nodes(3));
 

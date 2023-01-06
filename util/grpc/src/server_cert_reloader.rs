@@ -182,7 +182,7 @@ mod tests {
             .build();
         let ch = ChannelBuilder::new(env)
             .override_ssl_target(ssl_target)
-            .secure_connect(&format!("localhost:{}", port), cred);
+            .secure_connect(&format!("localhost:{port}"), cred);
         HealthClient::new(ch)
     }
 
@@ -198,10 +198,10 @@ mod tests {
 
         // Write server1's cert files into the temp dir.
         std::fs::write(&cert_file, &server1_cert).unwrap();
-        std::fs::write(&key_file, &server1_key).unwrap();
+        std::fs::write(&key_file, server1_key).unwrap();
 
         // Start the GRPC server.
-        let (_server, port) = create_test_server(&cert_file, &key_file, logger.clone());
+        let (_server, port) = create_test_server(&cert_file, &key_file, logger);
 
         // Connect the server whose CN is "www.server1.com" with the correct
         // certificate.
@@ -235,7 +235,7 @@ mod tests {
         // Replace server1 certificates with server2. This should trigger the reloading
         // mechanism.
         std::fs::write(&cert_file, &server2_cert).unwrap();
-        std::fs::write(&key_file, &server2_key).unwrap();
+        std::fs::write(&key_file, server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
@@ -275,10 +275,10 @@ mod tests {
 
         // Write server1's cert files into the temp dir.
         std::fs::write(&cert_file, &server1_cert).unwrap();
-        std::fs::write(&key_file, &server1_key).unwrap();
+        std::fs::write(&key_file, server1_key).unwrap();
 
         // Start the GRPC server.
-        let (_server, port) = create_test_server(&cert_file, &key_file, logger.clone());
+        let (_server, port) = create_test_server(&cert_file, &key_file, logger);
 
         // Sanity that the server works.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port);
@@ -318,11 +318,11 @@ mod tests {
 
         // Write server1's cert files into the temp dir.
         std::fs::write(&cert_file, &server1_cert).unwrap();
-        std::fs::write(&key_file, &server1_key).unwrap();
+        std::fs::write(&key_file, server1_key).unwrap();
 
         // Start the GRPC servers.
         let (_server1, port1) = create_test_server(&cert_file, &key_file, logger.clone());
-        let (_server2, port2) = create_test_server(&cert_file, &key_file, logger.clone());
+        let (_server2, port2) = create_test_server(&cert_file, &key_file, logger);
 
         // Sanity that the servers works.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port1);
@@ -339,7 +339,7 @@ mod tests {
 
         // Replace server1 certificates with server2.
         std::fs::write(&cert_file, &server2_cert).unwrap();
-        std::fs::write(&key_file, &server2_key).unwrap();
+        std::fs::write(&key_file, server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
@@ -375,7 +375,7 @@ mod tests {
 
         // Write server1's cert files into the temp dir.
         std::fs::write(&cert_file, &server1_cert).unwrap();
-        std::fs::write(&key_file, &server1_key).unwrap();
+        std::fs::write(&key_file, server1_key).unwrap();
 
         // Create a listener URI.
         let port: u16 = 6544;
@@ -393,7 +393,7 @@ mod tests {
 
         let mut server = ServerBuilder::new(env)
             .register_service(service)
-            .bind_using_uri(&uri, logger.clone())
+            .bind_using_uri(&uri, logger)
             .build()
             .unwrap();
         server.start();
@@ -407,7 +407,7 @@ mod tests {
 
         // Replace server1 certificates with server2.
         std::fs::write(&cert_file, &server2_cert).unwrap();
-        std::fs::write(&key_file, &server2_key).unwrap();
+        std::fs::write(&key_file, server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
