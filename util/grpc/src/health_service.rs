@@ -10,12 +10,11 @@ use crate::{
         PingResponse,
     },
     health_api_grpc::{create_health, Health},
-    rpc_logger, send_result,
+    rpc_logger, send_result, SVC_COUNTERS,
 };
 use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, ServerStreamingSink, Service, UnarySink};
 use mc_common::logger::{log, Logger};
-use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,

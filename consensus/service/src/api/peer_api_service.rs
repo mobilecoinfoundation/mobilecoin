@@ -8,6 +8,7 @@ use crate::{
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
     tx_manager::{TxManager, TxManagerError},
+    SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
@@ -32,7 +33,6 @@ use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
 use std::{str::FromStr, sync::Arc};
 

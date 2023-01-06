@@ -54,7 +54,7 @@ use grpcio::{
     CallOption, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerCredentials, UnarySink,
 };
 use mc_common::logger::{log, o, Level, Logger};
-use mc_util_metrics::SVC_COUNTERS;
+use mc_util_metrics::ServiceMetrics;
 use rand::Rng;
 use std::{
     fmt::Display,
@@ -314,8 +314,12 @@ pub fn rpc_logger(ctx: &RpcContext, logger: &Logger) -> Logger {
 }
 
 lazy_static::lazy_static! {
+    /// Generates service metrics with service name for tracking
+
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::default();
     // Generate a random seed at startup so that rpc_client_id hashes are not identifying specific
     // users by leaking IP addresses.
+
     static ref RPC_LOGGER_CLIENT_ID_SEED: String = {
         let mut rng = rand::thread_rng();
         std::iter::repeat(())
