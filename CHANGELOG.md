@@ -8,6 +8,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- Improved performance of mobilecoind-dev-faucet for better load testing
+
 ## [4.0.0]
 
 ### Added

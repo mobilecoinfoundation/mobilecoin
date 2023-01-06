@@ -69,11 +69,13 @@ class CloudLogging:
         if LOGSTASH_HOST:
             self.start_filebeat(LOG_BRANCH, LOGSTASH_HOST)
 
-        if GRAFANA_PASSWORD:
-            hosts = ', '.join(
-                f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
-            )
-            self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
+        if not GRAFANA_PASSWORD:
+            print('No grafana password - logs will not be pushed to grafana.')
+
+        hosts = ', '.join(
+            f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
+        )
+        self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
 
     def start_filebeat(self, log_branch, logstash_host):
         print(f'Starting filebeat, branch={log_branch}')
@@ -103,9 +105,10 @@ class CloudLogging:
         with open(os.path.join(WORK_DIR, 'prometheus.yml'), 'w') as f:
             f.write(template
                 .replace('${BRANCH}', log_branch)
-                .replace('${GRAFANA_PASSWORD}', grafana_password)
                 .replace('${HOSTS}', hosts)
+                .replace('${GRAFANA_PASSWORD}', grafana_password or "")
             )
+
         cmd = ' '.join([
             'prometheus',
             '--web.listen-address=:18181',
@@ -579,6 +582,14 @@ class Network:
                 other_nodes = [str(j) for j in range(num_nodes) if i != j]
                 peers = [Peer(p) for p in other_nodes]
                 self.add_node(str(i), peers, QuorumSet(3, other_nodes))
+
+        elif network_type == 'dense3':
+            #  3 node interconnected network requiring 2 out of 3 nodes.
+            num_nodes = 3
+            for i in range(num_nodes):
+                other_nodes = [str(j) for j in range(num_nodes) if i != j]
+                peers = [Peer(p) for p in other_nodes]
+                self.add_node(str(i), peers, QuorumSet(1, other_nodes))
 
         elif network_type == 'a-b-c':
             # 3 nodes, where all 3 are required but node `a` and `c` are not peered together.

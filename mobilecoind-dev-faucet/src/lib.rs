@@ -64,7 +64,7 @@ pub struct Config {
     /// Target Queue Depth. When the queue for a token id is less than this in
     /// depth, the worker attempts to make a split Tx to produce more TxOuts
     /// for the queue.
-    #[clap(long, default_value = "500", env = "MC_TARGET_QUEUE_DEPTH")]
+    #[clap(long, default_value = "10000", env = "MC_TARGET_QUEUE_DEPTH")]
     pub target_queue_depth: usize,
 
     /// Worker poll period in milliseconds.

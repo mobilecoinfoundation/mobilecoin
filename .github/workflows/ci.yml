@@ -505,7 +505,7 @@ jobs:
           # Run mobilecoind-dev-faucet
           MC_LOG="info" \
           "$BIN_DIR"/mobilecoind-dev-faucet \
-            --keyfile "$PWD/keys/account_keys_0.json" &
+            --keyfile "$PWD/keys/account_keys_0.json" --target-queue-depth 500 &
 
           # Give it time to spin up
           for _unused in $(seq 0 60); do
@@ -517,12 +517,12 @@ jobs:
           curl -s localhost:9090/ -d '{"b58_address": "5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5"}' -X POST
           curl -s localhost:9090/ -d '{"b58_address": "5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5"}' -X POST
 
-          # Try triggering slam twice and see that it doesn't get stuck
-          curl -s localhost:9090/slam -X POST
+          # Try triggering small slam twice and see that it doesn't get stuck
+          curl -s localhost:9090/slam -d '{"target_num_tx":500}' -X POST
 
           "$BIN_DIR/mc-consensus-tool" wait-for-quiet
 
-          curl -s localhost:9090/slam -X POST
+          curl -s localhost:9090/slam -d '{"target_num_tx":500}' -X POST
 
       - name: Upload core dumps
         uses: ./.github/actions/upload-core-dumps
