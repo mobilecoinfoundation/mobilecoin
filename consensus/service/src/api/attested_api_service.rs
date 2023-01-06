@@ -2,6 +2,7 @@
 
 //! Serves node-to-node attested gRPC requests.
 
+use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
 use mc_attest_enclave_api::{ClientSession, PeerSession, Session};
@@ -13,7 +14,6 @@ use mc_consensus_enclave::ConsensusEnclave;
 use mc_util_grpc::{
     check_request_chain_id, rpc_logger, rpc_permissions_error, send_result, Authenticator,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]

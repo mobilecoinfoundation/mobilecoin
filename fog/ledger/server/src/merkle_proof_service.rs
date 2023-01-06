@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_enclave_api::ClientSession;
@@ -14,7 +15,6 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_invalid_arg_error,
     rpc_logger, rpc_permissions_error, send_result, Authenticator,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use std::sync::Arc;
 
 // Maximum number of TxOuts that may be returned for a single request.

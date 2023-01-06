@@ -4,9 +4,9 @@ use mc_fog_report_api::{
     report::{ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse},
     report_grpc::ReportApi,
 };
+use mc_fog_report_server::SVC_COUNTERS;
 use mc_fog_report_types::ReportResponse;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result};
-use mc_util_metrics::SVC_COUNTERS;
 
 #[derive(Clone)]
 pub struct Service {

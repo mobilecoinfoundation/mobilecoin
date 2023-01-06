@@ -12,3 +12,10 @@ pub use crate::{
     config::{Config, Error, Materials},
     server::Server,
 };
+
+use mc_util_metrics::ServiceMetrics;
+
+lazy_static::lazy_static! {
+    /// Generates service metrics for tracking
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_report");
+}
