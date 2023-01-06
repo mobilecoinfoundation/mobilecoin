@@ -11,12 +11,6 @@ global:
   #    monitor: 'example'
   #
 
-remote_write:
-- url: https://prometheus-us-central1.grafana.net/api/prom/push
-  basic_auth:
-    username: 8687
-    password: ${GRAFANA_PASSWORD}
-
 # Load and evaluate rules in this file every 'evaluation_interval' seconds.
 rule_files:
   # - "first.rules"
