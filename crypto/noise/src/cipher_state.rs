@@ -4,7 +4,7 @@
 
 use alloc::vec;
 
-use aead::{AeadMut, Error as AeadError, NewAead, Payload};
+use aead::{AeadMut, Error as AeadError, KeyInit, Payload};
 use alloc::vec::Vec;
 use core::cmp::min;
 use digest::{core_api::BlockSizeUser, Digest};
@@ -42,7 +42,7 @@ impl From<AeadError> for CipherError {
 /// Specifically, this trait and `aead::AeadMut` should cover the requirements
 /// of [section 4.2](http://noiseprotocol.org/noise.html#cipher-functions) of
 /// the spec.
-pub trait NoiseCipher: AeadMut + NewAead + Sized {
+pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     /// Generic re-keying method, will be called by NoiseCipher implementations
     /// for legit ciphers.
     ///
@@ -113,7 +113,7 @@ pub trait NoiseCipher: AeadMut + NewAead + Sized {
     }
 }
 
-impl<C> NoiseCipher for C where C: AeadMut + NewAead + Sized {}
+impl<C> NoiseCipher for C where C: AeadMut + KeyInit + Sized {}
 
 // Essentially an alias for Digest + BlockSizeUser + Clone.
 pub trait NoiseDigest: Digest + BlockSizeUser + Clone {}
@@ -261,7 +261,7 @@ impl<Cipher: NoiseCipher> Default for CipherState<Cipher> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use aes_gcm::Aes256Gcm;
+    use aes_gcm::{Aes256Gcm, KeySizeUser};
 
     #[test]
     fn default() {
@@ -274,7 +274,7 @@ mod test {
     #[test]
     fn initialize_key() {
         let mut cipher = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         cipher
             .initialize_key(Some(key))
@@ -287,7 +287,7 @@ mod test {
     #[test]
     fn bad_initialize_key() {
         let mut cipher = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize() - 1];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize() - 1];
 
         assert_eq!(
             cipher.initialize_key(Some(key)),
@@ -298,7 +298,7 @@ mod test {
     #[test]
     fn dont_encrypt_decrypt() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         assert_eq!(
             encryptor.encrypt_with_ad(&[], &key),
@@ -312,7 +312,7 @@ mod test {
     fn encrypt_decrypt() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
         let mut decryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))
@@ -341,7 +341,7 @@ mod test {
     #[test]
     fn remove_key() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))
@@ -372,7 +372,7 @@ mod test {
     /// Try to use the rekey method
     fn rekey() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))

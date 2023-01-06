@@ -52,7 +52,7 @@ mc-util-telemetry = { path = "../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 clap = { version = "4.0", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 displaydoc = "0.2"

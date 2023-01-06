@@ -41,6 +41,6 @@ mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-metrics = { path = "../../util/metrics" }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 lazy_static = "1"
 sha2 = "0.10"
