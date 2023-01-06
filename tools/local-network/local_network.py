@@ -55,6 +55,7 @@ LOG_BRANCH = os.getenv('LOG_BRANCH', None)
 LOGSTASH_HOST = os.getenv('LOGSTASH_HOST', None)
 GRAFANA_PASSWORD = os.getenv('GRAFANA_PASSWORD', None)
 
+
 class CloudLogging:
     def __init__(self):
         self.filebeat_process = None
