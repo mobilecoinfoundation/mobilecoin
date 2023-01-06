@@ -2,6 +2,7 @@
 
 //! Serves blockchain-related API requests.
 
+use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
@@ -13,7 +14,6 @@ use mc_consensus_api::{
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tokens::Mob, BlockVersion, FeeMap, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
-use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
 use std::{cmp, collections::HashMap, sync::Arc};
 

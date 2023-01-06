@@ -9,9 +9,15 @@ mod merkle_proof_service;
 mod server;
 mod untrusted_tx_out_service;
 
+use mc_util_metrics::ServiceMetrics;
+
 pub use block_service::BlockService;
 pub use config::LedgerServerConfig;
 pub use key_image_service::KeyImageService;
 pub use merkle_proof_service::MerkleProofService;
 pub use server::LedgerServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
+
+lazy_static::lazy_static! {
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
+}

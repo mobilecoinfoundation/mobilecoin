@@ -25,6 +25,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 # fog
 mc-fog-report-api = { path = "../../fog/report/api" }
+mc-fog-report-server = { path = "../../fog/report/server" }
 mc-fog-report-types = { path = "../../fog/report/types" }
 
 # third-party

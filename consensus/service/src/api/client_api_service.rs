@@ -8,6 +8,7 @@ use crate::{
     counters,
     mint_tx_manager::MintTxManager,
     tx_manager::{TxManager, TxManagerError},
+    SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
@@ -25,7 +26,6 @@ use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
 /// Maximum number of pending values for consensus service before rejecting
