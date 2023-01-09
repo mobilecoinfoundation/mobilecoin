@@ -16,7 +16,7 @@ COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
 COPY ${RUST_BIN_PATH}/libingest-enclave.css /enclaves/libingest-enclave.css
 RUN ls -lah ${RUST_BIN_PATH}
-COPY ${RUST_BIN_PATH}/mc-mobilecoind-dev-faucet /usr/bin/
+COPY ${RUST_BIN_PATH}/mobilecoind-dev-faucet /usr/bin/
 
 COPY ${RUST_BIN_PATH}/read-pubfile /usr/bin/
 COPY ${RUST_BIN_PATH}/generate-sample-ledger /usr/bin/
