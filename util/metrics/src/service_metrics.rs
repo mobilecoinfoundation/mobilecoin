@@ -130,12 +130,10 @@ impl ServiceMetrics {
 
     /// Gets the method name from a gRPC RpcContext.
     pub fn get_method_name(ctx: &RpcContext) -> GrpcMethodName {
-        let mut method_name = "unknown_method".to_string();
-        if let Some(name) = path_from_ctx(ctx) {
-            method_name = name;
-        };
-
-        method_name
+        match path_from_ctx(ctx) {
+            Some(method_name) => method_name,
+            None => "unknown_method".to_string(),
+        }
     }
 
     /// Takes the RpcContext used during a gRPC method call to get the method
