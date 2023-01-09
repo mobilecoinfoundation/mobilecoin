@@ -7,12 +7,28 @@ description = "MobileCoin Core Library"
 readme = "README.md"
 
 [features]
-alloc = [ "mc-crypto-ring-signature/alloc" ]
+serde = [
+    "dep:serde",
+    "mc-core-types/serde",
+    "mc-crypto-dalek/serde",
+    "mc-crypto-keys/serde",
+    "mc-crypto-ring-signature/serde",
+]
+prost = [
+    "dep:prost",
+    "mc-core-types/prost",
+    "mc-crypto-keys/prost",
+    "mc-crypto-ring-signature/prost",
+]
+alloc = [
+    "mc-crypto-dalek/alloc",
+    "mc-crypto-ring-signature/alloc",
+]
+
 traits = []
 bip39 = ["dep:tiny-bip39", "dep:slip10_ed25519"]
 internals = [ ]
-serde = ["dep:serde", "mc-core-types/serde"]
-prost = ["dep:prost", "mc-core-types/prost"]
+
 default = ["bip39", "mc-crypto-dalek/default"]
 
 [dependencies]

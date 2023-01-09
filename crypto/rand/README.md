@@ -12,11 +12,7 @@ which simplifies the build.
 When `+rdrand` rustc target feature is enabled, we use x86 intrinsics directly to
 do rdrand correctly, and do not pull in getrandom or any other library.
 
-When this target feature is not enabled, we use `rand::ThreadRng`, except on WASM where
-we use `rand::OsRng`.
-
-Note that these fallbacks require the standard library. We don't currently
-have any targets that don't have RDRAND and also can't use the standard library.
+When this target feature is not enabled, we use `rand::ThreadRng` on targets with `std`, and on WASM or `no_std` targets we use `rand::OsRng`.
 
 Example usage:
 

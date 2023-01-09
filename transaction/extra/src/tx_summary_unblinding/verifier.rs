@@ -386,6 +386,7 @@ impl TxSummaryStreamingVerifier {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

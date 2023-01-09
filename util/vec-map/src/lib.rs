@@ -110,7 +110,7 @@ impl<K: Clone + Ord, V: Clone, const N: usize> VecMap<K, V, N> {
     pub fn sort(&mut self) {
         // First compute the order that would sort the set of keys
         let mut indices: Vec<usize, N> = (0..self.keys.len()).collect();
-        indices.sort_by_key(|&i| &self.keys[i]);
+        indices.sort_unstable_by_key(|&i| &self.keys[i]);
         // Make new key and val sets
         let mut new_keys = Vec::<K, N>::default();
         let mut new_vals = Vec::<V, N>::default();

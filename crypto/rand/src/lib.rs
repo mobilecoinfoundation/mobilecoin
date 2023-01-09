@@ -11,15 +11,22 @@ use cfg_if::cfg_if;
 // Not using cfg_attr( ..., path = fallback.rs) because it appears to confuse
 // rustfmt
 cfg_if! {
+    // rdrand if enabled
     if #[cfg(target_feature = "rdrand")] {
         mod rdrandrng;
         pub use rdrandrng::McRng;
+    // OsRng for WASM
     } else if #[cfg(all(target_arch = "wasm32", target_os = "unknown"))] {
         mod wasm;
         pub use wasm::McRng;
-    } else {
+    // thread_rng if we have std
+    } else if #[cfg(feature = "std")] {
         mod fallback;
         pub use fallback::McRng;
+    // OsRng otherwise
+    } else {
+        mod wasm;
+        pub use wasm::McRng;
     }
 }
 

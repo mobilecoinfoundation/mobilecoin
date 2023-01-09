@@ -11,8 +11,8 @@ to get randomness directly from the CPU, bypassing a dependency on the OS, libc,
 etc. For servers using SGX, this rng works in no_std trusted and untrusted code
 equally well without changes, which is convenient.
 
-For targets without rdrand, `McRng` is `ThreadRng`.
-On wasm, `ThreadRng` is not available, so `McRng` is `OsRng`.
+For targets with `std` but without rdrand, `McRng` is `ThreadRng`.
+On wasm or no_std targets, `ThreadRng` is not available, so `McRng` is `OsRng`.
 
 `McRng` is in all configurations a zero-width type.
 '''

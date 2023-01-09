@@ -6,29 +6,43 @@ edition = "2021"
 readme = "README.md"
 
 [features]
-serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-dalek/serde"]
-alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "mc-crypto-dalek/alloc"]
+serde = [
+    "dep:serde",
+    "mc-transaction-types/serde",
+    "mc-crypto-keys/serde",
+    "mc-crypto-ring-signature/serde",
+    "mc-crypto-dalek/serde",
+]
+prost = [
+    "dep:prost",
+    "mc-crypto-keys/prost",
+    "mc-transaction-types/prost",
+    "mc-crypto-ring-signature/prost",
+]
 
-default = ["serde", "alloc", "mc-crypto-dalek/default"]
+default = [
+    "serde",
+    "prost",
+    "mc-account-keys/default",
+    "mc-crypto-dalek/default",
+]
 
 [dependencies]
-anyhow = "*"
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
-hex_fmt = "0.3"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys", default-features = false }
 mc-crypto-dalek = { path = "../../dalek", default-features = false }
 mc-crypto-keys = { path = "../../keys", default-features = false }
-mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc", "serde", "prost" ] }
+mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc" ] }
 mc-transaction-types = { path = "../../../transaction/types", default_features = false }
 mc-util-serial = { path = "../../../util/serial" }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "alloc"] }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 

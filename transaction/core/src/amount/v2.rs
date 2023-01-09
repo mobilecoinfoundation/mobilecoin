@@ -37,17 +37,17 @@ use zeroize::Zeroize;
 pub struct MaskedAmountV2 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub commitment: CompressedCommitment,
 
     /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
-    #[prost(fixed64, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(fixed64, required, tag = "2"))]
     pub masked_value: u64,
 
     /// `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
     /// shared_secret)` 8 bytes long when used, 0 bytes for older amounts
     /// that don't have this.
-    #[prost(bytes, tag = "3")]
+    #[cfg_attr(feature="prost", prost(bytes, tag = "3"))]
     pub masked_token_id: Vec<u8>,
 }
 

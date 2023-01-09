@@ -7,8 +7,8 @@ readme = "README.md"
 
 [features]
 std = ["mc-util-repr-bytes/alloc"]
-prost = ["dep:prost", "mc-util-repr-bytes/prost", "mc-crypto-keys/prost"]
-serde = ["dep:serde", "mc-crypto-keys/serde"]
+prost = ["dep:prost", "mc-util-repr-bytes/prost", "mc-core/prost"]
+serde = ["dep:serde", "mc-core/serde"]
 default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/default", "mc-crypto-hashes/default", "mc-crypto-keys/default"]
 
 [dependencies]
