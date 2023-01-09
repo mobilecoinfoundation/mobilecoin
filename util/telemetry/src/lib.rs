@@ -51,7 +51,9 @@ pub fn versioned_tracer(
     tracer_provider().versioned_tracer(name, version, schema_url)
 }
 
-pub fn create_async_context<T>(tracer: &BoxedTracer, name: T) -> Context
+/// Creates a context when an explicit context is required. Useful when tracing
+/// inside an `async` method.
+pub fn create_context<T>(tracer: &BoxedTracer, name: T) -> Context
 where
     T: Into<Cow<'static, str>>,
 {

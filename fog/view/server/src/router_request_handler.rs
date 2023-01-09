@@ -18,7 +18,7 @@ use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
 use mc_util_metrics::{GrpcMethodName, SVC_COUNTERS};
-use mc_util_telemetry::{create_async_context, tracer, BoxedTracer, FutureExt, Tracer};
+use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use std::sync::Arc;
 
@@ -38,13 +38,11 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
-        let tracer = tracer!();
         let result = handle_request(
             request,
             shard_clients.clone(),
             enclave.clone(),
             logger.clone(),
-            &tracer,
         )
         .await;
 
@@ -70,19 +68,25 @@ pub async fn handle_request<E>(
     shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     enclave: E,
     logger: Logger,
-    tracer: &BoxedTracer,
 ) -> Result<FogViewRouterResponse, RpcStatus>
 where
     E: ViewEnclaveProxy,
 {
+    let tracer = tracer!();
     if request.has_auth() {
         tracer.in_span("router_auth", |_cx| {
             handle_auth_request(enclave, request.take_auth(), logger)
         })
     } else if request.has_query() {
-        handle_query_request(request.take_query(), enclave, shard_clients, logger, tracer)
-            .with_context(create_async_context(tracer, "router_query"))
-            .await
+        handle_query_request(
+            request.take_query(),
+            enclave,
+            shard_clients,
+            logger,
+            &tracer,
+        )
+        .with_context(create_context(&tracer, "router_query"))
+        .await
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid FogViewRouterRequest request",
@@ -138,7 +142,7 @@ where
         shard_clients.clone(),
         logger.clone(),
     )
-    .with_context(create_async_context(tracer, "router_get_query_responses"))
+    .with_context(create_context(tracer, "router_get_query_responses"))
     .await?;
 
     let query_response = tracer.in_span("router_collate_query_responses", |_cx| {
