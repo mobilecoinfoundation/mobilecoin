@@ -160,7 +160,6 @@ where
 
     /// Unwrap and forward to enclave
     pub fn query_impl(&mut self, request: attest::Message) -> Result<attest::Message, RpcStatus> {
-        log::trace!(self.logger, "Getting encrypted request");
         let tracer = tracer!();
 
         tracer.in_span("query_impl", |_cx| {
@@ -183,7 +182,6 @@ where
         &mut self,
         request: attest::NonceMessage,
     ) -> Result<attest::NonceMessage, RpcStatus> {
-        log::trace!(self.logger, "Getting encrypted request");
         let tracer = tracer!();
         tracer.in_span("query_nonce_impl", |_cx| {
             let untrusted_query_response =
