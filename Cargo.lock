@@ -3905,6 +3905,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-serial",
  "mc-watcher-api",
+ "yare",
 ]
 
 [[package]]
