@@ -260,17 +260,13 @@ mod tests {
             timestamp_result_code: TimestampResultCode::TimestampFound as u32,
             key_image_result_code: KeyImageResultCode::Spent as u32,
         };
-        let shard_results = vec![key_image_result];
+        let shard_results = vec![key_image_result.clone()];
 
-        let results = collate_shard_key_image_search_results(client_queries, &shard_results);
-
+        let mut results = collate_shard_key_image_search_results(client_queries, &shard_results);
+        results.sort_by_key(|r| r.key_image);
         assert_eq!(
-            results[0].key_image_result_code,
-            KeyImageResultCode::Spent as u32
-        );
-        assert_eq!(
-            results[1].key_image_result_code,
-            DEFAULT_KEY_IMAGE_SEARCH_RESULT_CODE as u32
+            results,
+            vec![key_image_result, default_client_key_image(2.into())]
         );
     }
 }
