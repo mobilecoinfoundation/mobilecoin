@@ -59,3 +59,9 @@ global:
     # Add signed tokens.json with --set-file=global.node.tokensConfig.tokensSignedJson=tokens.signed.json
     # tokensConfig:
     #   tokensSignedJson: |-
+
+  ### Enable haproxy IP blacklist for ingress
+  # pattern is the object in the configmap shared between infra-haproxy-blacklist and haproxy kubernetes-ingress
+  blocklist:
+    enabled: false
+    pattern: patterns/blocked-countries
