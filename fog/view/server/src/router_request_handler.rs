@@ -18,6 +18,7 @@ use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
 use mc_util_metrics::{GrpcMethodName, SVC_COUNTERS};
+use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use std::sync::Arc;
 
@@ -71,10 +72,21 @@ pub async fn handle_request<E>(
 where
     E: ViewEnclaveProxy,
 {
+    let tracer = tracer!();
     if request.has_auth() {
-        handle_auth_request(enclave, request.take_auth(), logger)
+        tracer.in_span("router_auth", |_cx| {
+            handle_auth_request(enclave, request.take_auth(), logger)
+        })
     } else if request.has_query() {
-        handle_query_request(request.take_query(), enclave, shard_clients, logger).await
+        handle_query_request(
+            request.take_query(),
+            enclave,
+            shard_clients,
+            logger,
+            &tracer,
+        )
+        .with_context(create_context(&tracer, "router_query"))
+        .await
     } else {
         let rpc_status = rpc_invalid_arg_error(
             "Inavlid FogViewRouterRequest request",
@@ -109,6 +121,7 @@ pub async fn handle_query_request<E>(
     enclave: E,
     shard_clients: Vec<Arc<FogViewStoreApiClient>>,
     logger: Logger,
+    tracer: &BoxedTracer,
 ) -> Result<FogViewRouterResponse, RpcStatus>
 where
     E: ViewEnclaveProxy,
@@ -129,17 +142,20 @@ where
         shard_clients.clone(),
         logger.clone(),
     )
+    .with_context(create_context(tracer, "router_get_query_responses"))
     .await?;
 
-    let query_response = enclave
-        .collate_shard_query_responses(sealed_query, query_responses)
-        .map_err(|err| {
-            router_server_err_to_rpc_status(
-                "Query: shard response collation",
-                RouterServerError::Enclave(err),
-                logger.clone(),
-            )
-        })?;
+    let query_response = tracer.in_span("router_collate_query_responses", |_cx| {
+        enclave
+            .collate_shard_query_responses(sealed_query, query_responses)
+            .map_err(|err| {
+                router_server_err_to_rpc_status(
+                    "Query: shard response collation",
+                    RouterServerError::Enclave(err),
+                    logger.clone(),
+                )
+            })
+    })?;
 
     let mut response = FogViewRouterResponse::new();
     response.set_query(query_response.into());
