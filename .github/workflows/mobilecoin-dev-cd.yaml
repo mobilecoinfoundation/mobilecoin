@@ -130,8 +130,8 @@ jobs:
           -p mc-consensus-mint-client \
           -p mc-consensus-service \
           -p mc-fog-distribution \
-          -p mc-fog-ingest-server \
           -p mc-fog-ingest-client \
+          -p mc-fog-ingest-server \
           -p mc-fog-ledger-server \
           -p mc-fog-report-cli \
           -p mc-fog-report-server \
@@ -142,6 +142,7 @@ jobs:
           -p mc-ledger-from-archive \
           -p mc-ledger-migration \
           -p mc-mobilecoind \
+          -p mc-mobilecoind-dev-faucet \
           -p mc-mobilecoind-json \
           -p mc-util-generate-sample-ledger \
           -p mc-util-grpc-admin-tool \

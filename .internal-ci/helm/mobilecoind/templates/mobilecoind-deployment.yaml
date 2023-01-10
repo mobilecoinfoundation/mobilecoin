@@ -32,14 +32,13 @@ spec:
       - name: mobilecoind
         image: '{{ .Values.mobilecoind.image.org | default .Values.image.org }}/{{ .Values.mobilecoind.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
         imagePullPolicy: Always
-        command: [ "/usr/bin/supervisord" ]
         ports:
         - name: grpc
           containerPort: 3229
         - name: json
           containerPort: 9090
-        - name: auditor-grpc
-          containerPort: 7774
+        - name: faucet
+          containerPort: 9091
         # Hold liveness and readiness until this probe passes.
         startupProbe:
           exec:
@@ -68,6 +67,9 @@ spec:
         - secretRef:
             name: ipinfo
             optional: true
+        - secretRef:
+            name: sample-keys-seeds
+            optional: true
         env:
         - name: "RUST_BACKTRACE"
           value: "full"
@@ -83,6 +85,9 @@ spec:
           mountPath: /data
         - name: supervisor-conf
           mountPath: /etc/supervisor/conf.d
+          readOnly: true
+        - name: wallet-seeds
+          mountPath: /wallet-seeds
           readOnly: true
       {{- if eq .Values.jaegerTracing.enabled true }}
       - name: jaeger-agent
@@ -123,6 +128,10 @@ spec:
       volumes:
       - name: data
         emptyDir: {}
+      - name: wallet-seeds
+        secret:
+          secretName: sample-keys-seeds
+          optional: true
       - name: supervisor-conf
         projected:
           sources:
@@ -132,3 +141,5 @@ spec:
               name: mobilecoind-supervisord-mobilecoind
           - configMap:
               name: {{ include "mobilecoind.fullname" . }}-supervisord-mobilecoind-json
+          - configMap:
+              name: {{ include "mobilecoind.fullname" . }}-supervisord-mobilecoind-dev-faucet
