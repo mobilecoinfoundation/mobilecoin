@@ -60,8 +60,8 @@ global:
     # tokensConfig:
     #   tokensSignedJson: |-
 
-  ### Enable haproxy IP blacklist for ingress
-  # pattern is the object in the configmap shared between infra-haproxy-blacklist and haproxy kubernetes-ingress
+  ### Enable haproxy IP blocklist for ingress
+  # pattern is the object in the configmap shared between infra-haproxy-blocklist and haproxy kubernetes-ingress
   blocklist:
     enabled: false
     pattern: patterns/blocked-countries

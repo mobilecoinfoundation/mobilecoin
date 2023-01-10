@@ -124,7 +124,7 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 
 {{- define "consensusNode.blocklist.enabled" -}}
   {{- if eq .Values.consensusNodeConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLACKLIST_ENABLED | default "false" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLOCKLIST_ENABLED | default "false" }}
   {{- else }}
     {{- tpl .Values.global.blocklist.enabled . }}
   {{- end }}
@@ -132,7 +132,7 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 
 {{- define "consensusNode.blocklist.pattern" -}}
   {{- if eq .Values.consensusNodeConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLACKLIST_PATTERN | default "" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLOCKLIST_PATTERN | default "" }}
   {{- else }}
     {{- tpl .Values.global.blocklist.pattern . }}
   {{- end }}
