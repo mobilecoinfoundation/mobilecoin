@@ -1,6 +1,12 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 fullnameOverride: ''
 
+# Shared by all charts in the dependency tree
+global:
+  blocklist:
+    enabled: false
+    pattern: patterns/blocked-countries
+
 fogRecoveryDatabaseReader:
   configMap:
     # Default to a TF or external created ConfigMap
