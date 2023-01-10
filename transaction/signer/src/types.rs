@@ -10,6 +10,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     BlockVersion,
 };
+use mc_transaction_extra::TxOutSummaryUnblindingData;
 use serde::{Deserialize, Serialize};
 
 /// Account ID object, derived from the default subaddress and used
@@ -158,10 +159,21 @@ pub struct TxSignReq {
     pub rings: Vec<InputRing>,
 
     /// Output secrets
-    pub output_secrets: Vec<OutputSecret>,
+    pub tx_out_unblinding_data: Vec<TxOutSummaryUnblindingData>,
 
     /// Block version
     pub block_version: BlockVersion,
+}
+
+impl TxSignReq {
+    /// Convert unblinding data to output secrets
+    pub fn output_secrets(&self) -> Vec<OutputSecret> {
+        self
+            .tx_out_unblinding_data
+            .iter()
+            .map(|data| OutputSecret::from(data.unmasked_amount.clone()))
+            .collect()
+    }
 }
 
 /// Transaction signing response, returned to full service

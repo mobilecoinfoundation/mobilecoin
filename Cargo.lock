@@ -3240,6 +3240,7 @@ dependencies = [
  "mc-crypto-keys",
  "prost",
  "serde",
+ "subtle",
  "zeroize",
 ]
 
@@ -5471,6 +5472,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-core",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",

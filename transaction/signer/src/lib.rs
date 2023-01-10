@@ -9,6 +9,7 @@ use clap::Parser;
 use log::debug;
 
 use mc_crypto_keys::RistrettoPublic;
+use mc_transaction_extra::{TxSummaryUnblindingData, UnmaskedAmount};
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -166,7 +167,7 @@ impl Commands {
             req.block_version,
             &prefix,
             req.rings.as_slice(),
-            req.output_secrets.as_slice(),
+            &req.output_secrets(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
             &ctx,
             &mut OsRng {},
@@ -254,19 +255,47 @@ impl TxSignReq {
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<(SigningData, TxSummary, ExtendedMessageDigest), RingCtError> {
+    ) -> Result<(SigningData, TxSummary, TxSummaryUnblindingData, ExtendedMessageDigest), RingCtError> {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        SigningData::new_with_summary(
+        let (signing_data, tx_summary, extended_message_digest)= SigningData::new_with_summary(
             self.block_version,
             &self.tx_prefix,
             &self.rings,
-            &self.output_secrets,
+            &self.output_secrets(),
             fee_amount,
             true,
             rng,
-        )
+        )?;
+
+        // Try to build the TxSummary unblinding data, which requires the amounts from
+        // the rings, and the blinding factors from the signing data segment.
+        if signing_data.pseudo_output_blindings.len() != self.rings.len() {
+            return Err(RingCtError::LengthMismatch(
+                signing_data.pseudo_output_blindings.len(),
+                self.rings.len(),
+            ));
+        }
+        let tx_summary_unblinding_data = TxSummaryUnblindingData {
+            block_version: *self.block_version,
+            outputs: self.tx_out_unblinding_data.clone(),
+            inputs: signing_data
+                .pseudo_output_blindings
+                .iter()
+                .zip(self.rings.iter())
+                .map(|(blinding, ring)| {
+                    let amount = ring.amount();
+                    UnmaskedAmount {
+                        value: amount.value,
+                        token_id: *amount.token_id,
+                        blinding: (*blinding).into(),
+                    }
+                })
+                .collect(),
+        };
+
+        Ok((signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest))
     }
 }

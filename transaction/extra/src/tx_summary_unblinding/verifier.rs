@@ -15,8 +15,7 @@ use super::{
     TxSummaryUnblindingReport,
 };
 use crate::UnmaskedAmount;
-use mc_account_keys::{PublicAddress, ShortAddressHash};
-use mc_core::account::RingCtAddress;
+use mc_core::account::{RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature::onetime_keys::{
