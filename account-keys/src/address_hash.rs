@@ -1,52 +1,18 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A newtype representing a standard hash of a MobileCoin public address.
+//! A newtype representing a standard hash of a MobileCoin public address (re-exported from mc_core).
 //! This is used in certain memos, as a compact representation of the address.
 
 use crate::account_keys::PublicAddress;
-use hex_fmt::HexFmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use subtle::{Choice, ConstantTimeEq};
+pub use mc_core::account::ShortAddressHash;
 
-/// Represents a "standard" public address hash created using merlin,
-/// used in memos as a compact representation of a MobileCoin public address.
-/// This hash is collision resistant.
-#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct ShortAddressHash([u8; 16]);
-
-impl From<[u8; 16]> for ShortAddressHash {
-    fn from(src: [u8; 16]) -> Self {
-        Self(src)
-    }
-}
-
-impl From<ShortAddressHash> for [u8; 16] {
-    fn from(src: ShortAddressHash) -> [u8; 16] {
-        src.0
-    }
-}
-
-impl AsRef<[u8; 16]> for ShortAddressHash {
-    fn as_ref(&self) -> &[u8; 16] {
-        &self.0
-    }
-}
-
+/// Compute [ShortAddressHash] from [PublicAddress]
 impl From<&PublicAddress> for ShortAddressHash {
     fn from(src: &PublicAddress) -> Self {
         let digest = src.digest32::<MerlinTranscript>(b"mc-address");
-        Self(digest[0..16].try_into().expect("arithmetic error"))
+        let b: [u8; 16] = digest[0..16].try_into().expect("arithmetic error");
+        ShortAddressHash::from(b)
     }
 }
 
-impl ConstantTimeEq for ShortAddressHash {
-    fn ct_eq(&self, other: &Self) -> Choice {
-        self.0.ct_eq(&other.0)
-    }
-}
-
-impl core::fmt::Display for ShortAddressHash {
-    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(formatter, "{}", HexFmt(self.0.as_ref()))
-    }
-}

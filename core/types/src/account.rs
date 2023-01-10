@@ -18,6 +18,16 @@ pub trait RingCtAddress {
     fn spend_public_key(&self) -> SubaddressSpendPublic;
 }
 
+impl <T: RingCtAddress> RingCtAddress for &T {
+    fn view_public_key(&self) -> SubaddressViewPublic {
+        T::view_public_key(&self)
+    }
+
+    fn spend_public_key(&self) -> SubaddressSpendPublic {
+        T::spend_public_key(&self)
+    }
+}
+
 /// MobileCoin basic account object.
 ///
 /// Typically derived via slip10, and containing root view and spend private
@@ -213,5 +223,44 @@ impl From<&ViewSubaddress> for PublicSubaddress {
             view_public: addr.view_public_key(),
             spend_public: addr.spend_public_key(),
         }
+    }
+}
+
+/// Represents a "standard" public address hash created using merlin,
+/// used in memos as a compact representation of a MobileCoin public address.
+/// This hash is collision resistant.
+#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct ShortAddressHash([u8; 16]);
+
+impl From<[u8; 16]> for ShortAddressHash {
+    fn from(src: [u8; 16]) -> Self {
+        Self(src)
+    }
+}
+
+impl From<ShortAddressHash> for [u8; 16] {
+    fn from(src: ShortAddressHash) -> [u8; 16] {
+        src.0
+    }
+}
+
+impl AsRef<[u8; 16]> for ShortAddressHash {
+    fn as_ref(&self) -> &[u8; 16] {
+        &self.0
+    }
+}
+
+impl subtle::ConstantTimeEq for ShortAddressHash {
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        self.0.ct_eq(&other.0)
+    }
+}
+
+impl core::fmt::Display for ShortAddressHash {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        for b in self.0 {
+            write!(formatter, "{:02x}", b)?;
+        }
+        Ok(())
     }
 }

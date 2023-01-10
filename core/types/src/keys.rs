@@ -10,7 +10,7 @@ use core::{
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use zeroize::Zeroize;
 
-use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic, ReprBytes};
+use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic, CompressedRistrettoPublic, ReprBytes};
 
 use crate::markers::*;
 
@@ -133,6 +133,21 @@ impl<ADDR, KIND> From<RistrettoPublic> for Key<ADDR, KIND, RistrettoPublic> {
             _addr: PhantomData,
             _kind: PhantomData,
         }
+    }
+}
+
+/// Create a public key from [`CompressedRistrettoPublic`] object
+impl<ADDR, KIND> TryFrom<&CompressedRistrettoPublic> for Key<ADDR, KIND, RistrettoPublic> {
+    type Error = KeyError;
+
+    fn try_from(p: &CompressedRistrettoPublic) -> Result<Self, Self::Error> {
+        let key = RistrettoPublic::try_from(p)?;
+
+        Ok(Self {
+            key,
+            _addr: PhantomData,
+            _kind: PhantomData,
+        })
     }
 }
 
