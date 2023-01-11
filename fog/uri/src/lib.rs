@@ -24,8 +24,8 @@ pub struct FogViewScheme {}
 
 impl UriScheme for FogViewScheme {
     /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "fog-view-store";
-    const SCHEME_INSECURE: &'static str = "insecure-fog-view-store";
+    const SCHEME_SECURE: &'static str = "fog-view";
+    const SCHEME_INSECURE: &'static str = "insecure-fog-view";
 
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 443;
