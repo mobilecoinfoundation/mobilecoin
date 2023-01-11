@@ -11,6 +11,7 @@ FROM ${REPO_ORG}/runtime-base:latest
 ARG RUST_BIN_PATH=target/release
 COPY ${RUST_BIN_PATH}/libview-enclave.signed.so /usr/bin/
 COPY ${RUST_BIN_PATH}/fog_view_server /usr/bin/
+COPY ${RUST_BIN_PATH}/fog_view_router /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-admin-http-gateway /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
 
