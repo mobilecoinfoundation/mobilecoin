@@ -927,10 +927,8 @@ dependencies = [
 name = "mc-core"
 version = "2.0.0"
 dependencies = [
- "anyhow",
  "curve25519-dalek",
  "ed25519-dalek",
- "glob",
  "hkdf",
  "mc-core-types",
  "mc-crypto-dalek",
