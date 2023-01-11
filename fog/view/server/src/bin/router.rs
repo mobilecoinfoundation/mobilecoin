@@ -8,9 +8,9 @@ use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{
-    config::{FogViewRouterConfig, ShardingStrategy::Epoch},
+    config::FogViewRouterConfig,
     fog_view_router_server::{FogViewRouterServer, Shard},
-    sharding_strategy::ShardingStrategy,
+    sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -47,23 +47,17 @@ fn main() {
             .name_prefix("Main-RPC".to_string())
             .build(),
     );
-    for (i, shard_uri) in config.shard_uris.clone().into_iter().enumerate() {
+    for shard_uri in config.shard_uris.clone() {
         let fog_view_store_grpc_client = FogViewStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
         );
 
-        let sharding_strategy = config
-            .sharding_strategies
-            .get(i)
-            .unwrap_or_else(|| panic!("Couldn't find shard at index {}", i));
-        let Epoch(epoch_sharding_strategy) = sharding_strategy;
+        // TODO: update this logic once we introduce other types of sharding strategies.
+        let epoch_sharding_strategy = EpochShardingStrategy::try_from(shard_uri.clone())
+            .expect("Could not get sharding strategy");
         let block_range = epoch_sharding_strategy.get_block_range();
-        let shard = Shard::new(
-            shard_uri.clone(),
-            Arc::new(fog_view_store_grpc_client),
-            block_range,
-        );
+        let shard = Shard::new(shard_uri, Arc::new(fog_view_store_grpc_client), block_range);
         shards.push(shard);
     }
     let shards = Arc::new(RwLock::new(shards));

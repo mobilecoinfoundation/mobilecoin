@@ -6,10 +6,7 @@ use crate::{
     SVC_COUNTERS,
 };
 use grpcio::{ChannelBuilder, RpcContext, RpcStatus, UnarySink};
-use mc_common::{
-    logger::{log, Logger},
-    HashSet,
-};
+use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::AddShardRequest,
     view_grpc::{FogViewRouterAdminApi, FogViewStoreApiClient},
@@ -46,9 +43,7 @@ impl FogViewRouterAdminService {
         let mut shards = self.shards.write().expect("RwLock Poisoned");
         if shards
             .iter()
-            .map(|shard| shard.uri.clone())
-            .collect::<HashSet<FogViewStoreUri>>()
-            .contains(&view_store_uri)
+            .any(|shard| shard.uri.clone() == view_store_uri)
         {
             let error = rpc_precondition_error(
                 "add_shard",
@@ -66,8 +61,6 @@ impl FogViewRouterAdminService {
             ChannelBuilder::default_channel_builder(grpc_env)
                 .connect_to_uri(&view_store_uri, logger),
         );
-        // TODO: Add block range or sharding strategy to this...
-        // Check to make sure this block range isn't already covered...
         let block_range = EpochShardingStrategy::default().get_block_range();
         let shard = Shard::new(view_store_uri, Arc::new(view_store_client), block_range);
         shards.push(shard);

@@ -6,7 +6,12 @@
 //! TxOuts across Fog View Store instances.
 
 use mc_blockchain_types::BlockIndex;
-use mc_fog_types::{common::BlockRange, BlockCount};
+use mc_fog_types::{
+    common::{BlockRange, BLOCK_RANGE_DELIMITER},
+    BlockCount,
+};
+use mc_fog_uri::FogViewStoreUri;
+use mc_util_uri::ConnectionUri;
 use serde::Serialize;
 use std::str::FromStr;
 
@@ -39,6 +44,17 @@ pub struct EpochShardingStrategy {
     epoch_block_range: BlockRange,
 }
 
+impl TryFrom<FogViewStoreUri> for EpochShardingStrategy {
+    type Error = String;
+
+    fn try_from(src: FogViewStoreUri) -> Result<Self, Self::Error> {
+        let sharding_strategy_string = src
+            .get_param("sharding_strategy")
+            .unwrap_or_else(|| "default".to_string());
+        EpochShardingStrategy::from_str(&sharding_strategy_string)
+    }
+}
+
 impl ShardingStrategy for EpochShardingStrategy {
     fn should_process_block(&self, block_index: BlockIndex) -> bool {
         self.epoch_block_range.contains(block_index)
@@ -58,6 +74,14 @@ impl Default for EpochShardingStrategy {
         Self {
             epoch_block_range: BlockRange::new(0, u64::MAX),
         }
+    }
+}
+
+impl ToString for EpochShardingStrategy {
+    fn to_string(&self) -> String {
+        let start_block = self.epoch_block_range.start_block;
+        let end_block = self.epoch_block_range.end_block;
+        format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}")
     }
 }
 

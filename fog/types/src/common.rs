@@ -5,6 +5,10 @@ use core::str::FromStr;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+/// The string that delimits the start and end blocks in a string that
+/// represents a BlockRange.
+pub const BLOCK_RANGE_DELIMITER: &str = "-";
+
 /// A half-open [a, b) range of blocks
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize, Deserialize)]
 pub struct BlockRange {
@@ -70,7 +74,7 @@ impl FromStr for BlockRange {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let block_indices: Vec<u64> = s
-            .split(',')
+            .split(BLOCK_RANGE_DELIMITER)
             .map(|index_str| index_str.trim().parse())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| "BlockRange index is not a number.")?;

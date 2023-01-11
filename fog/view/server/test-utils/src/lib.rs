@@ -26,7 +26,7 @@ use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
     config::{
         FogViewRouterConfig, MobileAcctViewConfig as ViewConfig, RouterClientListenUri,
-        ShardingStrategy, ShardingStrategy::Epoch,
+        ShardingStrategy::Epoch,
     },
     fog_view_router_server::{FogViewRouterServer, Shard},
     server::ViewServer,
@@ -71,7 +71,7 @@ pub struct RouterTestEnvironment {
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
     pub fn new(omap_capacity: u64, store_block_ranges: Vec<BlockRange>, logger: Logger) -> Self {
-        let (db_test_context, store_servers, store_clients, shard_uris, sharding_strategies) =
+        let (db_test_context, store_servers, store_clients, shard_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -86,7 +86,6 @@ impl RouterTestEnvironment {
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
-            sharding_strategies,
             shard_uris,
             ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
@@ -112,7 +111,7 @@ impl RouterTestEnvironment {
         store_block_ranges: Vec<BlockRange>,
         logger: Logger,
     ) -> Self {
-        let (db_test_context, store_servers, store_clients, shard_uris, sharding_strategies) =
+        let (db_test_context, store_servers, store_clients, shard_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -128,7 +127,6 @@ impl RouterTestEnvironment {
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
             ias_spid: Default::default(),
-            sharding_strategies,
             shard_uris,
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
@@ -218,28 +216,25 @@ impl RouterTestEnvironment {
         Vec<TestViewServer>,
         Arc<RwLock<Vec<Shard>>>,
         Vec<FogViewStoreUri>,
-        Vec<ShardingStrategy>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
         let mut shards = Vec::new();
         let mut shard_uris: Vec<FogViewStoreUri> = Vec::new();
-        let mut sharding_strategies: Vec<ShardingStrategy> = Vec::new();
 
         for (i, store_block_range) in store_block_ranges.into_iter().enumerate() {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
+                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
                 let uri = FogViewStoreUri::from_str(&format!(
-                    "insecure-fog-view-store://127.0.0.1:{}",
-                    port
+                    "insecure-fog-view-store://127.0.0.1:{port}?sharding_strategy={}",
+                    epoch_sharding_strategy.to_string()
                 ))
                 .unwrap();
 
-                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
                 let sharding_strategy = Epoch(epoch_sharding_strategy);
                 shard_uris.push(uri.clone());
-                sharding_strategies.push(sharding_strategy.clone());
 
                 let config = ViewConfig {
                     chain_id: "local".to_string(),
@@ -296,13 +291,7 @@ impl RouterTestEnvironment {
 
         let store_clients = Arc::new(RwLock::new(shards));
 
-        (
-            db_test_context,
-            store_servers,
-            store_clients,
-            shard_uris,
-            sharding_strategies,
-        )
+        (db_test_context, store_servers, store_clients, shard_uris)
     }
 }
 
