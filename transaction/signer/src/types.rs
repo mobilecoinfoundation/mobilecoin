@@ -159,20 +159,31 @@ pub struct TxSignReq {
     pub rings: Vec<InputRing>,
 
     /// Output secrets
-    pub tx_out_unblinding_data: Vec<TxOutSummaryUnblindingData>,
+    #[serde(flatten)]
+    pub secrets: TxSignSecrets,
 
     /// Block version
     pub block_version: BlockVersion,
 }
 
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub enum TxSignSecrets {
+    #[serde(rename = "output_secrets")]
+    OutputSecrets(Vec<OutputSecret>),
+    #[serde(rename = "tx_out_unblinding_data")]
+    TxOutUnblindingData(Vec<TxOutSummaryUnblindingData>),
+}
+
 impl TxSignReq {
-    /// Convert unblinding data to output secrets
+    /// Fetch or convert unblinding data to output secrets
     pub fn output_secrets(&self) -> Vec<OutputSecret> {
-        self
-            .tx_out_unblinding_data
-            .iter()
-            .map(|data| OutputSecret::from(data.unmasked_amount.clone()))
-            .collect()
+        match &self.secrets {
+            TxSignSecrets::OutputSecrets(s) => s.clone(),
+            TxSignSecrets::TxOutUnblindingData(u) => u
+                .iter()
+                .map(|data| OutputSecret::from(data.unmasked_amount.clone()))
+                .collect(),
+        }
     }
 }
 

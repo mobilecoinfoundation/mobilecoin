@@ -255,12 +255,20 @@ impl TxSignReq {
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<(SigningData, TxSummary, TxSummaryUnblindingData, ExtendedMessageDigest), RingCtError> {
+    ) -> Result<
+        (
+            SigningData,
+            TxSummary,
+            Option<TxSummaryUnblindingData>,
+            ExtendedMessageDigest,
+        ),
+        RingCtError,
+    > {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        let (signing_data, tx_summary, extended_message_digest)= SigningData::new_with_summary(
+        let (signing_data, tx_summary, extended_message_digest) = SigningData::new_with_summary(
             self.block_version,
             &self.tx_prefix,
             &self.rings,
@@ -270,32 +278,42 @@ impl TxSignReq {
             rng,
         )?;
 
+        let mut tx_summary_unblinding_data = None;
+
         // Try to build the TxSummary unblinding data, which requires the amounts from
         // the rings, and the blinding factors from the signing data segment.
-        if signing_data.pseudo_output_blindings.len() != self.rings.len() {
-            return Err(RingCtError::LengthMismatch(
-                signing_data.pseudo_output_blindings.len(),
-                self.rings.len(),
-            ));
-        }
-        let tx_summary_unblinding_data = TxSummaryUnblindingData {
-            block_version: *self.block_version,
-            outputs: self.tx_out_unblinding_data.clone(),
-            inputs: signing_data
-                .pseudo_output_blindings
-                .iter()
-                .zip(self.rings.iter())
-                .map(|(blinding, ring)| {
-                    let amount = ring.amount();
-                    UnmaskedAmount {
-                        value: amount.value,
-                        token_id: *amount.token_id,
-                        blinding: (*blinding).into(),
-                    }
-                })
-                .collect(),
-        };
+        if let TxSignSecrets::TxOutUnblindingData(tx_out_unblinding_data) = &self.secrets {
+            if signing_data.pseudo_output_blindings.len() != self.rings.len() {
+                return Err(RingCtError::LengthMismatch(
+                    signing_data.pseudo_output_blindings.len(),
+                    self.rings.len(),
+                ));
+            }
 
-        Ok((signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest))
+            tx_summary_unblinding_data = Some(TxSummaryUnblindingData {
+                block_version: *self.block_version,
+                outputs: tx_out_unblinding_data.clone(),
+                inputs: signing_data
+                    .pseudo_output_blindings
+                    .iter()
+                    .zip(self.rings.iter())
+                    .map(|(blinding, ring)| {
+                        let amount = ring.amount();
+                        UnmaskedAmount {
+                            value: amount.value,
+                            token_id: *amount.token_id,
+                            blinding: (*blinding).into(),
+                        }
+                    })
+                    .collect(),
+            });
+        }
+
+        Ok((
+            signing_data,
+            tx_summary,
+            tx_summary_unblinding_data,
+            extended_message_digest,
+        ))
     }
 }

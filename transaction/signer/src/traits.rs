@@ -104,7 +104,7 @@ pub trait MemoHmacSigner {
 }
 
 /// Memo signer impl for reference types
-impl <T: MemoHmacSigner> MemoHmacSigner for &T {
+impl<T: MemoHmacSigner> MemoHmacSigner for &T {
     type Error = <T as MemoHmacSigner>::Error;
 
     fn compute_memo_hmac_sig(
