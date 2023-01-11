@@ -1,0 +1,12 @@
+name: Upload core dumps
+description: Uploads generated core* files as a build artifact.
+
+runs:
+  using: composite
+  steps:
+    - name: Upload core dumps
+      uses: actions/upload-artifact@v3
+      with:
+        name: core_dumps
+        path: core*
+        if-no-files-found: ignore
