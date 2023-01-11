@@ -29,6 +29,10 @@ global:
     #   tokensSignedJson: |-
     #     { json }
 
+  blocklist:
+    enabled: false
+    pattern: patterns/blocked-countries
+
 ### Enable to launch child chart to create node required configMaps and secrets.
 #   See helm/consensus-node-config/values.yaml for config details.
 consensusNodeConfig:
@@ -41,7 +45,7 @@ consensusNodeConfig:
       hostname: ''
     txSourceUrl: ''
     msgSignerKey:
-     privateKey: ''
+      privateKey: ''
 
 ### Enable to launch child chart to create core common configMaps and secrets.
 #   See helm/mc-core-common-config/values.yaml for config details.
@@ -101,6 +105,21 @@ node:
           storage: 512Gi
 
   client:
+    attest:
+      rateLimits:
+        enabled: true
+        # Assume 2 ingress controllers.
+        # Since this version of haproxy ingress doesn't have peering support we need to divide the
+        # total requests we want to allow by the number of nodes.  Its a little bit funky since
+        # we also need to assume that load-balancing between ingest nodes is even (or close enough).
+        # Another limitation is this stick-table is shared across all ingresses that use the same
+        # rate-limit-period.  Need to file a pr?
+        # rate limit attest endpoint to 20 requests/min from any single IP.
+        annotations:
+          haproxy.org/rate-limit-status-code: "429"
+          haproxy.org/rate-limit-requests: "30"
+          haproxy.org/rate-limit-period: 1m
+
     ingress:
       annotations:
         # HAProxy Ingress

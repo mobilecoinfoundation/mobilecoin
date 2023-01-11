@@ -65,6 +65,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ include "consensusNode.fullname" . }}-tokens-config
 {{- end }}
 
+{{- define "consensusNode.ingressBlocklist.configMap.name" -}}
+{{ include "consensusNode.fullname" . }}-ingress-blocklist
+{{- end }}
+
 {{/*
 peer and client hostnames - we need this for ingress.
 lookup name from configmap if we have created the objects in consensus-node-config separately.
@@ -115,5 +119,21 @@ lookup name from configmap if we have created the objects in consensus-node-conf
     {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoin-network").data.partner | default "" }}
   {{- else }}
     {{- tpl .Values.mcCoreCommonConfig.mobileCoinNetwork.partner . }}
+  {{- end }}
+{{- end }}
+
+{{- define "consensusNode.blocklist.enabled" -}}
+  {{- if eq .Values.consensusNodeConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLoCKLIST_ENABLED | default "false" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.enabled . }}
+  {{- end }}
+{{- end }}
+
+{{- define "consensusNode.blocklist.pattern" -}}
+  {{- if eq .Values.consensusNodeConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLoCKLIST_PATTERN | default "" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.pattern . }}
   {{- end }}
 {{- end }}

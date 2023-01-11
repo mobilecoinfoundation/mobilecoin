@@ -33,6 +33,10 @@ global:
     tokensConfig:
       tokensSignedJson: ""
 
+  blocklist:
+    enabled: false
+    pattern: patterns/blocked-countries
+
 mcCoreCommonConfig:
   enabled: true
   fullnameOverride: mc-core-common-config
@@ -48,7 +52,6 @@ mcCoreCommonConfig:
       txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
     - client: '{{ printf "node3.%s.development.mobilecoin.com:443" .Release.Namespace }}'
       txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
-
 
 consensusNodeConfig1:
   enabled: true

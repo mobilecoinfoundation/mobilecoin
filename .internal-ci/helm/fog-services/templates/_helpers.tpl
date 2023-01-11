@@ -25,7 +25,7 @@ If release name contains chart name it will be used as a full name.
 
 {{/* Create chart name and version as used by the chart label. */}}
 {{- define "fogServices.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" | trimSuffix "." }}
 {{- end }}
 
 {{/* Common labels */}}
@@ -149,4 +149,20 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- $salt = index $saltSecret.data "salt" | b64dec }}
 {{- end }}
 {{- $salt }}
+{{- end }}
+
+{{- define "fogServices.blocklist.enabled" -}}
+  {{- if eq .Values.fogServicesConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_ENABLED | default "false" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.enabled . }}
+  {{- end }}
+{{- end }}
+
+{{- define "fogServices.blocklist.pattern" -}}
+  {{- if eq .Values.fogServicesConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_PATTERN | default "" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.pattern . }}
+  {{- end }}
 {{- end }}
