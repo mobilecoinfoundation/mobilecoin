@@ -3,6 +3,7 @@
 //! Attestation Verification Report type.
 
 use alloc::{string::String, vec::Vec};
+use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
@@ -108,7 +109,7 @@ impl FromBase64 for VerificationSignature {
     type Error = EncodingError;
 
     fn from_base64(s: &str) -> Result<Self, EncodingError> {
-        Ok(base64::decode(s)?.into())
+        Ok(BASE64_ENGINE.decode(s)?.into())
     }
 }
 
