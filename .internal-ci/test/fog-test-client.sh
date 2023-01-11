@@ -85,5 +85,5 @@ test_client \
     --num-transactions 32 \
     --consensus-wait 300 \
     --transfer-amount 20 \
-    --fog-view "fog-view-store://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
+    --fog-view "fog-view://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
     --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"
