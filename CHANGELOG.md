@@ -6,9 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## Unreleased
+## [4.0.1]
 
-- Improved performance of mobilecoind-dev-faucet for better load testing
+### Added
+
+- Make the local network script support a dense3 network option ([#2988])
+- HAProxy Ingress Blocklists ([#2952])
+
+### Changed
+
+- Improved performance of mobilecoind-dev-faucet for better load testing ([#2955])
 
 ## [4.0.0]
 
@@ -345,7 +352,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Update CI deployments to use zerossl instead of letsencrypt.
 - Add a `--hash-tx-file` subcommand to print the hash of a `mint-tx` or `mint-config-tx` file.
 - Add the current block info (fee map, block version, etc.) to the response message for `mobilecoind_api.GetNetworkStatus`.
-- Make Jaeger telemetry opt-in using `MC_TELEMETRY=1`. 
+- Make Jaeger telemetry opt-in using `MC_TELEMETRY=1`.
 - Add a `--block-query-batch-size` parameter to fog-view. This makes fog-view load more data at once from postgres, and helps it to start up faster even if there is high
   network latency in the connection to postgres. This defaults to 1000 now, where previous behavior corresponds to a value of 1.
 

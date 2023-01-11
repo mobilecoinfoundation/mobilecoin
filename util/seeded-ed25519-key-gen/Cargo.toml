@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-seeded-ed25519-key-gen"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 
