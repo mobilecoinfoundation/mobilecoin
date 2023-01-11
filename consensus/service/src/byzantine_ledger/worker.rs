@@ -841,13 +841,13 @@ impl<
         let well_formed_encrypted_txs_with_proofs = self
             .tx_manager
             .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes)
-            .unwrap_or_else(|e| panic!("failed resolving tx_hashes {:?}: {:?}", tx_hashes, e));
+            .unwrap_or_else(|e| panic!("failed resolving tx_hashes {tx_hashes:?}: {e:?}"));
 
         // Bundle mint_txs with the matching configuration that allows the minting.
         let mint_txs_with_config = self
             .mint_tx_manager
             .mint_txs_with_config(&mint_txs)
-            .unwrap_or_else(|e| panic!("failed resolving mint txs {:?}: {:?}", mint_txs, e));
+            .unwrap_or_else(|e| panic!("failed resolving mint txs {mint_txs:?}: {e:?}"));
 
         // Get the root membership element, which is needed for validating the
         // membership proofs (and also storing in the block for bookkeeping
@@ -881,10 +881,7 @@ impl<
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
         let verification_report = self.enclave.get_ias_report().unwrap_or_else(|err| {
-            panic!(
-                "Failed to fetch verification report after forming block {:?}: {}",
-                block_id, err
-            )
+            panic!("Failed to fetch verification report after forming block {block_id:?}: {err}")
         });
         let contents = BlockMetadataContents::new(
             block_id.clone(),
@@ -894,12 +891,7 @@ impl<
         );
 
         BlockMetadata::from_contents_and_keypair(contents, &self.msg_signer_key).unwrap_or_else(
-            |err| {
-                panic!(
-                    "Failed to sign block metadata for block {:?}: {}",
-                    block_id, err
-                )
-            },
+            |err| panic!("Failed to sign block metadata for block {block_id:?}: {err}"),
         )
     }
 }
@@ -1170,7 +1162,7 @@ mod tests {
                 attempt_sync_at: now,
                 num_sync_attempts: 0,
             },
-            logger.clone(),
+            logger,
         );
     }
 

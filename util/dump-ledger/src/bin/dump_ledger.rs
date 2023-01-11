@@ -29,5 +29,5 @@ fn main() {
 
     let json = dump_ledger(&ledger_db, config.params).expect("failed to dump LedgerDB");
 
-    println!("{}", json);
+    println!("{json}");
 }

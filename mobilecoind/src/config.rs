@@ -102,10 +102,10 @@ pub struct Config {
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
     let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
-        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+        .map_err(|err| format!("Error parsing quorum set {src}: {err:?}"))?;
 
     if !quorum_set.is_valid() {
-        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+        return Err(format!("Invalid quorum set: {quorum_set:?}"));
     }
 
     Ok(quorum_set)
@@ -211,9 +211,9 @@ impl Config {
             } else if let Some(verifier) = verifier.as_ref() {
                 let report_responses = conn
                     .fetch_fog_reports(fog_uris.iter().cloned())
-                    .map_err(|err| format!("Failed fetching fog reports: {}", err))?;
+                    .map_err(|err| format!("Failed fetching fog reports: {err}"))?;
                 Ok(FogResolver::new(report_responses, verifier)
-                    .map_err(|err| format!("Invalid fog url: {}", err))?)
+                    .map_err(|err| format!("Invalid fog url: {err}"))?)
             } else {
                 Err(
                     "Some recipients have fog, but no fog ingest report verifier was configured"
@@ -310,7 +310,7 @@ impl PeersConfig {
             .iter()
             .map(|peer| {
                 peer.responder_id().unwrap_or_else(|err| {
-                    panic!("Could not get responder_id from peer URI {}: {}", peer, err)
+                    panic!("Could not get responder_id from peer URI {peer}: {err}")
                 })
             })
             .collect()

@@ -95,7 +95,9 @@ impl ServiceMetrics {
             .unwrap(),
         }
     }
+}
 
+impl ServiceMetrics {
     /// Register Prometheus metrics family
     pub fn new_and_registered() -> ServiceMetrics {
         let svc = ServiceMetrics::default();

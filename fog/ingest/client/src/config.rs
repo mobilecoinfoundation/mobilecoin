@@ -28,7 +28,7 @@ pub struct IngestConfig {
 fn parse_ristretto_hex(src: &str) -> Result<CompressedRistrettoPublic, String> {
     let mut key_bytes = [0u8; 32];
     hex::decode_to_slice(src.as_bytes(), &mut key_bytes[..])
-        .map_err(|err| format!("Hex decode error: {:?}", err))?;
+        .map_err(|err| format!("Hex decode error: {err:?}"))?;
     Ok(CompressedRistrettoPublic::from(&key_bytes))
 }
 

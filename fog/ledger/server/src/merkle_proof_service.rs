@@ -302,7 +302,7 @@ mod test {
             mock_ledger.clone(),
             enclave,
             authenticator,
-            logger.clone(),
+            logger,
         );
 
         let request = OutputContext {
@@ -361,7 +361,7 @@ mod test {
             mock_ledger,
             enclave,
             authenticator,
-            logger.clone(),
+            logger,
         );
 
         let request = OutputContext {

@@ -141,7 +141,7 @@ where
         encoder.encode(&metric_families, &mut buffer).unwrap();
 
         String::from_utf8(buffer)
-            .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {}", err))
+            .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {err}"))
     }
 
     /// Try and fetch summaries from all ingest clients.
@@ -161,16 +161,14 @@ where
                         );
                         IngestSummary::try_from(&proto_ingest_summary).map_err(|err| {
                             format!(
-                                "Could not parse ingest summary for node with URI '{}': {}",
-                                uri, err
+                                "Could not parse ingest summary for node with URI '{uri}': {err}"
                             )
                         })
                     }
 
                     Err(err) => {
                         let error_message = format!(
-                            "Unable to retrieve ingest summary for node with URI '{}': {}",
-                            uri, err
+                            "Unable to retrieve ingest summary for node with URI '{uri}': {err}"
                         );
                         log::trace!(self.logger, "{}", error_message);
                         Err(error_message)

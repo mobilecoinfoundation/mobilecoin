@@ -28,7 +28,7 @@ impl TxSubmitter {
             return Err("No consensus uris".to_owned());
         }
         let conns = Self::get_connections(&uris, env, logger)
-            .map_err(|err| format!("consensus connection: {}", err))?;
+            .map_err(|err| format!("consensus connection: {err}"))?;
         Ok(Self { conns })
     }
 

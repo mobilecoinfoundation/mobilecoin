@@ -17,7 +17,7 @@ const BASE_PORT: u16 = 8700;
 // original active key as lost.
 #[test_with_logger]
 fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let nodes = helper.make_nodes(3);
 
@@ -35,35 +35,30 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
     let correct_active_node_count = Regex::new(r#"active_node_count"} 1"#).unwrap();
     assert!(
         correct_active_node_count.is_match(&body),
-        "Body does not have expected active_node_count: {}",
-        body
+        "Body does not have expected active_node_count: {body}"
     );
 
     let correct_egress_key_count = Regex::new(r#"egress_key_count"} 3"#).unwrap();
     assert!(
         correct_egress_key_count.is_match(&body),
-        "Body does not have expected egress_key_count: {}",
-        body
+        "Body does not have expected egress_key_count: {body}"
     );
 
     let correct_idle_node_count = Regex::new(r#"idle_node_count"} 2"#).unwrap();
     assert!(
         correct_idle_node_count.is_match(&body),
-        "Body does not have expected idle_node_count: {}",
-        body
+        "Body does not have expected idle_node_count: {body}"
     );
 
     let correct_ingress_key_count = Regex::new(r#"ingress_key_count"} 1"#).unwrap();
     assert!(
         correct_ingress_key_count.is_match(&body),
-        "Body does not have expected ingress_key_count: {}",
-        body
+        "Body does not have expected ingress_key_count: {body}"
     );
 
     let correct_unresponsive_node_count_name = Regex::new(r#"unresponsive_node_count"#).unwrap();
     assert!(
         !correct_unresponsive_node_count_name.is_match(&body),
-        "Body should not have unresponsive_node_count: {}",
-        body
+        "Body should not have unresponsive_node_count: {body}"
     );
 }

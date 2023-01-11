@@ -621,7 +621,7 @@ fn try_digestible_enum_transparent(
             };
 
             if ith_type == jth_type {
-                panic!("The types of the {}'th and {}'th variants of {} appear to be the same. When using digestible(transparent), this is highly suspect", j, i, ident);
+                panic!("The types of the {j}'th and {i}'th variants of {ident} appear to be the same. When using digestible(transparent), this is highly suspect");
             }
         }
     }

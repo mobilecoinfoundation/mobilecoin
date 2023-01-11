@@ -218,7 +218,7 @@ fn create_or_open_ledger_db(
                     .unwrap_or_else(|_| panic!("Failed creating directory {:?}", config.ledger_db));
             }
 
-            let src = format!("{}/data.mdb", ledger_db_bootstrap);
+            let src = format!("{ledger_db_bootstrap}/data.mdb");
             std::fs::copy(src.clone(), &ledger_db_file).unwrap_or_else(|_| {
                 panic!(
                     "Failed copying ledger from {} into directory {}",

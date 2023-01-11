@@ -14,7 +14,7 @@ const BASE_PORT: u16 = 8650;
 // Fog Overseer shouldn't take any action.
 #[test_with_logger]
 fn one_active_node_cluster_state_does_not_change(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let nodes = helper.make_nodes(3);
 

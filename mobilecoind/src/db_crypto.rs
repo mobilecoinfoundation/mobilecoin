@@ -175,9 +175,9 @@ impl DbCryptoProvider {
     /// Change the password that will be used for all future
     /// encryption/decryption operations. This should only be called after
     /// all existing data has been re-encrypted to the new password!
-    pub fn change_password<'env>(
+    pub fn change_password(
         &self,
-        mut db_txn: RwTransaction<'env>,
+        mut db_txn: RwTransaction<'_>,
         password: &[u8],
     ) -> Result<(), DbCryptoError> {
         let mut state = self.state.lock().expect("muted poisoned");
@@ -303,8 +303,8 @@ impl DbCryptoProvider {
         // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
         // second 32 for nonce
         let mut hasher = Blake2b512::new();
-        hasher.update(&MOBILECOIND_DB_KEY_DOMAIN_TAG);
-        hasher.update(&password);
+        hasher.update(MOBILECOIND_DB_KEY_DOMAIN_TAG);
+        hasher.update(password);
         let result = hasher.finalize();
 
         let (key, remainder) = Split::<u8, <Aes256Gcm as NewAead>::KeySize>::split(result);

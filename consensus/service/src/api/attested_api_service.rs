@@ -159,7 +159,7 @@ mod peer_tests {
             .unwrap();
         server.start();
         let (_, port) = server.bind_addrs().next().unwrap();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
@@ -186,13 +186,13 @@ mod peer_tests {
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }
@@ -223,7 +223,7 @@ mod client_tests {
             .unwrap();
         server.start();
         let (_, port) = server.bind_addrs().next().unwrap();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
@@ -250,13 +250,13 @@ mod client_tests {
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }

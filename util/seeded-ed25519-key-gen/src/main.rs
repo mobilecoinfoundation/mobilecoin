@@ -30,5 +30,5 @@ fn main() {
         tag: String::from("PRIVATE KEY"),
         contents: der_bytes,
     });
-    println!("{}", pem);
+    println!("{pem}");
 }
