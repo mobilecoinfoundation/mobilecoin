@@ -6,11 +6,10 @@ use crate::{
     build_info::BuildInfo,
     build_info_grpc::{create_build_info_api, BuildInfoApi},
     empty::Empty,
-    rpc_logger, send_result,
+    rpc_logger, send_result, SVC_COUNTERS,
 };
 use grpcio::{RpcContext, Service, UnarySink};
 use mc_common::logger::Logger;
-use mc_util_metrics::SVC_COUNTERS;
 
 /// A service that exposes the BuildInfo of a service recorded using
 /// mc_util_build_info

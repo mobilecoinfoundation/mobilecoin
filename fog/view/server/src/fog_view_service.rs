@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{server::DbPollSharedState, sharding_strategy::ShardingStrategy};
+use crate::{server::DbPollSharedState, sharding_strategy::ShardingStrategy, SVC_COUNTERS};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
@@ -20,7 +20,6 @@ use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
     Authenticator,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use mc_util_telemetry::{tracer, BoxedTracer, Tracer};
 use std::sync::{Arc, Mutex};
 

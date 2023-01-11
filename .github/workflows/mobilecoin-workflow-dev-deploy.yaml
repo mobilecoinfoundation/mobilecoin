@@ -92,6 +92,10 @@ jobs:
               intel.com/sgx: 2000
           persistence:
             enabled: false
+          client:
+            attest:
+              rateLimits:
+                enabled: false
         EOF
 
     - name: Deploy Consensus nodes

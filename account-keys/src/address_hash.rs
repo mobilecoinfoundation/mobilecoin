@@ -4,13 +4,14 @@
 //! This is used in certain memos, as a compact representation of the address.
 
 use crate::account_keys::PublicAddress;
+use hex_fmt::HexFmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use subtle::{Choice, ConstantTimeEq};
 
 /// Represents a "standard" public address hash created using merlin,
 /// used in memos as a compact representation of a MobileCoin public address.
 /// This hash is collision resistant.
-#[derive(Default, Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct ShortAddressHash([u8; 16]);
 
 impl From<[u8; 16]> for ShortAddressHash {
@@ -41,5 +42,11 @@ impl From<&PublicAddress> for ShortAddressHash {
 impl ConstantTimeEq for ShortAddressHash {
     fn ct_eq(&self, other: &Self) -> Choice {
         self.0.ct_eq(&other.0)
+    }
+}
+
+impl core::fmt::Display for ShortAddressHash {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(formatter, "{}", HexFmt(self.0.as_ref()))
     }
 }

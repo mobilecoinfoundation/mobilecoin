@@ -6,18 +6,13 @@
 # e2e testing.
 
 ARG REPO_ORG=mobilecoin
-FROM ${REPO_ORG}/runtime-base:latest
+ARG BASE_TAG=latest
+FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 RUN addgroup --system --gid 1000 app \
   && addgroup --system --gid 2000 app-data \
   && adduser --system --ingroup app --uid 1000 app \
   && usermod -a -G 2000 app
-
-RUN apt-get update \
-  && apt-get upgrade -y \
-  && apt-get install -y ca-certificates \
-  && apt-get clean \
-  && rm -r /var/lib/apt/lists
 
 # Copy binaries
 ARG RUST_BIN_PATH=target/release

@@ -49,7 +49,8 @@ use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
-#[derive(Clone, Copy, Default, Zeroize)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
+#[digestible(transparent)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
 
 impl Eq for RistrettoPrivate {}

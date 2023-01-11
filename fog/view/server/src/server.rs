@@ -19,6 +19,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::view_grpc;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ETxOutRecord;
+use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
@@ -122,10 +123,11 @@ where
         );
         let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(fog_view_service)
-            .register_service(health_service)
-            .bind_using_uri(&config.client_listen_uri, logger.clone());
+            .register_service(health_service);
 
-        let server = server_builder.build().unwrap();
+        let server = server_builder
+            .build_using_uri(&config.client_listen_uri, logger.clone())
+            .expect("Could not bind to client listen URI");
 
         Self {
             config,
@@ -154,9 +156,11 @@ where
         self.db_poll_thread.start();
 
         self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "API listening on {}",
+            self.config.client_listen_uri.addr()
+        );
     }
 
     /// Stop the server and all worker threads

@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ake-enclave"
-version = "2.1.0-pre0"
+version = "4.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -17,7 +17,7 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 digest = "0.10"
 sha2 = { version = "0.10", default-features = false }
 
