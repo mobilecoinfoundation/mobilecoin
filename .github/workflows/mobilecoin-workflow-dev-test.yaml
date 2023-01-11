@@ -163,7 +163,7 @@ jobs:
             --num-transactions 32 \
             --consensus-wait 300 \
             --transfer-amount 20 \
-            --fog-view fog-view-store://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
+            --fog-view fog-view://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
             --fog-ledger fog-ledger://fog.${{ inputs.namespace }}.development.mobilecoin.com:443
 
     - name: Test - block-v0 - mobilecoind-grpc (previously Wallet Integration)
