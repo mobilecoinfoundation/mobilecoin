@@ -2,7 +2,7 @@
 
 //! Implementation of the ReportService
 
-use crate::config::Materials;
+pub use crate::{config::Materials, SVC_COUNTERS};
 use displaydoc::Display;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{self, log, Logger};
@@ -16,10 +16,8 @@ use mc_fog_sig_report::Signer as ReportSigner;
 use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_logger, send_result,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use prost::DecodeError;
 use signature::{Error as SignatureError, Signature};
-
 #[derive(Clone)]
 pub struct Service<R: ReportDb + Clone + Send + Sync> {
     /// Access to the Report db is needed to retrieve the ingest report for

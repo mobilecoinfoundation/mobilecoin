@@ -1,6 +1,6 @@
 [package]
 name = "go-grpc-gateway-testing"
-version = "2.1.0-pre0"
+version = "4.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -25,11 +25,12 @@ mc-util-uri = { path = "../../util/uri" }
 
 # fog
 mc-fog-report-api = { path = "../../fog/report/api" }
+mc-fog-report-server = { path = "../../fog/report/server" }
 mc-fog-report-types = { path = "../../fog/report/types" }
 
 # third-party
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 serde = { version = "1.0", features = ["derive"] }

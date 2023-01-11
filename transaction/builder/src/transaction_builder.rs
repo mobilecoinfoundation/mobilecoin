@@ -29,7 +29,8 @@ use mc_transaction_core::{
     RevealedTxOutError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber, UnsignedTx,
+    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber,
+    TxOutSummaryUnblindingData, UnsignedTx,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -79,7 +80,7 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The input materials used to form the transaction.
     input_materials: Vec<InputMaterials>,
     /// The outputs created by the transaction, and associated output secrets.
-    outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
+    outputs_and_secrets: Vec<(TxOut, TxOutSummaryUnblindingData)>,
     /// The tombstone_block value, a block index in which the transaction
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
@@ -313,8 +314,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                         blinding,
                     };
 
+                    let unblinding_data = TxOutSummaryUnblindingData {
+                        unmasked_amount: output_secret.into(),
+                        address: None,
+                        tx_private_key: None,
+                    };
+
                     self.outputs_and_secrets
-                        .push((fractional_tx_out, output_secret));
+                        .push((fractional_tx_out, unblinding_data));
 
                     Ok(fractional_amount)
                 },
@@ -334,8 +341,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 blinding: partial_fill_change_blinding,
             };
 
+            let unblinding_data = TxOutSummaryUnblindingData {
+                unmasked_amount: output_secret.into(),
+                address: None,
+                tx_private_key: None,
+            };
+
             self.outputs_and_secrets
-                .push((fractional_change, output_secret));
+                .push((fractional_change, unblinding_data));
         }
 
         self.add_presigned_input_helper(sci)?;
@@ -385,8 +398,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 .any(|(output, _sec)| output == required_output)
             {
                 // If not, add it
+                let unblinding_data = TxOutSummaryUnblindingData {
+                    unmasked_amount: unmasked_amount.clone(),
+                    address: None,
+                    tx_private_key: None,
+                };
+
                 self.outputs_and_secrets
-                    .push((required_output.clone(), unmasked_amount.clone().into()));
+                    .push((required_output.clone(), unblinding_data));
             }
         }
         // 2. Max tombstone block
@@ -606,7 +625,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        let (tx_out, shared_secret) =
+        let (tx_out, shared_secret, tx_private_key) =
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
         let (amount, blinding) = tx_out
@@ -616,10 +635,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("TransactionBuilder created an invalid Amount");
         let output_secret = OutputSecret { amount, blinding };
 
+        let unblinding_data = TxOutSummaryUnblindingData {
+            unmasked_amount: output_secret.into(),
+            address: Some(recipient.clone()),
+            tx_private_key: Some(tx_private_key),
+        };
+
         self.impose_tombstone_block_limit(pubkey_expiry);
 
         self.outputs_and_secrets
-            .push((tx_out.clone(), output_secret));
+            .push((tx_out.clone(), unblinding_data));
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
@@ -769,7 +794,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.outputs_and_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
+        let (outputs, tx_out_unblinding_data): (Vec<TxOut>, Vec<_>) =
             self.outputs_and_secrets.drain(..).unzip();
 
         let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
@@ -783,7 +808,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         Ok(UnsignedTx {
             tx_prefix,
             rings: input_rings,
-            output_secrets,
+            tx_out_unblinding_data,
             block_version: self.block_version,
         })
     }
@@ -839,6 +864,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 /// * `fog_hint` - The encrypted fog hint to use
 /// * `memo_fn` - The memo function to use -- see TxOut::new_with_memo docu
 /// * `rng` -
+///
+/// # Returns
+/// * TxOut
+/// * tx_out_shared_secret
+/// * tx_private_key
 pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     block_version: BlockVersion,
     amount: Amount,
@@ -846,19 +876,19 @@ pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     fog_hint: EncryptedFogHint,
     memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     rng: &mut RNG,
-) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-    let private_key = RistrettoPrivate::from_random(rng);
+) -> Result<(TxOut, RistrettoPublic, RistrettoPrivate), TxBuilderError> {
+    let tx_private_key = RistrettoPrivate::from_random(rng);
     let tx_out = TxOut::new_with_memo(
         block_version,
         amount,
         recipient,
-        &private_key,
+        &tx_private_key,
         fog_hint,
         memo_fn,
     )?;
 
-    let shared_secret = create_shared_secret(recipient.view_public_key(), &private_key);
-    Ok((tx_out, shared_secret))
+    let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
+    Ok((tx_out, shared_secret, tx_private_key))
 }
 
 /// Create a fog hint, using the fog_resolver collection in self.

@@ -31,13 +31,14 @@
 //!   functionality can be used to assist.
 
 use aes::{
-    cipher::{FromBlockCipher, StreamCipher},
-    Aes256, Aes256Ctr, NewBlockCipher,
+    cipher::{KeyIvInit, StreamCipher},
+    Aes256,
 };
 use core::{
     convert::{TryFrom, TryInto},
     str::Utf8Error,
 };
+use ctr::Ctr64BE;
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
@@ -55,6 +56,8 @@ use mc_util_repr_bytes::{
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use zeroize::Zeroize;
+
+type Aes256Ctr = Ctr64BE<Aes256>;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
 #[derive(Clone, Copy, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
@@ -178,7 +181,7 @@ impl MemoPayload {
         let (key, nonce) = Split::<u8, U32>::split(okm);
 
         // Apply AES-256 in counter mode to the buffer
-        let mut aes256ctr = Aes256Ctr::from_block_cipher(Aes256::new(&key), &nonce);
+        let mut aes256ctr = Aes256Ctr::new(&key, &nonce);
         aes256ctr.apply_keystream(self.0.as_mut_slice());
     }
 }

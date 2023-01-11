@@ -7,15 +7,10 @@ name: Mobilecoin CD
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  RELEASE_1X_TAG: v1.1.3-dev
   RELEASE_3X_TAG: v3.0.0-dev
 
 on:
   pull_request:
-    branches:
-    - master
-    - main
-    - release/*
     paths-ignore:
     - '**.md'
   push:
@@ -50,7 +45,6 @@ jobs:
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
-      release_1x_tag: ${{ env.RELEASE_1X_TAG }}
       release_3x_tag: ${{ env.RELEASE_3X_TAG }}
 
     steps:
@@ -80,7 +74,7 @@ jobs:
     - generate-metadata
     runs-on: [self-hosted, Linux, large-cd]
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.20
+      image: mobilecoin/rust-sgx-base:v0.0.21
 
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
@@ -136,8 +130,8 @@ jobs:
           -p mc-consensus-mint-client \
           -p mc-consensus-service \
           -p mc-fog-distribution \
-          -p mc-fog-ingest-server \
           -p mc-fog-ingest-client \
+          -p mc-fog-ingest-server \
           -p mc-fog-ledger-server \
           -p mc-fog-report-cli \
           -p mc-fog-report-server \
@@ -148,6 +142,7 @@ jobs:
           -p mc-ledger-from-archive \
           -p mc-ledger-migration \
           -p mc-mobilecoind \
+          -p mc-mobilecoind-dev-faucet \
           -p mc-mobilecoind-json \
           -p mc-util-generate-sample-ledger \
           -p mc-util-grpc-admin-tool \
@@ -334,12 +329,16 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Get short SHA
+      run: echo "GH_SHORT_SHA=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)" >> "${GITHUB_ENV}"
+
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
       uses: docker/build-push-action@v3
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
+          BASE_TAG=${{ env.GH_SHORT_SHA }}
           RUST_BIN_PATH=rust_build_artifacts
           GO_BIN_PATH=go_build_artifacts
         cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ needs.generate-metadata.outputs.namespace }}
@@ -387,77 +386,17 @@ jobs:
         chart_path: .internal-ci/helm/${{ matrix.chart }}
 
 ################################################
-# Bootstrap namespace to v1.1.3-dev from backup
+# Bootstrap namespace to v3.0.0-dev from backup
 ################################################
-  bootstrap-v1-bv0:
+  bootstrap-v3-bv2:
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
     needs:
-    - generate-metadata
-    with:
-      block_version: 0
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.release_1x_tag }}
-    secrets: inherit
-
-###############################################
-# Deploy v3.x to namespace at block v0
-###############################################
-  deploy-v3-bv0-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
-    needs:
-    - bootstrap-v1-bv0
-    - generate-metadata
-    with:
-      block_version: 0
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
-      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.RELEASE_3X_TAG }}
-    secrets: inherit
-
-  test-v3-bv0-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
-    needs:
-    - deploy-v3-bv0-release
-    - generate-metadata
-    with:
-      fog_distribution: false
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: true
-      testing_block_v2: false
-      testing_block_v3: false
-    secrets: inherit
-
-###############################################
-# Upgrade v3.x to block v2
-###############################################
-  update-v3-to-bv2:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
-    needs:
-    - test-v3-bv0-release
     - generate-metadata
     with:
       block_version: 2
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.RELEASE_3X_TAG }}
-    secrets: inherit
-
-  test-v3-bv2-release:
-    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
-    needs:
-    - update-v3-to-bv2
-    - generate-metadata
-    with:
-      fog_distribution: false
-      ingest_color: green
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: false
-      testing_block_v2: true
-      testing_block_v3: false
+      version: ${{ needs.generate-metadata.outputs.release_3x_tag }}
     secrets: inherit
 
 ###############################################
@@ -466,7 +405,7 @@ jobs:
   deploy-current-bv2-release:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     needs:
-    - test-v3-bv2-release
+    - bootstrap-v3-bv2
     - charts
     - generate-metadata
     with:
@@ -528,19 +467,34 @@ jobs:
 ###############################################################
 # Clean up deployments
 ###############################################################
-# we want to clean up on everything but master and feature/*
-# run on pr, run on tag. run on branch that's not master or feature/*
-  cleanup-after-run:
-    if: |
-      github.event_name == 'pull_request' ||
-      github.ref_type == 'tag' ||
-      (
-        github.ref_type == 'branch' &&
-        ! (
-          github.ref_name == 'master' ||
-          startsWith('feature/', github.ref_name)
-        )
-      )
+# we keep master and feature/*
+# run on pr, run on tag, run on release/*.
+# break this up because 4 or 5 part boolean logic is hard with GHA basic statements.
+# Yes this is less DRY, but way more readable and easier to follow.
+  cleanup-after-pr:
+    if: github.event_name == 'pull_request'
+    needs:
+    - test-current-bv3-release
+    - generate-metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets: inherit
+
+  cleanup-after-tag:
+    if: github.ref_type == 'tag'
+    needs:
+    - test-current-bv3-release
+    - generate-metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets: inherit
+
+  cleanup-after-release-branch:
+    if: github.ref_type == 'branch' && startsWith('release/', github.ref_name)
     needs:
     - test-current-bv3-release
     - generate-metadata

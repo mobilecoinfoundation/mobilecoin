@@ -19,13 +19,6 @@ spec:
   - host: {{ include "consensusNode.clientHostname" . }}
     http:
       paths:
-      - path: /attest.AttestedApi
-        pathType: Prefix
-        backend:
-          service:
-            name: {{ include "consensusNode.fullname" . }}
-            port:
-              number: 3223
       - path: /build_info.BuildInfoApi
         pathType: Prefix
         backend:

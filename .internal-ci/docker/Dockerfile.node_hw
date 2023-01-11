@@ -5,7 +5,8 @@
 # Runtime image for MobileCoin consensus nodes built in SGX hw mode.
 
 ARG REPO_ORG=mobilecoin
-FROM ${REPO_ORG}/runtime-base:latest
+ARG BASE_TAG=latest
+FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 # Install logstash to ship logs when used as a standalone container.
 ARG LOGSTASH_VERSION=7.16.3
