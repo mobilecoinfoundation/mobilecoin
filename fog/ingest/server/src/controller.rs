@@ -153,7 +153,7 @@ where
         ) {
             Ok(enclave) => enclave,
             Err(NewEnclaveError::Create(err)) => {
-                panic!("Could not create new enclave: {}", err);
+                panic!("Could not create new enclave: {err}");
             }
             Err(NewEnclaveError::Init(err)) => {
                 log::error!(
@@ -1107,10 +1107,10 @@ where
                     // wrong set to false.
                     Err(err @ PeerBackupError::FailedRemoteKeyBackup(_))
                     | Err(err @ PeerBackupError::FailedRemoteSetPeers(_)) => {
-                        panic!("Should not have attempted remote modification during confirm backup. Logic Error: {}", err);
+                        panic!("Should not have attempted remote modification during confirm backup. Logic Error: {err}");
                     }
                     Err(err @ PeerBackupError::CreatingNewIngressKey) => {
-                        panic!("Should not have attempted creating new ingress key during confirm backup. Logic Error. {}", err);
+                        panic!("Should not have attempted creating new ingress key during confirm backup. Logic Error. {err}");
                     }
                     //Nonretriable errors that can occur normally during confirm backup.
                     Err(err @ PeerBackupError::AnotherActivePeer(_))

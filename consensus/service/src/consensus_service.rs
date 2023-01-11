@@ -297,8 +297,7 @@ impl<
 
         self.consensus_msgs_from_network.stop().map_err(|e| {
             ConsensusServiceError::BackgroundWorkQueueStop(format!(
-                "consensus_msgs_from_network: {:?}",
-                e
+                "consensus_msgs_from_network: {e:?}"
             ))
         })?;
 
@@ -650,7 +649,7 @@ impl<
                             // If a value was submitted to `scp_client_value_sender` that means it
                             // should've found it's way into the cache. Suddenly not having it there
                             // indicates something is broken, so for the time being we will panic.
-                            panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+                            panic!("tx hash {tx_hash} expected to be in cache but wasn't");
                         }
                     }
                 }
@@ -749,7 +748,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": encode_config(&config.msg_signer_key.public_key().to_der(), URL_SAFE),
+                    "message_pubkey": encode_config(config.msg_signer_key.public_key().to_der(), URL_SAFE),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,

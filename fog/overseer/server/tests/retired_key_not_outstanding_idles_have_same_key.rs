@@ -17,7 +17,7 @@ const BASE_PORT: u16 = 8800;
 // activate it.
 #[test_with_logger]
 fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let nodes = helper.make_nodes(3);
 
@@ -60,7 +60,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
         .zip(new_ingress_keys.iter())
         .enumerate()
         .for_each(|(index, (original, new))| {
-            assert_ne!(original, new, "node{} ingress key did not change", index)
+            assert_ne!(original, new, "node{index} ingress key did not change")
         });
 
     // Ensure that the old active key is retired.

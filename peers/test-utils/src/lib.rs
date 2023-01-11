@@ -294,7 +294,7 @@ mod peer_manager_tests {
             // Get blocks 25,26,27. These are entirely out of range, so should return an
             // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
-                println!("Blocks: {:?}", blocks);
+                println!("Blocks: {blocks:?}");
                 panic!();
             }
         }
@@ -407,11 +407,8 @@ mod threaded_broadcaster_tests {
         let peer_manager =
             ConnectionManager::new(vec![peer2.clone(), peer3.clone()], logger.clone());
 
-        let mut broadcaster = ThreadedBroadcaster::new(
-            &peer_manager,
-            &FibonacciRetryPolicy::default(),
-            logger.clone(),
-        );
+        let mut broadcaster =
+            ThreadedBroadcaster::new(&peer_manager, &FibonacciRetryPolicy::default(), logger);
 
         // Initially, nothing is broadcasted to either of our nodes.
         {
@@ -496,11 +493,8 @@ mod threaded_broadcaster_tests {
             logger.clone(),
         );
 
-        let mut broadcaster = ThreadedBroadcaster::new(
-            &peer_manager,
-            &FibonacciRetryPolicy::default(),
-            logger.clone(),
-        );
+        let mut broadcaster =
+            ThreadedBroadcaster::new(&peer_manager, &FibonacciRetryPolicy::default(), logger);
 
         // Initially, nothing is broadcasted to either of our nodes.
         {
@@ -581,7 +575,7 @@ mod threaded_broadcaster_tests {
         let mut broadcaster = ThreadedBroadcaster::new(
             &peer_manager,
             FibonacciRetryPolicy::default().initial_delay(Duration::from_millis(10)),
-            logger.clone(),
+            logger,
         );
 
         // Initially, nothing is broadcasted to either of our nodes.

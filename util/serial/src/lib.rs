@@ -140,8 +140,7 @@ pub fn round_trip_message<SRC: Message + Eq + Default, DEST: protobuf::Message>(
 
     assert_eq!(
         *prost_val, final_val,
-        "Round-trip check failed!\nprost: {:?}\nprotobuf: {:?}",
-        prost_val, final_val
+        "Round-trip check failed!\nprost: {prost_val:?}\nprotobuf: {final_val:?}"
     );
 }
 
@@ -193,7 +192,7 @@ mod json_u64_tests {
     #[test]
     fn test_serialize_jsonu64_struct() {
         let the_struct = TestStruct {
-            nums: (&[0, 1, 2, u64::MAX]).iter().map(Into::into).collect(),
+            nums: [0, 1, 2, u64::MAX].iter().map(Into::into).collect(),
             block: JsonU64(u64::MAX - 1),
         };
         let serialized = serialize(&the_struct).unwrap();

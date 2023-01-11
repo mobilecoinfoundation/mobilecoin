@@ -132,7 +132,7 @@ impl SlamState {
         logger: &Logger,
     ) -> Result<SlamReport, String> {
         // This guard backs off if phase is not 0, and sets it to 1 atomically
-        let _guard = SlamStateGuard::new(&*self, logger)?;
+        let _guard = SlamStateGuard::new(&self, logger)?;
         self.target_num_tx
             .store(params.target_num_tx, Ordering::SeqCst);
         log::info!(logger, "Slam status: {}", self.get_status().unwrap());
@@ -177,9 +177,7 @@ impl SlamState {
                             prepared_utxos_sender
                                 .send(prepared_utxo)
                                 .await
-                                .map_err(|err| {
-                                    format!("Unexpected error when preparing: {}", err)
-                                })?;
+                                .map_err(|err| format!("Unexpected error when preparing: {err}"))?;
                             self.num_prepared_utxos.fetch_add(1, Ordering::SeqCst);
                         }
                         Err(err) => {
@@ -199,7 +197,7 @@ impl SlamState {
                 Err(err) => {
                     // Any more serious error, like "funds depleted", means we cannot complete the
                     // slam
-                    return Err(format!("Cannot obtain more utxos, aborting slam: {}", err));
+                    return Err(format!("Cannot obtain more utxos, aborting slam: {err}"));
                 }
             }
         }
@@ -212,7 +210,7 @@ impl SlamState {
         let network_state = {
             let resp = mobilecoind_api_client
                 .get_network_status(&Default::default())
-                .map_err(|err| format!("Failed getting network status: {}", err))?;
+                .map_err(|err| format!("Failed getting network status: {err}"))?;
             self.block_height
                 .store(resp.network_highest_block_index, Ordering::SeqCst);
             resp
@@ -239,7 +237,7 @@ impl SlamState {
                 let account_key = account_key.clone();
                 let network_state = network_state.clone();
                 let tx_submitter = tx_submitter.clone();
-                let logger = logger.new(o! { "thread" => format!("slam-worker-{}", worker_num) });
+                let logger = logger.new(o! { "thread" => format!("slam-worker-{worker_num}") });
                 std::thread::spawn(move || {
                     this.slam_worker_entry_point(
                         worker_num,
@@ -308,7 +306,7 @@ impl SlamState {
                         &account_key,
                         &network_state,
                         worker_num,
-                        &*tx_submitter,
+                        &tx_submitter,
                         &logger,
                     );
                 }
@@ -461,7 +459,7 @@ impl SlamState {
                 self.num_submitted_txs.load(Ordering::SeqCst),
                 self.target_num_tx.load(Ordering::SeqCst),
             )),
-            other => panic!("unexpected state: phase = {}", other),
+            other => panic!("unexpected state: phase = {other}"),
         }
     }
 

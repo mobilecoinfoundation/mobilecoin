@@ -107,8 +107,7 @@ impl From<MemoError> for NewMemoError {
         match src {
             MemoError::Utf8Decoding => Self::Utf8Decoding,
             MemoError::BadLength(byte_len) => Self::BadInputs(format!(
-                "Input of length: {} exceeded max byte length",
-                byte_len
+                "Input of length: {byte_len} exceeded max byte length"
             )),
             MemoError::MaxFeeExceeded(max_fee, attempted_fee) => {
                 Self::MaxFeeExceeded(max_fee, attempted_fee)

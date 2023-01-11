@@ -83,27 +83,22 @@ impl NodeClient for ConsensusNodeClient {
             credentials_provider,
             logger,
         )
-        .map_err(|err| {
-            format!(
-                "Failed constructing client to connect to {}: {}",
-                node_url, err
-            )
-        })?;
+        .map_err(|err| format!("Failed constructing client to connect to {node_url}: {err}"))?;
 
         client
             .attest()
-            .map_err(|err| format!("Failed attesting {}: {}", node_url, err))
+            .map_err(|err| format!("Failed attesting {node_url}: {err}"))
     }
 
     /// Get the block signer key out of a VerificationReport
     fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String> {
         let report_data = VerificationReportData::try_from(verification_report)
-            .map_err(|err| format!("Failed constructing VerificationReportData: {}", err))?;
+            .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
 
         let report_body = report_data
             .quote
             .report_body()
-            .map_err(|err| format!("Failed getting report body: {}", err))?;
+            .map_err(|err| format!("Failed getting report body: {err}"))?;
 
         let custom_data = report_body.report_data();
         let custom_data_bytes: &[u8] = custom_data.as_ref();
@@ -118,7 +113,7 @@ impl NodeClient for ConsensusNodeClient {
         let signer_bytes = &custom_data_bytes[32..];
 
         let signer_public_key = Ed25519Public::try_from(signer_bytes)
-            .map_err(|err| format!("Unable to construct key: {}", err))?;
+            .map_err(|err| format!("Unable to construct key: {err}"))?;
 
         Ok(signer_public_key)
     }
@@ -659,8 +654,7 @@ mod tests {
 
             if tries == 0 {
                 panic!(
-                    "report not synced: reports_signer2:{:?} reports_signer3:{:?}",
-                    reports_signer2, reports_signer3
+                    "report not synced: reports_signer2:{reports_signer2:?} reports_signer3:{reports_signer3:?}"
                 );
             }
             tries -= 1;

@@ -467,7 +467,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_from_self.clone(), msg_from_self.clone()]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -502,7 +502,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_future_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -537,7 +537,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_old_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -587,7 +587,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_current_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -638,7 +638,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_recent_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -747,7 +747,7 @@ mod tests {
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             slot_index,
-            logger.clone(),
+            logger,
         );
 
         // Client(s) submits some values to node 2.

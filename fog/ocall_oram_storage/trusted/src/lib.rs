@@ -340,8 +340,7 @@ where
             let (last_idx, last_hash) = last_hash.expect("should not be empty at this point");
             assert!(
                 bool::from(self.trusted_merkle_roots[last_idx as usize].ct_eq(&last_hash)),
-                "authentication failed, trusted merkle root mismatch at {}",
-                last_idx
+                "authentication failed, trusted merkle root mismatch at {last_idx}"
             );
         }
     }
@@ -691,11 +690,9 @@ mod helpers {
 
         for (x, idx) in idx.iter().enumerate() {
             let byte_index = (idx * DataSize::U64) as usize;
-            (&mut data[x])
-                .copy_from_slice(&allocation.data[byte_index..byte_index + DataSize::USIZE]);
+            data[x].copy_from_slice(&allocation.data[byte_index..byte_index + DataSize::USIZE]);
             let byte_index = (idx * MetaSize::U64) as usize;
-            (&mut meta[x])
-                .copy_from_slice(&allocation.meta[byte_index..byte_index + MetaSize::USIZE]);
+            meta[x].copy_from_slice(&allocation.meta[byte_index..byte_index + MetaSize::USIZE]);
         }
     }
 

@@ -99,7 +99,7 @@ impl SourceConfig {
         if !url.ends_with('/') {
             url.push('/');
         }
-        Url::from_str(&url).unwrap_or_else(|err| panic!("invalid url {}: {}", url, err))
+        Url::from_str(&url).unwrap_or_else(|err| panic!("invalid url {url}: {err}"))
     }
 
     /// Get consensus client URL, if available.
@@ -111,7 +111,7 @@ impl SourceConfig {
     pub fn consensus_client_auth_token_secret(&self) -> Option<[u8; 32]> {
         self.consensus_client_auth_token_secret.as_ref().map(|s| {
             hex::FromHex::from_hex(s).unwrap_or_else(|err| {
-                panic!("failed parsing consensus client auth token secret: {}", err)
+                panic!("failed parsing consensus client auth token secret: {err}")
             })
         })
     }

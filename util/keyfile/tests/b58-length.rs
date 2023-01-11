@@ -47,11 +47,10 @@ fn test_b58_pub_length() {
         for domain_len in 0..DOMAIN_LIMIT {
             assert!(
                 !test_b58pub_length(domain_len, 10, &mut rng),
-                "B58 address limit exceeded for domain length = {}",
-                domain_len
+                "B58 address limit exceeded for domain length = {domain_len}"
             );
         }
 
-        assert!(test_b58pub_length(DOMAIN_LIMIT, 10, &mut rng), "Domain limit is not computed correctly, we didn't exceed the limit with urls of length {}", DOMAIN_LIMIT);
+        assert!(test_b58pub_length(DOMAIN_LIMIT, 10, &mut rng), "Domain limit is not computed correctly, we didn't exceed the limit with urls of length {DOMAIN_LIMIT}");
     })
 }

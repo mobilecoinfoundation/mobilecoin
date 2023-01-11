@@ -123,7 +123,7 @@ fn test_max_size_tx_payload_sizes() {
     };
 
     assert_eq!(tx.prefix.inputs.len(), MAX_INPUTS as usize);
-    assert_eq!(tx.prefix.inputs[0].proofs.len(), RING_SIZE as usize);
+    assert_eq!(tx.prefix.inputs[0].proofs.len(), { RING_SIZE });
     assert_eq!(tx.prefix.inputs[0].proofs[0].elements.len(), 32);
 
     let tx_wire = encode(&tx);
@@ -165,7 +165,7 @@ fn test_min_size_tx_payload_sizes() {
     };
 
     assert_eq!(tx.prefix.inputs.len(), 1_usize);
-    assert_eq!(tx.prefix.inputs[0].proofs.len(), RING_SIZE as usize);
+    assert_eq!(tx.prefix.inputs[0].proofs.len(), { RING_SIZE });
     assert_eq!(tx.prefix.inputs[0].proofs[0].elements.len(), 32);
 
     let tx_wire = encode(&tx);
