@@ -8,11 +8,14 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [4.0.1]
 
-### Added/Changed
+### Added
 
-- Improved performance of mobilecoind-dev-faucet for better load testing ([#2955])
 - Make the local network script support a dense3 network option ([#2988])
 - HAProxy Ingress Blocklists ([#2952])
+
+### Changed
+
+- Improved performance of mobilecoind-dev-faucet for better load testing ([#2955])
 
 ## [4.0.0]
 
