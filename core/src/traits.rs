@@ -1,16 +1,18 @@
 //! Traits supporting driver (or other hardware) implementations
 
-use core::{fmt::Debug, convert::Infallible};
+use core::{convert::Infallible, fmt::Debug};
 
-use mc_core_types::{account::{PublicSubaddress, ViewAccount, Account}, keys::TxOutPublic};
-use mc_crypto_ring_signature::{KeyImage, onetime_keys::recover_onetime_private_key};
+use mc_core_types::{
+    account::{Account, PublicSubaddress, ViewAccount},
+    keys::TxOutPublic,
+};
+use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
 
 use crate::subaddress::Subaddress;
 
-
 /// View only account provider
 pub trait ViewAccountProvider {
-    /// TODO: 
+    /// TODO:
     type Error: Send + Sync + Debug;
 
     /// Fetch view account object
@@ -27,7 +29,7 @@ impl ViewAccountProvider for Account {
     }
 }
 
-impl <T: ViewAccountProvider> ViewAccountProvider for &T {
+impl<T: ViewAccountProvider> ViewAccountProvider for &T {
     type Error = <T as ViewAccountProvider>::Error;
 
     fn account(&self) -> Result<ViewAccount, Self::Error> {
@@ -48,7 +50,7 @@ pub trait KeyImageComputer {
     ) -> Result<KeyImage, Self::Error>;
 }
 
-impl <T: KeyImageComputer> KeyImageComputer for &T {
+impl<T: KeyImageComputer> KeyImageComputer for &T {
     type Error = <T as KeyImageComputer>::Error;
 
     fn compute_key_image(
@@ -61,7 +63,6 @@ impl <T: KeyImageComputer> KeyImageComputer for &T {
 }
 
 /// Basic [KeyImageComputer] implementation for [Account] type
-///
 impl KeyImageComputer for Account {
     type Error = Infallible;
 
@@ -101,7 +102,7 @@ pub trait MemoHmacSigner {
     ) -> Result<[u8; 16], Self::Error>;
 }
 
-/// Memo encryptor for encrypting memos via shared secret 
+/// Memo encryptor for encrypting memos via shared secret
 pub trait MemoEncryptor {
     /// TODO
     type Error: Send + Sync + Debug;

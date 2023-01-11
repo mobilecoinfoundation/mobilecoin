@@ -1,11 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A newtype representing a standard hash of a MobileCoin public address (re-exported from mc_core).
-//! This is used in certain memos, as a compact representation of the address.
+//! A newtype representing a standard hash of a MobileCoin public address
+//! (re-exported from mc_core). This is used in certain memos, as a compact
+//! representation of the address.
 
 use crate::account_keys::PublicAddress;
-use mc_crypto_digestible::{Digestible, MerlinTranscript};
 pub use mc_core::account::ShortAddressHash;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 
 /// Compute [ShortAddressHash] from [PublicAddress]
 impl From<&PublicAddress> for ShortAddressHash {
@@ -15,4 +16,3 @@ impl From<&PublicAddress> for ShortAddressHash {
         ShortAddressHash::from(b)
     }
 }
-

@@ -10,7 +10,9 @@ use core::{
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use zeroize::Zeroize;
 
-use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic, CompressedRistrettoPublic, ReprBytes};
+use mc_crypto_keys::{
+    CompressedRistrettoPublic, KeyError, ReprBytes, RistrettoPrivate, RistrettoPublic,
+};
 
 use crate::markers::*;
 
@@ -36,12 +38,10 @@ pub type RootViewPublic = Key<Root, View, RistrettoPublic>;
 /// Root spend public key
 pub type RootSpendPublic = Key<Root, Spend, RistrettoPublic>;
 
-
 /// Transaction public key
 pub type TxOutPublic = Key<Tx, Public, RistrettoPublic>;
 /// Transaction target public key
 pub type TxOutTargetPublic = Key<Tx, Target, RistrettoPublic>;
-
 
 /// Generic key object, see type aliases for use
 #[derive(Clone, Debug, Zeroize)]
@@ -82,7 +82,7 @@ impl<ADDR, KIND, KEY: Default + Zeroize> Default for Key<ADDR, KIND, KEY> {
 }
 
 /// Expose [`ReprBytes`] for internal `KEY` types implementing this
-impl <ADDR, KIND, KEY> ReprBytes for Key<ADDR, KIND, KEY> 
+impl<ADDR, KIND, KEY> ReprBytes for Key<ADDR, KIND, KEY>
 where
     KEY: ReprBytes + Default + Zeroize,
 {
@@ -92,7 +92,7 @@ where
 
     fn from_bytes(src: &mc_crypto_keys::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
         let key = <KEY as ReprBytes>::from_bytes(src)?;
-        Ok(Key{
+        Ok(Key {
             key,
             _addr: PhantomData,
             _kind: PhantomData,
@@ -112,7 +112,6 @@ impl<ADDR, KIND> Key<ADDR, KIND, RistrettoPublic> {
         self.key.to_bytes()
     }
 }
-
 
 /// Fetch the public key for a private key instance
 impl<ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPrivate>> for Key<ADDR, KIND, RistrettoPublic> {
@@ -406,7 +405,7 @@ where
 
 /// Expose [`prost::Message`] for internal `KEY` types implementing this
 #[cfg(feature = "prost")]
-impl <ADDR, KIND, KEY> prost::Message for Key<ADDR, KIND, KEY> 
+impl<ADDR, KIND, KEY> prost::Message for Key<ADDR, KIND, KEY>
 where
     ADDR: Send + Sync + Debug,
     KIND: Send + Sync + Debug,
@@ -415,7 +414,8 @@ where
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         <KEY as prost::Message>::encode_raw(&self.key, buf)
     }
 
@@ -428,7 +428,8 @@ where
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         <KEY as prost::Message>::merge_field(&mut self.key, tag, wire_type, buf, ctx)
     }
 

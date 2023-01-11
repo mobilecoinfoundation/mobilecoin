@@ -6,7 +6,7 @@
 
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
-use mc_core_types::account::{ViewAccount, PublicSubaddress};
+use mc_core_types::account::{PublicSubaddress, ViewAccount};
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 

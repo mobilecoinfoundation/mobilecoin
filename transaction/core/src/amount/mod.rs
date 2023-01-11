@@ -11,7 +11,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::Scalar;
 
 #[cfg(feature = "prost")]
-use prost::{Oneof};
+use prost::Oneof;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -28,16 +28,16 @@ pub use v2::MaskedAmountV2;
 /// A masked amount in one of several possible versions
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
 #[digestible(transparent)]
-#[cfg_attr(feature="prost", derive(Oneof))]
+#[cfg_attr(feature = "prost", derive(Oneof))]
 pub enum MaskedAmount {
     /// A v1 masked amount.
     /// Note: This tag must match the historical tag used for masked amounts
-    #[cfg_attr(feature="prost", prost(message, tag = "1"))]
+    #[cfg_attr(feature = "prost", prost(message, tag = "1"))]
     V1(MaskedAmountV1),
     /// A v2 masked amount.
     /// Note: This tag must match what is listed in `tags` for the oneof field
     /// in TxOut
-    #[cfg_attr(feature="prost", prost(message, tag = "6"))]
+    #[cfg_attr(feature = "prost", prost(message, tag = "6"))]
     V2(MaskedAmountV2),
 }
 

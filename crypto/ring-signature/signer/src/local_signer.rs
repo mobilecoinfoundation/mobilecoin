@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::{SignerError, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+use super::{OneTimeKeyDeriveData, RingSigner, SignableInputRing, SignerError};
 use mc_account_keys::AccountKey;
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{
@@ -17,7 +17,7 @@ pub struct LocalRingSigner {
 
 impl RingSigner for LocalRingSigner {
     type Error = SignerError;
-    
+
     fn sign(
         &self,
         message: &[u8],

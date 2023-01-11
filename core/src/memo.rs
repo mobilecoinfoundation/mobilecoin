@@ -1,28 +1,23 @@
 //! Memo types, signing and encryption helpers
-//! 
 
-use hkdf::Hkdf;
-use sha2::Sha512;
 use aes::{
     cipher::{FromBlockCipher, StreamCipher},
     Aes256, Aes256Ctr, NewBlockCipher,
 };
 use generic_array::{
-    GenericArray,
     sequence::Split,
     typenum::{U32, U48},
+    GenericArray,
 };
+use hkdf::Hkdf;
+use sha2::Sha512;
 
-use mc_core_types::{
-    keys::{
-        SubaddressSpendPrivate, SubaddressSpendPublic,
-        SubaddressViewPrivate, SubaddressViewPublic,
-    },
+use mc_core_types::keys::{
+    SubaddressSpendPrivate, SubaddressSpendPublic, SubaddressViewPrivate, SubaddressViewPublic,
 };
 use mc_crypto_keys::{
-    RistrettoPrivate, RistrettoPublic, RistrettoSecret,
-    CompressedRistrettoPublic,
-    KexReusablePrivate,
+    CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
+    RistrettoSecret,
 };
 use mc_crypto_memo_mac::compute_category1_hmac;
 
@@ -30,10 +25,9 @@ use mc_crypto_memo_mac::compute_category1_hmac;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Memo;
 
-
 /// Memo HMAC container type
 #[derive(Clone, PartialEq, Debug)]
-pub struct Hmac (pub [u8; 16]);
+pub struct Hmac(pub [u8; 16]);
 
 impl AsRef<[u8; 16]> for Hmac {
     fn as_ref(&self) -> &[u8; 16] {
@@ -82,7 +76,6 @@ impl Memo {
         kind: [u8; 2],
         data: &[u8; 48],
     ) -> Result<Hmac, ()> {
-
         // Compute shared secret
         let shared_secret = shared_secret(receiver_view_private, sender_default_spend_public);
 
@@ -105,7 +98,6 @@ impl Memo {
         kind: [u8; 2],
         data: &[u8; 48],
     ) -> Hmac {
-
         // Compute shared secret
         let shared_secret = shared_secret(sender_default_spend_private, receiver_view_public);
 
@@ -121,10 +113,7 @@ impl Memo {
     }
 
     /// Apply AES256 keystream to the provided memo buffer
-    pub fn apply_keystream(
-        shared_secret: impl AsRef<[u8]>,
-        buff: &mut [u8],
-    ) -> () {
+    pub fn apply_keystream(shared_secret: impl AsRef<[u8]>, buff: &mut [u8]) -> () {
         // Use HKDF-SHA512 to produce an AES key and AES nonce
         let kdf = Hkdf::<Sha512>::new(Some(b"mc-memo-okm"), shared_secret.as_ref());
 
@@ -139,10 +128,7 @@ impl Memo {
         let mut aes256ctr = Aes256Ctr::from_block_cipher(Aes256::new(&key), &nonce);
         aes256ctr.apply_keystream(buff);
     }
-
-
 }
-
 
 /// KX using sender default subaddress spend and receiver subaddress view keys
 /// to determine shared secret for memo HMAC or encryption
@@ -151,12 +137,10 @@ pub fn shared_secret(
     public_key: impl AsRef<RistrettoPublic>,
 ) -> RistrettoSecret {
     let private_key: &RistrettoPrivate = private_key.as_ref();
-    let shared_secret =
-        private_key.key_exchange(public_key.as_ref());
-    
+    let shared_secret = private_key.key_exchange(public_key.as_ref());
+
     shared_secret
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -166,14 +150,14 @@ mod tests {
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
 
-    use super::{Memo, shared_secret};
+    use super::{shared_secret, Memo};
 
     #[test]
     fn key_exchange() {
         // Setup keys
         let (pri1, pri2) = (
-            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
-            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
+            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
+            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
         );
         let (pub1, pub2) = (
             SubaddressSpendPublic::from(&pri1),
@@ -192,18 +176,18 @@ mod tests {
     fn encrypt_decrypt() {
         // Setup keys
         let (pri1, pri2) = (
-            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
-            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
+            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
+            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
         );
         let (pub1, pub2) = (
             SubaddressSpendPublic::from(&pri1),
             SubaddressViewPublic::from(&pri2),
         );
 
-        let key1 = RistrettoPrivate::from_random(&mut OsRng{});
+        let key1 = RistrettoPrivate::from_random(&mut OsRng {});
 
         let mut p1 = [0u8; 66];
-        OsRng{}.try_fill_bytes(&mut p1[..]).unwrap();
+        OsRng {}.try_fill_bytes(&mut p1[..]).unwrap();
 
         let mut e1 = p1.clone();
         Memo::encrypt(&pri1, &pub2, &mut e1);
@@ -213,30 +197,28 @@ mod tests {
 
         assert_eq!(p1, d1, "roundtrip failed");
 
-
         let mut d2 = e1.clone();
         Memo::decrypt(&pub1, &SubaddressViewPrivate::from(key1), &mut d2);
 
         assert_ne!(p1, d2, "decrypt with wrong key succeeded");
-
     }
 
     #[test]
     fn hmac() {
         // Setup keys
         let (pri1, pri2) = (
-            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
-            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng{})),
+            SubaddressSpendPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
+            SubaddressViewPrivate::from(RistrettoPrivate::from_random(&mut OsRng {})),
         );
         let (pub1, pub2) = (
             SubaddressSpendPublic::from(&pri1),
             SubaddressViewPublic::from(&pri2),
         );
 
-        let tx_out_public_key = RistrettoPublic::from_random(&mut OsRng{});
+        let tx_out_public_key = RistrettoPublic::from_random(&mut OsRng {});
 
         let mut data = [0u8; 48];
-        OsRng{}.fill_bytes(&mut data);
+        OsRng {}.fill_bytes(&mut data);
 
         // Generate correct sender/receiver HMAC
         let h1 = Memo::hmac_sign(&tx_out_public_key, &pri1, &pub2, [1, 2], &data);
@@ -254,6 +236,5 @@ mod tests {
         d1[0] = !d1[0];
         let h4 = Memo::hmac_check(&tx_out_public_key, &pub1, &pri2, [1, 3], &d1);
         assert_ne!(h1, h4, "hmac with wrong data matched");
-
     }
 }

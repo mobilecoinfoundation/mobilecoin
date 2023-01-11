@@ -1,7 +1,6 @@
 //! [AccountId] provides a unique identifier for a given MOB account
-//! 
 
-use mc_core_types::account::{Account, ViewAccount, RingCtAddress};
+use mc_core_types::account::{Account, RingCtAddress, ViewAccount};
 
 use crate::{consts::DEFAULT_SUBADDRESS_INDEX, subaddress::Subaddress};
 
@@ -73,8 +72,9 @@ impl From<&ViewAccount> for AccountId {
     }
 }
 
-/// PROPOSED: Compute merlin digest of an accounts default address to derive the [AccountId]
-/// alternative to the full account_keys::PublicAddress derivation, though this may be preferred / worked around elsewhere.
+/// PROPOSED: Compute merlin digest of an accounts default address to derive the
+/// [AccountId] alternative to the full account_keys::PublicAddress derivation,
+/// though this may be preferred / worked around elsewhere.
 fn account_id_digest(default_addr: impl RingCtAddress) -> [u8; 32] {
     let mut transcript = merlin::Transcript::new(b"account_id");
 
@@ -83,7 +83,7 @@ fn account_id_digest(default_addr: impl RingCtAddress) -> [u8; 32] {
 
     transcript.append_message(b"view_public_key", &view_public_key.to_bytes());
     transcript.append_message(b"spend_public_key", &spend_public_key.to_bytes());
-    
+
     let mut b = [0u8; 32];
     transcript.challenge_bytes(b"digest32", &mut b);
 

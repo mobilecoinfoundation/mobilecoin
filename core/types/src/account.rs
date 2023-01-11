@@ -18,7 +18,7 @@ pub trait RingCtAddress {
     fn spend_public_key(&self) -> SubaddressSpendPublic;
 }
 
-impl <T: RingCtAddress> RingCtAddress for &T {
+impl<T: RingCtAddress> RingCtAddress for &T {
     fn view_public_key(&self) -> SubaddressViewPublic {
         T::view_public_key(&self)
     }
@@ -72,8 +72,9 @@ impl Account {
 
 /// MobileCoin view only account object.
 ///
-/// Derived from an [Account] object, used where spend key custody is external (offline or via hardware).
-/// Protobuf encoding is equivalent to [mc_account_keys::ViewAccountKey]
+/// Derived from an [Account] object, used where spend key custody is external
+/// (offline or via hardware). Protobuf encoding is equivalent to
+/// [mc_account_keys::ViewAccountKey]
 #[derive(Zeroize)]
 pub struct ViewAccount {
     /// Root view private key

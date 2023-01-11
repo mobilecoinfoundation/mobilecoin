@@ -147,7 +147,6 @@ pub enum SignerError {
     Unknown,
 }
 
-
 impl From<KeyError> for SignerError {
     fn from(src: KeyError) -> Self {
         Self::Keys(src)

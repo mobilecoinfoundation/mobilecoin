@@ -14,12 +14,12 @@ use zeroize::Zeroize;
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct RevealedTxOut {
     /// The TxOut which is being revealed
-    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
     pub tx_out: TxOut,
 
     /// The amount shared secret of this TxOut
     /// This should be exactly 32 bytes
-    #[cfg_attr(feature="prost", prost(bytes, tag = "2"))]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = "2"))]
     pub amount_shared_secret: Vec<u8>,
 }
 

@@ -23,10 +23,10 @@ impl core::fmt::Display for RangeError {
 )]
 pub struct Range {
     /// The left endpoint of the range
-    #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
+    #[cfg_attr(feature = "prost", prost(uint64, tag = "1"))]
     pub from: u64,
     /// The right endpoint of the range
-    #[cfg_attr(feature="prost", prost(uint64, tag = "2"))]
+    #[cfg_attr(feature = "prost", prost(uint64, tag = "2"))]
     pub to: u64,
 }
 #[allow(clippy::len_without_is_empty)]
