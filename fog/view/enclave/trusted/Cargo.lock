@@ -136,6 +136,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
+
+[[package]]
 name = "bindgen"
 version = "0.58.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -778,7 +784,7 @@ dependencies = [
 name = "mc-attest-core"
 version = "4.0.1"
 dependencies = [
- "base64",
+ "base64 0.21.0",
  "bitflags",
  "cargo-emit",
  "chrono",
@@ -856,7 +862,7 @@ dependencies = [
 name = "mc-attest-verifier-types"
 version = "4.0.1"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -1053,7 +1059,7 @@ dependencies = [
 name = "mc-crypto-keys"
 version = "4.0.1"
 dependencies = [
- "base64",
+ "base64 0.21.0",
  "curve25519-dalek",
  "digest",
  "displaydoc",
@@ -1583,7 +1589,7 @@ dependencies = [
 name = "mc-util-encodings"
 version = "4.0.1"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "displaydoc",
  "hex",
  "mc-util-repr-bytes",
