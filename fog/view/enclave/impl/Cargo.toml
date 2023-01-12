@@ -6,7 +6,7 @@ edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 aligned-cmov = "2.2"
 mc-attest-ake = { path = "../../../../attest/ake", default-features = false }
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
