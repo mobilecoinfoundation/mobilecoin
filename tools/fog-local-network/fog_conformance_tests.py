@@ -496,7 +496,6 @@ class FogConformanceTest:
             admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
             shard_uris = [self.fog_view_store.get_client_listen_uri()],
-            sharding_strategies= [self.fog_view_store.get_sharding_strategy()]
         )
         self.fog_view_router.start()
 

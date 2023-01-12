@@ -233,6 +233,7 @@ class FogViewStore:
 
         self.client_port = client_port
         self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
+        self.sharding_strategy = sharding_strategy
         self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/?sharding_strategy={self.sharding_strategy}'
         self.sharding_strategy = sharding_strategy
 
@@ -250,8 +251,6 @@ class FogViewStore:
 
     def get_client_listen_uri(self):
         return self.client_listen_url
-    def get_sharding_strategy(self):
-        return self.sharding_strategy
 
     def start(self):
         self.stop()
