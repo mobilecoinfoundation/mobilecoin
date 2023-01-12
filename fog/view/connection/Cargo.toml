@@ -34,4 +34,4 @@ futures = "0.3"
 grpcio = "0.12.0"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }
-tokio = { version = "1.19.2", features = ["full"] }
+tokio = "1.16.1"

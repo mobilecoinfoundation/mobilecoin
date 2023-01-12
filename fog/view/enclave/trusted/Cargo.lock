@@ -813,6 +813,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-crypto-noise",
  "mc-sgx-compat",
+ "mc-util-serial",
  "serde",
 ]
 
@@ -966,6 +967,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
+ "mc-util-serial",
  "sha2",
 ]
 
@@ -1242,6 +1244,8 @@ version = "4.0.0"
 dependencies = [
  "crc",
  "displaydoc",
+ "mc-attest-enclave-api",
+ "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
  "mc-transaction-core",
@@ -1258,7 +1262,9 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
+ "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
  "mc-fog-types",
  "mc-sgx-compat",
@@ -1280,7 +1286,9 @@ dependencies = [
 name = "mc-fog-view-enclave-impl"
 version = "4.0.0"
 dependencies = [
+ "aes-gcm",
  "aligned-cmov",
+ "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
