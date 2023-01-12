@@ -112,6 +112,9 @@ impl FromStr for EpochShardingStrategy {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq("default") {
+            return Ok(EpochShardingStrategy::default());
+        }
         if let Ok(block_range) = BlockRange::from_str(s) {
             return Ok(Self::new(block_range));
         }
