@@ -3,8 +3,15 @@
 # Declare variables to be passed into your templates.
 
 env:
-# - name: VAR_NAME
-#   value: VALUE
+ - name: CLIENT_RESPONDER_ID
+   value: fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
+ - name: MC_CLIENT_LISTEN_URI
+   value: fog-view-store://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
+ - name: MC_CHAIN_ID
+   valueFrom:
+     configMapKeyRef:
+       key: network
+       name: mobilecoin-network
 
 command:
   - fog_view_router
