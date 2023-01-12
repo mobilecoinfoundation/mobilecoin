@@ -220,7 +220,7 @@ jobs:
       with:
         action: helm-deploy
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-ingest
+        chart_name: fog-router
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         release_name: fog-router-${{ inputs.ingest_color }}
