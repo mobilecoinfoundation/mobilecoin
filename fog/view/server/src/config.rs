@@ -148,7 +148,7 @@ pub struct FogViewRouterConfig {
     pub omap_capacity: u64,
 
     /// Router admin listening URI.
-    #[clap(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: AdminUri,
 
     /// The chain id of the network we are a part of
