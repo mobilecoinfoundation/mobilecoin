@@ -25,15 +25,6 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "aead"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b613b8e1e3cf911a086f53f03bf286f52fd7a7258e4fa606f0ef220d39d8877"
-dependencies = [
- "generic-array",
-]
-
-[[package]]
-name = "aead"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c192eb8f11fc081b0fe4259ba5af04217d4e0faddd02417310a927911abd7c8"
@@ -44,39 +35,13 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.7.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e8b47f52ea9bae42228d07ec09eb676433d7c4ed1ebdf0f1d1c29ed446f1ab8"
-dependencies = [
- "cfg-if 1.0.0",
- "cipher 0.3.0",
- "cpufeatures",
- "opaque-debug",
-]
-
-[[package]]
-name = "aes"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "433cfd6710c9986c576a25ca913c39d66a6474107b406f34f91d4a8923395241"
 dependencies = [
  "cfg-if 1.0.0",
- "cipher 0.4.3",
+ "cipher",
  "cpufeatures",
-]
-
-[[package]]
-name = "aes-gcm"
-version = "0.9.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df5f85a83a7d8b0442b6aa7b504b8212c1733da07b98aae43d4bc21b2cb3cdf6"
-dependencies = [
- "aead 0.4.3",
- "aes 0.7.5",
- "cipher 0.3.0",
- "ctr 0.8.0",
- "ghash 0.4.4",
- "subtle",
 ]
 
 [[package]]
@@ -85,11 +50,11 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e1366e0c69c9f927b1fa5ce2c7bf9eafc8f9268c0b9800729e8b267612447c"
 dependencies = [
- "aead 0.5.1",
- "aes 0.8.2",
- "cipher 0.4.3",
- "ctr 0.9.2",
- "ghash 0.5.0",
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
  "subtle",
 ]
 
@@ -702,15 +667,6 @@ dependencies = [
 
 [[package]]
 name = "cipher"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
-dependencies = [
- "generic-array",
-]
-
-[[package]]
-name = "cipher"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1873270f8f7942c191139cb8a40fd228da6c3fd2fc376d7e92d47aa14aeb59e"
@@ -845,7 +801,7 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "344adc371239ef32293cb1c4fe519592fcf21206c79c02854320afcdf3ab4917"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "base64",
  "hkdf",
  "hmac 0.12.1",
@@ -1039,20 +995,11 @@ dependencies = [
 
 [[package]]
 name = "ctr"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "049bb91fb4aaf0e3c7efa6cd5ef877dbbbd15b39dad06d9948de4ec8a75761ea"
-dependencies = [
- "cipher 0.3.0",
-]
-
-[[package]]
-name = "ctr"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0369ee1ad671834580515889b80f2ea915f23b8be8d0daa4bbaf2ac5c7590835"
 dependencies = [
- "cipher 0.4.3",
+ "cipher",
 ]
 
 [[package]]
@@ -1726,22 +1673,12 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1583cc1656d7839fd3732b80cf4f38850336cdb9b8ded1cd399ca62958de3c99"
-dependencies = [
- "opaque-debug",
- "polyval 0.5.3",
-]
-
-[[package]]
-name = "ghash"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d930750de5717d2dd0b8c0d42c076c0e884c81a73e6cab859bbd2339c71e3e40"
 dependencies = [
  "opaque-debug",
- "polyval 0.6.0",
+ "polyval",
 ]
 
 [[package]]
@@ -2522,8 +2459,8 @@ dependencies = [
 name = "mc-attest-ake"
 version = "4.0.0"
 dependencies = [
- "aead 0.5.1",
- "aes-gcm 0.10.1",
+ "aead",
+ "aes-gcm",
  "cargo-emit",
  "digest 0.10.5",
  "displaydoc",
@@ -2547,7 +2484,7 @@ dependencies = [
 name = "mc-attest-api"
 version = "4.0.0"
 dependencies = [
- "aead 0.5.1",
+ "aead",
  "cargo-emit",
  "digest 0.10.5",
  "futures",
@@ -2792,7 +2729,7 @@ dependencies = [
 name = "mc-connection"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "cookie",
  "displaydoc",
  "grpcio",
@@ -2856,7 +2793,7 @@ dependencies = [
 name = "mc-consensus-enclave"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "cargo-emit",
  "lazy_static",
  "mc-attest-ake",
@@ -3242,7 +3179,7 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "digest 0.10.5",
  "mc-attest-ake",
  "mc-attest-core",
@@ -3263,7 +3200,7 @@ dependencies = [
 name = "mc-crypto-box"
 version = "4.0.0"
 dependencies = [
- "aead 0.5.1",
+ "aead",
  "digest 0.10.5",
  "displaydoc",
  "hkdf",
@@ -3401,7 +3338,7 @@ dependencies = [
 name = "mc-crypto-message-cipher"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "displaydoc",
  "generic-array",
  "mc-util-serial",
@@ -3429,8 +3366,8 @@ dependencies = [
 name = "mc-crypto-noise"
 version = "4.0.0"
 dependencies = [
- "aead 0.5.1",
- "aes-gcm 0.10.1",
+ "aead",
+ "aes-gcm",
  "digest 0.10.5",
  "displaydoc",
  "generic-array",
@@ -3617,7 +3554,7 @@ dependencies = [
 name = "mc-fog-enclave-connection"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "cookie",
  "displaydoc",
  "grpcio",
@@ -4128,11 +4065,11 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-trusted"
 version = "4.0.0"
 dependencies = [
- "aes 0.8.2",
+ "aes",
  "aligned-cmov",
  "balanced-tree-index",
  "blake2",
- "ctr 0.9.2",
+ "ctr",
  "displaydoc",
  "lazy_static",
  "mc-oblivious-traits",
@@ -4605,7 +4542,7 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "futures",
  "grpcio",
  "mc-attest-ake",
@@ -4698,7 +4635,7 @@ dependencies = [
 name = "mc-fog-view-enclave-impl"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.9.4",
+ "aes-gcm",
  "aligned-cmov",
  "itertools",
  "mc-attest-ake",
@@ -4972,7 +4909,7 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "4.0.0"
 dependencies = [
- "aes-gcm 0.10.1",
+ "aes-gcm",
  "clap 4.0.32",
  "crossbeam-channel",
  "displaydoc",
@@ -5120,11 +5057,11 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7be589d425ac3950edf94eb4185e625b4ca509d8caeab7ab461e107a73c3ebfb"
 dependencies = [
- "aead 0.5.1",
- "aes 0.8.2",
- "cipher 0.4.3",
- "ctr 0.9.2",
- "ghash 0.5.0",
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
  "subtle",
  "zeroize",
 ]
@@ -5445,11 +5382,11 @@ dependencies = [
 name = "mc-transaction-core"
 version = "4.0.0"
 dependencies = [
- "aes 0.8.2",
+ "aes",
  "assert_matches",
  "bulletproofs-og",
  "crc",
- "ctr 0.9.2",
+ "ctr",
  "curve25519-dalek",
  "displaydoc",
  "generic-array",
@@ -6084,14 +6021,24 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.5"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d732bc30207a6423068df043e3d02e0735b155ad7ce1a6f76fe2baa5b158de"
+checksum = "8067b404fe97c70829f082dec8bcf4f71225d7eaea1d8645349cb76fa06205cc"
 dependencies = [
  "libc",
  "log",
- "wasi 0.11.0+wasi-snapshot-preview1",
- "windows-sys 0.42.0",
+ "miow",
+ "ntapi",
+ "winapi",
+]
+
+[[package]]
+name = "miow"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]
@@ -6188,6 +6135,15 @@ name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
+
+[[package]]
+name = "ntapi"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f6bb902e437b6d86e03cce10a7e2af662292c5dfef23b65899ea3ac9354ad44"
+dependencies = [
+ "winapi",
+]
 
 [[package]]
 name = "num-bigint"
@@ -6587,18 +6543,6 @@ dependencies = [
 
 [[package]]
 name = "polyval"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8419d2b623c7c0896ff2d5d96e2cb4ede590fed28fcc34934f4c33c036e620a1"
-dependencies = [
- "cfg-if 1.0.0",
- "cpufeatures",
- "opaque-debug",
- "universal-hash 0.4.1",
-]
-
-[[package]]
-name = "polyval"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef234e08c11dfcb2e56f79fd70f6f2eb7f025c0ce2333e82f4f0518ecad30c6"
@@ -6606,7 +6550,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "opaque-debug",
- "universal-hash 0.5.0",
+ "universal-hash",
 ]
 
 [[package]]
@@ -6712,9 +6656,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.47"
+version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ea3d908b0e36316caf9e9e2c4625cdde190a7e6f440d794667ed17a1855e725"
+checksum = "57a8eca9f9c4ffde41714334dee777596264c7825420f521abc92b5b5deb63a5"
 dependencies = [
  "unicode-ident",
 ]
@@ -8084,9 +8028,9 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "socket2"
-version = "0.4.7"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e2d2db9033d13a1567121ddd7a095ee144db4e1ca1b1bda3419bc0da294ebd"
+checksum = "5dc90fe6c7be1a323296982db1836d1ea9e47b6839496dde9a541bc496df3516"
 dependencies = [
  "libc",
  "winapi",
@@ -8385,22 +8329,20 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.24.1"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d9f76183f91ecfb55e1d7d5602bd1d979e38a3a522fe900241cf195624d67ae"
+checksum = "0c27a64b625de6d309e8c57716ba93021dccf1b3b5c97edd6d3dd2d2135afc0a"
 dependencies = [
- "autocfg",
  "bytes 1.1.0",
  "libc",
  "memchr",
  "mio",
  "num_cpus",
- "parking_lot 0.12.0",
+ "once_cell",
  "pin-project-lite",
  "signal-hook-registry",
- "socket2",
  "tokio-macros",
- "windows-sys 0.42.0",
+ "winapi",
 ]
 
 [[package]]
@@ -8644,16 +8586,6 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
-
-[[package]]
-name = "universal-hash"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f214e8f697e925001e66ec2c6e37a4ef93f0f78c2eed7814394e10c62025b05"
-dependencies = [
- "generic-array",
- "subtle",
-]
 
 [[package]]
 name = "universal-hash"

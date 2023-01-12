@@ -26,9 +26,9 @@ use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{
     config::{
         FogViewRouterConfig, MobileAcctViewConfig as ViewConfig, RouterClientListenUri,
-        ShardingStrategy, ShardingStrategy::Epoch,
+        ShardingStrategy::Epoch,
     },
-    fog_view_router_server::FogViewRouterServer,
+    fog_view_router_server::{FogViewRouterServer, Shard},
     server::ViewServer,
     sharding_strategy::EpochShardingStrategy,
 };
@@ -36,7 +36,6 @@ use mc_transaction_core::BlockVersion;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::{AdminUri, ConnectionUri};
 use std::{
-    collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
     thread::sleep,
@@ -72,7 +71,7 @@ pub struct RouterTestEnvironment {
 impl RouterTestEnvironment {
     /// Creates a `RouterTestEnvironment` for the router integration tests.
     pub fn new(omap_capacity: u64, store_block_ranges: Vec<BlockRange>, logger: Logger) -> Self {
-        let (db_test_context, store_servers, store_clients, store_uris) =
+        let (db_test_context, store_servers, store_clients, shard_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -81,14 +80,13 @@ impl RouterTestEnvironment {
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let admin_listen_uri =
             AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
-
         let config = FogViewRouterConfig {
             chain_id: "local".to_string(),
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
-            shard_uris: store_uris,
+            shard_uris,
             ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
@@ -113,7 +111,7 @@ impl RouterTestEnvironment {
         store_block_ranges: Vec<BlockRange>,
         logger: Logger,
     ) -> Self {
-        let (db_test_context, store_servers, store_clients, store_uris) =
+        let (db_test_context, store_servers, store_clients, shard_uris) =
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
@@ -129,7 +127,7 @@ impl RouterTestEnvironment {
                 .expect("Could not get responder id for Fog View Router."),
             ias_api_key: Default::default(),
             ias_spid: Default::default(),
-            shard_uris: store_uris,
+            shard_uris,
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
@@ -150,7 +148,7 @@ impl RouterTestEnvironment {
 
     fn create_router_server(
         config: FogViewRouterConfig,
-        store_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        shards: Arc<RwLock<Vec<Shard>>>,
         logger: &Logger,
     ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
         let enclave = SgxViewEnclave::new(
@@ -165,7 +163,7 @@ impl RouterTestEnvironment {
             config,
             enclave,
             ra_client,
-            store_clients,
+            shards,
             SystemTimeProvider::default(),
             logger.clone(),
         );
@@ -216,26 +214,27 @@ impl RouterTestEnvironment {
     ) -> (
         SqlRecoveryDbTestContext,
         Vec<TestViewServer>,
-        Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+        Arc<RwLock<Vec<Shard>>>,
         Vec<FogViewStoreUri>,
     ) {
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
         let mut store_servers = Vec::new();
-        let mut store_clients = HashMap::new();
-        let mut store_uris: Vec<FogViewStoreUri> = Vec::new();
+        let mut shards = Vec::new();
+        let mut shard_uris: Vec<FogViewStoreUri> = Vec::new();
 
         for (i, store_block_range) in store_block_ranges.into_iter().enumerate() {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
+                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
                 let uri = FogViewStoreUri::from_str(&format!(
-                    "insecure-fog-view-store://127.0.0.1:{}",
-                    port
+                    "insecure-fog-view-store://127.0.0.1:{port}?sharding_strategy={}",
+                    epoch_sharding_strategy.to_string()
                 ))
                 .unwrap();
-                store_uris.push(uri.clone());
 
-                let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range);
+                let sharding_strategy = Epoch(epoch_sharding_strategy);
+                shard_uris.push(uri.clone());
 
                 let config = ViewConfig {
                     chain_id: "local".to_string(),
@@ -247,7 +246,7 @@ impl RouterTestEnvironment {
                     ias_api_key: Default::default(),
                     admin_listen_uri: Default::default(),
                     client_auth_token_max_lifetime: Default::default(),
-                    sharding_strategy: ShardingStrategy::Epoch(epoch_sharding_strategy),
+                    sharding_strategy,
                     postgres_config: Default::default(),
                     block_query_batch_size: 2,
                 };
@@ -286,12 +285,13 @@ impl RouterTestEnvironment {
                 ChannelBuilder::default_channel_builder(grpc_env)
                     .connect_to_uri(&store_uri, &logger),
             );
-            store_clients.insert(store_uri, Arc::new(store_client));
+            let shard = Shard::new(store_uri, Arc::new(store_client), store_block_range);
+            shards.push(shard);
         }
 
-        let store_clients = Arc::new(RwLock::new(store_clients));
+        let store_clients = Arc::new(RwLock::new(shards));
 
-        (db_test_context, store_servers, store_clients, store_uris)
+        (db_test_context, store_servers, store_clients, shard_uris)
     }
 }
 

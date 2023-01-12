@@ -228,12 +228,14 @@ class FogViewRouter:
             self.admin_http_gateway_process = None
 
 class FogViewStore:
-    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release):
+    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release, sharding_strategy):
         self.name = name
 
         self.client_port = client_port
         self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
-        self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/'
+        self.sharding_strategy = sharding_strategy
+        self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/?sharding_strategy={self.sharding_strategy}'
+        self.sharding_strategy = sharding_strategy
 
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
@@ -259,6 +261,7 @@ class FogViewStore:
             f'exec {self.target_dir}/fog_view_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
+            f'--sharding-strategy={self.sharding_strategy}',
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
