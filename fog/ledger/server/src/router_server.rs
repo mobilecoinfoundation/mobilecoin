@@ -40,11 +40,11 @@ impl LedgerRouterServer {
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("ledger-router-server".to_string())
+                .name_prefix("key-image-router-server".to_string())
                 .build(),
         );
 
-        // Health check service - will be used in both router + admin interface
+        // Health check service - will be used in both cases
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
@@ -68,19 +68,20 @@ impl LedgerRouterServer {
         // Package service into grpc server
         log::info!(
             logger,
-            "Starting Ledger Router server on {}",
+            "Starting Key Image Router server on {}",
             config.client_listen_uri.addr(),
         );
 
-        let router_server = grpcio::ServerBuilder::new(env.clone())
+        let router_server_builder = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
             .register_service(health_service)
-            .build_using_uri(&config.client_listen_uri, logger.clone())
-            .expect("Could not build Ledger Router Server");
-        let admin_server = grpcio::ServerBuilder::new(env)
+            .bind_using_uri(&config.client_listen_uri, logger.clone());
+        let admin_server_builder = grpcio::ServerBuilder::new(env)
             .register_service(ledger_router_admin_service)
-            .build_using_uri(&config.admin_listen_uri, logger.clone())
-            .expect("Could not build Ledger Router Admin Server");
+            .bind_using_uri(&config.admin_listen_uri, logger.clone());
+
+        let router_server = router_server_builder.build().unwrap();
+        let admin_server = admin_server_builder.build().unwrap();
 
         Self {
             router_server,
@@ -94,18 +95,18 @@ impl LedgerRouterServer {
     /// Starts the server
     pub fn start(&mut self) {
         self.router_server.start();
-        log::info!(
-            self.logger,
-            "Router API listening on {}",
-            self.client_listen_uri.addr()
-        );
-
+        for (host, port) in self.router_server.bind_addrs() {
+            log::info!(self.logger, "Router API listening on {}:{}", host, port);
+        }
         self.admin_server.start();
-        log::info!(
-            self.logger,
-            "Router Admin API listening on {}",
-            self.admin_listen_uri.addr()
-        );
+        for (host, port) in self.admin_server.bind_addrs() {
+            log::info!(
+                self.logger,
+                "Router Admin API listening on {}:{}",
+                host,
+                port
+            );
+        }
     }
 
     /// Stops the server
