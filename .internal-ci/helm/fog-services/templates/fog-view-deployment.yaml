@@ -127,7 +127,7 @@ spec:
         - name: DATABASE_URL
           value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
         - name: MC_SHARDING_STRATEGY
-          value: "0,11000000"
+          value: "default"
         - name: CLIENT_AUTH_TOKEN_SECRET
           valueFrom:
             secretKeyRef:
