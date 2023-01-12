@@ -13,8 +13,8 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 
 use crate::{
-    config::LedgerRouterConfig, router_service::LedgerRouterService,
-    router_admin_service::LedgerRouterAdminService,
+    config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
+    router_service::LedgerRouterService,
 };
 
 pub struct LedgerRouterServer {
