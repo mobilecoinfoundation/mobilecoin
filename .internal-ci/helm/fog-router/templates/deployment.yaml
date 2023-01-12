@@ -48,6 +48,12 @@ spec:
           {{- toYaml . | nindent 12 }}
           {{- end}}
 
+          envFrom:
+          - configMapRef:
+              name: fog-ingest
+          - secretRef:
+              name: ias
+
           # livenessProbe:
           #   httpGet:
           #     path: /
