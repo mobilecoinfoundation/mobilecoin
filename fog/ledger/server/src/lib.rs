@@ -5,6 +5,8 @@ mod config;
 mod counters;
 mod db_fetcher;
 mod error;
+mod key_image_router_server;
+mod key_image_router_service;
 mod key_image_service;
 mod key_image_store_server;
 mod merkle_proof_service;
@@ -14,8 +16,6 @@ mod router_server;
 mod router_service;
 mod server;
 mod untrusted_tx_out_service;
-mod key_image_router_service;
-mod router_admin_service;
 
 use mc_util_metrics::ServiceMetrics;
 
