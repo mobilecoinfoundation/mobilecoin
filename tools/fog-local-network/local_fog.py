@@ -177,7 +177,7 @@ class FogIngest:
 
 
 class FogViewRouter:
-    def __init__(self, name, client_responder_id, client_port, admin_port, admin_http_gateway_port, shard_uris, sharding_strategies, release):
+    def __init__(self, name, client_responder_id, client_port, admin_port, admin_http_gateway_port, shard_uris, release):
         self.name = name
 
         self.client_responder_id = client_responder_id
@@ -189,7 +189,6 @@ class FogViewRouter:
         self.admin_http_gateway_port = admin_http_gateway_port
 
         self.shard_uris = shard_uris
-        self.sharding_strategies = sharding_strategies
 
         self.release = release
         self.target_dir = target_dir(self.release)
@@ -211,7 +210,6 @@ class FogViewRouter:
             f'--client-responder-id={self.client_responder_id}',
             f'--ias-api-key={IAS_API_KEY}',
             f'--shard-uris={",".join(self.shard_uris)}',
-            f'--sharding-strategies={",".join(self.sharding_strategies)}',
             f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
         ])
@@ -235,7 +233,7 @@ class FogViewStore:
 
         self.client_port = client_port
         self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
-        self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/'
+        self.client_listen_url = f'insecure-fog-view-store://{LISTEN_HOST}:{self.client_port}/?sharding_strategy={self.sharding_strategy}'
         self.sharding_strategy = sharding_strategy
 
         self.admin_port = admin_port

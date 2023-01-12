@@ -138,7 +138,7 @@ mod tests {
     fn from_string_well_formatted_creates_block_range() {
         let start_block = 0;
         let end_block = 10;
-        let block_range_str = format!("{},{}", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -152,7 +152,7 @@ mod tests {
     fn from_string_well_formatted_with_whitespace_creates_block_range() {
         let start_block = 0;
         let end_block = 10;
-        let block_range_str = format!("     {} , {} ", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -167,7 +167,7 @@ mod tests {
         let start_block = 0;
         let end_block = 10;
         let third_block = 10;
-        let block_range_str = format!("{},{},{}", start_block, end_block, third_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}{BLOCK_RANGE_DELIMITER}{third_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -178,7 +178,7 @@ mod tests {
     fn from_string_non_numbers_errors() {
         let start_block = 'a';
         let end_block = 'b';
-        let block_range_str = format!("{},{}", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
