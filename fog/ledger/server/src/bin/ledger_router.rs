@@ -12,7 +12,7 @@ use grpcio::ChannelBuilder;
 use mc_common::logger::log;
 use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
-use mc_fog_ledger_server::{KeyImageRouterServer, LedgerRouterConfig};
+use mc_fog_ledger_server::{LedgerRouterServer, LedgerRouterConfig};
 use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri};
 
 use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -62,7 +62,7 @@ fn main() {
     let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
 
     let mut router_server =
-        KeyImageRouterServer::new(config, enclave, ledger_store_grpc_clients, logger);
+        LedgerRouterServer::new(config, enclave, ledger_store_grpc_clients, logger);
     router_server.start();
 
     loop {
