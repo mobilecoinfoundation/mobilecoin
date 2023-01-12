@@ -167,7 +167,9 @@ mod tests {
         let start_block = 0;
         let end_block = 10;
         let third_block = 10;
-        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}{BLOCK_RANGE_DELIMITER}{third_block}");
+        let block_range_str = format!(
+            "{start_block}{BLOCK_RANGE_DELIMITER}{end_block}{BLOCK_RANGE_DELIMITER}{third_block}"
+        );
 
         let result = BlockRange::from_str(&block_range_str);
 
