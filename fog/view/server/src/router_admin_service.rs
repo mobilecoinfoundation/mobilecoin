@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use crate::SVC_COUNTERS;
 use grpcio::{ChannelBuilder, RpcContext, RpcStatus, UnarySink};
 use itertools::Itertools;
 use mc_common::logger::{log, Logger};
@@ -12,7 +13,6 @@ use mc_util_grpc::{
     rpc_invalid_arg_error, rpc_logger, rpc_precondition_error, send_result,
     ConnectionUriGrpcioChannel, Empty,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use std::{
     collections::HashMap,
     str::FromStr,

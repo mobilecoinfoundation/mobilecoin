@@ -52,4 +52,5 @@ jobs:
       testing_block_v0 : ${{ inputs.testing_block_v0 }}
       testing_block_v2: ${{ inputs.testing_block_v2 }}
       testing_block_v3: ${{ inputs.testing_block_v3 }}
+      generate_and_submit_mint_config_tx_uses_json: true
     secrets: inherit

@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-extra"
-version = "2.1.0-pre0"
+version = "4.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -20,7 +20,7 @@ zeroize = "1"
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
 mc-crypto-dalek = { path = "../../crypto/dalek" }
-mc-crypto-digestible = { path = "../../crypto/digestible" }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
@@ -30,6 +30,8 @@ mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
+mc-util-vec-map = { path = "../../util/vec-map" }
+mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 
@@ -39,4 +41,6 @@ maplit = "1.0"
 yaml-rust = "0.4"
 
 mc-fog-report-validation-test-utils = { path = "../../fog/report/validation/test-utils" }
+mc-transaction-builder = { path = "../../transaction/builder", features = ["test-only"] }
+mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "2.1.0-pre0"
+version = "4.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -21,10 +21,10 @@ mc-util-grpc = { path = "../util/grpc" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 cookie = "0.16"
 displaydoc = "0.2"
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 retry = "2.0"
 secrecy = "0.8"
 serde = "1.0"

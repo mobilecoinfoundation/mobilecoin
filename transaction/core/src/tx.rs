@@ -244,7 +244,7 @@ impl TxPrefix {
 }
 
 /// An "input" to a transaction.
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Message, Serialize, Zeroize)]
 pub struct TxIn {
     /// A "ring" of outputs containing the single output that is being spent.
     /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works
@@ -571,8 +571,8 @@ pub struct TxOutMembershipElement {
     #[prost(message, required, tag = "1")]
     pub range: Range,
 
-    #[prost(message, required, tag = "2")]
     /// The internal hash value.
+    #[prost(message, required, tag = "2")]
     pub hash: TxOutMembershipHash,
 }
 

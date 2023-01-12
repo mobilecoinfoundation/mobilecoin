@@ -48,15 +48,16 @@ impl AdminServer {
         let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(admin_service)
             .register_service(health_service)
-            .register_service(build_info_service)
-            .bind_using_uri(admin_listen_uri, logger.clone());
+            .register_service(build_info_service);
 
-        let mut server = server_builder.build()?;
+        let mut server = server_builder.build_using_uri(admin_listen_uri, logger.clone())?;
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(logger, "Admin GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            logger,
+            "Admin GRPC API listening on {}",
+            admin_listen_uri.addr()
+        );
 
         Ok(Self { server })
     }

@@ -14,8 +14,9 @@ use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
-#[derive(Copy, Clone, Default, Digestible)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[digestible(transparent)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).

@@ -89,7 +89,7 @@ where
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
-        let router_server_builder = match config.client_listen_uri {
+        let router_server = match config.client_listen_uri {
             RouterClientListenUri::Streaming(ref streaming_uri) => {
                 let fog_view_router_service =
                     view_grpc::create_fog_view_router_api(FogViewRouterService::new(
@@ -105,10 +105,12 @@ where
                     "Starting Fog View Router streaming server on {}",
                     streaming_uri.addr(),
                 );
+
                 grpcio::ServerBuilder::new(env.clone())
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
-                    .bind_using_uri(streaming_uri, logger.clone())
+                    .build_using_uri(streaming_uri, logger.clone())
+                    .expect("Unable to build streaming Fog View Router server")
             }
             RouterClientListenUri::Unary(ref unary_uri) => {
                 let fog_view_router_service =
@@ -128,16 +130,15 @@ where
                 grpcio::ServerBuilder::new(env.clone())
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
-                    .bind_using_uri(unary_uri, logger.clone())
+                    .build_using_uri(unary_uri, logger.clone())
+                    .expect("Unable to build unary Fog View Router server")
             }
         };
 
-        let admin_server_builder = grpcio::ServerBuilder::new(env)
+        let admin_server = grpcio::ServerBuilder::new(env)
             .register_service(fog_view_router_admin_service)
-            .bind_using_uri(&config.admin_listen_uri, logger.clone());
-
-        let router_server = router_server_builder.build().unwrap();
-        let admin_server = admin_server_builder.build().unwrap();
+            .build_using_uri(&config.admin_listen_uri, logger.clone())
+            .expect("Unable to build Fog View Router admin server");
 
         Self {
             router_server,
@@ -163,18 +164,28 @@ where
             .expect("failed starting report cache thread"),
         );
         self.router_server.start();
-        for (host, port) in self.router_server.bind_addrs() {
-            log::info!(self.logger, "Router API listening on {}:{}", host, port);
+        match &self.config.client_listen_uri {
+            RouterClientListenUri::Streaming(uri) => {
+                log::info!(
+                    self.logger,
+                    "Router streaming GRPC API listening on {}",
+                    uri.addr(),
+                );
+            }
+            RouterClientListenUri::Unary(uri) => {
+                log::info!(
+                    self.logger,
+                    "Router unary GRPC API listening on {}",
+                    uri.addr(),
+                );
+            }
         }
         self.admin_server.start();
-        for (host, port) in self.admin_server.bind_addrs() {
-            log::info!(
-                self.logger,
-                "Router Admin API listening on {}:{}",
-                host,
-                port
-            );
-        }
+        log::info!(
+            self.logger,
+            "Router Admin API listening on {}",
+            self.config.admin_listen_uri.addr(),
+        );
     }
 
     /// Stops the server

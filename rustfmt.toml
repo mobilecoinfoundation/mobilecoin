@@ -5,4 +5,5 @@ imports_granularity = "Crate"
 ignore = [
     "sgx/types",   # copy-pasta from rust-sgx-sdk
     "sgx/urts",    # came from Baidu
+    "sgx/sync",    # came from Baidu
 ]

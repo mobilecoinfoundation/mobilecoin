@@ -3,7 +3,6 @@
 //! Metrics reporting.
 
 pub use chrono::prelude::{SecondsFormat, Utc};
-use lazy_static::lazy_static;
 pub use serde_json::json;
 
 // ------------------------- Prometheus Metrics
@@ -21,7 +20,3 @@ pub use prometheus::{
     IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
 pub use service_metrics::{GrpcMethodName, ServiceMetrics};
-
-lazy_static! {
-    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered();
-}

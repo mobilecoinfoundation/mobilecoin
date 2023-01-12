@@ -225,20 +225,17 @@ where
 
         let server_builder = grpcio::ServerBuilder::new(grpc_env)
             .register_service(ingest_service)
-            .register_service(health_service)
-            .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
+            .register_service(health_service);
 
-        let mut server = server_builder.build()?;
+        let mut server =
+            server_builder.build_using_uri(&self.config.client_listen_uri, self.logger.clone())?;
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(
-                self.logger,
-                "Ingest GRPC API listening on {}:{}",
-                host,
-                port
-            );
-        }
+        log::info!(
+            self.logger,
+            "Ingest GRPC API listening on {}",
+            self.config.client_listen_uri.addr(),
+        );
 
         self.server = Some(server);
         Ok(())
@@ -276,15 +273,17 @@ where
         let server_builder = grpcio::ServerBuilder::new(grpc_env)
             .register_service(attested_service)
             .register_service(ingest_peer_service)
-            .register_service(health_service)
-            .bind_using_uri(&self.config.peer_listen_uri, self.logger.clone());
+            .register_service(health_service);
 
-        let mut server = server_builder.build()?;
+        let mut server =
+            server_builder.build_using_uri(&self.config.peer_listen_uri, self.logger.clone())?;
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Peer GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Peer GRPC API listening on {}",
+            self.config.peer_listen_uri.addr()
+        );
 
         self.peer_server = Some(server);
         Ok(())

@@ -5,7 +5,8 @@
 # Runtime image for MobileCoin fogingest nodes.
 
 ARG REPO_ORG=mobilecoin
-FROM ${REPO_ORG}/runtime-base:latest
+ARG BASE_TAG=latest
+FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 # Copy binaries
 ARG RUST_BIN_PATH=target/release

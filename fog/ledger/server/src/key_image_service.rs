@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::server::DbPollSharedState;
+use crate::{server::DbPollSharedState, SVC_COUNTERS};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::{
     attest,
@@ -15,7 +15,6 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
     rpc_permissions_error, send_result, Authenticator,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use mc_watcher::watcher_db::WatcherDB;
 use std::sync::{Arc, Mutex};
 

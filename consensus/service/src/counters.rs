@@ -6,7 +6,7 @@ use mc_util_metrics::{
 };
 
 lazy_static::lazy_static! {
-    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_service");
+    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_scp");
     pub static ref TX_VALIDATION_ERROR_COUNTER: TxValidationErrorMetrics = TxValidationErrorMetrics::new_and_registered();
     pub static ref PENDING_VALUE_PROCESSING_TIME: Histogram = register_histogram!(
         "pending_value_processing_time",

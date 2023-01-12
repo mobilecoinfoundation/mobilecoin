@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::router_request_handler;
+use crate::{router_request_handler, SVC_COUNTERS};
 use futures::{executor::block_on, FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest;
@@ -12,7 +12,7 @@ use mc_fog_api::{
 use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use mc_util_metrics::{ServiceMetrics, SVC_COUNTERS};
+use mc_util_metrics::ServiceMetrics;
 use mc_util_telemetry::tracer;
 use std::{
     collections::HashMap,
