@@ -5,8 +5,6 @@ mod config;
 mod counters;
 mod db_fetcher;
 mod error;
-mod router_server;
-mod router_service;
 mod key_image_service;
 mod merkle_proof_service;
 mod router_admin_service;
