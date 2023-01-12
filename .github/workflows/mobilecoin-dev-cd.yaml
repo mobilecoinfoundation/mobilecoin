@@ -360,6 +360,7 @@ jobs:
         - consensus-node
         - consensus-node-config
         - fog-ingest
+        - fog-router
         - fog-ingest-config
         - fog-services
         - fog-services-config
