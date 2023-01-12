@@ -215,6 +215,20 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
+    - name: Deploy fog-router
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ingest
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        release_name: fog-router-${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
     - name: Run fog-recovery database migrations
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
       with:
