@@ -17,7 +17,7 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct KeyImageRouterService<E>
+pub struct LedgerRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {
@@ -27,7 +27,7 @@ where
     logger: Logger,
 }
 
-impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
+impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     /// Creates a new LedgerRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
     pub fn new(
@@ -45,7 +45,7 @@ impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     }
 }
 
-impl<E> LedgerApi for KeyImageRouterService<E>
+impl<E> LedgerApi for LedgerRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {

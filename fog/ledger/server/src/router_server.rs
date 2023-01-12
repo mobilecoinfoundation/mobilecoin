@@ -13,23 +13,23 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
 
 use crate::{
-    config::LedgerRouterConfig, key_image_router_service::KeyImageRouterService,
+    config::LedgerRouterConfig, router_service::LedgerRouterService,
     router_admin_service::LedgerRouterAdminService,
 };
 
-pub struct KeyImageRouterServer {
+pub struct LedgerRouterServer {
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
     logger: Logger,
 }
 
-impl KeyImageRouterServer {
+impl LedgerRouterServer {
     pub fn new<E>(
         config: LedgerRouterConfig,
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         logger: Logger,
-    ) -> KeyImageRouterServer
+    ) -> LedgerRouterServer
     where
         E: LedgerEnclaveProxy,
     {
@@ -48,19 +48,19 @@ impl KeyImageRouterServer {
 
         // Build our router server.
         // Init ledger router service.
-        let ledger_router_service = ledger_grpc::create_ledger_api(KeyImageRouterService::new(
+        let ledger_router_service = ledger_grpc::create_ledger_api(LedgerRouterService::new(
             enclave,
             shards.clone(),
             config.query_retries,
             logger.clone(),
         ));
-        log::debug!(logger, "Constructed Key Image Router GRPC Service");
+        log::debug!(logger, "Constructed Ledger Router GRPC Service");
 
         // Init ledger router admin service.
         let ledger_router_admin_service = ledger_grpc::create_ledger_router_admin_api(
             LedgerRouterAdminService::new(shards, logger.clone()),
         );
-        log::debug!(logger, "Constructed Key Image Router Admin GRPC Service");
+        log::debug!(logger, "Constructed Ledger Router Admin GRPC Service");
 
         // Package service into grpc server
         log::info!(
@@ -111,7 +111,7 @@ impl KeyImageRouterServer {
     }
 }
 
-impl Drop for KeyImageRouterServer {
+impl Drop for LedgerRouterServer {
     fn drop(&mut self) {
         self.stop();
     }

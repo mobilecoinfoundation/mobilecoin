@@ -5,8 +5,8 @@ mod config;
 mod counters;
 mod db_fetcher;
 mod error;
-mod key_image_router_server;
-mod key_image_router_service;
+mod router_server;
+mod router_service;
 mod key_image_service;
 mod merkle_proof_service;
 mod router_admin_service;
@@ -26,3 +26,4 @@ pub use untrusted_tx_out_service::UntrustedTxOutService;
 lazy_static::lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
 }
+pub use router_server::LedgerRouterServer;
