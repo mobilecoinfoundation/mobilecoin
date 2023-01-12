@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-tx-out-records"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 

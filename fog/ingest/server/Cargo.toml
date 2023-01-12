@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-server"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -15,7 +15,7 @@ clap = { version = "4.0", features = ["derive", "env"] }
 dirs = "4.0"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 hex = "0.4"
 itertools = "0.10"
 lazy_static = "1.4"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-mint-client"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -35,7 +35,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 hex = { version = "0.4", features = ["serde"] }
 pem = "1.1"
 protobuf = "2.27.1"

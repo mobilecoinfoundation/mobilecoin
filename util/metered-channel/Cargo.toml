@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-metered-channel"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-client"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -35,7 +35,7 @@ tempdir = "0.3"
 # third party
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 hex = "0.4"
 protobuf = "2.27.1"
 retry = "2.0"

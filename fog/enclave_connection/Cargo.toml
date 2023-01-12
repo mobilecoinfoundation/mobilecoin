@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-enclave-connection"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -19,9 +19,9 @@ mc-util-grpc = { path = "../../util/grpc" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
 
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 cookie = "0.16"
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

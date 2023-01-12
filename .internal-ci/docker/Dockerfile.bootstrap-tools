@@ -5,7 +5,8 @@
 # Multipurpose "toolbox" container for operations, testing and migrations.
 
 ARG REPO_ORG=mobilecoin
-FROM ${REPO_ORG}/runtime-base:latest
+ARG BASE_TAG=latest
+FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 SHELL ["/bin/bash", "-c"]
 
@@ -15,7 +16,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Install updates
 RUN apt-get update \
- && apt-get upgrade -y \
  && apt-get install -y \
         ca-certificates \
         gettext \

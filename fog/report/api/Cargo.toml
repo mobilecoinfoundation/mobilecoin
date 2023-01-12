@@ -1,13 +1,13 @@
 [package]
 name = "mc-fog-report-api"
-version = "4.0.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "mc-fog-report-api"
 
 [dependencies]
 futures = "0.3"
-grpcio = "0.11.0"
+grpcio = "0.12.0"
 protobuf = "2.27.1"
 
 mc-api = { path = "../../../api" }

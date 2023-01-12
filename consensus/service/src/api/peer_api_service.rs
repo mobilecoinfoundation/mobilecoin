@@ -8,6 +8,7 @@ use crate::{
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
     tx_manager::{TxManager, TxManagerError},
+    SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
@@ -32,7 +33,6 @@ use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
 use std::{str::FromStr, sync::Arc};
 
@@ -395,7 +395,9 @@ impl ConsensusPeerApi for PeerApiService {
 mod tests {
     use super::*;
     use crate::{background_work_queue::BackgroundWorkQueueError, tx_manager::MockTxManager};
-    use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
+    use grpcio::{
+        ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder, ServerCredentials,
+    };
     use mc_blockchain_types::Block;
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_api::{
@@ -454,11 +456,12 @@ mod tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = ConsensusPeerApiClient::new(ch);
         (client, server)
