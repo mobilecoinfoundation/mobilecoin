@@ -41,7 +41,7 @@ impl TryFrom<&external::SignedContingentInput> for SignedContingentInput {
             .get_required_output_amounts()
             .iter()
             .map(UnmaskedAmount::try_from)
-            .collect::<Result<Vec<UnmaskedAmount>, ConversionError>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
         let tx_out_global_indices = src.get_tx_out_global_indices().to_vec();
 
         Ok(SignedContingentInput {
@@ -133,10 +133,8 @@ mod tests {
         // mc_transaction_extra::SignedContingentInput should be the identity
         // function.
         {
-            let external_sci: external::SignedContingentInput =
-                external::SignedContingentInput::from(&sci);
-            let recovered_sci: SignedContingentInput =
-                SignedContingentInput::try_from(&external_sci).unwrap();
+            let external_sci = external::SignedContingentInput::from(&sci);
+            let recovered_sci = SignedContingentInput::try_from(&external_sci).unwrap();
             assert_eq!(sci, recovered_sci);
         }
 
@@ -149,10 +147,9 @@ mod tests {
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
-            let external_sci: external::SignedContingentInput =
-                external::SignedContingentInput::from(&sci);
+            let external_sci = external::SignedContingentInput::from(&sci);
             let bytes = external_sci.write_to_bytes().unwrap();
-            let recovered_sci: SignedContingentInput = mc_util_serial::decode(&bytes).unwrap();
+            let recovered_sci = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(sci, recovered_sci);
         }
     }
