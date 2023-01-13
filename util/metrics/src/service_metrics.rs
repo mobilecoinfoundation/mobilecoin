@@ -65,13 +65,13 @@ pub struct ServiceMetrics {
     message_size: HistogramVec,
 }
 
-impl ServiceMetrics {
+impl Default for ServiceMetrics {
     /// Create a default constructor that initializes all metrics
-    pub fn default() -> ServiceMetrics {
+    fn default() -> Self {
         let message_size_buckets = exponential_buckets(2.0, 2.0, 22)
             .expect("Could not create buckets for message-size histogram");
 
-        ServiceMetrics {
+        Self {
             num_req: IntCounterVec::new(Opts::new("num_req", "Number of requests"), &["method"])
                 .unwrap(),
             num_error: IntCounterVec::new(Opts::new("num_error", "Number of errors"), &["method"])
