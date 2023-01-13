@@ -3,7 +3,7 @@
 //! Trait definitions for rust structures with an FFI analogue
 
 pub(crate) use alloc::{format as _alloc_format, vec::Vec};
-pub(crate) use base64::{decode_config_slice as b64_decode, encode_config_slice as b64_encode};
+pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 pub(crate) use core::{
     cmp::{Ord, Ordering},
     fmt::{Debug, Formatter, Result as FmtResult},
@@ -325,6 +325,8 @@ macro_rules! impl_base64str_for_bytestruct {
             type Error = $crate::traits::EncodingError;
 
             fn from_base64(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
+                use base64::Engine;
+
                 if s.len() % 4 != 0 {
                     return Err($crate::traits::EncodingError::InvalidInputLength);
                 }
@@ -336,19 +338,21 @@ macro_rules! impl_base64str_for_bytestruct {
 
                 // Create an output buffer of at least MINSIZE bytes
                 let mut retval = Self::default();
-                $crate::traits::b64_decode(s.as_bytes(), $crate::B64_CONFIG, &mut (retval.0).$fieldname[..])?;
+                $crate::traits::BASE64_ENGINE.decode_slice(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
 
         impl $crate::traits::ToBase64 for $wrapper {
             fn to_base64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
+                use base64::Engine;
+
                 let required_buffer_len = $crate::traits::base64_buffer_size($size);
                 if dest.len() < required_buffer_len {
                     Err(required_buffer_len)
                 } else {
                     Ok(
-                        $crate::traits::b64_encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest)
+                        $crate::traits::BASE64_ENGINE.encode_slice(&(self.0).$fieldname[..], dest).expect(concat!("`base_64_buffer_size()` computed too small of a size to base64 encode `", stringify!($wrapper), "`"))
                     )
                 }
             }
