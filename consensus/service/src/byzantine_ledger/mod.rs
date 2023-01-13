@@ -236,7 +236,7 @@ impl ByzantineLedger {
                 peer_manager,
                 tx_manager,
                 mint_tx_manager,
-                broadcaster.clone(),
+                broadcaster,
                 task_receiver,
                 is_behind.clone(),
                 highest_peer_block.clone(),
@@ -479,7 +479,7 @@ mod tests {
             msg_signer_key,
             Vec::new(),
             None,
-            logger.clone(),
+            logger,
         );
 
         // Initially, byzantine_ledger is not behind.
@@ -572,7 +572,7 @@ mod tests {
             local_signer_key.clone(),
             Vec::new(),
             None,
-            logger.clone(),
+            logger,
         );
 
         // Initially, there should be no messages to the network.
@@ -706,8 +706,7 @@ mod tests {
                 .msgs;
             assert!(
                 msgs.contains(&expected_msg),
-                "Nominate msg not found. msgs={:#?}",
-                msgs,
+                "Nominate msg not found. msgs={msgs:#?}",
             );
         }
 
@@ -954,7 +953,7 @@ mod tests {
             local_signer_key.clone(),
             Vec::new(),
             None,
-            logger.clone(),
+            logger,
         );
 
         // Initially, there should be no messages to the network.
@@ -1044,8 +1043,7 @@ mod tests {
                 .msgs;
             assert!(
                 msgs.contains(&expected_msg),
-                "Nominate msg not found. msgs={:#?}",
-                msgs,
+                "Nominate msg not found. msgs={msgs:#?}",
             );
         }
 

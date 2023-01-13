@@ -45,11 +45,11 @@ impl Encoder for JsonEncoder {
                         // write the sum and counts
                         let h = m.get_histogram();
                         export_me.insert(
-                            flatten_metric_with_labels(&format!("{}_count", name), m),
+                            flatten_metric_with_labels(&format!("{name}_count"), m),
                             h.get_sample_count() as f64,
                         );
                         export_me.insert(
-                            flatten_metric_with_labels(&format!("{}_sum", name), m),
+                            flatten_metric_with_labels(&format!("{name}_sum"), m),
                             h.get_sample_sum(),
                         );
                     }
@@ -96,7 +96,7 @@ fn flatten_metric_with_labels(name: &str, metric: &Metric) -> String {
             .collect();
         let values = values.join(".");
         if !values.is_empty() {
-            format!("{}.{}", res, values)
+            format!("{res}.{values}")
         } else {
             res
         }

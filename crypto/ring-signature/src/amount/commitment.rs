@@ -53,7 +53,7 @@ impl fmt::Debug for Commitment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Commitment(")?;
         for i in self.to_bytes() {
-            write!(f, "{:02x}", i)?;
+            write!(f, "{i:02x}")?;
         }
         write!(f, ")")
     }

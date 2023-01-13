@@ -186,9 +186,9 @@ impl MonitorStore {
     }
 
     /// Add a new monitor.
-    pub fn add<'env>(
+    pub fn add(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         data: &MonitorData,
     ) -> Result<MonitorId, Error> {
         let monitor_id = MonitorId::from(data);
@@ -213,9 +213,9 @@ impl MonitorStore {
     }
 
     /// Delete data for a given monitor.
-    pub fn remove<'env>(
+    pub fn remove(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
     ) -> Result<(), Error> {
         db_txn.del(self.monitor_id_to_monitor_data, monitor_id, None)?;
@@ -279,9 +279,9 @@ impl MonitorStore {
     }
 
     /// Set the MonitorData for an existing monitor
-    pub fn set_data<'env>(
+    pub fn set_data(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         data: &MonitorData,
     ) -> Result<(), Error> {
@@ -308,9 +308,9 @@ impl MonitorStore {
     /// This will fail if the current password is not set in the crypto_provider
     /// since part of the re-encryption process relies on being able to
     /// decrypt the existing data.
-    pub fn re_encrypt<'env>(
+    pub fn re_encrypt(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         new_password: &[u8],
     ) -> Result<(), Error> {
         let mut cursor = db_txn.open_rw_cursor(self.monitor_id_to_monitor_data)?;
@@ -396,9 +396,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
         assert_eq!(
             fog_expected,
             fog_id.as_bytes().to_vec(),
-            "{}/{}",
-            FOG_HEXPECTED,
-            HEXPECTED
+            "{FOG_HEXPECTED}/{HEXPECTED}"
         );
     }
 

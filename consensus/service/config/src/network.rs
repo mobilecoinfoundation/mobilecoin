@@ -89,11 +89,10 @@ impl NetworkConfig {
             .cloned()
             .map(|uri| {
                 (
-                    uri.responder_id().unwrap_or_else(|e| {
-                        panic!("unable to get responder_id for {}: {:?}", uri, e)
-                    }),
+                    uri.responder_id()
+                        .unwrap_or_else(|e| panic!("unable to get responder_id for {uri}: {e:?}")),
                     uri.node_id()
-                        .unwrap_or_else(|e| panic!("unable to get node_id for {}: {:?}", uri, e)),
+                        .unwrap_or_else(|e| panic!("unable to get node_id for {uri}: {e:?}")),
                 )
             })
             .collect();
@@ -102,12 +101,12 @@ impl NetworkConfig {
             for uri in known_peers.iter() {
                 let responder_id = uri
                     .responder_id()
-                    .unwrap_or_else(|e| panic!("unable to get responder_id for {}: {:?}", uri, e));
+                    .unwrap_or_else(|e| panic!("unable to get responder_id for {uri}: {e:?}"));
                 let node_id = uri
                     .node_id()
-                    .unwrap_or_else(|e| panic!("unable to get node_id for {}: {:?}", uri, e));
+                    .unwrap_or_else(|e| panic!("unable to get node_id for {uri}: {e:?}"));
                 if peer_map.get(&responder_id).unwrap_or(&node_id) != &node_id {
-                    panic!("node id mismatch for {}", responder_id);
+                    panic!("node id mismatch for {responder_id}");
                 } else {
                     peer_map.insert(responder_id, node_id);
                 }
@@ -137,7 +136,7 @@ impl NetworkConfig {
                         peer_map
                             .get(responder_id)
                             .unwrap_or_else(|| {
-                                panic!("Unknown responder_id {} in quorum set", responder_id)
+                                panic!("Unknown responder_id {responder_id} in quorum set")
                             })
                             .clone(),
                     ),

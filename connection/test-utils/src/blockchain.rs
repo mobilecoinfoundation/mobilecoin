@@ -104,7 +104,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
         real_range
             .map(|block_index| {
                 self.ledger
-                    .get_block(block_index as u64)
+                    .get_block(block_index)
                     .or(Err(ConnectionError::NotFound))
             })
             .collect::<Result<Vec<Block>, ConnectionError>>()
@@ -164,7 +164,7 @@ mod tests {
             // Get blocks 25,26,27. These are entirely out of range, so should return an
             // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
-                println!("Blocks: {:?}", blocks);
+                println!("Blocks: {blocks:?}");
                 panic!();
             }
         }

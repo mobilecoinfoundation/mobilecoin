@@ -2158,12 +2158,12 @@ mod ledger_db_test {
         let n_blocks = 43;
         let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
-        for block_index in 0..n_blocks {
+        for (block_index, _) in expected_blocks.iter().enumerate().take(n_blocks) {
             let block = ledger_db
                 .get_block(block_index as u64)
-                .unwrap_or_else(|_| panic!("Could not get block {:?}", block_index));
+                .unwrap_or_else(|_| panic!("Could not get block {block_index:?}"));
 
-            assert_eq!(&block, expected_blocks[block_index as usize].block());
+            assert_eq!(&block, expected_blocks[block_index].block());
         }
     }
 
@@ -2175,12 +2175,12 @@ mod ledger_db_test {
         let n_blocks = 43;
         let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
-        for block_index in 0..n_blocks {
+        for (block_index, _) in expected_blocks.iter().enumerate().take(n_blocks) {
             let block_contents = ledger_db
                 .get_block_contents(block_index as u64)
-                .unwrap_or_else(|_| panic!("Could not get block contents {:?}", block_index));
+                .unwrap_or_else(|_| panic!("Could not get block contents {block_index:?}"));
 
-            let expected_block_contents = expected_blocks[block_index as usize].contents();
+            let expected_block_contents = expected_blocks[block_index].contents();
             assert_eq!(&block_contents, expected_block_contents);
         }
     }
@@ -2200,7 +2200,7 @@ mod ledger_db_test {
             Err(Error::NotFound) => {
                 // This is expected.
             }
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -2242,7 +2242,7 @@ mod ledger_db_test {
             Err(Error::NotFound) => {
                 // This is expected.
             }
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 

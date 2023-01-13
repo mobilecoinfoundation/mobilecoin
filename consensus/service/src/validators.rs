@@ -220,7 +220,7 @@ pub mod well_formed_tests {
                 assert_eq!(current_block_index, num_blocks - 1);
                 assert_eq!(highest_index_proofs.len(), 3)
             }
-            Err(e) => panic!("Unexpected error {}", e),
+            Err(e) => panic!("Unexpected error {e}"),
         }
     }
 

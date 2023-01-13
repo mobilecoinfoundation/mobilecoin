@@ -7,6 +7,7 @@
 //! (client) and responders (server).
 
 #![allow(clippy::type_complexity)]
+#![allow(clippy::result_large_err)]
 #![no_std]
 extern crate alloc;
 
@@ -61,7 +62,7 @@ mod test {
         let mut quote_data = quote.to_x64_vec();
 
         // Overwrite the cached quote's report_data contents with our pubkey
-        (&mut quote_data[368..400]).copy_from_slice(pubkey.as_ref());
+        quote_data[368..400].copy_from_slice(pubkey.as_ref());
 
         // Re-assemble a quote from the munged version
         let quote = Quote::try_from(quote_data.as_ref())

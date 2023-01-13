@@ -383,7 +383,7 @@ impl WatcherDB {
         );
 
         cursor
-            .iter_dup_of(&key_bytes)
+            .iter_dup_of(key_bytes)
             .map(|result| {
                 let (key_bytes2, value_bytes) = result?;
                 // Sanity check.
@@ -574,7 +574,7 @@ impl WatcherDB {
         let mut cursor = db_txn.open_ro_cursor(self.config)?;
 
         cursor
-            .iter_dup_of(&CONFIG_DB_KEY_TX_SOURCE_URLS)
+            .iter_dup_of(CONFIG_DB_KEY_TX_SOURCE_URLS)
             .filter_map(|r| r.ok())
             .map(|(_db_key, db_value)| bytes_to_url(db_value))
             .collect()
@@ -708,9 +708,9 @@ impl WatcherDB {
 
     /// A helper for writing a single (src_url, signer) -> VerificationReport
     /// entry in the database.
-    fn write_verification_report<'env>(
+    fn write_verification_report(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         signer: &Ed25519Public,
         verification_report: Option<&VerificationReport>,
@@ -900,9 +900,9 @@ impl WatcherDB {
     /// Note that this method is not exposed outside of this object. It is used
     /// inside `add_block_signature` to ensure all block signers get queued
     /// up automatically.
-    fn queue_verification_report_poll<'env>(
+    fn queue_verification_report_poll(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         expected_block_signer: &Ed25519Public,
     ) -> Result<(), WatcherDBError> {
@@ -970,9 +970,9 @@ impl WatcherDB {
     }
 
     /// Remove a single entry from the verification report polling queue
-    fn remove_verification_report_poll_from_queue<'env>(
+    fn remove_verification_report_poll_from_queue(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         block_signer: &Ed25519Public,
     ) -> Result<(), WatcherDBError> {
@@ -1124,7 +1124,7 @@ pub mod tests {
         let url1 = Url::parse("http://www.my_url1.com").unwrap();
         let url2 = Url::parse("http://www.my_url2.com").unwrap();
         let urls = [url1, url2];
-        let watcher_db = setup_watcher_db(&urls, logger.clone());
+        let watcher_db = setup_watcher_db(&urls, logger);
 
         let blocks = setup_blocks();
 
@@ -1202,7 +1202,7 @@ pub mod tests {
     // Config URL storage should behave as expected.
     #[test_with_logger]
     fn test_config_urls(logger: Logger) {
-        let watcher_db = setup_watcher_db(&[], logger.clone());
+        let watcher_db = setup_watcher_db(&[], logger);
 
         // Initially, the configuration is empty.
         assert!(watcher_db
@@ -1849,7 +1849,7 @@ pub mod tests {
 
         let blocks_data = setup_blocks();
 
-        let watcher_db = setup_watcher_db(&urls, logger.clone());
+        let watcher_db = setup_watcher_db(&urls, logger);
 
         // Removing a URL that has no data should work.
         watcher_db.remove_all_for_source_url(&url1).unwrap();

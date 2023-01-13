@@ -576,7 +576,7 @@ mod tests {
     fn twenty_bytes_debug_hex() {
         let value = TwentyBytes { bytes: [0xBA; 20] };
         assert_eq!(
-            format!("{:?}", value),
+            format!("{value:?}"),
             "TwentyBytes(babababababababababababababababababababa)"
         );
     }
@@ -585,7 +585,7 @@ mod tests {
     fn twenty_bytes_display_hex() {
         let value = TwentyBytes { bytes: [0xBA; 20] };
         assert_eq!(
-            format!("{}", value),
+            format!("{value}"),
             "babababababababababababababababababababa"
         );
     }

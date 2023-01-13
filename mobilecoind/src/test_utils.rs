@@ -228,7 +228,7 @@ pub fn get_testing_environment(
     let port = get_free_port();
 
     let uri =
-        MobilecoindUri::from_str(&format!("insecure-mobilecoind://127.0.0.1:{}/", port)).unwrap();
+        MobilecoindUri::from_str(&format!("insecure-mobilecoind://127.0.0.1:{port}/")).unwrap();
 
     log::debug!(logger, "Setting up server {:?}", port);
     let (server, server_conn_manager) = setup_server::<MockFogResolver>(

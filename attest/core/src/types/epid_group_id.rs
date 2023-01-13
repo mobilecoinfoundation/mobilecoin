@@ -59,7 +59,7 @@ impl Hash for EpidGroupId {
 
 impl Ord for EpidGroupId {
     fn cmp(&self, other: &Self) -> Ordering {
-        (&self.0[..]).cmp(&other.0[..])
+        self.0[..].cmp(&other.0[..])
     }
 }
 
@@ -134,6 +134,6 @@ mod test {
     fn test_display() {
         let gid: sgx_epid_group_id_t = [0x2eu8, 0x0b, 0, 0];
         let epid_gid = EpidGroupId::from(gid);
-        assert_eq!("00000b2e", format!("{}", epid_gid));
+        assert_eq!("00000b2e", format!("{epid_gid}"));
     }
 }

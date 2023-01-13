@@ -62,7 +62,7 @@ impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
 impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
     fn from(shared_secret: &RistrettoPublic) -> Self {
         let mut hasher = Blake2b256::new();
-        hasher.update(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
+        hasher.update(TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
         hasher.update(shared_secret.to_bytes());
         Self(hasher.finalize().into())
     }

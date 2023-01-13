@@ -122,7 +122,7 @@ fn parse_pem_or_hex(
 
     let base_path = base_path.into().or_else(|| std::env::current_dir().ok());
     let path = if let Some(base) = base_path {
-        base.join(&value)
+        base.join(value)
     } else {
         value.into()
     };

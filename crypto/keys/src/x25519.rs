@@ -259,8 +259,7 @@ impl Debug for X25519Public {
 
         write!(
             f,
-            "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            b64_str
+            "-----BEGIN PUBLIC KEY-----\n{b64_str}\n-----END PUBLIC KEY-----\n",
         )
     }
 }

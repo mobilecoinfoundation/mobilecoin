@@ -93,9 +93,9 @@ impl BlockDataStore {
 
     /// Add a single BlockData that was fetched from `src_url` into the
     /// database.
-    pub fn add_block_data<'env>(
+    pub fn add_block_data(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         block_data: &BlockData,
     ) -> Result<(), WatcherDBError> {
@@ -169,7 +169,7 @@ impl BlockDataStore {
         let first_key_bytes = block_index.to_be_bytes();
 
         let mut results = HashMap::default();
-        for (key_bytes, value_bytes) in cursor.iter_from(&first_key_bytes).filter_map(Result::ok) {
+        for (key_bytes, value_bytes) in cursor.iter_from(first_key_bytes).filter_map(Result::ok) {
             // Try and get the index and tx source url from the database key.
             // Remember that the key is the block index , followed by the source url.
             if key_bytes.len() < first_key_bytes.len() {
@@ -210,9 +210,9 @@ impl BlockDataStore {
     /// that there are no gaps (no blocks were skipped).
     /// It does not remove Block/BlockContents as those might be shared with
     /// other source URLs.
-    pub fn remove_all_for_source_url<'env>(
+    pub fn remove_all_for_source_url(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         last_synced_block_index: u64,
     ) -> Result<(), WatcherDBError> {
@@ -237,9 +237,9 @@ impl BlockDataStore {
         Ok(())
     }
 
-    fn store_block<'env>(
+    fn store_block(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         block: &Block,
     ) -> Result<Vec<u8>, WatcherDBError> {
         let hash = block.digest32::<MerlinTranscript>(b"block").to_vec();
@@ -255,9 +255,9 @@ impl BlockDataStore {
         }
     }
 
-    fn store_block_contents<'env>(
+    fn store_block_contents(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         block_contents: &BlockContents,
     ) -> Result<Vec<u8>, WatcherDBError> {
         let hash: Vec<u8> = block_contents.hash().as_ref().to_vec();

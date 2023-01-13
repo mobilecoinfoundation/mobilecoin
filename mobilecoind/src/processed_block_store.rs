@@ -182,9 +182,9 @@ impl ProcessedBlockStore {
     }
 
     /// Remove the data associated with a given monitor id.
-    pub fn remove<'env>(
+    pub fn remove(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
     ) -> Result<(), Error> {
         let start_key = ProcessedBlockKey::new(monitor_id, 0);
@@ -205,9 +205,9 @@ impl ProcessedBlockStore {
     }
 
     /// Feed data processed from a given block.
-    pub fn block_processed<'env>(
+    pub fn block_processed(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         block_index: u64,
         discovered_utxos: &[UnspentTxOut],
@@ -292,7 +292,7 @@ mod test {
         let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
-                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                let block_contents = ledger_db.get_block_contents(idx).unwrap();
                 // We grab the 4th tx out in each block since the test ledger had 3 random
                 // recipients, followed by our known recipient.
                 // See the call to `get_testing_environment` at the beginning of the test.

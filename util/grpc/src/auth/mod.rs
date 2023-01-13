@@ -231,7 +231,7 @@ mod test {
                 .authenticate_metadata(&metadata_builder.build())
                 .is_ok()
             {
-                panic!("Unexpected success with header {:?}", test_header_value);
+                panic!("Unexpected success with header {test_header_value:?}");
             }
         }
 
@@ -276,7 +276,7 @@ mod test {
                 .authenticate_metadata(&metadata_builder.build())
                 .is_ok()
             {
-                panic!("Unexpected success with header {:?}", test_header_value);
+                panic!("Unexpected success with header {test_header_value:?}");
             }
         }
 
