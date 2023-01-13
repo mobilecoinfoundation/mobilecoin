@@ -10,11 +10,14 @@ env:
   RELEASE_3X_TAG: v3.0.0-dev
 
 on:
+  pull_request:
+    branches:
+    - 'release/**'
   push:
     branches:
-    - feature/*
+    - 'feature/**'
     tags:
-      - v[0-9]+*
+    - 'v[0-9]+*'
 
 # don't run more than one at a time for a branch/tag
 concurrency:
@@ -456,13 +459,34 @@ jobs:
       generate_and_submit_mint_config_tx_uses_json: true
     secrets: inherit
 
+  mobilecoin-cd-complete:
+    # Dummy step for a standard GHA Check that won't change when we update the tests.
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - test-current-bv3-release
+    steps:
+      - name: CD is Complete
+        run: 'true'
+
 ###############################################################
 # Clean up deployments
 ###############################################################
 # we keep feature/*
 # run on tag
+# run on pr to release/*
   cleanup-after-tag:
     if: github.ref_type == 'tag'
+    needs:
+    - test-current-bv3-release
+    - generate-metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets: inherit
+
+  cleanup-after-pr-to-release-branch:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/')
     needs:
     - test-current-bv3-release
     - generate-metadata
