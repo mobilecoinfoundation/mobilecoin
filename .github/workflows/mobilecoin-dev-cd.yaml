@@ -13,11 +13,15 @@ on:
   pull_request:
     branches:
     - 'release/**'
+    paths-ignore:
+    - '**.md'
   push:
     branches:
     - 'feature/**'
     tags:
     - 'v[0-9]+*'
+    paths-ignore:
+    - '**.md'
 
 # don't run more than one at a time for a branch/tag
 concurrency:
@@ -486,7 +490,7 @@ jobs:
     secrets: inherit
 
   cleanup-after-pr-to-release-branch:
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/')
+    if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
     needs:
     - test-current-bv3-release
     - generate-metadata
