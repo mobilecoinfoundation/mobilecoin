@@ -154,6 +154,7 @@ impl NetworkConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
     use mc_consensus_scp::QuorumSetMember;
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
     use std::str::FromStr;
@@ -251,10 +252,9 @@ mod tests {
                 QuorumSetMember::Node(NodeID {
                     responder_id: ResponderId::from_str("0.0.0.0:8082").unwrap(),
                     public_key: Ed25519Public::try_from_der(
-                        &base64::decode(
-                            "MCowBQYDK2VwAyEA/ii3rCch5qhMbLZ2vVgpQr1iTrq1BBN2+i0mMPuAJhQ="
-                        )
-                        .unwrap()
+                        &BASE64_ENGINE
+                            .decode("MCowBQYDK2VwAyEA/ii3rCch5qhMbLZ2vVgpQr1iTrq1BBN2+i0mMPuAJhQ=")
+                            .unwrap()
                     )
                     .unwrap()
                 })
@@ -264,10 +264,9 @@ mod tests {
                 QuorumSetMember::Node(NodeID {
                     responder_id: ResponderId::from_str("0.0.0.0:8083").unwrap(),
                     public_key: Ed25519Public::try_from_der(
-                        &base64::decode(
-                            "MCowBQYDK2VwAyEA9C+J6AUm9XnSjrGEhplQpp/jMPNwIxBovFJrJRXtoVA="
-                        )
-                        .unwrap()
+                        &BASE64_ENGINE
+                            .decode("MCowBQYDK2VwAyEA9C+J6AUm9XnSjrGEhplQpp/jMPNwIxBovFJrJRXtoVA=")
+                            .unwrap()
                     )
                     .unwrap()
                 })
@@ -279,10 +278,11 @@ mod tests {
                     vec![NodeID {
                         responder_id: ResponderId::from_str("0.0.0.0:8084").unwrap(),
                         public_key: Ed25519Public::try_from_der(
-                            &base64::decode(
-                                "MCowBQYDK2VwAyEAzxKNVxaVfJ4xELeA1bQ+aa+2HkcYyX2pDGcCqW9mzoo="
-                            )
-                            .unwrap()
+                            &BASE64_ENGINE
+                                .decode(
+                                    "MCowBQYDK2VwAyEAzxKNVxaVfJ4xELeA1bQ+aa+2HkcYyX2pDGcCqW9mzoo="
+                                )
+                                .unwrap()
                         )
                         .unwrap()
                     }]

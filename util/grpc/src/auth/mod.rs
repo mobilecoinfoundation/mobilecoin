@@ -10,6 +10,7 @@ pub use token_authenticator::{
     TokenAuthenticator, TokenBasicCredentialsGenerator, TokenBasicCredentialsGeneratorError,
 };
 
+use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use displaydoc::Display;
 use grpcio::{
     CallOption, Error as GrpcError, Metadata, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode,
@@ -134,7 +135,8 @@ impl BasicCredentials {
         let base64_value = header_parts
             .next()
             .ok_or(AuthorizationHeaderError::InvalidAuthorizationHeader)?;
-        let concatenated_values_bytes = base64::decode(base64_value)
+        let concatenated_values_bytes = BASE64_ENGINE
+            .decode(base64_value)
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
         let concatenated_values = str::from_utf8(&concatenated_values_bytes)
             .map_err(|_| AuthorizationHeaderError::InvalidCredentials)?;
@@ -167,7 +169,7 @@ impl BasicCredentials {
     pub fn authorization_header(&self) -> String {
         format!(
             "Basic {}",
-            base64::encode(format!("{}:{}", self.username, self.password))
+            BASE64_ENGINE.encode(format!("{}:{}", self.username, self.password))
         )
     }
 

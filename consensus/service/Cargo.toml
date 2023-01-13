@@ -42,7 +42,7 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
-base64 = "0.13"
+base64 = "0.21"
 chrono = "0.4"
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
