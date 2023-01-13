@@ -10,19 +10,11 @@ env:
   RELEASE_3X_TAG: v3.0.0-dev
 
 on:
-  pull_request:
-    paths-ignore:
-    - '**.md'
   push:
     branches:
-    - master
-    - main
     - feature/*
-    - release/*
     tags:
       - v[0-9]+*
-    paths-ignore:
-    - '**.md'
 
 # don't run more than one at a time for a branch/tag
 concurrency:
@@ -467,34 +459,10 @@ jobs:
 ###############################################################
 # Clean up deployments
 ###############################################################
-# we keep master and feature/*
-# run on pr, run on tag, run on release/*.
-# break this up because 4 or 5 part boolean logic is hard with GHA basic statements.
-# Yes this is less DRY, but way more readable and easier to follow.
-  cleanup-after-pr:
-    if: github.event_name == 'pull_request'
-    needs:
-    - test-current-bv3-release
-    - generate-metadata
-    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
-    with:
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      delete_namespace: true
-    secrets: inherit
-
+# we keep feature/*
+# run on tag
   cleanup-after-tag:
     if: github.ref_type == 'tag'
-    needs:
-    - test-current-bv3-release
-    - generate-metadata
-    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
-    with:
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      delete_namespace: true
-    secrets: inherit
-
-  cleanup-after-release-branch:
-    if: github.ref_type == 'branch' && startsWith('release/', github.ref_name)
     needs:
     - test-current-bv3-release
     - generate-metadata
