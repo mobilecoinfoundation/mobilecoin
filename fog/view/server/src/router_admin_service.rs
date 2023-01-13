@@ -1,8 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::SVC_COUNTERS;
+use crate::{
+    fog_view_router_server::Shard,
+    sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
+    SVC_COUNTERS,
+};
 use grpcio::{ChannelBuilder, RpcContext, RpcStatus, UnarySink};
-use itertools::Itertools;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::AddShardRequest,
@@ -14,26 +17,19 @@ use mc_util_grpc::{
     ConnectionUriGrpcioChannel, Empty,
 };
 use std::{
-    collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
 };
 
 #[derive(Clone)]
 pub struct FogViewRouterAdminService {
-    shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
+    shards: Arc<RwLock<Vec<Shard>>>,
     logger: Logger,
 }
 
 impl FogViewRouterAdminService {
-    pub fn new(
-        shard_clients: Arc<RwLock<HashMap<FogViewStoreUri, Arc<FogViewStoreApiClient>>>>,
-        logger: Logger,
-    ) -> Self {
-        Self {
-            shard_clients,
-            logger,
-        }
+    pub fn new(shards: Arc<RwLock<Vec<Shard>>>, logger: Logger) -> Self {
+        Self { shards, logger }
     }
 
     fn add_shard_impl(&mut self, shard_uri: &str, logger: &Logger) -> Result<Empty, RpcStatus> {
@@ -44,8 +40,11 @@ impl FogViewRouterAdminService {
                 logger,
             )
         })?;
-        let mut shard_clients = self.shard_clients.write().expect("RwLock Poisoned");
-        if shard_clients.keys().contains(&view_store_uri) {
+        let mut shards = self.shards.write().expect("RwLock Poisoned");
+        if shards
+            .iter()
+            .any(|shard| shard.uri.clone() == view_store_uri)
+        {
             let error = rpc_precondition_error(
                 "add_shard",
                 format!("Shard uri {} already exists in the shard list", shard_uri),
@@ -62,7 +61,9 @@ impl FogViewRouterAdminService {
             ChannelBuilder::default_channel_builder(grpc_env)
                 .connect_to_uri(&view_store_uri, logger),
         );
-        shard_clients.insert(view_store_uri, Arc::new(view_store_client));
+        let block_range = EpochShardingStrategy::default().get_block_range();
+        let shard = Shard::new(view_store_uri, Arc::new(view_store_client), block_range);
+        shards.push(shard);
 
         Ok(Empty::new())
     }

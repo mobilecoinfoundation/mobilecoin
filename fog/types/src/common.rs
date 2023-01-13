@@ -5,6 +5,10 @@ use core::str::FromStr;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+/// The string that delimits the start and end blocks in a string that
+/// represents a BlockRange.
+pub const BLOCK_RANGE_DELIMITER: &str = "-";
+
 /// A half-open [a, b) range of blocks
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize, Deserialize)]
 pub struct BlockRange {
@@ -70,7 +74,7 @@ impl FromStr for BlockRange {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let block_indices: Vec<u64> = s
-            .split(',')
+            .split(BLOCK_RANGE_DELIMITER)
             .map(|index_str| index_str.trim().parse())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| "BlockRange index is not a number.")?;
@@ -134,7 +138,7 @@ mod tests {
     fn from_string_well_formatted_creates_block_range() {
         let start_block = 0;
         let end_block = 10;
-        let block_range_str = format!("{},{}", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -148,7 +152,7 @@ mod tests {
     fn from_string_well_formatted_with_whitespace_creates_block_range() {
         let start_block = 0;
         let end_block = 10;
-        let block_range_str = format!("     {} , {} ", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -163,7 +167,9 @@ mod tests {
         let start_block = 0;
         let end_block = 10;
         let third_block = 10;
-        let block_range_str = format!("{},{},{}", start_block, end_block, third_block);
+        let block_range_str = format!(
+            "{start_block}{BLOCK_RANGE_DELIMITER}{end_block}{BLOCK_RANGE_DELIMITER}{third_block}"
+        );
 
         let result = BlockRange::from_str(&block_range_str);
 
@@ -174,7 +180,7 @@ mod tests {
     fn from_string_non_numbers_errors() {
         let start_block = 'a';
         let end_block = 'b';
-        let block_range_str = format!("{},{}", start_block, end_block);
+        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
 
         let result = BlockRange::from_str(&block_range_str);
 

@@ -97,6 +97,7 @@ class FogNetwork(Network):
             admin_port = BASE_VIEW_STORE_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
             release = True,
+            sharding_strategy= 'default'
         )
         self.fog_view_store.start()
 

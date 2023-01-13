@@ -17,6 +17,7 @@ use mc_common::{
     time::TimeProvider,
 };
 use mc_fog_api::view_grpc;
+use mc_fog_types::common::BlockRange;
 use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
@@ -24,10 +25,7 @@ use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 pub struct FogViewRouterServer<E, RC>
 where
@@ -43,6 +41,33 @@ where
     report_cache_thread: Option<ReportCacheThread>,
 }
 
+/// A shard that fulfills a portion of the router's query requests.
+#[derive(Clone)]
+pub struct Shard {
+    /// The uri that this shard listens on.
+    pub uri: FogViewStoreUri,
+
+    /// The gRPC client that is used to communicate with the shard.
+    pub grpc_client: Arc<view_grpc::FogViewStoreApiClient>,
+
+    /// The `BlockRange` that this shard is responsible for providing.
+    pub block_range: BlockRange,
+}
+
+impl Shard {
+    pub fn new(
+        uri: FogViewStoreUri,
+        grpc_client: Arc<view_grpc::FogViewStoreApiClient>,
+        block_range: BlockRange,
+    ) -> Self {
+        Self {
+            uri,
+            grpc_client,
+            block_range,
+        }
+    }
+}
+
 impl<E, RC> FogViewRouterServer<E, RC>
 where
     E: ViewEnclaveProxy,
@@ -53,7 +78,7 @@ where
         config: FogViewRouterConfig,
         enclave: E,
         ra_client: RC,
-        shards: Arc<RwLock<HashMap<FogViewStoreUri, Arc<view_grpc::FogViewStoreApiClient>>>>,
+        shards: Arc<RwLock<Vec<Shard>>>,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
     ) -> FogViewRouterServer<E, RC>

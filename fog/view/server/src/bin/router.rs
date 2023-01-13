@@ -8,12 +8,13 @@ use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{
-    config::FogViewRouterConfig, fog_view_router_server::FogViewRouterServer,
+    config::FogViewRouterConfig,
+    fog_view_router_server::{FogViewRouterServer, Shard},
+    sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{
-    collections::HashMap,
     env,
     sync::{Arc, RwLock},
 };
@@ -40,8 +41,7 @@ fn main() {
         logger.clone(),
     );
 
-    // TODO: Remove and get from a config.
-    let mut fog_view_store_grpc_clients = HashMap::new();
+    let mut shards = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())
@@ -52,16 +52,22 @@ fn main() {
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
         );
-        fog_view_store_grpc_clients.insert(shard_uri, Arc::new(fog_view_store_grpc_client));
+
+        // TODO: update this logic once we introduce other types of sharding strategies.
+        let epoch_sharding_strategy = EpochShardingStrategy::try_from(shard_uri.clone())
+            .expect("Could not get sharding strategy");
+        let block_range = epoch_sharding_strategy.get_block_range();
+        let shard = Shard::new(shard_uri, Arc::new(fog_view_store_grpc_client), block_range);
+        shards.push(shard);
     }
-    let fog_view_store_grpc_clients = Arc::new(RwLock::new(fog_view_store_grpc_clients));
+    let shards = Arc::new(RwLock::new(shards));
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
         config,
         sgx_enclave,
         ias_client,
-        fog_view_store_grpc_clients,
+        shards,
         SystemTimeProvider::default(),
         logger,
     );

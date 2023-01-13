@@ -121,8 +121,9 @@ pub struct FogViewRouterConfig {
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: RouterClientListenUri,
 
-    /// gRPC listening URI for Fog View Stores.
-    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
+    /// gRPC listening URI for Fog View Stores. Should be indexed the same as
+    /// the `sharding_strategies` field.
+    #[clap(long, env = "MC_VIEW_SHARD_URIS")]
     pub shard_uris: Vec<FogViewStoreUri>,
 
     /// PEM-formatted keypair to send with an Attestation Request.
@@ -147,7 +148,7 @@ pub struct FogViewRouterConfig {
     pub omap_capacity: u64,
 
     /// Router admin listening URI.
-    #[clap(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: AdminUri,
 
     /// The chain id of the network we are a part of
