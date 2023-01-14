@@ -3,18 +3,31 @@
 # Declare variables to be passed into your templates.
 
 env:
- - name: CLIENT_RESPONDER_ID
-   value: fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
- - name: MC_CLIENT_LISTEN_URI
-   value: fog-view-store://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
- - name: MC_CHAIN_ID
-   valueFrom:
-     configMapKeyRef:
-       key: network
-       name: mobilecoin-network
+- name: MC_OMAP_CAPACITY
+  value: "4194304"
+- name: MC_CLIENT_RESPONDER_ID
+  value: fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
+- name: MC_CLIENT_LISTEN_URI
+  value: insecure-fog-view-router://0.0.0.0:3225/
+  # value: insecure-fog-view://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443
+- name: MC_VIEW_SHARD_URIS
+  value: insecure-fog-view-store://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443/?sharding_strategy=default
+- name: MC_CHAIN_ID
+  valueFrom:
+    configMapKeyRef:
+      key: network
+      name: mobilecoin-network
+- name: CLIENT_AUTH_TOKEN_SECRET
+  valueFrom:
+    secretKeyRef:
+      key: token
+      name: client-auth-token
+      optional: true
 
-command:
-  - fog_view_router
+- name: RUST_BACKTRACE
+  value: full
+- name: RUST_LOG
+  value: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
 
 replicaCount: 1
 
@@ -23,6 +36,7 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  # tag: "v0-fog-view-router-ci-cd.1636.sha-e93665eb"
 
 imagePullSecrets:
 - name: docker-credentials
@@ -91,8 +105,21 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+nodeSelector:
+  sgx-enabled-node: "true"
 
-tolerations: []
+tolerations:
+  - effect: NoSchedule
+    key: sgx
+    operator: Equal
+    value: "true"
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
 
 affinity: {}

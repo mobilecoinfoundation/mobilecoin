@@ -28,7 +28,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Chart.Name }}-router
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -38,32 +38,43 @@ spec:
               containerPort: 80
               protocol: TCP
 
-          {{- with .Values.command }}
           command:
-          {{- toYaml . | nindent 12 }}
-          {{- end}}
+          - /usr/bin/supervisord
+          resources:
+            limits:
+              intel.com/sgx: 2k
+            requests:
+              intel.com/sgx: 2k
 
           {{- with .Values.env }}
-          env:
+          env: &env
           {{- toYaml . | nindent 12 }}
           {{- end}}
 
           envFrom:
-          - configMapRef:
-              name: fog-ingest
           - secretRef:
               name: ias
+          volumeMounts:
+            - mountPath: /etc/supervisor/conf.d
+              name: supervisor-conf
+            - mountPath: /var/run/aesmd
+              name: aesm-socket-dir
 
-          # livenessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: http
-          # readinessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - emptyDir: {}
+        name: aesm-socket-dir
+      - name: supervisor-conf
+        projected:
+          defaultMode: 420
+          sources:
+          - configMap:
+              name: fog-services-supervisord-sgx
+          - configMap:
+              name: fog-services-supervisord-daemon
+          - configMap:
+              name: fog-services-supervisord-admin
+          - configMap:
+              name: {{ include "fog-router.fullname" . }}-router
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
