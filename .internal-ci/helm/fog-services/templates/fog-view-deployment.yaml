@@ -165,7 +165,7 @@ spec:
           readOnly: true
         resources:
           {{- toYaml .Values.fogView.resources | nindent 10 }}
-      - name: grpc-gateway
+      - name: http-gateway
         image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
         command:
