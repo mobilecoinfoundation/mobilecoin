@@ -16,7 +16,7 @@ spec:
   tls:
   - hosts:
     - {{ include "fogServices.fogPublicFQDN" . }}
-    secretName: secretName: {{ include "fogServices.fullname" . }}-fog-tls
+    secretName: {{ include "fogServices.fullname" . }}-fog-tls
   rules:
   - host: {{ include "fogServices.fogPublicFQDN" . }}
     http:

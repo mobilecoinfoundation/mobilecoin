@@ -183,7 +183,6 @@ fogLedger:
     common:
       annotations: |-
         haproxy.org/server-ssl: "false"             # The backend (server) is http
-        # haproxy.org/cookie-persistence: "fog-ledger"
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
         haproxy.org/timeout-http-keep-alive: 120s
