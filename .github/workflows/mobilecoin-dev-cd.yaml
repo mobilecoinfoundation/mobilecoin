@@ -50,6 +50,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: values
+      shell: bash
+      run: |
+        echo "head_ref: ${{ github.head_ref }}+"
+        echo "ref: ${{ github.ref }}+"
+        echo "base_ref: ${{ github.base_ref }}+"
+
     - name: Generate version metadata
       id: meta
       shell: bash
