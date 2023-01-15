@@ -12,12 +12,12 @@ spec:
     app: fog-ledger
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
-    - name: ledger
+    - name: ledger-grpc
       port: 3228
-      targetPort: ledger
-    - name: mgmt
+      targetPort: ledger-grpc
+    - name: mgmt-http
       port: 8000
-      targetPort: mgmt
+      targetPort: mgmt-http
     - name: ledger-http
       port: 8228
       targetPort: ledger-http

@@ -12,12 +12,12 @@ spec:
     app: fog-view
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
-    - name: view
+    - name: view-grpc
       port: 3225
-      targetPort: view
-    - name: mgmt
+      targetPort: view-grpc
+    - name: mgmt-http
       port: 8000
-      targetPort: mgmt
+      targetPort: mgmt-http
     - name: view-http
       port: 8225
       targetPort: view-http

@@ -58,9 +58,9 @@ spec:
         imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
         command: [ "/usr/bin/supervisord" ]
         ports:
-        - name: ledger
+        - name: ledger-grpc
           containerPort: 3228
-        - name: mgmt
+        - name: mgmt-http
           containerPort: 8000
         envFrom:
         - secretRef:
@@ -144,8 +144,8 @@ spec:
         - -http-server-listen=:8228
         - -logtostderr
         ports:
-          - name: ledger-http
-            containerPort: 8228
+        - name: ledger-http
+          containerPort: 8228
         resources:
           {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
 {{- if eq .Values.jaegerTracing.enabled true }}

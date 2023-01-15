@@ -12,14 +12,17 @@ spec:
     app: consensus-node
     {{- include "consensusNode.selectorLabels" . | nindent 4 }}
   ports:
-  - name: cns-port
+  - name: peer-grpc
     port: 8443
-    targetPort: cns-port
-  - name: cns-mgmt
+    targetPort: peer-grpc
+  - name: mgmt-http
     port: 8000
-    targetPort: cns-mgmt
+    targetPort: mgmt-http
   {{- if .Values.acceptClientConnections }}
-  - name: cns-client
+  - name: client-http
+    port: 8223
+    targetPort: client-http
+  - name: client-grpc
     port: 3223
-    targetPort: cns-client
+    targetPort: client-grpc
   {{- end }}

@@ -67,9 +67,9 @@ spec:
         imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
         command: [ "/usr/bin/supervisord" ]
         ports:
-        - name: view
+        - name: view-grpc
           containerPort: 3225
-        - name: mgmt
+        - name: mgmt-http
           containerPort: 8000
         envFrom:
         - configMapRef:
@@ -175,8 +175,8 @@ spec:
         - -http-server-listen=:8225
         - -logtostderr
         ports:
-          - name: view-http
-            containerPort: 8225
+        - name: view-http
+          containerPort: 8225
         resources:
           {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
 {{- if eq .Values.jaegerTracing.enabled true }}

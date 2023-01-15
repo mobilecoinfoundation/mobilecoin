@@ -1,28 +1,27 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-# Adding a separate ingress for each host so we don't stomp on existing certs.
 {{- $hosts := split "\n" (include "fogServices.fogReportHosts" . | trim) }}
-{{- range $hosts }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-report-http-{{ . }}
+  name: {{ include "fogServices.fullname" . }}-fog-report-http
   labels:
     app: fog-report
-    {{- include "fogServices.labels" $ | nindent 4 }}
+    {{- include "fogServices.labels" . | nindent 4 }}
   annotations:
-    {{- if $.Values.global.certManagerClusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ $.Values.global.certManagerClusterIssuer }}
+    {{- if (include "fogServices.blocklist.enabled" .) }}
+    haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
-    {{- if (include "fogServices.blocklist.enabled" $) }}
-    haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" $ }}
-    {{- end }}
-    {{- toYaml $.Values.fogReport.ingress.http.annotations | nindent 4 }}
+    {{- toYaml .Values.fogReport.ingress.common.annotations | nindent 4 }}
+    {{- toYaml .Values.fogReport.ingress.http.annotations | nindent 4 }}
 spec:
   tls:
   - hosts:
+    {{- range $hosts }}
     - {{ . }}
-    secretName: {{ . }}-fog-tls
+    {{- end }}
+    secretName: {{ include "fogServices.fullname" . }}-fog-tls
   rules:
+  {{- range $hosts }}
   - host: {{ . }}
     http:
       paths:
@@ -32,6 +31,5 @@ spec:
           service:
             name: {{ include "fogServices.fullname" $ }}-fog-report
             port:
-              number: 8222
----
-{{- end }}
+              name: report-http
+  {{- end }}

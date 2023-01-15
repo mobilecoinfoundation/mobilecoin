@@ -4,13 +4,11 @@ kind: Ingress
 metadata:
   name: {{ include "consensusNode.fullname" . }}-peer-grpc
   annotations:
-    {{- if .Values.global.certManagerClusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
-    {{- end }}
     {{- if (include "consensusNode.blocklist.enabled" .) }}
     haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
     {{- end }}
-    {{- toYaml .Values.node.peer.ingress.annotations | nindent 4 }}
+    {{- toYaml .Values.node.ingress.common.annotations | nindent 4 }}
+    {{- toYaml .Values.node.ingress.grpc.annotations | nindent 4 }}
   labels:
     {{- include "consensusNode.labels" . | nindent 4 }}
 spec:
@@ -28,32 +26,32 @@ spec:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 8443
+              name: peer-grpc
       - path: /build_info
         pathType: Prefix
         backend:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 8443
+              name: peer-grpc
       - path: /consensus_common.BlockchainAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 8443
+              name: peer-grpc
       - path: /consensus_peer.ConsensusPeerAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 8443
+              name: peer-grpc
       - path: /grpc.health.v1.Health
         pathType: Prefix
         backend:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 8443
+              name: peer-grpc

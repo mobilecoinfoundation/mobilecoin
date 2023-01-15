@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "consensusNode.fullname" . }}-peer-tls
+  labels:
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "consensusNode.fullname" . }}-peer-tls
+  privateKey:
+    size: 2048
+    algorithm: RSA
+    encoding: PKCS1
+  dnsNames:
+  - {{ include "consensusNode.peerHostname" . }}
+  issuerRef:
+    name: {{ .Values.global.certManagerClusterIssuer }}
+    kind: ClusterIssuer
