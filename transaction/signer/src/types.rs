@@ -10,7 +10,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     BlockVersion,
 };
-use mc_transaction_extra::TxOutSummaryUnblindingData;
+use mc_transaction_extra::{TxOutSummaryUnblindingData, TxSummaryUnblindingData};
 use serde::{Deserialize, Serialize};
 
 /// Account ID object, derived from the default subaddress and used
@@ -163,6 +163,7 @@ pub struct TxSignReq {
     pub secrets: TxSignSecrets,
 
     /// Block version
+    // NOTE: this is superflous
     pub block_version: BlockVersion,
 }
 
@@ -170,6 +171,8 @@ pub struct TxSignReq {
 pub enum TxSignSecrets {
     #[serde(rename = "output_secrets")]
     OutputSecrets(Vec<OutputSecret>),
+
+    // NOTE: this is only the tx outs because you can recover the ins from the unsigned rings
     #[serde(rename = "tx_out_unblinding_data")]
     TxOutUnblindingData(Vec<TxOutSummaryUnblindingData>),
 }

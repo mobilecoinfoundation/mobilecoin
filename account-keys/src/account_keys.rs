@@ -227,6 +227,17 @@ impl FromRandom for PublicAddress {
     }
 }
 
+impl From<&PublicAddress> for mc_core::account::PublicSubaddress {
+    fn from(a: &PublicAddress) -> Self {
+        use mc_core::keys::Key;
+
+        Self {
+            view_public: Key::from(a.view_public_key),
+            spend_public: Key::from(a.spend_public_key),
+        }
+    }
+}
+
 /// Complete AccountKey, containing the pair of secret keys, which can be used
 /// for spending, and optionally some fog-related info,
 /// can be used for spending. This should only ever be present in client code.
