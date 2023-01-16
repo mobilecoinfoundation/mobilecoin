@@ -80,7 +80,7 @@ If you don't want to run the tests in docker, you can set up postgres locally, o
 4. Create a PostgreSQL user that matches your current login username:
     `sudo -u postgres createuser --superuser $USER`
 5. You should now be able to create a database: `createdb fog_test`
-6. Install diesel-cli: `cargo install diesel_cli --no-default-features --features postgres`
+6. Install diesel-cli: `cargo install diesel_cli --no-default-features --features postgres --version 1.4.1`
 7. To populate your newly created database with the fog tables, run this:
     `cd src/fog/sql_recovery_db && DATABASE_URL=postgres://$USER@localhost/fog_test diesel migration run`
 8. Fog services that require connecting to the database need the DATABASE_URL environment variable set:
