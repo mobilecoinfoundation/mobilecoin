@@ -57,7 +57,7 @@ jobs:
     - name: Concurrency
       shell: bash
       run: |
-        echo "group: mobilecoin-dev-cd-${{ format('refs/heads/{0}', github.head_ref) || github.ref }}"
+        echo "${{ toJSON(github) }}"
 
     - name: Generate version metadata
       id: meta
