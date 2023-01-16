@@ -54,6 +54,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Concurrency
+      shell: bash
+      run: |
+        echo "group: mobilecoin-dev-cd-${{ github.head_ref || format('refs/heads/{0}', github.ref) }}"
+
     - name: Generate version metadata
       id: meta
       shell: bash
