@@ -24,9 +24,13 @@ on:
     - '**.md'
 
 # don't run more than one at a time for a branch/tag
+# format github.ref to match PR head_ref.
 concurrency:
-  group: mobilecoin-dev-cd-${{ github.head_ref || github.ref }}
+  group: mobilecoin-dev-cd-${{ github.head_ref || format('refs/heads/{0}', github.ref }}
   cancel-in-progress: true
+
+# ref: feature/v4.0-fix-ingress-cm
+# head_ref: refs/heads/feature/v4.0-fix-ingress-cm
 
 # Ignore dependabot. We just need to 'if' the top level jobs.
 # Other jobs that 'need' these top level jobs will be skipped.
@@ -49,13 +53,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-
-    - name: values
-      shell: bash
-      run: |
-        echo "head_ref: ${{ github.head_ref }}+"
-        echo "ref: ${{ github.ref }}+"
-        echo "base_ref: ${{ github.base_ref }}+"
 
     - name: Generate version metadata
       id: meta
