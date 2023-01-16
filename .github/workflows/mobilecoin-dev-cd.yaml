@@ -26,7 +26,7 @@ on:
 # don't run more than one at a time for a branch/tag
 # format github.ref to match PR head_ref.
 concurrency:
-  group: mobilecoin-dev-cd-${{ github.head_ref || format('refs/heads/{0}', github.ref }}
+  group: mobilecoin-dev-cd-${{ github.head_ref || format('refs/heads/{0}', github.ref) }}
   cancel-in-progress: true
 
 # ref: feature/v4.0-fix-ingress-cm
