@@ -19,10 +19,10 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::UriScheme;
 
 fn main() {
-    mc_common::setup_panic_handler();
-    let config = LedgerRouterConfig::parse();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    mc_common::setup_panic_handler();
+    let config = LedgerRouterConfig::parse();
 
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")

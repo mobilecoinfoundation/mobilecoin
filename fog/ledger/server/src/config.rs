@@ -93,7 +93,7 @@ pub struct LedgerRouterConfig {
     pub client_listen_uri: FogLedgerUri,
 
     /// Router admin listening URI.
-    #[clap(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: AdminUri,
 
     /// Number of query attempts with no forward progress before reporting an
