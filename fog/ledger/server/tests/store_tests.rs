@@ -37,7 +37,6 @@ use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
-use itertools::Itertools;
 use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
