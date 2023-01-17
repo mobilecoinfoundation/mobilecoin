@@ -13,7 +13,7 @@ alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc" ]
 default = [ "serde", "alloc", "mc-crypto-dalek-backend-u64/default", "mc-crypto-dalek-backend-simd/default" ]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.5", default-features = false, features = ["nightly"] }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"]  }
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
 
