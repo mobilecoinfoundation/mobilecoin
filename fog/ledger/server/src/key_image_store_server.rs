@@ -104,7 +104,7 @@ where
 
     pub fn new_from_service(
         mut key_image_service: KeyImageService<LedgerDB, E>,
-        client_listen_uri: Uri<KeyImageStoreScheme>,
+        client_listen_uri: KeyImageStoreUri,
         enclave: E,
         sharding_strategy: SS,
         logger: Logger,
