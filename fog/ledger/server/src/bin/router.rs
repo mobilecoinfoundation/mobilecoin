@@ -27,12 +27,28 @@ fn main() {
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
-    log::info!(
-        logger,
-        "enclave path {}, responder ID {}",
-        enclave_path.to_str().unwrap(),
-        &config.client_responder_id
-    );
+
+    if let Some(enclave_path_str) = enclave_path.to_str() {
+        log::info!(
+            logger,
+            "enclave path {}, responder ID {}",
+            enclave_path_str,
+            &config.client_responder_id
+        );
+    } else {
+        log::info!(
+            logger,
+            "enclave path {:?}, responder ID {}",
+            enclave_path,
+            &config.client_responder_id
+        );
+        log::warn!(
+            logger,
+            "enclave path {:?} is not valid Unicode!",
+            enclave_path
+        );
+    }
+
     let enclave = LedgerSgxEnclave::new(
         enclave_path,
         &config.client_responder_id,
