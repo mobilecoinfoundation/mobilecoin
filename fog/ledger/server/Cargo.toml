@@ -93,7 +93,7 @@ mc-fog-test-infra = { path = "../../test_infra" }
 # third-party
 aes-gcm = "0.10.1"
 pem = "1.1"
+portpicker = "0.1.1"
 sha2 = "0.10"
 tempdir = "0.3"
 x509-signature = "0.5"
-portpicker = "0.1.1"
