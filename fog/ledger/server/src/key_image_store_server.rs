@@ -141,7 +141,7 @@ where
             .register_service(ledger_store_service)
             .register_service(health_service)
             .build_using_uri(&client_listen_uri, logger.clone())
-            .unwrap();
+            .expect("Could not build Key Image Store Server");
 
         let db_fetcher = DbFetcher::new(
             key_image_service.get_ledger(),
