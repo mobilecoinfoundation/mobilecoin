@@ -40,11 +40,11 @@ impl LedgerRouterServer {
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("key-image-router-server".to_string())
+                .name_prefix("ledger-router-server".to_string())
                 .build(),
         );
 
-        // Health check service - will be used in both cases
+        // Health check service - will be used in both router + admin interface
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
@@ -68,7 +68,7 @@ impl LedgerRouterServer {
         // Package service into grpc server
         log::info!(
             logger,
-            "Starting Key Image Router server on {}",
+            "Starting Ledger Router server on {}",
             config.client_listen_uri.addr(),
         );
 
