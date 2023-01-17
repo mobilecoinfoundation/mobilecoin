@@ -21,9 +21,11 @@ use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, SignerError};
-use mc_util_serial::prost::Message;
+#[cfg(feature = "prost")]
+use prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -504,14 +506,16 @@ impl SigningData {
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "1"))]
     pub ring_signatures: Vec<RingMLSAG>,
 
     /// Commitments of value equal to each real input.
-    #[prost(message, repeated, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "2"))]
     pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
@@ -520,7 +524,7 @@ pub struct SignatureRctBulletproofs {
     /// with Prost.
     ///
     /// Note: This is EMPTY if mixed transactions are enabled
-    #[prost(bytes, tag = "3")]
+    #[cfg_attr(feature="prost", prost(bytes, tag = "3"))]
     #[digestible(never_omit)]
     pub range_proof_bytes: Vec<u8>,
 
@@ -529,17 +533,17 @@ pub struct SignatureRctBulletproofs {
     /// The range proofs correspond to the sorted order of token ids used.
     ///
     /// Note: This is EMPTY if mixed transactions is not enabled
-    #[prost(bytes, repeated, tag = "4")]
+    #[cfg_attr(feature="prost", prost(bytes, repeated, tag = "4"))]
     pub range_proofs: Vec<Vec<u8>>,
 
     /// Token id for each pseudo_output. This must have the same length as
     /// `pseudo_output_commitments`, after mixed transactions feature.
-    #[prost(fixed64, repeated, tag = "5")]
+    #[cfg_attr(feature="prost", prost(fixed64, repeated, tag = "5"))]
     pub pseudo_output_token_ids: Vec<u64>,
 
     /// Token id for each output. This must have the same length as
     /// `prefix.outputs`, after mixed transactions feature
-    #[prost(fixed64, repeated, tag = "6")]
+    #[cfg_attr(feature="prost", prost(fixed64, repeated, tag = "6"))]
     pub output_token_ids: Vec<u64>,
 }
 

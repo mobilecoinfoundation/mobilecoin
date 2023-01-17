@@ -4,24 +4,28 @@
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{Amount, AmountError, MaskedAmount};
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConstantTimeEq};
 
 /// Object representing a TxOut that can be sent to a receiver enabling them
 /// to find/uniquely identify a TxOut, un-blind the amount, and spend the TxOut
-#[derive(Clone, Deserialize, Serialize, Message)]
+#[derive(Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOutGiftCode {
     /// The global index of the TxOut which has been gifted
-    #[prost(uint64, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(uint64, required, tag = "1"))]
     pub global_index: u64,
 
     /// The one-time private key which can be used to spend this TxOut
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub onetime_private_key: RistrettoPrivate,
 
     /// The shared secret which can be used to un-blind the amount of this TxOut
-    #[prost(message, required, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "3"))]
     pub shared_secret: RistrettoPublic,
 }
 

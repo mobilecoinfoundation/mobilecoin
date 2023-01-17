@@ -28,6 +28,7 @@ use crate::{
 #[derive(Clone, Digestible, PartialEq, Eq, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
     #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]

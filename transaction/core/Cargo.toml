@@ -6,10 +6,25 @@ edition = "2021"
 readme = "README.md"
 
 [features]
-serde = [ "dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-ring-signature-signer/serde" ]
-prost = [ "dep:prost", "mc-crypto-ring-signature/prost", "mc-crypto-ring-signature-signer/prost" ]
+alloc = [ 
+    "mc-crypto-ring-signature/alloc",
+    "serde?/alloc",
+]
+serde = [ 
+    "dep:serde",
+    "mc-account-keys/serde",
+    "mc-crypto-ring-signature/serde",
+    "mc-crypto-ring-signature-signer/serde",
+]
+prost = [ 
+    "dep:prost",
+    "mc-account-keys/prost",
+    "mc-crypto-ring-signature/prost",
+    "mc-crypto-ring-signature-signer/prost",
+]
 
 default = [
+    "alloc",
     "serde",
     "prost",
     "mc-crypto-dalek/default",
@@ -34,7 +49,7 @@ subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-box = { path = "../../crypto/box" }
 mc-crypto-dalek = { path = "../../crypto/dalek", default_features = false }
@@ -42,7 +57,7 @@ mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", 
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
-mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false, features = [ "alloc" ] }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false, features = [  ] }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
 mc-transaction-types = { path = "../types", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }

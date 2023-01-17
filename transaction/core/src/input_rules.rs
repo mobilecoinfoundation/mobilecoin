@@ -17,7 +17,9 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::CompressedRistrettoPublic;
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -26,23 +28,25 @@ use zeroize::Zeroize;
 ///
 /// Any rule could conceivably be added here if it can be evaluated against a
 /// `Tx`.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct InputRules {
     /// Outputs that are required to appear in the Tx prefix for the transaction
     /// to be valid
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "1"))]
     pub required_outputs: Vec<TxOut>,
 
     /// An upper bound on the tombstone block which must be respected for the
     /// transaction to be valid
-    #[prost(fixed64, tag = "2")]
+    #[cfg_attr(feature="prost", prost(fixed64, tag = "2"))]
     pub max_tombstone_block: u64,
 
     /// Outputs required to appear in the TxPrefix, but which are permitted to
     /// be filled partially instead of fully, according to the "fill
     /// fraction" which is inferred using the "partial fill change" output
     /// (MCIP #42)
-    #[prost(message, repeated, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "3"))]
     pub partial_fill_outputs: Vec<RevealedTxOut>,
 
     /// A change output for any leftover from this input, which may occur during
@@ -56,7 +60,7 @@ pub struct InputRules {
     ///
     /// It is an error to use any of the partial fill options without also
     /// setting this.
-    #[prost(message, tag = "4")]
+    #[cfg_attr(feature="prost", prost(message, tag = "4"))]
     pub partial_fill_change: Option<RevealedTxOut>,
 
     /// A minimum fill value for the partial fill rules. (MCIP #42)
@@ -65,7 +69,7 @@ pub struct InputRules {
     /// This can be used to prevent griefing where someone fills your offer in
     /// exchange for dust.
     /// This minimum has no effect if set to 0.
-    #[prost(fixed64, tag = "5")]
+    #[cfg_attr(feature="prost", prost(fixed64, tag = "5"))]
     pub min_partial_fill_value: u64,
 }
 

@@ -63,12 +63,13 @@ impl PedersenGens {
     /// Creates a Pedersen commitment using the value scalar and a blinding
     /// factor.
     pub fn commit(&self, value: Scalar, blinding: Scalar) -> RistrettoPoint {
-        // Use optimised Straus' method if alloc is available
-        #[cfg(feature = "alloc")]
+        // Use optimised Straus' method on platforms if alloc (and plenty of memory) is available
+        // NOTE: disabled for ledger/bolos in leu of much more complex feature propagation
+        #[cfg(all(feature = "alloc", not(target_family = "bolos")))]
         return RistrettoPoint::multiscalar_mul(&[value, blinding], &[self.B, self.B_blinding]);
 
         // Otherwise fallback to naive method
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(any(not(feature = "alloc"), target_family = "bolos"))]
         return value * self.B + blinding * self.B_blinding;
     }
 }

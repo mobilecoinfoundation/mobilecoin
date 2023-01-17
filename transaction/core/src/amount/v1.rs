@@ -18,7 +18,9 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -28,6 +30,7 @@ use zeroize::Zeroize;
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
 #[digestible(name = "Amount")]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct MaskedAmountV1 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,

@@ -20,7 +20,9 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use zeroize::Zeroize;
@@ -33,7 +35,9 @@ use zeroize::Zeroize;
 /// which is computed by hashing from "tx out shared secret". The purpose of
 /// this is to make it possible to selectively reveal the amount and token id of
 /// a TxOut, without revealing the memo and other things. (See also MCIP #42).
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct MaskedAmountV2 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,

@@ -8,41 +8,45 @@ use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Signature, RistrettoPublic};
 use mc_crypto_multisig::MultiSig;
-use mc_util_serial::Message;
+
+#[cfg(feature = "prost")]
+use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// The contents of a mint-tx, which is a transaction to mint new tokens.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct MintTxPrefix {
     /// Token ID we are minting.
-    #[prost(uint64, tag = "1")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
     pub token_id: u64,
 
     /// Amount we are minting.
-    #[prost(uint64, tag = "2")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "2"))]
     pub amount: u64,
 
     /// The destination's public subaddress view key 'C'.
-    #[prost(message, required, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "3"))]
     pub view_public_key: RistrettoPublic,
 
     /// The destination's public subaddress spend key `D`.
-    #[prost(message, required, tag = "4")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "4"))]
     pub spend_public_key: RistrettoPublic,
 
     /// Nonce, to prevent replay attacks.
     /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
-    #[prost(bytes, tag = "5")]
+    #[cfg_attr(feature="prost", prost(bytes, tag = "5"))]
     pub nonce: Vec<u8>,
 
     /// The block index at which this transaction is no longer valid.
-    #[prost(uint64, tag = "6")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "6"))]
     pub tombstone_block: u64,
 
     /// Optional, encrypted fog hint, if you are trying to mint to a fog user.
-    #[prost(message, tag = "7")]
+    #[cfg_attr(feature="prost", prost(message, tag = "7"))]
     pub e_fog_hint: Option<EncryptedFogHint>,
 }
 
@@ -55,15 +59,16 @@ impl MintTxPrefix {
 
 /// A mint transaction coupled with a signature over it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct MintTx {
     /// The transaction contents.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub prefix: MintTxPrefix,
 
     /// The transaction signature.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub signature: MultiSig<Ed25519Signature>,
 }
 

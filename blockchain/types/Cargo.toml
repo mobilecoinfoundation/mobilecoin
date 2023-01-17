@@ -4,9 +4,14 @@ version = "4.0.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 
+[features]
+prost = [ "dep:prost", "mc-account-keys/prost" ]
+serde = [ "dep:serde", "mc-account-keys/serde" ]
+default = [ "prost", "serde" ]
+
 [dependencies]
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-common = { path = "../../common", default-features = false }
 mc-consensus-scp-types = { path = "../../consensus/scp/types" }
@@ -22,8 +27,8 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["alloc", "derive"] }
 zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]

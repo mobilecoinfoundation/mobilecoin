@@ -8,56 +8,62 @@ use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::{MultiSig, SignerSet};
+
+#[cfg(feature = "prost")]
 use mc_util_serial::Message;
+
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// A minting configuration for a single token ID.
 /// The minting configuration specifies who is allowed to submit mint
 /// transactions, for which token and at what total limit.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct MintConfig {
     /// Token ID this configuration applies to.
-    #[prost(uint64, tag = "1")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
     pub token_id: u64,
 
     /// The set of keys that can sign a minting transaction.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub signer_set: SignerSet<Ed25519Public>,
 
     /// The maximal amount this configuration can mint from the moment it has
     /// been applied.
-    #[prost(uint64, tag = "3")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "3"))]
     pub mint_limit: u64,
 }
 
 /// The contents of a mint-config transaction. This transaction alters the
 /// minting configuration for a single token ID.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
-    #[prost(uint64, tag = "1")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
     pub token_id: u64,
 
     /// The new configuration.
-    #[prost(message, repeated, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "2"))]
     pub configs: Vec<MintConfig>,
 
     /// Nonce, to prevent replay attacks.
     /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
-    #[prost(bytes, tag = "3")]
+    #[cfg_attr(feature="prost", prost(bytes, tag = "3"))]
     pub nonce: Vec<u8>,
 
     /// The block index at which this transaction is no longer valid.
-    #[prost(uint64, tag = "4")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "4"))]
     pub tombstone_block: u64,
 
     /// The maximal amount that can be minted by configurations specified in
     /// this tx. This amount is shared amongst all configs.
-    #[prost(uint64, tag = "5")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "5"))]
     pub total_mint_limit: u64,
 }
 
@@ -70,15 +76,16 @@ impl MintConfigTxPrefix {
 
 /// A mint-config transaction coupled with a signature over it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct MintConfigTx {
     /// The transaction contents.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub prefix: MintConfigTxPrefix,
 
     /// The transaction signature.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub signature: MultiSig<Ed25519Signature>,
 }
 
@@ -90,14 +97,15 @@ impl fmt::Display for MintConfigTx {
 
 /// A mint-config transaction coupled with the data used to validate it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct ValidatedMintConfigTx {
     /// The transaction that was validated.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub mint_config_tx: MintConfigTx,
 
     /// The signer set used to validate the transaction's signature.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub signer_set: SignerSet<Ed25519Public>,
 }

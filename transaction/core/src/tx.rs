@@ -13,7 +13,9 @@ use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
+#[cfg(feature="prost")]
 use prost::Message;
+#[cfg(feature="serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -103,14 +105,16 @@ impl fmt::Debug for TxHash {
 }
 
 /// A CryptoNote-style transaction.
-#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Digestible)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct Tx {
     /// The transaction contents.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub prefix: TxPrefix,
 
     /// The transaction signature.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub signature: SignatureRctBulletproofs,
 
     /// Client's belief about the minimum fee map, expressed as a merlin digest.
@@ -118,7 +122,7 @@ pub struct Tx {
     /// The enclave must reject the proposal if this doesn't match the enclave's
     /// belief, to protect the client from information disclosure attacks.
     /// (This is TOB-MCCT-5)
-    #[prost(bytes, tag = "3")]
+    #[cfg_attr(feature="prost", prost(bytes, tag = "3"))]
     pub fee_map_digest: Vec<u8>,
 }
 
@@ -160,26 +164,28 @@ impl Tx {
 ///
 /// Note: If you add something here, consider if it should be added to the
 /// TxSummary also for hardware wallet visibility.
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Digestible)]
+#[cfg_attr(feature="prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxPrefix {
     /// List of inputs to the transaction.
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "1"))]
     pub inputs: Vec<TxIn>,
 
     /// List of outputs from the transaction.
-    #[prost(message, repeated, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "2"))]
     pub outputs: Vec<TxOut>,
 
     /// Fee paid to the foundation for this transaction
-    #[prost(uint64, tag = "3")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "3"))]
     pub fee: u64,
 
     /// The block index at which this transaction is no longer valid.
-    #[prost(uint64, tag = "4")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "4"))]
     pub tombstone_block: u64,
 
     /// Token id for the fee output of this transaction
-    #[prost(fixed64, tag = "5")]
+    #[cfg_attr(feature="prost", prost(fixed64, tag = "5"))]
     #[digestible(omit_when = 0)]
     pub fee_token_id: u64,
 }
@@ -244,22 +250,24 @@ impl TxPrefix {
 }
 
 /// An "input" to a transaction.
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Message, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxIn {
     /// A "ring" of outputs containing the single output that is being spent.
     /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works
     /// with Vec.
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "1"))]
     pub ring: Vec<TxOut>,
 
     /// Proof that each TxOut in `ring` is in the ledger.
     /// It would be nice to use [TxOutMembershipProof; RING_SIZE] here, but
     /// Prost only works with Vec.
-    #[prost(message, repeated, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "2"))]
     pub proofs: Vec<TxOutMembershipProof>,
 
     /// Any rules associated to this input, per MCIP #31
-    #[prost(message, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, tag = "3"))]
     pub input_rules: Option<InputRules>,
 }
 
@@ -299,27 +307,29 @@ impl TryFrom<&TxIn> for SignedInputRing {
 }
 
 /// An output created by a transaction.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature="prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOut {
     /// The amount being sent.
-    #[prost(oneof = "MaskedAmount", tags = "1, 6")]
+    #[cfg_attr(feature="prost", prost(oneof = "MaskedAmount", tags = "1, 6"))]
     #[digestible(name = "amount")]
     pub masked_amount: Option<MaskedAmount>,
 
     /// The one-time public address of this output.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub target_key: CompressedRistrettoPublic,
 
     /// The per output tx public key
-    #[prost(message, required, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "3"))]
     pub public_key: CompressedRistrettoPublic,
 
     /// The encrypted fog hint for the fog ingest server.
-    #[prost(message, required, tag = "4")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "4"))]
     pub e_fog_hint: EncryptedFogHint,
 
     /// The encrypted memo (except for old TxOut's, which don't have this.)
-    #[prost(message, tag = "5")]
+    #[cfg_attr(feature="prost", prost(message, tag = "5"))]
     pub e_memo: Option<EncryptedMemo>,
 }
 
@@ -525,20 +535,22 @@ impl TryFrom<&TxOut> for ReducedTxOut {
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOutMembershipProof {
     /// Index of the TxOut that this proof refers to.
-    #[prost(uint64, tag = "1")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
     pub index: u64,
 
     /// Index of the last TxOut at the time the proof was created.
-    #[prost(uint64, tag = "2")]
+    #[cfg_attr(feature="prost", prost(uint64, tag = "2"))]
     pub highest_index: u64,
 
     /// All hashes needed to recompute the root hash.
     /// These elements must be listed in the order in which they should be
     /// combined for the proof to be valid.
-    #[prost(message, repeated, tag = "3")]
+    #[cfg_attr(feature="prost", prost(message, repeated, tag = "3"))]
     pub elements: Vec<TxOutMembershipElement>,
 }
 
@@ -564,15 +576,17 @@ impl TxOutMembershipProof {
 /// An element of a TxOut membership proof, denoting an internal hash node in a
 /// Merkle tree.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Message, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
+    Clone, Deserialize, Digestible, Eq, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
     pub range: Range,
 
     /// The internal hash value.
-    #[prost(message, required, tag = "2")]
+    #[cfg_attr(feature="prost", prost(message, required, tag = "2"))]
     pub hash: TxOutMembershipHash,
 }
 

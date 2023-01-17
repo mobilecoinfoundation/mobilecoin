@@ -2,8 +2,9 @@
 
 use core::cmp::Ordering;
 use mc_crypto_digestible::Digestible;
+#[cfg(feature = "prost")]
 use prost::Message;
-// These require the serde "derive" feature to be enabled.
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -19,8 +20,10 @@ impl core::fmt::Display for RangeError {
 
 /// A range [from,to] of indices.
 #[derive(
-    Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible, Zeroize,
+    Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Digestible, Zeroize,
 )]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct Range {
     /// The left endpoint of the range
     #[cfg_attr(feature = "prost", prost(uint64, tag = "1"))]

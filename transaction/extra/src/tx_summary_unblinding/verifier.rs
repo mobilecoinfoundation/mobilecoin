@@ -12,7 +12,7 @@
 
 use super::{
     Error, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryUnblindingData,
-    TxSummaryUnblindingReport,
+    TxSummaryUnblindingReport, report::MAX_RECORDS,
 };
 use crate::UnmaskedAmount;
 use mc_core::account::{RingCtAddress, ShortAddressHash};
@@ -117,7 +117,7 @@ pub fn verify_tx_summary(
 /// implementation details of the mc-crypto-digestible scheme.
 /// If TxSummary digestible annotations are changed then this object's
 /// implementation needs to change also.
-pub struct TxSummaryStreamingVerifier {
+pub struct TxSummaryStreamingVerifier<const RECORDS: usize = MAX_RECORDS> {
     // The account view private key of the transaction signer.
     // This is used to identify outputs addressed to ourselves regardless of subaddress
     view_private_key: RistrettoPrivate,
@@ -128,7 +128,7 @@ pub struct TxSummaryStreamingVerifier {
     transcript: MerlinTranscript,
     // The report which we produce about what balance changes occur for what
     // parties
-    report: TxSummaryUnblindingReport,
+    report: TxSummaryUnblindingReport<RECORDS>,
     // The total number of outputs expected
     expected_num_outputs: usize,
     // The total number of inputs expected
@@ -139,7 +139,7 @@ pub struct TxSummaryStreamingVerifier {
     input_count: usize,
 }
 
-impl TxSummaryStreamingVerifier {
+impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
     /// Start a new streaming verifier. This takes a few small arguments from
     /// TxSummary and TxSummaryUnblindingData which are needed before we can
     /// consume outputs and inputs. This also takes the view private key of
@@ -320,7 +320,7 @@ impl TxSummaryStreamingVerifier {
         mut self,
         fee: Amount,
         tombstone_block: u64,
-    ) -> ([u8; 32], TxSummaryUnblindingReport) {
+    ) -> ([u8; 32], TxSummaryUnblindingReport<RECORDS>) {
         self.report.network_fee = fee;
         self.report.tombstone_block = tombstone_block;
         self.report.sort();
@@ -402,7 +402,7 @@ mod tests {
     // Test the size of the streaming verifier on the stack. This is using heapless.
     #[test]
     fn test_streaming_verifier_size() {
-        assert_eq!(core::mem::size_of::<TxSummaryStreamingVerifier>(), 1600);
+        assert_eq!(core::mem::size_of::<TxSummaryStreamingVerifier<MAX_RECORDS>(), 1600);
     }
 
     // Note: Most tests are in transaction/extra/tests to avoid build issues.

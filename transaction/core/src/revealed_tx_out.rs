@@ -5,13 +5,17 @@ use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::Scalar;
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A TxOut together with its amount shared secret, which can be used to reveal
 /// the amount and token id and check them against the commitment data
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct RevealedTxOut {
     /// The TxOut which is being revealed
     #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]

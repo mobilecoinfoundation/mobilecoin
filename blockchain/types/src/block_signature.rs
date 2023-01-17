@@ -6,7 +6,9 @@ use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
     Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureError, Signer, Verifier,
 };
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// A block signature.

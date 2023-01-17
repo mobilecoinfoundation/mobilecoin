@@ -25,23 +25,23 @@ pub enum TransactionEntity {
     Swap,
 }
 
-const MAX_RECORDS: usize = MAX_OUTPUTS as usize + MAX_INPUTS as usize;
+pub const MAX_RECORDS: usize = MAX_OUTPUTS as usize + MAX_INPUTS as usize;
 
 /// A report of the parties and balance changes due to a transaction.
 /// This can be produced for a given TxSummary and TxSummaryUnblindingData.
 #[derive(Clone, Debug, Default)]
-pub struct TxSummaryUnblindingReport {
+pub struct TxSummaryUnblindingReport<const RECORDS: usize = MAX_RECORDS> {
     /// The set of balance changes that we have observed
     // Note: We can save about 210 bytes on the stack if we store TokenId as
     // a [u8; 8] to avoid alignment requirements. TBD if that's worth it.
-    pub balance_changes: VecMap<(TransactionEntity, TokenId), i64, MAX_RECORDS>,
+    pub balance_changes: VecMap<(TransactionEntity, TokenId), i64, RECORDS>,
     /// The network fee that we pay
     pub network_fee: Amount,
     /// The tombstone block associated to this transaction
     pub tombstone_block: u64,
 }
 
-impl TxSummaryUnblindingReport {
+impl <const RECORDS: usize> TxSummaryUnblindingReport<RECORDS> {
     /// Add value to the balance report, for some entity
     pub fn balance_add(
         &mut self,
@@ -82,7 +82,7 @@ impl TxSummaryUnblindingReport {
 
 // This is a proof-of-concept, it doesn't map token id's to their symbol when
 // displaying.
-impl Display for TxSummaryUnblindingReport {
+impl <const RECORDS: usize> Display for TxSummaryUnblindingReport<RECORDS> {
     fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         let mut current_entity = None;
         for ((entity, tok), val) in self.balance_changes.iter() {

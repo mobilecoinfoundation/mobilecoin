@@ -17,12 +17,14 @@ use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::Ristretto;
 use mc_util_from_random::FromRandom;
+#[cfg(feature = "prost")]
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
     DecodeError, Message,
 };
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -136,6 +138,7 @@ impl EncryptedFogHint {
     }
 }
 
+#[cfg(feature = "prost")]
 impl Message for EncryptedFogHint {
     fn encode_raw<B>(&self, buf: &mut B)
     where
