@@ -18,7 +18,7 @@ name = "ledger_router"
 path = "src/bin/router.rs"
 
 [[bin]]
-name = "ledger_store"
+name = "key_image_store"
 path = "src/bin/key_image_store.rs"
 
 [dependencies]
@@ -91,9 +91,9 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 pem = "1.1"
+portpicker = "0.1.1"
 sha2 = "0.10"
 tempdir = "0.3"
 x509-signature = "0.5"
-portpicker = "0.1.1"
