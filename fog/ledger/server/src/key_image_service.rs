@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{server::DbPollSharedState, SVC_COUNTERS};
+use crate::{server::DbPollSharedState, KeyImageClientListenUri, SVC_COUNTERS};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::{
     attest,

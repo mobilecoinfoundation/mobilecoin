@@ -5,6 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use itertools::Itertools;
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
@@ -29,7 +30,6 @@ use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
-use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::AnonymousAuthenticator;
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
@@ -183,11 +183,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
         logger.clone(),
     );
 
-    let mut store_server = KeyImageStoreServer::new_from_service(
-        store_service,
-        client_listen_uri,
-        logger.clone(),
-    );
+    let mut store_server =
+        KeyImageStoreServer::new_from_service(store_service, client_listen_uri, logger.clone());
     store_server.start();
 
     // Set up IAS verficiation
@@ -227,9 +224,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         block_index: 1,
         timestamp: 255,
     };
-    enclave
-        .add_key_image_data(vec![test_key_image])
-        .unwrap();
+    enclave.add_key_image_data(vec![test_key_image]).unwrap();
 
     // Set up the client's end of the encrypted connection.
     let initiator = Start::new(responder_id.to_string());
@@ -319,11 +314,10 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let done_response: CheckKeyImagesResponse = mc_util_serial::decode(&plaintext_bytes).unwrap();
     assert_eq!(done_response.results.len(), 1);
 
-    let test_results: Vec<(KeyImage, u32)> = done_response
+    let mut test_results = done_response
         .results
         .into_iter()
-        .map(|result| (result.key_image, result.key_image_result_code))
-        .collect();
+        .map(|result| (result.key_image, result.key_image_result_code));
 
     // The key image result code for a spent key image is 1.
     assert!(test_results.contains(&(test_key_image.key_image, 1)));

@@ -9,13 +9,12 @@ use mc_common::{
 };
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
-use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme};
+use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
-use mc_util_uri::Uri;
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
@@ -24,6 +23,7 @@ use crate::{
 
 pub struct KeyImageStoreServer {
     server: grpcio::Server,
+    client_listen_uri: KeyImageStoreUri,
     logger: Logger,
 }
 
@@ -65,7 +65,7 @@ impl KeyImageStoreServer {
     pub fn new<E>(
         chain_id: String,
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
-        client_listen_uri: Uri<KeyImageStoreScheme>,
+        client_listen_uri: KeyImageStoreUri,
         enclave: E,
         ledger: LedgerDB,
         watcher: WatcherDB,
@@ -91,7 +91,7 @@ impl KeyImageStoreServer {
 
     pub fn new_from_service<E>(
         key_image_service: KeyImageService<LedgerDB, E>,
-        client_listen_uri: Uri<KeyImageStoreScheme>,
+        client_listen_uri: KeyImageStoreUri,
         logger: Logger,
     ) -> KeyImageStoreServer
     where
@@ -122,21 +122,27 @@ impl KeyImageStoreServer {
             client_listen_uri.addr(),
         );
 
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let server = grpcio::ServerBuilder::new(env)
             .register_service(ledger_store_service)
             .register_service(health_service)
-            .bind_using_uri(&client_listen_uri, logger.clone());
-        let server = server_builder.build().unwrap();
+            .build_using_uri(&client_listen_uri, logger.clone())
+            .unwrap();
 
-        Self { server, logger }
+        Self {
+            server,
+            client_listen_uri,
+            logger,
+        }
     }
 
     /// Starts the server
     pub fn start(&mut self) {
         self.server.start();
-        for (host, port) in self.server.bind_addrs() {
-            log::info!(self.logger, "API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "API listening on {}",
+            self.client_listen_uri.addr()
+        );
     }
 
     /// Stops the server
