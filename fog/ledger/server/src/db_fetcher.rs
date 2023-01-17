@@ -83,7 +83,10 @@ impl<
 
     /// Start running the DbFetcher thread.
     pub fn start(&mut self) {
-        let thread = self.thread.take().expect("No DbFetcher thread to attempt to spawn");
+        let thread = self
+            .thread
+            .take()
+            .expect("No DbFetcher thread to attempt to spawn");
         self.join_handle = Some(
             ThreadBuilder::new()
                 .name("LedgerDbFetcher".to_owned())
