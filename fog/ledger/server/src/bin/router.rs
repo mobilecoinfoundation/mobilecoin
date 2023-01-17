@@ -27,12 +27,28 @@ fn main() {
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
-    log::info!(
-        logger,
-        "enclave path {}, responder ID {}",
-        enclave_path.to_str().unwrap(),
-        &config.client_responder_id
-    );
+
+    if let Some(enclave_path_str) = enclave_path.to_str() {
+        log::info!(
+            logger,
+            "enclave path {}, responder ID {}",
+            enclave_path_str,
+            &config.client_responder_id
+        );
+    } else {
+        log::info!(
+            logger,
+            "enclave path {:?}, responder ID {}",
+            enclave_path,
+            &config.client_responder_id
+        );
+        log::warn!(
+            logger,
+            "enclave path {:?} is not valid Unicode!",
+            enclave_path
+        );
+    }
+
     let enclave = LedgerSgxEnclave::new(
         enclave_path,
         &config.client_responder_id,
@@ -52,7 +68,8 @@ fn main() {
             KeyImageStoreScheme::SCHEME_INSECURE,
             i
         );
-        let shard_uri = KeyImageStoreUri::from_str(&shard_uri_string).unwrap();
+        let shard_uri = KeyImageStoreUri::from_str(&shard_uri_string)
+            .unwrap_or_else(|_| panic!("Invalid shard URI string {}!", shard_uri_string));
         let ledger_store_grpc_client = KeyImageStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
