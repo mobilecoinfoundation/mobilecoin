@@ -36,7 +36,7 @@ sha2 = { version = "0.10", default-features = false }
 signature = { version = "1.6.4", default-features = false, features = ["digest-preview"] }
 static_assertions = "1.1.0"
 subtle = { version = "2", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
+x25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]

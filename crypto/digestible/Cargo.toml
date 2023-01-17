@@ -16,7 +16,7 @@ generic-array = "0.14"
 mc-crypto-dalek = { path = "../dalek", optional = true, default-features = false }
 mc-crypto-digestible-derive = { path = "./derive", optional = true, default-features = false }
 merlin = { version = "3.0", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false, optional = true }
+x25519-dalek = { version = "2.0.0-pre.1", default-features = false, optional = true }
 
 [features]
 default = ["alloc", "derive", "dalek", "mc-crypto-dalek/default"]
