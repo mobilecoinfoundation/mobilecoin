@@ -22,14 +22,6 @@ name = "key_image_store"
 path = "src/bin/key_image_store.rs"
 
 [dependencies]
-
-# third-party
-clap = { version = "4.0", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-futures = "0.3"
-grpcio = "0.11.0"
-itertools = "0.10"
-lazy_static = "1.4"
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
@@ -38,14 +30,6 @@ mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
-
-# fog
-mc-fog-api = { path = "../../api" }
-mc-fog-enclave-connection = { path = "../../enclave_connection" }
-mc-fog-ledger-enclave = { path = "../enclave" }
-mc-fog-ledger-enclave-api = { path = "../enclave/api" }
-mc-fog-types = { path = "../../types" }
-mc-fog-uri = { path = "../../uri" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
@@ -87,9 +71,6 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 [dev-dependencies]
-
-# third-party
-aes-gcm = "0.9.4"
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
