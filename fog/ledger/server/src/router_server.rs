@@ -72,16 +72,15 @@ impl LedgerRouterServer {
             config.client_listen_uri.addr(),
         );
 
-        let router_server_builder = grpcio::ServerBuilder::new(env.clone())
+        let router_server = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
             .register_service(health_service)
-            .bind_using_uri(&config.client_listen_uri, logger.clone());
-        let admin_server_builder = grpcio::ServerBuilder::new(env)
+            .build_using_uri(&config.client_listen_uri, logger.clone())
+            .expect("Could not build Ledger Router Server");
+        let admin_server = grpcio::ServerBuilder::new(env)
             .register_service(ledger_router_admin_service)
-            .bind_using_uri(&config.admin_listen_uri, logger.clone());
-
-        let router_server = router_server_builder.build().unwrap();
-        let admin_server = admin_server_builder.build().unwrap();
+            .build_using_uri(&config.admin_listen_uri, logger.clone())
+            .expect("Could not build Ledger Router Admin Server");
 
         Self {
             router_server,
@@ -95,18 +94,18 @@ impl LedgerRouterServer {
     /// Starts the server
     pub fn start(&mut self) {
         self.router_server.start();
-        for (host, port) in self.router_server.bind_addrs() {
-            log::info!(self.logger, "Router API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Router API listening on {}",
+            self.client_listen_uri.addr()
+        );
+
         self.admin_server.start();
-        for (host, port) in self.admin_server.bind_addrs() {
-            log::info!(
-                self.logger,
-                "Router Admin API listening on {}:{}",
-                host,
-                port
-            );
-        }
+        log::info!(
+            self.logger,
+            "Router Admin API listening on {}",
+            self.admin_listen_uri.addr()
+        );
     }
 
     /// Stops the server
