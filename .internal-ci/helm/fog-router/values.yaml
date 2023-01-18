@@ -10,7 +10,8 @@ env:
 - name: MC_CLIENT_LISTEN_URI
   value: insecure-fog-view-router://0.0.0.0:3225/
 - name: MC_VIEW_SHARD_URIS
-  value: insecure-fog-view-store://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443/?sharding_strategy=default
+  # value: insecure-fog-view-store://fog.mc-fog-view-router-ci-cd.development.mobilecoin.com:443/?sharding_strategy=default
+  value: insecure-fog-view-store://fog-services-fog-view:3225/?sharding_strategy=default
 - name: MC_CHAIN_ID
   valueFrom:
     configMapKeyRef:
