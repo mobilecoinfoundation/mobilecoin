@@ -42,10 +42,10 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false, features = ["avx2_backend"] }
+bulletproofs-og = { path = "../../../bulletproofs"}
 
 [target.'cfg(not(target_feature = "avx2"))'.dependencies]
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
+bulletproofs-og = { path = "../../../bulletproofs" }
 
 [dev-dependencies]
 assert_matches = "1.5"
