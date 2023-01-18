@@ -33,7 +33,7 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
-curve25519-dalek = { version = "4.0.0-pre.5", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.5", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"
