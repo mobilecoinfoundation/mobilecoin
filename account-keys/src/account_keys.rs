@@ -553,6 +553,10 @@ pub struct ViewAccountKey {
     /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
     #[cfg_attr(feature = "prost", prost(bytes, tag = "5"))]
     fog_authority_spki: Vec<u8>,
+
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "6"))]
+    default_subaddress_view_private_key: RistrettoPrivate,
+
 }
 
 // Note: Hash, Ord is implemented in terms of default_subaddress() because
@@ -587,6 +591,7 @@ impl From<&AccountKey> for ViewAccountKey {
     fn from(account_key: &AccountKey) -> Self {
         ViewAccountKey {
             view_private_key: *account_key.view_private_key(),
+            default_subaddress_view_private_key: account_key.default_subaddress_view_private().to_owned(),
             spend_public_key: account_key.spend_private_key().into(),
             fog_report_url: account_key.fog_report_url().unwrap_or_default().to_owned(),
             fog_report_id: account_key.fog_report_id().unwrap_or_default().to_owned(),
@@ -602,9 +607,10 @@ impl ViewAccountKey {
     /// * `view_private_key` - The user's private view key `a`.
     /// * `spend_public_key` - The user's public spend key `B`.
     #[inline]
-    pub fn new(view_private_key: RistrettoPrivate, spend_public_key: RistrettoPublic) -> Self {
+    pub fn new(view_private_key: RistrettoPrivate, default_subaddress_view_private_key: RistrettoPrivate, spend_public_key: RistrettoPublic) -> Self {
         Self {
             view_private_key,
+            default_subaddress_view_private_key,
             spend_public_key,
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
@@ -615,8 +621,8 @@ impl ViewAccountKey {
     /// A user's ViewAccountKey, with an fog service.
     ///
     /// # Arguments
-    /// * `view_private_key` - The user's private view key `b`.
-    /// * `spend_public_key` - The user's public spend key `a`.
+    /// * `view_private_key` - The user's private view key `a`.
+    /// * `spend_public_key` - The user's public spend key `B`.
     /// * `fog_report_url` - Url of fog report service
     /// * `fog_report_id` - The id labelling the report to use, from among the
     ///   several reports which might be served by the fog report server.
@@ -625,6 +631,7 @@ impl ViewAccountKey {
     ///   public address.
     pub fn new_with_fog(
         view_private_key: &RistrettoPrivate,
+        default_subaddress_view_private_key: &RistrettoPrivate,
         spend_public_key: &RistrettoPublic,
         fog_report_url: impl ToString,
         fog_report_id: String,
@@ -632,6 +639,7 @@ impl ViewAccountKey {
     ) -> Self {
         Self {
             view_private_key: *view_private_key,
+            default_subaddress_view_private_key: *default_subaddress_view_private_key,
             spend_public_key: *spend_public_key,
             fog_report_url: fog_report_url.to_string(),
             fog_report_id,
@@ -642,6 +650,11 @@ impl ViewAccountKey {
     /// Get the view private key.
     pub fn view_private_key(&self) -> &RistrettoPrivate {
         &self.view_private_key
+    }
+
+    /// The private view key for the default subaddress.
+    pub fn default_subaddress_view_private(&self) -> &RistrettoPrivate {
+        &self.default_subaddress_view_private_key
     }
 
     /// Get the spend public key.
@@ -679,6 +692,7 @@ impl ViewAccountKey {
     /// Create a view account key with random keys
     pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new(
+            RistrettoPrivate::from_random(rng),
             RistrettoPrivate::from_random(rng),
             RistrettoPublic::from_random(rng),
         )
@@ -766,32 +780,6 @@ impl ViewAccountKey {
         let b: RistrettoPoint = a * self.subaddress_spend_public(index).as_ref();
 
         RistrettoPublic::from(b)
-    }
-
-    /// The private view key for the default subaddress.
-    pub fn default_subaddress_view_private(&self) -> RistrettoPrivate {
-        self.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX)
-    }
-
-    /// The private view key for the change subaddress.
-    pub fn change_subaddress_view_private(&self) -> RistrettoPrivate {
-        self.subaddress_view_private(CHANGE_SUBADDRESS_INDEX)
-    }
-
-    /// The private view key for the gift code subaddress.
-    pub fn gift_code_subaddress_view_private(&self) -> RistrettoPrivate {
-        self.subaddress_view_private(GIFT_CODE_SUBADDRESS_INDEX)
-    }
-
-    /// The private view key for the i^th subaddress.
-    pub fn subaddress_view_private(&self, index: u64) -> RistrettoPrivate {
-        let (view_private, _spend_private) = (
-            &RootViewPrivate::from(self.view_private_key),
-            &RootSpendPrivate::default(),
-        )
-            .subaddress(index);
-
-        view_private.inner()
     }
 
 }
