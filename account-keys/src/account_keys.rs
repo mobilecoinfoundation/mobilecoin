@@ -14,7 +14,7 @@
 
 use alloc::{
     string::{String, ToString},
-    vec::Vec,
+    vec::Vec, borrow::ToOwned,
 };
 use core::{
     cmp::Ordering,
@@ -539,6 +539,20 @@ pub struct ViewAccountKey {
     /// Public key `B` used for generating Public Addresses.
     #[cfg_attr(feature = "prost", prost(message, required, tag = "2"))]
     spend_public_key: RistrettoPublic,
+
+    /// Fog Report server url (if user has Fog service), empty string otherwise
+    #[cfg_attr(feature = "prost", prost(string, tag = "3"))]
+    fog_report_url: String,
+
+    /// Fog Report Key (if user has Fog service), empty otherwise
+    /// The key labelling the report to use, from among the several reports
+    /// which might be served by the fog report server.
+    #[cfg_attr(feature = "prost", prost(string, tag = "4"))]
+    fog_report_id: String,
+
+    /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
+    #[cfg_attr(feature = "prost", prost(bytes, tag = "5"))]
+    fog_authority_spki: Vec<u8>,
 }
 
 // Note: Hash, Ord is implemented in terms of default_subaddress() because
@@ -574,6 +588,9 @@ impl From<&AccountKey> for ViewAccountKey {
         ViewAccountKey {
             view_private_key: *account_key.view_private_key(),
             spend_public_key: account_key.spend_private_key().into(),
+            fog_report_url: account_key.fog_report_url().unwrap_or_default().to_owned(),
+            fog_report_id: account_key.fog_report_id().unwrap_or_default().to_owned(),
+            fog_authority_spki: account_key.fog_authority_spki().unwrap_or_default().to_owned(),
         }
     }
 }
@@ -589,6 +606,36 @@ impl ViewAccountKey {
         Self {
             view_private_key,
             spend_public_key,
+            fog_report_url: Default::default(),
+            fog_report_id: Default::default(),
+            fog_authority_spki: Default::default(),
+        }
+    }
+
+    /// A user's ViewAccountKey, with an fog service.
+    ///
+    /// # Arguments
+    /// * `view_private_key` - The user's private view key `b`.
+    /// * `spend_public_key` - The user's public spend key `a`.
+    /// * `fog_report_url` - Url of fog report service
+    /// * `fog_report_id` - The id labelling the report to use, from among the
+    ///   several reports which might be served by the fog report server.
+    /// * `fog_authority` - The DER-encoded subjectPublicKeyInfo of the fog
+    ///   authority, which will be signed by the user when constructing the
+    ///   public address.
+    pub fn new_with_fog(
+        view_private_key: &RistrettoPrivate,
+        spend_public_key: &RistrettoPublic,
+        fog_report_url: impl ToString,
+        fog_report_id: String,
+        fog_authority_spki: impl AsRef<[u8]>,
+    ) -> Self {
+        Self {
+            view_private_key: *view_private_key,
+            spend_public_key: *spend_public_key,
+            fog_report_url: fog_report_url.to_string(),
+            fog_report_id,
+            fog_authority_spki: fog_authority_spki.as_ref().to_vec(),
         }
     }
 
@@ -600,6 +647,33 @@ impl ViewAccountKey {
     /// Get the spend public key.
     pub fn spend_public_key(&self) -> &RistrettoPublic {
         &self.spend_public_key
+    }
+
+     /// Access the fog url (if it exists).
+     pub fn fog_report_url(&self) -> Option<&str> {
+        if self.fog_report_url.is_empty() {
+            None
+        } else {
+            Some(&self.fog_report_url)
+        }
+    }
+
+    /// Access the fog authority subject public key info.
+    pub fn fog_authority_spki(&self) -> Option<&[u8]> {
+        if self.fog_authority_spki.is_empty() {
+            None
+        } else {
+            Some(&self.fog_authority_spki)
+        }
+    }
+
+    /// Access the fog report key (if it exists).
+    pub fn fog_report_id(&self) -> Option<&str> {
+        if self.fog_report_id.is_empty() {
+            None
+        } else {
+            Some(&self.fog_report_id)
+        }
     }
 
     /// Create a view account key with random keys
