@@ -37,7 +37,6 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
-
           command:
           - /usr/bin/supervisord
           resources:
@@ -45,12 +44,10 @@ spec:
               intel.com/sgx: 2k
             requests:
               intel.com/sgx: 2k
-
           {{- with .Values.env }}
-          env: &env
+          env:
           {{- toYaml . | nindent 12 }}
           {{- end}}
-
           envFrom:
           - secretRef:
               name: ias
