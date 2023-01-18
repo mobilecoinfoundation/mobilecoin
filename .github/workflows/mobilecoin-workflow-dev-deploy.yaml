@@ -223,7 +223,7 @@ jobs:
         chart_name: fog-router
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
-        release_name: fog-router-${{ inputs.ingest_color }}
+        release_name: fog-router
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
