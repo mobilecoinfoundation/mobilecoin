@@ -28,7 +28,7 @@ pub struct MobileAcctViewConfig {
     #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
 
-    /// PEM-formatted keypair to send with an Attestation Request. 
+    /// PEM-formatted keypair to send with an Attestation Request.
     #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
