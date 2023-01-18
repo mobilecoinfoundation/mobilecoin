@@ -5,5 +5,4 @@
 
 [print_schema]
 file = "src/schema.rs"
-patch_file = "src/schema.patch"
 import_types = ["diesel::sql_types::*", "crate::sql_types::*"]

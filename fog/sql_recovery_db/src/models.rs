@@ -2,6 +2,7 @@
 
 use super::schema::*;
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use diesel::{Insertable, Queryable};
 use mc_fog_types::common::BlockRange;
 
 #[derive(Debug, Queryable)]
@@ -14,7 +15,7 @@ pub struct IngressKey {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "ingress_keys"]
+#[diesel(table_name = ingress_keys)]
 pub struct NewIngressKey {
     pub ingress_public_key: Vec<u8>,
     pub start_block: i64,
@@ -35,7 +36,7 @@ pub struct IngestInvocation {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "ingest_invocations"]
+#[diesel(table_name = ingest_invocations)]
 pub struct NewIngestInvocation {
     pub ingress_public_key: Vec<u8>,
     pub egress_public_key: Vec<u8>,
@@ -57,7 +58,7 @@ pub struct IngestedBlock {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "ingested_blocks"]
+#[diesel(table_name = ingested_blocks)]
 pub struct NewIngestedBlock {
     pub ingress_public_key: Vec<u8>,
     pub ingest_invocation_id: i64,
@@ -68,7 +69,7 @@ pub struct NewIngestedBlock {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "user_events"]
+#[diesel(table_name = user_events)]
 pub struct NewUserEvent {
     pub event_type: UserEventType,
     pub new_ingest_invocation_id: Option<i64>,
@@ -112,7 +113,7 @@ impl NewUserEvent {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "reports"]
+#[diesel(table_name = reports)]
 pub struct NewReport<'a> {
     pub ingress_public_key: &'a [u8],
     pub ingest_invocation_id: Option<i64>,
