@@ -767,6 +767,33 @@ impl ViewAccountKey {
 
         RistrettoPublic::from(b)
     }
+
+    /// The private view key for the default subaddress.
+    pub fn default_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX)
+    }
+
+    /// The private view key for the change subaddress.
+    pub fn change_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(CHANGE_SUBADDRESS_INDEX)
+    }
+
+    /// The private view key for the gift code subaddress.
+    pub fn gift_code_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(GIFT_CODE_SUBADDRESS_INDEX)
+    }
+
+    /// The private view key for the i^th subaddress.
+    pub fn subaddress_view_private(&self, index: u64) -> RistrettoPrivate {
+        let (view_private, _spend_private) = (
+            &RootViewPrivate::from(self.view_private_key),
+            &RootSpendPrivate::default(),
+        )
+            .subaddress(index);
+
+        view_private.inner()
+    }
+
 }
 
 #[cfg(test)]
