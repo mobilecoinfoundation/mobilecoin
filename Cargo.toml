@@ -212,6 +212,7 @@ lto = "thin"
 
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
+# TODO: Remove path after PR gets submitted to the repo.
 bulletproofs-og = { path = "../bulletproofs"}
 
 # This version contains iOS build fixes
@@ -225,7 +226,8 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
+# TODO: Remove path after PR gets submitted to the repo.
+schnorrkel-og = { path = "../schnorrkel" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.

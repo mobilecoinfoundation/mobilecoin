@@ -7428,7 +7428,6 @@ dependencies = [
 [[package]]
 name = "schnorrkel-og"
 version = "0.11.0-pre.0"
-source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=5c98ae068ee4652d6df6463b549fbf2d5d132faa#5c98ae068ee4652d6df6463b549fbf2d5d132faa"
 dependencies = [
  "arrayref",
  "arrayvec",
