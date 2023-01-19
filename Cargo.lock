@@ -7431,9 +7431,11 @@ version = "0.11.0-pre.0"
 dependencies = [
  "arrayref",
  "arrayvec",
+ "cfg-if 1.0.0",
  "curve25519-dalek 4.0.0-pre.5",
  "merlin",
  "rand_core 0.6.4",
+ "serde_bytes",
  "sha2 0.10.6",
  "subtle",
  "zeroize",
