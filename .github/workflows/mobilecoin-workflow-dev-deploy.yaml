@@ -249,7 +249,8 @@ jobs:
 
   wait-for-up:
     needs:
-    - consensus-deploy
+    - fog-ingest-deploy
+    - fog-services-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Check end points up.
