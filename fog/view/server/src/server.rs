@@ -19,7 +19,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::view_grpc;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ETxOutRecord;
-use mc_fog_uri::ConnectionUri;
+use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
@@ -105,11 +105,19 @@ where
                 .into_service();
 
         log::debug!(logger, "Starting View Store GRPC Service");
+        let use_tls = config.client_listen_uri.use_tls();
+        let responder_id = config
+            .client_listen_uri
+            .responder_id()
+            .expect("Could not get store responder id");
+        let uri = FogViewStoreUri::try_from_responder_id(responder_id, use_tls)
+            .expect("Could not create uri from responder id");
+
         let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
             enclave.clone(),
             Arc::new(recovery_db),
             db_poll_thread.get_shared_state(),
-            config.client_listen_uri.clone(),
+            uri,
             client_authenticator,
             sharding_strategy,
             logger.clone(),
