@@ -2,16 +2,17 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ include "consensusNode.fullname" . }}-peer-tls
+  name: {{ include "consensusNode.fullname" . }}-ingress-tls
   labels:
     {{- include "consensusNode.labels" . | nindent 4 }}
 spec:
-  secretName: {{ include "consensusNode.fullname" . }}-peer-tls
+  secretName: {{ include "consensusNode.fullname" . }}-ingress-tls
   privateKey:
     size: 2048
     algorithm: RSA
     encoding: PKCS1
   dnsNames:
+  - {{ include "consensusNode.clientHostname" . }}
   - {{ include "consensusNode.peerHostname" . }}
   issuerRef:
     name: {{ .Values.global.certManagerClusterIssuer }}

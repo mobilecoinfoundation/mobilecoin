@@ -15,7 +15,7 @@ spec:
   tls:
   - hosts:
     - {{ include "consensusNode.clientHostname" . }}
-    secretName: {{ include "consensusNode.fullname" . }}-client-tls
+    secretName: {{ include "consensusNode.fullname" . }}-ingress-tls
   rules:
   - host: {{ include "consensusNode.clientHostname" . }}
     http:
