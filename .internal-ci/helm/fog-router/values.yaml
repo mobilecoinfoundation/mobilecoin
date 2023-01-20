@@ -17,12 +17,12 @@ env:
     configMapKeyRef:
       key: network
       name: mobilecoin-network
-- name: CLIENT_AUTH_TOKEN_SECRET
-  valueFrom:
-    secretKeyRef:
-      key: token
-      name: client-auth-token
-      optional: true
+# - name: CLIENT_AUTH_TOKEN_SECRET
+#   valueFrom:
+#     secretKeyRef:
+#       key: token
+#       name: client-auth-token
+#       optional: true
 - name: RUST_BACKTRACE
   value: full
 - name: RUST_LOG

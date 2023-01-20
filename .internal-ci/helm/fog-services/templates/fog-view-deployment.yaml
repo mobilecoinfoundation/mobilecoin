@@ -128,12 +128,12 @@ spec:
           value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
         - name: MC_SHARDING_STRATEGY
           value: "default"
-        - name: CLIENT_AUTH_TOKEN_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: client-auth-token
-              key: token
-              optional: true
+        # - name: CLIENT_AUTH_TOKEN_SECRET
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: client-auth-token
+        #       key: token
+        #       optional: true
         # Hold liveness and readiness until this probe passes.
         startupProbe:
           exec:
