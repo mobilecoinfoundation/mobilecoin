@@ -499,7 +499,9 @@ jobs:
     secrets: inherit
 
   cleanup-after-pr-to-release-branch:
-    if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
+    if: |
+      (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/'))
+      && ! startsWith(github.head_ref, 'feature/')
     needs:
     - test-current-bv3-release
     - generate-metadata
