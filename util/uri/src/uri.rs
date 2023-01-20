@@ -2,6 +2,7 @@
 
 use crate::traits::{ConnectionUri, UriScheme};
 use displaydoc::Display;
+use mc_common::ResponderId;
 use percent_encoding::percent_decode_str;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -77,6 +78,22 @@ impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
 
     fn password(&self) -> String {
         self.password.clone()
+    }
+}
+
+impl<Scheme: UriScheme> Uri<Scheme> {
+    /// Creates a `Uri` from a `ResponderId`
+    pub fn try_from_responder_id(
+        responder_id: ResponderId,
+        use_tls: bool,
+    ) -> Result<Self, UriParseError> {
+        let scheme = match use_tls {
+            true => Scheme::SCHEME_SECURE,
+            false => Scheme::SCHEME_INSECURE,
+        };
+        let uri_string = format!("{scheme}://{responder_id}");
+
+        Self::from_str(&uri_string)
     }
 }
 
