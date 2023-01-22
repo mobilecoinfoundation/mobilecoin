@@ -52,6 +52,19 @@ impl<K, V, const N: usize> VecMap<K, V, N> {
         debug_assert!(self.keys.len() == self.values.len());
         self.keys.len()
     }
+
+    /// Fetch a (K, V) item by index
+    #[inline]
+    pub fn index(&self, index: usize) -> Option<(&K, &V)> {
+        if index + 1 > self.len() {
+            return None;
+        }
+
+        match (self.keys.get(index), self.values.get(index)) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None
+        }
+    }
 }
 
 impl<K: Eq, V, const N: usize> VecMap<K, V, N> {
