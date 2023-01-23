@@ -4,7 +4,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 use alloc::vec::Vec;
 use rand_core::CryptoRngCore;
-use zeroize::{Zeroize};
+use zeroize::Zeroize;
 
 use mc_crypto_digestible::Digestible;
 
