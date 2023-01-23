@@ -82,7 +82,7 @@ spec:
         - name: RUST_LOG
           value: {{ .Values.fogView.rust.log | quote }}
         - name: CLIENT_RESPONDER_ID
-          value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
+          value: fog-services-fog-view:3225
         - name: FOG_VIEW_SENTRY_DSN
           valueFrom:
             configMapKeyRef:
