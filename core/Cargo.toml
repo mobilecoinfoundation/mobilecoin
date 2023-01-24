@@ -31,7 +31,7 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 [dev-dependencies]
 
 anyhow = { version = "1.0.66" }
-clap = { version = "4.0.29", features = [ "derive" ] }
+clap = { version = "4.0.32", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
 
@@ -41,10 +41,6 @@ mc-util-test-with-data = { path = "../util/test-with-data" }
 
 serde = { version = "1.0.0", features = [ "derive" ] }
 serde_json = { version = "1.0.85" }
-
-[build-dependencies]
-anyhow = { version = "1.0.66" }
-glob = { version = "0.3.0" }
 
 [[example]]
 name = "slip10"

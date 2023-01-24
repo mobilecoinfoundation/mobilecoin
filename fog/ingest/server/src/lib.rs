@@ -31,6 +31,12 @@ mod worker;
 
 use core::fmt::Display;
 use itertools::Itertools;
+use mc_util_metrics::ServiceMetrics;
+
+lazy_static::lazy_static! {
+    /// Generates service metrics for tracking
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ingest");
+}
 
 // Helper to format a sequence as a comma-separated list
 // (This is used with lists of Ingest peer uris in logs,

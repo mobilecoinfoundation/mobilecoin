@@ -34,8 +34,11 @@ extern crate alloc;
 use alloc::vec;
 
 use aes::{
-    cipher::{generic_array::GenericArray as CipherGenericArray, NewCipher, StreamCipher},
-    Aes256Ctr,
+    cipher::{
+        generic_array::GenericArray as CipherGenericArray, IvSizeUser, KeyIvInit, KeySizeUser,
+        StreamCipher,
+    },
+    Aes256,
 };
 use aligned_cmov::{typenum, A64Bytes, A8Bytes, ArrayLength, GenericArray};
 use alloc::vec::Vec;
@@ -45,6 +48,7 @@ use core::{
     ops::Add,
     sync::atomic::{AtomicU32, Ordering},
 };
+use ctr::Ctr64BE;
 use displaydoc::Display;
 use lazy_static::lazy_static;
 use mc_oblivious_traits::{HeapORAMStorage, ORAMStorage, ORAMStorageCreator};
@@ -94,12 +98,12 @@ lazy_static! {
     static ref OCALL_REENTRANCY_MUTEX: Mutex<()> = Mutex::new(());
 }
 
-/// Cipher type. Anything implementing StreamCipher and NewCipher at 128
+/// Cipher type. Anything implementing StreamCipher and KeyIvInit at 128
 /// bit security should be acceptable
-type CipherType = Aes256Ctr;
+type CipherType = Ctr64BE<Aes256>;
 /// Parameters of the cipher as typedefs (which eases syntax)
-type NonceSize = <CipherType as NewCipher>::NonceSize;
-type KeySize = <CipherType as NewCipher>::KeySize;
+type NonceSize = <CipherType as IvSizeUser>::IvSize;
+type KeySize = <CipherType as KeySizeUser>::KeySize;
 
 // Make an aes nonce per the docu
 fn make_aes_nonce(block_idx: u64, block_ctr: u64) -> CipherGenericArray<u8, NonceSize> {

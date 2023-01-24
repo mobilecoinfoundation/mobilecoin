@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use alloc::{string::String, vec::Vec};
-use base64::DecodeError;
+use base64::{DecodeError, DecodeSliceError};
 use bitflags::bitflags;
 use core::{
     fmt::{Display, Error as FmtError, Formatter, Result as FmtResult},
@@ -239,8 +239,14 @@ pub enum QuoteError {
     InvalidUtf8,
 }
 
-impl From<base64::DecodeError> for QuoteError {
-    fn from(src: base64::DecodeError) -> Self {
+impl From<DecodeError> for QuoteError {
+    fn from(src: DecodeError) -> Self {
+        QuoteError::Encoding(src.into())
+    }
+}
+
+impl From<DecodeSliceError> for QuoteError {
+    fn from(src: DecodeSliceError) -> Self {
         QuoteError::Encoding(src.into())
     }
 }

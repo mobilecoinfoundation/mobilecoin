@@ -71,8 +71,8 @@ pub use crate::{
     },
 };
 
-// Expected format for base64 strings
-pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;
+// Engine for base64 strings
+pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 
 pub use digest::Digest;
 pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};

@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use base64::{engine::general_purpose::URL_SAFE as URL_SAFE_BASE64_ENGINE, Engine};
 use core::{
     fmt::{Debug, Display},
     hash::Hash,
@@ -118,7 +119,7 @@ pub trait ConnectionUri:
             match hex::decode(&pubkey) {
                 Ok(pubkey_bytes) => Ok(Ed25519Public::try_from(pubkey_bytes.as_slice())?),
                 Err(_e) => {
-                    let pubkey_bytes = base64::decode_config(&pubkey, base64::URL_SAFE)?;
+                    let pubkey_bytes = URL_SAFE_BASE64_ENGINE.decode(&pubkey)?;
                     Ok(Ed25519Public::try_from_der(&pubkey_bytes)?)
                 }
             }

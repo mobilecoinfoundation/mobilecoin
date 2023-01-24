@@ -7,11 +7,10 @@ use crate::{
     admin_grpc::{create_admin_api, AdminApi},
     build_info_service::get_build_info,
     empty::Empty,
-    rpc_logger, send_result,
+    rpc_logger, send_result, SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::{log, Logger};
-use mc_util_metrics::SVC_COUNTERS;
 use prometheus::{self, Encoder};
 use std::{env, sync::Arc};
 
