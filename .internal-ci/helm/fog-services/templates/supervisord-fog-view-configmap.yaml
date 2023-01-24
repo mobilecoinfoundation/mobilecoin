@@ -11,11 +11,11 @@ data:
     priority=100
     environment=MC_SENTRY_DSN="%(ENV_FOG_VIEW_SENTRY_DSN)s"
     command=/usr/bin/fog_view_server
-      --client-listen-uri insecure-fog-view-store://0.0.0.0:3225/
+      --client-listen-uri insecure-fog-view-store://0.0.0.0:3225/?responder_id=%(ENV_HOSTNAME)s.fog-services-fog-view:3225
       --client-responder-id "%(ENV_CLIENT_RESPONDER_ID)s"
 {{- if (include "fogServices.clientAuth" .) }}
-      #--client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
-      #--client-auth-token-max-lifetime 31536000
+      --client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
+      --client-auth-token-max-lifetime 31536000
 {{- end }}
       --ias-spid %(ENV_IAS_SPID)s
       --ias-api-key %(ENV_IAS_API_KEY)s
