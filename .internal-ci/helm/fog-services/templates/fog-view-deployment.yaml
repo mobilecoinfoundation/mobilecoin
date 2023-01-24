@@ -1,6 +1,6 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 apiVersion: apps/v1
-kind: Deployment
+kind: Statefulset
 metadata:
   name: {{ include "fogServices.fullname" . }}-fog-view
   labels:
@@ -8,15 +8,11 @@ metadata:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.fogView.replicaCount }}
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 50%
   selector:
     matchLabels:
       app: fog-view
       {{- include "fogServices.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "fogServices.fullname" . }}-fog-view
   template:
     metadata:
       annotations:

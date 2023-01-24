@@ -14,8 +14,8 @@ data:
       --client-listen-uri insecure-fog-view-store://0.0.0.0:3225/
       --client-responder-id "%(ENV_CLIENT_RESPONDER_ID)s"
 {{- if (include "fogServices.clientAuth" .) }}
-      --client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
-      --client-auth-token-max-lifetime 31536000
+      #--client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
+      #--client-auth-token-max-lifetime 31536000
 {{- end }}
       --ias-spid %(ENV_IAS_SPID)s
       --ias-api-key %(ENV_IAS_API_KEY)s
