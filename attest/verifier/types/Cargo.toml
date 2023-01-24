@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-verifier-types"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "This crate contains the type definitions for attestation"
@@ -9,7 +9,7 @@ description = "This crate contains the type definitions for attestation"
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-util-encodings = { path = "../../../util/encodings" }
 
-base64 = { version = "0.13", default-features = false, features = ["alloc"] }
+base64 = { version = "0.21", default-features = false, features = ["alloc"] }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 hex_fmt = "0.3"
