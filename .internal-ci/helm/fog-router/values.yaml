@@ -26,7 +26,7 @@ env:
 - name: RUST_BACKTRACE
   value: full
 - name: RUST_LOG
-  value: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+  value: trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
 
 replicaCount: 1
 
