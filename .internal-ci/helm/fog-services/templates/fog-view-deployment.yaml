@@ -1,6 +1,6 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 apiVersion: apps/v1
-kind: Statefulset
+kind: StatefulSet
 metadata:
   name: {{ include "fogServices.fullname" . }}-fog-view
   labels:
