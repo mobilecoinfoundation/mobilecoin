@@ -9,6 +9,7 @@ use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
+    ResponderId,
 };
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
@@ -227,8 +228,11 @@ impl RouterTestEnvironment {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
                 let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
+                let responder_id = ResponderId::from_str(&format!("127.0.0.1:{port}"))
+                    .expect("Could not create responder id");
                 let uri = FogViewStoreUri::from_str(&format!(
-                    "insecure-fog-view-store://127.0.0.1:{port}?sharding_strategy={}",
+                    "insecure-fog-view-store://127.0.0.1:{port}?responder_id={};sharding_strategy={}",
+                    responder_id,
                     epoch_sharding_strategy.to_string()
                 ))
                 .unwrap();
