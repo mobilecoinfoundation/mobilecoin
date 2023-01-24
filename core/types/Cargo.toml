@@ -12,7 +12,7 @@ serde = ["dep:serde"]
 [dependencies]
 # External dependencies
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
-serde = { version = "1.0.144", optional = true, default-features = false, features = [ "derive" ] }
+serde = { version = "1.0.152", optional = true, default-features = false, features = [ "derive" ] }
 zeroize = { version = "1.5", default-features = false }
 
 # MobileCoin dependencies
