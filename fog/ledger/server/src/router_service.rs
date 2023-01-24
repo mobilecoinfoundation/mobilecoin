@@ -17,7 +17,7 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct KeyImageRouterService<E>
+pub struct LedgerRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {
@@ -27,10 +27,9 @@ where
     logger: Logger,
 }
 
-impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
+impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     /// Creates a new LedgerRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
-    #[allow(dead_code)] // FIXME
     pub fn new(
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
@@ -46,7 +45,7 @@ impl<E: LedgerEnclaveProxy> KeyImageRouterService<E> {
     }
 }
 
-impl<E> LedgerApi for KeyImageRouterService<E>
+impl<E> LedgerApi for LedgerRouterService<E>
 where
     E: LedgerEnclaveProxy,
 {
