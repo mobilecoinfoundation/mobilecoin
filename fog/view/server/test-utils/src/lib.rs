@@ -231,7 +231,7 @@ impl RouterTestEnvironment {
                 let responder_id = ResponderId::from_str(&format!("127.0.0.1:{port}"))
                     .expect("Could not create responder id");
                 let uri = FogViewStoreUri::from_str(&format!(
-                    "insecure-fog-view-store://127.0.0.1:{port}?responder_id={};sharding_strategy={}",
+                    "insecure-fog-view-store://127.0.0.1:{port}?responder-id={};sharding_strategy={}",
                     responder_id,
                     epoch_sharding_strategy.to_string()
                 ))
