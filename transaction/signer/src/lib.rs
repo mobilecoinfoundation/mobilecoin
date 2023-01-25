@@ -221,7 +221,7 @@ pub fn read_input<T: DeserializeOwned>(file_name: &str) -> anyhow::Result<T> {
     let p = Path::new(file_name);
 
     // Decode based on input extension
-    let v = match p.extension().map(|e| e.to_str()).flatten() {
+    let v = match p.extension().and_then(|e| e.to_str()) {
         // Encode to JSON for `.json` files
         Some("json") => serde_json::from_str(&s)?,
         _ => return Err(anyhow::anyhow!("unsupported output file format")),
@@ -236,7 +236,7 @@ pub fn write_output(file_name: &str, value: &impl Serialize) -> anyhow::Result<(
 
     // Determine format from file name
     let p = Path::new(file_name);
-    match p.extension().map(|e| e.to_str()).flatten() {
+    match p.extension().and_then(|e| e.to_str()) {
         // Encode to JSON for `.json` files
         Some("json") => {
             let s = serde_json::to_string(value)?;

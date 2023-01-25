@@ -10,7 +10,7 @@ readme = "README.md"
 [dependencies]
 # External dependencies
 anyhow = "1.0.61"
-clap = { version = "4.0.18", features = [ "derive" ] }
+clap = { version = "4.0", features = [ "derive" ] }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4.2", default_features = false }
 log = "0.4.17"

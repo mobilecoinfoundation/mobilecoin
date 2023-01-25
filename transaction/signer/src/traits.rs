@@ -58,7 +58,7 @@ impl<T: KeyImageComputer> KeyImageComputer for &T {
         subaddress_index: u64,
         tx_out_public_key: &TxOutPublic,
     ) -> Result<KeyImage, Self::Error> {
-        <T as KeyImageComputer>::compute_key_image(&self, subaddress_index, tx_out_public_key)
+        <T as KeyImageComputer>::compute_key_image(self, subaddress_index, tx_out_public_key)
     }
 }
 

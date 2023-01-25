@@ -5434,7 +5434,7 @@ name = "mc-transaction-signer"
 version = "2.1.0-pre0"
 dependencies = [
  "anyhow",
- "clap 4.0.18",
+ "clap 4.0.32",
  "displaydoc",
  "hex",
  "log",
