@@ -276,7 +276,7 @@ impl<ADDR, KIND> TryFrom<[u8; 32]> for Key<ADDR, KIND, RistrettoPrivate> {
 }
 
 /// Access underlying [Scalar] for private key objects
-impl <ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPrivate>> for Scalar {
+impl<ADDR, KIND> From<&Key<ADDR, KIND, RistrettoPrivate>> for Scalar {
     fn from(k: &Key<ADDR, KIND, RistrettoPrivate>) -> Self {
         *k.key.as_ref()
     }
@@ -386,7 +386,8 @@ where
     }
 }
 
-/// [Key] implementation of [prost::Message] when its inner `KEY` type implements [prost::Message].
+/// [Key] implementation of [prost::Message] when its inner `KEY` type
+/// implements [prost::Message].
 #[cfg(feature = "prost")]
 impl<ADDR, KIND, KEY> prost::Message for Key<ADDR, KIND, KEY>
 where
