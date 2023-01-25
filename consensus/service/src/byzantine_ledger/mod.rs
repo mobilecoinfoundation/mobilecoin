@@ -328,6 +328,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
+    use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
     use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -361,7 +362,8 @@ mod tests {
     // Get the local node's NodeID and message signer key.
     pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
-            base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
+            BASE64_ENGINE
+                .decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
                 .as_slice(),
         )

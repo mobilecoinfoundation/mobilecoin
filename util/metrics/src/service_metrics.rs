@@ -37,7 +37,7 @@ use prometheus::{
     HistogramOpts, HistogramTimer, HistogramVec, IntCounterVec, Opts, Result,
 };
 use protobuf::Message;
-use std::str;
+use std::{path::Path, str};
 
 /// Helper that encapsulates boilerplate for tracking
 /// prometheus metrics about gRPC services. This struct
@@ -64,32 +64,64 @@ pub struct ServiceMetrics {
     /// Histogram of message sizes for each gRPC message type tracked
     message_size: HistogramVec,
 }
-
 impl Default for ServiceMetrics {
-    /// Create a default constructor that initializes all metrics
     fn default() -> Self {
+        let args = std::env::args().next().unwrap_or_default();
+        let mut arg = Path::new(&args)
+            .file_stem()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .replace('-', "_");
+        if !arg.is_empty() {
+            arg.push('_');
+        }
+        arg.push_str("grpc");
+        ServiceMetrics::new_and_registered(arg)
+    }
+}
+
+impl ServiceMetrics {
+    /// Create a default constructor that initializes all metrics
+    pub fn new<S: Into<String>>(name: S) -> ServiceMetrics {
         let message_size_buckets = exponential_buckets(2.0, 2.0, 22)
             .expect("Could not create buckets for message-size histogram");
+        let name_str = name.into();
 
-        Self {
-            num_req: IntCounterVec::new(Opts::new("num_req", "Number of requests"), &["method"])
-                .unwrap(),
-            num_error: IntCounterVec::new(Opts::new("num_error", "Number of errors"), &["method"])
-                .unwrap(),
+        ServiceMetrics {
+            num_req: IntCounterVec::new(
+                Opts::new(format!("{name_str}_num_req"), "Number of requests"),
+                &["method"],
+            )
+            .unwrap(),
+            num_error: IntCounterVec::new(
+                Opts::new(format!("{name_str}_num_error"), "Number of errors"),
+                &["method"],
+            )
+            .unwrap(),
             num_status_code: IntCounterVec::new(
-                Opts::new("num_status_code", "Number of grpc status codes"),
+                Opts::new(
+                    format!("{name_str}_num_status_code"),
+                    "Number of grpc status codes",
+                ),
                 &["method", "status_code"],
             )
             .unwrap(),
             duration: HistogramVec::new(
                 //TODO: frumious: how to ensure units?
-                HistogramOpts::new("duration", "Duration for a request, in units of time"),
+                HistogramOpts::new(
+                    format!("{name_str}_duration"),
+                    "Duration for a request, in units of time",
+                ),
                 &["method"],
             )
             .unwrap(),
             message_size: HistogramVec::new(
-                HistogramOpts::new("message_size", "gRPC message size, in bytes (or close to)")
-                    .buckets(message_size_buckets),
+                HistogramOpts::new(
+                    format!("{name_str}_message_size"),
+                    "gRPC message size, in bytes (or close to)",
+                )
+                .buckets(message_size_buckets),
                 &["message"],
             )
             .unwrap(),
@@ -99,8 +131,8 @@ impl Default for ServiceMetrics {
 
 impl ServiceMetrics {
     /// Register Prometheus metrics family
-    pub fn new_and_registered() -> ServiceMetrics {
-        let svc = ServiceMetrics::default();
+    pub fn new_and_registered<S: Into<String>>(name: S) -> ServiceMetrics {
+        let svc = ServiceMetrics::new(name);
         let _res = prometheus::register(Box::new(svc.clone()));
         svc
     }

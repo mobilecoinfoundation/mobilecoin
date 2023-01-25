@@ -7,7 +7,7 @@ use aes_gcm::{
         generic_array::{sequence::Split, GenericArray},
         Aead,
     },
-    AeadCore, Aes256Gcm, Error as AeadError, NewAead,
+    AeadCore, Aes256Gcm, Error as AeadError, KeyInit, KeySizeUser,
 };
 use displaydoc::Display;
 use lmdb::{
@@ -295,7 +295,7 @@ impl DbCryptoProvider {
         password: &[u8],
     ) -> Result<
         (
-            GenericArray<u8, <Aes256Gcm as NewAead>::KeySize>,
+            GenericArray<u8, <Aes256Gcm as KeySizeUser>::KeySize>,
             GenericArray<u8, <Aes256Gcm as AeadCore>::NonceSize>,
         ),
         DbCryptoError,
@@ -307,7 +307,7 @@ impl DbCryptoProvider {
         hasher.update(password);
         let result = hasher.finalize();
 
-        let (key, remainder) = Split::<u8, <Aes256Gcm as NewAead>::KeySize>::split(result);
+        let (key, remainder) = Split::<u8, <Aes256Gcm as KeySizeUser>::KeySize>::split(result);
         let (nonce, _remainder) = Split::<u8, <Aes256Gcm as AeadCore>::NonceSize>::split(remainder);
 
         Ok((key, nonce))

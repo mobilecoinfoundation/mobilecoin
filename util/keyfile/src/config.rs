@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 //! Configuration parameters for generating key files for a new user identity
+use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use clap::Parser;
 use std::{fs, path::PathBuf};
 
@@ -48,5 +49,5 @@ fn load_spki_from_pemfile(src: &str) -> Result<Vec<u8>, String> {
 
 /// Given the spki bytes as base64, decode them
 fn decode_base64(src: &str) -> Result<VecBytes, String> {
-    base64::decode(src).map_err(|e| e.to_string())
+    BASE64_ENGINE.decode(src).map_err(|e| e.to_string())
 }

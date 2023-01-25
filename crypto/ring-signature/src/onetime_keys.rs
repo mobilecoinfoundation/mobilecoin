@@ -75,7 +75,7 @@ use crate::domain_separators::HASH_TO_SCALAR_DOMAIN_TAG;
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use mc_account_keys_types::RingCtAddress;
+use mc_core_types::account::RingCtAddress;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
@@ -103,11 +103,13 @@ pub fn create_tx_out_target_key(
     // `Hs( r * C)`
     let Hs: Scalar = {
         let r = tx_private_key.as_ref();
-        let C = recipient.view_public_key().as_ref();
+        let view_public = recipient.view_public_key();
+        let C: &RistrettoPoint = view_public.as_ref();
         hash_to_scalar(r * C)
     };
 
-    let D = recipient.spend_public_key().as_ref();
+    let spend_public = recipient.spend_public_key();
+    let D: &RistrettoPoint = spend_public.as_ref();
     RistrettoPublic::from(Hs * G + D)
 }
 
@@ -138,8 +140,8 @@ pub fn create_tx_out_public_key(
 ///
 /// # Arguments
 /// * `view_private_key` - The recipient's view private key `a`.
-/// * `tx_out_target_key` - The output's target_key.
-/// * `tx_out_public_key` - The output's public_key.
+/// * `tx_out_target_key` - The output's tx_target_key.
+/// * `tx_out_public_key` - The output's tx_public_key `R`.
 pub fn recover_public_subaddress_spend_key(
     view_private_key: &RistrettoPrivate,
     tx_out_target_key: &RistrettoPublic,

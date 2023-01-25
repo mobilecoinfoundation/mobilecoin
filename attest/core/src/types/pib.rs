@@ -2,8 +2,9 @@
 
 //! FFI type for the sgx_platform_info_t
 
-use crate::{impl_sgx_newtype_for_bytestruct, B64_CONFIG};
+use crate::{impl_sgx_newtype_for_bytestruct, BASE64_ENGINE};
 use alloc::{borrow::ToOwned, vec};
+use base64::Engine;
 use mc_sgx_types::{sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 
@@ -35,7 +36,7 @@ impl FromBase64 for PlatformInfoBlob {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        let data = base64::decode_config(src, B64_CONFIG)?;
+        let data = BASE64_ENGINE.decode(src)?;
 
         let mut return_val = Self::default();
         return_val.0.platform_info[..].copy_from_slice(&data[4..(SGX_PLATFORM_INFO_SIZE + 4)]);

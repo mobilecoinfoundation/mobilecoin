@@ -2,6 +2,7 @@
 
 //! Serves blockchain-related API requests.
 
+use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
@@ -13,7 +14,6 @@ use mc_consensus_api::{
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tokens::Mob, BlockVersion, FeeMap, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
-use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
 use std::{cmp, collections::HashMap, sync::Arc};
 
@@ -181,7 +181,9 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use grpcio::{ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder};
+    use grpcio::{
+        ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder, ServerCredentials,
+    };
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
     use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
@@ -199,11 +201,12 @@ mod tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = BlockchainApiClient::new(ch);
         (client, server)

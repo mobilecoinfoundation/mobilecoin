@@ -8,6 +8,7 @@ use crate::{
     counters,
     mint_tx_manager::MintTxManager,
     tx_manager::{TxManager, TxManagerError},
+    SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
@@ -25,7 +26,6 @@ use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
 /// Maximum number of pending values for consensus service before rejecting
@@ -349,7 +349,7 @@ mod client_api_tests {
     use clap::Parser;
     use grpcio::{
         CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder,
-        RpcStatusCode, Server, ServerBuilder,
+        RpcStatusCode, Server, ServerBuilder, ServerCredentials,
     };
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -390,11 +390,12 @@ mod client_api_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = ConsensusClientApiClient::new(ch);
         (client, server)
