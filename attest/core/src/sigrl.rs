@@ -2,8 +2,9 @@
 
 //! SigRL Type
 
-use crate::B64_CONFIG;
+use crate::BASE64_ENGINE;
 use alloc::{borrow::ToOwned, vec::Vec};
+use base64::Engine;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Deref,
@@ -69,7 +70,7 @@ impl FromBase64 for SigRL {
 
     fn from_base64(s: &str) -> Result<Self, EncodingError> {
         Ok(SigRL {
-            data: base64::decode_config(s.as_bytes(), B64_CONFIG)?,
+            data: BASE64_ENGINE.decode(s.as_bytes())?,
         })
     }
 }

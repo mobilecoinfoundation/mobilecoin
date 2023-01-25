@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-slog-edl"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "sgx_slog_edl"

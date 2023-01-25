@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave-measurement"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Fog View Enclave - Application Code"

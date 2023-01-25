@@ -23,6 +23,9 @@ image:
 
 global:
   certManagerClusterIssuer: letsencrypt-production-http
+  blocklist:
+    enabled: false
+    pattern: patterns/blocked-countries
 
 ### Fog Report Service
 fogReport:

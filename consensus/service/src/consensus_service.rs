@@ -11,7 +11,7 @@ use crate::{
     peer_keepalive::PeerKeepalive,
     tx_manager::TxManager,
 };
-use base64::{encode_config, URL_SAFE};
+use base64::{engine::general_purpose::URL_SAFE as URL_SAFE_BASE64_ENGINE, Engine};
 use displaydoc::Display;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
@@ -755,7 +755,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": encode_config(&config.msg_signer_key.public_key().to_der(), URL_SAFE),
+                    "message_pubkey": URL_SAFE_BASE64_ENGINE.encode(&config.msg_signer_key.public_key().to_der()),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
