@@ -32,7 +32,7 @@ pub use signed_contingent_input::{
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;
 pub use tx_summary_unblinding::{
-    verify_tx_summary, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryStreamingVerifier,
+    verify_tx_summary, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryStreamingVerifier, TxSummaryStreamingVerifierCtx,
     TxSummaryUnblindingData, TxSummaryUnblindingReport,
 };
 pub use unsigned_tx::UnsignedTx;

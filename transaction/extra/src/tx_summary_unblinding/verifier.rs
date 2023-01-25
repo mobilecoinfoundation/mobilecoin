@@ -118,6 +118,16 @@ pub fn verify_tx_summary(
 /// If TxSummary digestible annotations are changed then this object's
 /// implementation needs to change also.
 pub struct TxSummaryStreamingVerifier<const RECORDS: usize = MAX_RECORDS> {
+    // The report which we produce about what balance changes occur for what
+    // parties
+    report: TxSummaryUnblindingReport<RECORDS>,
+    
+    // Context for streaming verifier
+    ctx: TxSummaryStreamingVerifierCtx,
+}
+
+/// Context for computing streaming transaction summaries
+pub struct TxSummaryStreamingVerifierCtx {
     // The account view private key of the transaction signer.
     // This is used to identify outputs addressed to ourselves regardless of subaddress
     view_private_key: RistrettoPrivate,
@@ -126,9 +136,6 @@ pub struct TxSummaryStreamingVerifier<const RECORDS: usize = MAX_RECORDS> {
     // The merlin transcript which we maintain in order to produce the digest
     // at the end.
     transcript: MerlinTranscript,
-    // The report which we produce about what balance changes occur for what
-    // parties
-    report: TxSummaryUnblindingReport<RECORDS>,
     // The total number of outputs expected
     expected_num_outputs: usize,
     // The total number of inputs expected
@@ -139,7 +146,7 @@ pub struct TxSummaryStreamingVerifier<const RECORDS: usize = MAX_RECORDS> {
     input_count: usize,
 }
 
-impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
+impl TxSummaryStreamingVerifierCtx {
     /// Start a new streaming verifier. This takes a few small arguments from
     /// TxSummary and TxSummaryUnblindingData which are needed before we can
     /// consume outputs and inputs. This also takes the view private key of
@@ -170,13 +177,10 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
         // Append start of TxSummary.outputs list
         transcript.append_seq_header(b"outputs", expected_num_outputs);
 
-        // Default initialize the report
-        let report = TxSummaryUnblindingReport::default();
-        Self {
+        Self{
             view_private_key,
             block_version,
             transcript,
-            report,
             expected_num_outputs,
             expected_num_inputs,
             output_count: 0,
@@ -186,12 +190,13 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
 
     /// Stream the next TxOutSummary and matching unblinding data to the
     /// streaming verifier, which will verify and then digest it.
-    pub fn digest_output(
+    pub fn digest_output<const N: usize>(
         &mut self,
         tx_out_summary: &TxOutSummary,
         unmasked_amount: &UnmaskedAmount,
         address: Option<(ShortAddressHash, impl RingCtAddress)>,
         tx_private_key: Option<&RistrettoPrivate>,
+        report: &mut TxSummaryUnblindingReport<N>,
     ) -> Result<(), Error> {
         if self.output_count >= self.expected_num_outputs {
             return Err(Error::UnexpectedOutput);
@@ -201,7 +206,7 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
         // with the listed address, or this is associated to an SCI.
         if let Some(amount) = self.view_key_match(tx_out_summary)? {
             // If we view-key matched the output, then it belongs to one of our subaddresses
-            self.report
+            report
                 .balance_add(TransactionEntity::Ourself, amount.token_id, amount.value)?;
         } else if let Some((address_hash, address)) = address.as_ref() {
             let amount = Amount::new(unmasked_amount.value, unmasked_amount.token_id.into());
@@ -212,7 +217,7 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
             let expected =
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
             if &expected == tx_out_summary {
-                self.report.balance_add(
+                report.balance_add(
                     TransactionEntity::Address(address_hash.clone()),
                     amount.token_id,
                     amount.value,
@@ -241,7 +246,7 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
             {
                 return Err(Error::AmountVerificationFailed);
             }
-            self.report
+            report
                 .balance_add(TransactionEntity::Swap, token_id.into(), value)?;
         }
 
@@ -261,12 +266,13 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
         Ok(())
     }
 
-    /// Stream the next TxInSummary and matching unblinding data to the
+        /// Stream the next TxInSummary and matching unblinding data to the
     /// streaming verifier, which will verify and then digest it.
-    pub fn digest_input(
+    pub fn digest_input<const N: usize>(
         &mut self,
         tx_in_summary: &TxInSummary,
         tx_in_summary_unblinding_data: &UnmaskedAmount,
+        report: &mut TxSummaryUnblindingReport<N>,
     ) -> Result<(), Error> {
         if self.output_count != self.expected_num_outputs {
             return Err(Error::StillExpectingMoreOutputs);
@@ -293,7 +299,7 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
             TransactionEntity::Swap
         };
 
-        self.report
+        report
             .balance_subtract(entity, token_id.into(), value)?;
 
         // We've now verified the tx_in_summary and added it to the report.
@@ -316,14 +322,16 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
     /// * extended-message-and-tx-summary digest
     /// * TxSummaryUnblindingReport, which details all balance changes for all
     ///   parties to this Tx.
-    pub fn finalize(
+    pub fn finalize<const N: usize>(
         mut self,
         fee: Amount,
         tombstone_block: u64,
-    ) -> ([u8; 32], TxSummaryUnblindingReport<RECORDS>) {
-        self.report.network_fee = fee;
-        self.report.tombstone_block = tombstone_block;
-        self.report.sort();
+        digest: &mut [u8; 32],
+        report: &mut TxSummaryUnblindingReport<N>,
+    ) {
+        report.network_fee = fee;
+        report.tombstone_block = tombstone_block;
+        report.sort();
 
         fee.value.append_to_transcript(b"fee", &mut self.transcript);
         (*fee.token_id).append_to_transcript(b"fee_token_id", &mut self.transcript);
@@ -334,10 +342,7 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
             .append_agg_closer(b"tx_summary", b"TxSummary");
 
         // Extract the digest
-        let mut digest = [0u8; 32];
-        self.transcript.extract_digest(&mut digest);
-
-        (digest, self.report)
+        self.transcript.extract_digest(digest);
     }
 
     // Internal: Check if TxOutSummary matches to our view private key
@@ -393,6 +398,87 @@ impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
             associated_to_input_rules: false,
         })
     }
+}
+
+impl <const RECORDS: usize> TxSummaryStreamingVerifier<RECORDS> {
+    /// Start a new streaming verifier. This takes a few small arguments from
+    /// TxSummary and TxSummaryUnblindingData which are needed before we can
+    /// consume outputs and inputs. This also takes the view private key of
+    /// the signer, which is used to identify outputs that went to the signer.
+    ///
+    /// Arguments:
+    /// * extended_message_digest of the Tx
+    /// * block_version of the outputs of the Tx
+    /// * expected_num_outputs of the Tx
+    /// * expected_num_inputs of the Tx
+    /// * view_private_key of the signer, to identify self-payment outputs
+    ///
+    /// Returns:
+    /// * A properly initialized TxSummaryStreamingVerifier
+    pub fn new(
+        extended_message_digest: &[u8],
+        block_version: BlockVersion,
+        expected_num_outputs: usize,
+        expected_num_inputs: usize,
+        view_private_key: RistrettoPrivate,
+    ) -> Self {
+        // Setup context
+        let ctx = TxSummaryStreamingVerifierCtx::new(extended_message_digest, block_version, expected_num_outputs, expected_num_inputs, view_private_key);
+
+        // Default initialize the report
+        let report = TxSummaryUnblindingReport::default();
+
+        Self {
+            ctx,
+            report,
+        }
+    }
+
+    /// Stream the next TxOutSummary and matching unblinding data to the
+    /// streaming verifier, which will verify and then digest it.
+    pub fn digest_output(
+        &mut self,
+        tx_out_summary: &TxOutSummary,
+        unmasked_amount: &UnmaskedAmount,
+        address: Option<(ShortAddressHash, impl RingCtAddress)>,
+        tx_private_key: Option<&RistrettoPrivate>,
+    ) -> Result<(), Error> {
+        self.ctx.digest_output(tx_out_summary, unmasked_amount, address, tx_private_key, &mut self.report)
+    }
+
+    /// Stream the next TxInSummary and matching unblinding data to the
+    /// streaming verifier, which will verify and then digest it.
+    pub fn digest_input(
+        &mut self,
+        tx_in_summary: &TxInSummary,
+        tx_in_summary_unblinding_data: &UnmaskedAmount,
+    ) -> Result<(), Error> {
+        self.ctx.digest_input(tx_in_summary, tx_in_summary_unblinding_data, &mut self.report)
+    }
+
+    /// Finalize the streaming verifier, after all outputs and then all inputs
+    /// have been streamed. Pass in the remaining small bits of TxSummary.
+    ///
+    /// Arguments:
+    /// * fee (from TxSummary)
+    /// * tombstone_block (from TxSummary)
+    ///
+    /// Returns:
+    /// * extended-message-and-tx-summary digest
+    /// * TxSummaryUnblindingReport, which details all balance changes for all
+    ///   parties to this Tx.
+    pub fn finalize(
+        mut self,
+        fee: Amount,
+        tombstone_block: u64,
+    ) -> ([u8; 32], TxSummaryUnblindingReport<RECORDS>) {
+        let mut digest = [0u8; 32];
+
+        self.ctx.finalize(fee, tombstone_block, &mut digest, &mut self.report);
+
+        (digest, self.report)
+    }
+
 }
 
 #[cfg(test)]
