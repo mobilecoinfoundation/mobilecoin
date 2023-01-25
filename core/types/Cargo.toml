@@ -9,6 +9,7 @@ readme = "README.md"
 [features]
 serde = ["dep:serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost" ]
+alloc = []
 
 [dependencies]
 # External dependencies

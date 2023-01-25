@@ -42,17 +42,16 @@ type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 #[derive(
     Clone,
     Default,
-    Deserialize,
     Digestible,
     Eq,
     Hash,
     Ord,
     PartialEq,
     PartialOrd,
-    Serialize,
     Zeroize,
 )]
 #[digestible(transparent)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct EncryptedFogHint {
     bytes: Bytes,
 }

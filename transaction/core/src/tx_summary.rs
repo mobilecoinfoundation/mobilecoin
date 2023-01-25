@@ -102,7 +102,8 @@ use zeroize::Zeroize;
 
 /// A subset of the data in a Tx which enables efficient verification (e.g. by a
 /// HW wallet) of the inputs and outputs of a transaction being signed.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature="prost", derive(Message))]
 #[cfg_attr(not(feature="prost"), derive(Default))]
 pub struct TxSummary {
@@ -188,7 +189,8 @@ impl TxSummary {
 /// Fog hint and memo are omitted to reduce size and complexity on HW device,
 /// which can't really do much with those and isn't very interested in them
 /// anyways.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature="prost", derive(Message))]
 pub struct TxOutSummary {
     /// The amount being sent.
@@ -213,7 +215,8 @@ pub struct TxOutSummary {
 ///
 /// This includes only the pseudo output commitment and the InputRules if any,
 /// omitting the Ring and the proofs of membership.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature="prost", derive(Message))]
 #[cfg_attr(not(feature="prost"), derive(Debug, Default))]
 pub struct TxInSummary {

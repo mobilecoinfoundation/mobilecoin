@@ -14,10 +14,14 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
+use mc_core_types::{MaybeProst, MaybeSerde};
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
+
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// The maximum number of signatures that can be included in a multi-signature.
@@ -25,22 +29,25 @@ pub const MAX_SIGNATURES: usize = 10;
 
 /// A multi-signature: a collection of one or more signatures.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "prost", derive(Message))]
+
 pub struct MultiSig<
     S: Clone
         + Default
         + Digestible
         + Eq
         + Hash
-        + Message
+        + MaybeProst
         + Ord
         + PartialEq
         + PartialOrd
-        + Serialize
+        + MaybeSerde
         + Signature,
 > {
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, repeated, tag = "1"))]
     signatures: Vec<S>,
 }
 
@@ -50,11 +57,11 @@ impl<
             + Digestible
             + Eq
             + Hash
-            + Message
+            + MaybeProst
             + Ord
             + PartialEq
             + PartialOrd
-            + Serialize
+            + MaybeSerde
             + Signature,
     > MultiSig<S>
 {
@@ -72,12 +79,15 @@ impl<
 /// A set of M-out-of-N signer identities, where a signer identity can be either
 /// a public key or a nested M-out-of-N set of identities.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
-#[serde(bound = "")]
-pub struct SignerSet<P: Default + PublicKey + Message> {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound = ""))]
+#[cfg_attr(feature = "prost", derive(Message))]
+
+pub struct SignerSet<P: Default + PublicKey + MaybeProst> {
     /// List of potential individual signers.
-    #[prost(message, repeated, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, repeated, tag = "1"))]
     #[digestible(name = "signers")]
     individual_signers: Vec<P>,
 
@@ -89,18 +99,18 @@ pub struct SignerSet<P: Default + PublicKey + Message> {
     /// possible to change the array type without breaking backwards
     /// compatibility. This is also the reason the tag numbers in the struct
     /// are not sequential.
-    #[prost(message, repeated, tag = "3")]
+    #[cfg_attr(feature = "prost", prost(message, repeated, tag = "3"))]
     multi_signers: Vec<SignerSet<P>>,
 
     /// Minimum number of signers required. The potential signers are the union
     /// of `individual_signers` and `multi_signers`.
     /// This implies that the upper limit (total number of possible signers) is
     /// `individual_signers.len() + multi_signers.len()`.
-    #[prost(uint32, tag = "2")]
+    #[cfg_attr(feature = "prost", prost(uint32, tag = "2"))]
     threshold: u32,
 }
 
-impl<P: Default + PublicKey + Message> SignerSet<P> {
+impl<P: Default + PublicKey + MaybeProst> SignerSet<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
     pub fn new(individual_signers: Vec<P>, threshold: u32) -> Self {
         Self::new_with_multi(individual_signers, vec![], threshold)
@@ -162,11 +172,11 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
             + Digestible
             + Eq
             + Hash
-            + Message
+            + MaybeProst
             + Ord
             + PartialEq
             + PartialOrd
-            + Serialize
+            + MaybeSerde
             + Signature,
     >(
         &self,

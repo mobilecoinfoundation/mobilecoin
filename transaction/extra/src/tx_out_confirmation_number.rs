@@ -6,8 +6,11 @@ use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature::get_tx_out_shared_secret;
 use mc_util_repr_bytes::{
-    derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
+    typenum::U32, GenericArray, ReprBytes,
 };
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Domain separator for hashing the confirmation number
@@ -15,8 +18,10 @@ pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_n
 
 /// A hash of the shared secret used to confirm tx was sent
 #[derive(
-    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+    Clone, Default, Eq, Ord, PartialEq, PartialOrd, Debug, Digestible,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+
 pub struct TxOutConfirmationNumber([u8; 32]);
 
 impl TxOutConfirmationNumber {
@@ -79,4 +84,5 @@ impl ReprBytes for TxOutConfirmationNumber {
     }
 }
 
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);

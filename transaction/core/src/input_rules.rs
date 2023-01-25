@@ -28,7 +28,8 @@ use zeroize::Zeroize;
 ///
 /// Any rule could conceivably be added here if it can be evaluated against a
 /// `Tx`.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct InputRules {
@@ -238,7 +239,8 @@ impl InputRules {
 }
 
 /// An error that occurs when checking input rules
-#[derive(Clone, Debug, Display, Ord, PartialOrd, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Display, Ord, PartialOrd, Hash, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum InputRuleError {
     /// The transaction is missing a required output
     MissingRequiredOutput,

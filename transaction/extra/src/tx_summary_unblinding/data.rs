@@ -13,7 +13,8 @@ use zeroize::Zeroize;
 
 /// Unblinding data correpsonding to a TxSummary. This reveals the amounts of
 /// all inputs and outputs in a way that can be confirmed against the TxSummary.
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxSummaryUnblindingData {
@@ -33,7 +34,8 @@ pub struct TxSummaryUnblindingData {
 
 /// Unblinding data corresponding to a TxOutSummary. This reveals the amount
 /// and, usually, the Public Address to which this TxOut is addressed.
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOutSummaryUnblindingData {

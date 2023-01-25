@@ -27,10 +27,11 @@ use zeroize::Zeroize;
 /// A commitment to an amount of MobileCoin or a related token, as it appears on
 /// the blockchain. This is a "blinded" commitment, and only the sender and
 /// receiver know the value and token id.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
 #[digestible(name = "Amount")]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 pub struct MaskedAmountV1 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,

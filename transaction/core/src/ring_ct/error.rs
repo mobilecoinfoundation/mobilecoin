@@ -8,10 +8,12 @@ use displaydoc::Display;
 use mc_crypto_ring_signature::Error as RingSignatureError;
 use mc_crypto_ring_signature_signer::SignerError;
 use mc_util_zip_exact::ZipExactError;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Error {
     /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),

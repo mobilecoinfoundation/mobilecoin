@@ -5,13 +5,14 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [features]
-serde = [ "dep:serde" ]
-prost = [ "dep:prost" ]
+serde = [ "dep:serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde", "mc-util-serial/serde" ]
+prost = [ "dep:prost", "mc-util-repr-bytes/prost", "mc-util-serial/prost" ]
 
 default = [
     "serde",
     "prost",
     "mc-crypto-dalek/default",
+    "mc-util-repr-bytes/default",
 ]
 
 [dependencies]
@@ -28,19 +29,19 @@ subtle = { version = "2", default-features = false }
 zeroize = "1"
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { path = "../../account-keys", default_features = false }
 mc-core = { path = "../../core", default_features = false }
 mc-crypto-dalek = { path = "../../crypto/dalek", default_features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
-mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default_features = false }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default_features = false }
 mc-transaction-core = { path = "../../transaction/core", default_features = false }
 mc-transaction-types = { path = "../../transaction/types", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
-mc-util-serial = { path = "../../util/serial" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", default_features = false }
+mc-util-serial = { path = "../../util/serial", default_features = false }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 

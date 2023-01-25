@@ -9,6 +9,7 @@ use displaydoc::Display;
 //use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
+use mc_core_types::{MaybeSerde};
 use rand_core::{CryptoRng, RngCore};
 
 #[cfg(feature = "alloc")]

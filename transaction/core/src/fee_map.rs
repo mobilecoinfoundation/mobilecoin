@@ -6,6 +6,7 @@ use crate::{tokens::Mob, Token, TokenId};
 use alloc::collections::BTreeMap;
 use displaydoc::Display;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// The log base 2 of the smallest allowed minimum fee, in the smallest
@@ -38,7 +39,8 @@ use serde::{Deserialize, Serialize};
 pub const SMALLEST_MINIMUM_FEE_LOG2: u64 = 7;
 
 /// A map of fee value by token id.
-#[derive(Clone, Debug, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Digestible, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FeeMap {
     /// The actual map of token_id to fee.
     /// Since we hash this map, it is important to use a BTreeMap as it
@@ -149,7 +151,8 @@ impl FeeMap {
 }
 
 /// Fee Map error type.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Display, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Error {
     /// Token `{0}` has invalid fee (too small) `{1}`
     InvalidFeeTooSmall(TokenId, u64),

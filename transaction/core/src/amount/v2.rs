@@ -35,9 +35,10 @@ use zeroize::Zeroize;
 /// which is computed by hashing from "tx out shared secret". The purpose of
 /// this is to make it possible to selectively reveal the amount and token id of
 /// a TxOut, without revealing the memo and other things. (See also MCIP #42).
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 pub struct MaskedAmountV2 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,

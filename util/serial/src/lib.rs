@@ -5,14 +5,18 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
+#[cfg(feature = "prost")]
 pub extern crate prost;
 
+#[cfg(feature = "prost")]
 pub use prost::{DecodeError, EncodeError, Message};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,
 // because this keeps us compatible with how rmp-serde was exporting its errors,
 // and avoids unnecessary code changes.
+#[cfg(feature = "serde")]
 pub mod decode {
     #[derive(Debug)]
     pub struct Error(serde_cbor::Error);
@@ -30,6 +34,7 @@ pub mod decode {
     }
 }
 
+#[cfg(feature = "serde")]
 pub mod encode {
     #[derive(Debug)]
     pub struct Error(serde_cbor::Error);
@@ -52,6 +57,7 @@ pub mod encode {
 /// Forward mc_util_serial::serialize to bincode::serialize(..., Infinite)
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail.
+#[cfg(feature = "serde")]
 pub fn serialize<T: ?Sized>(value: &T) -> Result<Vec<u8>, encode::Error>
 where
     T: Serialize + Sized,
@@ -62,6 +68,7 @@ where
 /// Deserialize the given bytes to a data structure.
 ///
 /// Forward mc_util_serial::deserialize to serde_cbor::from_slice
+#[cfg(feature = "serde")]
 pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T, decode::Error>
 where
     T: Deserialize<'a>,
@@ -69,15 +76,17 @@ where
     Ok(serde_cbor::from_slice(bytes)?)
 }
 
+#[cfg(feature = "prost")]
 pub fn encode<T: Message>(value: &T) -> Vec<u8> {
     value.encode_to_vec()
 }
 
+#[cfg(feature = "prost")]
 pub fn decode<T: Message + Default>(buf: &[u8]) -> Result<T, DecodeError> {
     T::decode(buf)
 }
 
-#[cfg(feature = "serde_with")]
+#[cfg(all(feature = "serde", feature = "serde_with"))]
 mod json_u64 {
     use super::*;
     use serde_with::{serde_as, DisplayFromStr};
@@ -121,7 +130,7 @@ mod json_u64 {
 
 /// JsonU64 is exported if it is available -- the serde_with crate which it
 /// depends on relies on std, so it must be optional.
-#[cfg(feature = "serde_with")]
+#[cfg(all(feature = "serde", feature = "serde_with"))]
 pub use json_u64::JsonU64;
 
 /// Take a prost type and try to roundtrip it through a protobuf type

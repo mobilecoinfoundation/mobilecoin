@@ -3429,6 +3429,7 @@ dependencies = [
 name = "mc-crypto-multisig"
 version = "4.0.0-pre0"
 dependencies = [
+ "mc-core-types",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-util-from-random",

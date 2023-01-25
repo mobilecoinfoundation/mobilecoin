@@ -26,10 +26,11 @@ mod v2;
 pub use v2::MaskedAmountV2;
 
 /// A masked amount in one of several possible versions
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
 #[digestible(transparent)]
 #[cfg_attr(feature = "prost", derive(Oneof))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 pub enum MaskedAmount {
     /// A v1 masked amount.
     /// Note: This tag must match the historical tag used for masked amounts

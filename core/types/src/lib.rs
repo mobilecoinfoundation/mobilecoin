@@ -9,3 +9,6 @@ pub mod account;
 pub mod keys;
 
 pub mod markers;
+
+mod traits;
+pub use traits::{MaybeProst, MaybeSerde, MaybeAlloc};

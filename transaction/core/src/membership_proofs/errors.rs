@@ -34,6 +34,7 @@ pub enum Error {
     NumericLimitsExceeded,
 }
 
+#[cfg(feature = "serde")]
 impl From<mc_util_serial::encode::Error> for Error {
     fn from(_e: mc_util_serial::encode::Error) -> Self {
         Error::TxOutSerializationError

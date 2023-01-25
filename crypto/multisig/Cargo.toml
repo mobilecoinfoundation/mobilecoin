@@ -5,12 +5,18 @@ authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin multi-signature implementations"
 
-[dependencies]
-mc-crypto-digestible = { path = "../digestible" }
-mc-crypto-keys = { path = "../keys" }
+[features]
+prost = ["dep:prost", "mc-core-types/prost", "mc-crypto-keys/prost"]
+serde = ["dep:serde", "mc-core-types/serde", "mc-crypto-keys/serde"]
+default = ["prost", "serde"]
 
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+[dependencies]
+mc-core-types = { path = "../../core/types", default_features = false }
+mc-crypto-digestible = { path = "../digestible" }
+mc-crypto-keys = { path = "../keys", default_features = false }
+
+prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["alloc", "derive"] }
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }

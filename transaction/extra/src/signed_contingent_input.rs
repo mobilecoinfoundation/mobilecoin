@@ -20,7 +20,8 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// The "unmasked" data of an amount commitment
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct UnmaskedAmount {

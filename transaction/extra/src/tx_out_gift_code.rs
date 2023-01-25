@@ -12,9 +12,10 @@ use subtle::{Choice, ConstantTimeEq};
 
 /// Object representing a TxOut that can be sent to a receiver enabling them
 /// to find/uniquely identify a TxOut, un-blind the amount, and spend the TxOut
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct TxOutGiftCode {
     /// The global index of the TxOut which has been gifted
     #[cfg_attr(feature="prost", prost(uint64, required, tag = "1"))]

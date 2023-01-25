@@ -4,10 +4,12 @@
 
 use crate::{BlockVersion, TokenId};
 use displaydoc::Display;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Error type for mint transactions validation.
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Error {
     /// Invalid block version: {0}
     InvalidBlockVersion(BlockVersion),

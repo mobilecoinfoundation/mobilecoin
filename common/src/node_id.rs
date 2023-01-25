@@ -11,12 +11,17 @@ use core::{
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
+
+#[cfg(feature = "prost")]
 use prost::Message;
+
+#[cfg(fdeature = "serde")]
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Display, Hash, Eq, Ord, PartialEq, PartialOrd,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum NodeIDError {
     /// Could not create NodeID due to serialization failure
     Deserialization,
@@ -38,13 +43,15 @@ impl From<KeyError> for NodeIDError {
 
 /// Node unique identifier containing a responder_id as well as a unique public
 /// key
-#[derive(Clone, Deserialize, Digestible, Message, Serialize)]
+#[derive(Clone, Digestible)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct NodeID {
     /// The Responder ID for this node
-    #[prost(message, required, tag = 1)]
+    #[cfg_attr(feature="prost", prost(message, required, tag = 1))]
     pub responder_id: ResponderId,
     /// The public message-signing key for this node
-    #[prost(message, required, tag = 2)]
+    #[cfg_attr(feature="prost", prost(message, required, tag = 2))]
     pub public_key: Ed25519Public,
 }
 

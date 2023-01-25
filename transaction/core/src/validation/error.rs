@@ -4,6 +4,7 @@ use crate::{InputRuleError, TxOutConversionError};
 use alloc::string::String;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Type alias for transaction validation results.
@@ -11,7 +12,8 @@ pub type TransactionValidationResult<T> = Result<T, TransactionValidationError>;
 
 /// Reasons why a single transaction may fail to be valid with respect to the
 /// current ledger.
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TransactionValidationError {
     /// Each input should have one membership proof.
     InputsProofsLengthMismatch,

@@ -19,9 +19,10 @@ use serde::{Deserialize, Serialize};
 /// The minting configuration specifies who is allowed to submit mint
 /// transactions, for which token and at what total limit.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MintConfig {
     /// Token ID this configuration applies to.
     #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
@@ -40,9 +41,10 @@ pub struct MintConfig {
 /// The contents of a mint-config transaction. This transaction alters the
 /// minting configuration for a single token ID.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
     #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
@@ -76,9 +78,11 @@ impl MintConfigTxPrefix {
 
 /// A mint-config transaction coupled with a signature over it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+
 pub struct MintConfigTx {
     /// The transaction contents.
     #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
@@ -97,9 +101,10 @@ impl fmt::Display for MintConfigTx {
 
 /// A mint-config transaction coupled with the data used to validate it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ValidatedMintConfigTx {
     /// The transaction that was validated.
     #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]

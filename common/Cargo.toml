@@ -6,7 +6,9 @@ edition = "2021"
 
 [features]
 default = [
-    "mc-crypto-dalek/default"
+    "mc-crypto-dalek/default",
+    "serde",
+    "prost",
 ]
 std = [
     "displaydoc/std",
@@ -36,11 +38,22 @@ loggers = [
     "slog-stdlog",
     "slog-term",
 ]
+serde = [
+    "dep:serde",
+    "mc-crypto-dalek/serde",
+    "hashbrown/serde",
+    "mc-util-serial/serde",
+]
+
+prost = [
+    "dep:prost",
+    "mc-util-serial/prost",
+]
 
 [dependencies]
-mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "serde", "alloc" ] }
+mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "alloc" ] }
 mc-crypto-digestible = { path = "../crypto/digestible" }
-mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "serde", "alloc", "prost" ] }
+mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "alloc" ] }
 mc-crypto-rand = { path = "../crypto/rand" }
 # loggers-only dependencies
 mc-util-build-info = { path = "../util/build/info", optional = true }
@@ -53,15 +66,15 @@ backtrace = { version = "0.3", optional = true }
 cfg-if = "1.0"
 chrono = { version = "0.4", optional = true }
 displaydoc = { version = "0.2", default-features = false }
-hashbrown = { version = "0.13.1", default-features = false, features = ["serde", "nightly"] }
+hashbrown = { version = "0.13.1", default-features = false, features = ["nightly"] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 hostname = { version = "0.3.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"], optional = true }
 rand_core = { version = "0.6", default-features = false }
 sentry = { version = "0.29", optional = true, default-features = false, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"] }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 sha3 = { version = "0.10", default-features = false }
 siphasher = "0.3"
 slog = { version = "2.7", default-features = false, features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"] }

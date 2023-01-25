@@ -13,6 +13,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_types::{Amount, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// A structure containing an unsigned transaction, together with the data
@@ -23,7 +24,8 @@ use serde::{Deserialize, Serialize};
 /// valid, signed Tx. Note that whether the UnsignedTx can be signed on its own
 /// or requires the spend private key will depend on the contents of the
 /// InputRings.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct UnsignedTx {
     /// The fully constructed TxPrefix.
     pub tx_prefix: TxPrefix,

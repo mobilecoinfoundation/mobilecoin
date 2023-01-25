@@ -11,10 +11,12 @@ use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
-    derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
+    typenum::U32, GenericArray, ReprBytes,
 };
 #[cfg(feature="prost")]
 use prost::Message;
+#[cfg(feature="prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 #[cfg(feature="serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -36,8 +38,9 @@ use crate::{
 pub const TX_HASH_LEN: usize = 32;
 
 #[derive(
-    Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
+    Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Digestible,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 /// Hash of a Tx.
 pub struct TxHash(pub [u8; TX_HASH_LEN]);
 
@@ -105,9 +108,10 @@ impl fmt::Debug for TxHash {
 }
 
 /// A CryptoNote-style transaction.
-#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Digestible)]
+#[derive(Clone, Eq, PartialEq, Digestible)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Tx {
     /// The transaction contents.
     #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
@@ -164,7 +168,8 @@ impl Tx {
 ///
 /// Note: If you add something here, consider if it should be added to the
 /// TxSummary also for hardware wallet visibility.
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Digestible)]
+#[derive(Clone, Eq, PartialEq, Digestible)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature="prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxPrefix {
@@ -250,7 +255,8 @@ impl TxPrefix {
 }
 
 /// An "input" to a transaction.
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxIn {
@@ -307,7 +313,8 @@ impl TryFrom<&TxIn> for SignedInputRing {
 }
 
 /// An output created by a transaction.
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature="prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOut {
@@ -535,7 +542,8 @@ impl TryFrom<&TxOut> for ReducedTxOut {
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct TxOutMembershipProof {
@@ -576,10 +584,12 @@ impl TxOutMembershipProof {
 /// An element of a TxOut membership proof, denoting an internal hash node in a
 /// Merkle tree.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
+    Clone, Digestible, Eq, Ord, PartialEq, PartialOrd, Zeroize,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
     #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]
@@ -605,15 +615,14 @@ impl TxOutMembershipElement {
     Clone,
     Debug,
     Default,
-    Deserialize,
     Digestible,
     Eq,
     Ord,
     PartialEq,
     PartialOrd,
-    Serialize,
     Zeroize,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[digestible(transparent)]
 pub struct TxOutMembershipHash(pub [u8; 32]);
 
@@ -656,6 +665,7 @@ impl ReprBytes for TxOutMembershipHash {
     }
 }
 
+#[cfg(feature="prost")]
 derive_prost_message_from_repr_bytes!(TxOutMembershipHash);
 
 #[cfg(test)]

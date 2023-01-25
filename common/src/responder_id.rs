@@ -12,10 +12,12 @@ use core::{
 };
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
+#[cfg(feature = "prost")]
 use prost::{
     bytes::{Buf, BufMut},
     encoding, Message,
 };
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Potential parse errors
@@ -32,8 +34,9 @@ impl std::error::Error for ResponderIdParseError {}
 
 /// Node unique identifier.
 #[derive(
-    Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash, Digestible,
+    Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Digestible,
 )]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ResponderId(#[digestible(never_omit)] pub String);
 
 impl Display for ResponderId {
@@ -64,6 +67,7 @@ impl AsRef<ResponderId> for ResponderId {
 }
 
 // Encode ResponderId as a proto string
+#[cfg(feature = "prost")]
 impl Message for ResponderId {
     fn encode_raw<B>(&self, buf: &mut B)
     where

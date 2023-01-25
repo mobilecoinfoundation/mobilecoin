@@ -13,14 +13,20 @@ alloc = [
 serde = [ 
     "dep:serde",
     "mc-account-keys/serde",
+    "mc-crypto-keys/serde",
     "mc-crypto-ring-signature/serde",
     "mc-crypto-ring-signature-signer/serde",
+    "mc-crypto-multisig/serde",
+    "mc-util-serial/serde"
 ]
 prost = [ 
     "dep:prost",
     "mc-account-keys/prost",
+    "mc-crypto-keys/prost",
     "mc-crypto-ring-signature/prost",
     "mc-crypto-ring-signature-signer/prost",
+    "mc-crypto-multisig/prost",
+    "mc-util-serial/prost"
 ]
 
 default = [
@@ -57,12 +63,12 @@ mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", 
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
-mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false, features = [  ] }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
 mc-transaction-types = { path = "../types", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
-mc-util-serial = { path = "../../util/serial" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", default_features = false }
+mc-util-serial = { path = "../../util/serial", default_features = false }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]

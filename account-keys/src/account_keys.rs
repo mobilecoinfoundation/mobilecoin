@@ -49,6 +49,7 @@ pub use mc_core::consts::{
 /// A MobileCoin user's public subaddress.
 #[derive(Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.

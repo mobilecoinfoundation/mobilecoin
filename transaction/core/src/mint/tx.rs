@@ -16,9 +16,10 @@ use serde::{Deserialize, Serialize};
 
 /// The contents of a mint-tx, which is a transaction to mint new tokens.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MintTxPrefix {
     /// Token ID we are minting.
     #[cfg_attr(feature="prost", prost(uint64, tag = "1"))]
@@ -59,9 +60,10 @@ impl MintTxPrefix {
 
 /// A mint transaction coupled with a signature over it.
 #[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct MintTx {
     /// The transaction contents.
     #[cfg_attr(feature="prost", prost(message, required, tag = "1"))]

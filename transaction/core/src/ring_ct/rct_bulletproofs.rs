@@ -39,7 +39,8 @@ use crate::{
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
 /// signature
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PresignedInputRing {
     /// The mlsag signature authorizing the spending of an input
     pub mlsag: RingMLSAG,
@@ -52,7 +53,8 @@ pub struct PresignedInputRing {
 /// This enum is needed because all TxIn's are required to appear in sorted
 /// order, regardless of if they are presigned. This gives the signer a way to
 /// control the order in which they will appear.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum InputRing {
     /// A signable input ring
     Signable(SignableInputRing),
@@ -72,7 +74,8 @@ impl InputRing {
 
 /// The secrets corresponding to an output that we are trying to authorize
 /// creation of
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[zeroize(drop)]
 pub struct OutputSecret {
     /// The amount of the output we are creating
@@ -82,7 +85,8 @@ pub struct OutputSecret {
 }
 
 /// The parts of a TxIn needed to validate a corresponding MLSAG
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SignedInputRing {
     /// A reduced representation of the TxOut's in the ring. For each ring
     /// member we have only:
@@ -104,7 +108,8 @@ pub struct SignedInputRing {
 /// having the view private key for a set of input TxOuts, and it can then be
 /// moved to a separate machine/service that then takes it + the spend private
 /// key and uses that to generate a fully signed transaction.
-#[derive(Clone, Debug, Deserialize, Digestible, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Digestible, Eq, PartialEq)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 pub struct SigningData {
     /// The bytes actually signed by MLSAG signatures.
     /// This is different depending on what block version we are in.
@@ -506,9 +511,10 @@ impl SigningData {
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
-#[derive(Clone, Deserialize, Digestible, Eq, PartialEq, Serialize)]
+#[derive(Clone, Digestible, Eq, PartialEq)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
     #[cfg_attr(feature="prost", prost(message, repeated, tag = "1"))]

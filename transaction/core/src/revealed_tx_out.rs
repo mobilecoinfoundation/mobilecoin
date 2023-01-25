@@ -13,7 +13,8 @@ use zeroize::Zeroize;
 
 /// A TxOut together with its amount shared secret, which can be used to reveal
 /// the amount and token id and check them against the commitment data
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature="serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 pub struct RevealedTxOut {
@@ -98,7 +99,8 @@ pub fn try_reveal_amount(
 
 /// An error that can occur when attempting to reveal a TxOut using its Amount
 /// shared secret
-#[derive(Clone, Debug, Display, Ord, PartialOrd, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Display, Ord, PartialOrd, Hash, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RevealedTxOutError {
     /// Invalid Amount Shared Secret
     InvalidAmountSharedSecret,
