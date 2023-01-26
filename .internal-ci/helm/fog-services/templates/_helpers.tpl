@@ -151,7 +151,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- $salt }}
 {{- end }}
 
-{{/* The configmap stores a string, so check for string false and pass back a bool */}}
 {{- define "fogServices.blocklist.enabled" -}}
   {{- if eq .Values.fogServicesConfig.enabled false }}
     {{- (lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_ENABLED | default "false" }}
