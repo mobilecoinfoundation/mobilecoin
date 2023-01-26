@@ -112,8 +112,7 @@ where
             .expect("Could not get store responder id");
         let uri = FogViewStoreUri::try_from_responder_id(responder_id, use_tls)
             .expect("Could not create uri from responder id");
-
-        log::debug!(logger, "Fog View Store URI is: {}", uri);
+        log::info!(logger, "Fog View Store URI is: {}", uri);
 
         let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
             enclave.clone(),
