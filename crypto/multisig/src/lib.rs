@@ -31,39 +31,69 @@ pub const MAX_SIGNATURES: usize = 10;
 #[derive(
     Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "prost", derive(Message))]
 
 pub struct MultiSig<
-    S: Clone
-        + Default
-        + Digestible
-        + Eq
-        + Hash
-        + MaybeProst
-        + Ord
-        + PartialEq
-        + PartialOrd
-        + MaybeSerde
-        + Signature,
+    S: Sig,
 > {
     #[cfg_attr(feature = "prost", prost(message, repeated, tag = "1"))]
     signatures: Vec<S>,
 }
 
-impl<
-        S: Clone
-            + Default
-            + Digestible
-            + Eq
-            + Hash
-            + MaybeProst
-            + Ord
-            + PartialEq
-            + PartialOrd
-            + MaybeSerde
-            + Signature,
-    > MultiSig<S>
+/// Marker trait for [MultiSig] compatible signatures
+#[cfg(feature = "serde")]
+pub trait Sig: Clone
+    + Default
+    + Digestible
+    + Eq
+    + Hash
+    + MaybeProst
+    + Ord
+    + PartialEq
+    + PartialOrd
+    + Serialize
+    + Signature {}
+
+#[cfg(feature = "serde")]
+impl <T: Clone
++ Default
++ Digestible
++ Eq
++ Hash
++ MaybeProst
++ Ord
++ PartialEq
++ PartialOrd
++ Serialize
++ Signature> Sig for T {}
+
+/// Marker trait for [MultiSig] compatible signatures
+#[cfg(not(feature = "serde"))]
+pub trait Sig: Clone
+    + Default
+    + Digestible
+    + Eq
+    + Hash
+    + MaybeProst
+    + Ord
+    + PartialEq
+    + PartialOrd
+    + Signature {}
+
+#[cfg(not(feature = "serde"))]
+impl <T: Clone
++ Default
++ Digestible
++ Eq
++ Hash
++ MaybeProst
++ Ord
++ PartialEq
++ PartialOrd
++ Signature> Sig for T {}
+
+impl<S: Sig> MultiSig<S>
 {
     /// Construct a new multi-signature from a collection of signatures.
     pub fn new(signatures: Vec<S>) -> Self {
