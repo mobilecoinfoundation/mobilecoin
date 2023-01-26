@@ -90,11 +90,11 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             let last_path_element = out_path
                 .file_name()
                 .and_then(|s| s.to_str())
-                .ok_or_else(|| format!("{:?} has no file name element", out_path))?;
+                .ok_or_else(|| format!("{out_path:?} has no file name element"))?;
 
             let unix_timestamp = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .map_err(|e| format!("Failed getting unix timestamp: {:?}", e))?;
+                .map_err(|e| format!("Failed getting unix timestamp: {e:?}"))?;
 
             let mut renamed_out_path = out_path.clone();
             renamed_out_path.set_file_name(format!(
@@ -111,26 +111,19 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             );
 
             rename(&out_path, &renamed_out_path).map_err(|e| {
-                format!(
-                    "Failed renaming {:?} to {:?}: {:?}",
-                    out_path, renamed_out_path, e
-                )
+                format!("Failed renaming {out_path:?} to {renamed_out_path:?}: {e:?}")
             })?;
         }
 
         let mut cur_slot_out_path = out_path.clone();
         cur_slot_out_path.push("cur-slot");
         create_dir_all(cur_slot_out_path.clone())
-            .map_err(|e| format!("Failed creating directory {:?}: {:?}", cur_slot_out_path, e))?;
+            .map_err(|e| format!("Failed creating directory {cur_slot_out_path:?}: {e:?}"))?;
 
         let mut slot_states_out_path = out_path;
         slot_states_out_path.push("slot-states");
-        create_dir_all(slot_states_out_path.clone()).map_err(|e| {
-            format!(
-                "Failed creating directory {:?}: {:?}",
-                slot_states_out_path, e
-            )
-        })?;
+        create_dir_all(slot_states_out_path.clone())
+            .map_err(|e| format!("Failed creating directory {slot_states_out_path:?}: {e:?}"))?;
 
         Ok(Self {
             node,
@@ -185,29 +178,29 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             msg,
         };
         let bytes =
-            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
+            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {e:?}"))?;
 
         let mut file_path = self.cur_slot_out_path.clone();
         file_path.push(format!("{:08}", self.msg_count));
         self.msg_count += 1;
 
         let mut file = File::create(&file_path)
-            .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
+            .map_err(|e| format!("failed creating {file_path:?}: {e:?}"))?;
         file.write_all(&bytes)
-            .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+            .map_err(|e| format!("failed writing {file_path:?}: {e:?}"))?;
 
         // Write slot state into a file.
         if let Some(slot_state) = self.get_slot_debug_snapshot(msg_slot_index) {
             let slot_as_json = serde_json::to_vec(&slot_state)
-                .map_err(|e| format!("failed serializing slot state: {:?}", e))?;
+                .map_err(|e| format!("failed serializing slot state: {e:?}"))?;
 
             let mut file_path = self.slot_states_out_path.clone();
-            file_path.push(format!("{:08}.json", msg_slot_index));
+            file_path.push(format!("{msg_slot_index:08}.json"));
 
             let mut file = File::create(&file_path)
-                .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
+                .map_err(|e| format!("failed creating {file_path:?}: {e:?}"))?;
             file.write_all(&slot_as_json)
-                .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+                .map_err(|e| format!("failed writing {file_path:?}: {e:?}"))?;
 
             if !self.slot_state_filenames.contains(&file_path) {
                 self.slot_state_filenames.push(file_path);
@@ -327,7 +320,7 @@ impl<V: Value> ScpLogReader<V> {
     /// Create a new ScpLogReader.
     pub fn new(path: &Path) -> Result<Self, String> {
         let mut files: Vec<_> = read_dir(path)
-            .map_err(|e| format!("failed reading dir {:?}: {:?}", path, e))?
+            .map_err(|e| format!("failed reading dir {path:?}: {e:?}"))?
             .filter_map(|entry| {
                 let entry = entry.unwrap().path();
                 if entry.is_file() {
@@ -351,9 +344,9 @@ impl<V: serde::de::DeserializeOwned + Value> Iterator for ScpLogReader<V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.pop_front()?;
-        let bytes = read(&path).unwrap_or_else(|_| panic!("failed reading {:?}", path));
+        let bytes = read(&path).unwrap_or_else(|_| panic!("failed reading {path:?}"));
         let data: Self::Item = mc_util_serial::deserialize(&bytes)
-            .unwrap_or_else(|_| panic!("failed deserializing {:?}", path));
+            .unwrap_or_else(|_| panic!("failed deserializing {path:?}"));
         Some(data)
     }
 }

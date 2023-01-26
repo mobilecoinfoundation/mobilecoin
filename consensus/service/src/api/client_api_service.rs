@@ -87,7 +87,7 @@ impl ClientApiService {
         // Cache the transaction. This performs the well-formedness checks.
         let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
             if let TxManagerError::TransactionValidation(cause) = &err {
-                counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
+                counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
             }
             err
         })?;
@@ -116,7 +116,7 @@ impl ClientApiService {
     ) -> Result<ProposeMintConfigTxResponse, ConsensusGrpcError> {
         counters::PROPOSE_MINT_CONFIG_TX_INITIATED.inc();
         let mint_config_tx = MintConfigTx::try_from(&grpc_tx)
-            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
+            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{err:?}")))?;
         let response = ProposeMintConfigTxResponse::new();
 
         // Validate the transaction.
@@ -142,7 +142,7 @@ impl ClientApiService {
     ) -> Result<ProposeMintTxResponse, ConsensusGrpcError> {
         counters::PROPOSE_MINT_TX_INITIATED.inc();
         let mint_tx = MintTx::try_from(&grpc_tx)
-            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
+            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{err:?}")))?;
         let response = ProposeMintTxResponse::new();
 
         // Validate the transaction.
@@ -396,14 +396,14 @@ mod client_api_tests {
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
             .expect("Could not create anonymous bind");
         server.start();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = ConsensusClientApiClient::new(ch);
         (client, server)
     }
 
     /// Get a dummy config object
     fn get_config() -> Config {
-        Config::try_parse_from(&[
+        Config::try_parse_from([
             "foo",
             "--chain-id=local",
             "--peer-responder-id=localhost:8081",
@@ -505,7 +505,7 @@ mod client_api_tests {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -576,7 +576,7 @@ mod client_api_tests {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -627,7 +627,7 @@ mod client_api_tests {
             Ok(_) => {
                 panic!("Got success, but failure was expected");
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -705,7 +705,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -765,7 +765,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -833,7 +833,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -875,12 +875,12 @@ mod client_api_tests {
         let message = Message::default();
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -930,12 +930,12 @@ mod client_api_tests {
         let message = Message::default();
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         // This is a global variable. It affects other unit tests, so must be reset :(
@@ -979,13 +979,13 @@ mod client_api_tests {
         let message = Message::default();
         match client.client_tx_propose(&message) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         };
     }
@@ -1046,7 +1046,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert_eq!(
@@ -1115,7 +1115,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1160,12 +1160,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1218,12 +1218,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1275,12 +1275,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1347,7 +1347,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert_eq!(
@@ -1421,7 +1421,7 @@ mod client_api_tests {
                 );
                 assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1471,12 +1471,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1534,12 +1534,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
@@ -1596,12 +1596,12 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+                panic!("Unexpected response {propose_tx_response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());

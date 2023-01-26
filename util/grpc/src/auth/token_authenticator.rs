@@ -59,7 +59,7 @@ impl<TP: TimeProvider> Authenticator for TokenAuthenticator<TP> {
         if !self.is_valid_time(timestamp)? {
             return Err(AuthenticatorError::ExpiredAuthorizationToken);
         }
-        if !self.is_valid_signature(&format!("{}:{}", username, timestamp), signature)? {
+        if !self.is_valid_signature(&format!("{username}:{timestamp}"), signature)? {
             return Err(AuthenticatorError::InvalidAuthorizationToken);
         }
         Ok(credentials.username)
@@ -154,7 +154,7 @@ impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
             .since_epoch()
             .map_err(|_| TokenBasicCredentialsGeneratorError::TimeProvider)?
             .as_secs();
-        let prefix = format!("{}:{}", user_id, current_time_seconds);
+        let prefix = format!("{user_id}:{current_time_seconds}");
 
         let mut mac = Hmac::<Sha256>::new_from_slice(&self.shared_secret)
             .map_err(|_| TokenBasicCredentialsGeneratorError::InvalidHmacKey)?;

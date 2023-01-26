@@ -83,7 +83,7 @@ impl PedersenGens {
 /// For amounts, H varies based on the token id.
 pub fn generators(token_id: u64) -> PedersenGens {
     let mut hasher = Blake2b512::new();
-    hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
+    hasher.update(HASH_TO_POINT_DOMAIN_TAG);
 
     // This step xors the token id bytes on top of the "base point" bytes
     // used prior to the introduction of token ids.
@@ -115,8 +115,8 @@ pub fn generators(token_id: u64) -> PedersenGens {
 /// Applies a hash function and returns a RistrettoPoint.
 pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
     let mut hasher = Blake2b512::new();
-    hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
-    hasher.update(&ristretto_public.to_bytes());
+    hasher.update(HASH_TO_POINT_DOMAIN_TAG);
+    hasher.update(ristretto_public.to_bytes());
     RistrettoPoint::from_hash(hasher)
 }
 

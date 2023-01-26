@@ -55,7 +55,7 @@ impl<T: ?Sized> Drop for FfiOwnedPtr<T> {
         // misuse in unsafe Rust, in C, or a bug in the library.
         debug_assert!(!self.0.is_null());
         unsafe {
-            Box::from_raw(self.0);
+            drop(Box::from_raw(self.0));
         }
     }
 }
@@ -182,7 +182,7 @@ impl<T: ?Sized> Drop for FfiOptOwnedPtr<T> {
     fn drop(&mut self) {
         if !self.0.is_null() {
             unsafe {
-                Box::from_raw(self.0);
+                drop(Box::from_raw(self.0));
             }
         }
     }

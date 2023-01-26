@@ -86,7 +86,7 @@ impl PreparedUtxo {
                 ))
             })
             .collect::<Result<Vec<_>, ConversionError>>()
-            .map_err(|err| format!("Conversion error: {}", err))?
+            .map_err(|err| format!("Conversion error: {err}"))?
             .into_iter()
             .unzip();
 
@@ -110,9 +110,9 @@ impl PreparedUtxo {
 
         let proofs_resp = mobilecoind_api_client
             .get_membership_proofs_async(&req)
-            .map_err(|err| format!("Failed to request membership proofs: {}", err))?
+            .map_err(|err| format!("Failed to request membership proofs: {err}"))?
             .await
-            .map_err(|err| format!("Request membership proofs ended in error: {}", err))?;
+            .map_err(|err| format!("Request membership proofs ended in error: {err}"))?;
 
         // Get mixins for this utxo
         let mut req = api::GetMixinsRequest::new();
@@ -122,9 +122,9 @@ impl PreparedUtxo {
 
         let mixins_resp = mobilecoind_api_client
             .get_mixins_async(&req)
-            .map_err(|err| format!("Failed to request mixins: {}", err))?
+            .map_err(|err| format!("Failed to request mixins: {err}"))?
             .await
-            .map_err(|err| format!("Request mixins ended in error: {}", err))?;
+            .map_err(|err| format!("Request mixins ended in error: {err}"))?;
 
         Ok((proofs_resp, mixins_resp))
     }
@@ -141,10 +141,7 @@ impl PreparedUtxo {
         // Get block version to target
         let block_version = network_state.get_last_block_info().network_block_version;
         let block_version = BlockVersion::try_from(block_version).map_err(|err| {
-            format!(
-                "Got invalid block version {} from network ({})",
-                block_version, err
-            )
+            format!("Got invalid block version {block_version} from network ({err})")
         })?;
 
         // Get minimum fee for this token id
@@ -154,7 +151,7 @@ impl PreparedUtxo {
             .get_last_block_info()
             .minimum_fees
             .get(&token_id)
-            .ok_or_else(|| format!("Missing fee for token id: {}", token_id))?;
+            .ok_or_else(|| format!("Missing fee for token id: {token_id}"))?;
         let token_id = TokenId::from(token_id);
         let fee_amount = Amount::new(fee_value, token_id);
 
@@ -165,7 +162,7 @@ impl PreparedUtxo {
             let report_verifier = Verifier::default();
 
             FogResolver::new(responses, &report_verifier)
-                .map_err(|err| format!("Fog resolver: {}", err))?
+                .map_err(|err| format!("Fog resolver: {err}"))?
         };
 
         // Create tx_builder.
@@ -175,7 +172,7 @@ impl PreparedUtxo {
             fog_resolver,
             EmptyMemoBuilder::default(),
         )
-        .map_err(|err| format!("Transaction builder new: {}", err))?;
+        .map_err(|err| format!("Transaction builder new: {err}"))?;
 
         tx_builder.set_tombstone_block(tombstone_block);
         tx_builder.add_input(self.get_input_credentials(account_key)?);
@@ -185,11 +182,11 @@ impl PreparedUtxo {
                 recipient,
                 &mut rng,
             )
-            .map_err(|err| format!("Add output: {}", err))?;
+            .map_err(|err| format!("Add output: {err}"))?;
 
         tx_builder
             .build(&LocalRingSigner::from(account_key), &mut rng)
-            .map_err(|err| format!("Build Tx: {}", err))
+            .map_err(|err| format!("Build Tx: {err}"))
     }
 
     fn get_input_credentials(&self, account_key: &AccountKey) -> Result<InputCredentials, String> {
@@ -202,6 +199,6 @@ impl PreparedUtxo {
             onetime_key_derive_data,
             *account_key.view_private_key(),
         )
-        .map_err(|err| format!("InputCredentials: {}", err))
+        .map_err(|err| format!("InputCredentials: {err}"))
     }
 }

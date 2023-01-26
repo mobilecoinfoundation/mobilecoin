@@ -56,9 +56,8 @@ fn main() {
         };
 
         let get_config_json = Arc::new(move || {
-            serde_json::to_string(&json_data).map_err(|err| {
-                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err))
-            })
+            serde_json::to_string(&json_data)
+                .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{err:?}")))
         });
         AdminServer::start(
             None,
@@ -108,7 +107,7 @@ fn main() {
                 "Transactions could not clear in {:?} seconds",
                 config.consensus_wait
             ),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 }

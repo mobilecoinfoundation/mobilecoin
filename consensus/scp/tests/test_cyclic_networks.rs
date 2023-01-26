@@ -15,7 +15,7 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
     test_options.values_to_submit = 10000;
 
     let network_config = mock_network::cyclic_topology::directed_cycle(num_nodes);
-    mock_network::build_and_test(&network_config, &test_options, logger.clone());
+    mock_network::build_and_test(&network_config, &test_options, logger);
 }
 
 #[test_with_logger]

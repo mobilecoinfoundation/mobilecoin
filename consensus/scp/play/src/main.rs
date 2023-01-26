@@ -43,10 +43,10 @@ pub struct Config {
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet, String> {
     let quorum_set: QuorumSet = serde_json::from_str(src)
-        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+        .map_err(|err| format!("Error parsing quorum set {src}: {err:?}"))?;
 
     if !quorum_set.is_valid() {
-        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+        return Err(format!("Invalid quorum set: {quorum_set:?}"));
     }
 
     Ok(quorum_set)
@@ -54,7 +54,7 @@ fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet, String> {
 
 fn parse_node_id_from_uri(src: &str) -> Result<NodeID, String> {
     let uri = PeerUri::from_str(src)
-        .map_err(|err| format!("Could not get URI from param {}: {:?}", src, err))?;
+        .map_err(|err| format!("Could not get URI from param {src}: {err:?}"))?;
     Ok(NodeID::from(&uri))
 }
 

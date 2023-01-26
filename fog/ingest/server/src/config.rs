@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn ingest_server_config_example() {
         let config = IngestConfig::try_parse_from(
-         &["/usr/bin/fog_ingest_server",
+         ["/usr/bin/fog_ingest_server",
       "--ledger-db", "/fog-data/ledger",
       "--watcher-db", "/fog-data/watcher",
      "--ias-spid", "00000000000000000000000000000000", "--ias-api-key", "00000000000000000000000000000000",

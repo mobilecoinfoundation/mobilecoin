@@ -84,7 +84,7 @@ const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 /// Hashes a curve point to a Scalar.
 fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     let mut hasher = Blake2b512::new();
-    hasher.update(&HASH_TO_SCALAR_DOMAIN_TAG);
+    hasher.update(HASH_TO_SCALAR_DOMAIN_TAG);
     hasher.update(point.compress().as_bytes());
     Scalar::from_hash(hasher)
 }

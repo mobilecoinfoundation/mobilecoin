@@ -190,7 +190,7 @@ impl ReqwestTransactionsFetcher {
         let obj = M::parse_from_bytes(&bytes).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
-                format!("protobuf parse failed: {:?}", err),
+                format!("protobuf parse failed: {err:?}"),
             )
         })?;
 

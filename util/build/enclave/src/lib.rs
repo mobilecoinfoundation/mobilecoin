@@ -697,14 +697,14 @@ impl Builder {
         let mut command = Command::new(&self.linker);
 
         command
-            .args(&[
+            .args([
                 "-o",
                 unsigned_enclave
                     .to_str()
                     .expect("Invalid UTF-8 in unsigned enclave path"),
             ])
-            .args(&["-z", "relro", "-z", "now", "-z", "noexecstack"])
-            .args(&["--no-undefined", "-nostdlib"]);
+            .args(["-z", "relro", "-z", "now", "-z", "noexecstack"])
+            .args(["--no-undefined", "-nostdlib"]);
 
         let mut config = Config::new();
         config
@@ -736,25 +736,25 @@ impl Builder {
         }
 
         command
-            .args(&[
+            .args([
                 "--whole-archive",
-                &format!("-lsgx_trts{}", sim_postfix),
+                &format!("-lsgx_trts{sim_postfix}"),
                 "--no-whole-archive",
             ])
-            .args(&[
+            .args([
                 "--start-group",
                 "-lsgx_tstdc",
                 "-lsgx_tcxx",
                 "-lsgx_tcrypto",
-                &format!("-lsgx_tservice{}", sim_postfix),
+                &format!("-lsgx_tservice{sim_postfix}"),
                 static_archive
                     .to_str()
                     .expect("Invalid UTF-8 in enclave staticlib filename"),
                 "--end-group",
             ])
-            .args(&["-Bstatic", "-Bsymbolic", "--no-undefined"])
-            .args(&["-pie", "-eenclave_entry", "--export-dynamic"])
-            .args(&["--defsym", "__ImageBase=0"])
+            .args(["-Bstatic", "-Bsymbolic", "--no-undefined"])
+            .args(["-pie", "-eenclave_entry", "--export-dynamic"])
+            .args(["--defsym", "__ImageBase=0"])
             .arg("--gc-sections")
             .arg(format!(
                 "--version-script={}",

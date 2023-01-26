@@ -326,7 +326,7 @@ pub fn initialize_ledger(
         let block_data =
             add_txos_and_key_images_to_ledger(ledger, block_version, outputs, key_images, rng)
                 .unwrap_or_else(|err| {
-                    panic!("failed to append block with index {}: {}", block_index, err)
+                    panic!("failed to append block with index {block_index}: {err}")
                 });
 
         to_spend = Some(block_data.contents().outputs[0].clone());
@@ -335,7 +335,7 @@ pub fn initialize_ledger(
     }
 
     // Verify that db now contains n transactions.
-    assert_eq!(ledger.num_blocks().unwrap(), n_blocks as u64);
+    assert_eq!(ledger.num_blocks().unwrap(), { n_blocks });
 
     results
 }

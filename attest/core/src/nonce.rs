@@ -232,7 +232,7 @@ mod test {
             [2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64],
             ias_nonce.0
         );
-        let decoded = hex::decode(&s).unwrap();
+        let decoded = hex::decode(s).unwrap();
         assert_eq!(decoded, ias_nonce.0);
     }
 }

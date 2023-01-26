@@ -750,9 +750,9 @@ mod tests {
             .collect();
 
         VerificationReport {
-            sig: format!("{} sig", name).into_bytes().into(),
+            sig: format!("{name} sig").into_bytes().into(),
             chain,
-            http_body: format!("{} body", name),
+            http_body: format!("{name} body"),
         }
     }
 }

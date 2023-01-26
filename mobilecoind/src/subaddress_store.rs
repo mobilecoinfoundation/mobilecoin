@@ -110,9 +110,9 @@ impl SubaddressStore {
     }
 
     /// Insert a new subaddress spend public key into the database.
-    pub fn insert<'env>(
+    pub fn insert(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         data: &MonitorData,
         index: u64,
@@ -158,9 +158,9 @@ impl SubaddressStore {
     }
 
     /// deletes the SubaddressId stored for a subaddress spend public key
-    pub fn delete<'env>(
+    pub fn delete(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         data: &MonitorData,
         index: u64,
     ) -> Result<(), Error> {
