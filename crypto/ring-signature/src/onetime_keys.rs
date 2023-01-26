@@ -104,12 +104,12 @@ pub fn create_tx_out_target_key(
     let Hs: Scalar = {
         let r = tx_private_key.as_ref();
         let view_public = recipient.view_public_key();
-        let C: &RistrettoPoint = view_public.as_ref();
+        let C: &RistrettoPoint = &RistrettoPoint::from(&view_public);
         hash_to_scalar(r * C)
     };
 
     let spend_public = recipient.spend_public_key();
-    let D: &RistrettoPoint = spend_public.as_ref();
+    let D: &RistrettoPoint = &RistrettoPoint::from(&spend_public);
     RistrettoPublic::from(Hs * G + D)
 }
 
