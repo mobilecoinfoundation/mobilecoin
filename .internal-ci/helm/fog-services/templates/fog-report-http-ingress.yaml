@@ -13,7 +13,7 @@ metadata:
     {{- if $.Values.global.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $.Values.global.certManagerClusterIssuer }}
     {{- end }}
-    {{- if (include "fogServices.blocklist.enabled" $) }}
+    {{- if eq (include "fogServices.blocklist.enabled" $) "true" }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" $ }}
     {{- end }}
     {{- toYaml $.Values.fogReport.ingress.http.annotations | nindent 4 }}

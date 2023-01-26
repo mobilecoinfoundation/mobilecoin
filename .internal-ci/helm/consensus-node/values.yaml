@@ -30,7 +30,7 @@ global:
     #     { json }
 
   blocklist:
-    enabled: false
+    enabled: "false"
     pattern: patterns/blocked-countries
 
 ### Enable to launch child chart to create node required configMaps and secrets.
