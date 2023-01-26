@@ -282,7 +282,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     view_store_url: FogViewStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let view_store_id = view_store_url.responder_id()?;
+    let view_store_id = view_store_url.host_and_port_responder_id()?;
     let nonce_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
