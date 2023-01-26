@@ -39,7 +39,7 @@ mc-test-vectors-definitions = { path = "../test-vectors/definitions" }
 mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
 
-serde = { version = "1.0.0", features = [ "derive" ] }
+serde = { version = "1.0.152", features = [ "derive" ] }
 serde_json = { version = "1.0.85" }
 
 [[example]]
