@@ -12,7 +12,7 @@ use mc_common::{
 use mc_fog_api::{
     ledger::{
         LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
-        MultiKeyImageStoreResponseStatus,
+        MultiKeyImageStoreResponseStatus, LedgerRequest_oneof_request_data
     },
     ledger_grpc::KeyImageStoreApiClient,
 };
@@ -55,7 +55,7 @@ where
 /// Handles a client's request by performing either an authentication or a
 /// query.
 pub async fn handle_request<E>(
-    mut request: LedgerRequest,
+    request: LedgerRequest,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
     query_retries: usize,
@@ -64,26 +64,28 @@ pub async fn handle_request<E>(
 where
     E: LedgerEnclaveProxy,
 {
-    if request.has_auth() {
-        handle_auth_request(enclave, request.take_auth(), logger)
-    } else if request.has_check_key_images() {
-        handle_query_request(
-            request.take_check_key_images(),
-            enclave,
-            shard_clients,
-            query_retries,
-            logger,
-        )
-        .await
-        // TODO: Handle other cases here as they are added, such as the merkele
-        // proof service.
-    } else {
-        let rpc_status = rpc_invalid_arg_error(
-            "Inavlid LedgerRequest request",
-            "Neither the check_key_images nor auth fields were set".to_string(),
-            &logger,
-        );
-        Err(rpc_status)
+    match request.request_data {
+        Some(LedgerRequest_oneof_request_data::auth(request)) => {
+            handle_auth_request(enclave, request, logger)
+        }
+        Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
+            handle_query_request(
+                request,
+                enclave,
+                shard_clients,
+                query_retries,
+                logger,
+            )
+            .await
+        }
+        None => {
+            let rpc_status = rpc_invalid_arg_error(
+                "Inavlid LedgerRequest request",
+                "Neither the check_key_images nor auth fields were set".to_string(),
+                &logger,
+            );
+            Err(rpc_status)
+        }
     }
 }
 
