@@ -25,7 +25,6 @@ impl core::fmt::Display for RangeError {
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(not(feature = "prost"), derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-
 pub struct Range {
     /// The left endpoint of the range
     #[cfg_attr(feature = "prost", prost(uint64, tag = "1"))]
