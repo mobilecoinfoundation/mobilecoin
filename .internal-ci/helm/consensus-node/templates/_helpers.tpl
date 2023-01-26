@@ -127,9 +127,9 @@ lookup name from configmap if we have created the objects in consensus-node-conf
   {{- if eq .Values.consensusNodeConfig.enabled false }}
     {{- $enabled := ((lookup "v1" "ConfigMap" .Release.Namespace (include "consensusNode.ingressBlocklist.configMap.name" .)).data.BLOCKLIST_ENABLED | default "false") }}
     {{- if eq $enabled "false" }}
-      false
+false
     {{- else }}
-      true
+true
     {{- end }}
   {{- else }}
     {{- tpl .Values.global.blocklist.enabled . }}

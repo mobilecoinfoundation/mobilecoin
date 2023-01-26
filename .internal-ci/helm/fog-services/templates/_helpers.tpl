@@ -156,9 +156,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   {{- if eq .Values.fogServicesConfig.enabled false }}
     {{- $enabled := ((lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_ENABLED | default "false" ) }}
     {{- if eq $enabled "false" }}
-      false
+false
     {{- else }}
-      true
+true
     {{- end }}
   {{- else }}
     {{- tpl .Values.global.blocklist.enabled . }}
