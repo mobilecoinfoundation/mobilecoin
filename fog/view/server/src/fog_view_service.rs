@@ -201,7 +201,9 @@ where
         queries: Vec<attest::NonceMessage>,
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
-        response.set_store_uri(fog_view_store_uri.url().to_string());
+        let fog_view_store_uri_string = fog_view_store_uri.url().to_string();
+        log::info!(self.logger, "fog_view_store_uri_string is: {}", fog_view_store_uri_string);
+        response.set_store_uri(fog_view_store_uri_string);
         let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
         response.set_block_range(block_range);
         for query in queries.into_iter() {
