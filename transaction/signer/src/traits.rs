@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Traits supporting driver (or other hardware) implementations
 
 use core::{convert::Infallible, fmt::Debug};
@@ -58,7 +60,7 @@ impl<T: KeyImageComputer> KeyImageComputer for &T {
         subaddress_index: u64,
         tx_out_public_key: &TxOutPublic,
     ) -> Result<KeyImage, Self::Error> {
-        <T as KeyImageComputer>::compute_key_image(self, subaddress_index, tx_out_public_key)
+        <T as KeyImageComputer>::compute_key_image(&self, subaddress_index, tx_out_public_key)
     }
 }
 
@@ -94,10 +96,34 @@ pub trait MemoHmacSigner {
 
     /// Compute the HMAC signature for the provided memo and target address
     fn compute_memo_hmac_sig(
-        &mut self,
+        &self,
+        sender_subaddress_index: u32,
         tx_public_key: &TxOutPublic,
         target_subaddress: PublicSubaddress,
         memo_type: &[u8; 2],
         memo_data_sans_hmac: &[u8; 48],
     ) -> Result<[u8; 16], Self::Error>;
+}
+
+/// Memo signer impl for reference types
+impl<T: MemoHmacSigner> MemoHmacSigner for &T {
+    type Error = <T as MemoHmacSigner>::Error;
+
+    fn compute_memo_hmac_sig(
+        &self,
+        sender_subaddress_index: u32,
+        tx_public_key: &TxOutPublic,
+        target_subaddress: PublicSubaddress,
+        memo_type: &[u8; 2],
+        memo_data_sans_hmac: &[u8; 48],
+    ) -> Result<[u8; 16], Self::Error> {
+        <T as MemoHmacSigner>::compute_memo_hmac_sig(
+            self,
+            sender_subaddress_index,
+            tx_public_key,
+            target_subaddress,
+            memo_type,
+            memo_data_sans_hmac,
+        )
+    }
 }

@@ -5447,6 +5447,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-util-repr-bytes",
  "mc-util-serial",
  "rand_core 0.6.4",
  "serde",

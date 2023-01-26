@@ -9,6 +9,7 @@ use clap::Parser;
 use log::debug;
 
 use mc_crypto_keys::RistrettoPublic;
+use mc_transaction_extra::{TxSummaryUnblindingData, UnmaskedAmount};
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -166,7 +167,7 @@ impl Commands {
             req.block_version,
             &prefix,
             req.rings.as_slice(),
-            req.output_secrets.as_slice(),
+            &req.output_secrets(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
             &ctx,
             &mut OsRng {},
@@ -221,7 +222,7 @@ pub fn read_input<T: DeserializeOwned>(file_name: &str) -> anyhow::Result<T> {
     let p = Path::new(file_name);
 
     // Decode based on input extension
-    let v = match p.extension().and_then(|e| e.to_str()) {
+    let v = match p.extension().map(|e| e.to_str()).flatten() {
         // Encode to JSON for `.json` files
         Some("json") => serde_json::from_str(&s)?,
         _ => return Err(anyhow::anyhow!("unsupported output file format")),
@@ -236,7 +237,7 @@ pub fn write_output(file_name: &str, value: &impl Serialize) -> anyhow::Result<(
 
     // Determine format from file name
     let p = Path::new(file_name);
-    match p.extension().and_then(|e| e.to_str()) {
+    match p.extension().map(|e| e.to_str()).flatten() {
         // Encode to JSON for `.json` files
         Some("json") => {
             let s = serde_json::to_string(value)?;
@@ -254,19 +255,65 @@ impl TxSignReq {
     pub fn get_signing_data<RNG: CryptoRng + RngCore>(
         &self,
         rng: &mut RNG,
-    ) -> Result<(SigningData, TxSummary, ExtendedMessageDigest), RingCtError> {
+    ) -> Result<
+        (
+            SigningData,
+            TxSummary,
+            Option<TxSummaryUnblindingData>,
+            ExtendedMessageDigest,
+        ),
+        RingCtError,
+    > {
         let fee_amount = Amount::new(
             self.tx_prefix.fee,
             TokenId::from(self.tx_prefix.fee_token_id),
         );
-        SigningData::new_with_summary(
+        let (signing_data, tx_summary, extended_message_digest) = SigningData::new_with_summary(
             self.block_version,
             &self.tx_prefix,
             &self.rings,
-            &self.output_secrets,
+            &self.output_secrets(),
             fee_amount,
             true,
             rng,
-        )
+        )?;
+
+        let mut tx_summary_unblinding_data = None;
+
+        // Try to build the TxSummary unblinding data, which requires the amounts from
+        // the rings, and the blinding factors from the signing data segment.
+        if let TxSignSecrets::TxOutUnblindingData(tx_out_unblinding_data) = &self.secrets {
+            if signing_data.pseudo_output_blindings.len() != self.rings.len() {
+                return Err(RingCtError::LengthMismatch(
+                    signing_data.pseudo_output_blindings.len(),
+                    self.rings.len(),
+                ));
+            }
+
+            tx_summary_unblinding_data = Some(TxSummaryUnblindingData {
+                block_version: *self.block_version,
+                outputs: tx_out_unblinding_data.clone(),
+                inputs: signing_data
+                    .pseudo_output_blindings
+                    .iter()
+                    .zip(self.rings.iter())
+                    .map(|(blinding, ring)| {
+                        let amount = ring.amount();
+                        UnmaskedAmount {
+                            value: amount.value,
+                            token_id: *amount.token_id,
+                            blinding: (*blinding).into(),
+                        }
+                    })
+                    .collect(),
+            });
+        }
+
+        Ok((
+            signing_data,
+            tx_summary,
+            tx_summary_unblinding_data,
+            extended_message_digest,
+        ))
     }
 }

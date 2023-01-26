@@ -10,6 +10,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     BlockVersion,
 };
+use mc_transaction_extra::TxOutSummaryUnblindingData;
 use serde::{Deserialize, Serialize};
 
 /// Account ID object, derived from the default subaddress and used
@@ -49,6 +50,33 @@ impl From<[u8; 32]> for AccountId {
         Self(value)
     }
 }
+
+impl TryFrom<&[u8]> for AccountId {
+    type Error = mc_util_repr_bytes::LengthMismatch;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        if src.len() != 32 {
+            return Err(mc_util_repr_bytes::LengthMismatch {
+                expected: 32,
+                found: src.len(),
+            });
+        }
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(src);
+        Ok(Self(hash))
+    }
+}
+
+impl TryFrom<&str> for AccountId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut hash = [0u8; 32];
+        hex::decode_to_slice(value, &mut hash)?;
+        Ok(Self(hash))
+    }
+}
+
 /// View account credentials for sync with full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AccountInfo {
@@ -131,10 +159,35 @@ pub struct TxSignReq {
     pub rings: Vec<InputRing>,
 
     /// Output secrets
-    pub output_secrets: Vec<OutputSecret>,
+    #[serde(flatten)]
+    pub secrets: TxSignSecrets,
 
     /// Block version
+    // NOTE: this is superflous
     pub block_version: BlockVersion,
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub enum TxSignSecrets {
+    #[serde(rename = "output_secrets")]
+    OutputSecrets(Vec<OutputSecret>),
+
+    // NOTE: this is only the tx outs because you can recover the ins from the unsigned rings
+    #[serde(rename = "tx_out_unblinding_data")]
+    TxOutUnblindingData(Vec<TxOutSummaryUnblindingData>),
+}
+
+impl TxSignReq {
+    /// Fetch or convert unblinding data to output secrets
+    pub fn output_secrets(&self) -> Vec<OutputSecret> {
+        match &self.secrets {
+            TxSignSecrets::OutputSecrets(s) => s.clone(),
+            TxSignSecrets::TxOutUnblindingData(u) => u
+                .iter()
+                .map(|data| OutputSecret::from(data.unmasked_amount.clone()))
+                .collect(),
+        }
+    }
 }
 
 /// Transaction signing response, returned to full service
@@ -239,7 +292,7 @@ pub mod const_array_hex {
     {
         let v = deserializer.deserialize_str(ConstArrayVisitor::<N> {})?;
 
-        T::try_from(v).map_err(<D as Deserializer>::Error::custom)
+        T::try_from(v).map_err(|e| <D as Deserializer>::Error::custom(e))
     }
 }
 
