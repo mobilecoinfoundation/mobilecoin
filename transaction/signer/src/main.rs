@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
             // Generate or parse mnemonic
             let mnemonic = match &args.action {
                 Actions::Import { mnemonic, .. } => {
-                    Mnemonic::from_phrase(&mnemonic, Language::English).unwrap()
+                    Mnemonic::from_phrase(mnemonic, Language::English).unwrap()
                 }
                 _ => Mnemonic::new(MnemonicType::Words24, Language::English),
             };

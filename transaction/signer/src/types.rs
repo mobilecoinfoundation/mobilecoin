@@ -292,7 +292,7 @@ pub mod const_array_hex {
     {
         let v = deserializer.deserialize_str(ConstArrayVisitor::<N> {})?;
 
-        T::try_from(v).map_err(|e| <D as Deserializer>::Error::custom(e))
+        T::try_from(v).map_err(<D as Deserializer>::Error::custom)
     }
 }
 
