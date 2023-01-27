@@ -5431,7 +5431,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-signer"
-version = "2.1.0-pre0"
+version = "4.0.1"
 dependencies = [
  "anyhow",
  "clap 4.0.32",

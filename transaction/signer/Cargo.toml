@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-signer"
-version = "2.1.0-pre0"
+version = "4.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
@@ -35,5 +35,5 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false 
 mc-util-serial = { path = "../../util/serial", default-features = false }
 
 [[bin]]
-name = "mc-transaction-signer"
+name = "transaction-signer"
 path = "src/main.rs"
