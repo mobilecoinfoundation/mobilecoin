@@ -131,7 +131,7 @@ fn main() {
                     .map(move |(entropy_hex, mnemonic_text)| {
                         let entropy =
                             hex::decode(*entropy_hex).expect("Could not parse entropy hex");
-                        let mnemonic = Mnemonic::from_phrase(*mnemonic_text, Language::English)
+                        let mnemonic = Mnemonic::from_phrase(mnemonic_text, Language::English)
                             .expect("Could not parse mnemonic string");
 
                         assert_eq!(mnemonic.entropy(), entropy.as_slice());

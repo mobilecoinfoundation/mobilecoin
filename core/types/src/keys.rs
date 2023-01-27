@@ -191,7 +191,7 @@ impl<ADDR, KIND> Display for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
         for d in data {
-            write!(f, "{:02x}", d)?;
+            write!(f, "{d:02x}")?;
         }
         Ok(())
     }
@@ -202,7 +202,7 @@ impl<ADDR, KIND> core::fmt::LowerHex for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
         for d in data {
-            write!(f, "{:02x}", d)?;
+            write!(f, "{d:02x}")?;
         }
         Ok(())
     }
@@ -213,7 +213,7 @@ impl<ADDR, KIND> core::fmt::UpperHex for Key<ADDR, KIND, RistrettoPublic> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data = self.key.to_bytes();
         for d in data {
-            write!(f, "{:02X}", d)?;
+            write!(f, "{d:02X}")?;
         }
         Ok(())
     }

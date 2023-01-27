@@ -305,7 +305,7 @@ impl<V: Value, ID: GenericNodeId + DeserializeOwned> Msg<V, ID> {
 
         let validate_nominate = |payload: &NominatePayload<V>| -> Result<(), String> {
             if payload.X.intersection(&payload.Y).next().is_some() {
-                Err(format!("X intersects Y, msg: {}", self))
+                Err(format!("X intersects Y, msg: {self}"))
             } else {
                 Ok(())
             }
@@ -314,21 +314,21 @@ impl<V: Value, ID: GenericNodeId + DeserializeOwned> Msg<V, ID> {
         let validate_prepare = |payload: &PreparePayload<V>| -> Result<(), String> {
             if let Some(P) = &payload.P {
                 if payload.B < *P {
-                    return Err(format!("B < P, msg: {}", self));
+                    return Err(format!("B < P, msg: {self}"));
                 }
 
                 if let Some(PP) = &payload.PP {
                     if *PP >= *P {
-                        return Err(format!("PP >= P, msg: {}", self));
+                        return Err(format!("PP >= P, msg: {self}"));
                     }
                 }
             }
 
             if payload.CN > payload.HN {
-                return Err(format!("CN > HN, msg: {}", self));
+                return Err(format!("CN > HN, msg: {self}"));
             }
             if payload.HN > payload.B.N {
-                return Err(format!("HN > BN, msg: {}", self));
+                return Err(format!("HN > BN, msg: {self}"));
             }
 
             Ok(())
@@ -350,7 +350,7 @@ impl<V: Value, ID: GenericNodeId + DeserializeOwned> Msg<V, ID> {
 
             Commit(ref payload) => {
                 if payload.CN > payload.HN {
-                    return Err(format!("CN > HN, msg: {}", self));
+                    return Err(format!("CN > HN, msg: {self}"));
                 }
             }
 
@@ -607,7 +607,7 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let format_opt_ballot = |b: &Option<Ballot<V>>| match b {
             None => "<>".to_string(),
-            Some(b) => format!("{}", b),
+            Some(b) => format!("{b}"),
         };
 
         // Returns "<set.len, hash(set)>".
@@ -759,7 +759,7 @@ mod msg_tests {
                 QuorumSet::empty(),
                 1,
                 Prepare(PreparePayload {
-                    B: ballot.clone(),
+                    B: ballot,
                     P: Some(prepared.clone()),
                     PP: Some(prepared_prime.clone()),
                     CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,

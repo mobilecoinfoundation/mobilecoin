@@ -87,7 +87,7 @@ pub fn metamesh(
                 .collect::<HashSet<NodeID>>();
 
             nodes.push(mock_network::NodeConfig::new(
-                format!("mm{}-{}", org_index, server_index),
+                format!("mm{org_index}-{server_index}"),
                 node_id,
                 peers,
                 QuorumSet::new_with_inner_sets(k_n as u32, inner_quorum_sets),
@@ -95,5 +95,5 @@ pub fn metamesh(
         }
     }
 
-    mock_network::NetworkConfig::new(format!("{}k{}-{}k{}", n, k_n, m, k_m), nodes)
+    mock_network::NetworkConfig::new(format!("{n}k{k_n}-{m}k{k_m}"), nodes)
 }

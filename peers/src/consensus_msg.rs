@@ -248,7 +248,7 @@ mod tests {
         match msg.verify_signature() {
             Ok(_) => panic!("Signature verification should fail"),
             Err(ConsensusMsgError::SignatureError(_)) => {}
-            Err(e) => panic!("Sigature failed with unexpected error {:?}", e),
+            Err(e) => panic!("Sigature failed with unexpected error {e:?}"),
         }
     }
 
@@ -298,7 +298,7 @@ mod tests {
         match VerifiedConsensusMsg::try_from(msg) {
             Ok(_) => panic!("Signature verification should fail"),
             Err(ConsensusMsgError::SignatureError(_)) => {}
-            Err(e) => panic!("Sigature failed with unexpected error {:?}", e),
+            Err(e) => panic!("Sigature failed with unexpected error {e:?}"),
         }
     }
 }

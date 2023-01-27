@@ -127,7 +127,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
                     src_url,
                     block_index,
                     block_signature,
-                    format!("00/{}", block_index),
+                    format!("00/{block_index}"),
                 )
                 .expect("Could not add block signature");
         }
@@ -182,10 +182,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
         return global_txo_count + num_new_txos;
     }
 
-    panic!(
-        "polling failed to yield expected result {:?}, obtained {:?}",
-        expected_result, result
-    );
+    panic!("polling failed to yield expected result {expected_result:?}, obtained {result:?}");
 }
 
 /// Throw all the user phones in the pool and see if they can recover them via

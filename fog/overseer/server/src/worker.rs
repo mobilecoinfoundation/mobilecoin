@@ -234,7 +234,7 @@ where
                             })
                             .collect();
                     let error_message =
-                        format!("Active ingress keys: {:?}", active_node_ingress_pubkeys);
+                        format!("Active ingress keys: {active_node_ingress_pubkeys:?}");
                     let error = OverseerError::MultipleActiveNodes(error_message);
                     log::error!(self.logger, "{}", error);
                 }
@@ -276,10 +276,8 @@ where
                     }
 
                     Err(err) => {
-                        let error_message = format!(
-                            "Unable to retrieve ingest summary for node ({}): {}",
-                            uri, err
-                        );
+                        let error_message =
+                            format!("Unable to retrieve ingest summary for node ({uri}): {err}");
                         log::trace!(logger, "{}", error_message);
                         unresponsive_node_urls.insert(uri.clone());
                         Err(OverseerError::UnresponsiveNodeError(error_message))
@@ -338,7 +336,7 @@ where
             }
             _ => {
                 self.is_enabled.store(false, Ordering::SeqCst);
-                let error_message = format!("This is unexpected and requires manual intervention. As such, we've disabled overseer. Take the appropriate action and then re-enable overseer by calling the /enable endpoint. Inactive oustanding keys: {:?}", inactive_outstanding_keys);
+                let error_message = format!("This is unexpected and requires manual intervention. As such, we've disabled overseer. Take the appropriate action and then re-enable overseer by calling the /enable endpoint. Inactive oustanding keys: {inactive_outstanding_keys:?}");
                 Err(OverseerError::MultipleInactiveOutstandingKeys(
                     error_message,
                 ))
@@ -468,7 +466,7 @@ where
                 }
                 Err(err) => {
                     let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
-                    let error_message = format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err);
+                    let error_message = format!("The following key was not successfully reported as lost: {inactive_outstanding_key}. Will try {number_of_remaining_tries} more times. Underlying error: {err}");
                     OperationResult::Retry(OverseerError::ReportLostKey(error_message))
                 }
             },

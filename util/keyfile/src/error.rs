@@ -39,25 +39,25 @@ impl From<AccountKeyError> for Error {
 
 impl From<ProstEncodeError> for Error {
     fn from(src: ProstEncodeError) -> Error {
-        Error::Encode(format!("{}", src))
+        Error::Encode(format!("{src}"))
     }
 }
 
 impl From<ProstDecodeError> for Error {
     fn from(src: ProstDecodeError) -> Error {
-        Error::Encode(format!("{}", src))
+        Error::Encode(format!("{src}"))
     }
 }
 
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
-        Error::Io(format!("{}", src))
+        Error::Io(format!("{src}"))
     }
 }
 
 impl From<JsonError> for Error {
     fn from(src: JsonError) -> Error {
-        Error::Json(format!("{}", src))
+        Error::Json(format!("{src}"))
     }
 }
 

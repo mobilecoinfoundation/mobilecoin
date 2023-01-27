@@ -379,7 +379,7 @@ pub fn containing_ranges(index: u64, num_leaves: u64) -> Result<Vec<(u64, u64)>,
 
     if let Some(num_leaves_full_tree) = num_leaves.checked_next_power_of_two() {
         // The depth of a full binary tree large enough to contain num_leaves.
-        let depth: u32 = 64 - (num_leaves_full_tree as u64).leading_zeros() - 1;
+        let depth: u32 = 64 - num_leaves_full_tree.leading_zeros() - 1;
         let ranges: Vec<(u64, u64)> = (0..=depth).map(|d| containing_range(index, d)).collect();
         Ok(ranges)
     } else {
@@ -886,11 +886,11 @@ pub mod tx_out_store_tests {
         // unrecognized hash.
         let unrecognized_hash: Hash = [0u8; 32];
         match tx_out_store.get_tx_out_index_by_hash(&unrecognized_hash, &ro_transaction) {
-            Ok(index) => panic!("Returned index {:?} for unrecognized hash.", index),
+            Ok(index) => panic!("Returned index {index:?} for unrecognized hash."),
             Err(Error::NotFound) => {
                 // This is expected.
             }
-            Err(e) => panic!("Unexpected Error {:?}", e),
+            Err(e) => panic!("Unexpected Error {e:?}"),
         }
     }
 
@@ -932,11 +932,11 @@ pub mod tx_out_store_tests {
         let unrecognized_public_key = CompressedRistrettoPublic::from(&[0; 32]);
         match tx_out_store.get_tx_out_index_by_public_key(&unrecognized_public_key, &ro_transaction)
         {
-            Ok(index) => panic!("Returned index {:?} for unrecognized public key.", index),
+            Ok(index) => panic!("Returned index {index:?} for unrecognized public key."),
             Err(Error::NotFound) => {
                 // This is expected.
             }
-            Err(e) => panic!("Unexpected Error {:?}", e),
+            Err(e) => panic!("Unexpected Error {e:?}"),
         }
     }
 
@@ -980,7 +980,7 @@ pub mod tx_out_store_tests {
                 Err(Error::NotFound) => {
                     // This is expected.
                 }
-                Err(e) => panic!("Unexpected Error {:?}", e),
+                Err(e) => panic!("Unexpected Error {e:?}"),
             }
         }
         ro_transaction.commit().unwrap();
@@ -1091,7 +1091,7 @@ pub mod tx_out_store_tests {
     #[test]
     fn test_containing_ranges() {
         let ranges: Vec<(u64, u64)> = containing_ranges(5, 13).unwrap();
-        println!("{:?}", ranges);
+        println!("{ranges:?}");
 
         assert_eq!(5, ranges.len());
 
@@ -1102,7 +1102,7 @@ pub mod tx_out_store_tests {
         assert!(ranges.contains(&(0, 15)));
 
         // Ranges must be in order from smallest to largest.
-        assert_eq!((5, 5), *ranges.get(0).unwrap());
+        assert_eq!((5, 5), *ranges.first().unwrap());
         assert_eq!((4, 5), *ranges.get(1).unwrap());
         assert_eq!((4, 7), *ranges.get(2).unwrap());
         assert_eq!((0, 7), *ranges.get(3).unwrap());
@@ -1303,7 +1303,7 @@ pub mod tx_out_store_tests {
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
-            println!("{:?}", ranges);
+            println!("{ranges:?}");
             assert_eq!(ranges[0], Range::new(5, 5).unwrap());
             assert_eq!(ranges[1], Range::new(4, 4).unwrap());
             assert_eq!(ranges[2], Range::new(6, 7).unwrap());
@@ -1343,7 +1343,7 @@ pub mod tx_out_store_tests {
             Err(Error::TxOutIndexOutOfBounds(43)) => {
                 // This is expected.
             }
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 }

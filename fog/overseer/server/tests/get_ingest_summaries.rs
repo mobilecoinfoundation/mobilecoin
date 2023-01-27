@@ -13,7 +13,7 @@ const BASE_PORT: u16 = 8850;
 // cluster has one active node.
 #[test_with_logger]
 fn one_active_node_produces_ingest_summaries(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
     let nodes = helper.make_nodes(3);
 
@@ -35,7 +35,6 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
     assert_eq!(
         active_pattern.captures_len(),
         1,
-        "JSON body should have exactly 1 ACTIVE: {}",
-        body
+        "JSON body should have exactly 1 ACTIVE: {body}"
     );
 }

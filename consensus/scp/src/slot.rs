@@ -753,7 +753,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         // Invariants: p' is less-than-and-incompatible-with p.
         if let (Some(p), Some(pp)) = (&self.P, &self.PP) {
-            assert!(pp < p, "p: {:?}, pp: {:?}", p, pp);
+            assert!(pp < p, "p: {p:?}, pp: {pp:?}");
             assert_ne!(p.X, pp.X);
         }
 
@@ -2626,7 +2626,7 @@ mod ballot_protocol_tests {
         }
 
         // Force ballot timeout timer to fire.
-        slot.next_ballot_at = Some(Instant::now() - Duration::from_secs(1));
+        slot.next_ballot_at = Some(Instant::now().checked_sub(Duration::from_secs(1)).unwrap());
 
         // When the timer fires, we should advance to a new ballot with all 4 values.
         {
@@ -2758,7 +2758,7 @@ mod ballot_protocol_tests {
         }
 
         // Force ballot timeout timer to fire.
-        slot.next_ballot_at = Some(Instant::now() - Duration::from_secs(1));
+        slot.next_ballot_at = Some(Instant::now().checked_sub(Duration::from_secs(1)).unwrap());
 
         // When the timer fires, we should advance to a new ballot with all 4 values.
         // The prepared value should not change.
@@ -2869,7 +2869,7 @@ mod ballot_protocol_tests {
         }
 
         // Force ballot timeout timer to fire.
-        slot.next_ballot_at = Some(Instant::now() - Duration::from_secs(1));
+        slot.next_ballot_at = Some(Instant::now().checked_sub(Duration::from_secs(1)).unwrap());
 
         // The next higher ballot should **not** include the latest confirmed nominated
         // values.

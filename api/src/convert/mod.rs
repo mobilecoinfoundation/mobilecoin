@@ -65,7 +65,7 @@ use std::path::PathBuf;
 /// Helper method for getting the suggested path/filename for a given block
 /// index.
 pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
-    let filename = format!("{:016x}.pb", block_index);
+    let filename = format!("{block_index:016x}.pb");
     let mut path = PathBuf::new();
     for i in 0..7 {
         path.push(&filename[i * 2..i * 2 + 2]);
@@ -82,7 +82,7 @@ pub fn merged_block_num_to_s3block_path(
     bucket_size: u64,
     first_block_index: BlockIndex,
 ) -> PathBuf {
-    let base_dir = format!("merged-{}", bucket_size);
+    let base_dir = format!("merged-{bucket_size}");
     let mut path = PathBuf::new();
     path.push(base_dir);
     path.push(block_num_to_s3block_path(first_block_index));

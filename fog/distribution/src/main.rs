@@ -287,7 +287,7 @@ fn main() {
         let fog_resolver = build_fog_resolver(&fog_uri, &env2, &logger);
 
         thread::Builder::new()
-            .name(format!("worker{}", i))
+            .name(format!("worker{i}"))
             .spawn(move || {
                 worker_thread_entry(
                     spendable_txouts_receiver2,
@@ -413,8 +413,7 @@ fn select_spendable_tx_outs(
                     .get_value(&shared_secret)
                     .unwrap_or_else(|err| {
                         panic!(
-                        "TX ownership is not as expected: tx #{} not owned by account_index {}: {}",
-                        index, account_index, err
+                        "TX ownership is not as expected: tx #{index} not owned by account_index {account_index}: {err}"
                     )
                     });
 

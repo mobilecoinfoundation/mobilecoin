@@ -116,10 +116,10 @@ impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(&src.get_tx_out_hash()),
+            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
+            tx_out_hash: hex::encode(src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(&src.get_confirmation_number()),
+            confirmation_number: hex::encode(src.get_confirmation_number()),
         }
     }
 }
@@ -146,11 +146,11 @@ pub struct JsonPublicAddress {
 impl From<&PublicAddress> for JsonPublicAddress {
     fn from(src: &PublicAddress) -> Self {
         Self {
-            view_public_key: hex::encode(&src.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(&src.get_spend_public_key().get_data()),
+            view_public_key: hex::encode(src.get_view_public_key().get_data()),
+            spend_public_key: hex::encode(src.get_spend_public_key().get_data()),
             fog_report_url: src.get_fog_report_url().into(),
             fog_report_id: src.get_fog_report_id().into(),
-            fog_authority_sig: hex::encode(&src.get_fog_authority_sig()),
+            fog_authority_sig: hex::encode(src.get_fog_authority_sig()),
         }
     }
 }
@@ -240,7 +240,7 @@ impl TryFrom<&JsonSlamRequest> for SlamParams {
                 .iter()
                 .map(|uri| FromStr::from_str(uri.as_str()))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| format!("Invalid uri: {}", err))?;
+                .map_err(|err| format!("Invalid uri: {err}"))?;
         }
         Ok(result)
     }

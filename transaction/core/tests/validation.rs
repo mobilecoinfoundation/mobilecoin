@@ -535,8 +535,7 @@ fn test_validate_signature_ok() {
         assert_eq!(
             validate_signature(block_version, &tx, &mut rng),
             Ok(()),
-            "failed at block version: {}",
-            block_version
+            "failed at block version: {block_version}"
         );
     }
 }
@@ -555,7 +554,7 @@ fn test_transaction_signature_err_modified_input() {
         match validate_signature(block_version, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }
@@ -577,7 +576,7 @@ fn test_transaction_signature_err_modified_output() {
         match validate_signature(block_version, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }
@@ -597,7 +596,7 @@ fn test_transaction_signature_err_modified_fee() {
         match validate_signature(block_version, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }
@@ -617,7 +616,7 @@ fn test_transaction_signature_err_modified_token_id() {
         match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }
@@ -635,7 +634,7 @@ fn test_transaction_signature_err_version_one_as_two() {
         match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }
@@ -653,7 +652,7 @@ fn test_transaction_signature_err_version_two_as_one() {
         match validate_signature(BlockVersion::ONE, &tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!("Unexpected error {}", e);
+                panic!("Unexpected error {e}");
             }
             Ok(()) => panic!("Unexpected success"),
         }

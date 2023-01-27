@@ -115,7 +115,7 @@ pub struct Fingerprint<D: digest::OutputSizeUser>(
 /// Debug impl for fingerprint objects
 impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Fingerprint({})", self)
+        write!(f, "Fingerprint({self})")
     }
 }
 
@@ -142,7 +142,7 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
         let der = self.to_der_slice(&mut buff);
 
         // Get the hash of the DER bytes
-        let hash = D::digest(&der);
+        let hash = D::digest(der);
 
         // Return fingerprint
         Fingerprint(hash)

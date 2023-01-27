@@ -41,9 +41,9 @@ where
 
 fn prost_verification_report(name: &str) -> ProstVerificationReport {
     ProstVerificationReport {
-        sig: format!("{} sig", name).into_bytes().into(),
+        sig: format!("{name} sig").into_bytes().into(),
         chain: Default::default(),
-        http_body: format!("{} body", name),
+        http_body: format!("{name} body"),
     }
 }
 
@@ -70,7 +70,7 @@ fn prost_test_cases() -> Vec<ProstReport> {
 
 fn protobuf_verification_signature(name: &str) -> ProtobufVerificationSignature {
     let mut sig = ProtobufVerificationSignature::new();
-    sig.set_contents(format!("{} sig", name).into_bytes());
+    sig.set_contents(format!("{name} sig").into_bytes());
     sig
 }
 
@@ -78,7 +78,7 @@ fn protobuf_verification_report(name: &str) -> ProtobufVerificationReport {
     let mut report = ProtobufVerificationReport::new();
     report.set_sig(protobuf_verification_signature(name));
     report.set_chain(RepeatedField::from_vec(make_chain()));
-    report.set_http_body(format!("{} body", name));
+    report.set_http_body(format!("{name} body"));
     report
 }
 
@@ -112,7 +112,7 @@ fn round_trip_prost_report() {
 #[test]
 fn round_trip_protobuf_report() {
     for case in protobuf_test_cases() {
-        eprintln!("report = {:?}", case);
+        eprintln!("report = {case:?}");
         round_trip_protobuf::<ProtobufReport, ProstReport>(case);
     }
 }

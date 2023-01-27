@@ -69,7 +69,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
                 .map_err(|err| {
                     RpcStatus::with_message(
                         RpcStatusCode::INVALID_ARGUMENT,
-                        format!("AAD deserialization error: {}", err),
+                        format!("AAD deserialization error: {err}"),
                     )
                 })?;
 
@@ -171,7 +171,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
                         sink,
                         Err(rpc_permissions_error(
                             "client_auth",
-                            format!("Permission denied: {}", client_error),
+                            format!("Permission denied: {client_error}"),
                             logger,
                         )),
                         logger,

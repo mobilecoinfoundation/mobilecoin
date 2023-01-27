@@ -37,7 +37,7 @@ fn sample_keys_determinism() {
     let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
 
     assert!(Command::new(sample_keys_bin.clone())
-        .args(&[
+        .args([
             "--output-dir",
             tempdir_path,
             "--num",
@@ -56,7 +56,7 @@ fn sample_keys_determinism() {
     let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
     let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
-        .args(&[
+        .args([
             "--output-dir",
             tempdir2_path,
             "--num",
@@ -73,7 +73,7 @@ fn sample_keys_determinism() {
         .success());
 
     assert!(Command::new("diff")
-        .args(&["-rq", tempdir_path, tempdir2_path])
+        .args(["-rq", tempdir_path, tempdir2_path])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
         .success());
@@ -104,7 +104,7 @@ fn sample_keys_determinism2() {
     let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
 
     assert!(Command::new(sample_keys_bin.clone())
-        .args(&[
+        .args([
             "--output-dir",
             tempdir_path,
             "--num",
@@ -123,7 +123,7 @@ fn sample_keys_determinism2() {
     let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
     let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
-        .args(&[
+        .args([
             "--output-dir",
             tempdir2_path,
             "--num",
@@ -140,7 +140,7 @@ fn sample_keys_determinism2() {
         .success());
     // exclude 1, any character, ., in order to exclude numbers 10 - 19
     assert!(Command::new("diff")
-        .args(&[
+        .args([
             "-rq",
             "--exclude=*1[0123456789].*",
             tempdir_path,
