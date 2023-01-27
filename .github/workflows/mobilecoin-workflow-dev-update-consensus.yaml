@@ -20,11 +20,6 @@ on:
         description: "Target Namespace"
         type: string
         required: true
-      tokens_json_version:
-        description: "The version of the tokens.json file we will generate"
-        type: string
-        default: '1'
-        required: false
       version:
         description: "release version"
         type: string
@@ -46,7 +41,6 @@ jobs:
     with:
       namespace: ${{ inputs.namespace }}
       block_version: ${{ inputs.block_version }}
-      tokens_json_version: ${{ inputs.tokens_json_version }}
       chart_repo: ${{ inputs.chart_repo }}
       version: ${{ inputs.version }}
     secrets: inherit
