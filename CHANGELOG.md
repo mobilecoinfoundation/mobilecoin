@@ -8,7 +8,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [4.0.2]
 
-### Changes
+### Fixed
 
 - fix(charts): fix blocklist activation logic ([#3048])
 
