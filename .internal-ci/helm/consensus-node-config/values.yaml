@@ -63,5 +63,5 @@ global:
   ### Enable haproxy IP blocklist for ingress
   # pattern is the object in the configmap shared between infra-haproxy-blocklist and haproxy kubernetes-ingress
   blocklist:
-    enabled: false
+    enabled: "false"
     pattern: patterns/blocked-countries

@@ -4,7 +4,7 @@ fullnameOverride: ''
 # Shared by all charts in the dependency tree
 global:
   blocklist:
-    enabled: false
+    enabled: "false"
     pattern: patterns/blocked-countries
 
 fogRecoveryDatabaseReader:
