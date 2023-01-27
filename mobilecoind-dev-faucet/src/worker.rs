@@ -102,6 +102,9 @@ impl UtxoTracker {
 
 /// TokenStateReceiver holds the queue of Utxo records for a particular token
 /// id, as well as other shared flags that indicate if we are out of funds etc.
+///
+/// This is normally created when a WorkerTokenState is created, and then this
+/// receiver object is passed back to the receiving thread.
 pub struct TokenStateReceiver {
     receiver: async_channel::Receiver<UtxoRecord>,
     funds_depleted_flag: Arc<AtomicBool>,
@@ -406,14 +409,15 @@ struct WorkerTokenState {
     minimum_fee_value: u64,
     // The target value of UTXOS for this token id
     target_value: u64,
-    // The most recently known set of UTXOS for this token id
-    // When we get a new UTXO from mobilecoind, we track it using this cache.
-    // The tracker contains a one-shot channel that the other side can use to
-    // let us know what happens with this UTXO.
-    // UTXOs are added here at the same time they are queued. As long as a UTXO
-    // is in this cache, we won't requeue it, to avoid two threads spending
-    // the same UTXO concurrently.
-    known_utxos: HashMap<KeyImage, UtxoTracker>,
+    // Trackers for the UTXOs that we have queued.
+    // A tracker is created for a UTXO at the time that we get it from mobilecoind,
+    // and added here. The tracker contains a one-shot channel that the other side
+    // uses to let us know what happened with this UTXO.
+    // As long as a UTXO is in this list, we won't requeue it, until its tracker
+    // has resolved either in success or an error. We must avoid requeuing it
+    // to avoid handing it out to two different consumers who then conflict with
+    // eachother.
+    queued_utxo_trackers: HashMap<KeyImage, UtxoTracker>,
     // The queue of UTXOs with the target value
     sender: async_channel::Sender<UtxoRecord>,
     // If we submit a rebalancing transaction, the response we can use to track it
@@ -465,7 +469,7 @@ impl WorkerTokenState {
                 token_id,
                 minimum_fee_value,
                 target_value,
-                known_utxos: Default::default(),
+                queued_utxo_trackers: Default::default(),
                 sender,
                 in_flight_rebalancing_tx_state: None,
                 in_flight_split_tx_states: Default::default(),
@@ -507,7 +511,7 @@ impl WorkerTokenState {
     ) -> Result<(), String> {
         // (1) For each known utxo already queued, check if it was sent in a
         // transaction and if so what the status is
-        self.known_utxos.retain(|_key_image, tracker| {
+        self.queued_utxo_trackers.retain(|_key_image, tracker| {
             if let Some(status) = tracker.poll() {
                 // If poll returned Some, then we either got a SubmitTxResponse or an error
                 if let Ok(resp) = status {
@@ -528,6 +532,12 @@ impl WorkerTokenState {
                 true
             }
         });
+
+        // Update the status of in-flight txs.
+        // Doing this before checking for new UTXOs avoids some races, where we find out
+        // that our TX settled but still think that one of the UTXOs that it used is
+        // unspent.
+        self.check_on_in_flight_txs(client, logger);
 
         // Now, get a fresh unspent tx out list associated to this token
         let mut resp = {
@@ -565,7 +575,7 @@ impl WorkerTokenState {
                 .get_key_image()
                 .try_into()
                 .map_err(|err| format!("invalid key image: {err}"))?;
-            if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
+            if let Entry::Vacant(e) = self.queued_utxo_trackers.entry(key_image) {
                 // We found a utxo not in the cache, let's queue and add to cache
                 log::trace!(
                     logger,
@@ -591,14 +601,15 @@ impl WorkerTokenState {
         // output_list_key_images before. (This also drops the one-shot receiver,
         // and so can tell the other side not to bother sending this utxo if they get
         // it from the queue.)
-        self.known_utxos
+        self.queued_utxo_trackers
             .retain(|key_image, _tracker| output_list_key_images.contains(key_image));
 
-        // Steps 3 and 4 consider whether to submit any txs.
-        // First update the status of in-flight txs
-        self.check_on_in_flight_txs(client, logger);
+        // Steps 3 and 4 consider whether to submit any new txs.
 
         // Get all the "non-target-value" utxos of this token id.
+        // Note that some of these may be part of in-flight txs, and the callees
+        // "maybe_send_split_txs" and "maybe_send_defragmentation_tx" are expected
+        // to handle that.
         let mut non_target_value_utxos: Vec<_> = resp
             .take_output_list()
             .into_iter()
