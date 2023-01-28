@@ -424,6 +424,8 @@ struct WorkerTokenState {
     // Only one of these will be used at a time, and split txs cannot be submitted
     // while this is in-flight.
     in_flight_rebalancing_tx_state: Option<SubmitTxResponse>,
+    // Track the key images associated to utxos in the rebalancing tx
+    in_flight_rebalancing_key_images: HashSet<KeyImage>,
     // If we submit a split transaction, the response we can use to track it
     // There maybe up to 16 of these in flight at a time.
     in_flight_split_tx_states: HashMap<KeyImage, SubmitTxResponse>,
@@ -472,6 +474,7 @@ impl WorkerTokenState {
                 queued_utxo_trackers: Default::default(),
                 sender,
                 in_flight_rebalancing_tx_state: None,
+                in_flight_rebalancing_key_images: Default::default(),
                 in_flight_split_tx_states: Default::default(),
                 in_flight_defragmentation_tx_state: None,
                 in_flight_defragmentation_key_images: Default::default(),
@@ -583,7 +586,7 @@ impl WorkerTokenState {
                 .try_into()
                 .map_err(|err| format!("invalid key image: {err}"))?;
             if let Entry::Vacant(e) = self.queued_utxo_trackers.entry(key_image) {
-                // We found a utxo not in the cache, let's queue and add to cache
+                // We found a utxo with no associated tracker, let's queue it and add a tracker
                 log::trace!(
                     logger,
                     "Queueing a utxo: key_image = {:?}, value = {}",
@@ -702,6 +705,7 @@ impl WorkerTokenState {
                 // At this point, the previous in-flight tx resolved somehow and if it was an
                 // error we logged it
                 self.in_flight_rebalancing_tx_state = None;
+                self.in_flight_rebalancing_key_images = Default::default();
             }
         }
 
@@ -806,10 +810,14 @@ impl WorkerTokenState {
             // Check if any of these UTXOs were used by an in-flight split tx or
             // defrag tx. If so then we
             // should back off and wait for it to clear and re-evaluate.
-            if top_utxos.iter().any(|utxo| {
-                let key_image = utxo.get_key_image().try_into().unwrap();
-                self.key_image_is_in_flight(&key_image)
-            }) {
+            let key_images: HashSet<KeyImage> = top_utxos
+                .iter()
+                .map(|utxo| utxo.get_key_image().try_into().unwrap())
+                .collect();
+            if key_images
+                .iter()
+                .any(|key_image| self.key_image_is_in_flight(key_image))
+            {
                 log::info!(
                     logger,
                     "Backing off before sending a rebalancing tx {}",
@@ -853,6 +861,7 @@ impl WorkerTokenState {
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does
             self.in_flight_rebalancing_tx_state = Some(submit_tx_response);
+            self.in_flight_rebalancing_key_images = key_images;
 
             return Ok(false);
         }
@@ -1030,6 +1039,7 @@ impl WorkerTokenState {
     // Check if a key image is part of an in-flight transaction
     fn key_image_is_in_flight(&self, key_image: &KeyImage) -> bool {
         self.in_flight_split_tx_states.contains_key(key_image)
+            || self.in_flight_rebalancing_key_images.contains(key_image)
             || self
                 .in_flight_defragmentation_key_images
                 .contains(key_image)
