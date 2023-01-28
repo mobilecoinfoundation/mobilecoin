@@ -416,7 +416,7 @@ struct WorkerTokenState {
     // As long as a UTXO is in this list, we won't requeue it, until its tracker
     // has resolved either in success or an error. We must avoid requeuing it
     // to avoid handing it out to two different consumers who then conflict with
-    // eachother.
+    // each other.
     queued_utxo_trackers: HashMap<KeyImage, UtxoTracker>,
     // The queue of UTXOs with the target value
     sender: async_channel::Sender<UtxoRecord>,
