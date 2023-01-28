@@ -71,6 +71,12 @@ pub struct Config {
     #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
     pub worker_poll_period_ms: u64,
 
+    /// If enabled, activate the background worker immediately on startup.
+    /// Otherwise, the faucet doesn't submit any transactions until after the
+    /// first POST HTTP interaction.
+    #[clap(long, default_value = "false", env = "MC_ACTIVATE")]
+    pub activate: bool,
+
     /// Validator nodes to connect to during a slam run.
     /// This provides a default that can also be overrided in the
     /// JsonSlamRequest.
@@ -154,6 +160,10 @@ impl State {
             Duration::from_millis(config.worker_poll_period_ms),
             logger,
         );
+        if config.activate {
+            worker.activate();
+            log::info!(logger, "Worker thread activated");
+        }
 
         let slam_state = SlamState::new(grpc_env);
 
@@ -247,6 +257,9 @@ impl State {
         &self,
         req: &JsonFaucetRequest,
     ) -> Result<api::SubmitTxResponse, String> {
+        if !self.worker.activate() {
+            log::info!(self.logger, "Worker is now activated");
+        }
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
             .map_err(|err| format!("Could not decode b58 address: {err}"))?;
 
@@ -357,6 +370,9 @@ impl State {
         req: &JsonSlamRequest,
         stop_requested: impl Future<Output = ()>,
     ) -> Result<SlamResponse, String> {
+        if !self.worker.activate() {
+            log::info!(self.logger, "Worker is now activated");
+        }
         let mut params = SlamParams::try_from(req)?;
         if params.consensus_client_uris.is_empty() {
             if let Some(uris) = self.consensus_uris.as_ref() {

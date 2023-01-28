@@ -97,6 +97,7 @@ Other options are:
 - `--mobilecoind-uri` - URI for connecting to mobilecoind gRPC, default `insecure-mobilecoind://127.0.0.1:4444/`
 - `--target-queue-depth` - The number of pre-split transactions the faucet attempts to maintain in its queue. Default is 500.
 - `--worker-poll-period-ms` - A lower bound on how often the worker thread wakes up to check in with `mobilecoind`. Default is `100` milliseconds.
+- `--activate` - Automatically activate the background worker of the faucet. Otherwise, the faucet doesn't start working on its queue until the first HTTP POST interaction. Defaulting to an "inactive" mode helps with some deployment-related issues.
 
 ### Usage with cURL
 
@@ -106,7 +107,7 @@ It is relatively straightforward to test the faucet locally using the `tools/loc
 
 ```
 $ cargo build --release
-$ export MC_LOG=info
+$ export MC_LOG=info,rocket=error
 $ export LEDGER_BASE=$PWD/target/sample_data/ledger
 $ ./tools/local-network/bootstrap.sh
 $ ./tools/local-network/local_network.py --network-type dense5 --skip-build &
@@ -115,7 +116,7 @@ $ ./tools/local-network/local_network.py --network-type dense5 --skip-build &
 Then, start a faucet and set it to also work in the background:
 
 ```
-$ ./target/release/mobilecoind-dev-faucet --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" &
+$ ./target/release/mobilecoind-dev-faucet --activate --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" &
 ```
 
 You should expect to see traffic on the network as soon as you launch this. This is the worker thread
@@ -181,7 +182,7 @@ curl -s localhost:9090/slam -d '{"consensus_uris": ["insecure-mc://localhost:320
 OR start faucet as
 
 ```
-$ ./mobilecoind-dev-faucet --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" \
+$ ./mobilecoind-dev-faucet --activate --keyfile "$LEDGER_BASE/../keys/account_keys_0.json" \
    --peer insecure-mc://localhost:3200/ \
    --peer insecure-mc://localhost:3201/ \
    --peer insecure-mc://localhost:3202/ \
