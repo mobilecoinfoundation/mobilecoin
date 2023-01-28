@@ -534,9 +534,16 @@ impl WorkerTokenState {
         });
 
         // Update the status of in-flight txs.
-        // Doing this before checking for new UTXOs avoids some races, where we find out
-        // that our TX settled but still think that one of the UTXOs that it used is
-        // unspent.
+        // This is done before getting a new list of UTXOs from mobilecoind.
+        // The reason is:
+        // * If we call this after GetUTXOs, then it's possible the UTXO list has a TXO
+        //   that was actually spent in a Tx that just resolved, and then gets selected
+        //   by input selection for a new Tx, which is rejected with spent key image
+        //   error.
+        // * If we call this before GetUTXOs, it's possible that we think some TX's are
+        //   still in flight even though their UTXOs are no longer on the list. But the
+        //   worst case outcome of that is that we wait another cycle to take some
+        //   particular action because we think an earlier Tx is still in flight.
         self.check_on_in_flight_txs(client, logger);
 
         // Now, get a fresh unspent tx out list associated to this token
@@ -686,8 +693,8 @@ impl WorkerTokenState {
         Ok(())
     }
 
-    // Before parts 3 and 4, unconditionally update the status of any in-flight Tx
-    // and collect any that have resolved.
+    // Update the status of any in-flight Tx and clear the record of any that has
+    // resolved.
     fn check_on_in_flight_txs(&mut self, client: &MobilecoindApiClient, logger: &Logger) {
         // Check on rebalancing Tx
         if let Some(prev_tx) = self.in_flight_rebalancing_tx_state.as_ref() {
