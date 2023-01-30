@@ -4,15 +4,18 @@
 
 extern crate alloc;
 
+use mc_common::HashSet;
+use mc_transaction_types::{
+    amount::Amount, BlockVersion, TokenId, constants::*,
+};
+
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
-    constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    Amount, BlockVersion, TokenId,
 };
+
 use alloc::{format, vec::Vec};
-use mc_common::HashSet;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided

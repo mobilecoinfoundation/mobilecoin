@@ -5,6 +5,7 @@
 use crate::BlockVersion;
 use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
+
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -13,6 +14,11 @@ use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
     typenum::U32, GenericArray, ReprBytes,
 };
+use mc_transaction_types::{
+    amount::Amount,
+    masked_amount::MaskedAmount,
+};
+
 #[cfg(feature="prost")]
 use prost::Message;
 #[cfg(feature="prost")]
@@ -22,7 +28,6 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
-    amount::MaskedAmount,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
     input_rules::InputRules,
@@ -30,7 +35,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_ct::{SignatureRctBulletproofs, SignedInputRing},
-    Amount, CompressedCommitment, NewMemoError, NewTxError, TxOutConversionError,
+    CompressedCommitment, NewMemoError, NewTxError, TxOutConversionError,
     ViewKeyMatchError,
 };
 

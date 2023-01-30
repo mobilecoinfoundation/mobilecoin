@@ -24,7 +24,10 @@ use mc_crypto_ring_signature::{
     },
 };
 use mc_transaction_types::{
-    Amount, AmountError, MaskedAmount, UnmaskedAmount, BlockVersion,
+    amount::{Amount, AmountError},
+    masked_amount::MaskedAmount,
+    unmasked_amount::UnmaskedAmount, 
+    BlockVersion,
     domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG,
     tx_summary::{TxInSummary, TxOutSummary, TxSummary},
 };

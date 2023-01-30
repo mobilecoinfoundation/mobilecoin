@@ -21,6 +21,13 @@ use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, SignerError};
+use mc_transaction_types::{
+    constants::FEE_BLINDING,
+    amount::{Amount},
+    BlockVersion,
+    tx_summary::TxSummary,
+    unmasked_amount::UnmaskedAmount, 
+};
 #[cfg(feature = "prost")]
 use prost::Message;
 use mc_util_zip_exact::zip_exact;
@@ -30,11 +37,9 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
-    constants::FEE_BLINDING,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_ct::{compute_mlsag_signing_digest, Error, ExtendedMessageDigest, GeneratorCache},
     tx::TxPrefix,
-    Amount, BlockVersion, TxSummary, UnmaskedAmount,
 };
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a

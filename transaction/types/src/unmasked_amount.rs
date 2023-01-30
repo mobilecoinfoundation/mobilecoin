@@ -1,4 +1,5 @@
-
+//! Unmasked amount types
+use crate::{amount::Amount, TokenId};
 
 use mc_crypto_ring_signature::CurveScalar;
 use mc_crypto_digestible::Digestible;
@@ -26,4 +27,13 @@ pub struct UnmaskedAmount {
     /// The blinding factor of the amount commitment
     #[cfg_attr(feature="prost", prost(message, required, tag = 3))]
     pub blinding: CurveScalar,
+}
+
+impl From<&UnmaskedAmount> for Amount {
+    fn from(src: &UnmaskedAmount) -> Self {
+        Self {
+            value: src.value,
+            token_id: TokenId::from(src.token_id),
+        }
+    }
 }

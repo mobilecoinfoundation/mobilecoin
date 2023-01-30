@@ -10,7 +10,11 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     FeeMap, TxSummary,
 };
-use mc_transaction_types::{Amount, BlockVersion, TokenId, UnmaskedAmount};
+use mc_transaction_types::{
+    BlockVersion, TokenId,
+    amount::Amount,
+    unmasked_amount::UnmaskedAmount,
+};
 use mc_transaction_summary::{TxOutSummaryUnblindingData, TxSummaryUnblindingData};
 
 use rand_core::{CryptoRng, RngCore};

@@ -10,7 +10,8 @@ use crate::{
         AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_BLINDING_FACTORS_DOMAIN_TAG,
         AMOUNT_SHARED_SECRET_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
     },
-    Amount, AmountError, TokenId,
+    amount::{Amount, AmountError},
+    TokenId,
 };
 use alloc::vec::Vec;
 use core::convert::TryInto;

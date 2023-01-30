@@ -92,7 +92,7 @@ use alloc::{vec::Vec};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::CompressedCommitment;
-use crate::{MaskedAmount};
+use crate::{masked_amount::MaskedAmount};
 
 #[cfg(feature = "prost")]
 use prost::Message;

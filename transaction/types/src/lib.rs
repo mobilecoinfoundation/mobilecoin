@@ -12,17 +12,18 @@ extern crate alloc;
 
 
 mod block_version;
+pub use block_version::{BlockVersion, BlockVersionError, BlockVersionIterator};
+
 mod token;
-mod unmasked_amount;
+pub use token::TokenId;
+
+
 
 pub mod amount;
 pub mod constants;
 pub mod domain_separators;
+#[cfg(feature = "alloc")]
+pub mod masked_amount;
+#[cfg(feature = "alloc")]
 pub mod tx_summary;
-
-pub use crate::{
-    amount::{Amount, AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2},
-    block_version::{BlockVersion, BlockVersionError, BlockVersionIterator},
-    token::TokenId,
-    unmasked_amount::UnmaskedAmount,
-};
+pub mod unmasked_amount;

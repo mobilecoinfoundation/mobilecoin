@@ -35,4 +35,6 @@ pub use unsigned_tx::UnsignedTx;
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;
 
-pub use mc_transaction_types::UnmaskedAmount;
+pub use mc_transaction_types::{
+    unmasked_amount::UnmaskedAmount,
+};

@@ -1,10 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{tx::TxOut, Amount, AmountError, MaskedAmount, MaskedAmountV2, TxOutConversionError};
+use crate::{tx::TxOut, TxOutConversionError};
 use alloc::vec::Vec;
 use displaydoc::Display;
+
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::Scalar;
+use mc_transaction_types::{
+    amount::{Amount, AmountError}, 
+    masked_amount::{MaskedAmount, MaskedAmountV2},
+};
+
 #[cfg(feature = "prost")]
 use prost::Message;
 #[cfg(feature = "serde")]

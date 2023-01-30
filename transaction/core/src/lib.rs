@@ -35,7 +35,6 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
 pub use fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2};
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
@@ -43,11 +42,19 @@ pub use revealed_tx_out::{try_reveal_amount, RevealedTxOut, RevealedTxOutError};
 pub use token::{tokens, Token};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, TxOutConversionError, ViewKeyMatchError};
-pub use tx_summary::{TxInSummary, TxOutSummary, TxSummary};
 
 // Re-export from transaction-types, and some from RingSignature crate.
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
-pub use mc_transaction_types::*;
+
+pub use mc_transaction_types::{
+    amount::{Amount, AmountError},
+    masked_amount::{MaskedAmount, MaskedAmountV1, MaskedAmountV2},
+    TokenId,
+    BlockVersion, BlockVersionError,
+    tx_summary::{TxInSummary, TxOutSummary, TxSummary},
+    constants,
+    domain_separators,
+};
 
 /// Re-export all of mc-crypto-ring-signature
 pub mod ring_signature {

@@ -12,7 +12,7 @@ use core::writeln;
 use mc_core::account::ShortAddressHash;
 use mc_transaction_types::{
     constants::{MAX_INPUTS, MAX_OUTPUTS},
-    Amount, TokenId,
+    amount::Amount, TokenId,
 };
 use mc_util_vec_map::VecMap;
 

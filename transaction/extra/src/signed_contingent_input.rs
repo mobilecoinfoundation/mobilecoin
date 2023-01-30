@@ -8,7 +8,10 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, KeyImage, RingMLSAG,
 };
-use mc_transaction_types::{Amount, TokenId, UnmaskedAmount};
+use mc_transaction_types::{TokenId,
+    amount::Amount,
+    unmasked_amount::UnmaskedAmount,
+};
 use mc_transaction_core::{
     ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
