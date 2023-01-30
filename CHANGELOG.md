@@ -12,6 +12,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - mobilecoind-json now always includes the MaskedAmount version in its responses ([#3036])
 
+## [4.0.2]
+
+### Fixed
+
+- fix(charts): fix blocklist activation logic ([#3048])
+
 ## [4.0.1]
 
 ### Added
