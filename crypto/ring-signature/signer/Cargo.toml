@@ -26,6 +26,7 @@ default = [
     "prost",
     "mc-account-keys/default",
     "mc-crypto-dalek/default",
+    "mc-crypto-ring-signature/default",
 ]
 
 [dependencies]

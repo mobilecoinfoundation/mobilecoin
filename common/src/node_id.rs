@@ -15,7 +15,7 @@ use mc_crypto_keys::{Ed25519Public, KeyError};
 #[cfg(feature = "prost")]
 use prost::Message;
 
-#[cfg(fdeature = "serde")]
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 #[derive(

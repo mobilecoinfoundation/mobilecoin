@@ -12,6 +12,7 @@ use crate::{
 };
 
 /// MLSAG Verification object
+#[allow(unused)]
 pub struct MlsagVerify<'a, R: Ring> {
     /// Key image too be verified
     pub key_image: &'a KeyImage,
@@ -29,6 +30,7 @@ pub struct MlsagVerify<'a, R: Ring> {
 
 impl<'a, R: Ring> MlsagVerify<'a, R> {
     /// mlsag verification logic, buffer based for no_std compatibility
+    #[allow(unused)]
     pub fn verify(&self, recomputed_c: &mut [Scalar]) -> Result<(), Error> {
         let ring_size = self.ring.size();
 

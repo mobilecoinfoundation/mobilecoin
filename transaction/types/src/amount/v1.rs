@@ -5,19 +5,24 @@
 //! Amounts are implemented as Pedersen commitments. The associated private keys
 //! are "masked" using a shared secret.
 
+use alloc::vec::Vec;
+use core::convert::TryInto;
+
 use crate::{
+    amount::{Amount, AmountError},
     domain_separators::{
         AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
     },
-    Amount, AmountError, TokenId,
+    TokenId,
 };
-use alloc::vec::Vec;
-use core::convert::TryInto;
-use crc::Crc;
+
+
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
+
+use crc::Crc;
 #[cfg(feature = "prost")]
 use prost::Message;
 #[cfg(feature = "serde")]

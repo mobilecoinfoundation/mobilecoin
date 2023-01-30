@@ -3,7 +3,7 @@
 use crate::{
     domain_separators::{EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, EXTENDED_MESSAGE_DOMAIN_TAG},
     tx::TxPrefix,
-    BlockVersion, CompressedCommitment, TxSummary,
+    BlockVersion, CompressedCommitment, TxSummary, tx_summary::Summarize,
 };
 use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -70,7 +70,7 @@ pub fn compute_mlsag_signing_digest(
     );
 
     // Make the TxSummary
-    let tx_summary = TxSummary::new(tx_prefix, pseudo_output_commitments)?;
+    let tx_summary = (tx_prefix, pseudo_output_commitments).summarize()?;
 
     // When the tx summary is also supposed to be part of the digest (to support
     // hardware wallets, we do another round of merlin using the previous digest

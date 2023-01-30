@@ -6,8 +6,11 @@
 use super::Error;
 use core::fmt::Display;
 use displaydoc::Display;
-use mc_account_keys::ShortAddressHash;
-use mc_transaction_core::{
+
+use core::writeln;
+
+use mc_core::account::ShortAddressHash;
+use mc_transaction_types::{
     constants::{MAX_INPUTS, MAX_OUTPUTS},
     Amount, TokenId,
 };
@@ -82,7 +85,7 @@ impl <const RECORDS: usize> TxSummaryUnblindingReport<RECORDS> {
 
 // This is a proof-of-concept, it doesn't map token id's to their symbol when
 // displaying.
-impl <const RECORDS: usize> Display for TxSummaryUnblindingReport<RECORDS> {
+impl <const RECORDS: usize> core::fmt::Display for TxSummaryUnblindingReport<RECORDS> {
     fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         let mut current_entity = None;
         for ((entity, tok), val) in self.balance_changes.iter() {

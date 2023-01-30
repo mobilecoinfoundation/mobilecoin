@@ -7,8 +7,15 @@ edition = "2021"
 [features]
 default = [
     "mc-crypto-dalek/default",
+    "mc-crypto-digestible/default",
     "serde",
     "prost",
+    "alloc",
+]
+alloc = [
+    "mc-crypto-dalek/alloc",
+    "mc-crypto-keys/alloc",
+    "mc-crypto-digestible/alloc",
 ]
 std = [
     "displaydoc/std",
@@ -44,16 +51,15 @@ serde = [
     "hashbrown/serde",
     "mc-util-serial/serde",
 ]
-
 prost = [
     "dep:prost",
     "mc-util-serial/prost",
 ]
 
 [dependencies]
-mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "alloc" ] }
-mc-crypto-digestible = { path = "../crypto/digestible" }
-mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "alloc" ] }
+mc-crypto-dalek = { path = "../crypto/dalek", default_features = false }
+mc-crypto-digestible = { path = "../crypto/digestible", default_features = false }
+mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../crypto/rand" }
 # loggers-only dependencies
 mc-util-build-info = { path = "../util/build/info", optional = true }

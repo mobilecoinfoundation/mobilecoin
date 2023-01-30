@@ -12,7 +12,7 @@ default = ["prost", "serde"]
 
 [dependencies]
 mc-core-types = { path = "../../core/types", default_features = false }
-mc-crypto-digestible = { path = "../digestible" }
+mc-crypto-digestible = { path = "../digestible", default_features = false, features = [ "alloc" ]}
 mc-crypto-keys = { path = "../keys", default_features = false }
 
 prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }

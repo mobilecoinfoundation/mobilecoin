@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![no_std]
+
+extern crate alloc;
+
 mod data;
 mod error;
 mod report;

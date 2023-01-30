@@ -34,6 +34,8 @@ default = [
     "serde",
     "prost",
     "mc-crypto-dalek/default",
+    "mc-crypto-digestible/default",
+    "bulletproofs-og",
 ]
 
 [dependencies]
@@ -57,14 +59,14 @@ zeroize = { version = "1", default-features = false }
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-common = { path = "../../common", default-features = false }
-mc-crypto-box = { path = "../../crypto/box" }
+mc-crypto-box = { path = "../../crypto/box", default_features = false }
 mc-crypto-dalek = { path = "../../crypto/dalek", default_features = false }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
-mc-crypto-hashes = { path = "../../crypto/hashes" }
+mc-crypto-digestible = { path = "../../crypto/digestible", default_features = false, features = ["dalek", "derive"] }
+mc-crypto-hashes = { path = "../../crypto/hashes", default_features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
-mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", optional = true, default-features = false }
 mc-transaction-types = { path = "../types", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default_features = false }
@@ -72,10 +74,10 @@ mc-util-serial = { path = "../../util/serial", default_features = false }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false, features = ["avx2_backend"] }
+bulletproofs-og = { version = "3.0.0-pre.1", optional = true, default-features = false, features = ["avx2_backend"] }
 
 [target.'cfg(not(target_feature = "avx2"))'.dependencies]
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
+bulletproofs-og = { version = "3.0.0-pre.1", optional = true, default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

@@ -5529,16 +5529,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-transaction-types"
+name = "mc-transaction-summary"
 version = "4.0.0-pre0"
 dependencies = [
  "displaydoc",
+ "mc-account-keys",
+ "mc-core",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-vec-map",
+ "mc-util-zip-exact",
  "prost",
  "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-types"
+version = "4.0.0-pre0"
+dependencies = [
+ "crc",
+ "displaydoc",
+ "hkdf",
+ "lazy_static",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "prost",
+ "serde",
+ "sha2 0.10.6",
  "subtle",
  "zeroize",
 ]

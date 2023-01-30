@@ -48,9 +48,11 @@ use hkdf::Hkdf;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_util_repr_bytes::{
-    derive_debug_and_display_hex_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_debug_and_display_hex_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from,
 };
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 #[cfg(feature = "prost")]
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 #[cfg(feature = "serde")]
@@ -100,6 +102,7 @@ impl TryFrom<&[u8]> for EncryptedMemo {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(EncryptedMemo, U66);
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(EncryptedMemo);
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(EncryptedMemo);
@@ -225,6 +228,7 @@ impl TryFrom<&[u8]> for MemoPayload {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(MemoPayload, U66);
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(MemoPayload);
 #[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(MemoPayload);

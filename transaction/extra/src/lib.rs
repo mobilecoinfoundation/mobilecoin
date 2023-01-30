@@ -16,7 +16,6 @@ mod memo;
 mod signed_contingent_input;
 mod tx_out_confirmation_number;
 mod tx_out_gift_code;
-mod tx_summary_unblinding;
 mod unsigned_tx;
 
 pub use memo::{

@@ -3,7 +3,8 @@
 //! Code for computing & receiving gift codes
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_transaction_core::{Amount, AmountError, MaskedAmount};
+use mc_transaction_types::{Amount, MaskedAmount};
+use mc_transaction_core::{Amount};
 #[cfg(feature = "prost")]
 use prost::Message;
 #[cfg(feature = "serde")]

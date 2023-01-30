@@ -15,7 +15,6 @@ extern crate std;
 #[macro_use]
 extern crate lazy_static;
 
-mod amount;
 mod fee_map;
 mod input_rules;
 mod memo;
@@ -23,8 +22,6 @@ mod revealed_tx_out;
 mod token;
 mod tx_error;
 
-pub mod constants;
-pub mod domain_separators;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;

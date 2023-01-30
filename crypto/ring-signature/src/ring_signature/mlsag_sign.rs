@@ -46,6 +46,7 @@ impl<'a> MlsagSignParams<'a> {
     /// MLSAG
     ///
     /// Returns the signed key_image and c_zero scalar
+    #[allow(unused)]
     pub fn sign(
         &self,
         ring: impl Ring,
