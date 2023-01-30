@@ -26,7 +26,7 @@ on:
         description: "Bootstrap Blockchain from selected version"
         type: choice
         required: true
-        default: v3.0.0-dev
+        default: none
         options:
         - none
         - v1.1.3-dev
