@@ -33,11 +33,6 @@ on:
         description: "block_version"
         type: string
         required: true
-      tokens_json_version:
-        description: "The version of the tokens.json file we will generate"
-        type: string
-        default: '1'
-        required: false
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -58,7 +53,6 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-setup-environment.yaml
     with:
       block_version: ${{ inputs.block_version }}
-      tokens_json_version: ${{ inputs.tokens_json_version }}
       chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
