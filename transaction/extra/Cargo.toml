@@ -5,8 +5,21 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [features]
-serde = [ "dep:serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde", "mc-util-serial/serde" ]
-prost = [ "dep:prost", "mc-util-repr-bytes/prost", "mc-util-serial/prost" ]
+serde = [
+    "dep:serde",
+    "mc-transaction-types/serde",
+    "mc-transaction-summary/serde",
+    "mc-crypto-dalek/serde",
+    "mc-util-repr-bytes/serde",
+    "mc-util-serial/serde",
+]
+prost = [
+    "dep:prost",
+    "mc-transaction-types/prost",
+    "mc-transaction-summary/prost",
+    "mc-util-repr-bytes/prost",
+    "mc-util-serial/prost"
+]
 
 default = [
     "serde",
@@ -38,9 +51,10 @@ mc-crypto-digestible = { path = "../../crypto/digestible", default_features = fa
 mc-crypto-hashes = { path = "../../crypto/hashes", default_features = false  }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default_features = false }
-mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", optional = true, default_features = false }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default_features = false }
 mc-transaction-core = { path = "../../transaction/core", default_features = false }
 mc-transaction-types = { path = "../../transaction/types", default_features = false }
+mc-transaction-summary = { path = "../../transaction/summary", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default_features = false }
 mc-util-serial = { path = "../../util/serial", default_features = false }

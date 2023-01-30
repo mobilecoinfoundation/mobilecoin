@@ -26,15 +26,13 @@ pub use memo::{
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
 pub use signed_contingent_input::{
-    SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
+    SignedContingentInput, SignedContingentInputError,
 };
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;
-pub use tx_summary_unblinding::{
-    verify_tx_summary, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryStreamingVerifier, TxSummaryStreamingVerifierCtx,
-    TxSummaryUnblindingData, TxSummaryUnblindingReport,
-};
 pub use unsigned_tx::UnsignedTx;
 
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;
+
+pub use mc_transaction_types::UnmaskedAmount;

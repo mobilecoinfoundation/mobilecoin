@@ -34,7 +34,7 @@ use crate::{
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_ct::{compute_mlsag_signing_digest, Error, ExtendedMessageDigest, GeneratorCache},
     tx::TxPrefix,
-    Amount, BlockVersion, TxSummary,
+    Amount, BlockVersion, TxSummary, UnmaskedAmount,
 };
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
@@ -82,6 +82,25 @@ pub struct OutputSecret {
     pub amount: Amount,
     /// The blinding factor of the output we are creating
     pub blinding: Scalar,
+}
+
+impl From<UnmaskedAmount> for OutputSecret {
+    fn from(src: UnmaskedAmount) -> Self {
+        Self {
+            amount: Amount::new(src.value, src.token_id.into()),
+            blinding: src.blinding.into(),
+        }
+    }
+}
+
+impl From<OutputSecret> for UnmaskedAmount {
+    fn from(src: OutputSecret) -> Self {
+        Self {
+            value: src.amount.value,
+            token_id: *src.amount.token_id,
+            blinding: src.blinding.into(),
+        }
+    }
 }
 
 /// The parts of a TxIn needed to validate a corresponding MLSAG
@@ -401,7 +420,7 @@ impl SigningData {
 
             // The implicit fee output.
             let generator = generator_cache.get(fee.token_id);
-            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), FEE_BLINDING);
 
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
@@ -813,7 +832,7 @@ impl SignatureRctBulletproofs {
 
             // The implicit fee output.
             let generator = generator_cache.get(fee.token_id);
-            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), FEE_BLINDING);
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
 

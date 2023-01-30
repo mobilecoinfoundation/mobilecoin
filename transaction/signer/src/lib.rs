@@ -9,7 +9,8 @@ use clap::Parser;
 use log::debug;
 
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_extra::{TxSummaryUnblindingData, UnmaskedAmount};
+use mc_transaction_types::UnmaskedAmount;
+use mc_transaction_summary::{TxSummaryUnblindingData};
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 

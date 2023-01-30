@@ -10,7 +10,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     BlockVersion,
 };
-use mc_transaction_extra::{TxOutSummaryUnblindingData, TxSummaryUnblindingData};
+use mc_transaction_summary::{TxOutSummaryUnblindingData, TxSummaryUnblindingData};
 use serde::{Deserialize, Serialize};
 
 /// Account ID object, derived from the default subaddress and used

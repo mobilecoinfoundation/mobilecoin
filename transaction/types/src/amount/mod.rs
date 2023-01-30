@@ -5,7 +5,7 @@
 //! Amounts are implemented as Pedersen commitments. The associated private keys
 //! are "masked" using a shared secret.
 
-use crate::{BlockVersion, TokenId};
+use crate::{BlockVersion, TokenId, UnmaskedAmount};
 
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPublic;
@@ -44,6 +44,15 @@ impl Amount {
 impl Default for Amount {
     fn default() -> Self {
         Amount::new(0, 0.into())
+    }
+}
+
+impl From<&UnmaskedAmount> for Amount {
+    fn from(src: &UnmaskedAmount) -> Self {
+        Self {
+            value: src.value,
+            token_id: TokenId::from(src.token_id),
+        }
     }
 }
 

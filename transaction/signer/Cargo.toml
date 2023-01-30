@@ -32,6 +32,9 @@ mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default_featu
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default_features = false }
 mc-transaction-core = { path = "../../transaction/core", default_features = false }
 mc-transaction-extra = { path = "../../transaction/extra", default_features = false }
+mc-transaction-summary = { path = "../../transaction/summary", default_features = false }
+mc-transaction-types = { path = "../../transaction/types", default_features = false }
+
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../../util/serial", default-features = false }
 
