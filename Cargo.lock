@@ -5430,6 +5430,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-transaction-signer"
+version = "4.0.1"
+dependencies = [
+ "anyhow",
+ "clap 4.0.32",
+ "displaydoc",
+ "hex",
+ "log",
+ "mc-account-keys",
+ "mc-common",
+ "mc-core",
+ "mc-core-types",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-transaction-core",
+ "mc-transaction-extra",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "subtle",
+ "tiny-bip39",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-transaction-types"
 version = "4.0.2"
 dependencies = [

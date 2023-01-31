@@ -2,6 +2,8 @@
 
 //! MobileCoin Account and Subaddress objects
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::keys::{
@@ -95,6 +97,53 @@ impl ViewAccount {
     /// Fetch account view private key
     pub fn view_private_key(&self) -> &RootViewPrivate {
         &self.view_private
+    }
+}
+
+/// Account ID object, derived from an [AccountKey] and used to identify
+/// individual accounts.
+#[derive(Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct AccountId([u8; 32]);
+
+/// Display [AccountId] as a hex encoded string
+impl core::fmt::Display for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        Ok(())
+    }
+}
+
+impl core::fmt::Debug for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "AccountId(")?;
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        write!(f, ")")
+    }
+}
+
+/// Access raw [AccountId] hash
+impl AsRef<[u8; 32]> for AccountId {
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<[u8; 32]> for AccountId {
+    fn from(value: [u8; 32]) -> Self {
+        Self(value)
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<&[u8; 32]> for AccountId {
+    fn from(value: &[u8; 32]) -> Self {
+        Self(*value)
     }
 }
 
