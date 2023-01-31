@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use mc_core::{account::Account, slip10::Slip10KeyGenerator};
 use mc_crypto_ring_signature_signer::LocalRingSigner;
 use mc_transaction_core::AccountKey;
-use mc_transaction_signer::{read_input, write_output, Commands};
+use mc_transaction_signer::{read_input, write_output, Operations};
 
 #[derive(Clone, PartialEq, Debug, Parser)]
 struct Args {
@@ -50,7 +50,7 @@ enum Actions {
 
     // Implement shared signer commands
     #[command(flatten)]
-    Signer(Commands),
+    Signer(Operations),
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -107,11 +107,13 @@ fn main() -> anyhow::Result<()> {
 
             // Handle standard commands
             match c {
-                Commands::GetAccount { output, .. } => {
-                    Commands::get_account(&a, account_index, output)?
+                Operations::GetAccount { output, .. } => {
+                    Operations::get_account(&a, account_index, output)?
                 }
-                Commands::SyncTxos { input, output, .. } => Commands::sync_txos(&a, input, output)?,
-                Commands::SignTx { input, output, .. } => {
+                Operations::SyncTxos { input, output, .. } => {
+                    Operations::sync_txos(&a, input, output)?
+                }
+                Operations::SignTx { input, output, .. } => {
                     // Setup local ring signer
                     let ring_signer = LocalRingSigner::from(&AccountKey::new(
                         a.spend_private_key().as_ref(),
@@ -119,7 +121,7 @@ fn main() -> anyhow::Result<()> {
                     ));
 
                     // Perform transaction signing
-                    Commands::sign_tx(&ring_signer, input, output)?;
+                    Operations::sign_tx(&ring_signer, input, output)?;
                 }
                 _ => (),
             }

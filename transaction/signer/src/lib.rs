@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Transaction signer types, used for communication with external signer
-//! implementations
+//! Transaction signer types, this defines the API for communication with
+//! external reansaction signers, such as the offline signer, or other
+//! hardware-backed wallets.
 
 use std::path::Path;
 
@@ -33,7 +34,7 @@ use traits::*;
 /// Command enumeration for offline / detached / hardware signing
 #[derive(Clone, PartialEq, Debug, Parser)]
 #[non_exhaustive]
-pub enum Commands {
+pub enum Operations {
     /// Fetch account keys
     GetAccount {
         /// SLIP-0010 index for account derivation
@@ -74,13 +75,13 @@ pub enum Commands {
     },
 }
 
-impl Commands {
+impl Operations {
     /// Fetch account index for a given command
     pub fn account_index(&self) -> u32 {
         match self {
-            Commands::GetAccount { account, .. } => *account,
-            Commands::SyncTxos { account, .. } => *account,
-            Commands::SignTx { account, .. } => *account,
+            Operations::GetAccount { account, .. } => *account,
+            Operations::SyncTxos { account, .. } => *account,
+            Operations::SignTx { account, .. } => *account,
         }
     }
 

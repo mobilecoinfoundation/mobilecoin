@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Traits supporting driver (or other hardware) implementations
+//! Traits for implementation by transaction-signer implementations,
+//! these allow signing operations to be abstract over a transaction signer
+//! implementation.
 
 use core::{convert::Infallible, fmt::Debug};
 

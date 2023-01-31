@@ -1,9 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Serializable types for sync between full-service and offline / hardware
+//! Serializable types for exchange between full-service and offline or hardware
 //! wallet implementations.
 
-use mc_core::keys::{RootSpendPublic, RootViewPrivate, TxOutPublic};
+use mc_core::{
+    account::AccountId,
+    keys::{RootSpendPublic, RootViewPrivate, TxOutPublic},
+};
+
 use mc_crypto_ring_signature::KeyImage;
 use mc_transaction_core::{
     ring_ct::{InputRing, OutputSecret},
@@ -13,71 +17,8 @@ use mc_transaction_core::{
 use mc_transaction_extra::TxOutSummaryUnblindingData;
 use serde::{Deserialize, Serialize};
 
-/// Account ID object, derived from the default subaddress and used
-/// to identify individual accounts.
-#[derive(Clone, Eq, PartialEq, Hash)]
-pub struct AccountId([u8; 32]);
-
-/// Display [AccountId] as a hex encoded string
-impl core::fmt::Display for AccountId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        for v in self.0 {
-            write!(f, "{:02X}", v)?;
-        }
-        Ok(())
-    }
-}
-impl core::fmt::Debug for AccountId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "AccountId(")?;
-        for v in self.0 {
-            write!(f, "{:02X}", v)?;
-        }
-        write!(f, ")")
-    }
-}
-
-/// Access raw [AccountId] hash
-impl AsRef<[u8; 32]> for AccountId {
-    fn as_ref(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-/// Create [AccountId] object from raw hash
-impl From<[u8; 32]> for AccountId {
-    fn from(value: [u8; 32]) -> Self {
-        Self(value)
-    }
-}
-
-impl TryFrom<&[u8]> for AccountId {
-    type Error = mc_util_repr_bytes::LengthMismatch;
-
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() != 32 {
-            return Err(mc_util_repr_bytes::LengthMismatch {
-                expected: 32,
-                found: src.len(),
-            });
-        }
-        let mut hash = [0u8; 32];
-        hash.copy_from_slice(src);
-        Ok(Self(hash))
-    }
-}
-
-impl TryFrom<&str> for AccountId {
-    type Error = hex::FromHexError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let mut hash = [0u8; 32];
-        hex::decode_to_slice(value, &mut hash)?;
-        Ok(Self(hash))
-    }
-}
-
-/// View account credentials for sync with full-service
+/// View account credentials produced by a signer implementation
+/// for import by full-service
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AccountInfo {
     /// Root view private key
@@ -99,7 +40,8 @@ impl From<AccountInfo> for mc_core::account::ViewAccount {
     }
 }
 
-/// Request to sync TxOuts for the provided account
+/// Request to sync TxOuts for the provided account, issued by full-service
+/// to support key image scanning.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoSyncReq {
     /// MOB AccountId for account matching
@@ -121,7 +63,8 @@ pub struct TxoUnsynced {
     pub tx_out_public_key: TxOutPublic,
 }
 
-/// Synced TxOut response, returned to full-service
+/// Synced TxOut response, returned to full-service in response to a
+/// [TxoSyncReq] to support key image scanning
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoSyncResp {
     /// MOB AccountId for account matching
@@ -145,7 +88,8 @@ pub struct TxoSynced {
     pub key_image: KeyImage,
 }
 
-/// Transaction signing request from full-service
+/// Transaction signing request, issued by full-service to a signer
+/// implementation for signing
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxSignReq {
     /// MOB AccountId for account matching
@@ -167,6 +111,9 @@ pub struct TxSignReq {
     pub block_version: BlockVersion,
 }
 
+/// Transaction signing secrets, either output secrets or unblinding data
+/// depending on the block version. Note that transaction summary / verification
+/// requires the `TxOutUnblindingData` variant.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum TxSignSecrets {
     #[serde(rename = "output_secrets")]
@@ -190,7 +137,8 @@ impl TxSignReq {
     }
 }
 
-/// Transaction signing response, returned to full service
+/// Transaction signing response, returned to full service by the signer
+/// implementation following a successful transaction signing.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxSignResp {
     /// MOB AccountId for account matching
@@ -205,7 +153,7 @@ pub struct TxSignResp {
 }
 
 /// Public key hex encoding support for serde
-pub mod pub_key_hex {
+pub(crate) mod pub_key_hex {
     use mc_core::keys::Key;
     use mc_crypto_keys::RistrettoPublic;
     use serde::de::{Deserializer, Error};
@@ -238,7 +186,7 @@ pub mod pub_key_hex {
 }
 
 /// Private key hex encoding support for serde
-pub mod pri_key_hex {
+pub(crate) mod pri_key_hex {
     use mc_core::keys::Key;
     use mc_crypto_keys::RistrettoPrivate;
     use serde::de::{Deserializer, Error};
@@ -272,7 +220,7 @@ pub mod pri_key_hex {
 
 /// Constant array based type hex encoding for serde (use via `#[serde(with =
 /// "const_array_hex")]`)
-pub mod const_array_hex {
+pub(crate) mod const_array_hex {
     use super::ConstArrayVisitor;
     use serde::de::{Deserializer, Error};
 
