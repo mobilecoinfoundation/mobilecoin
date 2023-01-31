@@ -160,14 +160,10 @@ impl State {
             Duration::from_millis(config.worker_poll_period_ms),
             logger,
         );
-        if config.activate {
-            worker.activate();
-            log::info!(logger, "Worker thread activated");
-        }
 
         let slam_state = SlamState::new(grpc_env);
 
-        State {
+        let result = State {
             mobilecoind_api_client,
             account_key,
             monitor_id,
@@ -177,7 +173,11 @@ impl State {
             slam_state,
             consensus_uris: config.peers.clone(),
             logger: logger.clone(),
+        };
+        if config.activate {
+            result.activate()
         }
+        result
     }
 
     // Try to issue commands to mobilecoind to set up a new faucet, returning an
@@ -257,9 +257,6 @@ impl State {
         &self,
         req: &JsonFaucetRequest,
     ) -> Result<api::SubmitTxResponse, String> {
-        if !self.worker.activate() {
-            log::info!(self.logger, "Worker is now activated");
-        }
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
             .map_err(|err| format!("Could not decode b58 address: {err}"))?;
 
@@ -370,9 +367,6 @@ impl State {
         req: &JsonSlamRequest,
         stop_requested: impl Future<Output = ()>,
     ) -> Result<SlamResponse, String> {
-        if !self.worker.activate() {
-            log::info!(self.logger, "Worker is now activated");
-        }
         let mut params = SlamParams::try_from(req)?;
         if params.consensus_client_uris.is_empty() {
             if let Some(uris) = self.consensus_uris.as_ref() {
@@ -438,5 +432,12 @@ impl State {
     pub fn request_stop(&self) {
         log::info!(self.logger, "Stop requested");
         self.slam_state.request_stop();
+    }
+
+    /// Request the worker thread to activate, if it isn't already
+    pub fn activate(&self) {
+        if !self.worker.activate() {
+            log::info!(self.logger, "Worker is now activated");
+        }
     }
 }
