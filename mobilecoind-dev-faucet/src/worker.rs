@@ -195,6 +195,11 @@ pub struct Worker {
     /// The worker thread handle
     join_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// A flag which can be used to control when the worker thread is active.
+    /// In some deployment scenarios it's helpful to not have the background
+    /// worker submitting transactions until later.
+    is_active: Arc<AtomicBool>,
+
     /// A flag which can be used to request the worker thread to join
     /// This is done by dropping the worker handle
     stop_requested: Arc<AtomicBool>,
@@ -244,6 +249,8 @@ impl Worker {
             receivers.insert(*token_id, receiver);
         }
 
+        let is_active = Arc::new(AtomicBool::default());
+        let thread_is_active = is_active.clone();
         let stop_requested = Arc::new(AtomicBool::default());
         let thread_stop_requested = stop_requested.clone();
 
@@ -251,6 +258,7 @@ impl Worker {
         let join_handle = Some(std::thread::spawn(move || {
             Self::worker_thread_entry_point(
                 worker_token_states,
+                thread_is_active,
                 thread_stop_requested,
                 client,
                 monitor_id,
@@ -264,6 +272,7 @@ impl Worker {
         Worker {
             receivers,
             join_handle,
+            is_active,
             stop_requested,
             worker_poll_period,
         }
@@ -275,6 +284,7 @@ impl Worker {
     /// activity, and sleep for a bit.
     fn worker_thread_entry_point(
         mut worker_token_states: Vec<WorkerTokenState>,
+        is_active: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
         client: MobilecoindApiClient,
         monitor_id: Vec<u8>,
@@ -325,15 +335,17 @@ impl Worker {
                 log::info!(logger, "Worker: stop was requested");
                 break;
             }
-            for state in worker_token_states.iter_mut() {
-                if let Err(err_str) = state.poll(
-                    &client,
-                    &monitor_id,
-                    &public_address,
-                    target_queue_depth,
-                    &logger,
-                ) {
-                    log::error!(logger, "token id {}: {}", state.token_id, err_str);
+            if is_active.load(Ordering::SeqCst) {
+                for state in worker_token_states.iter_mut() {
+                    if let Err(err_str) = state.poll(
+                        &client,
+                        &monitor_id,
+                        &public_address,
+                        target_queue_depth,
+                        &logger,
+                    ) {
+                        log::error!(logger, "token id {}: {}", state.token_id, err_str);
+                    }
                 }
             }
             log::trace!(logger, "Worker sleeping");
@@ -390,6 +402,16 @@ impl Worker {
     /// Get the configured worker poll period
     pub fn get_worker_poll_period(&self) -> Duration {
         self.worker_poll_period
+    }
+
+    /// Get whether the worker is activated
+    pub fn get_is_active(&self) -> bool {
+        self.is_active.load(Ordering::SeqCst)
+    }
+
+    /// Set the worker to the active state
+    pub fn activate(&self) -> bool {
+        self.is_active.swap(true, Ordering::SeqCst)
     }
 }
 
