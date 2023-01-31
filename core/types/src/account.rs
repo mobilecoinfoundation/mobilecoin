@@ -143,7 +143,7 @@ impl From<[u8; 32]> for AccountId {
 /// Create [AccountId] object from raw hash
 impl From<&[u8; 32]> for AccountId {
     fn from(value: &[u8; 32]) -> Self {
-        Self(value.clone())
+        Self(*value)
     }
 }
 
