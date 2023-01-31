@@ -42,17 +42,17 @@ impl SqlRecoveryDbTestContext {
 
         // First, connect to postgres db to be able to create our test
         // database.
-        let postgres_url = format!("{}/postgres", base_url);
+        let postgres_url = format!("{base_url}/postgres");
         log::info!(&logger, "Connecting to root PG DB {}", postgres_url);
         let conn = SqlRecoveryDbTestContext::establish_connection(&postgres_url);
         // Create a new database for the test
-        let query = diesel::sql_query(format!("CREATE DATABASE {};", db_name).as_str());
+        let query = diesel::sql_query(format!("CREATE DATABASE {db_name};").as_str());
         let _ = query
             .execute(&conn)
-            .unwrap_or_else(|err| panic!("Could not create database {}: {:?}", db_name, err));
+            .unwrap_or_else(|err| panic!("Could not create database {db_name}: {err:?}"));
 
         // Now we can connect to the database and run the migrations
-        let db_url = format!("{}/{}", base_url, db_name);
+        let db_url = format!("{base_url}/{db_name}");
         log::info!(&logger, "Connecting to newly created PG DB '{}'", db_url);
 
         let conn = SqlRecoveryDbTestContext::establish_connection(&db_url);
@@ -90,7 +90,7 @@ impl SqlRecoveryDbTestContext {
     pub fn new_conn(&self) -> PgConnection {
         let db_url = self.db_url();
         PgConnection::establish(&db_url)
-            .unwrap_or_else(|err| panic!("Cannot connect to database {}: {}", db_url, err))
+            .unwrap_or_else(|err| panic!("Cannot connect to database {db_url}: {err}"))
     }
 
     fn establish_connection(url: &str) -> PgConnection {
@@ -100,7 +100,7 @@ impl SqlRecoveryDbTestContext {
                 .take(TOTAL_RETRY_COUNT),
             || PgConnection::establish(url),
         )
-        .unwrap_or_else(|err| panic!("Cannot connect to PG database '{}: {}'", url, err))
+        .unwrap_or_else(|err| panic!("Cannot connect to PG database '{url}: {err}'"))
     }
 }
 

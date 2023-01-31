@@ -26,38 +26,38 @@ impl OpMetrics {
         let name_str = name.into();
         OpMetrics {
             counters: IntCounterVec::new(
-                Opts::new(name_str.clone(), format!("Counters for {}", name_str)),
+                Opts::new(name_str.clone(), format!("Counters for {name_str}")),
                 &["op"],
             )
             .unwrap(),
             peer_counters: IntCounterVec::new(
                 Opts::new(
-                    format!("{}_peer_counter", name_str),
-                    format!("Counters for each remote peer of {}", name_str),
+                    format!("{name_str}_peer_counter"),
+                    format!("Counters for each remote peer of {name_str}"),
                 ),
                 &["op", "remote_responder_id"],
             )
             .unwrap(),
             gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_gauge", name_str),
-                    format!("Gauges for {}", name_str),
+                    format!("{name_str}_gauge"),
+                    format!("Gauges for {name_str}"),
                 ),
                 &["op"],
             )
             .unwrap(),
             peer_gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_peer_gauge", name_str),
-                    format!("Gauges for each remote peer of {}", name_str),
+                    format!("{name_str}_peer_gauge"),
+                    format!("Gauges for each remote peer of {name_str}"),
                 ),
                 &["op", "remote_responder_id"],
             )
             .unwrap(),
             histograms: HistogramVec::new(
                 HistogramOpts::new(
-                    format!("{}_duration", name_str),
-                    format!("Histogram values for {}", name_str),
+                    format!("{name_str}_duration"),
+                    format!("Histogram values for {name_str}"),
                 ),
                 &["op"],
             )

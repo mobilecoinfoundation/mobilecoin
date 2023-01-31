@@ -24,12 +24,7 @@ fn main() {
         config.postgres_config.clone(),
         logger.clone(),
     )
-    .unwrap_or_else(|err| {
-        panic!(
-            "fog-view cannot connect to database '{}': {:?}",
-            database_url, err
-        )
-    });
+    .unwrap_or_else(|err| panic!("fog-view cannot connect to database '{database_url}': {err:?}"));
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         env!("CARGO_PKG_NAME"),

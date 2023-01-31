@@ -135,7 +135,7 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
             }
             // Don't know how to migrate.
             Err(err) => {
-                panic!("Error while migrating: {:?}", err);
+                panic!("Error while migrating: {err:?}");
             }
         };
     }

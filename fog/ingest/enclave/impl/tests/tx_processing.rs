@@ -287,8 +287,7 @@ fn test_ingest_enclave_malformed_txos(logger: Logger) {
                 assert_eq!(some_rows.len(), 3);
                 assert_eq!(
                     some_rows[0].search_key, bob_search_key,
-                    "unexpected search key for {}'th tx for Bob",
-                    index3
+                    "unexpected search key for {index3}'th tx for Bob"
                 );
                 assert_ne!(some_rows[1].search_key, bob_search_key);
                 assert_ne!(some_rows[2].search_key, bob_search_key);
@@ -512,51 +511,39 @@ fn test_ingest_enclave_overflow(logger: Logger) {
 
             assert!(
                 alice_found || bob_found,
-                "Could not match {}'th tx row to Alice's or Bob's RNG's",
-                idx
+                "Could not match {idx}'th tx row to Alice's or Bob's RNG's"
             );
             assert!(
                 !alice_found || !bob_found,
-                "Matched {}'th tx row to BOTH Alice and to Bob",
-                idx
+                "Matched {idx}'th tx row to BOTH Alice and to Bob"
             );
 
             match alice_fog_credential.decrypt_tx_out_result(tx_row.payload.clone()) {
                 Ok(tx_out_record) => {
                     assert_eq!(
                         tx_out_record.tx_out_global_index, idx as u64,
-                        "{:?} {:?} alice:{} bob:{}",
-                        tx_out_record, tx_row, alice_found, bob_found,
+                        "{tx_out_record:?} {tx_row:?} alice:{alice_found} bob:{bob_found}",
                     );
                     let expected_fog_tx_out = FogTxOut::try_from(&all_tx_outs[idx]).unwrap();
                     assert_eq!(
                         tx_out_record.get_fog_tx_out().unwrap(),
                         expected_fog_tx_out,
-                        "{:?} {:?}",
-                        tx_out_record,
-                        tx_row,
+                        "{tx_out_record:?} {tx_row:?}",
                     );
-                    assert_eq!(
-                        tx_out_record.block_index, 1,
-                        "{:?} {:?}",
-                        tx_out_record, tx_row
-                    );
+                    assert_eq!(tx_out_record.block_index, 1, "{tx_out_record:?} {tx_row:?}");
                     assert!(
                         alice_found,
-                        "Alice wasn't supposed to be able to decrypt {}'th tx row. bob_found = {}: {:?} {:?}",
-                        idx, bob_found, tx_out_record, tx_row,
+                        "Alice wasn't supposed to be able to decrypt {idx}'th tx row. bob_found = {bob_found}: {tx_out_record:?} {tx_row:?}",
                     );
                 }
                 Err(err @ TxOutRecoveryError::MacCheckFailed) => {
                     assert!(
                         !alice_found,
-                        "Alice was supposed to be able to decrypt {}'th tx row: {}",
-                        idx, err
+                        "Alice was supposed to be able to decrypt {idx}'th tx row: {err}"
                     );
                 }
                 Err(err) => {
-                    panic!("Alice got an unexpected error when attempting to decrypt {}'th tx row: {}. alice_found = {}",
-                        idx, err, alice_found
+                    panic!("Alice got an unexpected error when attempting to decrypt {idx}'th tx row: {err}. alice_found = {alice_found}"
                     );
                 }
             };
@@ -565,38 +552,28 @@ fn test_ingest_enclave_overflow(logger: Logger) {
                 Ok(tx_out_record) => {
                     assert_eq!(
                         tx_out_record.tx_out_global_index, idx as u64,
-                        "{:?} {:?} alice:{} bob:{}",
-                        tx_out_record, tx_row, alice_found, bob_found,
+                        "{tx_out_record:?} {tx_row:?} alice:{alice_found} bob:{bob_found}",
                     );
                     let expected_fog_tx_out = FogTxOut::try_from(&all_tx_outs[idx]).unwrap();
                     assert_eq!(
                         tx_out_record.get_fog_tx_out().unwrap(),
                         expected_fog_tx_out,
-                        "{:?} {:?}",
-                        tx_out_record,
-                        tx_row,
+                        "{tx_out_record:?} {tx_row:?}",
                     );
-                    assert_eq!(
-                        tx_out_record.block_index, 1,
-                        "{:?} {:?}",
-                        tx_out_record, tx_row
-                    );
+                    assert_eq!(tx_out_record.block_index, 1, "{tx_out_record:?} {tx_row:?}");
                     assert!(
                         bob_found,
-                        "Bob wasn't supposed to be able to decrypt {}'th tx row. alice_found = {}: {:?} {:?}",
-                        idx, alice_found, tx_out_record, tx_row,
+                        "Bob wasn't supposed to be able to decrypt {idx}'th tx row. alice_found = {alice_found}: {tx_out_record:?} {tx_row:?}",
                     );
                 }
                 Err(err @ TxOutRecoveryError::MacCheckFailed) => {
                     assert!(
                         !bob_found,
-                        "Bob was supposed to be able to decrypt {}'th tx row: {}",
-                        idx, err
+                        "Bob was supposed to be able to decrypt {idx}'th tx row: {err}"
                     );
                 }
                 Err(err) => {
-                    panic!("Bob got an unexpected error when attempting to decrypt {}'th tx row: {}. bob_found = {}",
-                        idx, err, bob_found
+                    panic!("Bob got an unexpected error when attempting to decrypt {idx}'th tx row: {err}. bob_found = {bob_found}"
                     );
                 }
             };

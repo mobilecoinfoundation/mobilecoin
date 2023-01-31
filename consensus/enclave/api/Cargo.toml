@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-api"
-version = "4.0.1"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = """

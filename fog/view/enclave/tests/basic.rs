@@ -17,7 +17,7 @@ fn get_enclave(logger: Logger) -> SgxViewEnclave {
         get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
         ResponderId::from_str("abc:123").unwrap(),
         VIEW_OMAP_CAPACITY,
-        logger.clone(),
+        logger,
     )
 }
 

@@ -521,8 +521,8 @@ impl From<&ASTNode> for serde_json::Value {
 impl From<&ASTPrimitive> for serde_json::Value {
     fn from(src: &ASTPrimitive) -> Self {
         json!({
-            utf8(&src.context): "primitive",
-            "type_name": utf8(&src.type_name),
+            utf8(src.context): "primitive",
+            "type_name": utf8(src.type_name),
             "data": pretty_bytes(&src.data)
         })
     }
@@ -531,7 +531,7 @@ impl From<&ASTPrimitive> for serde_json::Value {
 impl From<&ASTNone> for serde_json::Value {
     fn from(src: &ASTNone) -> Self {
         json!({
-            utf8(&src.context): "",
+            utf8(src.context): "",
         })
     }
 }
@@ -539,7 +539,7 @@ impl From<&ASTNone> for serde_json::Value {
 impl From<&ASTSequence> for serde_json::Value {
     fn from(src: &ASTSequence) -> Self {
         let mut result = json!({
-            utf8(&src.context): "sequence",
+            utf8(src.context): "sequence",
             "len": src.len,
         });
         result.as_object_mut().unwrap().insert(
@@ -553,7 +553,7 @@ impl From<&ASTSequence> for serde_json::Value {
 impl From<&ASTAggregate> for serde_json::Value {
     fn from(src: &ASTAggregate) -> Self {
         let mut result = json!({
-            utf8(&src.context): "aggregate",
+            utf8(src.context): "aggregate",
             "name": utf8(&src.name),
         });
         result.as_object_mut().unwrap().insert(
@@ -572,7 +572,7 @@ impl From<&ASTVariant> for serde_json::Value {
             serde_json::Value::String("**incomplete**".to_string())
         };
         json!({
-            utf8(&src.context): "variant",
+            utf8(src.context): "variant",
             "name": utf8(&src.name),
             "which": src.which,
             "value": value_json,

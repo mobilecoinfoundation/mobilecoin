@@ -66,7 +66,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
             .arg(private_key)
             .arg("-out")
@@ -100,7 +100,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-out")
             .arg(output_datfile);
 
@@ -133,17 +133,17 @@ impl SgxSign {
         let mut cmd = Command::new(self.sgx_sign_path.clone());
         cmd.arg("catsig")
             .arg("-enclave")
-            .arg(&unsigned_enclave)
+            .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
-            .arg(&public_key_pem)
+            .arg(public_key_pem)
             .arg("-unsigned")
-            .arg(&gendata_output)
+            .arg(gendata_output)
             .arg("-sig")
-            .arg(&signature)
+            .arg(signature)
             .arg("-out")
-            .arg(&output_enclave);
+            .arg(output_enclave);
 
         if self.ignore_rel_error {
             cmd.arg("-ignore-rel-error");

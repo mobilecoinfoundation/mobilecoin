@@ -29,6 +29,9 @@ pub use ring_signature::{
 #[cfg(feature = "alloc")]
 pub use ring_signature::RingMLSAG;
 
+#[cfg(feature = "internals")]
+pub use ring_signature::{MlsagSignCtx, MlsagSignParams, MlsagVerify, Ring};
+
 /// Get the shared secret for a transaction output.
 ///
 /// # Arguments

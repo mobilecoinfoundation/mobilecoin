@@ -9,6 +9,10 @@ updates:
   open-pull-requests-limit: 5
   reviewers:
     - "mobilecoinfoundation/coredev"
+  labels:
+    - "blocks-v5.0.0"
+    - "dependencies"
+    - "rust"
 - package-ecosystem: cargo
   directory: "/consensus/enclave/trusted/"
   schedule:
@@ -18,6 +22,10 @@ updates:
   open-pull-requests-limit: 2
   reviewers:
     - "mobilecoinfoundation/coredev"
+  labels:
+    - "blocks-v5.0.0"
+    - "dependencies"
+    - "rust"
 - package-ecosystem: cargo
   directory: "/fog/ingest/enclave/trusted/"
   schedule:
@@ -27,6 +35,10 @@ updates:
   open-pull-requests-limit: 2
   reviewers:
     - "mobilecoinfoundation/coredev"
+  labels:
+    - "blocks-v5.0.0"
+    - "dependencies"
+    - "rust"
 - package-ecosystem: cargo
   directory: "/fog/ledger/enclave/trusted/"
   schedule:
@@ -36,6 +48,10 @@ updates:
   open-pull-requests-limit: 2
   reviewers:
     - "mobilecoinfoundation/coredev"
+  labels:
+    - "blocks-v5.0.0"
+    - "dependencies"
+    - "rust"
 - package-ecosystem: cargo
   directory: "/fog/view/enclave/trusted/"
   schedule:
@@ -45,6 +61,10 @@ updates:
   open-pull-requests-limit: 2
   reviewers:
     - "mobilecoinfoundation/coredev"
+  labels:
+    - "blocks-v5.0.0"
+    - "dependencies"
+    - "rust"
 - package-ecosystem: github-actions
   directory: "/"
   schedule:

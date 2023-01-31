@@ -85,7 +85,7 @@ impl From<TxManagerError> for ConsensusGrpcError {
             TxManagerError::Enclave(err) => Self::from(err),
             TxManagerError::TransactionValidation(err) => Self::from(err),
             TxManagerError::LedgerDb(err) => Self::from(err),
-            _ => Self::Other(format!("tx manager error: {}", src)),
+            _ => Self::Other(format!("tx manager error: {src}")),
         }
     }
 }
@@ -110,7 +110,7 @@ impl From<ConsensusGrpcError> for RpcStatus {
         match src {
             ConsensusGrpcError::RpcStatus(rpc_status) => rpc_status,
             ConsensusGrpcError::Ledger(err) => {
-                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Ledger error: {}", err))
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Ledger error: {err}"))
             }
             ConsensusGrpcError::OverCapacity => RpcStatus::with_message(
                 RpcStatusCode::UNAVAILABLE,
@@ -132,12 +132,10 @@ impl From<ConsensusGrpcError> for RpcStatus {
                 global_log::error!("Attempting to convert a ConsensusGrpcError::TransactionValidation into RpcStatus, this should not happen! Error is: {}", err);
                 RpcStatus::with_message(
                     RpcStatusCode::INTERNAL,
-                    format!("Unexpected transaction validation error: {}", err),
+                    format!("Unexpected transaction validation error: {err}"),
                 )
             }
-            _ => {
-                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Internal error: {}", src))
-            }
+            _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Internal error: {src}")),
         }
     }
 }

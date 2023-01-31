@@ -182,8 +182,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> KeyImageStore<OS
                 oram_result_code == OMAP_FOUND
                     || oram_result_code == OMAP_NOT_FOUND
                     || oram_result_code == OMAP_INVALID_KEY,
-                "oram_result_code had an unexpected value: {}",
-                oram_result_code
+                "oram_result_code had an unexpected value: {oram_result_code}"
             );
         }
 
