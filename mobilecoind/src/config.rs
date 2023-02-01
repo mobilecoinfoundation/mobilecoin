@@ -5,8 +5,11 @@
 
 use clap::Parser;
 use displaydoc::Display;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_common::{logger::Logger, ResponderId};
+use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
@@ -88,7 +91,7 @@ pub struct Config {
     /// Fog ingest enclave CSS file (needed in order to enable sending
     /// transactions to fog recipients).
     #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
-    pub fog_ingest_enclave_css: Option<Signature>,
+    pub fog_ingest_enclave_css: Vec<Signature>,
 
     /// Automatically migrate the ledger db (if it exists) into the most recent
     /// version.
@@ -166,26 +169,27 @@ impl Config {
 
     /// Get the attestation verifier used to verify fog reports when sending to
     /// fog recipients
-    pub fn get_fog_ingest_verifier(&self) -> Option<Verifier> {
-        self.fog_ingest_enclave_css.as_ref().map(|signature| {
-            let mr_signer_verifier = {
-                let mut mr_signer_verifier = MrSignerVerifier::new(
-                    signature.mrsigner().into(),
-                    signature.product_id(),
-                    signature.version(),
-                );
-                mr_signer_verifier.allow_hardening_advisories(&[
-                    "INTEL-SA-00334",
-                    "INTEL-SA-00615",
-                    "INTEL-SA-00657",
-                ]);
-                mr_signer_verifier
-            };
+    pub fn get_fog_ingest_verifier(&self, logger: &Logger) -> Option<Verifier> {
+        if self.fog_ingest_enclave_css.is_empty() {
+            None
+        } else {
+            Some({
+                let mut verifier = Verifier::default();
+                verifier.debug(DEBUG_ENCLAVE);
 
-            let mut verifier = Verifier::default();
-            verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-            verifier
-        })
+                for sig in &self.fog_ingest_enclave_css {
+                    let mut mr_enclave_verifier = MrEnclaveVerifier::from(sig.clone());
+                    mr_enclave_verifier.allow_hardening_advisories(
+                        mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES,
+                    );
+                    verifier.mr_enclave(mr_enclave_verifier);
+                }
+
+                log::debug!(logger, "Fog Ingest Verifier: {:?}", verifier);
+
+                verifier
+            })
+        }
     }
 
     /// Get the function which creates FogResolver given a list of recipient
@@ -195,6 +199,8 @@ impl Config {
         &self,
         logger: Logger,
     ) -> Arc<dyn Fn(&[FogUri]) -> Result<FogResolver, String> + Send + Sync> {
+        let verifier = self.get_fog_ingest_verifier(&logger);
+
         let env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("FogPubkeyResolver-RPC".to_string())
@@ -202,8 +208,6 @@ impl Config {
         );
 
         let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
-
-        let verifier = self.get_fog_ingest_verifier();
 
         Arc::new(move |fog_uris| -> Result<FogResolver, String> {
             if fog_uris.is_empty() {
@@ -299,6 +303,14 @@ pub struct PeersConfig {
         use_value_delimiter = true
     )]
     pub peers: Option<Vec<ConsensusClientUri>>,
+
+    /// Consensus enclave CSS file(s) to trust. Any sigstruct provided here will
+    /// be trusted in attestation with consensus. This can be used to allow
+    /// attestation with a previous version of consensus as well as the
+    /// current version. Note that we also bake in a CSS file at build time
+    /// so it may be okay to omit this parameter in a lot of testing.
+    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS")]
+    pub consensus_enclave_css: Vec<Signature>,
 }
 
 impl PeersConfig {
@@ -314,6 +326,31 @@ impl PeersConfig {
                 })
             })
             .collect()
+    }
+
+    /// Create a consensus enclave verifier, which allows the baked-in
+    /// sigstruct, and any sigstructs produced at run-time via the
+    /// MC_CONSENSUS_ENCLAVE_CSS list. This uses MRENCLAVE verification.
+    pub fn create_consensus_verifier(&self, logger: &Logger) -> Verifier {
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE);
+
+        let mut mr_enclave_verifier =
+            MrEnclaveVerifier::from(mc_consensus_enclave_measurement::sigstruct());
+        mr_enclave_verifier
+            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+        verifier.mr_enclave(mr_enclave_verifier);
+
+        for sig in &self.consensus_enclave_css {
+            let mut mr_enclave_verifier = MrEnclaveVerifier::from(sig.clone());
+            mr_enclave_verifier
+                .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+            verifier.mr_enclave(mr_enclave_verifier);
+        }
+
+        log::debug!(logger, "Consensus Verifier: {:?}", verifier);
+
+        verifier
     }
 
     /// Instantiate a client for each of the peer URIs.

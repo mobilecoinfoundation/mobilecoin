@@ -21,9 +21,11 @@ use mc_account_keys::AccountKey;
 use mc_api::printable::PrintableWrapper;
 use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_sgx_css::Signature;
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
+use mc_util_parse::load_css_file;
 use mc_util_uri::ConsensusClientUri;
 use std::{collections::HashMap, future::Future, path::PathBuf, sync::Arc, time::Duration};
 use tokio::select;
@@ -81,6 +83,16 @@ pub struct Config {
     ///     env MC_PEER=mc://foo:123,mc://bar:456
     #[clap(long = "peer", env = "MC_PEER", use_value_delimiter = true)]
     pub peers: Option<Vec<ConsensusClientUri>>,
+
+    /// Consensus enclave CSS file(s) to trust. Any sigstruct provided here will
+    /// be trusted in attestation with consensus. This can be used to allow
+    /// attestation with a previous version of consensus as well as the
+    /// current version. Note that we also bake in a CSS file at build time
+    /// so it may be okay to omit this parameter in a lot of testing.
+    ///
+    /// This is used by the slam tx submitter.
+    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS")]
+    pub consensus_enclave_css: Vec<Signature>,
 }
 
 /// Connection to the mobilecoind client, and other state tracked by the running
@@ -108,6 +120,9 @@ pub struct State {
     pub slam_state: Arc<SlamState>,
     /// List of consensus uri's to submit to during slam operation
     pub consensus_uris: Option<Vec<ConsensusClientUri>>,
+    /// List of consensus enclave css to trust, in addition to the build-time
+    /// CSS. This is used by slam.
+    pub consensus_enclave_css: Vec<Signature>,
     /// Logger
     pub logger: Logger,
 }
@@ -166,6 +181,7 @@ impl State {
             worker,
             slam_state,
             consensus_uris: config.peers.clone(),
+            consensus_enclave_css: config.consensus_enclave_css.clone(),
             logger: logger.clone(),
         }
     }
@@ -401,6 +417,7 @@ impl State {
         let report = {
             let mut slam_fut = Box::pin(slam_state.start_slam(
                 &params,
+                self.consensus_enclave_css.clone(),
                 &self.account_key,
                 &self.mobilecoind_api_client,
                 &self.worker,

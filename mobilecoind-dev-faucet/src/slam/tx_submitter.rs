@@ -1,33 +1,42 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{
     Error as ConnectionError, HardcodedCredentialsProvider, ProposeTxResult, RetryError,
     RetryableUserTxConnection, SyncConnection, ThickClient,
 };
+use mc_sgx_css::Signature;
 use mc_transaction_core::tx::Tx;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{iter::empty, sync::Arc};
 
 type ConnectionType = SyncConnection<ThickClient<HardcodedCredentialsProvider>>;
 
+/// A TxSubmitter appropriate for usage in slam
 pub struct TxSubmitter {
     conns: Vec<ConnectionType>,
 }
 
 impl TxSubmitter {
     /// Create a new TxSubmitter appropriate for slam
+    ///
+    /// Arguments:
+    /// * uris: Consensus Client Uris (mc://) to submit to
+    /// * consensus_enclave_css: Any additional MRENCLAVE's to trust
+    /// * env: grpcio environment
+    /// * logger
     pub fn new(
         uris: Vec<ConsensusClientUri>,
+        consensus_enclave_css: Vec<Signature>,
         env: Arc<grpcio::Environment>,
         logger: &Logger,
     ) -> Result<Self, String> {
         if uris.is_empty() {
             return Err("No consensus uris".to_owned());
         }
-        let conns = Self::get_connections(&uris, env, logger)
+        let conns = Self::get_connections(&uris, &consensus_enclave_css, env, logger)
             .map_err(|err| format!("consensus connection: {}", err))?;
         Ok(Self { conns })
     }
@@ -91,16 +100,11 @@ impl TxSubmitter {
     /// Get thick client connections to all configured consensus nodes
     fn get_connections(
         uris: &[ConsensusClientUri],
+        consensus_enclave_css: &[Signature],
         env: Arc<grpcio::Environment>,
         logger: &Logger,
     ) -> Result<Vec<ConnectionType>, ConnectionError> {
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-        mr_signer_verifier
-            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
-
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+        let verifier = Self::get_consensus_verifier(consensus_enclave_css, logger);
 
         uris.iter()
             .map(|uri| {
@@ -118,13 +122,38 @@ impl TxSubmitter {
             })
             .collect()
     }
+
+    /// Create a consensus enclave verifier, which allows the baked-in
+    /// sigstruct, and any sigstructs produced at run-time via the
+    /// MC_CONSENSUS_ENCLAVE_CSS list. This uses MRENCLAVE verification.
+    fn get_consensus_verifier(consensus_enclave_css: &[Signature], logger: &Logger) -> Verifier {
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE);
+
+        let mut mr_enclave_verifier =
+            MrEnclaveVerifier::from(mc_consensus_enclave_measurement::sigstruct());
+        mr_enclave_verifier
+            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+        verifier.mr_enclave(mr_enclave_verifier);
+
+        for sig in consensus_enclave_css {
+            let mut mr_enclave_verifier = MrEnclaveVerifier::from(sig.clone());
+            mr_enclave_verifier
+                .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+            verifier.mr_enclave(mr_enclave_verifier);
+        }
+
+        log::debug!(logger, "Consensus Verifier: {:?}", verifier);
+
+        verifier
+    }
 }
 
 #[derive(Clone, Debug, Display)]
 pub enum SubmitTxError {
     /// Tx failed but may pass if retried
     Retry,
-    /// Tx failed but may pass if re-built
+    /// Tx failed but may pass if re-built with same inputs
     Rebuild,
     /// Tx failed irrecoverably
     Fatal,

@@ -118,10 +118,10 @@ pub struct TestClient {
     consensus_uris: Vec<ConsensusClientUri>,
     fog_ledger: FogLedgerUri,
     fog_view: FogViewUri,
-    consensus_sig: Option<Signature>,
-    fog_ingest_sig: Option<Signature>,
-    fog_ledger_sig: Option<Signature>,
-    fog_view_sig: Option<Signature>,
+    consensus_sigs: Vec<Signature>,
+    fog_ingest_sigs: Vec<Signature>,
+    fog_ledger_sigs: Vec<Signature>,
+    fog_view_sigs: Vec<Signature>,
     tx_info: Arc<TxInfo>,
     health_tracker: Arc<HealthTracker>,
     logger: Logger,
@@ -166,40 +166,44 @@ impl TestClient {
             fog_ledger,
             fog_view,
             logger,
-            consensus_sig: None,
-            fog_ingest_sig: None,
-            fog_ledger_sig: None,
-            fog_view_sig: None,
+            consensus_sigs: Default::default(),
+            fog_ingest_sigs: Default::default(),
+            fog_ledger_sigs: Default::default(),
+            fog_view_sigs: Default::default(),
             tx_info,
             health_tracker,
         }
     }
 
-    /// Set the consensus sigstruct used by the clients
+    /// Set the consensus sigstruct(s) trusted by the clients, besides
+    /// build-time CSS
     #[must_use]
-    pub fn consensus_sigstruct(mut self, sig: Option<Signature>) -> Self {
-        self.consensus_sig = sig;
+    pub fn consensus_sigstructs(mut self, sigs: Vec<Signature>) -> Self {
+        self.consensus_sigs = sigs;
         self
     }
 
-    /// Set the fog ingest sigstruct used by the clients
+    /// Set the fog ingest sigstruct(s) trusted by the clients, besides
+    /// build-time CSS
     #[must_use]
-    pub fn fog_ingest_sigstruct(mut self, sig: Option<Signature>) -> Self {
-        self.fog_ingest_sig = sig;
+    pub fn fog_ingest_sigstructs(mut self, sigs: Vec<Signature>) -> Self {
+        self.fog_ingest_sigs = sigs;
         self
     }
 
-    /// Set the fog ledger sigstruct used by the clients
+    /// Set the fog ledger sigstruct(s) trusted by the clients, besides
+    /// build-time CSS
     #[must_use]
-    pub fn fog_ledger_sigstruct(mut self, sig: Option<Signature>) -> Self {
-        self.fog_ledger_sig = sig;
+    pub fn fog_ledger_sigstructs(mut self, sigs: Vec<Signature>) -> Self {
+        self.fog_ledger_sigs = sigs;
         self
     }
 
-    /// Set the fog view sigstruct used by the clients
+    /// Set the fog view sigstruct(s) trusted by the clients, besides build-time
+    /// CSS
     #[must_use]
-    pub fn fog_view_sigstruct(mut self, sig: Option<Signature>) -> Self {
-        self.fog_view_sig = sig;
+    pub fn fog_view_sigstructs(mut self, sigs: Vec<Signature>) -> Self {
+        self.fog_view_sigs = sigs;
         self
     }
 
@@ -239,10 +243,10 @@ impl TestClient {
             .grpc_retry_config(self.grpc_retry_config)
             .ring_size(RING_SIZE)
             .address_book(address_book.clone())
-            .consensus_sig(self.consensus_sig.clone())
-            .fog_ingest_sig(self.fog_ingest_sig.clone())
-            .fog_ledger_sig(self.fog_ledger_sig.clone())
-            .fog_view_sig(self.fog_view_sig.clone())
+            .consensus_sigs(self.consensus_sigs.clone())
+            .fog_ingest_sigs(self.fog_ingest_sigs.clone())
+            .fog_ledger_sigs(self.fog_ledger_sigs.clone())
+            .fog_view_sigs(self.fog_view_sigs.clone())
             .build();
             clients.push(Arc::new(Mutex::new(client)));
         }

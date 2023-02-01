@@ -13,7 +13,7 @@ use mc_fog_test_client::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
-use mc_util_parse::{load_css_file, CssSignature};
+use mc_util_parse::load_css_file;
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -82,10 +82,34 @@ fn main() {
         config.grpc_retry_config,
         logger.clone(),
     )
-    .consensus_sigstruct(maybe_load_css(&config.consensus_enclave_css))
-    .fog_ingest_sigstruct(maybe_load_css(&config.ingest_enclave_css))
-    .fog_ledger_sigstruct(maybe_load_css(&config.ledger_enclave_css))
-    .fog_view_sigstruct(maybe_load_css(&config.view_enclave_css));
+    .consensus_sigstructs(
+        config
+            .consensus_enclave_css
+            .iter()
+            .map(|x| load_css_file(x).expect("Could not load consensus css"))
+            .collect(),
+    )
+    .fog_ingest_sigstructs(
+        config
+            .ingest_enclave_css
+            .iter()
+            .map(|x| load_css_file(x).expect("Could not load fog ingest css"))
+            .collect(),
+    )
+    .fog_ledger_sigstructs(
+        config
+            .ledger_enclave_css
+            .iter()
+            .map(|x| load_css_file(x).expect("Could not load fog ledger css"))
+            .collect(),
+    )
+    .fog_view_sigstructs(
+        config
+            .view_enclave_css
+            .iter()
+            .map(|x| load_css_file(x).expect("Could not load fog view css"))
+            .collect(),
+    );
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
@@ -111,10 +135,4 @@ fn main() {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
-}
-
-fn maybe_load_css(maybe_file: &Option<String>) -> Option<CssSignature> {
-    maybe_file
-        .as_ref()
-        .map(|x| load_css_file(x).expect("Could not load css file"))
 }

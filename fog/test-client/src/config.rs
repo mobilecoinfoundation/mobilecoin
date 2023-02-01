@@ -106,21 +106,21 @@ pub struct TestClientConfig {
     #[clap(long, default_value = "20", env = "MC_TRANSFER_AMOUNT")]
     pub transfer_amount: u64,
 
-    /// Consensus enclave CSS file (overriding the build-time CSS)
+    /// Consensus enclave CSS file(s) (additional to the build-time CSS)
     #[clap(long, env = "MC_CONSENSUS_ENCLAVE_CSS")]
-    pub consensus_enclave_css: Option<String>,
+    pub consensus_enclave_css: Vec<String>,
 
-    /// Fog ingest enclave CSS file (overriding the build-time CSS)
+    /// Fog ingest enclave CSS file(s) (additional the build-time CSS)
     #[clap(long, env = "MC_INGEST_ENCLAVE_CSS")]
-    pub ingest_enclave_css: Option<String>,
+    pub ingest_enclave_css: Vec<String>,
 
-    /// Fog ledger enclave CSS file (overriding the build-time CSS)
+    /// Fog ledger enclave CSS file(s) (additional the build-time CSS)
     #[clap(long, env = "MC_LEDGER_ENCLAVE_CSS")]
-    pub ledger_enclave_css: Option<String>,
+    pub ledger_enclave_css: Vec<String>,
 
-    /// Fog view enclave CSS file (overriding the build-time CSS)
+    /// Fog view enclave CSS file(s) (additional the build-time CSS)
     #[clap(long, env = "MC_VIEW_ENCLAVE_CSS")]
-    pub view_enclave_css: Option<String>,
+    pub view_enclave_css: Vec<String>,
 
     /// Whether to turn off memos, for backwards compatibility
     #[clap(long, env = "MC_NO_MEMOS")]

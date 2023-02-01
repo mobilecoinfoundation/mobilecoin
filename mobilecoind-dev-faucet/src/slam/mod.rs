@@ -5,6 +5,7 @@ use displaydoc::Display;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
+use mc_sgx_css::Signature;
 use mc_util_uri::ConsensusClientUri;
 use std::{
     sync::{
@@ -126,6 +127,7 @@ impl SlamState {
     pub async fn start_slam(
         self: Arc<Self>,
         params: &SlamParams,
+        consensus_enclave_css: Vec<Signature>,
         account_key: &AccountKey,
         mobilecoind_api_client: &MobilecoindApiClient,
         worker: &Worker,
@@ -139,6 +141,7 @@ impl SlamState {
 
         let tx_submitter = Arc::new(TxSubmitter::new(
             params.consensus_client_uris.clone(),
+            consensus_enclave_css,
             self.env.clone(),
             logger,
         )?);
