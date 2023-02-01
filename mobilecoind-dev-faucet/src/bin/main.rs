@@ -18,6 +18,8 @@ async fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
 ) -> Json<JsonSubmitTxResponse> {
+    // Activate the state if it isn't already, since this is a post
+    state.activate();
     Json(state.handle_post(&req).await.into())
 }
 
@@ -29,6 +31,8 @@ async fn post_slam(
     req: Option<Json<JsonSlamRequest>>,
     shutdown: Shutdown,
 ) -> Json<JsonSlamResponse> {
+    // Activate the state if it isn't already, since this is a post
+    state.activate();
     let req: JsonSlamRequest = if let Some(val) = req {
         (*val).clone()
     } else {
@@ -39,6 +43,8 @@ async fn post_slam(
 
 #[post("/cancel_slam")]
 async fn post_cancel_slam(state: &rocket::State<State>) {
+    // Activate the state if it isn't already, since this is a post
+    state.activate();
     state.slam_state.request_stop();
 }
 
