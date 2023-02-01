@@ -68,6 +68,8 @@ pub fn process_shard_responses(
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::AuthenticationError => {
                 shards_for_retry.push(shard);
                 let uri = FogViewStoreUri::from_str(&response.store_uri)?;
+                view_store_uris_for_authentication
+                    .push(FogViewStoreUri::from_str(&response.store_uri)?);
                 log::info!(logger, "process_shard_responses uri is: {}", uri);
             }
             // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
