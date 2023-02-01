@@ -443,7 +443,7 @@ mod tests {
             "--tx-source-url",
             "example.com",
             "--consensus-enclave-css",
-            &valid_css_path,
+            valid_css_path,
         ]);
         Config::parse_from(&[
             "mobilecoind",
@@ -477,7 +477,7 @@ mod tests {
             "--tx-source-url",
             "example.com",
             "--fog-ingest-enclave-css",
-            &valid_css_path,
+            valid_css_path,
         ]);
         Config::parse_from(&[
             "mobilecoind",
@@ -488,9 +488,9 @@ mod tests {
             "--tx-source-url",
             "example.com",
             "--consensus-enclave-css",
-            &valid_css_path,
+            valid_css_path,
             "--fog-ingest-enclave-css",
-            &valid_css_path,
+            valid_css_path,
         ]);
         Config::parse_from(&[
             "mobilecoind",
