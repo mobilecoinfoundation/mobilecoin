@@ -307,14 +307,15 @@ pub struct JsonSlamReport {
 
 impl From<SlamReport> for JsonSlamReport {
     fn from(src: SlamReport) -> JsonSlamReport {
+        let submit_time_ms = src.submit_time.as_millis().try_into().unwrap_or(0);
         Self {
             num_prepared_utxos: src.num_prepared_utxos,
             num_submitted_txs: src.num_submitted_txs,
             prepare_time_ms: src.prepare_time.as_millis().try_into().unwrap_or(0),
-            submit_time_ms: src.submit_time.as_millis().try_into().unwrap_or(0),
+            submit_time_ms,
             avg_slam_rate_tx_per_second: format!(
                 "{:.4}",
-                (num_submitted_txs as f64) / (submit_time_ms as f64 * 1000f64)
+                (src.num_submitted_txs as f64) / (submit_time_ms as f64 * 1000f64)
             ),
         }
     }
