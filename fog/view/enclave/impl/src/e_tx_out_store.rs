@@ -197,8 +197,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         // ```
         let data_end = ValueSize::USIZE - value[0] as usize;
         let payload = &value[1..data_end];
-        // Use this instead of payload.len() because the slice `len` method isn't guaranteed to be
-        // constant time.
+        // Use this instead of payload.len() because the slice `len` method isn't
+        // guaranteed to be constant time.
         let payload_length = data_end - 1;
         result.ciphertext[0..payload_length].copy_from_slice(payload);
         result.payload_length = payload_length as u32;
