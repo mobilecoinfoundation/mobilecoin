@@ -38,13 +38,14 @@ anyhow = { version = "1.0.66" }
 clap = { version = "4.0.32", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
-
-mc-test-vectors-definitions = { path = "../test-vectors/definitions" }
-mc-util-test-vector = { path = "../util/test-vector" }
-mc-util-test-with-data = { path = "../util/test-with-data" }
-
+rand_core = { version = "0.6.3", default-features = false }
 serde = { version = "1.0.0", features = [ "derive" ] }
 serde_json = { version = "1.0.85" }
+
+mc-test-vectors-definitions = { path = "../test-vectors/definitions" }
+mc-util-from-random = { path = "../util/from-random", default-features = false }
+mc-util-test-vector = { path = "../util/test-vector" }
+mc-util-test-with-data = { path = "../util/test-with-data" }
 
 [[example]]
 name = "slip10"

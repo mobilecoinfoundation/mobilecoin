@@ -14,12 +14,25 @@ dependencies = [
 
 [[package]]
 name = "aes"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e8b47f52ea9bae42228d07ec09eb676433d7c4ed1ebdf0f1d1c29ed446f1ab8"
+dependencies = [
+ "cfg-if",
+ "cipher 0.3.0",
+ "cpufeatures",
+ "ctr 0.8.0",
+ "opaque-debug",
+]
+
+[[package]]
+name = "aes"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "433cfd6710c9986c576a25ca913c39d66a6474107b406f34f91d4a8923395241"
 dependencies = [
  "cfg-if",
- "cipher",
+ "cipher 0.4.3",
  "cpufeatures",
 ]
 
@@ -30,9 +43,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e1366e0c69c9f927b1fa5ce2c7bf9eafc8f9268c0b9800729e8b267612447c"
 dependencies = [
  "aead",
- "aes",
- "cipher",
- "ctr",
+ "aes 0.8.2",
+ "cipher 0.4.3",
+ "ctr 0.9.2",
  "ghash",
  "subtle",
 ]
@@ -267,6 +280,15 @@ dependencies = [
 
 [[package]]
 name = "cipher"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
+name = "cipher"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1873270f8f7942c191139cb8a40fd228da6c3fd2fc376d7e92d47aa14aeb59e"
@@ -361,11 +383,20 @@ dependencies = [
 
 [[package]]
 name = "ctr"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "049bb91fb4aaf0e3c7efa6cd5ef877dbbbd15b39dad06d9948de4ec8a75761ea"
+dependencies = [
+ "cipher 0.3.0",
+]
+
+[[package]]
+name = "ctr"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0369ee1ad671834580515889b80f2ea915f23b8be8d0daa4bbaf2ac5c7590835"
 dependencies = [
- "cipher",
+ "cipher 0.4.3",
 ]
 
 [[package]]
@@ -458,9 +489,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.4"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
+checksum = "bff49e947297f3312447abdca79f45f4738097cc82b06e72054d2223f601f1b9"
 dependencies = [
  "serde",
  "typenum",
@@ -884,15 +915,18 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.2"
 dependencies = [
+ "aes 0.7.5",
  "curve25519-dalek",
  "ed25519-dalek",
+ "generic-array",
  "hkdf",
  "mc-core-types",
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-memo-mac",
  "sha2",
  "zeroize",
 ]
@@ -903,6 +937,7 @@ version = "2.0.0"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
+ "subtle",
  "zeroize",
 ]
 
@@ -1033,6 +1068,15 @@ dependencies = [
  "subtle",
  "x25519-dalek",
  "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-memo-mac"
+version = "4.0.2"
+dependencies = [
+ "hmac",
+ "mc-crypto-keys",
+ "sha2",
 ]
 
 [[package]]
@@ -1236,11 +1280,11 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-trusted"
 version = "4.0.2"
 dependencies = [
- "aes",
+ "aes 0.8.2",
  "aligned-cmov",
  "balanced-tree-index",
  "blake2",
- "ctr",
+ "ctr 0.9.2",
  "displaydoc",
  "lazy_static",
  "mc-oblivious-traits",
@@ -1278,9 +1322,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7be589d425ac3950edf94eb4185e625b4ca509d8caeab7ab461e107a73c3ebfb"
 dependencies = [
  "aead",
- "aes",
- "cipher",
- "ctr",
+ "aes 0.8.2",
+ "cipher 0.4.3",
+ "ctr 0.9.2",
  "ghash",
  "subtle",
  "zeroize",
@@ -1439,10 +1483,10 @@ version = "4.0.2"
 name = "mc-transaction-core"
 version = "4.0.2"
 dependencies = [
- "aes",
+ "aes 0.8.2",
  "bulletproofs-og",
  "crc",
- "ctr",
+ "ctr 0.9.2",
  "curve25519-dalek",
  "displaydoc",
  "generic-array",

@@ -10,7 +10,7 @@ use crate::{
 use alloc::{boxed::Box, vec::Vec};
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
-use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, SignerError};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     ring_ct::OutputSecret,
@@ -519,7 +519,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             &ring,
             pseudo_output_blinding,
             rng,
-        )?;
+        ).map_err(|e| Into::<SignerError>::into(e) )?;
 
         let pseudo_output_amount = UnmaskedAmount {
             value: ring.input_secret.amount.value,
