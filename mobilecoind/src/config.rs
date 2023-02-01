@@ -395,3 +395,75 @@ impl PeersConfig {
         ConnectionManager::new(peers, logger.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    // This tests that passing zero, one, or multiple values to
+    // --consensus-enclave-css works as expected
+    #[test]
+    fn test_parse_peer_config() {
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+        ]);
+
+        let valid_css_path = {
+            let mut result = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_path_buf();
+            result.push("..");
+            result.push("sgx");
+            result.push("css");
+            result.push("src");
+            result.push("valid.css");
+            result
+        };
+
+        // This is committing some String vs. OsString crimes around assuming that the
+        // path to the repository is a valid utf-8 string. However, I don't
+        // think that any real developer or CI system is likely to have this problem
+        // while trying to run the unit tests.
+        let valid_css_path = format!("{}", valid_css_path.display());
+
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--consensus-enclave-css",
+            &valid_css_path,
+        ]);
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--consensus-enclave-css",
+            &format!("{valid_css_path},{valid_css_path}"),
+        ]);
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--consensus-enclave-css",
+            &format!("{valid_css_path},{valid_css_path},{valid_css_path}"),
+        ]);
+    }
+}
