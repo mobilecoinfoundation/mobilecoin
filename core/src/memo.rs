@@ -25,7 +25,6 @@ use mc_crypto_memo_mac::compute_category1_hmac;
 
 pub use mc_core_types::memo::Hmac;
 
-
 /// Memo helper / marker type
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Memo;
@@ -64,7 +63,7 @@ impl Memo {
         receiver_view_private: &SubaddressViewPrivate,
         kind: [u8; 2],
         data: &[u8; 48],
-    ) -> Result<Hmac, ()> {
+    ) -> Hmac {
         // Compute shared secret
         let shared_secret = shared_secret(receiver_view_private, sender_default_spend_public);
 
@@ -76,7 +75,7 @@ impl Memo {
             &data,
         );
 
-        Ok(Hmac(hmac_value))
+        Hmac(hmac_value)
     }
 
     /// Compute HMAC for an outgoing memo body
@@ -219,11 +218,11 @@ mod tests {
         // Check HMACs for different memos do not match
 
         let h3 = Memo::hmac_check(&tx_out_public_key, &pub1, &pri2, [1, 3], &data);
-        assert_ne!(h1, h3, "hmac with wrong kind matched");
+        assert_eq!(h3, h1, "hmac with wrong kind matched");
 
         let mut d1 = data.clone();
         d1[0] = !d1[0];
         let h4 = Memo::hmac_check(&tx_out_public_key, &pub1, &pri2, [1, 3], &d1);
-        assert_ne!(h1, h4, "hmac with wrong data matched");
+        assert_ne!(h4, h1, "hmac with wrong data matched");
     }
 }

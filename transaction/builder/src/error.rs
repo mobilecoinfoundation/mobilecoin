@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use mc_crypto_ring_signature_signer::Error as SignerError;
+use mc_crypto_ring_signature_signer::SignerError;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
     ring_ct::Error as RingCtError, AmountError, NewMemoError, NewTxError, TokenId,
