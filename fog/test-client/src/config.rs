@@ -110,7 +110,7 @@ pub struct TestClientConfig {
     #[clap(long, env = "MC_CONSENSUS_ENCLAVE_CSS", use_value_delimiter = true)]
     pub consensus_enclave_css: Vec<String>,
 
-    /// Fog ingest enclave CSS file(s) (additional the build-time CSS)
+    /// Fog ingest enclave CSS file(s) (additional to the build-time CSS)
     #[clap(long, env = "MC_INGEST_ENCLAVE_CSS", use_value_delimiter = true)]
     pub ingest_enclave_css: Vec<String>,
 
