@@ -430,7 +430,9 @@ mod tests {
         // path to the repository is a valid utf-8 string. However, I don't
         // think that any real developer or CI system is likely to have this problem
         // while trying to run the unit tests.
-        let valid_css_path = format!("{}", valid_css_path.display());
+        let valid_css_path = valid_css_path
+            .to_str()
+            .expect("repository path is not utf-8 (?)");
 
         Config::parse_from(&[
             "mobilecoind",
