@@ -141,7 +141,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             result_code: TxOutSearchResultCode::InternalError as u32,
             ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
             // Use FIXED_CIPHERTEXT_LENGTH as the default. This will be updated in every scenario.
-            payload_length: FIXED_CIPHERTEXT_LENGTH as u32,
+            payload_length: 0 as u32,
         };
 
         // Early return for bad search key
@@ -197,7 +197,9 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         // ```
         let data_end = ValueSize::USIZE - value[0] as usize;
         let payload = &value[1..data_end];
-        let payload_length = payload.len();
+        // Use this instead of payload.len() because the slice `len` method isn't guaranteed to be
+        // constant time.
+        let payload_length = data_end - 1;
         result.ciphertext[0..payload_length].copy_from_slice(payload);
         result.payload_length = payload_length as u32;
 
