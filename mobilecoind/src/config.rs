@@ -467,5 +467,43 @@ mod tests {
             "--consensus-enclave-css",
             &format!("{valid_css_path},{valid_css_path},{valid_css_path}"),
         ]);
+
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--fog-ingest-enclave-css",
+            &valid_css_path,
+        ]);
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--consensus-enclave-css",
+            &valid_css_path,
+            "--fog-ingest-enclave-css",
+            &valid_css_path,
+        ]);
+        Config::parse_from(&[
+            "mobilecoind",
+            "--chain-id",
+            "foo",
+            "--peer",
+            "mc://test",
+            "--tx-source-url",
+            "example.com",
+            "--consensus-enclave-css",
+            &format!("{valid_css_path},{valid_css_path}"),
+            "--fog-ingest-enclave-css",
+            &format!("{valid_css_path},{valid_css_path}"),
+        ]);
     }
 }
