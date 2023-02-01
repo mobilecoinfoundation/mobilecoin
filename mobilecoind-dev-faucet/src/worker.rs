@@ -18,6 +18,8 @@
 //! The worker does not require to be launched from the context of a tokio
 //! runtime.
 
+#![allow(clippy::assertions_on_constants)]
+
 use api::{
     external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
     TxStatus, UnspentTxOut,
@@ -25,7 +27,11 @@ use api::{
 use displaydoc::Display;
 use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api as api;
-use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
+use mc_transaction_core::{
+    constants::{MAX_INPUTS, MAX_OUTPUTS},
+    ring_signature::KeyImage,
+    TokenId,
+};
 use std::{
     cmp::min,
     collections::{hash_map::Entry, HashMap, HashSet},
@@ -36,6 +42,8 @@ use std::{
     time::Duration,
 };
 use tokio::sync::oneshot::{self, error::TryRecvError};
+
+const MAX_OUTPUTS_USIZE: usize = MAX_OUTPUTS as usize;
 
 /// A record the worker hands to faucet threads about a UTXO they can use.
 /// It expects to be notified if the UTXO is successfully submitted.
@@ -94,6 +102,9 @@ impl UtxoTracker {
 
 /// TokenStateReceiver holds the queue of Utxo records for a particular token
 /// id, as well as other shared flags that indicate if we are out of funds etc.
+///
+/// This is normally created when a WorkerTokenState is created, and then this
+/// receiver object is passed back to the receiving thread.
 pub struct TokenStateReceiver {
     receiver: async_channel::Receiver<UtxoRecord>,
     funds_depleted_flag: Arc<AtomicBool>,
@@ -184,6 +195,11 @@ pub struct Worker {
     /// The worker thread handle
     join_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// A flag which can be used to control when the worker thread is active.
+    /// In some deployment scenarios it's helpful to not have the background
+    /// worker submitting transactions until later.
+    is_active: Arc<AtomicBool>,
+
     /// A flag which can be used to request the worker thread to join
     /// This is done by dropping the worker handle
     stop_requested: Arc<AtomicBool>,
@@ -233,6 +249,8 @@ impl Worker {
             receivers.insert(*token_id, receiver);
         }
 
+        let is_active = Arc::new(AtomicBool::default());
+        let thread_is_active = is_active.clone();
         let stop_requested = Arc::new(AtomicBool::default());
         let thread_stop_requested = stop_requested.clone();
 
@@ -240,6 +258,7 @@ impl Worker {
         let join_handle = Some(std::thread::spawn(move || {
             Self::worker_thread_entry_point(
                 worker_token_states,
+                thread_is_active,
                 thread_stop_requested,
                 client,
                 monitor_id,
@@ -253,6 +272,7 @@ impl Worker {
         Worker {
             receivers,
             join_handle,
+            is_active,
             stop_requested,
             worker_poll_period,
         }
@@ -264,6 +284,7 @@ impl Worker {
     /// activity, and sleep for a bit.
     fn worker_thread_entry_point(
         mut worker_token_states: Vec<WorkerTokenState>,
+        is_active: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
         client: MobilecoindApiClient,
         monitor_id: Vec<u8>,
@@ -314,15 +335,17 @@ impl Worker {
                 log::info!(logger, "Worker: stop was requested");
                 break;
             }
-            for state in worker_token_states.iter_mut() {
-                if let Err(err_str) = state.poll(
-                    &client,
-                    &monitor_id,
-                    &public_address,
-                    target_queue_depth,
-                    &logger,
-                ) {
-                    log::error!(logger, "{}", err_str);
+            if is_active.load(Ordering::SeqCst) {
+                for state in worker_token_states.iter_mut() {
+                    if let Err(err_str) = state.poll(
+                        &client,
+                        &monitor_id,
+                        &public_address,
+                        target_queue_depth,
+                        &logger,
+                    ) {
+                        log::error!(logger, "token id {}: {}", state.token_id, err_str);
+                    }
                 }
             }
             log::trace!(logger, "Worker sleeping");
@@ -380,6 +403,16 @@ impl Worker {
     pub fn get_worker_poll_period(&self) -> Duration {
         self.worker_poll_period
     }
+
+    /// Get whether the worker is activated
+    pub fn get_is_active(&self) -> bool {
+        self.is_active.load(Ordering::SeqCst)
+    }
+
+    /// Set the worker to the active state
+    pub fn activate(&self) -> bool {
+        self.is_active.swap(true, Ordering::SeqCst)
+    }
 }
 
 impl Drop for Worker {
@@ -398,18 +431,32 @@ struct WorkerTokenState {
     minimum_fee_value: u64,
     // The target value of UTXOS for this token id
     target_value: u64,
-    // The most recently known set of UTXOS for this token id
-    // When we get a new UTXO from mobilecoind, we track it using this cache.
-    // The tracker contains a one-shot channel that the other side can use to
-    // let us know what happens with this UTXO.
-    // UTXOs are added here at the same time they are queued. As long as a UTXO
-    // is in this cache, we won't requeue it, to avoid two threads spending
-    // the same UTXO concurrently.
-    known_utxos: HashMap<KeyImage, UtxoTracker>,
+    // Trackers for the UTXOs that we have queued.
+    // A tracker is created for a UTXO at the time that we get it from mobilecoind,
+    // and added here. The tracker contains a one-shot channel that the other side
+    // uses to let us know what happened with this UTXO.
+    // As long as a UTXO is in this list, we won't requeue it, until its tracker
+    // has resolved either in success or an error. We must avoid requeuing it
+    // to avoid handing it out to two different consumers who then conflict with
+    // each other.
+    queued_utxo_trackers: HashMap<KeyImage, UtxoTracker>,
     // The queue of UTXOs with the target value
     sender: async_channel::Sender<UtxoRecord>,
+    // If we submit a rebalancing transaction, the response we can use to track it
+    // Only one of these will be used at a time, and split txs cannot be submitted
+    // while this is in-flight.
+    in_flight_rebalancing_tx_state: Option<SubmitTxResponse>,
+    // Track the key images associated to utxos in the rebalancing tx
+    in_flight_rebalancing_key_images: HashSet<KeyImage>,
     // If we submit a split transaction, the response we can use to track it
-    in_flight_split_tx_state: Option<SubmitTxResponse>,
+    // There maybe up to 16 of these in flight at a time.
+    in_flight_split_tx_states: HashMap<KeyImage, SubmitTxResponse>,
+    // If we submit a defragmentation transaction, the response we can use to track it
+    // Only one of these will be used at a time, and this only chooses from the lesser
+    // of the utxos.
+    in_flight_defragmentation_tx_state: Option<SubmitTxResponse>,
+    // Track the key images associated to utxos int he defragmentation tx in flight (if any)
+    in_flight_defragmentation_key_images: HashSet<KeyImage>,
     // A shared flag we use to signal if have insufficient funds for this token id
     funds_depleted: Arc<AtomicBool>,
     // A shared counter used to indicate roughly how many items are in the queue
@@ -446,9 +493,13 @@ impl WorkerTokenState {
                 token_id,
                 minimum_fee_value,
                 target_value,
-                known_utxos: Default::default(),
+                queued_utxo_trackers: Default::default(),
                 sender,
-                in_flight_split_tx_state: None,
+                in_flight_rebalancing_tx_state: None,
+                in_flight_rebalancing_key_images: Default::default(),
+                in_flight_split_tx_states: Default::default(),
+                in_flight_defragmentation_tx_state: None,
+                in_flight_defragmentation_key_images: Default::default(),
                 funds_depleted,
                 queue_depth,
             },
@@ -468,9 +519,11 @@ impl WorkerTokenState {
     // and resubmitted if necessary.
     // (2) Get the UTXO list for this token, checks it for new UTXOs, and
     // sends things to the channel if we do find new things.
-    // (3) Check if we have enough pre-split Txos, and if we don't, check
-    // if we already have an in-flight Tx to try to fix this. If not then it builds
-    // and submits a new splitting Tx.
+    // (3) Check if we have enough pre-split Txos, check on in-flight Tx's trying
+    // to fix this, and maybe submit a new splitting Tx.
+    // (this is maybe_send_split_txs)
+    // (4) Check if we should send a defragmentation Tx.
+    // (this is maybe_send_defragmentation_tx)
     //
     // Returns a string which should be logged if e.g. we encounter an RPC error
     fn poll(
@@ -481,9 +534,9 @@ impl WorkerTokenState {
         target_queue_depth: usize,
         logger: &Logger,
     ) -> Result<(), String> {
-        // First, for each known utxo already queued, check if it was sent in a
+        // (1) For each known utxo already queued, check if it was sent in a
         // transaction and if so what the status is
-        self.known_utxos.retain(|_key_image, tracker| {
+        self.queued_utxo_trackers.retain(|_key_image, tracker| {
             if let Some(status) = tracker.poll() {
                 // If poll returned Some, then we either got a SubmitTxResponse or an error
                 if let Ok(resp) = status {
@@ -505,6 +558,19 @@ impl WorkerTokenState {
             }
         });
 
+        // Update the status of in-flight txs.
+        // This is done before getting a new list of UTXOs from mobilecoind.
+        // The reason is:
+        // * If we call this after GetUTXOs, then it's possible the UTXO list has a TXO
+        //   that was actually spent in a Tx that just resolved, and then gets selected
+        //   by input selection for a new Tx, which is rejected with spent key image
+        //   error.
+        // * If we call this before GetUTXOs, it's possible that we think some TX's are
+        //   still in flight even though their UTXOs are no longer on the list. But the
+        //   worst case outcome of that is that we wait another cycle to take some
+        //   particular action because we think an earlier Tx is still in flight.
+        self.check_on_in_flight_txs(client, logger);
+
         // Now, get a fresh unspent tx out list associated to this token
         let mut resp = {
             let mut req = api::GetUnspentTxOutListRequest::new();
@@ -519,7 +585,7 @@ impl WorkerTokenState {
             })?
         };
 
-        // Now, check all the reported utxos.
+        // (2) check all the reported utxos.
         // If it is new and has the target value, then queue it
         let mut output_list_key_images = HashSet::<KeyImage>::default();
 
@@ -541,8 +607,8 @@ impl WorkerTokenState {
                 .get_key_image()
                 .try_into()
                 .map_err(|err| format!("invalid key image: {err}"))?;
-            if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
-                // We found a utxo not in the cache, let's queue and add to cache
+            if let Entry::Vacant(e) = self.queued_utxo_trackers.entry(key_image) {
+                // We found a utxo with no associated tracker, let's queue it and add a tracker
                 log::trace!(
                     logger,
                     "Queueing a utxo: key_image = {:?}, value = {}",
@@ -567,86 +633,438 @@ impl WorkerTokenState {
         // output_list_key_images before. (This also drops the one-shot receiver,
         // and so can tell the other side not to bother sending this utxo if they get
         // it from the queue.)
-        self.known_utxos
+        self.queued_utxo_trackers
             .retain(|key_image, _tracker| output_list_key_images.contains(key_image));
 
-        // Check the queue depth, and decide if we should make a split tx
-        if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
-            // Check if we already tried to fix this in the last iteration
-            if let Some(prev_tx) = self.in_flight_split_tx_state.as_ref() {
-                if is_tx_still_in_flight(client, prev_tx, "Split", logger) {
-                    // There is already a fix in-flight, let's do nothing until it lands.
-                    return Ok(());
-                }
+        // Steps 3 and 4 consider whether to submit any new txs.
+
+        // Get all the "non-target-value" utxos of this token id.
+        // Note that some of these may be part of in-flight txs, and the callees
+        // "maybe_send_split_txs" and "maybe_send_defragmentation_tx" are expected
+        // to handle that.
+        let mut non_target_value_utxos: Vec<_> = resp
+            .take_output_list()
+            .into_iter()
+            .filter(|utxo| utxo.token_id == self.token_id && utxo.value != self.target_value)
+            .collect();
+        // Sort in descending order of value
+        non_target_value_utxos.sort_by(|a, b| b.value.cmp(&a.value));
+
+        // Take the MAX_OUTPUTS largest utxos, these will be passed to
+        // "maybe_send_split_txs" for consideration.
+        let top_utxos =
+            &non_target_value_utxos[0..non_target_value_utxos.len().min(MAX_OUTPUTS_USIZE)];
+
+        // (3) Maybe send split txs using the top several UTXOs
+        //
+        // When we are doing parallel split tx's, i.e. allowing to have multiple
+        // split tx's in flight at a given time so that we can produce target-value
+        // TxOut's faster, there is a decision tree here, around whether to send
+        // a rebalancing Tx or a bunch of split txs.
+        //
+        // (a) If we are shooting to have 16 split tx's in flight at any time,
+        //     but almost all of our balance is in one TxOut, then there won't be
+        //     any way to split up this balance in parallel. So we have a criteria
+        //     to decide if this is the case, and if so, spend the 16 largest TxOuts
+        //     and produce 16 equal outputs. While this rebalancing Tx is in flight,
+        //     nothing else will be submitted.
+        // (b) If no such Tx is in flight and that criteria does not trigger it,
+        //     then there are 16 similarly large TxOuts.
+        //     At this point we check the queue depth, and decide if we need to try
+        //     to make more TxOut's of the target value for the queue.
+        //     To do this, we take one of the 16 largest TxOut's and spend it in a
+        //     way that splits off 15 TxOut's of the target value, returning the rest
+        //     as change. This split tx is added to a list of at most 16 in flight
+        //     split tx's. We only take a TxOut for this purpose if it is not already
+        //     the subject of an in-flight split tx. Also, before doing anything
+        //     we check up on the in-flight split tx's.
+        let funds_are_depleted_in_top_utxos = self.maybe_send_split_txs(
+            top_utxos,
+            client,
+            monitor_id,
+            public_address,
+            target_queue_depth,
+            logger,
+        )?;
+
+        // (4) Maybe send a defragmentation tx, if funds are depleted in top utxos
+        let defragmentation_in_progress = if funds_are_depleted_in_top_utxos {
+            self.maybe_send_defragmentation_tx(
+                &non_target_value_utxos,
+                client,
+                monitor_id,
+                public_address,
+                logger,
+            )?
+        } else {
+            false
+        };
+
+        // If more split txs are needed but we can't find funds, and no defragmentation
+        // is in progress, then funds are depleted. Otherwise, funds are not
+        // depleted. Update the status.
+        if funds_are_depleted_in_top_utxos && !defragmentation_in_progress {
+            let prev_value = self.funds_depleted.swap(true, Ordering::SeqCst);
+            if !prev_value {
+                log::info!(logger, "Funds depleted on {}", self.token_id);
             }
-            log::trace!(logger, "Attempting to split on token id {}", self.token_id);
-            // At this point, the previous in-flight tx resolved somehow and if it was an
-            // error we logged it
-            self.in_flight_split_tx_state = None;
+        } else {
+            let prev_value = self.funds_depleted.swap(false, Ordering::SeqCst);
+            if prev_value {
+                log::info!(logger, "Funds no longer depleted on {}", self.token_id);
+            }
+        }
 
-            // We will now attempt to build and submit a split Tx that prooduces TxOuts of
-            // target value from those that aren't
-            let non_target_value_utxos: Vec<_> = resp
-                .take_output_list()
-                .into_iter()
-                .filter(|utxo| utxo.token_id == self.token_id && utxo.value != self.target_value)
-                .collect();
+        Ok(())
+    }
 
-            // First make sure we have enough funds for what we want to do, so we don't spam
-            // errors when we are depleted, and so that faucet users can know
-            // that retries won't help.
+    // Update the status of any in-flight Tx and clear the record of any that has
+    // resolved.
+    fn check_on_in_flight_txs(&mut self, client: &MobilecoindApiClient, logger: &Logger) {
+        // Check on rebalancing Tx
+        if let Some(prev_tx) = self.in_flight_rebalancing_tx_state.as_ref() {
+            if !is_tx_still_in_flight(client, prev_tx, "Rebalancing", logger) {
+                // At this point, the previous in-flight tx resolved somehow and if it was an
+                // error we logged it
+                self.in_flight_rebalancing_tx_state = None;
+                self.in_flight_rebalancing_key_images = Default::default();
+            }
+        }
+
+        // Check on split Tx's
+        self.in_flight_split_tx_states
+            .retain(|_key_image, submit_tx_response| {
+                is_tx_still_in_flight(client, submit_tx_response, "Split", logger)
+            });
+
+        // Check on defragmentation Tx
+        if let Some(prev_tx) = self.in_flight_defragmentation_tx_state.as_ref() {
+            if !is_tx_still_in_flight(client, prev_tx, "Defragmentation", logger) {
+                // At this point, the previous in-flight tx resolved somehow and if it was an
+                // error we logged it
+                self.in_flight_defragmentation_tx_state = None;
+                self.in_flight_defragmentation_key_images = Default::default();
+            }
+        }
+    }
+
+    // This handles part 3 of the polling loop, where we maybe submit split or
+    // rebalancing txs.
+    //
+    // * Check on the "rebalancing" Tx process, which tries to make sure that the
+    //   top utxos are similar in value, and rebalances them if not.
+    // * Then, if we don't rebalance the top utxos, and we need more target value
+    //   utxos, make split tx's off of the top utxos in parallel (except those
+    //   already being split this way)
+    //
+    // Returns:
+    // * An error if we get a mobilecoind error
+    // * True if funds are depleted among the top utxos
+    // * False if funds are not depleted among the top utxos
+    //
+    // Assumes:
+    // top_utxos is sorted in decreasing order by value and only
+    // contains the right token id, and has the highest value MAX_OUTPUTS utxos.
+    fn maybe_send_split_txs(
+        &mut self,
+        top_utxos: &[UnspentTxOut],
+        client: &MobilecoindApiClient,
+        monitor_id: &[u8],
+        public_address: &PublicAddress,
+        target_queue_depth: usize,
+        logger: &Logger,
+    ) -> Result<bool, String> {
+        assert!(
+            top_utxos.len() <= MAX_OUTPUTS_USIZE,
+            "too many top utxos, this is a logic error"
+        );
+
+        // A UTXO whose value is less than this is not interesting to use as a split tx,
+        // since we can't produce enough target value utxos, and pay a fee.
+        let smallest_interesting_split_tx_value =
+            self.target_value * (MAX_OUTPUTS - 1) + self.minimum_fee_value;
+
+        // If there is an in-flight rebalancing Tx, wait for it to land.
+        // Funds are not depleted.
+        if self.in_flight_rebalancing_tx_state.is_some() {
+            return Ok(false);
+        }
+
+        let total_value = top_utxos.iter().map(|utxo| utxo.value).sum::<u64>();
+        if total_value < self.minimum_fee_value {
+            // Funds are depleted
+            return Ok(true);
+        }
+        let avg_value = (total_value - self.minimum_fee_value) / MAX_OUTPUTS;
+
+        // (a) Check if rebalancing makes sense to attempt.
+        // This is the case if:
+        // * The average value is at least the smallest interesting split tx value,
+        //   otherwise rebalancing will produce uninteresting txos.
+        // * Things are currently somewhat out of whack -- there are less than
+        //   NUM_OUTPUTS utxos, or the largest is > 2x the value of the smallest.
+        if avg_value >= smallest_interesting_split_tx_value
+            && top_utxos.get(0).map(|utxo| utxo.value).unwrap_or(0)
+                > 2 * top_utxos
+                    .get(MAX_OUTPUTS_USIZE - 1)
+                    .map(|utxo| utxo.value)
+                    .unwrap_or(0)
+        {
+            // Note: If we rebalance, nothing else will happen to these UTXOs
+            // until the rebalancing UTXO lands, and after it does,
+            // we know the criteria will be satisfied in the next pass.
+            // Because:
+            // * Every other UTXO is less than the least of these top utxos, so they will
+            //   also be less than the average. So the TXOs produced by this rebalancing
+            //   will be the top utxos after this rebalancing Tx lands, and they are all
+            //   nearly equal.
+            // * The avg_value also will not change much.
             //
-            // FIXME: We should also detect the situation that defragmentation is required
-            // and then submit defragmentation txs.
-            if non_target_value_utxos
+            // So we will likely not meet the criteria after this rebalancing
+            // operation, and there will not be an infinite loop of rebalancing
+            // operations which don't refill the queue.
+            log::info!(
+                logger,
+                "Attempting a rebalancing Tx for split tx parallelism on token id {}",
+                self.token_id
+            );
+
+            // Check if any of these UTXOs were used by an in-flight split tx or
+            // defrag tx. If so then we
+            // should back off and wait for it to clear and re-evaluate.
+            let key_images: HashSet<KeyImage> = top_utxos
                 .iter()
-                .map(|utxo| utxo.value)
-                .sum::<u64>()
-                < self.target_value * (MAX_OUTPUTS - 1) + self.minimum_fee_value
+                .map(|utxo| utxo.get_key_image().try_into().unwrap())
+                .collect();
+            if key_images
+                .iter()
+                .any(|key_image| self.key_image_is_in_flight(key_image))
             {
-                let prev_value = self.funds_depleted.swap(true, Ordering::SeqCst);
-                if !prev_value {
-                    log::info!(logger, "Funds depleted on {}", self.token_id);
-                }
-                return Ok(());
-            } else {
-                let prev_value = self.funds_depleted.swap(false, Ordering::SeqCst);
-                if prev_value {
-                    log::info!(logger, "Funds no longer depleted on {}", self.token_id);
-                }
+                log::info!(
+                    logger,
+                    "Backing off before sending a rebalancing tx {}",
+                    self.token_id
+                );
+                return Ok(false);
             }
 
             // Generate an outlay
             // We will repeat this outlay MAX_OUTPUTS - 1 times
-            // (-1 is for a change output)
+            // (-1 is for a change output, which might be slightly larger than avg_value, or
+            // less due to fees)
             let mut outlay = api::Outlay::new();
             outlay.set_receiver(public_address.clone());
-            outlay.set_value(self.target_value);
+            outlay.set_value(avg_value);
 
             // Generate a Tx
+            // Note: This will fail if MAX_INPUTS < MAX_OUTPUTS, but right now MAX_INPUTS =
+            // MAX_OUTPUTS.
+            assert!(
+                MAX_INPUTS >= MAX_OUTPUTS,
+                "MAX_INPUTS < MAX_OUTPUTS, this rebalancing code needs rework"
+            );
             let mut req = api::GenerateTxRequest::new();
             req.set_sender_monitor_id(monitor_id.to_vec());
             req.set_token_id(*self.token_id);
-            req.set_input_list(non_target_value_utxos.into());
-            req.set_outlay_list(vec![outlay; MAX_OUTPUTS as usize - 1].into());
+            req.set_input_list(top_utxos.iter().cloned().collect());
+            req.set_outlay_list(vec![outlay; MAX_OUTPUTS_USIZE - 1].into());
 
             let mut resp = client
                 .generate_tx(&req)
-                .map_err(|err| format!("Failed to generate split tx: {err}"))?;
+                .map_err(|err| format!("Failed to generate rebalancing tx: {err}"))?;
 
             // Submit the Tx
             let mut req = api::SubmitTxRequest::new();
             req.set_tx_proposal(resp.take_tx_proposal());
             let submit_tx_response = client
                 .submit_tx(&req)
-                .map_err(|err| format!("Failed to submit split tx: {err}"))?;
+                .map_err(|err| format!("Failed to submit rebalancing tx: {err}"))?;
 
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does
-            self.in_flight_split_tx_state = Some(submit_tx_response);
+            self.in_flight_rebalancing_tx_state = Some(submit_tx_response);
+            self.in_flight_rebalancing_key_images = key_images;
+
+            return Ok(false);
         }
 
-        Ok(())
+        // (b) Check if more utxos are actually needed right now, and if so,
+        // create them in parallel off of the top utxos.
+        // We know rebalancing is not in progress and was not attempted,
+        // so hopefully all (or at least some) of these are above the
+        // smallest_interesting_split_tx_value.
+        //
+        // Hopefully, this does not cause (a) to be re-entered next time, since
+        // all of these utxos will decrease by smallest_interesting_split_tx_value
+        // or so, so they will all still be similar in value, and next time around
+        // we can do the parallel split again.
+        if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
+            log::debug!(logger, "Attempting to split on token id {}", self.token_id);
+
+            // Generate an outlay
+            // We will repeat this outlay MAX_OUTPUTS - 1 times
+            // (-1 is for a change output)
+            // for each split tx we submit.
+            let mut outlay = api::Outlay::new();
+            outlay.set_receiver(public_address.clone());
+            outlay.set_value(self.target_value);
+
+            // Try to split any top-value utxos that are not already in-flight.
+            for utxo in top_utxos {
+                // If the value is less than fee + target, then we can't do even one Tx
+                if utxo.value < self.minimum_fee_value + self.target_value {
+                    continue;
+                }
+                // If this utxo is already in-flight, skip it
+                let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
+                if self.key_image_is_in_flight(&key_image) {
+                    continue;
+                }
+
+                // See how many target_value UTXOs we can create, capping at MAX_OUTPUTS - 1
+                let num_target_value_utxos = core::cmp::min(
+                    MAX_OUTPUTS - 1,
+                    (utxo.value - self.minimum_fee_value) / self.target_value,
+                ) as usize;
+
+                // Generate a Tx
+                let mut req = api::GenerateTxRequest::new();
+                req.set_sender_monitor_id(monitor_id.to_vec());
+                req.set_token_id(*self.token_id);
+                req.set_input_list(vec![utxo.clone()].into());
+                req.set_outlay_list(vec![outlay.clone(); num_target_value_utxos].into());
+
+                let mut resp = client
+                    .generate_tx(&req)
+                    .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+
+                // Submit the Tx
+                let mut req = api::SubmitTxRequest::new();
+                req.set_tx_proposal(resp.take_tx_proposal());
+                let submit_tx_response = client
+                    .submit_tx(&req)
+                    .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+
+                // This lets us keep tabs on when this split payment has resolved, so that we
+                // can avoid sending another payment until it does
+                self.in_flight_split_tx_states
+                    .insert(key_image, submit_tx_response);
+            }
+
+            // If at least one thing is now in-flight then funds are not depleted.
+            return Ok(self.in_flight_split_tx_states.is_empty());
+        }
+
+        // We don't report funds depleted if the queue doesn't need refilling.
+        Ok(false)
+    }
+
+    // This maybe sends a "defragmentation tx", which means taking the largest
+    // utxos which are not in-flight, opportunistically splitting off
+    // some target-value TxOuts if possible, and sending the rest back as a
+    // change TxOut.
+    //
+    // Returns:
+    // * An error if we get a mobilecoind error
+    // * True if a defragmentation tx is in flight
+    // * False if a defragmentation tx is not in flight and could not be built
+    //
+    // Assumes:
+    // utxos is sorted in decreasing order by value and only
+    // contains the right token id.
+    fn maybe_send_defragmentation_tx(
+        &mut self,
+        utxos: &[UnspentTxOut],
+        client: &MobilecoindApiClient,
+        monitor_id: &[u8],
+        public_address: &PublicAddress,
+        logger: &Logger,
+    ) -> Result<bool, String> {
+        // First check on the in-flight defragmentation tx, if one is in-flight
+        // then let's wait for it to land.
+        if self.in_flight_defragmentation_tx_state.is_some() {
+            return Ok(true);
+        }
+
+        // We can only use at most MAX_INPUTS of these utxos at once
+        // Avoid anything that's somehow part of an in-flight tx
+        let (key_images, selected_utxos): (HashSet<KeyImage>, Vec<_>) = utxos
+            .iter()
+            .filter_map(|utxo| {
+                let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
+                if self.key_image_is_in_flight(&key_image) {
+                    None
+                } else {
+                    Some((key_image, utxo.clone()))
+                }
+            })
+            .take(MAX_INPUTS as usize)
+            .unzip();
+
+        let total_value_skip_first = selected_utxos
+            .iter()
+            .skip(1)
+            .map(|utxo| utxo.value)
+            .sum::<u64>();
+
+        // If the total value after the largest is less than the fee, then even
+        // if we do this, the change txo will have less value than the largest
+        // one we had before this, so this is pointless, we just have dust now.
+        if total_value_skip_first <= self.minimum_fee_value {
+            return Ok(false);
+        }
+
+        log::info!(
+            logger,
+            "Attempting to defragment on token id: {}",
+            self.token_id
+        );
+        let total_value = total_value_skip_first + selected_utxos[0].value;
+
+        // See how many target_value UTXOs we can create, capping at MAX_OUTPUTS - 1
+        let num_target_value_utxos = core::cmp::min(
+            MAX_OUTPUTS - 1,
+            (total_value - self.minimum_fee_value) / self.target_value,
+        ) as usize;
+
+        // Generate an outlay
+        let mut outlay = api::Outlay::new();
+        outlay.set_receiver(public_address.clone());
+        outlay.set_value(self.target_value);
+
+        // Generate a Tx
+        let mut req = api::GenerateTxRequest::new();
+        req.set_sender_monitor_id(monitor_id.to_vec());
+        req.set_token_id(*self.token_id);
+        req.set_input_list(selected_utxos.iter().cloned().collect());
+        req.set_outlay_list(vec![outlay; num_target_value_utxos].into());
+
+        let mut resp = client
+            .generate_tx(&req)
+            .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+
+        // Submit the Tx
+        let mut req = api::SubmitTxRequest::new();
+        req.set_tx_proposal(resp.take_tx_proposal());
+        let submit_tx_response = client
+            .submit_tx(&req)
+            .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+
+        // This lets us keep tabs on when this split payment has resolved, so that we
+        // can avoid sending another payment until it does
+        self.in_flight_defragmentation_tx_state = Some(submit_tx_response);
+        self.in_flight_defragmentation_key_images = key_images;
+
+        Ok(true)
+    }
+
+    // Check if a key image is part of an in-flight transaction
+    fn key_image_is_in_flight(&self, key_image: &KeyImage) -> bool {
+        self.in_flight_split_tx_states.contains_key(key_image)
+            || self.in_flight_rebalancing_key_images.contains(key_image)
+            || self
+                .in_flight_defragmentation_key_images
+                .contains(key_image)
     }
 }
 

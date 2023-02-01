@@ -501,7 +501,7 @@ impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
                 commitment: hex::encode(src.get_commitment().get_data()),
                 masked_value: JsonU64(src.get_masked_value()),
                 masked_token_id: hex::encode(src.get_masked_token_id()),
-                version: None,
+                version: Some(1),
             },
             mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(src) => Self {
                 commitment: hex::encode(src.get_commitment().get_data()),

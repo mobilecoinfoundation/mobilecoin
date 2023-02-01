@@ -14,6 +14,7 @@
 //! code changes in the GrpcFogPubkeyResolver object. It might make this a more
 //! useful diagnostic tool.
 
+use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -203,7 +204,9 @@ fn main() {
 
         let report_id = config.fog_report_id.clone().unwrap_or_default();
 
-        let spki = base64::decode(spki).expect("Couldn't decode spki as base 64");
+        let spki = BASE64_ENGINE
+            .decode(spki)
+            .expect("Couldn't decode spki as base 64");
 
         let account_key = AccountKey::new_with_fog(
             &Default::default(),

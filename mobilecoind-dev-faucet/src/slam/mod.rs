@@ -40,7 +40,7 @@ pub struct SlamParams {
 impl Default for SlamParams {
     fn default() -> Self {
         Self {
-            target_num_tx: 500,
+            target_num_tx: 100_000,
             num_threads: 30,
             retries: 30,
             retry_period: Duration::from_millis(1000),

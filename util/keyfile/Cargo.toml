@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-keyfile"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -32,7 +32,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
-base64 = "0.13"
+base64 = "0.21"
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"

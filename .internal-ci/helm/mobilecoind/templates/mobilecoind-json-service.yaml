@@ -14,3 +14,6 @@ spec:
   - name: json
     port: 9090
     targetPort: json
+  - name: json-http
+    port: 80
+    targetPort: json

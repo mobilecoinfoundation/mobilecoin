@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-client"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -26,7 +26,7 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }
 
 # third party
-assert_cmd = "2.0.7"
+assert_cmd = "2.0.8"
 predicates = "2"
 rand = "0.8"
 tempdir = "0.3"

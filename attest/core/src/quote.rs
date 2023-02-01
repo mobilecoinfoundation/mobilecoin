@@ -12,9 +12,10 @@ use crate::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
         report_body::ReportBody, report_data::ReportDataMask,
     },
-    ProductId, SecurityVersion, B64_CONFIG,
+    ProductId, SecurityVersion, BASE64_ENGINE,
 };
 use alloc::vec::Vec;
+use base64::Engine;
 use core::{
     cmp::{max, min},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -386,7 +387,7 @@ impl FromBase64 for Quote {
 
         // Create an output buffer of at least MINSIZE bytes
         let mut retval = Quote::with_capacity(expected_len)?;
-        match base64::decode_config_slice(s.as_bytes(), B64_CONFIG, retval.0.as_mut_slice()) {
+        match BASE64_ENGINE.decode_slice(s.as_bytes(), retval.0.as_mut_slice()) {
             Ok(bufferlen) => {
                 if bufferlen != QUOTE_IAS_SIZE && bufferlen != retval.intel_size() {
                     // The size of the decoded bytes does not match the size embedded in the bytes,
@@ -421,7 +422,9 @@ impl ToBase64 for Quote {
         if dest.len() < required_len {
             Err(required_len)
         } else {
-            Ok(base64::encode_config_slice(&self.0[..], B64_CONFIG, dest))
+            Ok(BASE64_ENGINE.encode_slice(&self.0[..], dest).expect(
+                "The `base64_buffer_size()` computed size is too small to base64 encode `Quote`",
+            ))
         }
     }
 }

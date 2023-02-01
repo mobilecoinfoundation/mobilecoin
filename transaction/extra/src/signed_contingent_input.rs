@@ -193,7 +193,7 @@ impl From<&UnmaskedAmount> for Amount {
 }
 
 /// An error which can occur when validating a signed contingent input
-#[derive(Display, Debug, Clone)]
+#[derive(Display, Debug, Clone, Eq, PartialEq)]
 pub enum SignedContingentInputError {
     /// The number of required outputs did not match to the number of amounts
     WrongNumberOfRequiredOutputAmounts,

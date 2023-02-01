@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-core"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = '''
@@ -30,7 +30,7 @@ mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", features = ["hex_fmt"] }
 
-base64 = { version = "0.13", default-features = false, features = ["alloc"] }
+base64 = { version = "0.21", default-features = false, features = ["alloc"] }
 bitflags = "1.2"
 chrono = { version = "0.4.23", default-features = false, features = ["alloc"] }
 digest = "0.10"

@@ -15,6 +15,7 @@ use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
+use serde::{Deserialize, Serialize};
 
 use lmdb::{
     Cursor, Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction,
@@ -93,7 +94,7 @@ pub const POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_mill
 pub const POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
 /// Block Signature Data for Signature Store.
-#[derive(Message, Eq, PartialEq)]
+#[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockSignatureData {
     /// The src_url for the archive block.
     #[prost(message, required, tag = "1")]

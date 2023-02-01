@@ -4,13 +4,14 @@
 
 use crate::{
     Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
-    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, B64_CONFIG,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, BASE64_ENGINE,
     DER_MAX_LEN,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+use base64::Engine;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 use digest::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
@@ -254,7 +255,9 @@ impl Debug for X25519Public {
 
         // Encode DER to base64
         let mut b64_buff = [0u8; DER_MAX_LEN / 4 * 3];
-        let n = base64::encode_config_slice(der, B64_CONFIG, &mut b64_buff);
+        let n = BASE64_ENGINE
+            .encode_slice(der, &mut b64_buff)
+            .map_err(|_| core::fmt::Error)?;
         let b64_str = core::str::from_utf8(&b64_buff[..n]).map_err(|_| core::fmt::Error)?;
 
         write!(

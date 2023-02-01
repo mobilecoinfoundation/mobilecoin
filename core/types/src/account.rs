@@ -2,6 +2,8 @@
 
 //! MobileCoin Account and Subaddress objects
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::keys::{
@@ -60,6 +62,101 @@ impl Account {
     }
 }
 
+/// MobileCoin view only account object.
+///
+/// Derived from an [Account] object, used where spend key custody is external
+/// (offline or via hardware).
+#[derive(Zeroize)]
+pub struct ViewAccount {
+    /// Root view private key
+    view_private: RootViewPrivate,
+
+    /// Root spend public key
+    spend_public: RootSpendPublic,
+}
+
+impl ViewAccount {
+    /// Create an view-only account from existing private keys
+    pub fn new(view_private: RootViewPrivate, spend_public: RootSpendPublic) -> Self {
+        Self {
+            view_private,
+            spend_public,
+        }
+    }
+
+    /// Fetch account view public key
+    pub fn view_public_key(&self) -> RootViewPublic {
+        RootViewPublic::from(&self.view_private)
+    }
+
+    /// Fetch account spend public key
+    pub fn spend_public_key(&self) -> &RootSpendPublic {
+        &self.spend_public
+    }
+
+    /// Fetch account view private key
+    pub fn view_private_key(&self) -> &RootViewPrivate {
+        &self.view_private
+    }
+}
+
+/// Account ID object, derived from an [AccountKey] and used to identify
+/// individual accounts.
+#[derive(Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct AccountId([u8; 32]);
+
+/// Display [AccountId] as a hex encoded string
+impl core::fmt::Display for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        Ok(())
+    }
+}
+
+impl core::fmt::Debug for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "AccountId(")?;
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        write!(f, ")")
+    }
+}
+
+/// Access raw [AccountId] hash
+impl AsRef<[u8; 32]> for AccountId {
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<[u8; 32]> for AccountId {
+    fn from(value: [u8; 32]) -> Self {
+        Self(value)
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<&[u8; 32]> for AccountId {
+    fn from(value: &[u8; 32]) -> Self {
+        Self(*value)
+    }
+}
+
+/// Create a [ViewAccount] from a root [Account] object
+impl From<&Account> for ViewAccount {
+    fn from(a: &Account) -> Self {
+        Self {
+            view_private: a.view_private_key().clone(),
+            spend_public: a.spend_public_key(),
+        }
+    }
+}
+
 /// MobileCoin spend subaddress object.
 ///
 /// Contains view and spend private keys.
@@ -102,6 +199,7 @@ impl SpendSubaddress {
 pub struct ViewSubaddress {
     /// sub-address view private key
     pub view_private: SubaddressViewPrivate,
+
     /// sub-address spend private key
     pub spend_public: SubaddressSpendPublic,
 }

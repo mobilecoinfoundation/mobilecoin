@@ -64,12 +64,18 @@ pub struct Config {
     /// Target Queue Depth. When the queue for a token id is less than this in
     /// depth, the worker attempts to make a split Tx to produce more TxOuts
     /// for the queue.
-    #[clap(long, default_value = "500", env = "MC_TARGET_QUEUE_DEPTH")]
+    #[clap(long, default_value = "100000", env = "MC_TARGET_QUEUE_DEPTH")]
     pub target_queue_depth: usize,
 
     /// Worker poll period in milliseconds.
     #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
     pub worker_poll_period_ms: u64,
+
+    /// If enabled, activate the background worker immediately on startup.
+    /// Otherwise, the faucet doesn't submit any transactions until after the
+    /// first POST HTTP interaction.
+    #[clap(long, default_value = "false", env = "MC_ACTIVATE")]
+    pub activate: bool,
 
     /// Validator nodes to connect to during a slam run.
     /// This provides a default that can also be overrided in the
@@ -157,7 +163,7 @@ impl State {
 
         let slam_state = SlamState::new(grpc_env);
 
-        State {
+        let result = State {
             mobilecoind_api_client,
             account_key,
             monitor_id,
@@ -167,7 +173,11 @@ impl State {
             slam_state,
             consensus_uris: config.peers.clone(),
             logger: logger.clone(),
+        };
+        if config.activate {
+            result.activate()
         }
+        result
     }
 
     // Try to issue commands to mobilecoind to set up a new faucet, returning an
@@ -422,5 +432,12 @@ impl State {
     pub fn request_stop(&self) {
         log::info!(self.logger, "Stop requested");
         self.slam_state.request_stop();
+    }
+
+    /// Request the worker thread to activate, if it isn't already
+    pub fn activate(&self) {
+        if !self.worker.activate() {
+            log::info!(self.logger, "Worker is now activated");
+        }
     }
 }

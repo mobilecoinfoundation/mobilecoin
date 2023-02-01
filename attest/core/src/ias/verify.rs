@@ -14,13 +14,14 @@ use crate::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
     },
-    VerificationReport, B64_CONFIG,
+    VerificationReport, BASE64_ENGINE,
 };
 use alloc::{
     string::{String, ToString},
     vec,
     vec::Vec,
 };
+use base64::Engine;
 use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, result::Result, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use serde::{Deserialize, Serialize};
@@ -73,7 +74,7 @@ impl FromBase64 for EpidPseudonym {
 
     /// Parse a Base64-encoded string into a 128-byte EpidPseudonym
     fn from_base64(src: &str) -> Result<Self, EncodingError> {
-        let buffer = base64::decode_config(src, B64_CONFIG)?;
+        let buffer = BASE64_ENGINE.decode(src)?;
         if buffer.len() != EPID_PSEUDONYM_LEN {
             return Err(EncodingError::InvalidInputLength);
         }
@@ -93,7 +94,9 @@ impl ToBase64 for EpidPseudonym {
             let mut inbuf = Vec::with_capacity(self.b.len() + self.k.len());
             inbuf.extend_from_slice(&self.b);
             inbuf.extend_from_slice(&self.k);
-            Ok(base64::encode_config_slice(&inbuf, B64_CONFIG, dest))
+            Ok(BASE64_ENGINE
+                .encode_slice(&inbuf, dest)
+                .expect("The `EPID_PSEUDONUM_LEN` is too small to base64 encode `EpidPseudonym`"))
         }
     }
 }
