@@ -136,12 +136,12 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
 
     // Should this return a FixedTxOutSearchResult or just a TxOutSearchResult?
     pub fn find_record(&mut self, search_key: &[u8]) -> FixedTxOutSearchResult {
-        let payload_length = ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize;
         let mut result = FixedTxOutSearchResult {
             search_key: search_key.to_vec(),
             result_code: TxOutSearchResultCode::InternalError as u32,
             ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
-            payload_length: payload_length as u32,
+            // Use FIXED_CIPHERTEXT_LENGTH as the default. This will be updated in every scenario.
+            payload_length: FIXED_CIPHERTEXT_LENGTH as u32,
         };
 
         // Early return for bad search key
@@ -190,12 +190,16 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         // NOTE: As of right now, this code is not constant time and therefore
         // blocks the v5 release.
         // Code to implement:
+        // ```
         // const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH,
-        // ValueSize::USIZE - 1); (&result.ciphertext[..LENGTH_TO_COPY]).
-        // copy_from_slice(&value[1..LENGTH_TO_COPY]);
+        //   ValueSize::USIZE - 1);
+        // (&result.ciphertext[..LENGTH_TO_COPY]).copy_from_slice(&value[1..LENGTH_TO_COPY]);
+        // ```
         let data_end = ValueSize::USIZE - value[0] as usize;
         let payload = &value[1..data_end];
+        let payload_length = payload.len();
         result.ciphertext[0..payload_length].copy_from_slice(payload);
+        result.payload_length = payload_length as u32;
 
         result
     }
