@@ -21,7 +21,7 @@ prost = [
     "mc-crypto-ring-signature/prost",
 ]
 alloc = [
-    "mc-crypto-dalek/alloc",
+    #"mc-crypto-dalek/alloc",
     "mc-crypto-ring-signature/alloc",
 ]
 
