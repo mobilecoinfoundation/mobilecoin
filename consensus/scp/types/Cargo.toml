@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp-types"
-version = "4.0.1"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2018"
 readme = "../README.md"

@@ -7,7 +7,7 @@ metadata:
     {{- if .Values.global.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
     {{- end }}
-    {{- if (include "consensusNode.blocklist.enabled" .) }}
+    {{- if eq (include "consensusNode.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
     {{- end }}
     {{- toYaml .Values.node.client.ingress.annotations | nindent 4 }}

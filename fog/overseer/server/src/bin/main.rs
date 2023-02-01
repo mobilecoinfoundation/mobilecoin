@@ -29,10 +29,7 @@ async fn main() -> Result<(), rocket::Error> {
         logger.clone(),
     )
     .unwrap_or_else(|err| {
-        panic!(
-            "fog-overseer cannot connect to database '{}': {:?}",
-            database_url, err
-        )
+        panic!("fog-overseer cannot connect to database '{database_url}': {err:?}")
     });
 
     let mut overseer_service =

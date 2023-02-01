@@ -92,13 +92,11 @@ impl UntrustedAllocation {
         global_log::info!("Untrusted is allocating oram storage: count = {}, data_size = {}, meta_size = {}, mem = {} KB. Total mem allocated this way = {} KB", count, data_item_size, meta_item_size, mem_kb, total_mem_kb);
         assert!(
             data_item_size % 8 == 0,
-            "data item size is not good: {}",
-            data_item_size
+            "data item size is not good: {data_item_size}"
         );
         assert!(
             meta_item_size % 8 == 0,
-            "meta item size is not good: {}",
-            meta_item_size
+            "meta item size is not good: {meta_item_size}"
         );
 
         let data_pointer = unsafe {
@@ -181,7 +179,7 @@ pub unsafe extern "C" fn allocate_oram_storage(
 /// id must be a valid id previously returned by allocate_oram_storage
 #[no_mangle]
 pub unsafe extern "C" fn release_oram_storage(id: u64) {
-    let ptr: *mut UntrustedAllocation = core::mem::transmute(id);
+    let ptr: *mut UntrustedAllocation = id as *mut UntrustedAllocation;
     assert!(
         !(*ptr).critical_section_flag.swap(true, Ordering::SeqCst),
         "Could not enter critical section when releasing storage"
@@ -219,7 +217,7 @@ pub unsafe extern "C" fn checkout_oram_storage(
 ) {
     #[cfg(debug_assertions)]
     debug_checks::check_id(id);
-    let ptr: *const UntrustedAllocation = core::mem::transmute(id);
+    let ptr: *const UntrustedAllocation = id as *const UntrustedAllocation;
     assert!(
         !(*ptr).critical_section_flag.swap(true, Ordering::SeqCst),
         "Could not enter critical section when checking out storage"
@@ -291,7 +289,7 @@ pub unsafe extern "C" fn checkin_oram_storage(
 ) {
     #[cfg(debug_assertions)]
     debug_checks::check_id(id);
-    let ptr: *const UntrustedAllocation = core::mem::transmute(id);
+    let ptr: *const UntrustedAllocation = id as *const UntrustedAllocation;
     assert!(
         !(*ptr).critical_section_flag.swap(true, Ordering::SeqCst),
         "Could not enter critical section when checking in storage"

@@ -77,7 +77,7 @@ impl Display for QuoteSignType {
             QuoteSignType::Unlinkable => "Unlinkable",
             QuoteSignType::Linkable => "Linkable",
         };
-        write!(formatter, "{}", text)
+        write!(formatter, "{text}")
     }
 }
 

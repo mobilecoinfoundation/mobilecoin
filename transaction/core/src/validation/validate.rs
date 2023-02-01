@@ -38,8 +38,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 ) -> TransactionValidationResult<()> {
     if BlockVersion::MAX < block_version {
         return Err(TransactionValidationError::Ledger(format!(
-            "Invalid block version: {}",
-            block_version
+            "Invalid block version: {block_version}"
         )));
     }
 

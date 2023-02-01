@@ -11,7 +11,7 @@ metadata:
     {{- if .Values.node.client.attest.rateLimits.enabled }}
     {{- toYaml .Values.node.client.attest.rateLimits.annotations | nindent 4 }}
     {{- end }}
-    {{- if (include "consensusNode.blocklist.enabled" .) }}
+    {{- if eq (include "consensusNode.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
     {{- end }}
     {{- toYaml .Values.node.client.ingress.annotations | nindent 4 }}

@@ -56,7 +56,7 @@ fn get_test_environment(
     let db = db_test_context.get_db_instance();
 
     let port = portpicker::pick_unused_port().expect("pick_unused_port");
-    let uri = FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
+    let uri = FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{port}")).unwrap();
 
     let server = {
         let config = ViewConfig {
@@ -277,8 +277,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
         let server_num_blocks = server.highest_processed_block_count();
         if server_num_blocks > db_num_blocks {
             panic!(
-                "Server num blocks should never be larger than db num blocks: {} > {}",
-                server_num_blocks, db_num_blocks
+                "Server num blocks should never be larger than db num blocks: {server_num_blocks} > {db_num_blocks}"
             );
         }
         if server_num_blocks == db_num_blocks {

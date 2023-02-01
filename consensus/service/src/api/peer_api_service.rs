@@ -162,9 +162,9 @@ impl PeerApiService {
                         logger,
                         "Error validating transaction {tx_hash}: {err}",
                         tx_hash = tx_hash.to_string(),
-                        err = format!("{:?}", err)
+                        err = format!("{err:?}")
                     );
-                    counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", err));
+                    counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{err:?}"));
                 }
 
                 Err(err) => {
@@ -172,7 +172,7 @@ impl PeerApiService {
                         logger,
                         "tx_propose failed for {tx_hash}: {err}",
                         tx_hash = tx_hash.to_string(),
-                        err = format!("{:?}", err)
+                        err = format!("{err:?}")
                     );
                 }
             };
@@ -462,7 +462,7 @@ mod tests {
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
             .expect("Could not create anonymous bind");
         server.start();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = ConsensusPeerApiClient::new(ch);
         (client, server)
     }
@@ -531,7 +531,7 @@ mod tests {
                     ConsensusMsgResult::UnknownPeer
                 );
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -602,7 +602,7 @@ mod tests {
             Ok(consensus_msg_response) => {
                 assert_eq!(consensus_msg_response.get_result(), ConsensusMsgResult::Ok);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         // TODO: Should pass the message to incoming_consensus_msgs_sender
@@ -640,12 +640,12 @@ mod tests {
         message.set_payload(vec![240, 159, 146, 150]); // UTF-8 "sparkle heart".
 
         match client.send_consensus_msg(&message) {
-            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Ok(response) => panic!("Unexpected response: {response:?}"),
             Err(RpcFailure(_rpc_status)) => {
                 // This is expected.
                 // TODO: check status code.
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -717,12 +717,12 @@ mod tests {
         message.set_payload(mc_util_serial::serialize(&payload).unwrap());
 
         match client.send_consensus_msg(&message) {
-            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Ok(response) => panic!("Unexpected response: {response:?}"),
             Err(RpcFailure(_rpc_status)) => {
                 // This is expected.
                 // TODO: check status code.
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
