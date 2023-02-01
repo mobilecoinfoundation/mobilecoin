@@ -298,9 +298,11 @@ pub struct JsonSlamReport {
     /// Num txs submitted
     pub num_submitted_txs: u32,
     /// Prepare duration in milliseconds
-    pub prepare_time: u32,
+    pub prepare_time_ms: u32,
     /// Submit duration in milliseconds
-    pub submit_time: u32,
+    pub submit_time_ms: u32,
+    /// Average slam rate in tx per second
+    pub avg_slam_rate_tx_per_second: String,
 }
 
 impl From<SlamReport> for JsonSlamReport {
@@ -308,8 +310,12 @@ impl From<SlamReport> for JsonSlamReport {
         Self {
             num_prepared_utxos: src.num_prepared_utxos,
             num_submitted_txs: src.num_submitted_txs,
-            prepare_time: src.prepare_time.as_millis().try_into().unwrap_or(0),
-            submit_time: src.submit_time.as_millis().try_into().unwrap_or(0),
+            prepare_time_ms: src.prepare_time.as_millis().try_into().unwrap_or(0),
+            submit_time_ms: src.submit_time.as_millis().try_into().unwrap_or(0),
+            avg_slam_rate_tx_per_second: format!(
+                "{:.4}",
+                (num_submitted_txs as f64) / (submit_time_ms as f64 * 1000f64)
+            ),
         }
     }
 }
