@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.0]
+
+- `mobilecoind`, `mobilecoind-dev-faucet`, and `mc-fog-test-client` all use MRENCLAVE-based verification, and support
+  adding multiple CSS files to the trusted MRENCLAVE set passed at runtime, which are trusted in addition to the build-time
+  trusted MRENCLAVE values.
+
 ## [4.0.1]
 
 ### Added
