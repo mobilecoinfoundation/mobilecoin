@@ -107,19 +107,19 @@ pub struct TestClientConfig {
     pub transfer_amount: u64,
 
     /// Consensus enclave CSS file(s) (additional to the build-time CSS)
-    #[clap(long, env = "MC_CONSENSUS_ENCLAVE_CSS")]
+    #[clap(long, env = "MC_CONSENSUS_ENCLAVE_CSS", use_value_delimiter = true)]
     pub consensus_enclave_css: Vec<String>,
 
     /// Fog ingest enclave CSS file(s) (additional the build-time CSS)
-    #[clap(long, env = "MC_INGEST_ENCLAVE_CSS")]
+    #[clap(long, env = "MC_INGEST_ENCLAVE_CSS", use_value_delimiter = true)]
     pub ingest_enclave_css: Vec<String>,
 
     /// Fog ledger enclave CSS file(s) (additional the build-time CSS)
-    #[clap(long, env = "MC_LEDGER_ENCLAVE_CSS")]
+    #[clap(long, env = "MC_LEDGER_ENCLAVE_CSS", use_value_delimiter = true)]
     pub ledger_enclave_css: Vec<String>,
 
     /// Fog view enclave CSS file(s) (additional the build-time CSS)
-    #[clap(long, env = "MC_VIEW_ENCLAVE_CSS")]
+    #[clap(long, env = "MC_VIEW_ENCLAVE_CSS", use_value_delimiter = true)]
     pub view_enclave_css: Vec<String>,
 
     /// Whether to turn off memos, for backwards compatibility

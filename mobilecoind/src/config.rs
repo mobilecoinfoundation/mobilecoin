@@ -90,7 +90,7 @@ pub struct Config {
 
     /// Fog ingest enclave CSS file (needed in order to enable sending
     /// transactions to fog recipients).
-    #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
+    #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS", use_value_delimiter = true)]
     pub fog_ingest_enclave_css: Vec<Signature>,
 
     /// Automatically migrate the ledger db (if it exists) into the most recent
@@ -309,7 +309,7 @@ pub struct PeersConfig {
     /// attestation with a previous version of consensus as well as the
     /// current version. Note that we also bake in a CSS file at build time
     /// so it may be okay to omit this parameter in a lot of testing.
-    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS")]
+    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS", use_value_delimiter = true)]
     pub consensus_enclave_css: Vec<Signature>,
 }
 

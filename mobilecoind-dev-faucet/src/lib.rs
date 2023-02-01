@@ -91,7 +91,7 @@ pub struct Config {
     /// so it may be okay to omit this parameter in a lot of testing.
     ///
     /// This is used by the slam tx submitter.
-    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS")]
+    #[clap(long, value_parser = load_css_file, env = "MC_CONSENSUS_ENCLAVE_CSS", use_value_delimiter = true)]
     pub consensus_enclave_css: Vec<Signature>,
 }
 
