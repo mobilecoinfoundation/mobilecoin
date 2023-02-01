@@ -263,7 +263,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -333,7 +333,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
