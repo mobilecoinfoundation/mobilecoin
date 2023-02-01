@@ -407,13 +407,13 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
 
         assert_eq!(sort_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_txs[0].result_code, 3);
-        assert_eq!(sort_txs[0].ciphertext, vec![0u8; 255]);
-        assert_eq!(sort_txs[0].padding, vec![0u8; 0]);
+        assert_eq!(sort_txs[0].ciphertext, vec![0u8; 0]);
+        assert_eq!(sort_txs[0].padding, vec![0u8; 255]);
     }
     {
         let mut sort_fixed_txs = result.fixed_tx_out_search_results.clone();
         sort_fixed_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
-        let expected_payload_length = 255;
+        let expected_payload_length = 0;
 
         assert_eq!(sort_fixed_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_fixed_txs[0].result_code, 3);
@@ -423,7 +423,7 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
         );
         assert_eq!(
             sort_fixed_txs[0].ciphertext[expected_payload_length..],
-            vec![0u8; 0]
+            vec![0u8; 255]
         );
         assert_eq!(
             sort_fixed_txs[0].payload_length as usize,
