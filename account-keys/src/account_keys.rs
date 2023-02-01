@@ -30,7 +30,7 @@ use mc_core::{
     slip10::Slip10Key,
     subaddress::Subaddress,
 };
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
@@ -40,9 +40,12 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-pub use mc_core::consts::{
-    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
-    INVALID_SUBADDRESS_INDEX,
+pub use mc_core::{
+    account::ShortAddressHash,
+    consts::{
+        CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
+        INVALID_SUBADDRESS_INDEX,
+    },
 };
 
 /// A MobileCoin user's public subaddress.
@@ -206,6 +209,14 @@ impl mc_core::account::RingCtAddress for PublicAddress {
 
     fn spend_public_key(&self) -> SubaddressSpendPublic {
         SubaddressSpendPublic::from(self.spend_public_key)
+    }
+}
+
+impl From<&PublicAddress> for ShortAddressHash {
+    fn from(src: &PublicAddress) -> Self {
+        let digest = src.digest32::<MerlinTranscript>(b"mc-address");
+        let hash: [u8; 16] = digest[0..16].try_into().expect("arithmetic error");
+        Self::from(hash)
     }
 }
 

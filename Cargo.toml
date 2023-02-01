@@ -42,6 +42,7 @@ members = [
     "crypto/digestible/test-utils",
     "crypto/keys",
     "crypto/message-cipher",
+    "crypto/memo-mac",
     "crypto/multisig",
     "crypto/noise",
     "crypto/rand",

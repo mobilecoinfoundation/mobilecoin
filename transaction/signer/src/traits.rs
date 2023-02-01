@@ -99,7 +99,7 @@ pub trait MemoHmacSigner {
     /// Compute the HMAC signature for the provided memo and target address
     fn compute_memo_hmac_sig(
         &self,
-        sender_subaddress_index: u32,
+        sender_subaddress_index: u64,
         tx_public_key: &TxOutPublic,
         target_subaddress: PublicSubaddress,
         memo_type: &[u8; 2],
@@ -113,7 +113,7 @@ impl<T: MemoHmacSigner> MemoHmacSigner for &T {
 
     fn compute_memo_hmac_sig(
         &self,
-        sender_subaddress_index: u32,
+        sender_subaddress_index: u64,
         tx_public_key: &TxOutPublic,
         target_subaddress: PublicSubaddress,
         memo_type: &[u8; 2],

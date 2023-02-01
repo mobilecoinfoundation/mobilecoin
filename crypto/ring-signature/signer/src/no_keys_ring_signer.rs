@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+use crate::traits::SignerError;
+use super::{OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, RingMLSAG, Scalar};
 use rand_core::CryptoRngCore;
@@ -18,30 +19,32 @@ use rand_core::CryptoRngCore;
 pub struct NoKeysRingSigner {}
 
 impl RingSigner for NoKeysRingSigner {
+    type Error = SignerError;
+
     fn sign(
         &self,
         message: &[u8],
         ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Error> {
+    ) -> Result<RingMLSAG, Self::Error> {
         let real_input = ring
             .members
             .get(ring.real_input_index)
-            .ok_or(Error::RealInputIndexOutOfBounds)?;
+            .ok_or(SignerError::RealInputIndexOutOfBounds)?;
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
         // First, get the one-time private key
         let onetime_private_key = match ring.input_secret.onetime_key_derive_data {
             OneTimeKeyDeriveData::OneTimeKey(key) => key,
             OneTimeKeyDeriveData::SubaddressIndex(_) => {
-                return Err(Error::NoPathToSpendKey);
+                return Err(SignerError::NoPathToSpendKey);
             }
         };
 
         // Check if this is the correct one-time private key
         if RistrettoPublic::from(&onetime_private_key) != target_key {
-            return Err(Error::TrueInputNotOwned);
+            return Err(SignerError::TrueInputNotOwned);
         }
 
         // Note: Some implementations might be able to cache this generator

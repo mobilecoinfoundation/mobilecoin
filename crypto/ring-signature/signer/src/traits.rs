@@ -73,6 +73,10 @@ impl From<RistrettoPrivate> for OneTimeKeyDeriveData {
 ///
 /// A transaction builder can be built around this.
 pub trait RingSigner {
+    /// Implementation errors must be convertable to standard [SignerError] type
+    /// for common handling
+    type Error: Into<SignerError>;
+    
     /// Create an MLSAG signature. This is a signature that confers spending
     /// authority of a TxOut.
     ///
@@ -105,18 +109,20 @@ pub trait RingSigner {
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Error>;
+    ) -> Result<RingMLSAG, Self::Error>;
 }
 
 // Implement RingSigner for any &RingSigner
 impl<S: RingSigner> RingSigner for &S {
+    type Error = <S as RingSigner>::Error;
+
     fn sign(
         &self,
         message: &[u8],
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Error> {
+    ) -> Result<RingMLSAG, Self::Error> {
         (*self).sign(message, signable_ring, output_blinding, rng)
     }
 }
@@ -124,7 +130,7 @@ impl<S: RingSigner> RingSigner for &S {
 /// An error that can occur when using an abstract RingSigner
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum Error {
+pub enum SignerError {
     /// True input not owned by this subaddress
     TrueInputNotOwned,
     /// Connection failed: {0}
@@ -137,15 +143,17 @@ pub enum Error {
     RingSignature(RingSignatureError),
     /// No path to spend key (logic error)
     NoPathToSpendKey,
+    /// Unknown device / implementation Error
+    Unknown,
 }
 
-impl From<KeyError> for Error {
+impl From<KeyError> for SignerError {
     fn from(src: KeyError) -> Self {
         Self::Keys(src)
     }
 }
 
-impl From<RingSignatureError> for Error {
+impl From<RingSignatureError> for SignerError {
     fn from(src: RingSignatureError) -> Self {
         Self::RingSignature(src)
     }

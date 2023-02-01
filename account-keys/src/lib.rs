@@ -9,7 +9,6 @@
 extern crate alloc;
 
 mod account_keys;
-mod address_hash;
 mod burn_address;
 mod domain_separators;
 mod error;
@@ -17,10 +16,9 @@ mod identity;
 
 pub use crate::{
     account_keys::{
-        AccountKey, PublicAddress, ViewAccountKey, CHANGE_SUBADDRESS_INDEX,
+        AccountKey, PublicAddress, ViewAccountKey, ShortAddressHash, CHANGE_SUBADDRESS_INDEX,
         DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
     },
-    address_hash::ShortAddressHash,
     burn_address::{burn_address, burn_address_view_private, BURN_ADDRESS_VIEW_PRIVATE},
     error::{Error, Result},
     identity::{RootEntropy, RootIdentity},

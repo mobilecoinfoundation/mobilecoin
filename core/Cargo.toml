@@ -1,6 +1,6 @@
 [package]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Library"
@@ -14,6 +14,8 @@ serde = ["dep:serde", "mc-core-types/serde"]
 default = ["bip39", "mc-crypto-dalek/default"]
 
 [dependencies]
+aes = { version = "0.7.5", default_features = false, features = [ "ctr" ] }
+generic-array = { version = "0.14.6", default-features = false, features = [ "more_lengths" ] }
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 hkdf = { version = "0.12.3" }
@@ -27,6 +29,8 @@ mc-core-types = { path = "./types" }
 mc-crypto-dalek = { path = "../crypto/dalek", default-features = false }
 mc-crypto-hashes = { path = "../crypto/hashes", default-features = false }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-crypto-memo-mac = { path = "../crypto/memo-mac", default-features = false }
+
 
 [dev-dependencies]
 
