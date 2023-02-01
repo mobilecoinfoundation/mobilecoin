@@ -15,7 +15,7 @@ use super::{
     TxSummaryUnblindingReport,
 };
 use crate::UnmaskedAmount;
-use mc_account_keys::{PublicAddress, ShortAddressHash};
+use mc_core::account::{RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature::onetime_keys::{
@@ -50,7 +50,19 @@ pub fn verify_tx_summary(
     for (tx_out_summary, tx_out_unblinding_data) in
         zip_exact(tx_summary.outputs.iter(), unblinding_data.outputs.iter())?
     {
-        verifier.digest_output(tx_out_summary, tx_out_unblinding_data)?;
+        let TxOutSummaryUnblindingData {
+            unmasked_amount,
+            address,
+            tx_private_key,
+        } = tx_out_unblinding_data;
+        let address = address.as_ref().map(|v| (ShortAddressHash::from(v), v));
+
+        verifier.digest_output(
+            tx_out_summary,
+            unmasked_amount,
+            address,
+            tx_private_key.as_ref(),
+        )?;
     }
     for (tx_in_summary, tx_in_unblinding_data) in
         zip_exact(tx_summary.inputs.iter(), unblinding_data.inputs.iter())?
@@ -143,7 +155,7 @@ impl TxSummaryStreamingVerifier {
     /// Returns:
     /// * A properly initialized TxSummaryStreamingVerifier
     pub fn new(
-        extended_message_digest: &[u8; 32],
+        extended_message_digest: &[u8],
         block_version: BlockVersion,
         expected_num_outputs: usize,
         expected_num_inputs: usize,
@@ -177,7 +189,9 @@ impl TxSummaryStreamingVerifier {
     pub fn digest_output(
         &mut self,
         tx_out_summary: &TxOutSummary,
-        unblinding_data: &TxOutSummaryUnblindingData,
+        unmasked_amount: &UnmaskedAmount,
+        address: Option<(ShortAddressHash, impl RingCtAddress)>,
+        tx_private_key: Option<&RistrettoPrivate>,
     ) -> Result<(), Error> {
         if self.output_count >= self.expected_num_outputs {
             return Err(Error::UnexpectedOutput);
@@ -189,24 +203,22 @@ impl TxSummaryStreamingVerifier {
             // If we view-key matched the output, then it belongs to one of our subaddresses
             self.report
                 .balance_add(TransactionEntity::Ourself, amount.token_id, amount.value)?;
-        } else if let Some(address) = unblinding_data.address.as_ref() {
+        } else if let Some((address_hash, address)) = address.as_ref() {
             let amount = Amount::new(
-                unblinding_data.unmasked_amount.value,
-                unblinding_data.unmasked_amount.token_id.into(),
+                unmasked_amount.value,
+                unmasked_amount.token_id.into(),
             );
             // In this case, we are given the address of who is supposed to have received
             // this.
-            let tx_private_key = unblinding_data
-                .tx_private_key
+            let tx_private_key = tx_private_key
                 .as_ref()
                 .ok_or(Error::MissingTxPrivateKey)?;
             // Let's try to verify that the TxOutSummary is as expected
             let expected =
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
             if &expected == tx_out_summary {
-                let address_hash = ShortAddressHash::from(address);
                 self.report.balance_add(
-                    TransactionEntity::Address(address_hash),
+                    TransactionEntity::Address(address_hash.clone()),
                     amount.token_id,
                     amount.value,
                 )?;
@@ -219,9 +231,9 @@ impl TxSummaryStreamingVerifier {
             }
 
             // First try to verify the amount commitment
-            let value = unblinding_data.unmasked_amount.value;
-            let token_id = unblinding_data.unmasked_amount.token_id;
-            let blinding_factor = unblinding_data.unmasked_amount.blinding;
+            let value = unmasked_amount.value;
+            let token_id = unmasked_amount.token_id;
+            let blinding_factor = unmasked_amount.blinding;
             let generator = mc_crypto_ring_signature::generators(token_id);
             let expected_commitment =
                 CompressedCommitment::new(value, blinding_factor.into(), &generator);
@@ -374,13 +386,13 @@ impl TxSummaryStreamingVerifier {
     fn expected_tx_out_summary(
         block_version: BlockVersion,
         amount: Amount,
-        recipient: &PublicAddress,
+        recipient: &impl RingCtAddress,
         tx_private_key: &RistrettoPrivate,
     ) -> Result<TxOutSummary, Error> {
         let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
-        let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
+        let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key().as_ref());
 
-        let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
+        let shared_secret = create_shared_secret(recipient.view_public_key().as_ref(), tx_private_key);
 
         let masked_amount = Some(MaskedAmount::new(block_version, amount, &shared_secret)?);
 

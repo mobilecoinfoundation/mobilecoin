@@ -20,6 +20,16 @@ pub trait RingCtAddress {
     fn spend_public_key(&self) -> SubaddressSpendPublic;
 }
 
+impl<T: RingCtAddress> RingCtAddress for &T {
+    fn view_public_key(&self) -> SubaddressViewPublic {
+        T::view_public_key(&self)
+    }
+
+    fn spend_public_key(&self) -> SubaddressSpendPublic {
+        T::spend_public_key(&self)
+    }
+}
+
 /// MobileCoin basic account object.
 ///
 /// Typically derived via slip10, and containing root view and spend private
@@ -65,7 +75,8 @@ impl Account {
 /// MobileCoin view only account object.
 ///
 /// Derived from an [Account] object, used where spend key custody is external
-/// (offline or via hardware).
+/// (offline or via hardware). Protobuf encoding is equivalent to
+/// [mc_account_keys::ViewAccountKey]
 #[derive(Zeroize)]
 pub struct ViewAccount {
     /// Root view private key
@@ -100,54 +111,6 @@ impl ViewAccount {
     }
 }
 
-/// Account ID object, derived from an [AccountKey] and used to identify
-/// individual accounts.
-#[derive(Clone, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct AccountId([u8; 32]);
-
-/// Display [AccountId] as a hex encoded string
-impl core::fmt::Display for AccountId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        for v in self.0 {
-            write!(f, "{v:02X}")?;
-        }
-        Ok(())
-    }
-}
-
-impl core::fmt::Debug for AccountId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "AccountId(")?;
-        for v in self.0 {
-            write!(f, "{v:02X}")?;
-        }
-        write!(f, ")")
-    }
-}
-
-/// Access raw [AccountId] hash
-impl AsRef<[u8; 32]> for AccountId {
-    fn as_ref(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-/// Create [AccountId] object from raw hash
-impl From<[u8; 32]> for AccountId {
-    fn from(value: [u8; 32]) -> Self {
-        Self(value)
-    }
-}
-
-/// Create [AccountId] object from raw hash
-impl From<&[u8; 32]> for AccountId {
-    fn from(value: &[u8; 32]) -> Self {
-        Self(*value)
-    }
-}
-
-/// Create a [ViewAccount] from a root [Account] object
 impl From<&Account> for ViewAccount {
     fn from(a: &Account) -> Self {
         Self {
@@ -263,5 +226,92 @@ impl From<&ViewSubaddress> for PublicSubaddress {
             view_public: addr.view_public_key(),
             spend_public: addr.spend_public_key(),
         }
+    }
+}
+
+/// Account ID object, derived from an [AccountKey] and used to identify
+/// individual accounts.
+#[derive(Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct AccountId([u8; 32]);
+
+/// Display [AccountId] as a hex encoded string
+impl core::fmt::Display for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        Ok(())
+    }
+}
+
+impl core::fmt::Debug for AccountId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "AccountId(")?;
+        for v in self.0 {
+            write!(f, "{:02X}", v)?;
+        }
+        write!(f, ")")
+    }
+}
+
+/// Access raw [AccountId] hash
+impl AsRef<[u8; 32]> for AccountId {
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<[u8; 32]> for AccountId {
+    fn from(value: [u8; 32]) -> Self {
+        Self(value)
+    }
+}
+
+/// Create [AccountId] object from raw hash
+impl From<&[u8; 32]> for AccountId {
+    fn from(value: &[u8; 32]) -> Self {
+        Self(*value)
+    }
+}
+
+
+/// Represents a "standard" public address hash created using merlin,
+/// used in memos as a compact representation of a MobileCoin public address.
+/// This hash is collision resistant.
+#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct ShortAddressHash([u8; 16]);
+
+impl From<[u8; 16]> for ShortAddressHash {
+    fn from(src: [u8; 16]) -> Self {
+        Self(src)
+    }
+}
+
+impl From<ShortAddressHash> for [u8; 16] {
+    fn from(src: ShortAddressHash) -> [u8; 16] {
+        src.0
+    }
+}
+
+impl AsRef<[u8; 16]> for ShortAddressHash {
+    fn as_ref(&self) -> &[u8; 16] {
+        &self.0
+    }
+}
+
+impl subtle::ConstantTimeEq for ShortAddressHash {
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        self.0.ct_eq(&other.0)
+    }
+}
+
+impl core::fmt::Display for ShortAddressHash {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        for b in self.0 {
+            write!(formatter, "{:02x}", b)?;
+        }
+        Ok(())
     }
 }
