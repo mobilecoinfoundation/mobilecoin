@@ -202,7 +202,11 @@ where
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
         let fog_view_store_uri_string = fog_view_store_uri.url().to_string();
-        log::info!(self.logger, "fog_view_store_uri_string is: {}", fog_view_store_uri_string);
+        log::info!(
+            self.logger,
+            "fog_view_store_uri_string is: {}",
+            fog_view_store_uri_string
+        );
         response.set_store_uri(fog_view_store_uri_string);
         let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
         response.set_block_range(block_range);
