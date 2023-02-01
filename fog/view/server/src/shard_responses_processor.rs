@@ -70,7 +70,6 @@ pub fn process_shard_responses(
                 let uri = FogViewStoreUri::from_str(&response.store_uri)?;
                 view_store_uris_for_authentication
                     .push(FogViewStoreUri::from_str(&response.store_uri)?);
-                log::info!(logger, "process_shard_responses uri is: {}", uri);
             }
             // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
             // hasn't returned a new query response, and shouldn't be retried yet.

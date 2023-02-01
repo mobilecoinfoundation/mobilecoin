@@ -9,7 +9,7 @@ use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
-use mc_common::logger::{log, Logger};
+use mc_common::logger::Logger;
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
     view_grpc::FogViewStoreApiClient,
@@ -283,7 +283,6 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     logger: Logger,
 ) -> Result<(), RouterServerError> {
     let view_store_id = view_store_url.host_and_port_responder_id()?;
-    log::info!(logger, "view_store_id: {}", view_store_id);
     let nonce_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
