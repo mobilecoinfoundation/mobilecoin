@@ -118,7 +118,7 @@ pub struct TestClientConfig {
     #[clap(long, env = "MC_LEDGER_ENCLAVE_CSS", use_value_delimiter = true)]
     pub ledger_enclave_css: Vec<String>,
 
-    /// Fog view enclave CSS file(s) (additional the build-time CSS)
+    /// Fog view enclave CSS file(s) (additional to the build-time CSS)
     #[clap(long, env = "MC_VIEW_ENCLAVE_CSS", use_value_delimiter = true)]
     pub view_enclave_css: Vec<String>,
 
