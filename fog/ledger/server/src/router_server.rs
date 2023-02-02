@@ -23,7 +23,7 @@ use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
     config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, MerkleProofService, UntrustedTxOutService,
+    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
 pub struct LedgerRouterServer {
@@ -100,11 +100,19 @@ impl LedgerRouterServer {
         let untrusted_tx_out_service =
             ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
                 config.chain_id.clone(),
-                ledger,
-                watcher,
+                ledger.clone(),
+                watcher.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
+        // Init block service
+        let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
+            config.chain_id.clone(),
+            ledger,
+            watcher,
+            client_authenticator.clone(),
+            logger.clone(),
+        ));
 
         // Package service into grpc server
         log::info!(
@@ -117,6 +125,7 @@ impl LedgerRouterServer {
             .register_service(ledger_router_service)
             .register_service(merkle_proof_service)
             .register_service(untrusted_tx_out_service)
+            .register_service(block_service)
             .register_service(health_service)
             .build_using_uri(&config.client_listen_uri, logger.clone())
             .expect("Could not build Ledger Router Server");
