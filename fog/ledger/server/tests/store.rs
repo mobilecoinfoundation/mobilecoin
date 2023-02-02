@@ -5,7 +5,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use itertools::Itertools;
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
@@ -51,7 +50,7 @@ fn uri_for_test(port: u16) -> KeyImageStoreUri {
         KeyImageStoreScheme::SCHEME_INSECURE,
         port
     );
-    KeyImageStoreUri::from_str(&name).unwrap()
+    KeyImageStoreUri::from_str(&name).expect("Could not create a URI for a key-image store test using localhost.")
 }
 
 pub struct TestingContext<R> {
@@ -68,14 +67,14 @@ pub struct TestingContext<R> {
 
 impl<R: RngCore + CryptoRng> TestingContext<R> {
     pub fn new(
-        test_name: AsRef<str>
+        test_name: impl AsRef<str>,
         logger: Logger,
         port: u16,
         omap_capacity: u64,
         rng: R,
     ) -> Self {
         // Set up our directories.
-        let test_dir_name = format!("fog_ledger_test_{}", test_name);
+        let test_dir_name = format!("fog_ledger_test_{}", test_name.as_ref());
         let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
         let user_keys_path = test_path.join("keys");
@@ -92,7 +91,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             // rather than just target/debug/. So,
             // we need the parent directory.
             .parent()
-            .unwrap()
+            .expect("Failed to get parent of enclave path.")
             .with_file_name(ENCLAVE_FILE);
 
         let enclave =
@@ -103,15 +102,16 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let ledger = recreate_ledger_db(ledger_path.as_path());
 
         // Set up wallet db.
-        let test_url_name = format!("http://{}.wallet.test.test", test_name);
-        let url = Url::parse(&test_url_name).unwrap();
+        let test_url_name = format!("http://{}.wallet.test.test", test_name.as_ref());
+        let url = Url::parse(&test_url_name).expect("Failed to parse test url as a Url struct.");
 
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        WatcherDB::create(db_tmp.path()).unwrap();
-        let watcher = WatcherDB::open_rw(db_tmp.path(), &[url.clone()], logger).unwrap();
+        WatcherDB::create(db_tmp.path()).expect("Could not create WatcherDB.");
+        let watcher = WatcherDB::open_rw(db_tmp.path(), &[url.clone()], logger)
+            .expect("Failed to open WatcherDB.");
 
         let config = LedgerStoreConfig {
-            chain_id: test_name.to_string(),
+            chain_id: test_name.as_ref().to_string(),
             client_responder_id: responder_id.clone(),
             client_listen_uri: test_uri,
             ledger_db: ledger_path,
@@ -163,7 +163,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         watcher,
         store_config,
         watcher_path: _watcher_path,
-    } = TestingContext::new(TEST_NAME, logger.clone(), port, OMAP_CAPACITY, rng);
+    } = TestingContext::new(TEST_NAME, logger.clone(), PORT_START, OMAP_CAPACITY, rng);
 
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
@@ -187,26 +187,26 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // This will be a SimClient in testing contexts.
     let ias_client =
         AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
-     let mut report_cache_thread = ReportCacheThread::start(
+     let _report_cache_thread = ReportCacheThread::start(
         enclave.clone(),
         ias_client,
         store_config.ias_spid,
         &TEST_ENCLAVE_REPORT_TIMESTAMP,
         logger.clone(),
-    )
-    .unwrap();
+    ).expect("Failed to start IAS client.");
 
     // Make GRPC client for sending requests.
 
     // Get the enclave to generate an auth request.
-    let client_auth_request = enclave.ledger_store_init(responder_id.clone()).unwrap();
+    let client_auth_request = enclave.ledger_store_init(responder_id.clone())
+        .expect("Could not initialize ledger store on the enclave.");
     // Submit auth request and wait for the response.
-    let (auth_response, router_to_store_session) =
-        enclave.frontend_accept(client_auth_request).unwrap();
+    let (auth_response, _router_to_store_session) =
+        enclave.frontend_accept(client_auth_request).expect("frontend_accept() failed.");
     // Finish the enclave's handshake with itself.
     enclave
         .ledger_store_connect(responder_id.clone(), auth_response)
-        .unwrap();
+        .expect("Failed to complete the connection to a fog ledger store.");
 
     // Generate a dummy key image we're going to check against.
     let mut test_key_image_bytes: [u8; 32] = [0u8; 32];
@@ -216,19 +216,22 @@ pub fn direct_key_image_store_check(logger: Logger) {
         block_index: 1,
         timestamp: 255,
     };
-    enclave.add_key_image_data(vec![test_key_image]).unwrap();
+    enclave.add_key_image_data(vec![test_key_image])
+        .expect("Error adding key image data to the enclave.");
 
     // Set up the client's end of the encrypted connection.
     let initiator = Start::new(responder_id.to_string());
 
     let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
-    let (initiator, auth_request_output) = initiator.try_next(&mut rng, init_input).unwrap();
+    let (initiator, auth_request_output) = initiator.try_next(&mut rng, init_input)
+        .expect("Could not encrypt auth message.");
 
     // Authenticate our "client" with the server.
     let auth_message = attest::AuthMessage::from(auth_request_output);
     let (client_auth_response, client_session) =
-        enclave.client_accept(auth_message.into()).unwrap();
-    println!("Initial client_session is {:?}", &client_session);
+        enclave.client_accept(auth_message.into())
+        .expect("Unable to connect a dummy \"client\" connection to the enclave.");
+    
     // We will need to double-convert, ClientAuthResponse -> AuthMessage ->
     // AuthResponseOutput
     let auth_message = attest::AuthMessage::from(client_auth_response);
@@ -236,7 +239,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let auth_response_event = AuthResponseInput::new(auth_message.into(), Verifier::default());
     // Should be a valid noise connection at this point.
     let (mut noise_connection, _verification_report) =
-        initiator.try_next(&mut rng, auth_response_event).unwrap();
+        initiator.try_next(&mut rng, auth_response_event)
+        .expect("Could not get a noise connection and verification report from the initiator.");
 
     //Construct our request.
     let key_images_request = CheckKeyImagesRequest {
@@ -247,7 +251,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
     // Protobuf-encoded plaintext.
     let message_encoded = mc_util_serial::encode(&key_images_request);
-    let ciphertext = noise_connection.encrypt(&[], &message_encoded).unwrap();
+    let ciphertext = noise_connection.encrypt(&[], &message_encoded)
+        .expect("Failed to encrypt request from the client to the router.");
     let msg: EnclaveMessage<ClientSession> = EnclaveMessage {
         aad: vec![],
         channel_id: client_session,
@@ -255,14 +260,12 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
 
     // Decrypt and seal
-    let sealed_query = enclave.decrypt_and_seal_query(msg).unwrap();
-    println!(
-        "Client session on sealed_query is {:?}",
-        &sealed_query.channel_id
-    );
+    let sealed_query = enclave.decrypt_and_seal_query(msg)
+        .expect("Unable to decrypt and seal client message.");
+    
     let mut multi_query = enclave
         .create_multi_key_image_store_query_data(sealed_query.clone())
-        .unwrap();
+        .expect("Could not create multi key image store query data.");
 
     let query = multi_query.pop().expect("Query should have had one message");
     println!("Nonce session on message is {:?}", query.channel_id);
@@ -290,20 +293,21 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let result = enclave
         .check_key_image_store(query, untrusted_kiqr)
-        .unwrap();
+        .expect("Checking key image store enclave failed.");
 
     let responses_btree: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> =
         BTreeMap::from([(responder_id, result)]);
 
     let client_response = enclave
         .collate_shard_query_responses(sealed_query, responses_btree)
-        .unwrap();
+        .expect("Error in collate_shard_query_responses().");
 
     let plaintext_bytes = noise_connection
         .decrypt(&client_response.aad, &client_response.data)
-        .unwrap();
+        .expect("Could not decrypt response to client.");
 
-    let done_response: CheckKeyImagesResponse = mc_util_serial::decode(&plaintext_bytes).unwrap();
+    let done_response: CheckKeyImagesResponse = mc_util_serial::decode(&plaintext_bytes)
+        .expect("Failed to decode CheckKeyImagesResponse.");
     assert_eq!(done_response.results.len(), 1);
 
     let test_results = done_response
