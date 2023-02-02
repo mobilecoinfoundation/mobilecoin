@@ -76,7 +76,7 @@ pub trait RingSigner {
     /// Implementation errors must be convertable to standard [SignerError] type
     /// for common handling
     type Error: Into<SignerError>;
-    
+
     /// Create an MLSAG signature. This is a signature that confers spending
     /// authority of a TxOut.
     ///

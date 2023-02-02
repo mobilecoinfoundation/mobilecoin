@@ -483,12 +483,9 @@ impl SigningData {
                 .map(
                     |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                         Ok(match ring {
-                            InputRing::Signable(ring) => signer.sign(
-                                &mlsag_signing_digest,
-                                ring,
-                                pseudo_output_blinding,
-                                rng,
-                            ).map_err(|e| Into::<SignerError>::into(e))?,
+                            InputRing::Signable(ring) => signer
+                                .sign(&mlsag_signing_digest, ring, pseudo_output_blinding, rng)
+                                .map_err(Into::<SignerError>::into)?,
                             InputRing::Presigned(ring) => ring.mlsag.clone(),
                         })
                     },

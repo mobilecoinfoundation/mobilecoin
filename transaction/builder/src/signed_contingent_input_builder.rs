@@ -512,14 +512,16 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         let pseudo_output_blinding = Scalar::random(rng);
 
-        let mlsag = ring_signer.sign(
-            &tx_in
-                .signed_digest()
-                .expect("Tx in should contain rules, this is a logic error"),
-            &ring,
-            pseudo_output_blinding,
-            rng,
-        ).map_err(|e| Into::<SignerError>::into(e) )?;
+        let mlsag = ring_signer
+            .sign(
+                &tx_in
+                    .signed_digest()
+                    .expect("Tx in should contain rules, this is a logic error"),
+                &ring,
+                pseudo_output_blinding,
+                rng,
+            )
+            .map_err(Into::<SignerError>::into)?;
 
         let pseudo_output_amount = UnmaskedAmount {
             value: ring.input_secret.amount.value,

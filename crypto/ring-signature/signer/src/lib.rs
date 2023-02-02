@@ -14,4 +14,4 @@ mod local_signer;
 pub use local_signer::LocalRingSigner;
 
 mod traits;
-pub use traits::{SignerError, InputSecret, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+pub use traits::{InputSecret, OneTimeKeyDeriveData, RingSigner, SignableInputRing, SignerError};
