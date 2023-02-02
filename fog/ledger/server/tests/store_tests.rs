@@ -41,7 +41,7 @@ use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
 
-pub fn uri_for_test(port: u16) -> KeyImageStoreUri {
+fn uri_for_test(port: u16) -> KeyImageStoreUri {
     // If a load-balancer were set up in the middle here
     // this might need to be changed to
     // {KeyImageStoreScheme::SCHEME_INSECURE}://localhost:1234/?
@@ -54,7 +54,7 @@ pub fn uri_for_test(port: u16) -> KeyImageStoreUri {
     KeyImageStoreUri::from_str(&name).unwrap()
 }
 
-pub struct TestingContext<R: RngCore + CryptoRng> {
+pub struct TestingContext<R> {
     pub enclave: LedgerSgxEnclave,
     pub ledger: LedgerDB,
     pub responder_id: ResponderId,
@@ -68,7 +68,7 @@ pub struct TestingContext<R: RngCore + CryptoRng> {
 
 impl<R: RngCore + CryptoRng> TestingContext<R> {
     pub fn new(
-        test_name: &'static str,
+        test_name: AsRef<str>
         logger: Logger,
         port: u16,
         omap_capacity: u64,
@@ -78,15 +78,13 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let test_dir_name = format!("fog_ledger_test_{}", test_name);
         let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
-        let user_keys_path = test_path.join(PathBuf::from("keys/"));
-        if !user_keys_path.exists() {
-            std::fs::create_dir(&user_keys_path).unwrap();
-        }
+        let user_keys_path = test_path.join("keys");
+        std::fs::create_dir_all(&user_keys_path).expect("Failed creatting user keys directory");
 
         let test_uri = uri_for_test(port);
         // This ID needs to match the host:port clients use in their URI when
         // referencing the host node.
-        let responder_id = test_uri.responder_id().unwrap();
+        let responder_id = test_uri.responder_id().expect("Test URI is invalid");
 
         let enclave_path = std::env::current_exe()
             .expect("Could not get the path of our executable")
@@ -101,7 +99,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             LedgerSgxEnclave::new(enclave_path, &responder_id, omap_capacity, logger.clone());
 
         // Make LedgerDB
-        let ledger_path = test_path.join(PathBuf::from("fog_ledger"));
+        let ledger_path = test_path.join("fog_ledger");
         let ledger = recreate_ledger_db(ledger_path.as_path());
 
         // Set up wallet db.
@@ -154,8 +152,6 @@ pub fn direct_key_image_store_check(logger: Logger) {
     const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
 
-    let port = PORT_START;
-
     let rng = RngType::from_entropy();
     let TestingContext {
         enclave,
@@ -191,15 +187,12 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // This will be a SimClient in testing contexts.
     let ias_client =
         AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
-    let mut report_cache_thread = Some(
-        ReportCacheThread::start(
-            enclave.clone(),
-            ias_client,
-            store_config.ias_spid,
-            &TEST_ENCLAVE_REPORT_TIMESTAMP,
-            logger.clone(),
-        )
-        .unwrap(),
+     let mut report_cache_thread = ReportCacheThread::start(
+        enclave.clone(),
+        ias_client,
+        store_config.ias_spid,
+        &TEST_ENCLAVE_REPORT_TIMESTAMP,
+        logger.clone(),
     )
     .unwrap();
 
@@ -214,7 +207,6 @@ pub fn direct_key_image_store_check(logger: Logger) {
     enclave
         .ledger_store_connect(responder_id.clone(), auth_response)
         .unwrap();
-    println!("router_to_store_session is: {:?}", &router_to_store_session);
 
     // Generate a dummy key image we're going to check against.
     let mut test_key_image_bytes: [u8; 32] = [0u8; 32];
@@ -272,7 +264,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         .create_multi_key_image_store_query_data(sealed_query.clone())
         .unwrap();
 
-    let query: EnclaveMessage<NonceSession> = multi_query.pop().unwrap();
+    let query = multi_query.pop().expect("Query should have had one message");
     println!("Nonce session on message is {:?}", query.channel_id);
 
     // Get an untrusted query
@@ -314,13 +306,13 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let done_response: CheckKeyImagesResponse = mc_util_serial::decode(&plaintext_bytes).unwrap();
     assert_eq!(done_response.results.len(), 1);
 
-    let mut test_results = done_response
+    let test_results = done_response
         .results
         .into_iter()
-        .map(|result| (result.key_image, result.key_image_result_code));
+        .map(|result| (result.key_image, result.key_image_result_code))
+        .collect::<Vec<_>>();
 
     // The key image result code for a spent key image is 1.
-    assert!(test_results.contains(&(test_key_image.key_image, 1)));
+    assert_eq!(test_results, &[(test_key_image.key_image, 1)]);
 
-    report_cache_thread.stop().unwrap();
 }
