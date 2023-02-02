@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Verify Fog Signatures"
+license = "Apache-2.0"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }

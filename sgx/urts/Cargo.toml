@@ -2,7 +2,8 @@
 name = "mc-sgx-urts"
 version = "4.0.2"
 authors = ["MobileCoin"]
-
+license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }

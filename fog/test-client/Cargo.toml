@@ -3,8 +3,8 @@ name = "mc-fog-test-client"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
-readme = "README.md"
 license = "GPL-3.0"
+readme = "README.md"
 
 [[bin]]
 name = "test_client"

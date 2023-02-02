@@ -3,6 +3,7 @@ name = "mc-test-vectors-account-keys"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
 
 [dependencies]
 mc-test-vectors-definitions = { path = "../definitions" }

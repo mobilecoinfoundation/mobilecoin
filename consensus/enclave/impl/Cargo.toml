@@ -2,7 +2,6 @@
 name = "mc-consensus-enclave-impl"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.
 
@@ -16,6 +15,9 @@ in-enclave configurations:
 sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
 
 '''
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
 
 [features]
 default = ["std"]

@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 # mobilecoin
