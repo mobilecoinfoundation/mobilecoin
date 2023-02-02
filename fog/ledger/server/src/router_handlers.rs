@@ -11,8 +11,8 @@ use mc_common::{
 };
 use mc_fog_api::{
     ledger::{
-        LedgerRequest, LedgerResponse, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
-        MultiKeyImageStoreResponseStatus, LedgerRequest_oneof_request_data
+        LedgerRequest, LedgerRequest_oneof_request_data, LedgerResponse, MultiKeyImageStoreRequest,
+        MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
     },
     ledger_grpc::KeyImageStoreApiClient,
 };
@@ -69,14 +69,7 @@ where
             handle_auth_request(enclave, request, logger)
         }
         Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
-            handle_query_request(
-                request,
-                enclave,
-                shard_clients,
-                query_retries,
-                logger,
-            )
-            .await
+            handle_query_request(request, enclave, shard_clients, query_retries, logger).await
         }
         None => {
             let rpc_status = rpc_invalid_arg_error(

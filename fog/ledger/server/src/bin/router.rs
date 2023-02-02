@@ -14,7 +14,7 @@ use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerRouterConfig, LedgerRouterServer};
 use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri};
-
+use mc_ledger_db::LedgerDB;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::UriScheme;
 
@@ -78,8 +78,15 @@ fn main() {
     }
     let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
 
-    let mut router_server =
-        LedgerRouterServer::new(config, enclave, ledger_store_grpc_clients, logger);
+    let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
+
+    let mut router_server = LedgerRouterServer::new(
+        config,
+        enclave,
+        ledger_store_grpc_clients,
+        ledger_db,
+        logger,
+    );
     router_server.start();
 
     loop {

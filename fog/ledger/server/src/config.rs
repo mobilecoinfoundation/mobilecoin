@@ -82,6 +82,10 @@ pub struct LedgerServerConfig {
 #[derive(Clone, Parser, Serialize)]
 #[clap(version)]
 pub struct LedgerRouterConfig {
+    /// The chain id of the network we are a part of
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
     /// The ID with which to respond to client attestation requests.
     ///
     /// This ID needs to match the host:port clients use in their URI when
@@ -101,6 +105,21 @@ pub struct LedgerRouterConfig {
     /// before reporting an error.
     #[clap(long, default_value = "3")]
     pub query_retries: usize,
+
+    /// Enables authenticating client requests using Authorization tokens using
+    /// the provided hex-encoded 32 bytes shared secret.
+    #[clap(long, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
+    pub client_auth_token_secret: Option<[u8; 32]>,
+
+    /// Maximal client authentication token lifetime, in seconds (only relevant
+    /// when --client-auth-token-secret is used. Defaults to 86400 - 24
+    /// hours).
+    #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
+    pub client_auth_token_max_lifetime: Duration,
+
+    /// Path to ledger db (lmdb)
+    #[clap(long, env = "MC_LEDGER_DB")]
+    pub ledger_db: PathBuf,
 
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
