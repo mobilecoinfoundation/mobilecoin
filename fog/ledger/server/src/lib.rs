@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![allow(clippy::result_large_err)]
 mod block_service;
 mod config;
 mod counters;

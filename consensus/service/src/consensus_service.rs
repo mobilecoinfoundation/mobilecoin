@@ -754,7 +754,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": URL_SAFE_BASE64_ENGINE.encode(&config.msg_signer_key.public_key().to_der()),
+                    "message_pubkey": URL_SAFE_BASE64_ENGINE.encode(config.msg_signer_key.public_key().to_der()),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,

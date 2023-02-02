@@ -129,7 +129,7 @@ pub(crate) fn challenge(
     L1: &RistrettoPoint,
 ) -> Scalar {
     let mut hasher = Blake2b512::new();
-    hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
+    hasher.update(RING_MLSAG_CHALLENGE_DOMAIN_TAG);
     hasher.update(message);
     hasher.update(key_image);
     hasher.update(L0.compress().as_bytes());

@@ -247,7 +247,7 @@ mod mlsag_tests {
                     let blinding = Scalar::random(rng);
                     CompressedCommitment::new(value, blinding, &generator)
                 };
-                let _ = ring.push(ReducedTxOut {
+                ring.push(ReducedTxOut {
                     public_key,
                     target_key,
                     commitment,
@@ -270,7 +270,7 @@ mod mlsag_tests {
             };
 
             let real_index = rng.next_u64() as usize % (num_mixins + 1);
-            let _ = ring.insert(real_index, reduced_tx_out);
+            ring.insert(real_index, reduced_tx_out);
             assert_eq!(ring.len(), num_mixins + 1);
 
             Self {
@@ -672,7 +672,7 @@ mod mlsag_tests {
             // Modify the signature to have too many responses.
             {
                 let mut invalid_signature = signature;
-                let _ = invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
+                invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);

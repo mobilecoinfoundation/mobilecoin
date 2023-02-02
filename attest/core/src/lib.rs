@@ -5,6 +5,7 @@
 
 #![no_std]
 #![feature(core_intrinsics)]
+#![allow(clippy::result_large_err)]
 
 extern crate alloc;
 #[macro_use]

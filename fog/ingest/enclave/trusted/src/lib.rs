@@ -70,8 +70,10 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 /// The entry point implementation for ingest_enclave_api
 ///
 /// See ingest_enclave_api::mobileenclave() declaration for more information
+/// # Safety
+/// This method dereferences raw pointers and is therefore unsafe.
 #[no_mangle]
-pub extern "C" fn ingest_enclave_call(
+pub unsafe extern "C" fn ingest_enclave_call(
     inbuf: *const u8,
     inbuf_len: usize,
     outbuf: *mut u8,

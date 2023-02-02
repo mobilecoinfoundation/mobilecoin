@@ -18,8 +18,7 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_builder::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
-    TxOutContext,
+    InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder, TxOutContext,
 };
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
@@ -891,8 +890,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Create tx_builder.
         // TODO (GH #1522): Use RTH memo builder, optionally?
-        let memo_builder: Box<dyn MemoBuilder + Send + Sync> =
-            opt_memo_builder.unwrap_or_else(|| Box::new(EmptyMemoBuilder::default()));
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
+            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
 
         let fee_amount = Amount::new(fee, token_id);
         let mut tx_builder =

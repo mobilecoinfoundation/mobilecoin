@@ -7,6 +7,7 @@
 
 #![no_std]
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 extern crate alloc;
 
@@ -303,12 +304,9 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
 
         // Try to ingest the new tx's
         loop {
-            if let Some(e_tx_out_records) = Self::attempt_ingest_txs(
-                &prepared_block_data,
-                &*ingress_key,
-                &*egress_key,
-                rng_store,
-            ) {
+            if let Some(e_tx_out_records) =
+                Self::attempt_ingest_txs(&prepared_block_data, &ingress_key, &egress_key, rng_store)
+            {
                 return Ok((e_tx_out_records, new_kex_rng_pubkey));
             } else {
                 // If attempt_ingest_txs fails, that means the rng store overflowed.
