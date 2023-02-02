@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-keys"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Diffie-Hellman Key Exchange and Digital Signatures"
@@ -14,7 +14,7 @@ default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-d
 
 [dependencies]
 
-base64 = { version = "0.13", default-features = false }
+base64 = { version = "0.21", default-features = false }
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }

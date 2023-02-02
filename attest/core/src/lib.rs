@@ -59,5 +59,5 @@ pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;
 
-// Expected format for base64 strings
-pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;
+// Engine for base64 strings
+pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;

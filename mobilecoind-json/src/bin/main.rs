@@ -52,12 +52,12 @@ fn set_password(
     let mut req = api::SetDbPasswordRequest::new();
     req.set_password(
         hex::decode(password.password.clone())
-            .map_err(|err| format!("Failed decoding password hex: {}", err))?,
+            .map_err(|err| format!("Failed decoding password hex: {err}"))?,
     );
     let _resp = state
         .mobilecoind_api_client
         .set_db_password(&req)
-        .map_err(|err| format!("Failed setting password: {}", err))?;
+        .map_err(|err| format!("Failed setting password: {err}"))?;
     Ok(Json(JsonPasswordResponse { success: true }))
 }
 
@@ -70,12 +70,12 @@ fn unlock_db(
     let mut req = api::UnlockDbRequest::new();
     req.set_password(
         hex::decode(password.password.clone())
-            .map_err(|err| format!("Failed decoding password hex: {}", err))?,
+            .map_err(|err| format!("Failed decoding password hex: {err}"))?,
     );
     let _resp = state
         .mobilecoind_api_client
         .unlock_db(&req)
-        .map_err(|err| format!("Failed unlocking database: {}", err))?;
+        .map_err(|err| format!("Failed unlocking database: {err}"))?;
     Ok(Json(JsonUnlockDbResponse { success: true }))
 }
 
@@ -85,7 +85,7 @@ fn version(state: &rocket::State<State>) -> Result<Json<JsonMobilecoindVersionRe
     let resp = state
         .mobilecoind_api_client
         .get_version(&api::Empty::new())
-        .map_err(|err| format!("Failed getting version: {}", err))?;
+        .map_err(|err| format!("Failed getting version: {err}"))?;
     Ok(Json(JsonMobilecoindVersionResponse::from(&resp)))
 }
 
@@ -95,7 +95,7 @@ fn entropy(state: &rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>
     let resp = state
         .mobilecoind_api_client
         .generate_root_entropy(&api::Empty::new())
-        .map_err(|err| format!("Failed getting entropy: {}", err))?;
+        .map_err(|err| format!("Failed getting entropy: {err}"))?;
     Ok(Json(JsonRootEntropyResponse::from(&resp)))
 }
 
@@ -105,7 +105,7 @@ fn account_key_from_root_entropy(
     root_entropy: String,
 ) -> Result<Json<JsonAccountKeyResponse>, String> {
     let entropy =
-        hex::decode(root_entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
+        hex::decode(root_entropy).map_err(|err| format!("Failed to decode hex key: {err}"))?;
 
     let mut req = api::GetAccountKeyFromRootEntropyRequest::new();
     req.set_root_entropy(entropy.to_vec());
@@ -113,7 +113,7 @@ fn account_key_from_root_entropy(
     let resp = state
         .mobilecoind_api_client
         .get_account_key_from_root_entropy(&req)
-        .map_err(|err| format!("Failed getting account key for root entropy: {}", err))?;
+        .map_err(|err| format!("Failed getting account key for root entropy: {err}"))?;
 
     Ok(Json(JsonAccountKeyResponse::from(&resp)))
 }
@@ -124,7 +124,7 @@ fn mnemonic(state: &rocket::State<State>) -> Result<Json<JsonMnemonicResponse>, 
     let resp = state
         .mobilecoind_api_client
         .generate_mnemonic(&api::Empty::new())
-        .map_err(|err| format!("Failed getting entropy: {}", err))?;
+        .map_err(|err| format!("Failed getting entropy: {err}"))?;
     Ok(Json(JsonMnemonicResponse::from(&resp)))
 }
 
@@ -139,7 +139,7 @@ fn account_key_from_mnemonic(
     let resp = state
         .mobilecoind_api_client
         .get_account_key_from_mnemonic(&req)
-        .map_err(|err| format!("Failed getting account key for mnemonic: {}", err))?;
+        .map_err(|err| format!("Failed getting account key for mnemonic: {err}"))?;
 
     Ok(Json(JsonAccountKeyResponse::from(&resp)))
 }
@@ -155,12 +155,12 @@ fn add_monitor(
     let mut view_private_key = RistrettoPrivate::new();
     view_private_key.set_data(
         hex::decode(&monitor.account_key.view_private_key)
-            .map_err(|err| format!("Failed to decode hex key: {}", err))?,
+            .map_err(|err| format!("Failed to decode hex key: {err}"))?,
     );
     let mut spend_private_key = RistrettoPrivate::new();
     spend_private_key.set_data(
         hex::decode(&monitor.account_key.spend_private_key)
-            .map_err(|err| format!("Failed to decode hex key: {}", err))?,
+            .map_err(|err| format!("Failed to decode hex key: {err}"))?,
     );
     account_key.set_view_private_key(view_private_key);
     account_key.set_spend_private_key(spend_private_key);
@@ -174,7 +174,7 @@ fn add_monitor(
     let monitor_response = state
         .mobilecoind_api_client
         .add_monitor(&req)
-        .map_err(|err| format!("Failed adding monitor: {}", err))?;
+        .map_err(|err| format!("Failed adding monitor: {err}"))?;
 
     Ok(Json(JsonMonitorResponse::from(&monitor_response)))
 }
@@ -183,7 +183,7 @@ fn add_monitor(
 #[delete("/monitors/<monitor_hex>")]
 fn remove_monitor(state: &rocket::State<State>, monitor_hex: String) -> Result<(), String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut req = api::RemoveMonitorRequest::new();
     req.set_monitor_id(monitor_id);
@@ -191,7 +191,7 @@ fn remove_monitor(state: &rocket::State<State>, monitor_hex: String) -> Result<(
     let _resp = state
         .mobilecoind_api_client
         .remove_monitor(&req)
-        .map_err(|err| format!("Failed removing monitor: {}", err))?;
+        .map_err(|err| format!("Failed removing monitor: {err}"))?;
 
     Ok(())
 }
@@ -202,7 +202,7 @@ fn monitors(state: &rocket::State<State>) -> Result<Json<JsonMonitorListResponse
     let resp = state
         .mobilecoind_api_client
         .get_monitor_list(&api::Empty::new())
-        .map_err(|err| format!("Failed getting monitor list: {}", err))?;
+        .map_err(|err| format!("Failed getting monitor list: {err}"))?;
     Ok(Json(JsonMonitorListResponse::from(&resp)))
 }
 
@@ -213,7 +213,7 @@ fn monitor_status(
     monitor_hex: String,
 ) -> Result<Json<JsonMonitorStatusResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut req = api::GetMonitorStatusRequest::new();
     req.set_monitor_id(monitor_id);
@@ -221,7 +221,7 @@ fn monitor_status(
     let resp = state
         .mobilecoind_api_client
         .get_monitor_status(&req)
-        .map_err(|err| format!("Failed getting monitor status: {}", err))?;
+        .map_err(|err| format!("Failed getting monitor status: {err}"))?;
 
     Ok(Json(JsonMonitorStatusResponse::from(&resp)))
 }
@@ -234,7 +234,7 @@ fn balance(
     subaddress_index: u64,
 ) -> Result<Json<JsonBalanceResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut req = api::GetBalanceRequest::new();
     req.set_monitor_id(monitor_id);
@@ -243,7 +243,7 @@ fn balance(
     let resp = state
         .mobilecoind_api_client
         .get_balance(&req)
-        .map_err(|err| format!("Failed getting balance: {}", err))?;
+        .map_err(|err| format!("Failed getting balance: {err}"))?;
 
     Ok(Json(JsonBalanceResponse::from(&resp)))
 }
@@ -255,7 +255,7 @@ fn utxos(
     subaddress_index: u64,
 ) -> Result<Json<JsonUtxosResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut req = api::GetUnspentTxOutListRequest::new();
     req.set_monitor_id(monitor_id);
@@ -264,7 +264,7 @@ fn utxos(
     let resp = state
         .mobilecoind_api_client
         .get_unspent_tx_out_list(&req)
-        .map_err(|err| format!("Failed getting utxos: {}", err))?;
+        .map_err(|err| format!("Failed getting utxos: {err}"))?;
 
     Ok(Json(JsonUtxosResponse::from(&resp)))
 }
@@ -277,7 +277,7 @@ fn public_address(
     subaddress_index: u64,
 ) -> Result<Json<JsonPublicAddressResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     // Get our public address.
     let mut req = api::GetPublicAddressRequest::new();
@@ -287,7 +287,7 @@ fn public_address(
     let resp = state
         .mobilecoind_api_client
         .get_public_address(&req)
-        .map_err(|err| format!("Failed getting public address: {}", err))?;
+        .map_err(|err| format!("Failed getting public address: {err}"))?;
 
     Ok(Json(JsonPublicAddressResponse::from(&resp)))
 }
@@ -299,7 +299,7 @@ fn create_request_code(
     request: Json<JsonCreateRequestCodeRequest>,
 ) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
     let receiver = api::external::PublicAddress::try_from(&request.receiver)
-        .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
+        .map_err(|err| format!("Failed to parse receiver's public address: {err}"))?;
 
     // Generate b58 code
     let mut req = api::CreateRequestCodeRequest::new();
@@ -314,7 +314,7 @@ fn create_request_code(
     let resp = state
         .mobilecoind_api_client
         .create_request_code(&req)
-        .map_err(|err| format!("Failed creating request code: {}", err))?;
+        .map_err(|err| format!("Failed creating request code: {err}"))?;
 
     Ok(Json(JsonCreateRequestCodeResponse::from(&resp)))
 }
@@ -330,7 +330,7 @@ fn parse_request_code(
     let resp = state
         .mobilecoind_api_client
         .parse_request_code(&req)
-        .map_err(|err| format!("Failed parsing request code: {}", err))?;
+        .map_err(|err| format!("Failed parsing request code: {err}"))?;
 
     // The response contains the public keys encoded in the read request, as well as
     // a memo and requested value. This can be used as-is in the transfer call
@@ -345,7 +345,7 @@ fn create_address_code(
     request: Json<JsonCreateAddressCodeRequest>,
 ) -> Result<Json<JsonCreateAddressCodeResponse>, String> {
     let receiver = api::external::PublicAddress::try_from(&request.receiver)
-        .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
+        .map_err(|err| format!("Failed to parse receiver's public address: {err}"))?;
 
     // Generate b58 code
     let mut req = api::CreateAddressCodeRequest::new();
@@ -354,7 +354,7 @@ fn create_address_code(
     let resp = state
         .mobilecoind_api_client
         .create_address_code(&req)
-        .map_err(|err| format!("Failed creating address code: {}", err))?;
+        .map_err(|err| format!("Failed creating address code: {err}"))?;
 
     Ok(Json(JsonCreateAddressCodeResponse::from(&resp)))
 }
@@ -370,7 +370,7 @@ fn parse_address_code(
     let resp = state
         .mobilecoind_api_client
         .parse_address_code(&req)
-        .map_err(|err| format!("Failed parding address code: {}", err))?;
+        .map_err(|err| format!("Failed parding address code: {err}"))?;
 
     // The response contains the public keys encoded in the read request
     Ok(Json(JsonParseAddressCodeResponse::from(&resp)))
@@ -390,7 +390,7 @@ fn build_and_submit(
     transfer: Json<JsonSendPaymentRequest>,
 ) -> Result<Json<JsonSendPaymentResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let public_address = PublicAddress::try_from(&transfer.request_data.receiver)?;
 
@@ -420,7 +420,7 @@ fn build_and_submit(
     let resp = state
         .mobilecoind_api_client
         .send_payment(&req)
-        .map_err(|err| format!("Failed to send payment: {}", err))?;
+        .map_err(|err| format!("Failed to send payment: {err}"))?;
 
     // The receipt from the payment request can be used by the status check below
     Ok(Json(JsonSendPaymentResponse::from(&resp)))
@@ -440,7 +440,7 @@ fn pay_address_code(
     transfer: Json<JsonPayAddressCodeRequest>,
 ) -> Result<Json<JsonSendPaymentResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     // Get amount.
     let amount = u64::from(transfer.value);
@@ -467,7 +467,7 @@ fn pay_address_code(
     let resp = state
         .mobilecoind_api_client
         .pay_address_code(&req)
-        .map_err(|err| format!("Failed to send payment: {}", err))?;
+        .map_err(|err| format!("Failed to send payment: {err}"))?;
 
     // The receipt from the payment request can be used by the status check below
     Ok(Json(JsonSendPaymentResponse::from(&resp)))
@@ -488,7 +488,7 @@ fn generate_request_code_transaction(
     request: Json<JsonCreateTxProposalRequest>,
 ) -> Result<Json<JsonCreateTxProposalResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let public_address = PublicAddress::try_from(&request.transfer.receiver)?;
 
@@ -502,7 +502,7 @@ fn generate_request_code_transaction(
         .iter()
         .map(|input| {
             api::UnspentTxOut::try_from(input)
-                .map_err(|err| format!("Failed to convert input: {}", err))
+                .map_err(|err| format!("Failed to convert input: {err}"))
         })
         .collect::<Result<_, String>>()?;
 
@@ -516,7 +516,7 @@ fn generate_request_code_transaction(
     let resp = state
         .mobilecoind_api_client
         .generate_tx(&req)
-        .map_err(|err| format!("Failed to generate tx: {}", err))?;
+        .map_err(|err| format!("Failed to generate tx: {err}"))?;
 
     Ok(Json(JsonCreateTxProposalResponse::from(&resp)))
 }
@@ -531,13 +531,13 @@ fn submit_tx(
     let mut req = api::SubmitTxRequest::new();
     req.set_tx_proposal(
         api::TxProposal::try_from(&proposal.tx_proposal)
-            .map_err(|err| format!("Failed to convert tx proposal: {}", err))?,
+            .map_err(|err| format!("Failed to convert tx proposal: {err}"))?,
     );
 
     let resp = state
         .mobilecoind_api_client
         .submit_tx(&req)
-        .map_err(|err| format!("Failed to send payment: {}", err))?;
+        .map_err(|err| format!("Failed to send payment: {err}"))?;
 
     // The receipt from the payment request can be used by the status check below
     Ok(Json(JsonSubmitTxResponse::from(&resp)))
@@ -553,9 +553,9 @@ fn check_transfer_status(
         .mobilecoind_api_client
         .get_tx_status_as_sender(
             &api::SubmitTxResponse::try_from(&submit_response.0)
-                .map_err(|err| format!("Could not convert JsonSubmitTxResponse: {}", err))?,
+                .map_err(|err| format!("Could not convert JsonSubmitTxResponse: {err}"))?,
         )
-        .map_err(|err| format!("Failed getting status: {}", err))?;
+        .map_err(|err| format!("Failed getting status: {err}"))?;
 
     Ok(Json(JsonStatusResponse::from(&resp)))
 }
@@ -578,17 +578,17 @@ fn check_receiver_transfer_status(
     receipt: Json<JsonReceiverTxReceipt>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut receiver_receipt = api::ReceiverTxReceipt::new();
     let mut tx_public_key = CompressedRistretto::new();
-    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
+    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{err}"))?);
     receiver_receipt.set_tx_public_key(tx_public_key);
     receiver_receipt
-        .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);
+        .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{err}"))?);
     receiver_receipt.set_tombstone(receipt.tombstone);
     receiver_receipt.set_confirmation_number(
-        hex::decode(&receipt.confirmation_number).map_err(|err| format!("{}", err))?,
+        hex::decode(&receipt.confirmation_number).map_err(|err| format!("{err}"))?,
     );
 
     let mut req = api::GetTxStatusAsReceiverRequest::new();
@@ -598,7 +598,7 @@ fn check_receiver_transfer_status(
     let resp = state
         .mobilecoind_api_client
         .get_tx_status_as_receiver(&req)
-        .map_err(|err| format!("Failed getting status: {}", err))?;
+        .map_err(|err| format!("Failed getting status: {err}"))?;
 
     Ok(Json(JsonStatusResponse::from(&resp)))
 }
@@ -609,7 +609,7 @@ fn ledger_info(state: &rocket::State<State>) -> Result<Json<JsonLedgerInfoRespon
     let resp = state
         .mobilecoind_api_client
         .get_ledger_info(&api::Empty::new())
-        .map_err(|err| format!("Failed getting ledger info: {}", err))?;
+        .map_err(|err| format!("Failed getting ledger info: {err}"))?;
 
     Ok(Json(JsonLedgerInfoResponse::from(&resp)))
 }
@@ -626,7 +626,7 @@ fn block_info(
     let resp = state
         .mobilecoind_api_client
         .get_block_info(&req)
-        .map_err(|err| format!("Failed getting ledger info: {}", err))?;
+        .map_err(|err| format!("Failed getting ledger info: {err}"))?;
 
     Ok(Json(JsonBlockInfoResponse::from(&resp)))
 }
@@ -643,7 +643,7 @@ fn block_details(
     let resp = state
         .mobilecoind_api_client
         .get_block(&req)
-        .map_err(|err| format!("Failed getting block details: {}", err))?;
+        .map_err(|err| format!("Failed getting block details: {err}"))?;
 
     Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
@@ -655,7 +655,7 @@ fn processed_block(
     block_num: u64,
 ) -> Result<Json<JsonProcessedBlockResponse>, String> {
     let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {err}"))?;
 
     let mut req = api::GetProcessedBlockRequest::new();
     req.set_monitor_id(monitor_id);
@@ -664,7 +664,7 @@ fn processed_block(
     let resp = state
         .mobilecoind_api_client
         .get_processed_block(&req)
-        .map_err(|err| format!("Failed getting processed block: {}", err))?;
+        .map_err(|err| format!("Failed getting processed block: {err}"))?;
 
     Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
@@ -676,7 +676,7 @@ fn tx_out_get_block_index_by_public_key(
     public_key_hex: String,
 ) -> Result<Json<JsonBlockIndexByTxPubKeyResponse>, String> {
     let tx_out_public_key = hex::decode(public_key_hex)
-        .map_err(|err| format!("Failed to decode hex public key: {}", err))?;
+        .map_err(|err| format!("Failed to decode hex public key: {err}"))?;
 
     let mut tx_out_public_key_proto = CompressedRistretto::new();
     tx_out_public_key_proto.set_data(tx_out_public_key);
@@ -687,7 +687,7 @@ fn tx_out_get_block_index_by_public_key(
     let resp = state
         .mobilecoind_api_client
         .get_block_index_by_tx_pub_key(&req)
-        .map_err(|err| format!("Failed getting block index: {}", err))?;
+        .map_err(|err| format!("Failed getting block index: {err}"))?;
 
     Ok(Json(JsonBlockIndexByTxPubKeyResponse::from(&resp)))
 }
@@ -712,7 +712,7 @@ fn get_proof_of_membership(
     let get_membership_proofs_response = state
         .mobilecoind_api_client
         .get_membership_proofs(&get_membership_proofs_request)
-        .map_err(|err| format!("Failed getting membership proofs: {}", err))?;
+        .map_err(|err| format!("Failed getting membership proofs: {err}"))?;
 
     // Return JSON response
     let (outputs, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
@@ -755,7 +755,7 @@ fn get_mixins(
     let get_mixins_response = state
         .mobilecoind_api_client
         .get_mixins(&get_mixins_request)
-        .map_err(|err| format!("Failed getting mixins: {}", err))?;
+        .map_err(|err| format!("Failed getting mixins: {err}"))?;
 
     let (mixins, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
         get_mixins_response

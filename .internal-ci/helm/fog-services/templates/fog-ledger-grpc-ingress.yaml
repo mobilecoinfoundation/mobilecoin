@@ -10,7 +10,10 @@ metadata:
     {{- if .Values.global.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
     {{- end }}
-    {{ toYaml (tpl .Values.fogLedger.ingress.grpc.annotations . | fromYaml)| nindent 4 }}
+    {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
+    haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
+    {{- end }}
+    {{ toYaml (tpl .Values.fogLedger.ingress.grpc.annotations . | fromYaml) | nindent 4 }}
 spec:
   tls:
   - hosts:

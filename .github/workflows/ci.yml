@@ -505,7 +505,7 @@ jobs:
           # Run mobilecoind-dev-faucet
           MC_LOG="info" \
           "$BIN_DIR"/mobilecoind-dev-faucet \
-            --keyfile "$PWD/keys/account_keys_0.json" --target-queue-depth 500 &
+            --keyfile "$PWD/keys/account_keys_0.json" --activate --target-queue-depth 500 &
 
           # Give it time to spin up
           for _unused in $(seq 0 60); do

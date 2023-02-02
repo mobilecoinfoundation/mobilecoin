@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-distribution"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -34,7 +34,7 @@ crossbeam-channel = "0.5"
 grpcio = "0.12.0"
 lazy_static = "1.4"
 rand = "0.8"
-rayon = "1.5"
+rayon = "1.6"
 retry = "2.0"
 tempfile = "3.3"
 

@@ -198,8 +198,8 @@ where
     /// Get the highest block count we have encountered.
     pub fn highest_known_block_count(&self) -> u64 {
         self.processed_block_per_ingress_key
-            .iter()
-            .map(|(_key, block_index)| *block_index + 1)
+            .values()
+            .map(|block_index| *block_index + 1)
             .max()
             .unwrap_or(0)
     }
@@ -254,8 +254,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
@@ -336,8 +335,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
@@ -386,8 +384,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
@@ -456,8 +453,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
@@ -601,7 +597,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed2(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -637,7 +632,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed3(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -684,7 +678,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -750,8 +743,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -763,8 +755,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -783,7 +774,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs_some_lost2(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -852,8 +842,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -865,8 +854,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -899,7 +887,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_followed_by_gap(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -921,8 +908,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -933,8 +919,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -971,8 +956,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone(), rec2.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             // Make the block "exist" and "load" it
@@ -984,8 +968,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
     }
@@ -998,7 +981,6 @@ mod tests {
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_concurrent_with_active(logger: Logger) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -1020,8 +1002,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1032,8 +1013,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1049,8 +1029,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1061,8 +1040,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1088,8 +1066,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone(), rec2.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1102,8 +1079,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1117,8 +1093,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone(), rec2.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec2.last_scanned_block = Some(index);
@@ -1129,8 +1104,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
     }
@@ -1146,7 +1120,6 @@ mod tests {
         logger: Logger,
     ) {
         let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
-
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -1168,8 +1141,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1180,8 +1152,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1197,8 +1168,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1209,8 +1179,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1236,8 +1205,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone(), rec2.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec1.last_scanned_block = Some(index);
@@ -1250,8 +1218,7 @@ mod tests {
             assert_eq!(
                 block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
 
@@ -1295,8 +1262,7 @@ mod tests {
             assert_eq!(
                 block_tracker.next_blocks(&[rec1.clone(), rec2.clone(), rec3.clone()]),
                 expected_state,
-                "i = {}",
-                i
+                "i = {i}"
             );
 
             rec3.last_scanned_block = Some(index);
@@ -1311,8 +1277,7 @@ mod tests {
                     rec3.clone()
                 ]),
                 expected,
-                "i = {}",
-                i
+                "i = {i}"
             );
         }
     }

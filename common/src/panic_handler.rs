@@ -16,18 +16,15 @@ pub fn setup_panic_handler() {
 }
 
 fn handle_panic(panic_info: &PanicInfo<'_>) {
-    let details = format!("{}", panic_info);
+    let details = format!("{panic_info}");
     let backtrace = format!("{:#?}", Backtrace::new());
     let thread_name = thread::current().name().unwrap_or("?").to_string();
     let process_name = env::args().next().unwrap_or_else(|| "?".to_string());
 
     // First, print the crash details.
-    println!(
-        "OH NO, WE CRASHED :( thread {} on {}",
-        thread_name, process_name
-    );
-    println!("Details: {}", details);
-    println!("{}", backtrace);
+    println!("OH NO, WE CRASHED :( thread {thread_name} on {process_name}");
+    println!("Details: {details}");
+    println!("{backtrace}");
 
     // Also attempt to log using the logger.
     logger::global_log::crit!(

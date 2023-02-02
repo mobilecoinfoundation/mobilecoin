@@ -68,8 +68,7 @@ impl MockLedger {
         for ki in &contents.key_images {
             assert!(
                 inner.key_images.insert(*ki, block.index).is_none(),
-                "duplicate key image: {:?}",
-                ki
+                "duplicate key image: {ki:?}"
             );
         }
 

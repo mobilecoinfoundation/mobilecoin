@@ -119,7 +119,7 @@ fn main() {
                         }
                     }
                     Err(err) => {
-                        eprintln!("{}: get_last_block_info(): {}", uri, err);
+                        eprintln!("{uri}: get_last_block_info(): {err}");
                         needs_retry = true;
                     }
                 };
@@ -147,7 +147,7 @@ fn main() {
                             }
                         }
                         Err(err) => {
-                            eprintln!("{}: get_last_block_info(): {}", uri, err);
+                            eprintln!("{uri}: get_last_block_info(): {err}");
                             was_updated = true;
                         }
                     };
@@ -164,7 +164,7 @@ fn main() {
                 std::thread::sleep(Duration::from_secs(period));
             };
             // Print the stopping point on STDOUT so that scripts can capture this easily
-            print!("{}", last_block_index)
+            print!("{last_block_index}")
         }
     }
 }

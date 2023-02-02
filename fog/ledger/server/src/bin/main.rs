@@ -68,7 +68,7 @@ fn main() {
     let config2 = config.clone();
     let get_config_json = Arc::new(move || {
         serde_json::to_string(&config2)
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err)))
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{err:?}")))
     });
     let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         AdminServer::start(

@@ -24,7 +24,7 @@ fn main() {
 
     let config = Config::parse();
 
-    migrate(&config.ledger_db, &logger);
+    migrate(config.ledger_db, &logger);
 
     // Give logger a moment to flush.
     sleep(Duration::from_secs(1));

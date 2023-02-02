@@ -651,7 +651,7 @@ mod tests {
                 ]
                 .contains(&mint_limit));
             }
-            Err(err) => panic!("Unexpected error {}", err),
+            Err(err) => panic!("Unexpected error {err}"),
         }
     }
 

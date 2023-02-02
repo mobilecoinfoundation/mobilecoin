@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-vec-map"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "A map object based on heapless Vec"
@@ -8,4 +8,4 @@ readme = "README.md"
 
 [dependencies]
 displaydoc = "0.2"
-heapless = { version = "0.7", default-features = false }
+heapless = { version = "^0.8", default-features = false }

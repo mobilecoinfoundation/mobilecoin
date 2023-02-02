@@ -129,11 +129,11 @@ impl AutoKillChild {
     pub fn assert_not_stopped(&mut self) {
         match self.0.try_wait() {
             Ok(Some(stat)) => {
-                panic!("child stopped unexpectedly: status: {}", stat)
+                panic!("child stopped unexpectedly: status: {stat}")
             }
             Ok(None) => {}
             Err(err) => {
-                panic!("error getting child status: {}", err)
+                panic!("error getting child status: {err}")
             }
         }
     }
@@ -145,7 +145,7 @@ impl Drop for AutoKillChild {
             // Invalid input means the process is already dead, and we don't have to kill
             // it. Anything else means that killing it failed somehow
             if err.kind() != std::io::ErrorKind::InvalidInput {
-                panic!("Could not send SIGKILL to child: {}", err)
+                panic!("Could not send SIGKILL to child: {err}")
             }
         }
 
@@ -174,12 +174,11 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         let ingest_client_port = base_port + 4;
         let ingest_peer_port = base_port + 5;
         let client_listen_uri = FogIngestUri::from_str(&format!(
-            "insecure-fog-ingest://127.0.0.1:{}",
-            ingest_client_port
+            "insecure-fog-ingest://127.0.0.1:{ingest_client_port}"
         ))
         .unwrap();
         let peer_listen_uri =
-            IngestPeerUri::from_str(&format!("insecure-igp://127.0.0.1:{}", ingest_peer_port))
+            IngestPeerUri::from_str(&format!("insecure-igp://127.0.0.1:{ingest_peer_port}"))
                 .unwrap();
         let local_node_id = peer_listen_uri.responder_id().unwrap();
 
@@ -230,17 +229,17 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         // Maybe we should take ias-spid from env also
         let mut command = std::process::Command::new(ingest_server_binary.to_str().unwrap());
         command
-            .args(&["--ledger-db", ledger_db_path.path().to_str().unwrap()])
-            .args(&["--watcher-db", watcher_db_path.path().to_str().unwrap()])
-            .args(&["--client-listen-uri", &client_listen_uri.to_string()])
-            .args(&["--peer-listen-uri", &peer_listen_uri.to_string()])
-            .args(&["--ias-spid", &"0".repeat(32)])
-            .args(&["--ias-api-key", &"0".repeat(32)])
-            .args(&["--local-node-id", &local_node_id.to_string()])
-            .args(&["--peers", &peer_listen_uri.to_string()])
-            .args(&["--state-file", state_file_path.to_str().unwrap()])
-            .args(&["--admin-listen-uri", &admin_listen_uri.to_string()])
-            .args(&["--user-capacity", &test_params.user_capacity.to_string()]);
+            .args(["--ledger-db", ledger_db_path.path().to_str().unwrap()])
+            .args(["--watcher-db", watcher_db_path.path().to_str().unwrap()])
+            .args(["--client-listen-uri", client_listen_uri.as_ref()])
+            .args(["--peer-listen-uri", peer_listen_uri.as_ref()])
+            .args(["--ias-spid", &"0".repeat(32)])
+            .args(["--ias-api-key", &"0".repeat(32)])
+            .args(["--local-node-id", &local_node_id.to_string()])
+            .args(["--peers", peer_listen_uri.as_ref()])
+            .args(["--state-file", state_file_path.to_str().unwrap()])
+            .args(["--admin-listen-uri", admin_listen_uri.as_ref()])
+            .args(["--user-capacity", &test_params.user_capacity.to_string()]);
 
         log::info!(logger, "Spawning ingest server: {:?}", command);
 
@@ -446,6 +445,6 @@ fn main() {
     // XXX: Write results to a results file or something?
     println!("Load testing results\n================");
     for result in results.iter() {
-        println!("{}", result);
+        println!("{result}");
     }
 }

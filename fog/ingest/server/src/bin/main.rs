@@ -59,10 +59,7 @@ fn main() {
         logger.clone(),
     )
     .unwrap_or_else(|err| {
-        panic!(
-            "fog-ingest cannot connect to database '{}': {:?}",
-            database_url, err
-        )
+        panic!("fog-ingest cannot connect to database '{database_url}': {err:?}")
     });
 
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");

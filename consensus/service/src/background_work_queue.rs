@@ -94,7 +94,7 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
         if let Some(join_handle) = self.join_handle.take() {
             return join_handle
                 .join()
-                .map_err(|e| BackgroundWorkQueueError::JoinFailed(format!("{:?}", e)))?;
+                .map_err(|e| BackgroundWorkQueueError::JoinFailed(format!("{e:?}")))?;
         }
 
         Ok(())

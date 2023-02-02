@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-uri"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 
@@ -9,7 +9,7 @@ mc-common = { path = "../../common", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-host-cert = { path = "../../util/host-cert", default-features = false }
 
-base64 = "0.13"
+base64 = "0.21"
 displaydoc = { version = "0.2", default-features = false }
 hex = "0.4"
 percent-encoding = "2.2.0"

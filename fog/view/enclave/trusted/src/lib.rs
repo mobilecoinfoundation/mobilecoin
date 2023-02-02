@@ -19,7 +19,7 @@ use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
 use mc_util_serial::{deserialize, serialize};
 
 lazy_static::lazy_static! {
-    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
+    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(ecall_dispatcher);
 }
 
 /// The entry point implementation for test_enclave_api

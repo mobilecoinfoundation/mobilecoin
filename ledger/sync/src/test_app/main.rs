@@ -74,7 +74,7 @@ fn main() {
 
     std::fs::copy(
         "../../target/sample_data/ledger/data.mdb",
-        format!("{}/data.mdb", ledger_path_str),
+        format!("{ledger_path_str}/data.mdb"),
     )
     .expect("failed copying ledger");
 
@@ -107,7 +107,7 @@ fn main() {
         .into_iter()
         .map(|node_id| {
             let node_uri =
-                ClientUri::from_str(&format!("mc://node{}.{}.mobilecoin.com/", node_id, NETWORK))
+                ClientUri::from_str(&format!("mc://node{node_id}.{NETWORK}.mobilecoin.com/"))
                     .expect("failed parsing URI");
 
             ThickClient::new(

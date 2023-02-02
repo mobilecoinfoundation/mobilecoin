@@ -246,7 +246,7 @@ impl Digestible for u16 {
         transcript: &mut DT,
     ) {
         // Note: encoding of the size of the uint is implicit in merlin's framing
-        transcript.append_primitive(context, b"uint", &self.to_le_bytes())
+        transcript.append_primitive(context, b"uint", self.to_le_bytes())
     }
 }
 
@@ -257,7 +257,7 @@ impl Digestible for u32 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"uint", &self.to_le_bytes())
+        transcript.append_primitive(context, b"uint", self.to_le_bytes())
     }
 }
 
@@ -268,7 +268,7 @@ impl Digestible for u64 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"uint", &self.to_le_bytes())
+        transcript.append_primitive(context, b"uint", self.to_le_bytes())
     }
 }
 
@@ -279,7 +279,7 @@ impl Digestible for i8 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"int", &self.to_le_bytes())
+        transcript.append_primitive(context, b"int", self.to_le_bytes())
     }
 }
 
@@ -290,7 +290,7 @@ impl Digestible for i16 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"int", &self.to_le_bytes())
+        transcript.append_primitive(context, b"int", self.to_le_bytes())
     }
 }
 
@@ -301,7 +301,7 @@ impl Digestible for i32 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"int", &self.to_le_bytes())
+        transcript.append_primitive(context, b"int", self.to_le_bytes())
     }
 }
 
@@ -312,7 +312,7 @@ impl Digestible for i64 {
         context: &'static [u8],
         transcript: &mut DT,
     ) {
-        transcript.append_primitive(context, b"int", &self.to_le_bytes())
+        transcript.append_primitive(context, b"int", self.to_le_bytes())
     }
 }
 

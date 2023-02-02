@@ -87,10 +87,10 @@ impl Display for TxSummaryUnblindingReport {
         let mut current_entity = None;
         for ((entity, tok), val) in self.balance_changes.iter() {
             if Some(entity) != current_entity.as_ref() {
-                writeln!(formatter, "{}:", entity)?;
+                writeln!(formatter, "{entity}:")?;
                 current_entity = Some(entity.clone());
             }
-            writeln!(formatter, "\t{}: {}", *tok, val)?;
+            writeln!(formatter, "\t{}: {val}", *tok)?;
         }
         writeln!(
             formatter,

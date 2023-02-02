@@ -101,7 +101,7 @@ impl SyncThread {
             let thread_queued_monitor_ids = queued_monitor_ids.clone();
             let thread_logger = logger.clone();
             let join_handle = thread::Builder::new()
-                .name(format!("sync_worker_{}", idx))
+                .name(format!("sync_worker_{idx}"))
                 .spawn(move || {
                     sync_thread_entry_point(
                         thread_ledger_db,
