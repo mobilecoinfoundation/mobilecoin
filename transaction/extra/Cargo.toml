@@ -16,10 +16,10 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 sha2 = { version = "0.10", default-features = false }
 subtle = { version = "2", default-features = false }
 zeroize = "1"
+mc-account-keys = { path = "../../account-keys" }
 
 # MobileCoin dependencies
 mc-core = { path = "../../core" }
-mc-account-keys = { path = "../../account-keys" }
 mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
