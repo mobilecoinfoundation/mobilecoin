@@ -13,6 +13,7 @@ members = [
     "attest/trusted",
     "attest/untrusted",
     "attest/verifier",
+    "attest/verifier/config",
     "attest/verifier/types",
     "blockchain/types",
     "blockchain/validators",

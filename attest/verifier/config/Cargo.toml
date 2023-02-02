@@ -1,0 +1,30 @@
+[package]
+name = "mc-attest-verifier-config"
+version = "4.0.2"
+authors = ["MobileCoin"]
+edition = "2021"
+description = '''
+This crate defines a schema for storing a set of trusted measurements for one of several
+enclaves in json. Then, a helper function can produce an `mc-attest-verifier::Verifier`
+which is appropriate for a given enclave.
+
+This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
+appropriately.
+'''
+readme = "README.md"
+
+[dependencies]
+mc-attest-core = { path = "../../core" }
+mc-attest-verifier = { path = ".." }
+mc-common = { path = "../../../common" }
+
+displaydoc = "0.2"
+serde = "1"
+serde-hex = "0.1"
+serde_json = "1"
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["std"] }
+mc-util-logger-macros = { path = "../../../util/logger-macros" }
+
+hex-literal = "0.3.4"
