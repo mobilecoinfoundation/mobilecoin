@@ -150,8 +150,7 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
             let result = primary_ingest_client.new_keys();
             assert!(
                 result.is_err(),
-                "new_keys should return an error code when the server is active: {:?}",
-                result
+                "new_keys should return an error code when the server is active: {result:?}"
             );
             let final_primary_key = primary_ingest_client
                 .get_status()

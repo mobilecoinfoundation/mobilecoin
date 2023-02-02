@@ -150,3 +150,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- $salt }}
 {{- end }}
+
+{{- define "fogServices.blocklist.enabled" -}}
+  {{- if eq .Values.fogServicesConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_ENABLED | default "false" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.enabled . }}
+  {{- end }}
+{{- end }}
+
+{{- define "fogServices.blocklist.pattern" -}}
+  {{- if eq .Values.fogServicesConfig.enabled false }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "fog-ingress-blocklist").data.BLOCKLIST_PATTERN | default "" }}
+  {{- else }}
+    {{- tpl .Values.global.blocklist.pattern . }}
+  {{- end }}
+{{- end }}

@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Stellar Consensus Protocol"
@@ -33,7 +33,7 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
-serial_test = "0.10"
+serial_test = "1.0"
 tempdir = "0.3"
 
 [[test]]

@@ -26,10 +26,7 @@ fn main() {
         logger.clone(),
     )
     .unwrap_or_else(|err| {
-        panic!(
-            "fog-report cannot connect to database '{}': {:?}",
-            database_url, err
-        )
+        panic!("fog-report cannot connect to database '{database_url}': {err:?}")
     });
 
     let mut server = Server::new(

@@ -84,7 +84,7 @@ fn info(state: &rocket::State<State>) -> Result<Json<JsonInfoResponse>, String> 
     let info = state
         .admin_api_client
         .get_info(&Empty::new())
-        .map_err(|err| format!("Failed getting info: {}", err))?;
+        .map_err(|err| format!("Failed getting info: {err}"))?;
 
     Ok(Json(JsonInfoResponse::try_from(&info)?))
 }
@@ -105,7 +105,7 @@ fn set_rust_log(
     let _resp = state
         .admin_api_client
         .set_rust_log(&req)
-        .map_err(|err| format!("failed setting rust_log: {}", err))?;
+        .map_err(|err| format!("failed setting rust_log: {err}"))?;
 
     Ok(Redirect::to("/"))
 }
@@ -115,7 +115,7 @@ fn metrics(state: &rocket::State<State>) -> Result<String, String> {
     let resp = state
         .admin_api_client
         .get_prometheus_metrics(&Empty::new())
-        .map_err(|err| format!("failed getting metrics: {}", err))?;
+        .map_err(|err| format!("failed getting metrics: {err}"))?;
     Ok(resp.metrics)
 }
 

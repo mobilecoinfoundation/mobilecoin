@@ -39,7 +39,7 @@ const SSL_CERT_EXTENSIONS: &[&str] = &["pem", "crt"];
 /// would be used.
 fn read_cert_dir_contents(dirname: OsString) -> Result<Vec<u8>, String> {
     let entries = fs::read_dir(&dirname)
-        .map_err(|e| format!("Failed reading directory {:?}: {:?}", dirname, e))?;
+        .map_err(|e| format!("Failed reading directory {dirname:?}: {e:?}"))?;
 
     let mut retval = Vec::<u8>::with_capacity(INITIAL_BUNDLE_CAPACITY);
     let mut errors = Vec::<String>::new();
@@ -135,25 +135,22 @@ pub fn read_ca_bundle(ca_bundle: Option<PathBuf>) -> Result<Vec<u8>, String> {
                             }
 
                             Err(format!(
-                                "No certificate found in {:?} or {:?}",
-                                SSL_CERT_FILES, SSL_CERT_DIRS
+                                "No certificate found in {SSL_CERT_FILES:?} or {SSL_CERT_DIRS:?}"
                             ))
                         },
                         read_cert_dir_contents,
                     )
                 },
-                |path| {
-                    fs::read(path.clone()).map_err(|e| format!("Error reading {:?}: {:?}", path, e))
-                },
+                |path| fs::read(path.clone()).map_err(|e| format!("Error reading {path:?}: {e:?}")),
             )
         },
         |path| {
             if path.is_dir() {
                 read_cert_dir_contents(OsString::from(path))
             } else if path.is_file() {
-                fs::read(path.clone()).map_err(|e| format!("Error reading {:?}: {:?}", path, e))
+                fs::read(path.clone()).map_err(|e| format!("Error reading {path:?}: {e:?}"))
             } else {
-                Err(format!("{:?} is not a file or directory", path))
+                Err(format!("{path:?} is not a file or directory"))
             }
         },
     )

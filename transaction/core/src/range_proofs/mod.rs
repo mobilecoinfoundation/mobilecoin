@@ -142,7 +142,7 @@ pub mod tests {
 
         match check_range_proofs(&proof, &commitments, &generators(0), &mut rng) {
             Ok(_) => {} // This is expected.
-            Err(e) => panic!("{:?}", e),
+            Err(e) => panic!("{e:?}"),
         }
     }
 

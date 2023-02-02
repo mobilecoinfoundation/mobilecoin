@@ -25,7 +25,7 @@ impl Verifier for RistrettoPublic {
 
     fn verify_authority(&self, spki_bytes: &[u8], sig: &Self::Sig) -> Result<(), String> {
         self.verify_schnorrkel(super::context(), spki_bytes, sig)
-            .map_err(|e| format!("{:#}", e))
+            .map_err(|e| format!("{e:#}"))
     }
 }
 

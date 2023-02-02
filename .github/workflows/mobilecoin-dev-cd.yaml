@@ -11,16 +11,15 @@ env:
 
 on:
   pull_request:
+    branches:
+    - 'release/**'
     paths-ignore:
     - '**.md'
   push:
     branches:
-    - master
-    - main
-    - feature/*
-    - release/*
+    - 'feature/**'
     tags:
-      - v[0-9]+*
+    - 'v[0-9]+*'
     paths-ignore:
     - '**.md'
 
@@ -264,7 +263,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -334,7 +333,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -410,7 +409,6 @@ jobs:
     - generate-metadata
     with:
       block_version: 2
-      tokens_json_version: 2
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
@@ -443,7 +441,6 @@ jobs:
     - generate-metadata
     with:
       block_version: 3
-      tokens_json_version: 2
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
@@ -464,24 +461,21 @@ jobs:
       generate_and_submit_mint_config_tx_uses_json: true
     secrets: inherit
 
+  mobilecoin-cd-complete:
+    # Dummy step for a standard GHA Check that won't change when we update the tests.
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - test-current-bv3-release
+    steps:
+      - name: CD is Complete
+        run: 'true'
+
 ###############################################################
 # Clean up deployments
 ###############################################################
-# we keep master and feature/*
-# run on pr, run on tag, run on release/*.
-# break this up because 4 or 5 part boolean logic is hard with GHA basic statements.
-# Yes this is less DRY, but way more readable and easier to follow.
-  cleanup-after-pr:
-    if: github.event_name == 'pull_request'
-    needs:
-    - test-current-bv3-release
-    - generate-metadata
-    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
-    with:
-      namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      delete_namespace: true
-    secrets: inherit
-
+# we keep feature/*
+# run on tag
+# run on pr to release/*
   cleanup-after-tag:
     if: github.ref_type == 'tag'
     needs:
@@ -493,8 +487,8 @@ jobs:
       delete_namespace: true
     secrets: inherit
 
-  cleanup-after-release-branch:
-    if: github.ref_type == 'branch' && startsWith('release/', github.ref_name)
+  cleanup-after-pr-to-release-branch:
+    if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
     needs:
     - test-current-bv3-release
     - generate-metadata

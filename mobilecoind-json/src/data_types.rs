@@ -67,9 +67,9 @@ pub struct JsonAccountKeyResponse {
 impl From<&api::GetAccountKeyResponse> for JsonAccountKeyResponse {
     fn from(src: &api::GetAccountKeyResponse) -> Self {
         Self {
-            view_private_key: hex::encode(&src.get_account_key().get_view_private_key().get_data()),
+            view_private_key: hex::encode(src.get_account_key().get_view_private_key().get_data()),
             spend_private_key: hex::encode(
-                &src.get_account_key().get_spend_private_key().get_data(),
+                src.get_account_key().get_spend_private_key().get_data(),
             ),
         }
     }
@@ -160,11 +160,11 @@ impl From<&api::UnspentTxOut> for JsonUnspentTxOut {
         Self {
             tx_out: src.get_tx_out().into(),
             subaddress_index: src.get_subaddress_index(),
-            key_image: hex::encode(&src.get_key_image().get_data()),
+            key_image: hex::encode(src.get_key_image().get_data()),
             value: JsonU64(src.value),
             attempted_spend_height: src.get_attempted_spend_height(),
             attempted_spend_tombstone: src.get_attempted_spend_tombstone(),
-            monitor_id: hex::encode(&src.get_monitor_id()),
+            monitor_id: hex::encode(src.get_monitor_id()),
         }
     }
 }
@@ -177,14 +177,14 @@ impl TryFrom<&JsonUnspentTxOut> for api::UnspentTxOut {
         let mut key_image = KeyImage::new();
         key_image.set_data(
             hex::decode(&src.key_image)
-                .map_err(|err| format!("Failed to decode key image hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode key image hex: {err}"))?,
         );
 
         // Reconstruct the public address as a protobuf
         let mut utxo = api::UnspentTxOut::new();
         utxo.set_tx_out(
             mc_api::external::TxOut::try_from(&src.tx_out)
-                .map_err(|err| format!("Failed to get TxOut: {}", err))?,
+                .map_err(|err| format!("Failed to get TxOut: {err}"))?,
         );
         utxo.set_subaddress_index(src.subaddress_index);
         utxo.set_key_image(key_image);
@@ -193,7 +193,7 @@ impl TryFrom<&JsonUnspentTxOut> for api::UnspentTxOut {
         utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         utxo.set_monitor_id(
             hex::decode(&src.monitor_id)
-                .map_err(|err| format!("Failed to decode monitor id hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode monitor id hex: {err}"))?,
         );
 
         Ok(utxo)
@@ -258,11 +258,11 @@ pub struct JsonPublicAddress {
 impl From<&PublicAddress> for JsonPublicAddress {
     fn from(src: &PublicAddress) -> Self {
         Self {
-            view_public_key: hex::encode(&src.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(&src.get_spend_public_key().get_data()),
+            view_public_key: hex::encode(src.get_view_public_key().get_data()),
+            spend_public_key: hex::encode(src.get_spend_public_key().get_data()),
             fog_report_url: String::from(src.get_fog_report_url()),
             fog_report_id: String::from(src.get_fog_report_id()),
-            fog_authority_sig: hex::encode(&src.get_fog_authority_sig()),
+            fog_authority_sig: hex::encode(src.get_fog_authority_sig()),
         }
     }
 }
@@ -292,11 +292,11 @@ impl From<&api::GetPublicAddressResponse> for JsonPublicAddressResponse {
     fn from(src: &api::GetPublicAddressResponse) -> Self {
         let public_address = src.get_public_address();
         Self {
-            view_public_key: hex::encode(&public_address.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(&public_address.get_spend_public_key().get_data()),
+            view_public_key: hex::encode(public_address.get_view_public_key().get_data()),
+            spend_public_key: hex::encode(public_address.get_spend_public_key().get_data()),
             fog_report_url: String::from(public_address.get_fog_report_url()),
             fog_report_id: String::from(public_address.get_fog_report_id()),
-            fog_authority_sig: hex::encode(&public_address.get_fog_authority_sig()),
+            fog_authority_sig: hex::encode(public_address.get_fog_authority_sig()),
             b58_address_code: src.get_b58_code().to_string(),
         }
     }
@@ -311,12 +311,12 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
         let mut view_public_key = CompressedRistretto::new();
         view_public_key.set_data(
             hex::decode(&src.view_public_key)
-                .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode view key hex: {err}"))?,
         );
         let mut spend_public_key = CompressedRistretto::new();
         spend_public_key.set_data(
             hex::decode(&src.spend_public_key)
-                .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode spend key hex: {err}"))?,
         );
 
         // Reconstruct the public address as a protobuf
@@ -327,7 +327,7 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
         public_address.set_fog_report_id(src.fog_report_id.clone());
         public_address.set_fog_authority_sig(
             hex::decode(&src.fog_authority_sig)
-                .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode fog authority sig hex: {err}"))?,
         );
 
         Ok(public_address)
@@ -414,10 +414,10 @@ impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(&src.get_tx_out_hash()),
+            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
+            tx_out_hash: hex::encode(src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(&src.get_confirmation_number()),
+            confirmation_number: hex::encode(src.get_confirmation_number()),
         }
     }
 }
@@ -479,7 +479,7 @@ impl TryFrom<&JsonOutlay> for api::Outlay {
         outlay.set_value(src.value.into());
         outlay.set_receiver(
             PublicAddress::try_from(&src.receiver)
-                .map_err(|err| format!("Could not convert receiver: {}", err))?,
+                .map_err(|err| format!("Could not convert receiver: {err}"))?,
         );
 
         Ok(outlay)
@@ -501,7 +501,7 @@ impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
                 commitment: hex::encode(src.get_commitment().get_data()),
                 masked_value: JsonU64(src.get_masked_value()),
                 masked_token_id: hex::encode(src.get_masked_token_id()),
-                version: None,
+                version: Some(1),
             },
             mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(src) => Self {
                 commitment: hex::encode(src.get_commitment().get_data()),
@@ -523,14 +523,14 @@ impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount 
         let mut commitment = CompressedRistretto::new();
         commitment.set_data(
             hex::decode(&src.commitment)
-                .map_err(|err| format!("Failed to decode commitment hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode commitment hex: {err}"))?,
         );
         let mut masked_amount = MaskedAmount::new();
         masked_amount.set_commitment(commitment);
         masked_amount.set_masked_value(src.masked_value.into());
         masked_amount.set_masked_token_id(
             hex::decode(&src.masked_token_id)
-                .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode masked token id hex: {err}"))?,
         );
 
         match src.version {
@@ -540,7 +540,7 @@ impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount 
             Some(2) => {
                 Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(masked_amount))
             }
-            Some(other) => Err(format!("Unknown masked amount version: {}", other)),
+            Some(other) => Err(format!("Unknown masked amount version: {other}")),
         }
     }
 }
@@ -574,22 +574,22 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         let mut target_key = CompressedRistretto::new();
         target_key.set_data(
             hex::decode(&src.target_key)
-                .map_err(|err| format!("Failed to decode target key hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode target key hex: {err}"))?,
         );
         let mut public_key = CompressedRistretto::new();
         public_key.set_data(
             hex::decode(&src.public_key)
-                .map_err(|err| format!("Failed to decode public key hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode public key hex: {err}"))?,
         );
         let mut e_fog_hint = EncryptedFogHint::new();
         e_fog_hint.set_data(
             hex::decode(&src.e_fog_hint)
-                .map_err(|err| format!("Failed to decode e_fog_hint hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode e_fog_hint hex: {err}"))?,
         );
         let mut e_memo = EncryptedMemo::new();
         e_memo.set_data(
             hex::decode(&src.e_memo)
-                .map_err(|err| format!("Failed to decode e_memo hex: {}", err))?,
+                .map_err(|err| format!("Failed to decode e_memo hex: {err}"))?,
         );
 
         let mut txo = mc_api::external::TxOut::new();
@@ -667,7 +667,7 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
             let mut hash = TxOutMembershipHash::new();
             hash.set_data(
                 hex::decode(&element.hash)
-                    .map_err(|err| format!("Could not decode elem hash: {}", err))?,
+                    .map_err(|err| format!("Could not decode elem hash: {err}"))?,
             );
 
             let mut elem = TxOutMembershipElement::new();
@@ -747,7 +747,7 @@ impl TryFrom<&JsonInputRules> for InputRules {
                 .iter()
                 .map(|out| {
                     mc_api::external::TxOut::try_from(out)
-                        .map_err(|err| format!("Could not get TxOut: {}", err))
+                        .map_err(|err| format!("Could not get TxOut: {err}"))
                 })
                 .collect::<Result<_, String>>()?,
         );
@@ -784,14 +784,14 @@ impl TryFrom<&JsonTxIn> for TxIn {
         let mut outputs: Vec<mc_api::external::TxOut> = Vec::new();
         for output in &src.ring {
             let p_output = mc_api::external::TxOut::try_from(output)
-                .map_err(|err| format!("Could not get TxOut: {}", err))?;
+                .map_err(|err| format!("Could not get TxOut: {err}"))?;
             outputs.push(p_output);
         }
 
         let mut proofs: Vec<TxOutMembershipProof> = Vec::new();
         for proof in &src.proofs {
             let p_proof = TxOutMembershipProof::try_from(proof)
-                .map_err(|err| format!("Could not get proof: {}", err))?;
+                .map_err(|err| format!("Could not get proof: {err}"))?;
             proofs.push(p_proof);
         }
 
@@ -838,14 +838,14 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
         let mut inputs: Vec<TxIn> = Vec::new();
         for input in &src.inputs {
             let p_input =
-                TxIn::try_from(input).map_err(|err| format!("Could not get TxIn: {}", err))?;
+                TxIn::try_from(input).map_err(|err| format!("Could not get TxIn: {err}"))?;
             inputs.push(p_input);
         }
 
         let mut outputs: Vec<mc_api::external::TxOut> = Vec::new();
         for output in &src.outputs {
             let p_output = mc_api::external::TxOut::try_from(output)
-                .map_err(|err| format!("Could not get TxOut: {}", err))?;
+                .map_err(|err| format!("Could not get TxOut: {err}"))?;
             outputs.push(p_output);
         }
 
@@ -920,15 +920,14 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             let mut c_zero = mc_api::external::CurveScalar::new();
             c_zero.set_data(
                 hex::decode(&sig.c_zero)
-                    .map_err(|err| format!("Could not decode from hex: {}", err))?,
+                    .map_err(|err| format!("Could not decode from hex: {err}"))?,
             );
 
             let mut responses: Vec<mc_api::external::CurveScalar> = Vec::new();
             for resp in &sig.responses {
                 let mut response = mc_api::external::CurveScalar::new();
                 response.set_data(
-                    hex::decode(resp)
-                        .map_err(|err| format!("Could not decode from hex: {}", err))?,
+                    hex::decode(resp).map_err(|err| format!("Could not decode from hex: {err}"))?,
                 );
                 responses.push(response);
             }
@@ -936,7 +935,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             let mut key_image = KeyImage::new();
             key_image.set_data(
                 hex::decode(&sig.key_image)
-                    .map_err(|err| format!("Could not decode from hex: {}", err))?,
+                    .map_err(|err| format!("Could not decode from hex: {err}"))?,
             );
 
             let mut ring_sig = RingMLSAG::new();
@@ -951,7 +950,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
         for comm in &src.pseudo_output_commitments {
             let mut compressed = CompressedRistretto::new();
             compressed.set_data(
-                hex::decode(&comm).map_err(|err| format!("Could not decode from hex: {}", err))?,
+                hex::decode(comm).map_err(|err| format!("Could not decode from hex: {err}"))?,
             );
             commitments.push(compressed);
         }
@@ -971,10 +970,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             .iter()
             .map(|hex_str| {
                 hex::decode(hex_str).map_err(|err| {
-                    format!(
-                        "Could not decode range proof from hex '{}': {}",
-                        hex_str, err
-                    )
+                    format!("Could not decode range proof from hex '{hex_str}': {err}")
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -1012,11 +1008,11 @@ impl TryFrom<&JsonTx> for Tx {
 
         tx.set_prefix(
             TxPrefix::try_from(&src.prefix)
-                .map_err(|err| format!("Could not convert TxPrefix: {}", err))?,
+                .map_err(|err| format!("Could not convert TxPrefix: {err}"))?,
         );
         tx.set_signature(
             SignatureRctBulletproofs::try_from(&src.signature)
-                .map_err(|err| format!("Could not convert signature: {}", err))?,
+                .map_err(|err| format!("Could not convert signature: {err}"))?,
         );
 
         Ok(tx)
@@ -1063,14 +1059,14 @@ impl TryFrom<&JsonTxProposal> for api::TxProposal {
         let mut inputs: Vec<api::UnspentTxOut> = Vec::new();
         for input in src.input_list.iter() {
             let utxo = api::UnspentTxOut::try_from(input)
-                .map_err(|err| format!("Failed to convert input: {}", err))?;
+                .map_err(|err| format!("Failed to convert input: {err}"))?;
             inputs.push(utxo);
         }
 
         let mut outlays: Vec<api::Outlay> = Vec::new();
         for outlay in src.outlay_list.iter() {
             let out = api::Outlay::try_from(outlay)
-                .map_err(|err| format!("Failed to convert outlay: {}", err))?;
+                .map_err(|err| format!("Failed to convert outlay: {err}"))?;
             outlays.push(out);
         }
 
@@ -1079,7 +1075,7 @@ impl TryFrom<&JsonTxProposal> for api::TxProposal {
         proposal.set_input_list(RepeatedField::from_vec(inputs));
         proposal.set_outlay_list(RepeatedField::from_vec(outlays));
         proposal
-            .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {}", err))?);
+            .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {err}"))?);
         proposal.set_fee(src.fee);
         proposal.set_outlay_index_to_tx_out_index(
             src.outlay_index_to_tx_out_index
@@ -1149,11 +1145,8 @@ impl TryFrom<&JsonSubmitTxResponse> for api::SubmitTxResponse {
             .key_images
             .iter()
             .map(|k| {
-                hex::decode(&k).map(KeyImage::from).map_err(|err| {
-                    format!(
-                        "Failed to decode hex for sender_tx_receipt.key_images: {}",
-                        err
-                    )
+                hex::decode(k).map(KeyImage::from).map_err(|err| {
+                    format!("Failed to decode hex for sender_tx_receipt.key_images: {err}")
                 })
             })
             .collect::<Result<Vec<KeyImage>, String>>()?;
@@ -1166,22 +1159,22 @@ impl TryFrom<&JsonSubmitTxResponse> for api::SubmitTxResponse {
             let mut receiver_receipt = api::ReceiverTxReceipt::new();
             receiver_receipt.set_recipient(
                 PublicAddress::try_from(&r.recipient)
-                    .map_err(|err| format!("Failed to convert recipient: {}", err))?,
+                    .map_err(|err| format!("Failed to convert recipient: {err}"))?,
             );
             let mut pubkey = mc_api::external::CompressedRistretto::new();
             pubkey.set_data(
                 hex::decode(&r.tx_public_key)
-                    .map_err(|err| format!("Failed to decode hex for tx_public_key: {}", err))?,
+                    .map_err(|err| format!("Failed to decode hex for tx_public_key: {err}"))?,
             );
             receiver_receipt.set_tx_public_key(pubkey);
             receiver_receipt.set_tx_out_hash(
                 hex::decode(&r.tx_out_hash)
-                    .map_err(|err| format!("Failed to decode hex for tx_out_hash: {}", err))?,
+                    .map_err(|err| format!("Failed to decode hex for tx_out_hash: {err}"))?,
             );
             receiver_receipt.set_tombstone(r.tombstone);
             receiver_receipt.set_confirmation_number(
                 hex::decode(&r.confirmation_number).map_err(|err| {
-                    format!("Failed to decode hex for confirmation_number: {}", err)
+                    format!("Failed to decode hex for confirmation_number: {err}")
                 })?,
             );
             receiver_receipts.push(receiver_receipt);
@@ -1291,12 +1284,12 @@ impl From<&api::GetBlockResponse> for JsonBlockDetailsResponse {
         let block = src.get_block();
 
         Self {
-            block_id: hex::encode(&block.get_id().get_data()),
+            block_id: hex::encode(block.get_id().get_data()),
             version: block.get_version(),
-            parent_id: hex::encode(&block.get_parent_id().get_data()),
+            parent_id: hex::encode(block.get_parent_id().get_data()),
             index: JsonU64(block.get_index()),
             cumulative_txo_count: JsonU64(block.get_cumulative_txo_count()),
-            contents_hash: hex::encode(&block.get_contents_hash().get_data()),
+            contents_hash: hex::encode(block.get_contents_hash().get_data()),
             key_images: src
                 .get_key_images()
                 .iter()
@@ -1326,10 +1319,10 @@ impl From<&api::ProcessedTxOut> for JsonProcessedTxOut {
         };
 
         Self {
-            monitor_id: hex::encode(&src.get_monitor_id()),
+            monitor_id: hex::encode(src.get_monitor_id()),
             subaddress_index: src.subaddress_index,
-            public_key: hex::encode(&src.get_public_key().get_data()),
-            key_image: hex::encode(&src.get_key_image().get_data()),
+            public_key: hex::encode(src.get_public_key().get_data()),
+            key_image: hex::encode(src.get_key_image().get_data()),
             value: JsonU64(src.value),
             direction: direction_str.to_owned(),
         }

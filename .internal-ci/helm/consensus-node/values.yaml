@@ -29,6 +29,10 @@ global:
     #   tokensSignedJson: |-
     #     { json }
 
+  blocklist:
+    enabled: "false"
+    pattern: patterns/blocked-countries
+
 ### Enable to launch child chart to create node required configMaps and secrets.
 #   See helm/consensus-node-config/values.yaml for config details.
 consensusNodeConfig:
@@ -41,7 +45,7 @@ consensusNodeConfig:
       hostname: ''
     txSourceUrl: ''
     msgSignerKey:
-     privateKey: ''
+      privateKey: ''
 
 ### Enable to launch child chart to create core common configMaps and secrets.
 #   See helm/mc-core-common-config/values.yaml for config details.

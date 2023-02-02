@@ -102,6 +102,9 @@ impl UtxoTracker {
 
 /// TokenStateReceiver holds the queue of Utxo records for a particular token
 /// id, as well as other shared flags that indicate if we are out of funds etc.
+///
+/// This is normally created when a WorkerTokenState is created, and then this
+/// receiver object is passed back to the receiving thread.
 pub struct TokenStateReceiver {
     receiver: async_channel::Receiver<UtxoRecord>,
     funds_depleted_flag: Arc<AtomicBool>,
@@ -192,6 +195,11 @@ pub struct Worker {
     /// The worker thread handle
     join_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// A flag which can be used to control when the worker thread is active.
+    /// In some deployment scenarios it's helpful to not have the background
+    /// worker submitting transactions until later.
+    is_active: Arc<AtomicBool>,
+
     /// A flag which can be used to request the worker thread to join
     /// This is done by dropping the worker handle
     stop_requested: Arc<AtomicBool>,
@@ -235,12 +243,14 @@ impl Worker {
         for (token_id, value) in target_amounts.iter() {
             let minimum_fee_value = minimum_fees
                 .get(token_id)
-                .unwrap_or_else(|| panic!("Missing minimum fee for {}", token_id));
+                .unwrap_or_else(|| panic!("Missing minimum fee for {token_id}"));
             let (state, receiver) = WorkerTokenState::new(*token_id, *minimum_fee_value, *value);
             worker_token_states.push(state);
             receivers.insert(*token_id, receiver);
         }
 
+        let is_active = Arc::new(AtomicBool::default());
+        let thread_is_active = is_active.clone();
         let stop_requested = Arc::new(AtomicBool::default());
         let thread_stop_requested = stop_requested.clone();
 
@@ -248,6 +258,7 @@ impl Worker {
         let join_handle = Some(std::thread::spawn(move || {
             Self::worker_thread_entry_point(
                 worker_token_states,
+                thread_is_active,
                 thread_stop_requested,
                 client,
                 monitor_id,
@@ -261,6 +272,7 @@ impl Worker {
         Worker {
             receivers,
             join_handle,
+            is_active,
             stop_requested,
             worker_poll_period,
         }
@@ -272,6 +284,7 @@ impl Worker {
     /// activity, and sleep for a bit.
     fn worker_thread_entry_point(
         mut worker_token_states: Vec<WorkerTokenState>,
+        is_active: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
         client: MobilecoindApiClient,
         monitor_id: Vec<u8>,
@@ -322,15 +335,17 @@ impl Worker {
                 log::info!(logger, "Worker: stop was requested");
                 break;
             }
-            for state in worker_token_states.iter_mut() {
-                if let Err(err_str) = state.poll(
-                    &client,
-                    &monitor_id,
-                    &public_address,
-                    target_queue_depth,
-                    &logger,
-                ) {
-                    log::error!(logger, "token id {}: {}", state.token_id, err_str);
+            if is_active.load(Ordering::SeqCst) {
+                for state in worker_token_states.iter_mut() {
+                    if let Err(err_str) = state.poll(
+                        &client,
+                        &monitor_id,
+                        &public_address,
+                        target_queue_depth,
+                        &logger,
+                    ) {
+                        log::error!(logger, "token id {}: {}", state.token_id, err_str);
+                    }
                 }
             }
             log::trace!(logger, "Worker sleeping");
@@ -388,6 +403,16 @@ impl Worker {
     pub fn get_worker_poll_period(&self) -> Duration {
         self.worker_poll_period
     }
+
+    /// Get whether the worker is activated
+    pub fn get_is_active(&self) -> bool {
+        self.is_active.load(Ordering::SeqCst)
+    }
+
+    /// Set the worker to the active state
+    pub fn activate(&self) -> bool {
+        self.is_active.swap(true, Ordering::SeqCst)
+    }
 }
 
 impl Drop for Worker {
@@ -406,20 +431,23 @@ struct WorkerTokenState {
     minimum_fee_value: u64,
     // The target value of UTXOS for this token id
     target_value: u64,
-    // The most recently known set of UTXOS for this token id
-    // When we get a new UTXO from mobilecoind, we track it using this cache.
-    // The tracker contains a one-shot channel that the other side can use to
-    // let us know what happens with this UTXO.
-    // UTXOs are added here at the same time they are queued. As long as a UTXO
-    // is in this cache, we won't requeue it, to avoid two threads spending
-    // the same UTXO concurrently.
-    known_utxos: HashMap<KeyImage, UtxoTracker>,
+    // Trackers for the UTXOs that we have queued.
+    // A tracker is created for a UTXO at the time that we get it from mobilecoind,
+    // and added here. The tracker contains a one-shot channel that the other side
+    // uses to let us know what happened with this UTXO.
+    // As long as a UTXO is in this list, we won't requeue it, until its tracker
+    // has resolved either in success or an error. We must avoid requeuing it
+    // to avoid handing it out to two different consumers who then conflict with
+    // each other.
+    queued_utxo_trackers: HashMap<KeyImage, UtxoTracker>,
     // The queue of UTXOs with the target value
     sender: async_channel::Sender<UtxoRecord>,
     // If we submit a rebalancing transaction, the response we can use to track it
     // Only one of these will be used at a time, and split txs cannot be submitted
     // while this is in-flight.
     in_flight_rebalancing_tx_state: Option<SubmitTxResponse>,
+    // Track the key images associated to utxos in the rebalancing tx
+    in_flight_rebalancing_key_images: HashSet<KeyImage>,
     // If we submit a split transaction, the response we can use to track it
     // There maybe up to 16 of these in flight at a time.
     in_flight_split_tx_states: HashMap<KeyImage, SubmitTxResponse>,
@@ -465,9 +493,10 @@ impl WorkerTokenState {
                 token_id,
                 minimum_fee_value,
                 target_value,
-                known_utxos: Default::default(),
+                queued_utxo_trackers: Default::default(),
                 sender,
                 in_flight_rebalancing_tx_state: None,
+                in_flight_rebalancing_key_images: Default::default(),
                 in_flight_split_tx_states: Default::default(),
                 in_flight_defragmentation_tx_state: None,
                 in_flight_defragmentation_key_images: Default::default(),
@@ -507,7 +536,7 @@ impl WorkerTokenState {
     ) -> Result<(), String> {
         // (1) For each known utxo already queued, check if it was sent in a
         // transaction and if so what the status is
-        self.known_utxos.retain(|_key_image, tracker| {
+        self.queued_utxo_trackers.retain(|_key_image, tracker| {
             if let Some(status) = tracker.poll() {
                 // If poll returned Some, then we either got a SubmitTxResponse or an error
                 if let Ok(resp) = status {
@@ -528,6 +557,19 @@ impl WorkerTokenState {
                 true
             }
         });
+
+        // Update the status of in-flight txs.
+        // This is done before getting a new list of UTXOs from mobilecoind.
+        // The reason is:
+        // * If we call this after GetUTXOs, then it's possible the UTXO list has a TXO
+        //   that was actually spent in a Tx that just resolved, and then gets selected
+        //   by input selection for a new Tx, which is rejected with spent key image
+        //   error.
+        // * If we call this before GetUTXOs, it's possible that we think some TX's are
+        //   still in flight even though their UTXOs are no longer on the list. But the
+        //   worst case outcome of that is that we wait another cycle to take some
+        //   particular action because we think an earlier Tx is still in flight.
+        self.check_on_in_flight_txs(client, logger);
 
         // Now, get a fresh unspent tx out list associated to this token
         let mut resp = {
@@ -564,9 +606,9 @@ impl WorkerTokenState {
             let key_image: KeyImage = utxo
                 .get_key_image()
                 .try_into()
-                .map_err(|err| format!("invalid key image: {}", err))?;
-            if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
-                // We found a utxo not in the cache, let's queue and add to cache
+                .map_err(|err| format!("invalid key image: {err}"))?;
+            if let Entry::Vacant(e) = self.queued_utxo_trackers.entry(key_image) {
+                // We found a utxo with no associated tracker, let's queue it and add a tracker
                 log::trace!(
                     logger,
                     "Queueing a utxo: key_image = {:?}, value = {}",
@@ -591,14 +633,15 @@ impl WorkerTokenState {
         // output_list_key_images before. (This also drops the one-shot receiver,
         // and so can tell the other side not to bother sending this utxo if they get
         // it from the queue.)
-        self.known_utxos
+        self.queued_utxo_trackers
             .retain(|key_image, _tracker| output_list_key_images.contains(key_image));
 
-        // Steps 3 and 4 consider whether to submit any txs.
-        // First update the status of in-flight txs
-        self.check_on_in_flight_txs(client, logger);
+        // Steps 3 and 4 consider whether to submit any new txs.
 
         // Get all the "non-target-value" utxos of this token id.
+        // Note that some of these may be part of in-flight txs, and the callees
+        // "maybe_send_split_txs" and "maybe_send_defragmentation_tx" are expected
+        // to handle that.
         let mut non_target_value_utxos: Vec<_> = resp
             .take_output_list()
             .into_iter()
@@ -675,8 +718,8 @@ impl WorkerTokenState {
         Ok(())
     }
 
-    // Before parts 3 and 4, unconditionally update the status of any in-flight Tx
-    // and collect any that have resolved.
+    // Update the status of any in-flight Tx and clear the record of any that has
+    // resolved.
     fn check_on_in_flight_txs(&mut self, client: &MobilecoindApiClient, logger: &Logger) {
         // Check on rebalancing Tx
         if let Some(prev_tx) = self.in_flight_rebalancing_tx_state.as_ref() {
@@ -684,6 +727,7 @@ impl WorkerTokenState {
                 // At this point, the previous in-flight tx resolved somehow and if it was an
                 // error we logged it
                 self.in_flight_rebalancing_tx_state = None;
+                self.in_flight_rebalancing_key_images = Default::default();
             }
         }
 
@@ -788,10 +832,14 @@ impl WorkerTokenState {
             // Check if any of these UTXOs were used by an in-flight split tx or
             // defrag tx. If so then we
             // should back off and wait for it to clear and re-evaluate.
-            if top_utxos.iter().any(|utxo| {
-                let key_image = utxo.get_key_image().try_into().unwrap();
-                self.key_image_is_in_flight(&key_image)
-            }) {
+            let key_images: HashSet<KeyImage> = top_utxos
+                .iter()
+                .map(|utxo| utxo.get_key_image().try_into().unwrap())
+                .collect();
+            if key_images
+                .iter()
+                .any(|key_image| self.key_image_is_in_flight(key_image))
+            {
                 log::info!(
                     logger,
                     "Backing off before sending a rebalancing tx {}",
@@ -823,18 +871,19 @@ impl WorkerTokenState {
 
             let mut resp = client
                 .generate_tx(&req)
-                .map_err(|err| format!("Failed to generate rebalancing tx: {}", err))?;
+                .map_err(|err| format!("Failed to generate rebalancing tx: {err}"))?;
 
             // Submit the Tx
             let mut req = api::SubmitTxRequest::new();
             req.set_tx_proposal(resp.take_tx_proposal());
             let submit_tx_response = client
                 .submit_tx(&req)
-                .map_err(|err| format!("Failed to submit rebalancing tx: {}", err))?;
+                .map_err(|err| format!("Failed to submit rebalancing tx: {err}"))?;
 
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does
             self.in_flight_rebalancing_tx_state = Some(submit_tx_response);
+            self.in_flight_rebalancing_key_images = key_images;
 
             return Ok(false);
         }
@@ -1012,6 +1061,7 @@ impl WorkerTokenState {
     // Check if a key image is part of an in-flight transaction
     fn key_image_is_in_flight(&self, key_image: &KeyImage) -> bool {
         self.in_flight_split_tx_states.contains_key(key_image)
+            || self.in_flight_rebalancing_key_images.contains(key_image)
             || self
                 .in_flight_defragmentation_key_images
                 .contains(key_image)

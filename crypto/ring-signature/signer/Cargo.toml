@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"

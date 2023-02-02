@@ -138,7 +138,7 @@ fn build_fog_view_conn(
     log::debug!(logger, "Fog view attestation verifier: {:?}", verifier);
 
     let client_uri = FogViewUri::from_str(uri)
-        .unwrap_or_else(|e| panic!("Could not parse client uri: {}: {:?}", uri, e));
+        .unwrap_or_else(|e| panic!("Could not parse client uri: {uri}: {e:?}"));
 
     // TODO: Supply chain-id to the load-test binary?
     FogViewGrpcClient::new(

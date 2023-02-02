@@ -107,7 +107,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         key.clone_from_slice(search_key);
         value[0] = (ValueSize::USIZE - 1 - ciphertext.len()) as u8;
         let data_end = ValueSize::USIZE - value[0] as usize;
-        (&mut value[1..data_end]).clone_from_slice(ciphertext);
+        value[1..data_end].clone_from_slice(ciphertext);
         self.last_ciphertext_size_byte = value[0];
 
         // Note: Passing true means we allow overwrite, which seems fine since
@@ -180,8 +180,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
                 oram_result_code == OMAP_FOUND
                     || oram_result_code == OMAP_NOT_FOUND
                     || oram_result_code == OMAP_INVALID_KEY,
-                "oram_result_code had an unexpected value: {}",
-                oram_result_code
+                "oram_result_code had an unexpected value: {oram_result_code}"
             );
         }
 

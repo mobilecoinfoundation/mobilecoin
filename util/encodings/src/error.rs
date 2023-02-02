@@ -3,7 +3,7 @@
 //! Error types converting to/from encodings.
 
 use alloc::string::FromUtf8Error;
-use base64::DecodeError;
+use base64::{DecodeError, DecodeSliceError};
 use core::{array::TryFromSliceError, fmt::Error as FmtError, str::Utf8Error};
 use displaydoc::Display;
 use hex::FromHexError;
@@ -28,9 +28,19 @@ pub enum Error {
 impl From<DecodeError> for Error {
     fn from(src: DecodeError) -> Self {
         match src {
-            DecodeError::InvalidByte(_offset, _byte) => Error::InvalidInput,
+            DecodeError::InvalidByte(_, _)
+            | DecodeError::InvalidLastSymbol(_, _)
+            | DecodeError::InvalidPadding => Error::InvalidInput,
             DecodeError::InvalidLength => Error::InvalidInputLength,
-            DecodeError::InvalidLastSymbol(_offset, _byte) => Error::InvalidInput,
+        }
+    }
+}
+
+impl From<DecodeSliceError> for Error {
+    fn from(src: DecodeSliceError) -> Self {
+        match src {
+            DecodeSliceError::DecodeError(e) => e.into(),
+            DecodeSliceError::OutputSliceTooSmall => Error::InvalidOutputLength,
         }
     }
 }

@@ -148,8 +148,7 @@ impl IngestControllerState {
     pub fn increment_next_block_index(&mut self) {
         assert!(
             !self.is_idle(),
-            "next_block_index should not be incremented if we are idle: {}",
-            self
+            "next_block_index should not be incremented if we are idle: {self}"
         );
         // Perform the increment
         self.next_block_index += 1;
@@ -295,7 +294,7 @@ impl Display for IngestControllerState {
             self.mode, self.next_block_index, self.pubkey_expiry_window
         )?;
         if let Some(iid) = self.ingest_invocation_id {
-            write!(f, "ingest_invocation_id: {}, ", iid)?;
+            write!(f, "ingest_invocation_id: {iid}, ")?;
         }
         write!(f, "peers: {} }}", SeqDisplay(self.peers.iter()))
     }

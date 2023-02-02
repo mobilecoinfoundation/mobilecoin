@@ -85,7 +85,7 @@ fn generate_tx_out_record_data() -> TxOutRecordData {
 
     let recipient_account = AccountKey::random_with_fog(&mut rng);
     let spurious_account = AccountKey::random_with_fog(&mut rng);
-    let enclave = SgxIngestEnclave::<HeapORAMStorageCreator>::new(logger.clone());
+    let enclave = SgxIngestEnclave::<HeapORAMStorageCreator>::new(logger);
 
     let params = IngestEnclaveInitParams {
         responder_id: ResponderId::default(),

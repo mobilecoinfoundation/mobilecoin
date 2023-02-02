@@ -17,14 +17,14 @@ const PEM_TAG_PUBLIC_KEY: &str = "PUBLIC KEY";
 
 pub fn print_mint_config_tx(tx: &MintConfigTx, indent: usize) {
     let indent_str = INDENT_STR.repeat(indent);
-    println!("{}MintConfigTx:", indent_str);
+    println!("{indent_str}MintConfigTx:");
     print_mint_config_tx_prefix(&tx.prefix, indent + 1);
     print_multi_sig(&tx.signature, indent + 1);
 }
 
 pub fn print_mint_config_tx_prefix(prefix: &MintConfigTxPrefix, indent: usize) {
     let mut indent_str = INDENT_STR.repeat(indent);
-    println!("{}MintConfigTxPrefix:", indent_str);
+    println!("{indent_str}MintConfigTxPrefix:");
 
     indent_str.push_str(INDENT_STR);
     println!(
@@ -45,7 +45,7 @@ pub fn print_mint_config_tx_prefix(prefix: &MintConfigTxPrefix, indent: usize) {
 
 pub fn print_mint_config(mint_config: &MintConfig, indent: usize) {
     let mut indent_str = INDENT_STR.repeat(indent);
-    println!("{}MintConfig:", indent_str);
+    println!("{indent_str}MintConfig:");
 
     indent_str.push_str(INDENT_STR);
     println!("{}Token id: {}", indent_str, mint_config.token_id);
@@ -55,7 +55,7 @@ pub fn print_mint_config(mint_config: &MintConfig, indent: usize) {
 
 pub fn print_mint_tx(tx: &MintTx, indent: usize) {
     let indent_str = INDENT_STR.repeat(indent);
-    println!("{}MintTx:", indent_str);
+    println!("{indent_str}MintTx:");
     print_mint_tx_prefix(&tx.prefix, indent + 1);
     print_multi_sig(&tx.signature, indent + 1);
 }
@@ -67,7 +67,7 @@ pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
     let b58_recipient = wrapper.b58_encode().expect("failed encoding b58 address");
 
     let mut indent_str = INDENT_STR.repeat(indent);
-    println!("{}MintTxPrefix:", indent_str);
+    println!("{indent_str}MintTxPrefix:");
     indent_str.push_str(INDENT_STR);
     println!("{}Token id: {}", indent_str, prefix.token_id);
     println!("{}Mint amount: {}", indent_str, prefix.amount);
@@ -76,7 +76,7 @@ pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
         "{}Spend public key: {}",
         indent_str, prefix.spend_public_key
     );
-    println!("{}Recipient B58 address: {}", indent_str, b58_recipient);
+    println!("{indent_str}Recipient B58 address: {b58_recipient}");
     println!("{}Nonce: {}", indent_str, hex::encode(&prefix.nonce));
     println!("{}Tombstone block: {}", indent_str, prefix.tombstone_block);
 }
@@ -118,6 +118,6 @@ pub fn print_pem(obj: &impl DistinguishedEncoding, tag: &str, indent: usize) {
         contents: obj.to_der(),
     });
     for line in pem_str.lines() {
-        println!("{}{}", indent_str, line);
+        println!("{indent_str}{line}");
     }
 }
