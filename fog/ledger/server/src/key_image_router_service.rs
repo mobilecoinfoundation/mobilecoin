@@ -1,10 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
-
+use crate::{router_handlers, SVC_COUNTERS};
 use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext};
 use mc_common::logger::{log, Logger};
@@ -15,9 +11,10 @@ use mc_fog_api::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::rpc_logger;
-use mc_util_metrics::SVC_COUNTERS;
-
-use crate::router_handlers;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Clone)]
 pub struct KeyImageRouterService<E>

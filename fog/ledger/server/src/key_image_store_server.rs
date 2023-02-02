@@ -86,7 +86,7 @@ impl KeyImageStoreServer {
             client_authenticator.clone(),
             logger.clone(),
         );
-        Self::new_from_service(key_image_service, client_listen_uri, logger.clone())
+        Self::new_from_service(key_image_service, client_listen_uri, logger)
     }
 
     pub fn new_from_service<E>(

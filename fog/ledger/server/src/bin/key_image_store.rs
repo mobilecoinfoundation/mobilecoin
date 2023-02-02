@@ -12,10 +12,10 @@ use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
 
 fn main() {
-    mc_common::setup_panic_handler();
-    let config = LedgerStoreConfig::parse();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    mc_common::setup_panic_handler();
+    let config = LedgerStoreConfig::parse();
 
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
@@ -23,7 +23,7 @@ fn main() {
     log::info!(
         logger,
         "enclave path {}, responder ID {}",
-        enclave_path.to_str().unwrap(),
+        enclave_path.to_str().expect("enclave path is not valid UTF-8"),
         &config.client_responder_id
     );
     let enclave = LedgerSgxEnclave::new(
