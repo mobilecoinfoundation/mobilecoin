@@ -204,15 +204,10 @@ impl TxSummaryStreamingVerifier {
             self.report
                 .balance_add(TransactionEntity::Ourself, amount.token_id, amount.value)?;
         } else if let Some((address_hash, address)) = address.as_ref() {
-            let amount = Amount::new(
-                unmasked_amount.value,
-                unmasked_amount.token_id.into(),
-            );
+            let amount = Amount::new(unmasked_amount.value, unmasked_amount.token_id.into());
             // In this case, we are given the address of who is supposed to have received
             // this.
-            let tx_private_key = tx_private_key
-                .as_ref()
-                .ok_or(Error::MissingTxPrivateKey)?;
+            let tx_private_key = tx_private_key.as_ref().ok_or(Error::MissingTxPrivateKey)?;
             // Let's try to verify that the TxOutSummary is as expected
             let expected =
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
@@ -390,9 +385,11 @@ impl TxSummaryStreamingVerifier {
         tx_private_key: &RistrettoPrivate,
     ) -> Result<TxOutSummary, Error> {
         let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
-        let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key().as_ref());
+        let public_key =
+            create_tx_out_public_key(tx_private_key, recipient.spend_public_key().as_ref());
 
-        let shared_secret = create_shared_secret(recipient.view_public_key().as_ref(), tx_private_key);
+        let shared_secret =
+            create_shared_secret(recipient.view_public_key().as_ref(), tx_private_key);
 
         let masked_amount = Some(MaskedAmount::new(block_version, amount, &shared_secret)?);
 

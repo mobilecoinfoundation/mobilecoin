@@ -22,11 +22,11 @@ pub trait RingCtAddress {
 
 impl<T: RingCtAddress> RingCtAddress for &T {
     fn view_public_key(&self) -> SubaddressViewPublic {
-        T::view_public_key(&self)
+        T::view_public_key(self)
     }
 
     fn spend_public_key(&self) -> SubaddressSpendPublic {
-        T::spend_public_key(&self)
+        T::spend_public_key(self)
     }
 }
 
@@ -275,7 +275,6 @@ impl From<&[u8; 32]> for AccountId {
         Self(*value)
     }
 }
-
 
 /// Represents a "standard" public address hash created using merlin,
 /// used in memos as a compact representation of a MobileCoin public address.

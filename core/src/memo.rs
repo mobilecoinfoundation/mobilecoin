@@ -12,10 +12,8 @@ use generic_array::{
 use hkdf::Hkdf;
 use sha2::Sha512;
 
-use mc_core_types::{
-    keys::{
-        SubaddressSpendPrivate, SubaddressSpendPublic, SubaddressViewPrivate, SubaddressViewPublic,
-    },
+use mc_core_types::keys::{
+    SubaddressSpendPrivate, SubaddressSpendPublic, SubaddressViewPrivate, SubaddressViewPublic,
 };
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
@@ -72,7 +70,7 @@ impl Memo {
             shared_secret.as_ref(),
             &CompressedRistrettoPublic::from(tx_out_public_key),
             kind,
-            &data,
+            data,
         );
 
         Hmac(hmac_value)
@@ -94,14 +92,14 @@ impl Memo {
             shared_secret.as_ref(),
             &CompressedRistrettoPublic::from(tx_out_public_key),
             kind,
-            &data,
+            data,
         );
 
         Hmac(hmac_value)
     }
 
     /// Apply AES256 keystream to the provided memo buffer
-    pub fn apply_keystream(shared_secret: impl AsRef<[u8]>, buff: &mut [u8]) -> () {
+    pub fn apply_keystream(shared_secret: impl AsRef<[u8]>, buff: &mut [u8]) {
         // Use HKDF-SHA512 to produce an AES key and AES nonce
         let kdf = Hkdf::<Sha512>::new(Some(b"mc-memo-okm"), shared_secret.as_ref());
 
@@ -177,15 +175,15 @@ mod tests {
         let mut p1 = [0u8; 66];
         OsRng {}.try_fill_bytes(&mut p1[..]).unwrap();
 
-        let mut e1 = p1.clone();
+        let mut e1 = p1;
         Memo::encrypt(&pri1, &pub2, &mut e1);
 
-        let mut d1 = e1.clone();
+        let mut d1 = e1;
         Memo::decrypt(&pub1, &pri2, &mut d1);
 
         assert_eq!(p1, d1, "roundtrip failed");
 
-        let mut d2 = e1.clone();
+        let mut d2 = e1;
         Memo::decrypt(&pub1, &SubaddressViewPrivate::from(key1), &mut d2);
 
         assert_ne!(p1, d2, "decrypt with wrong key succeeded");
@@ -220,7 +218,7 @@ mod tests {
         let h3 = Memo::hmac_check(&tx_out_public_key, &pub1, &pri2, [1, 3], &data);
         assert_eq!(h3, h1, "hmac with wrong kind matched");
 
-        let mut d1 = data.clone();
+        let mut d1 = data;
         d1[0] = !d1[0];
         let h4 = Memo::hmac_check(&tx_out_public_key, &pub1, &pri2, [1, 3], &d1);
         assert_ne!(h4, h1, "hmac with wrong data matched");
