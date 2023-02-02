@@ -220,6 +220,15 @@ impl From<&PublicAddress> for ShortAddressHash {
     }
 }
 
+impl From<&PublicAddress> for mc_core::account::PublicSubaddress {
+    fn from(value: &PublicAddress) -> Self {
+        Self {
+            view_public: value.view_public_key.into(),
+            spend_public: value.spend_public_key.into(),
+        }
+    }
+}
+
 impl AuthorityVerifier for PublicAddress {
     type Sig = <RistrettoPublic as AuthorityVerifier>::Sig;
     type Error = <RistrettoPublic as AuthorityVerifier>::Error;
