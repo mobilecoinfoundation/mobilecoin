@@ -67,7 +67,6 @@ pub fn process_shard_responses(
             // Store.
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::AuthenticationError => {
                 shards_for_retry.push(shard);
-                let uri = FogViewStoreUri::from_str(&response.store_uri)?;
                 view_store_uris_for_authentication
                     .push(FogViewStoreUri::from_str(&response.store_uri)?);
             }
