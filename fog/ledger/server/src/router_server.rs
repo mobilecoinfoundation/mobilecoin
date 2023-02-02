@@ -19,10 +19,11 @@ use mc_util_grpc::{
     TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
+use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
     config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, MerkleProofService,
+    router_service::LedgerRouterService, MerkleProofService, UntrustedTxOutService,
 };
 
 pub struct LedgerRouterServer {
@@ -39,6 +40,7 @@ impl LedgerRouterServer {
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         ledger: LedgerDB,
+        watcher: WatcherDB,
         logger: Logger,
     ) -> LedgerRouterServer
     where
@@ -89,8 +91,17 @@ impl LedgerRouterServer {
         let merkle_proof_service =
             ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
-                ledger,
+                ledger.clone(),
                 enclave,
+                client_authenticator.clone(),
+                logger.clone(),
+            ));
+        // Init untrusted tx out service
+        let untrusted_tx_out_service =
+            ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
+                config.chain_id.clone(),
+                ledger,
+                watcher,
                 client_authenticator.clone(),
                 logger.clone(),
             ));
@@ -105,6 +116,7 @@ impl LedgerRouterServer {
         let router_server = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
             .register_service(merkle_proof_service)
+            .register_service(untrusted_tx_out_service)
             .register_service(health_service)
             .build_using_uri(&config.client_listen_uri, logger.clone())
             .expect("Could not build Ledger Router Server");

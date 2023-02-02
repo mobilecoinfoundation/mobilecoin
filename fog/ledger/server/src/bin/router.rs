@@ -17,6 +17,7 @@ use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::UriScheme;
+use mc_watcher::watcher_db::WatcherDB;
 
 fn main() {
     let (logger, _global_logger_guard) =
@@ -79,12 +80,15 @@ fn main() {
     let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
 
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
+    let watcher_db =
+        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
     let mut router_server = LedgerRouterServer::new(
         config,
         enclave,
         ledger_store_grpc_clients,
         ledger_db,
+        watcher_db,
         logger,
     );
     router_server.start();

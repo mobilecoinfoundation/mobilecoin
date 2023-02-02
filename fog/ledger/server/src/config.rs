@@ -121,6 +121,10 @@ pub struct LedgerRouterConfig {
     #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
+    /// Path to watcher db (lmdb) - includes block timestamps
+    #[clap(long, env = "MC_WATCHER_DB")]
+    pub watcher_db: PathBuf,
+
     // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
     /// The capacity to build the OMAP (ORAM hash table) with.
     /// About 75% of this capacity can be used.
