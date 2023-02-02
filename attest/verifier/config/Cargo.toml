@@ -1,0 +1,23 @@
+[package]
+name = "mc-attest-verifier-config"
+version = "4.0.2"
+authors = ["MobileCoin"]
+edition = "2021"
+description = '''
+This crate specifies and implements a method for loading remote attestation "trust roots"
+from the filesystem, for one of several possible enclaves, and configuring an mc-attest-verifier::Verifier
+based on this. These data consist of signed .css "SIGSTRUCT" objects as well as .json which indicate
+which hardening advisories were mitigated in software for these enclaves, and more such data.
+This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
+appropriately.
+'''
+readme = "README.md"
+
+[dependencies]
+mc-attest-verifier = { path = ".." }
+mc-common = { path = "../../../common" }
+mc-sgx-css = { path = "../../../sgx/css" }
+
+displaydoc = "0.2"
+serde = "1"
+serde_json = "1"

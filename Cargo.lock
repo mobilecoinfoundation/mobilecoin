@@ -2533,6 +2533,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-attest-verifier-config"
+version = "4.0.2"
+dependencies = [
+ "displaydoc",
+ "mc-attest-verifier",
+ "mc-common",
+ "mc-sgx-css",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "mc-attest-verifier-types"
 version = "4.0.2"
 dependencies = [
