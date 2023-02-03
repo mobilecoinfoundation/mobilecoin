@@ -2,10 +2,11 @@
 name = "mc-fog-ingest-enclave-measurement"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "MobileCoin Ingest Enclave - Measurement"
+edition = "2021"
 links = "ingest_enclave_measurement"
-license = "GPL-3.0"
+license = "Apache-2.0"
+readme = "README.md"
 
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built

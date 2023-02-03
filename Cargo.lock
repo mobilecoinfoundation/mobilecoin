@@ -3384,6 +3384,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-sig"
+version = "4.0.2"
+dependencies = [
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "merlin",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+ "schnorrkel-og",
+]
+
+[[package]]
 name = "mc-crypto-x509-test-vectors"
 version = "4.0.2"
 dependencies = [

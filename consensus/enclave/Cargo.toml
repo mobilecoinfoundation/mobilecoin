@@ -4,6 +4,8 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Consensus Enclave - Application Code"
+license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
