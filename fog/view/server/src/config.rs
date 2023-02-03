@@ -187,6 +187,6 @@ impl FromStr for RouterClientListenUri {
             return Ok(RouterClientListenUri::Streaming(fog_view_router_uri));
         }
 
-        Err(format!("Incorrect ClientListenUri string: {}.", input))
+        Err(format!("Incorrect ClientListenUri string: {input}."))
     }
 }

@@ -102,7 +102,7 @@ where
                 );
                 let rpc_permissions_error = rpc_permissions_error(
                     "fontend_accept",
-                    format!("Permission denied: {}", frontend_error),
+                    format!("Permission denied: {frontend_error}"),
                     logger,
                 );
                 Err(rpc_permissions_error)
@@ -119,7 +119,7 @@ where
         let query_request_aad: QueryRequestAAD = mc_util_serial::decode(aad).map_err(|err| {
             RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                format!("AAD deserialization error: {}", err),
+                format!("AAD deserialization error: {err}"),
             )
         })?;
 
