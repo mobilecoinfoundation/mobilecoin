@@ -388,12 +388,22 @@ dependencies = [
 
 [[package]]
 name = "ed25519"
-version = "1.5.2"
+version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9c280362032ea4203659fc489832d0204ef09f247a0506f170dafcac08c369"
+checksum = "91cff35c70bba8a626e3185d8cd48cc11b5437e1a5bcd15b9b5fa3c64b6dfee7"
 dependencies = [
  "serde",
- "signature",
+ "signature 1.6.4",
+]
+
+[[package]]
+name = "ed25519"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cf420a7ec85d98495b0c34aa4a58ca117f982ffbece111aeb545160148d7010"
+dependencies = [
+ "serde",
+ "signature 2.0.0",
 ]
 
 [[package]]
@@ -402,7 +412,7 @@ version = "2.0.0-pre.1"
 source = "git+https://github.com/mobilecoinfoundation/ed25519-dalek.git?rev=4194e36abc75722e6fba7d552e719448fc38c51f#4194e36abc75722e6fba7d552e719448fc38c51f"
 dependencies = [
  "curve25519-dalek",
- "ed25519",
+ "ed25519 1.5.3",
  "rand",
  "serde",
  "serde_bytes",
@@ -1104,7 +1114,7 @@ version = "4.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
@@ -1124,7 +1134,7 @@ dependencies = [
  "curve25519-dalek",
  "digest",
  "displaydoc",
- "ed25519",
+ "ed25519 2.1.0",
  "ed25519-dalek",
  "hex",
  "hex_fmt",
@@ -1138,7 +1148,7 @@ dependencies = [
  "schnorrkel-og",
  "serde",
  "sha2",
- "signature",
+ "signature 1.6.4",
  "static_assertions",
  "subtle",
  "x25519-dalek",
@@ -1258,7 +1268,7 @@ name = "mc-fog-sig-authority"
 version = "4.0.2"
 dependencies = [
  "mc-crypto-keys",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
@@ -1845,6 +1855,12 @@ checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 dependencies = [
  "digest",
 ]
+
+[[package]]
+name = "signature"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fe458c98333f9c8152221191a77e2a44e8325d0193484af2e9421a53019e57d"
 
 [[package]]
 name = "siphasher"
