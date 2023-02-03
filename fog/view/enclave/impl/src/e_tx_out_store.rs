@@ -7,7 +7,7 @@
 use alloc::vec;
 
 use aligned_cmov::{
-    subtle::{Choice, ConstantTimeEq},
+    subtle::{Choice, ConditionallySelectable, ConstantTimeEq, ConstantTimeGreater},
     typenum::{Unsigned, U1024, U16, U240, U4096, U64},
     A8Bytes, CMov,
 };
@@ -184,24 +184,24 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             );
         }
 
-        // TOOO: Per https://github.com/mobilecoinfoundation/mobilecoin/issues/2965, use a
-        // a constant time comparison function to always copy the same number of bytes.
-        // NOTE: As of right now, this code is not constant time and therefore
-        // blocks the v5 release.
-        // Code to implement:
-        // ```
-        // const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH,
-        //   ValueSize::USIZE - 1);
-        // (&result.ciphertext[..LENGTH_TO_COPY]).copy_from_slice(&value[1..LENGTH_TO_COPY]);
-        // ```
-        let data_end = ValueSize::USIZE - value[0] as usize;
-        let payload = &value[1..data_end];
-        // Use this instead of payload.len() because the slice `len` method isn't
-        // guaranteed to be constant time.
-        let payload_length = data_end - 1;
-        result.ciphertext[0..payload_length].copy_from_slice(payload);
-        result.payload_length = payload_length as u32;
+        // Always copy the same length to ensure constant time. Note that we are not
+        // copying the payload length because this is variable and would
+        // compromise obliviousness.
+        const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH, ValueSize::USIZE - 1);
+        result.ciphertext[..LENGTH_TO_COPY].copy_from_slice(&value[1..(LENGTH_TO_COPY + 1)]);
+        result.payload_length = ct_min(
+            FIXED_CIPHERTEXT_LENGTH as u64,
+            (ValueSize::USIZE - 1 - (value[0] as usize)) as u64,
+        ) as u32;
 
         result
     }
+}
+
+fn ct_min<T>(mut lhs: T, rhs: T) -> T
+where
+    T: ConditionallySelectable + ConstantTimeGreater,
+{
+    lhs.conditional_assign(&rhs, lhs.ct_gt(&rhs));
+    lhs
 }

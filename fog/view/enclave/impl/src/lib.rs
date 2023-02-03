@@ -4,6 +4,7 @@
 
 #![no_std]
 #![allow(clippy::result_large_err)]
+#![feature(const_cmp)]
 
 extern crate alloc;
 
