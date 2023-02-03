@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 //! Fog Report Connection handles connecting to the fog report service and
 //! building up a FogReportResponses object needed to create a transaction

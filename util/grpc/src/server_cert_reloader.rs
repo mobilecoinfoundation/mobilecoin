@@ -398,7 +398,7 @@ mod tests {
 
         let mut server = ServerBuilder::new(env)
             .register_service(service)
-            .build_using_uri(&uri, logger.clone())
+            .build_using_uri(&uri, logger)
             .unwrap();
         server.start();
 

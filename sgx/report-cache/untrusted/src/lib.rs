@@ -2,6 +2,7 @@
 
 //! The untrusted side of enclave report caching.
 
+#![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
     PibError, ProviderId, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,

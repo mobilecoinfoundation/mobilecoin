@@ -3,6 +3,7 @@
 //! Connection implementations required for the thick client.
 //! The attested client implementation.
 
+#![allow(clippy::result_large_err)]
 use crate::{
     credentials::{AuthenticationError, CredentialsProvider, CredentialsProviderError},
     error::{Error, Result},
