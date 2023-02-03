@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 //! Entrypoint for the MobileCoin server.
 
