@@ -3,6 +3,8 @@ name = "mc-consensus-tool"
 version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }

@@ -3,6 +3,8 @@ name = "mc-util-serial"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
 
 [features]
 # Build everything with std flags turned on. This is generally needed in targets that use std

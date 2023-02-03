@@ -3,7 +3,9 @@ name = "mc-sgx-debug-edl"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
 links = "sgx_debug_edl"
+readme = "README.md"
 
 [build-dependencies]
 cargo-emit = "0.2"

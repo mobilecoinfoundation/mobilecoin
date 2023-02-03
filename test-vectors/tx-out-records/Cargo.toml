@@ -3,6 +3,7 @@ name = "mc-test-vectors-tx-out-records"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
 
 [dependencies]
 hex = "0.4"
