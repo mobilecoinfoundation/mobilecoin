@@ -22,7 +22,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
 aes-gcm = "0.10.1"
-cookie = "0.16"
+cookie = "0.17"
 displaydoc = "0.2"
 grpcio = "0.12.0"
 retry = "2.0"
