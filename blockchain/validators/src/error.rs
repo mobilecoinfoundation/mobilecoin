@@ -7,7 +7,7 @@ use hex::FromHexError;
 use mc_crypto_keys::{KeyError, SignatureError};
 use pem::PemError;
 use serde_json::Error as JsonError;
-use std::{io::Error as IoError, path::PathBuf};
+use std::{io::Error as IoError, path::PathBuf, string::FromUtf8Error};
 use toml::de::Error as FromTomlError;
 
 /// Validator errors.
@@ -58,6 +58,9 @@ pub enum ParseError {
 
     /// Failed to parse JSON: {0}
     Json(String),
+
+    /// The config file contains invalid UTF-8 characters
+    Utf8(FromUtf8Error),
 }
 
 impl From<KeyError> for ParseError {
@@ -93,5 +96,11 @@ impl From<FromTomlError> for ParseError {
 impl From<JsonError> for ParseError {
     fn from(src: JsonError) -> Self {
         Self::Json(src.to_string())
+    }
+}
+
+impl From<FromUtf8Error> for ParseError {
+    fn from(src: FromUtf8Error) -> Self {
+        Self::Utf8(src)
     }
 }
