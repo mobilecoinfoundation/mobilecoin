@@ -36,7 +36,7 @@ pub struct UnmaskedAmount {
 /// A signed contingent input is a "transaction fragment" which can be
 /// incorporated into a transaction signed by a counterparty. See MCIP #31 for
 /// motivation.
-#[derive(Clone, Digestible, Eq, Message, PartialEq, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct SignedContingentInput {
     /// The block version rules we used when making the signature
     #[prost(uint32, required, tag = 1)]
