@@ -308,17 +308,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
 
     let result = enclave
-<<<<<<< HEAD:fog/ledger/server/tests/store.rs
-<<<<<<< HEAD:fog/ledger/server/tests/store.rs
         .check_key_image_store(query, untrusted_kiqr)
         .expect("Checking key image store enclave failed.");
-=======
-        .check_key_image_store(query, untrusted_kiqr.clone())
-=======
-        .check_key_image_store(query, untrusted_kiqr)
->>>>>>> cf43d9e1 (Other clippy and fmt changes):fog/ledger/server/tests/store_tests.rs
-        .unwrap();
->>>>>>> 90dd0fd6 (Run cargo fmt):fog/ledger/server/tests/store_tests.rs
 
     let responses_btree: BTreeMap<ResponderId, EnclaveMessage<NonceSession>> =
         BTreeMap::from([(responder_id, result)]);
