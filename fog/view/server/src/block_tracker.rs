@@ -217,7 +217,7 @@ mod tests {
 
     #[test_with_logger]
     fn next_blocks_empty(logger: Logger) {
-        let block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         assert_eq!(block_tracker.next_blocks(&[]).len(), 0);
     }
 
@@ -527,7 +527,7 @@ mod tests {
     // highest_fully_processed_block_count behaves as expected
     #[test_with_logger]
     fn highest_fully_processed_block_count_all_empty(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         assert_eq!(
             block_tracker.highest_fully_processed_block_count(&[]),
@@ -538,7 +538,7 @@ mod tests {
     // Check with a key that hasn't yet processed anything.
     #[test_with_logger]
     fn highest_fully_processed_block_missing_blocks_nothing_processed1(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -561,7 +561,7 @@ mod tests {
     // are processed when the start block is 0.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed1(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
@@ -596,7 +596,7 @@ mod tests {
     // when the start block is greater than zero
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed2(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -631,7 +631,7 @@ mod tests {
     // then the key is reported lost
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed3(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -677,7 +677,7 @@ mod tests {
     // When the slow one is marked lost, that unblocks progress.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -773,7 +773,7 @@ mod tests {
     // key is loaded
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs_some_lost2(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -886,7 +886,7 @@ mod tests {
     /// key, makes progress
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_followed_by_gap(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -980,7 +980,7 @@ mod tests {
     /// when everything works.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_concurrent_with_active(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -1119,7 +1119,7 @@ mod tests {
     fn highest_fully_processed_block_tracks_retired_key_concurrent_with_active_both_lost(
         logger: Logger,
     ) {
-        let mut block_tracker = BlockTracker::new(logger.clone(), EpochShardingStrategy::default());
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),

@@ -225,8 +225,7 @@ where
         return Err(router_server_err_to_rpc_status(
             "Query: timed out connecting to view stores",
             RouterServerError::ViewStoreError(format!(
-                "Received {} responses which failed to advance the MultiViewStoreRequest",
-                RETRY_COUNT
+                "Received {RETRY_COUNT} responses which failed to advance the MultiViewStoreRequest"
             )),
             logger.clone(),
         ));
@@ -282,7 +281,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     view_store_url: FogViewStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let view_store_id = view_store_url.responder_id()?;
+    let view_store_id = view_store_url.host_and_port_responder_id()?;
     let nonce_auth_request = enclave.view_store_init(view_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
@@ -296,7 +295,6 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     let auth_unary_receiver = view_store_client.auth_async(&nonce_auth_request.into())?;
     let nonce_auth_response = auth_unary_receiver.await?;
 
-    let result = enclave.view_store_connect(view_store_id, nonce_auth_response.into())?;
-
-    Ok(result)
+    enclave.view_store_connect(view_store_id, nonce_auth_response.into())?;
+    Ok(())
 }
