@@ -23,7 +23,9 @@ fn main() {
     log::info!(
         logger,
         "enclave path {}, responder ID {}",
-        enclave_path.to_str().expect("enclave path is not valid UTF-8"),
+        enclave_path
+            .to_str()
+            .expect("enclave path is not valid UTF-8"),
         &config.client_responder_id
     );
     let enclave = LedgerSgxEnclave::new(
