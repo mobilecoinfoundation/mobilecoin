@@ -200,11 +200,13 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // Make GRPC client for sending requests.
 
     // Get the enclave to generate an auth request.
-    let client_auth_request = enclave.ledger_store_init(responder_id.clone())
+    let client_auth_request = enclave
+        .ledger_store_init(responder_id.clone())
         .expect("Could not initialize ledger store on the enclave.");
     // Submit auth request and wait for the response.
-    let (auth_response, _router_to_store_session) =
-        enclave.frontend_accept(client_auth_request).expect("frontend_accept() failed.");
+    let (auth_response, _router_to_store_session) = enclave
+        .frontend_accept(client_auth_request)
+        .expect("frontend_accept() failed.");
     // Finish the enclave's handshake with itself.
     enclave
         .ledger_store_connect(responder_id.clone(), auth_response)
@@ -242,8 +244,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // Initiator accepts responder's message.
     let auth_response_event = AuthResponseInput::new(auth_message.into(), Verifier::default());
     // Should be a valid noise connection at this point.
-    let (mut noise_connection, _verification_report) =
-        initiator.try_next(&mut rng, auth_response_event)
+    let (mut noise_connection, _verification_report) = initiator
+        .try_next(&mut rng, auth_response_event)
         .expect("Could not get a noise connection and verification report from the initiator.");
 
     //Construct our request.
@@ -255,7 +257,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
     // Protobuf-encoded plaintext.
     let message_encoded = mc_util_serial::encode(&key_images_request);
-    let ciphertext = noise_connection.encrypt(&[], &message_encoded)
+    let ciphertext = noise_connection
+        .encrypt(&[], &message_encoded)
         .expect("Failed to encrypt request from the client to the router.");
     let msg: EnclaveMessage<ClientSession> = EnclaveMessage {
         aad: vec![],
@@ -264,9 +267,10 @@ pub fn direct_key_image_store_check(logger: Logger) {
     };
 
     // Decrypt and seal
-    let sealed_query = enclave.decrypt_and_seal_query(msg)
+    let sealed_query = enclave
+        .decrypt_and_seal_query(msg)
         .expect("Unable to decrypt and seal client message.");
-    
+
     let mut multi_query = enclave
         .create_multi_key_image_store_query_data(sealed_query.clone())
         .expect("Could not create multi key image store query data.");
@@ -324,5 +328,4 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     // The key image result code for a spent key image is 1.
     assert_eq!(test_results, &[(test_key_image.key_image, 1)]);
-
 }
