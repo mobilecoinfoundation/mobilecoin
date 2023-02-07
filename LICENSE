@@ -1,24 +1,22 @@
-Software License Agreement (GPLv3 License)
-========================================
+MobileCoin Licensing
+==================
 
-Copyright (c) 2018-2022 The MobileCoin Foundation
-----------------------------------------------------
+Each crate in this repository is licensed individually. Software intended
+for use by Client SDKs is licensed under the Apache-2.0 license. Software
+intended for use in server-side applications is licensed under the GPL
+version 3.
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+Please refer to the [`license` or `license-file`](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields) field in the `Cargo.toml`
+files in this repository to identify how an individual software package/crate is
+licensed.
 
 
 Sources of Intellectual Property Included in MobileCoin Components
 ------------------------------------------------------------
 
-MobileCoin components are issued by MobileCoin under the GPL v3 license above.
+MobileCoin components are issued by MobileCoin under the GPL v3 or Apache 2.0
+licenses.
+
 Below is a list of certain publicly available software that is the source of
 intellectual property in MobileCoin, along with the licensing terms that pertain
 to those sources of IP. This list is for informational purposes only and is not

@@ -3,3 +3,5 @@ name = "mc-sgx-debug"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
