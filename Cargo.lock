@@ -3843,6 +3843,7 @@ name = "mc-fog-ledger-server"
 version = "4.1.0-pre0"
 dependencies = [
  "clap 4.1.11",
+ "aes-gcm",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3850,6 +3851,7 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-api",
+ "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3859,6 +3861,7 @@ dependencies = [
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-rand",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-ledger-connection",
@@ -3891,6 +3894,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "sha2 0.10.6",
+ "tempdir",
  "url",
 ]
 
