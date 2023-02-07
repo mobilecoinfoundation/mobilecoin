@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService, KeyImageService,
-    MerkleProofService, UntrustedTxOutService,
+    config::LedgerServerConfig, counters, db_fetcher::DbFetcher, BlockService,
+    KeyImageClientListenUri, KeyImageService, MerkleProofService, UntrustedTxOutService,
 };
 use displaydoc::Display;
 use futures::executor::block_on;
@@ -103,6 +103,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let key_image_service = KeyImageService::new(
+            KeyImageClientListenUri::ClientFacing(config.client_listen_uri.clone()),
             config.chain_id.clone(),
             ledger.clone(),
             watcher.clone(),
