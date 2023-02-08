@@ -50,10 +50,7 @@ impl<T> From<AuthenticatorError> for Result<T, RpcStatus> {
 
 impl From<AuthenticatorError> for RpcStatus {
     fn from(src: AuthenticatorError) -> Self {
-        RpcStatus::with_message(
-            RpcStatusCode::UNAUTHENTICATED,
-            src.to_string(),
-        )
+        RpcStatus::with_message(RpcStatusCode::UNAUTHENTICATED, src.to_string())
     }
 }
 

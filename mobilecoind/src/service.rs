@@ -1743,7 +1743,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 dst.set_token_id(src.token_id);
                 Ok(dst)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, RpcStatus>>()?;
 
         // Return response
         let mut response = api::GetProcessedBlockResponse::new();
