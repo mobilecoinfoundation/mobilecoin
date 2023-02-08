@@ -16,5 +16,3 @@ pub mod consts;
 pub mod subaddress;
 
 pub mod slip10;
-
-pub mod memo;
