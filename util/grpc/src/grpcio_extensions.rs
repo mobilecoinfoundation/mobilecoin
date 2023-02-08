@@ -74,10 +74,9 @@ pub trait ConnectionUriGrpcioServer {
     /// Set the channel args to our defaults.
     #[must_use]
     fn set_default_channel_args(self, env: Arc<Environment>) -> Self;
-}
 
-impl ConnectionUriGrpcioServer for ServerBuilder {
-    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server> {
+    /// Get ServerCredentials from a URI
+    fn server_credentials_from_uri(uri: &impl ConnectionUri, logger: &Logger) -> ServerCredentials {
         if uri.use_tls() {
             let tls_chain_path = uri
                 .tls_chain_path()
@@ -89,21 +88,27 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
             let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger.clone())
                 .expect("Failed creating ServerCertReloader");
 
+            ServerCredentials::with_fetcher(
+                Box::new(reloader),
+                CertificateRequestType::DontRequestClientCertificate,
+            )
+        } else {
+            ServerCredentials::insecure()
+        }
+    }
+}
+
+impl ConnectionUriGrpcioServer for ServerBuilder {
+    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server> {
+        let server_creds = Self::server_credentials_from_uri(uri, &logger);
+
+        if uri.use_tls() {
             log::debug!(
                 logger,
                 "Binding secure gRPC server to {}:{}",
                 uri.host(),
                 uri.port(),
             );
-
-            let server_creds = ServerCredentials::with_fetcher(
-                Box::new(reloader),
-                CertificateRequestType::DontRequestClientCertificate,
-            );
-
-            let mut server = self.build()?;
-            server.add_listening_port(uri.addr(), server_creds)?;
-            Ok(server)
         } else {
             log::warn!(
                 logger,
@@ -111,11 +116,11 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 uri.host(),
                 uri.port(),
             );
-
-            let mut server = self.build()?;
-            server.add_listening_port(uri.addr(), ServerCredentials::insecure())?;
-            Ok(server)
         }
+
+        let mut server = self.build()?;
+        server.add_listening_port(uri.addr(), server_creds)?;
+        Ok(server)
     }
 
     /// Set the channel args to our defaults.
