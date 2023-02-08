@@ -534,9 +534,9 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.15.1"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "406c859255d568f4f742b3146d51851f3bfd49f734a2c289d9107c4395ee0062"
+checksum = "08a1ec454bc3eead8719cb56e15dbbfecdbc14e4b3a3ae4936cc6e31f5fc0d07"
 dependencies = [
  "camino",
  "cargo-platform",
@@ -5426,7 +5426,7 @@ name = "mc-util-build-enclave"
 version = "4.0.2"
 dependencies = [
  "cargo-emit",
- "cargo_metadata 0.15.1",
+ "cargo_metadata 0.15.3",
  "displaydoc",
  "mbedtls",
  "mbedtls-sys-auto",
