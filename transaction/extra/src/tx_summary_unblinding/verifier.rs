@@ -155,7 +155,7 @@ impl TxSummaryStreamingVerifier {
     /// Returns:
     /// * A properly initialized TxSummaryStreamingVerifier
     pub fn new(
-        extended_message_digest: &[u8],
+        extended_message_digest: &[u8; 32],
         block_version: BlockVersion,
         expected_num_outputs: usize,
         expected_num_inputs: usize,
