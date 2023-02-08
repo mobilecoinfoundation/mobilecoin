@@ -7,7 +7,7 @@
 use alloc::vec;
 
 use aligned_cmov::{
-    subtle::{Choice, ConditionallySelectable, ConstantTimeEq, ConstantTimeGreater},
+    subtle::{Choice, ConstantTimeEq},
     typenum::{Unsigned, U1024, U16, U240, U4096, U64},
     A8Bytes, CMov,
 };
@@ -184,24 +184,16 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             );
         }
 
-        // Always copy the same length to ensure constant time. Note that we are not
-        // copying the payload length because this is variable and would
-        // compromise obliviousness.
-        const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH, ValueSize::USIZE - 1);
+        // To preserve constant time execution, we always copy `ValueSize::USIZE - 1`
+        // bytes. To ensure the copy doesn't panic, assert that the length to
+        // copy is less than the maximum length that ciphertext can be, which is
+        // `FIXED_CIPHERTEXT_LENGTH`.
+        const LENGTH_TO_COPY: usize = ValueSize::USIZE - 1;
+        static_assertions::const_assert!(LENGTH_TO_COPY < FIXED_CIPHERTEXT_LENGTH);
+
         result.ciphertext[..LENGTH_TO_COPY].copy_from_slice(&value[1..(LENGTH_TO_COPY + 1)]);
-        result.payload_length = ct_min(
-            FIXED_CIPHERTEXT_LENGTH as u64,
-            (ValueSize::USIZE - 1 - (value[0] as usize)) as u64,
-        ) as u32;
+        result.payload_length = (ValueSize::USIZE - 1 - (value[0] as usize)) as u32;
 
         result
     }
-}
-
-fn ct_min<T>(mut lhs: T, rhs: T) -> T
-where
-    T: ConditionallySelectable + ConstantTimeGreater,
-{
-    lhs.conditional_assign(&rhs, lhs.ct_gt(&rhs));
-    lhs
 }

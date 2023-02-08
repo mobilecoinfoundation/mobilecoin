@@ -1302,6 +1302,7 @@ dependencies = [
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-util-serial",
+ "static_assertions",
 ]
 
 [[package]]
