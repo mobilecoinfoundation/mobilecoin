@@ -30,6 +30,10 @@ use std::{
 /// Telemetry: block index currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
+/// The number of unloaded available blocks which causes the DbFetcher to be
+/// marked unready
+const BLOCKS_BEHIND: u64 = 100;
+
 /// An object for managing background data fetches from the ledger database.
 pub struct DbFetcher<
     DB: Ledger + 'static,
@@ -179,16 +183,17 @@ impl<
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while next_block_index < block_range.end_block
+            while block_range.contains(next_block_index)
                 && self.load_block_data(&mut next_block_index)
                 && !self.stop_requested.load(Ordering::SeqCst)
             {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
                 match self.db.num_blocks() {
                     Ok(num_blocks) => {
-                        // if there are > 100 *available* blocks we haven't loaded yet, set unready
-                        // TODO: 100 should at least be a constant, but this is a hack after all
-                        if min(num_blocks, block_range.end_block) > next_block_index + 100 {
+                        // if there are > BLOCKS_BEHIND *available* blocks we haven't loaded yet,
+                        // set unready
+                        if min(num_blocks, block_range.end_block) > next_block_index + BLOCKS_BEHIND
+                        {
                             self.readiness_indicator.set_unready();
                         }
                     }

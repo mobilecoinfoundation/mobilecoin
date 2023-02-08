@@ -20,7 +20,7 @@ pub trait ShardingStrategy {
     ///
     /// Different sharding strategies might be ready to serve key images when
     /// different conditions have been met.
-    fn ready(&self, processed_block_count: BlockCount) -> bool;
+    fn is_ready(&self, processed_block_count: BlockCount) -> bool;
 
     /// Returns the block range that this sharding strategy is responsible for.
     fn get_block_range(&self) -> BlockRange;
@@ -45,7 +45,7 @@ impl ShardingStrategy for EpochShardingStrategy {
         self.epoch_block_range.contains(block_index)
     }
 
-    fn ready(&self, processed_block_count: BlockCount) -> bool {
+    fn is_ready(&self, processed_block_count: BlockCount) -> bool {
         self.have_enough_blocks_been_processed(processed_block_count)
     }
 
@@ -63,7 +63,6 @@ impl Default for EpochShardingStrategy {
 }
 
 impl EpochShardingStrategy {
-    #[allow(dead_code)]
     pub fn new(epoch_block_range: BlockRange) -> Self {
         Self { epoch_block_range }
     }
@@ -177,33 +176,33 @@ mod epoch_sharding_strategy_tests {
     }
 
     #[test]
-    fn ready_allows_0_in_0_to_100_shard() {
+    fn is_ready_allows_0_in_0_to_100_shard() {
         // The first epoch has a start block == 0.
         const START_BLOCK: BlockIndex = 0;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 100;
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy.ready(0.into());
+        let is_ready = epoch_sharding_strategy.is_ready(0.into());
 
-        assert!(ready)
+        assert!(is_ready)
     }
 
     #[test]
-    fn ready_to_serve_allows_70_in_0_to_100_shard() {
+    fn is_ready_to_serve_allows_70_in_0_to_100_shard() {
         // The first epoch has a start block == 0.
         const START_BLOCK: BlockIndex = 0;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 100;
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy.ready(70.into());
+        let is_ready = epoch_sharding_strategy.is_ready(70.into());
 
-        assert!(ready)
+        assert!(is_ready)
     }
 
     #[test]
-    fn ready_not_first_shard_prevents_less_than_minimum() {
+    fn is_ready_not_first_shard_prevents_less_than_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 111;
         let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
@@ -211,13 +210,13 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy.ready((minimum_processed_block_count - 1).into());
+        let is_ready = epoch_sharding_strategy.is_ready((minimum_processed_block_count - 1).into());
 
-        assert!(!ready)
+        assert!(!is_ready)
     }
 
     #[test]
-    fn ready_not_first_shard_allows_minimum() {
+    fn is_ready_not_first_shard_allows_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 111;
         let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
@@ -225,13 +224,13 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy.ready(minimum_processed_block_count.into());
+        let is_ready = epoch_sharding_strategy.is_ready(minimum_processed_block_count.into());
 
-        assert!(ready)
+        assert!(is_ready)
     }
 
     #[test]
-    fn ready_not_first_shard_allows_over_minimum() {
+    fn is_ready_not_first_shard_allows_over_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 110;
         let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
@@ -239,8 +238,8 @@ mod epoch_sharding_strategy_tests {
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
-        let ready = epoch_sharding_strategy.ready((minimum_processed_block_count + 1).into());
+        let is_ready = epoch_sharding_strategy.is_ready((minimum_processed_block_count + 1).into());
 
-        assert!(ready)
+        assert!(is_ready)
     }
 }
