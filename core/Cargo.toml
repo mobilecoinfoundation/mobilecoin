@@ -14,7 +14,6 @@ serde = ["dep:serde", "mc-core-types/serde"]
 default = ["bip39", "mc-crypto-dalek/default"]
 
 [dependencies]
-aes = { version = "0.7.5", default_features = false, features = [ "ctr" ] }
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 generic-array = { version = "0.14.6", default-features = false, features = [ "more_lengths" ] }
