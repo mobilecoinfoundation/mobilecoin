@@ -50,6 +50,16 @@ pub struct Uri<Scheme: UriScheme> {
     _scheme: PhantomData<Scheme>,
 }
 
+impl<Scheme: UriScheme> Uri<Scheme> {
+    /// Change the port number of this URI.
+    pub fn set_port(&mut self, port: u16) {
+        self.url
+            .set_port(Some(port))
+            .expect("should never fail on valid url");
+        self.port = port;
+    }
+}
+
 impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
     fn url(&self) -> &Url {
         &self.url
