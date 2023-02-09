@@ -81,6 +81,8 @@ mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
+mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
@@ -93,5 +95,8 @@ mc-fog-test-infra = { path = "../../test_infra" }
 # third-party
 tempfile = "3.4"
 aes-gcm = "0.10.1"
+pem = "1.1"
+portpicker = "0.1.1"
 sha2 = "0.10"
 tempdir = "0.3"
+x509-signature = "0.5"

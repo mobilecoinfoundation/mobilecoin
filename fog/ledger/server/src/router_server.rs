@@ -6,16 +6,24 @@ use std::{
 };
 
 use futures::executor::block_on;
-use mc_common::logger::{log, Logger};
+use mc_common::{
+    logger::{log, Logger},
+    time::SystemTimeProvider,
+};
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri, KeyImageStoreUri};
-use mc_util_grpc::{ConnectionUriGrpcioServer, ReadinessIndicator};
+use mc_ledger_db::LedgerDB;
+use mc_util_grpc::{
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
+    TokenAuthenticator,
+};
 use mc_util_uri::AdminUri;
+use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
     config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService,
+    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
 pub struct LedgerRouterServer {
@@ -31,11 +39,24 @@ impl LedgerRouterServer {
         config: LedgerRouterConfig,
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
+        ledger: LedgerDB,
+        watcher: WatcherDB,
         logger: Logger,
     ) -> LedgerRouterServer
     where
         E: LedgerEnclaveProxy,
     {
+        let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
+            if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
+                Arc::new(TokenAuthenticator::new(
+                    *shared_secret,
+                    config.client_auth_token_max_lifetime,
+                    SystemTimeProvider::default(),
+                ))
+            } else {
+                Arc::new(AnonymousAuthenticator::default())
+            };
+
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
@@ -52,7 +73,7 @@ impl LedgerRouterServer {
         // Build our router server.
         // Init ledger router service.
         let ledger_router_service = ledger_grpc::create_ledger_api(LedgerRouterService::new(
-            enclave,
+            enclave.clone(),
             shards.clone(),
             config.query_retries,
             logger.clone(),
@@ -65,6 +86,34 @@ impl LedgerRouterServer {
         );
         log::debug!(logger, "Constructed Ledger Router Admin GRPC Service");
 
+        // Non-routed servers and services
+        // Init merkle proof service
+        let merkle_proof_service =
+            ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
+                config.chain_id.clone(),
+                ledger.clone(),
+                enclave,
+                client_authenticator.clone(),
+                logger.clone(),
+            ));
+        // Init untrusted tx out service
+        let untrusted_tx_out_service =
+            ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
+                config.chain_id.clone(),
+                ledger.clone(),
+                watcher.clone(),
+                client_authenticator.clone(),
+                logger.clone(),
+            ));
+        // Init block service
+        let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
+            config.chain_id.clone(),
+            ledger,
+            watcher,
+            client_authenticator.clone(),
+            logger.clone(),
+        ));
+
         // Package service into grpc server
         log::info!(
             logger,
@@ -74,6 +123,9 @@ impl LedgerRouterServer {
 
         let router_server = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
+            .register_service(merkle_proof_service)
+            .register_service(untrusted_tx_out_service)
+            .register_service(block_service)
             .register_service(health_service)
             .build_using_uri(&config.client_listen_uri, logger.clone())
             .expect("Could not build Ledger Router Server");
