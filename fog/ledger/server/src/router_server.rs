@@ -6,6 +6,7 @@ use std::{
 };
 
 use futures::executor::block_on;
+use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -14,6 +15,7 @@ use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri, KeyImageStoreUri};
 use mc_ledger_db::LedgerDB;
+use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
@@ -22,27 +24,40 @@ use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
+    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
     router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
-pub struct LedgerRouterServer {
+pub struct LedgerRouterServer<E, RC>
+where
+    E: LedgerEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
     client_listen_uri: FogLedgerUri,
     admin_listen_uri: AdminUri,
+    config: LedgerRouterConfig,
+    enclave: E,
+    ra_client: RC,
+    report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
 }
 
-impl LedgerRouterServer {
-    pub fn new<E>(
+impl<E, RC> LedgerRouterServer<E, RC>
+where
+    E: LedgerEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
+    pub fn new(
         config: LedgerRouterConfig,
         enclave: E,
+        ra_client: RC,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         ledger: LedgerDB,
         watcher: WatcherDB,
         logger: Logger,
-    ) -> LedgerRouterServer
+    ) -> LedgerRouterServer<E, RC>
     where
         E: LedgerEnclaveProxy,
     {
@@ -92,7 +107,7 @@ impl LedgerRouterServer {
             ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
                 ledger.clone(),
-                enclave,
+                enclave.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
@@ -137,14 +152,29 @@ impl LedgerRouterServer {
         Self {
             router_server,
             admin_server,
-            client_listen_uri: config.client_listen_uri,
-            admin_listen_uri: config.admin_listen_uri,
+            client_listen_uri: config.client_listen_uri.clone(),
+            admin_listen_uri: config.admin_listen_uri.clone(),
+            config,
+            enclave,
+            ra_client,
+            report_cache_thread: None,
             logger,
         }
     }
 
     /// Starts the server
     pub fn start(&mut self) {
+        self.report_cache_thread = Some(
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                self.ra_client.clone(),
+                self.config.ias_spid,
+                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
+        );
+
         self.router_server.start();
         log::info!(
             self.logger,
@@ -167,7 +197,11 @@ impl LedgerRouterServer {
     }
 }
 
-impl Drop for LedgerRouterServer {
+impl<E, RC> Drop for LedgerRouterServer<E, RC>
+where
+    E: LedgerEnclaveProxy,
+    RC: RaClient + Send + Sync + 'static,
+{
     fn drop(&mut self) {
         self.stop();
     }

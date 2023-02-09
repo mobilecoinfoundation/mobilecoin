@@ -93,6 +93,14 @@ pub struct LedgerRouterConfig {
     #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
 
+    /// PEM-formatted keypair to send with an Attestation Request.
+    #[clap(long, env = "MC_IAS_API_KEY")]
+    pub ias_api_key: String,
+
+    /// The IAS SPID to use when getting a quote
+    #[clap(long, env = "MC_IAS_SPID")]
+    pub ias_spid: ProviderId,
+
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogLedgerUri,
