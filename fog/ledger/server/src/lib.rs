@@ -1,5 +1,19 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+pub use block_service::BlockService;
+pub use config::{
+    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig,
+    ShardingStrategy,
+};
+pub use key_image_service::KeyImageService;
+pub use key_image_store_server::KeyImageStoreServer;
+pub use merkle_proof_service::MerkleProofService;
+pub use router_server::LedgerRouterServer;
+pub use server::{DbPollSharedState, LedgerServer};
+pub use untrusted_tx_out_service::UntrustedTxOutService;
+
+pub mod sharding_strategy;
+
 mod block_service;
 mod config;
 mod counters;
@@ -17,18 +31,6 @@ mod untrusted_tx_out_service;
 
 use mc_util_metrics::ServiceMetrics;
 
-pub use block_service::BlockService;
-pub use config::{
-    KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig,
-};
-pub use key_image_service::KeyImageService;
-pub use merkle_proof_service::MerkleProofService;
-pub use server::LedgerServer;
-pub use untrusted_tx_out_service::UntrustedTxOutService;
-
 lazy_static::lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
 }
-pub use key_image_store_server::KeyImageStoreServer;
-pub use router_server::LedgerRouterServer;
-pub use server::DbPollSharedState;
