@@ -47,7 +47,7 @@ mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 # third-party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.0"

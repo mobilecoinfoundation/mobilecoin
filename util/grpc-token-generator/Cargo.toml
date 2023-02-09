@@ -14,5 +14,5 @@ mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
 mc-util-parse = { path = "../parse" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 percent-encoding = "2.2.0"

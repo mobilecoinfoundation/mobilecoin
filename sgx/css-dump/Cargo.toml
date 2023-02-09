@@ -9,5 +9,5 @@ readme = "README.md"
 [dependencies]
 mc-sgx-css = { path = "../css" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 hex_fmt = "0.3"
