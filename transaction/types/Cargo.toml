@@ -12,8 +12,7 @@ prost = [ "dep:prost", "mc-crypto-keys/prost", "mc-crypto-ring-signature/prost" 
 alloc = [
     "zeroize/alloc",
     "serde?/alloc",
-    #"mc-crypto-keys/alloc",
-    #"mc-crypto-dalek/alloc",
+    "mc-crypto-digestible/alloc",
 ]
 
 default = [ "std", "alloc", "serde", "prost", "mc-crypto-dalek/default" ]
