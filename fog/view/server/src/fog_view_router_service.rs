@@ -2,7 +2,7 @@
 
 use crate::{fog_view_router_server::Shard, router_request_handler, SVC_COUNTERS};
 use futures::{executor::block_on, FutureExt, TryFutureExt};
-use grpcio::{DuplexSink, RequestStream, RpcContext, RpcStatus, UnarySink};
+use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
@@ -62,10 +62,6 @@ where
         responses: DuplexSink<FogViewRouterResponse>,
     ) {
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                let _failure = responses.fail(RpcStatus::from(err));
-                return;
-            }
             if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 let _failure = responses.fail(err);
                 return;
