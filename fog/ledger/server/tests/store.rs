@@ -22,8 +22,8 @@ use mc_fog_ledger_enclave::{
 };
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{
-    DbPollSharedState, KeyImageClientListenUri, KeyImageService, KeyImageStoreServer,
-    LedgerStoreConfig,
+    sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageClientListenUri,
+    KeyImageService, KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
@@ -123,6 +123,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             omap_capacity,
+            sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
         };
 
         Self {
@@ -180,8 +181,13 @@ pub fn direct_key_image_store_check(logger: Logger) {
         logger.clone(),
     );
 
-    let mut store_server =
-        KeyImageStoreServer::new_from_service(store_service, client_listen_uri, logger.clone());
+    let mut store_server = KeyImageStoreServer::new_from_service(
+        store_service,
+        client_listen_uri,
+        enclave.clone(),
+        EpochShardingStrategy::default(),
+        logger.clone(),
+    );
     store_server.start();
 
     // Set up IAS verficiation

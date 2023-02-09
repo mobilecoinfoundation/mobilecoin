@@ -4,7 +4,7 @@ use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
-use mc_fog_ledger_server::{KeyImageStoreServer, LedgerStoreConfig};
+use mc_fog_ledger_server::{KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy};
 use mc_ledger_db::LedgerDB;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
@@ -40,14 +40,17 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let mut store_server = KeyImageStoreServer::new_from_config(
-        config.clone(),
-        enclave,
-        db,
-        watcher,
-        SystemTimeProvider::default(),
-        logger.clone(),
-    );
+    let mut store_server = match config.sharding_strategy.clone() {
+        ShardingStrategy::Epoch(sharding_strategy) => KeyImageStoreServer::new_from_config(
+            config.clone(),
+            enclave,
+            db,
+            watcher,
+            sharding_strategy,
+            SystemTimeProvider::default(),
+            logger.clone(),
+        ),
+    };
     store_server.start();
 
     //Initialize the admin api
