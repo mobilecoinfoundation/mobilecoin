@@ -9,6 +9,9 @@ readme = "README.md"
 
 [workspace]
 
+[workspace.package]
+rust-version = "1.68.0"
+
 [lib]
 crate-type = ["staticlib"]
 

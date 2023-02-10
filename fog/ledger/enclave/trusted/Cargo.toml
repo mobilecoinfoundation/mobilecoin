@@ -8,6 +8,9 @@ license = "GPL-3.0"
 # Declare as an empty workspace to not confuse cargo.
 [workspace]
 
+[workspace.package]
+rust-version = "1.68.0"
+
 [lib]
 crate-type = ["staticlib"]
 
