@@ -23,7 +23,7 @@ fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
             if !proc_output.status.success() {
                 eprintln!(
                     "git describe failed: {}",
-                    String::from_utf8(proc_output.stderr.clone()).expect("utf8-error")
+                    String::from_utf8(proc_output.stderr).expect("utf8-error")
                 );
                 UNKNOWN_COMMIT.to_string()
             } else {
