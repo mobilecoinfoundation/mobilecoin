@@ -9,6 +9,7 @@ use std::{
 
 /// Get git revision by running `git describe` in a given directory.
 fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
+    const UNKNOWN_COMMIT: &str = "unknown";
     match Command::new("git")
         .args(["describe", "--always", "--dirty=-modified"])
         .current_dir(current_dir)
@@ -16,7 +17,7 @@ fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
     {
         Err(err) => {
             eprintln!("Couldn't run git: {err}");
-            "??????".to_string()
+            UNKNOWN_COMMIT.to_string()
         }
         Ok(proc_output) => {
             if !proc_output.status.success() {
@@ -24,7 +25,7 @@ fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
                     "git describe failed: {}",
                     String::from_utf8(proc_output.stderr.clone()).expect("utf8-error")
                 );
-                String::from_utf8(proc_output.stderr[0..24].to_vec()).expect("utf8-error")
+                UNKNOWN_COMMIT.to_string()
             } else {
                 String::from_utf8(proc_output.stdout)
                     .expect("utf8-error")
