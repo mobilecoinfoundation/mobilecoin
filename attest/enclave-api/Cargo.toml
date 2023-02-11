@@ -2,10 +2,12 @@
 name = "mc-attest-enclave-api"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = """
 no_std structs used commonly in enclave api's in connection with attestation and key exchange
 """
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
 
 [dependencies]
 mc-attest-ake = { path = "../ake", default-features = false }

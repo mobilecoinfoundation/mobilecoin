@@ -1,9 +1,11 @@
 [package]
 name = "mc-crypto-dalek"
-description = "MobileCoin Dalek Crypto Configurator Package"
 version = "4.0.2"
 authors = ["MobileCoin"]
+description = "MobileCoin Dalek Crypto Configurator Package"
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
 
 [features]
 serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]

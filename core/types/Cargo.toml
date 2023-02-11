@@ -4,6 +4,7 @@ version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Types"
+license = "Apache-2.0"
 readme = "README.md"
 
 [features]

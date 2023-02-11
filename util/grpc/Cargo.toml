@@ -2,8 +2,10 @@
 name = "mc-util-grpc"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "Runtime gRPC Utilities"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
 
 [badges]
 circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
@@ -17,7 +19,7 @@ mc-util-uri = { path = "../uri" }
 
 base64 = "0.21"
 clap = { version = "4.0", features = ["derive", "env"] }
-cookie = "0.16"
+cookie = "0.17"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.0"

@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "This crate contains the type definitions for attestation"
+license = "Apache-2.0"
 
 [dependencies]
 mc-crypto-digestible = { path = "../../../crypto/digestible" }

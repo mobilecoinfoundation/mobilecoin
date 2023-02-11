@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 links = "fog_ocall_oram_storage_edl"
 license = "GPL-3.0"
+readme = "README.md"
 
 [build-dependencies]
 cargo-emit = "0.2"

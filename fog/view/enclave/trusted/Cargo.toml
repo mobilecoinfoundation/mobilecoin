@@ -2,9 +2,10 @@
 name = "mc-fog-view-enclave-trusted"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "The MobileCoin Fog user-facing server's enclave entry point."
+edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
 
 [workspace]
 
