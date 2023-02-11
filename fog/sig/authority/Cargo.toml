@@ -6,6 +6,7 @@ description = "Create and verify fog authority signatures"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }

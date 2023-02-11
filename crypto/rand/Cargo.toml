@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 description = '''
 This crate provides a no-std compatible rng called `McRng`.
+rust-version = { workspace = true }
 
 On targets with +rdrand target feature, it uses the intel RDRAND instruction
 to get randomness directly from the CPU, bypassing a dependency on the OS, libc,

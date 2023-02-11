@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 description = '''
 This crate contains necessary functions and utilities to perform remote
 attestation and verification of an SGX enclave.
+rust-version = { workspace = true }
 
 At present this is limited to the data structures and and errors necessary to
 verify the contents of the report as returned by Intel.

@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.
+rust-version = { workspace = true }
 
 The intent is that this implementation can be built for one of several
 in-enclave configurations:

@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 links = "sgx_panic_edl"
+rust-version = { workspace = true }
 
 [build-dependencies]
 cargo-emit = "0.2"

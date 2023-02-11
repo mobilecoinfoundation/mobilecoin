@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

@@ -6,6 +6,7 @@ description = "The MobileCoin Fog user-facing server's enclave entry point."
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [workspace]
 
