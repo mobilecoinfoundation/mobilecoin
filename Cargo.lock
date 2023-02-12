@@ -3425,7 +3425,6 @@ dependencies = [
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -5476,9 +5475,18 @@ dependencies = [
 name = "mc-transaction-types"
 version = "4.0.2"
 dependencies = [
+ "crc",
  "displaydoc",
+ "hkdf",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "proptest",
+ "prost",
  "serde",
+ "sha2 0.10.6",
  "subtle",
  "zeroize",
 ]

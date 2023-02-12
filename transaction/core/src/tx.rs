@@ -2,8 +2,8 @@
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
-use crate::BlockVersion;
 use alloc::vec::Vec;
+
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
-    amount::MaskedAmount,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
     input_rules::InputRules,
@@ -26,8 +25,8 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_ct::{SignatureRctBulletproofs, SignedInputRing},
-    Amount, CompressedCommitment, NewMemoError, NewTxError, TxOutConversionError,
-    ViewKeyMatchError,
+    Amount, BlockVersion, CompressedCommitment, MaskedAmount, NewMemoError, NewTxError,
+    TxOutConversionError, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.

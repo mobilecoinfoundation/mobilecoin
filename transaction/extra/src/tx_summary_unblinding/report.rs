@@ -6,10 +6,11 @@
 use super::Error;
 use core::fmt::Display;
 use displaydoc::Display;
-use mc_account_keys::ShortAddressHash;
-use mc_transaction_core::{
+use mc_core::account::ShortAddressHash;
+use mc_transaction_types::{
+    amount::Amount,
     constants::{MAX_INPUTS, MAX_OUTPUTS},
-    Amount, TokenId,
+    TokenId,
 };
 use mc_util_vec_map::VecMap;
 

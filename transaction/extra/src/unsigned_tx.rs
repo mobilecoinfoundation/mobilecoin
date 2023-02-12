@@ -9,9 +9,9 @@ use mc_transaction_core::{
         SignatureRctBulletproofs, SigningData,
     },
     tx::{Tx, TxPrefix},
-    FeeMap, TxSummary,
+    FeeMap,
 };
-use mc_transaction_types::{Amount, BlockVersion, TokenId};
+use mc_transaction_types::{amount::Amount, tx_summary::TxSummary, BlockVersion, TokenId};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 

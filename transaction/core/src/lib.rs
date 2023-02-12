@@ -15,7 +15,6 @@ extern crate std;
 #[macro_use]
 extern crate lazy_static;
 
-mod amount;
 mod fee_map;
 mod input_rules;
 mod memo;
@@ -23,8 +22,6 @@ mod revealed_tx_out;
 mod token;
 mod tx_error;
 
-pub mod constants;
-pub mod domain_separators;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
@@ -35,10 +32,6 @@ pub mod tx;
 pub mod tx_summary;
 pub mod validation;
 
-#[cfg(test)]
-pub mod proptest_fixtures;
-
-pub use amount::{AmountError, MaskedAmount, MaskedAmountV1, MaskedAmountV2};
 pub use fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2};
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
@@ -46,11 +39,11 @@ pub use revealed_tx_out::{try_reveal_amount, RevealedTxOut, RevealedTxOutError};
 pub use token::{tokens, Token};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, TxOutConversionError, ViewKeyMatchError};
-pub use tx_summary::{TxInSummary, TxOutSummary, TxSummary};
+pub use tx_summary::TxSummaryNew;
 
 // Re-export from transaction-types, and some from RingSignature crate.
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
-pub use mc_transaction_types::*;
+pub use mc_transaction_types::prelude::*;
 
 /// Re-export all of mc-crypto-ring-signature
 pub mod ring_signature {
