@@ -6,11 +6,12 @@
 //! are "masked" using a shared secret.
 
 use crate::{
+    amount::{Amount, AmountError},
     domain_separators::{
         AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_BLINDING_FACTORS_DOMAIN_TAG,
         AMOUNT_SHARED_SECRET_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
     },
-    Amount, AmountError, TokenId,
+    TokenId,
 };
 use alloc::vec::Vec;
 use core::convert::TryInto;
@@ -20,7 +21,9 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
+#[cfg(feature = "prost")]
 use prost::Message;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use zeroize::Zeroize;
@@ -33,21 +36,24 @@ use zeroize::Zeroize;
 /// which is computed by hashing from "tx out shared secret". The purpose of
 /// this is to make it possible to selectively reveal the amount and token id of
 /// a TxOut, without revealing the memo and other things. (See also MCIP #42).
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
+#[derive(Clone, Digestible, Eq, Hash, PartialEq, Zeroize)]
+#[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(not(feature = "prost"), derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct MaskedAmountV2 {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a
     /// related token, with blinding `b`,
-    #[prost(message, required, tag = "1")]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
     pub commitment: CompressedCommitment,
 
     /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
-    #[prost(fixed64, required, tag = "2")]
+    #[cfg_attr(feature = "prost", prost(fixed64, required, tag = "2"))]
     pub masked_value: u64,
 
     /// `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
     /// shared_secret)` 8 bytes long when used, 0 bytes for older amounts
     /// that don't have this.
-    #[prost(bytes, tag = "3")]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = "3"))]
     pub masked_token_id: Vec<u8>,
 }
 
@@ -113,8 +119,8 @@ impl MaskedAmountV2 {
     /// Get the amount shared secret from the tx out shared secret
     pub fn compute_amount_shared_secret(tx_out_shared_secret: &RistrettoPublic) -> [u8; 32] {
         let mut hasher = Blake2b512::new();
-        hasher.update(AMOUNT_SHARED_SECRET_DOMAIN_TAG);
-        hasher.update(tx_out_shared_secret.to_bytes());
+        hasher.update(&AMOUNT_SHARED_SECRET_DOMAIN_TAG);
+        hasher.update(&tx_out_shared_secret.to_bytes());
         // Safety: Blake2b is a 512-bit (64-byte) hash.
         hasher.finalize()[0..32].try_into().unwrap()
     }
@@ -270,7 +276,8 @@ mod amount_tests {
     #![allow(clippy::unnecessary_operation)]
 
     use super::*;
-    use crate::{proptest_fixtures::*, ring_signature::generators, CompressedCommitment};
+    use crate::proptest_fixtures::*;
+    use mc_crypto_ring_signature::{generators, CompressedCommitment};
     use proptest::prelude::*;
 
     proptest! {

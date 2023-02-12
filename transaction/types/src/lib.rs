@@ -7,12 +7,28 @@
 #![no_std]
 #![deny(missing_docs)]
 
-mod amount;
-mod block_version;
-mod token;
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
-pub use crate::{
-    amount::Amount,
-    block_version::{BlockVersion, BlockVersionError, BlockVersionIterator},
-    token::TokenId,
-};
+pub mod prelude;
+
+mod block_version;
+pub use block_version::{BlockVersion, BlockVersionError, BlockVersionIterator};
+
+mod token;
+pub use token::TokenId;
+
+pub mod amount;
+pub mod constants;
+pub mod domain_separators;
+
+#[cfg(feature = "alloc")]
+pub mod masked_amount;
+
+#[cfg(feature = "alloc")]
+pub mod tx_summary;
+
+pub mod unmasked_amount;
+
+#[cfg(test)]
+pub mod proptest_fixtures;

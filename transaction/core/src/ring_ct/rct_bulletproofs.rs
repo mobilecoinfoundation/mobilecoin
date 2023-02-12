@@ -394,7 +394,7 @@ impl SigningData {
 
             // The implicit fee output.
             let generator = generator_cache.get(fee.token_id);
-            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), FEE_BLINDING);
 
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
@@ -806,7 +806,7 @@ impl SignatureRctBulletproofs {
 
             // The implicit fee output.
             let generator = generator_cache.get(fee.token_id);
-            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), FEE_BLINDING);
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
 

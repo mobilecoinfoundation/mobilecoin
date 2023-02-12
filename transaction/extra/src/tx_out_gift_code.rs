@@ -3,7 +3,10 @@
 //! Code for computing & receiving gift codes
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_transaction_core::{Amount, AmountError, MaskedAmount};
+use mc_transaction_types::{
+    amount::{Amount, AmountError},
+    masked_amount::MaskedAmount,
+};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConstantTimeEq};
