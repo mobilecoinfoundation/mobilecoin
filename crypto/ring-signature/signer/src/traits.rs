@@ -73,10 +73,6 @@ impl From<RistrettoPrivate> for OneTimeKeyDeriveData {
 ///
 /// A transaction builder can be built around this.
 pub trait RingSigner {
-    /// Implementation errors must be convertable to standard [SignerError] type
-    /// for common handling
-    type Error: Into<SignerError>;
-
     /// Create an MLSAG signature. This is a signature that confers spending
     /// authority of a TxOut.
     ///
@@ -109,20 +105,18 @@ pub trait RingSigner {
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Self::Error>;
+    ) -> Result<RingMLSAG, SignerError>;
 }
 
 // Implement RingSigner for any &RingSigner
 impl<S: RingSigner> RingSigner for &S {
-    type Error = <S as RingSigner>::Error;
-
     fn sign(
         &self,
         message: &[u8],
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Self::Error> {
+    ) -> Result<RingMLSAG, SignerError> {
         (*self).sign(message, signable_ring, output_blinding, rng)
     }
 }

@@ -20,7 +20,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
 };
-use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing, SignerError};
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -483,9 +483,12 @@ impl SigningData {
                 .map(
                     |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                         Ok(match ring {
-                            InputRing::Signable(ring) => signer
-                                .sign(&mlsag_signing_digest, ring, pseudo_output_blinding, rng)
-                                .map_err(Into::<SignerError>::into)?,
+                            InputRing::Signable(ring) => signer.sign(
+                                &mlsag_signing_digest,
+                                ring,
+                                pseudo_output_blinding,
+                                rng,
+                            )?,
                             InputRing::Presigned(ring) => ring.mlsag.clone(),
                         })
                     },
