@@ -19,15 +19,13 @@ use rand_core::CryptoRngCore;
 pub struct NoKeysRingSigner {}
 
 impl RingSigner for NoKeysRingSigner {
-    type Error = SignerError;
-
     fn sign(
         &self,
         message: &[u8],
         ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Self::Error> {
+    ) -> Result<RingMLSAG, SignerError> {
         let real_input = ring
             .members
             .get(ring.real_input_index)
