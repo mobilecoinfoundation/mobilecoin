@@ -4,7 +4,8 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
 readme = "README.md"
-rust-version = { workspace = true }
+# TODO: Consider making sgx a self-contained workspace and get the value from there.
+rust-version = "1.68.0"
 
 [features]
 default = ["oom_panic"]
