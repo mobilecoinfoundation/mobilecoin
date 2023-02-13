@@ -147,7 +147,7 @@ impl BlockVersion {
     }
 
     /// Nested multisigs are supporoted starting from v3.
-    /// [MCIP #TODO]
+    /// [MCIP #TODO](todo)
     pub fn nested_multisigs_are_supported(&self) -> bool {
         self.0 >= 3
     }
