@@ -16,6 +16,7 @@ spec:
     replicas: 2
   router:
     template:
+      containerName: fog-view-router
       spec:
         replicas: {{ .Values.fogView.replicaCount }}
         selector:
@@ -39,6 +40,12 @@ spec:
                 sources:
                 - configMap:
                     name: fog-router-router
+            nodeSelector:
+              {{- toYaml .Values.fogView.nodeSelector | nindent 12 }}
+            tolerations:
+              {{- toYaml .Values.fogView.tolerations | nindent 12 }}
+            affinity:
+              {{- toYaml .Values.fogView.affinity | nindent 12 }}
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
               maxSkew: 1
@@ -66,7 +73,7 @@ spec:
             - name: fog-view-router
               image: "{{ .Values.fogView.image.org | default .Values.image.org }}/{{ .Values.fogView.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
-              command: [ "/usr/bin/supervisord" ]
+              command: [ "/usr/bin/supervisord", "-n" ]
               ports:
               - name: view
                 containerPort: 3225
