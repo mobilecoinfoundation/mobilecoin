@@ -6,32 +6,15 @@ use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
-    Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, KeyImage, RingMLSAG,
+    Commitment, CompressedCommitment, Error as RingSignatureError, KeyImage, RingMLSAG,
 };
 use mc_transaction_core::{
-    ring_ct::{GeneratorCache, OutputSecret, PresignedInputRing, SignedInputRing},
+    ring_ct::{GeneratorCache, PresignedInputRing, SignedInputRing},
     tx::TxIn,
-    Amount, AmountError, RevealedTxOutError, TokenId, TxOutConversionError,
+    AmountError, RevealedTxOutError, TokenId, TxOutConversionError, UnmaskedAmount,
 };
 use prost::Message;
-use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
-
-/// The "unmasked" data of an amount commitment
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
-pub struct UnmaskedAmount {
-    /// The value of the amount commitment
-    #[prost(fixed64, tag = 1)]
-    pub value: u64,
-
-    /// The token id of the amount commitment
-    #[prost(fixed64, tag = 2)]
-    pub token_id: u64,
-
-    /// The blinding factor of the amount commitment
-    #[prost(message, required, tag = 3)]
-    pub blinding: CurveScalar,
-}
 
 /// A signed contingent input is a "transaction fragment" which can be
 /// incorporated into a transaction signed by a counterparty. See MCIP #31 for
@@ -160,34 +143,6 @@ impl From<SignedContingentInput> for PresignedInputRing {
         Self {
             mlsag: src.mlsag,
             pseudo_output_secret: src.pseudo_output_amount.into(),
-        }
-    }
-}
-
-impl From<UnmaskedAmount> for OutputSecret {
-    fn from(src: UnmaskedAmount) -> Self {
-        Self {
-            amount: Amount::new(src.value, src.token_id.into()),
-            blinding: src.blinding.into(),
-        }
-    }
-}
-
-impl From<OutputSecret> for UnmaskedAmount {
-    fn from(src: OutputSecret) -> Self {
-        Self {
-            value: src.amount.value,
-            token_id: *src.amount.token_id,
-            blinding: src.blinding.into(),
-        }
-    }
-}
-
-impl From<&UnmaskedAmount> for Amount {
-    fn from(src: &UnmaskedAmount) -> Self {
-        Self {
-            value: src.value,
-            token_id: TokenId::from(src.token_id),
         }
     }
 }

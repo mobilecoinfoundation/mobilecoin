@@ -8,13 +8,11 @@ use std::path::Path;
 
 use clap::Parser;
 use log::debug;
-
-use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_extra::{TxSummaryUnblindingData, UnmaskedAmount};
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 
 use mc_core::keys::TxOutPublic;
+use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature_signer::RingSigner;
 use mc_transaction_core::{
     ring_ct::{
@@ -22,8 +20,9 @@ use mc_transaction_core::{
         SigningData,
     },
     tx::Tx,
-    Amount, TokenId, TxSummary,
+    Amount, TokenId, TxSummary, UnmaskedAmount,
 };
+use mc_transaction_summary::TxSummaryUnblindingData;
 
 pub mod types;
 use types::*;

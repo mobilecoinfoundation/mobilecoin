@@ -1,0 +1,50 @@
+[package]
+name = "mc-transaction-summary"
+version = "4.0.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[features]
+std = ["prost?/std"]
+serde = [
+    "dep:serde",
+    "mc-account-keys/serde",
+    "mc-crypto-keys/serde",
+    "mc-crypto-ring-signature/serde",
+    "mc-transaction-types/serde",
+]
+prost = [
+    "dep:prost",
+    "mc-account-keys/prost",
+    "mc-crypto-keys/prost",
+    "mc-crypto-ring-signature/prost",
+    "mc-transaction-types/prost",
+]
+alloc = [
+    "serde?/alloc",
+    #"mc-crypto-keys/alloc",
+    "mc-transaction-types/alloc",
+]
+
+default = ["std", "alloc", "serde", "prost", "mc-crypto-dalek/default"]
+
+[dependencies]
+# External dependencies
+displaydoc = { version = "0.2", default-features = false }
+
+# MobileCoin dependencies
+mc-account-keys = { path = "../../account-keys", default-features = false }
+mc-core = { path = "../../core", default-features = false }
+mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
+mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
+mc-transaction-types = { path = "../types", default-features = false }
+mc-util-vec-map = { path = "../../util/vec-map" }
+mc-util-zip-exact = { path = "../../util/zip-exact", default-features = false }
+
+prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }

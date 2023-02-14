@@ -2442,6 +2442,7 @@ dependencies = [
  "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
@@ -5328,6 +5329,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-serial",
@@ -5426,6 +5428,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-builder",
  "mc-transaction-core",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -5461,6 +5464,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "rand_core 0.6.4",
@@ -5468,6 +5472,26 @@ dependencies = [
  "serde_json",
  "subtle",
  "tiny-bip39",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-summary"
+version = "4.0.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-core",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-vec-map",
+ "mc-util-zip-exact",
+ "prost",
+ "serde",
+ "subtle",
  "zeroize",
 ]
 
