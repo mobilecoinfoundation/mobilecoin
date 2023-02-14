@@ -34,6 +34,8 @@ spec:
           spec:
             # Try to balance pods across zones
             volumes:
+            - emptyDir: {}
+              name: aesm-socket-dir
             - name: supervisor-conf
               projected:
                 defaultMode: 420
@@ -113,6 +115,8 @@ spec:
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
                 readOnly: true
+              - mountPath: /var/run/aesmd
+                name: aesm-socket-dir
               resources:
                 {{- toYaml .Values.fogView.resources | nindent 16 }}
         
@@ -273,6 +277,8 @@ spec:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
+           - mountPath: /var/run/aesmd
+             name: aesm-socket-dir
             resources:
               {{- toYaml .Values.fogView.resources | nindent 14 }}
           - name: grpc-gateway
@@ -332,6 +338,8 @@ spec:
           affinity:
             {{- toYaml .Values.fogView.affinity | nindent 12 }}
           volumes:
+          - emptyDir: {}
+            name: aesm-socket-dir
           - name: supervisor-conf
             projected:
               sources:
