@@ -22,7 +22,7 @@ runs:
       shell: bash
       run: |
         NEXTEST_PRESENT=$(command -v cargo-nextest >/dev/null && echo true || echo false)
-        echo ::set-output name=nextest_present::$NEXTEST_PRESENT
+        echo "nextest_present=$NEXTEST_PRESENT" >> $GITHUB_OUTPUT
     - name: Install cargo nextest
       if: steps.meta.outputs.nextest_present != 'true'
       uses: taiki-e/install-action@nextest
