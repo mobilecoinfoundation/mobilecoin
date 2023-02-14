@@ -89,8 +89,10 @@ spec:
                 value: {{ .Values.fogView.rust.backtrace | quote }}
               - name: RUST_LOG
                 value: {{ .Values.fogView.rust.log | quote }}
-              - name: CLIENT_RESPONDER_ID
+              - name: MC_CLIENT_RESPONDER_ID
                 value: fog-services-fog-view:3225
+              - name: MC_CLIENT_LISTEN_URI
+                value: insecure-fog-view://0.0.0.0:3225/
               - name: FOG_VIEW_SENTRY_DSN
                 valueFrom:
                   configMapKeyRef:
