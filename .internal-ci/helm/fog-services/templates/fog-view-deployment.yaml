@@ -41,11 +41,11 @@ spec:
                 - configMap:
                     name: fog-router-router
             nodeSelector:
-              {{- toYaml .Values.fogView.nodeSelector | nindent 12 }}
+              {{- toYaml .Values.fogView.nodeSelector | nindent 14 }}
             tolerations:
-              {{- toYaml .Values.fogView.tolerations | nindent 12 }}
+              {{- toYaml .Values.fogView.tolerations | nindent 14 }}
             affinity:
-              {{- toYaml .Values.fogView.affinity | nindent 12 }}
+              {{- toYaml .Values.fogView.affinity | nindent 14 }}
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
               maxSkew: 1
