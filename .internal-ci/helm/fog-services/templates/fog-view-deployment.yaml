@@ -11,6 +11,104 @@ spec:
   - start: 0
     end: 3000
     replicas: 1
+  router:
+    template:
+      containerName: fog-view
+      servicePort: 80
+      targetPort: view
+      spec:
+        replicas: {{ .Values.fogView.replicaCount }}
+        selector:
+          matchLabels:
+            app: fog-view-router
+            {{- include "fogServices.selectorLabels" . | nindent 12 }}
+        serviceName: {{ include "fogServices.fullname" . }}-fog-view
+        template:
+          metadata:
+            annotations:
+              {{- toYaml .Values.fogView.podAnnotations | nindent 14 }}
+            labels:
+              app: fog-view-router
+              {{- include "fogServices.labels" . | nindent 14 }}
+          spec:
+            # Try to balance pods across zones
+            volumes:
+            - name: supervisor-conf
+              projected:
+                defaultMode: 420
+                sources:
+                - configMap:
+                    name: fog-router-router
+            topologySpreadConstraints:
+            - topologyKey: topology.kubernetes.io/zone
+              maxSkew: 1
+              # Wait until we have nodes
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  # match on this helm chart install
+                  app: fog-view
+                  helm.sh/chart: {{ include "fogServices.chart" . }}
+                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
+            affinity:
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                # Require pods to be on separate nodes.
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    # match on this helm chart install
+                    app: fog-view
+                    helm.sh/chart: {{ include "fogServices.chart" . }}
+                    {{- include "fogServices.selectorLabels" . | nindent 20 }}
+            imagePullSecrets:
+            {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+            containers:
+            - name: fog-view-router
+              image: "{{ .Values.fogView.image.org | default .Values.image.org }}/{{ .Values.fogView.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
+              command: [ "/usr/bin/supervisord" ]
+              ports:
+              - name: view
+                containerPort: 3225
+              - name: mgmt
+                containerPort: 8000
+              envFrom:
+              - configMapRef:
+                  name: fog-view
+              - secretRef:
+                  name: ias
+              env:
+              - name: RUST_BACKTRACE
+                value: {{ .Values.fogView.rust.backtrace | quote }}
+              - name: RUST_LOG
+                value: {{ .Values.fogView.rust.log | quote }}
+              - name: CLIENT_RESPONDER_ID
+                value: fog-services-fog-view:3225
+              - name: FOG_VIEW_SENTRY_DSN
+                valueFrom:
+                  configMapKeyRef:
+                    name: sentry
+                    key: fog-view-sentry-dsn
+              - name: MC_CHAIN_ID
+                valueFrom:
+                  configMapKeyRef:
+                    name: mobilecoin-network
+                    key: network
+              # - name: CLIENT_AUTH_TOKEN_SECRET
+              #   valueFrom:
+              #     secretKeyRef:
+              #       name: client-auth-token
+              #       key: token
+              #       optional: true
+              volumeMounts:
+              - name: aesm-socket-dir
+                mountPath: /var/run/aesmd
+              - name: supervisor-conf
+                mountPath: /etc/supervisor/conf.d
+                readOnly: true
+              resources:
+                {{- toYaml .Values.fogView.resources | nindent 16 }}
+        
   statefulSet:
     containerName: fog-view
     servicePort: 80
