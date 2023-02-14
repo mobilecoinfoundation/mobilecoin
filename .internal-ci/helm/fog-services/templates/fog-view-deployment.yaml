@@ -10,12 +10,15 @@ spec:
   ranges:
   - start: 0
     end: 3000
-    replicas: 1
+    replicas: 2
+  - start: 3000
+    end: 6000
+    replicas: 2
   router:
+    containerName: fog-view
+    servicePort: 80
+    targetPort: view
     template:
-      containerName: fog-view
-      servicePort: 80
-      targetPort: view
       spec:
         replicas: {{ .Values.fogView.replicaCount }}
         selector:
