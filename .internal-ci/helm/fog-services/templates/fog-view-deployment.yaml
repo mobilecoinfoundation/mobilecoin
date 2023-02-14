@@ -110,8 +110,6 @@ spec:
               #       key: token
               #       optional: true
               volumeMounts:
-              - name: aesm-socket-dir
-                mountPath: /var/run/aesmd
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
                 readOnly: true
@@ -272,8 +270,6 @@ spec:
               failureThreshold: 2
               periodSeconds: 10
             volumeMounts:
-            - name: aesm-socket-dir
-              mountPath: /var/run/aesmd
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
@@ -336,8 +332,6 @@ spec:
           affinity:
             {{- toYaml .Values.fogView.affinity | nindent 12 }}
           volumes:
-          - name: aesm-socket-dir
-            emptyDir: {}
           - name: supervisor-conf
             projected:
               sources:
