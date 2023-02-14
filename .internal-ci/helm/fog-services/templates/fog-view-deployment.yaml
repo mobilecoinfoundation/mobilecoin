@@ -16,8 +16,6 @@ spec:
     replicas: 2
   router:
     containerName: fog-view
-    servicePort: 80
-    targetPort: view
     template:
       spec:
         replicas: {{ .Values.fogView.replicaCount }}
