@@ -277,8 +277,8 @@ spec:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
-           - mountPath: /var/run/aesmd
-             name: aesm-socket-dir
+            - mountPath: /var/run/aesmd
+              name: aesm-socket-dir
             resources:
               {{- toYaml .Values.fogView.resources | nindent 14 }}
           - name: grpc-gateway
