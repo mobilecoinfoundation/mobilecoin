@@ -14,7 +14,6 @@ use super::{
     Error, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryUnblindingData,
     TxSummaryUnblindingReport,
 };
-use crate::UnmaskedAmount;
 use mc_core::account::{RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
@@ -27,6 +26,7 @@ use mc_transaction_types::{
     domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG,
     masked_amount::MaskedAmount,
     tx_summary::{TxInSummary, TxOutSummary, TxSummary},
+    unmasked_amount::UnmaskedAmount,
     BlockVersion,
 };
 use mc_util_zip_exact::zip_exact;
