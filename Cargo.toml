@@ -134,6 +134,7 @@ members = [
     "transaction/core/test-utils",
     "transaction/extra",
     "transaction/signer",
+    "transaction/summary",
     "transaction/types",
     "util/b58-decoder",
     "util/build/enclave",

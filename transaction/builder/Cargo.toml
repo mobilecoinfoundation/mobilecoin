@@ -31,6 +31,7 @@ mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer",
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-extra = { path = "../../transaction/extra" }
+mc-transaction-summary = { path = "../../transaction/summary" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial" }
