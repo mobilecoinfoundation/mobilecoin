@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Tests of the streaming verifier
 
@@ -204,6 +204,7 @@ fn test_max_size_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *sender.view_private_key(),
+        sender.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -216,9 +217,12 @@ fn test_max_size_tx_summary_verification() {
     assert_eq!(
         balance_changes,
         vec![
-            (&(TransactionEntity::Ourself, TokenId::from(0)), &-16000),
+            (&(TransactionEntity::Total, TokenId::from(0)), &-16000),
             (
-                &(TransactionEntity::Address(recipient_hash), TokenId::from(0)),
+                &(
+                    TransactionEntity::OtherAddress(recipient_hash),
+                    TokenId::from(0)
+                ),
                 &160
             )
         ]
@@ -239,6 +243,7 @@ fn test_min_size_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *sender.view_private_key(),
+        sender.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -251,9 +256,12 @@ fn test_min_size_tx_summary_verification() {
     assert_eq!(
         balance_changes,
         vec![
-            (&(TransactionEntity::Ourself, TokenId::from(0)), &-1000),
+            (&(TransactionEntity::Total, TokenId::from(0)), &-1000),
             (
-                &(TransactionEntity::Address(recipient_hash), TokenId::from(0)),
+                &(
+                    TransactionEntity::OtherAddress(recipient_hash),
+                    TokenId::from(0)
+                ),
                 &10
             )
         ]
@@ -333,6 +341,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -348,11 +357,11 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             .collect();
         let expected = vec![
             (
-                (TransactionEntity::Ourself, token_id),
+                (TransactionEntity::Total, token_id),
                 -((value + value2 - change_value) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id),
+                (TransactionEntity::OtherAddress(recipient_hash), token_id),
                 (value + value2 - change_value - Mob::MINIMUM_FEE) as i64,
             ),
         ];
@@ -425,6 +434,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -440,11 +450,11 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             .collect();
         let expected = vec![
             (
-                (TransactionEntity::Ourself, token_id),
+                (TransactionEntity::Total, token_id),
                 -((value - change_value) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id),
+                (TransactionEntity::OtherAddress(recipient_hash), token_id),
                 (value - change_value - Mob::MINIMUM_FEE) as i64,
             ),
         ];
@@ -520,6 +530,7 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -536,15 +547,15 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             .collect();
         let mut expected = vec![
             (
-                (TransactionEntity::Ourself, token_id),
+                (TransactionEntity::Total, token_id),
                 -((value + value2 + Mob::MINIMUM_FEE) as i64),
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id),
+                (TransactionEntity::OtherAddress(recipient_hash), token_id),
                 (value as i64),
             ),
             (
-                (TransactionEntity::Address(recipient2_hash), token_id),
+                (TransactionEntity::OtherAddress(recipient2_hash), token_id),
                 (value2 as i64),
             ),
         ];
@@ -633,7 +644,7 @@ fn test_sci_tx_summary_verification() {
     builder
         .add_output(
             Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
-            &bob.default_subaddress(),
+            &bob.change_subaddress(),
             &mut rng,
         )
         .unwrap();
@@ -650,6 +661,7 @@ fn test_sci_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *bob.view_private_key(),
+        bob.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -664,10 +676,10 @@ fn test_sci_tx_summary_verification() {
         .collect();
     let mut expected = vec![
         (
-            (TransactionEntity::Ourself, Mob::ID),
+            (TransactionEntity::Total, Mob::ID),
             ((value - Mob::MINIMUM_FEE) as i64),
         ),
-        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
+        ((TransactionEntity::Total, token2), -(value2 as i64)),
         ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
         ((TransactionEntity::Swap, token2), (value2 as i64)),
     ];
@@ -773,6 +785,7 @@ fn test_sci_three_way_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *bob.view_private_key(),
+        bob.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -788,9 +801,9 @@ fn test_sci_three_way_tx_summary_verification() {
 
     let charlie_hash = ShortAddressHash::from(&charlie.default_subaddress());
     let mut expected = vec![
-        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
+        ((TransactionEntity::Total, token2), -(value2 as i64)),
         (
-            (TransactionEntity::Address(charlie_hash), Mob::ID),
+            (TransactionEntity::OtherAddress(charlie_hash), Mob::ID),
             ((value - Mob::MINIMUM_FEE) as i64),
         ),
         ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
