@@ -22,7 +22,7 @@ clap = { version = "4.0", features = ["derive", "env"] }
 cookie = "0.17"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 hex = "0.4"
 hex_fmt = "0.3"
 hmac = "0.12"
