@@ -3,9 +3,9 @@
 use alloc::vec::Vec;
 
 use super::{Error, TxSummaryUnblindingReport};
-use crate::TxSummaryStreamingVerifierCtx;
+use crate::{report::TransactionReport, TxSummaryStreamingVerifierCtx};
 use mc_account_keys::PublicAddress;
-use mc_core::account::ShortAddressHash;
+use mc_core::account::{PublicSubaddress, RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_types::{Amount, TxSummary, UnmaskedAmount};
@@ -76,6 +76,7 @@ pub fn verify_tx_summary(
     tx_summary: &TxSummary,
     unblinding_data: &TxSummaryUnblindingData,
     view_private_key: RistrettoPrivate,
+    change_address: impl RingCtAddress,
 ) -> Result<([u8; 32], TxSummaryUnblindingReport), Error> {
     let mut verifier = TxSummaryStreamingVerifierCtx::new(
         extended_message_digest,
@@ -83,6 +84,10 @@ pub fn verify_tx_summary(
         tx_summary.outputs.len(),
         tx_summary.inputs.len(),
         view_private_key,
+        PublicSubaddress {
+            view_public: change_address.view_public_key(),
+            spend_public: change_address.spend_public_key(),
+        },
     );
     let mut report = TxSummaryUnblindingReport::default();
 
@@ -116,7 +121,9 @@ pub fn verify_tx_summary(
         tx_summary.tombstone_block,
         &mut digest,
         &mut report,
-    );
+    )?;
+
+    report.finalize()?;
 
     // In a debug build, confirm the digest by computing it in a non-streaming way
     //
