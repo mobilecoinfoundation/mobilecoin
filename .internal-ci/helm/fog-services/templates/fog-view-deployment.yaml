@@ -20,15 +20,15 @@ spec:
       selector:
         matchLabels:
           app: fog-view
-          {{- include "fogServices.selectorLabels" . | nindent 6 }}
+          {{- include "fogServices.selectorLabels" . | nindent 10 }}
       serviceName: {{ include "fogServices.fullname" . }}-fog-view
       template:
         metadata:
           annotations:
-            {{- toYaml .Values.fogView.podAnnotations | nindent 8 }}
+            {{- toYaml .Values.fogView.podAnnotations | nindent 12 }}
           labels:
             app: fog-view
-            {{- include "fogServices.labels" . | nindent 8 }}
+            {{- include "fogServices.labels" . | nindent 12 }}
         spec:
           # Try to balance pods across zones
           topologySpreadConstraints:
@@ -41,7 +41,7 @@ spec:
                 # match on this helm chart install
                 app: fog-view
                 helm.sh/chart: {{ include "fogServices.chart" . }}
-                {{- include "fogServices.selectorLabels" . | nindent 12 }}
+                {{- include "fogServices.selectorLabels" . | nindent 16 }}
           affinity:
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
@@ -51,9 +51,9 @@ spec:
                   # match on this helm chart install
                   app: fog-view
                   helm.sh/chart: {{ include "fogServices.chart" . }}
-                  {{- include "fogServices.selectorLabels" . | nindent 14 }}
+                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
           imagePullSecrets:
-          {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+          {{- toYaml .Values.imagePullSecrets | nindent 10 }}
           initContainers:
           - name: sysctl
             image: ubuntu:20.04
@@ -171,7 +171,7 @@ spec:
               mountPath: /etc/supervisor/conf.d
               readOnly: true
             resources:
-              {{- toYaml .Values.fogView.resources | nindent 10 }}
+              {{- toYaml .Values.fogView.resources | nindent 14 }}
           - name: grpc-gateway
             image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: Always
@@ -185,7 +185,7 @@ spec:
               - name: view-http
                 containerPort: 8225
             resources:
-              {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
+              {{- toYaml .Values.grpcGateway.resources | nindent 14 }}
           {{- if eq .Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
@@ -223,11 +223,11 @@ spec:
               - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
           {{- end }}
           nodeSelector:
-            {{- toYaml .Values.fogView.nodeSelector | nindent 8 }}
+            {{- toYaml .Values.fogView.nodeSelector | nindent 12 }}
           tolerations:
-            {{- toYaml .Values.fogView.tolerations | nindent 8 }}
+            {{- toYaml .Values.fogView.tolerations | nindent 12 }}
           affinity:
-            {{- toYaml .Values.fogView.affinity | nindent 8 }}
+            {{- toYaml .Values.fogView.affinity | nindent 12 }}
           volumes:
           - name: aesm-socket-dir
             emptyDir: {}
