@@ -15,7 +15,6 @@ spec:
     end: 6000
     replicas: 2
   router:
-    containerName: fog-view
     template:
       spec:
         replicas: {{ .Values.fogView.replicaCount }}
