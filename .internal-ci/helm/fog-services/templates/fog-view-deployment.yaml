@@ -7,7 +7,14 @@ metadata:
     app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
+  ranges:
+  - start: 0
+    end: 3000
+    replicas: 1
   statefulSet:
+    containerName: fog-view
+    servicePort: 80
+    targetPort: view
     spec:
       replicas: {{ .Values.fogView.replicaCount }}
       selector:
@@ -179,7 +186,7 @@ spec:
                 containerPort: 8225
             resources:
               {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
-          {{ - if eq .Values.jaegerTracing.enabled true }}
+          {{- if eq .Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
             imagePullPolicy: IfNotPresent
@@ -214,7 +221,7 @@ spec:
               - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
               - --reporter.type=grpc
               - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
-          {{ - end }}
+          {{- end }}
           nodeSelector:
             {{- toYaml .Values.fogView.nodeSelector | nindent 8 }}
           tolerations:
