@@ -7,7 +7,7 @@ const CHANNEL_SIZE: usize = 100_000;
 const TRIM_MARKER: &str = "... <trimmed>";
 
 /// Macros to ease with tests/benches that require a Logger instance.
-pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
+pub use mc_util_logger_macros::{async_test_with_logger, bench_with_logger, test_with_logger};
 
 use super::*;
 
