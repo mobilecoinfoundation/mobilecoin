@@ -24,6 +24,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fogServices.fullname" . }}-fog-view
+            name: {{ include "fogServices.fullname" . }}-fog-view-router
             port:
               number: 8225

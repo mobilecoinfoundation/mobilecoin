@@ -8,7 +8,7 @@ data:
   acct_view.conf: |
     [program:fogviewrouter]
     priority=100
-    environment=MC_CLIENT_RESPONDER_ID="%(HOSTNAME)s.fog-services-fog-view"
+    environment=MC_CLIENT_RESPONDER_ID="%(ENV_HOSTNAME)s.fog-services-fog-view"
     command=fog_view_router
       --admin-listen-uri=insecure-mca://127.0.0.1:8001/
 

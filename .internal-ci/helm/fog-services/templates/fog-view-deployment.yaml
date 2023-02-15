@@ -4,7 +4,6 @@ kind: FogStoreRollout
 metadata:
   name: {{ include "fogServices.fullname" . }}-fog-view
   labels:
-    app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   ranges:
@@ -74,7 +73,7 @@ spec:
                 defaultMode: 420
                 sources:
                 - configMap:
-                    name: fog-router-router
+                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
             nodeSelector:
               {{- toYaml .Values.fogView.nodeSelector | nindent 14 }}
             tolerations:
