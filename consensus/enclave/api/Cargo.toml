@@ -8,6 +8,7 @@ The ECALL API declarations and API for operating an enclave.
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]

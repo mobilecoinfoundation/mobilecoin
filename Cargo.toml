@@ -180,6 +180,9 @@ exclude = [
     "util/serial",
 ]
 
+[workspace.package]
+rust-version = "1.68.0"
+
 [profile.dev]
 opt-level = 0
 rpath = true

@@ -6,6 +6,7 @@ edition = "2021"
 description = "This crate contains the actual implementation of a ledger enclave."
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin

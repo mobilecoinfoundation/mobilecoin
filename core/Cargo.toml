@@ -6,6 +6,7 @@ edition = "2021"
 description = "MobileCoin Core Library"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 bip39 = ["dep:tiny-bip39", "dep:slip10_ed25519"]

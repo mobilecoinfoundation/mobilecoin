@@ -6,6 +6,7 @@ edition = "2021"
 description = "Enclave build assistance, from MobileCoin."
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-sgx-css = { path = "../../../sgx/css" }

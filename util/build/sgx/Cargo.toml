@@ -6,6 +6,7 @@ edition = "2021"
 description = "SGX utilities assistance, from MobileCoin."
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-util-build-script = { path = "../script" }

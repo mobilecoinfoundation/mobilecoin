@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-dalek/serde"]

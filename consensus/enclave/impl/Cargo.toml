@@ -18,6 +18,7 @@ sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]
