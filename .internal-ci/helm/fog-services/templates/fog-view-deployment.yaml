@@ -158,7 +158,7 @@ spec:
     servicePort: 80
     targetPort: view
     spec:
-      replicas: {{ .Values.fogView.replicaCount }}
+      replicas: 1
       selector:
         matchLabels:
           app: fog-view
@@ -273,8 +273,6 @@ spec:
                   key: postgresql-ssl-options
             - name: DATABASE_URL
               value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
-            - name: MC_SHARDING_STRATEGY
-              value: "default"
             # - name: CLIENT_AUTH_TOKEN_SECRET
             #   valueFrom:
             #     secretKeyRef:
