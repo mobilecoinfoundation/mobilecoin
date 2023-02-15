@@ -6,6 +6,7 @@ edition = "2021"
 license = "GPL-3.0"
 links = "consensus_enclave_edl"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }

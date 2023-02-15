@@ -6,6 +6,7 @@ description = "Create and verify fog report signatures"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

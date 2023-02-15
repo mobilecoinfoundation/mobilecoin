@@ -6,6 +6,7 @@ edition = "2021"
 description = "MobileCoin Diffie-Hellman Key Exchange and Digital Signatures"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 alloc = ["base64/alloc", "mc-crypto-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]

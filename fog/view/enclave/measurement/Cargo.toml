@@ -6,6 +6,7 @@ description = "MobileCoin Fog View Enclave - Application Code"
 edition = "2021"
 license = "GPL-3.0"
 links = "view_enclave_measurement"
+rust-version = { workspace = true }
 
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built
