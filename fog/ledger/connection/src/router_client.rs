@@ -136,12 +136,10 @@ impl LedgerGrpcClient {
     ) -> Result<CheckKeyImagesResponse, Error> {
         log::trace!(self.logger, "Check key images was called");
         if !self.is_attested() {
-            log::warn!(self.logger, "attesting now");
             let verification_report = self.attest().await;
             verification_report?;
         }
 
-        log::warn!(self.logger, "attested");
         let key_images_queries = key_images
             .iter()
             .map(|&key_image| KeyImageQuery {
@@ -149,7 +147,6 @@ impl LedgerGrpcClient {
                 start_block: 0,
             })
             .collect();
-        log::warn!(self.logger, "queries are: {:?}", key_images_queries);
         let key_images_request = CheckKeyImagesRequest {
             queries: key_images_queries,
         };
@@ -168,9 +165,7 @@ impl LedgerGrpcClient {
 
             let plaintext_bytes = mc_util_serial::encode(&key_images_request);
 
-            log::warn!(self.logger, "about to encrypt");
             let request_ciphertext = attest_cipher.encrypt(&aad, &plaintext_bytes)?;
-            log::warn!(self.logger, "encrypted");
             msg.set_data(request_ciphertext);
             msg
         };
@@ -181,14 +176,12 @@ impl LedgerGrpcClient {
             .send((request.clone(), grpcio::WriteFlags::default()))
             .await?;
 
-        log::warn!(self.logger, "about to receive");
         let message = self
             .response_receiver
             .try_next()
             .await?
             .ok_or(Error::ResponseNotReceived)?
             .take_check_key_image_response();
-        log::warn!(self.logger, "received");
 
         {
             let attest_cipher = self
@@ -196,9 +189,7 @@ impl LedgerGrpcClient {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            log::warn!(self.logger, "about to decrypt");
             let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
-            log::warn!(self.logger, "about to decode");
             let plaintext_response: CheckKeyImagesResponse =
                 mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
