@@ -4,7 +4,6 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.
-rust-version = { workspace = true }
 
 The intent is that this implementation can be built for one of several
 in-enclave configurations:
@@ -19,6 +18,7 @@ sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]
