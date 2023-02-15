@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
+#![allow(clippy::result_large_err)]
 extern crate alloc;
 
 use aes_gcm::Aes256Gcm;

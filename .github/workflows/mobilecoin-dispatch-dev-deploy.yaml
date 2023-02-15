@@ -17,6 +17,20 @@ on:
         description: "Chart Version"
         type: string
         required: true
+      block_version:
+        description: "Consensus block_version"
+        type: string
+        required: true
+        default: '3'
+      bootstrap_version:
+        description: "Bootstrap Blockchain from selected version"
+        type: choice
+        required: true
+        default: none
+        options:
+        - none
+        - v1.1.3-dev
+        - v3.0.0-dev
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
@@ -25,15 +39,6 @@ on:
         options:
         - blue
         - green
-      block_version:
-        description: "Consensus block_version"
-        type: string
-        required: true
-      tokens_json_version:
-        description: "The version of the tokens.json file we will generate"
-        type: string
-        default: '1'
-        required: false
       chart_repo:
         description: "Chart Repo URL"
         type: string
@@ -62,11 +67,38 @@ jobs:
       run: |
         .internal-ci/util/print_details.sh
 
+  bootstrap-v1-1-3-bv0:
+    needs:
+    - list-values
+    if: inputs.bootstrap_version == 'v1.1.3-dev'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
+    with:
+      block_version: 0
+      chart_repo: ${{ inputs.chart_repo }}
+      namespace: ${{ inputs.namespace }}
+      version: ${{ inputs.bootstrap_version }}
+    secrets: inherit
+
+  bootstrap-v3-0-0-bv2:
+    needs:
+    - list-values
+    if: inputs.bootstrap_version == 'v3.0.0-dev'
+    uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
+    with:
+      block_version: 2
+      chart_repo: ${{ inputs.chart_repo }}
+      namespace: ${{ inputs.namespace }}
+      version: ${{ inputs.bootstrap_version }}
+    secrets: inherit
+
   deploy:
+    if: '! failure()'
+    needs:
+    - bootstrap-v1-1-3-bv0
+    - bootstrap-v3-0-0-bv2
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:
       block_version: ${{ inputs.block_version }}
-      tokens_json_version: ${{ inputs.tokens_json_version }}
       chart_repo: ${{ inputs.chart_repo }}
       docker_image_org: ${{ inputs.docker_image_org }}
       ingest_color: ${{ inputs.ingest_color }}

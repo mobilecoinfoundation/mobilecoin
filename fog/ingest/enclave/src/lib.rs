@@ -3,6 +3,7 @@
 //! MobileCoin Fog Ingest SGX Enclave Untrusted Proxy
 
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 extern crate mc_fog_ocall_oram_storage_untrusted;
 

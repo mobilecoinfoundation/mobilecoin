@@ -1,14 +1,16 @@
 [package]
 name = "mc-util-encodings"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "Support for various simple encodings (hex strings, base64 strings, Intel x86_64 structures, etc.)"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-util-repr-bytes = { path = "../repr-bytes", default-features = false }
 
-base64 = { version = "0.13", default-features = false }
+base64 = { version = "0.21", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

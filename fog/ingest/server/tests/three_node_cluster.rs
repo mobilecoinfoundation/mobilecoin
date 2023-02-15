@@ -18,7 +18,7 @@ const BASE_PORT: u16 = 4997;
 // to idle because the key is retired in the DB.
 #[test_with_logger]
 fn three_node_cluster_activation_retiry(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
 
     // Do three repetitions of the whole thing
@@ -103,7 +103,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
                 assert_eq!(key, original_key);
             }
             Err(err) => {
-                panic!("Unexpected error when trying to activate node0, should have got KeyAlreadyRetired: {}", err);
+                panic!("Unexpected error when trying to activate node0, should have got KeyAlreadyRetired: {err}");
             }
         };
 
@@ -115,7 +115,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
                 assert_eq!(key, original_key);
             }
             Err(err) => {
-                panic!("Unexpected error when trying to activate node1, should have got KeyAlreadyRetired: {}", err);
+                panic!("Unexpected error when trying to activate node1, should have got KeyAlreadyRetired: {err}");
             }
         };
 
@@ -127,7 +127,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
                 assert_eq!(key, original_key);
             }
             Err(err) => {
-                panic!("Unexpected error when trying to activate node2, should have got KeyAlreadyRetired: {}", err);
+                panic!("Unexpected error when trying to activate node2, should have got KeyAlreadyRetired: {err}");
             }
         };
 

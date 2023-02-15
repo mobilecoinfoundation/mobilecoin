@@ -1,8 +1,10 @@
 [package]
 name = "mc-consensus-service-config"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core" }
@@ -18,13 +20,13 @@ mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial", features = ["std"] }
 mc-util-uri = { path = "../../../util/uri" }
 
-base64 = "0.13"
+base64 = "0.21"
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 hex = "0.4"
 pem = "1.1"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
-serde_with = "2.0"
-toml = "0.5"
+serde_with = "2.2"
+toml = "0.7"
 

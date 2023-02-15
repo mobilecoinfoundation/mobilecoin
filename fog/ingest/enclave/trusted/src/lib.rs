@@ -21,7 +21,7 @@ use mc_util_serial::{deserialize, serialize};
 
 lazy_static! {
     /// Storage for ECALL results whose given outbuf was not large enough
-    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
+    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(ecall_dispatcher);
 
     /// Storage for the business logic / implementation state
     static ref ENCLAVE: SgxIngestEnclave<OcallORAMStorageCreator> = SgxIngestEnclave::new(default_logger());
@@ -70,8 +70,10 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 /// The entry point implementation for ingest_enclave_api
 ///
 /// See ingest_enclave_api::mobileenclave() declaration for more information
+/// # Safety
+/// This method dereferences raw pointers and is therefore unsafe.
 #[no_mangle]
-pub extern "C" fn ingest_enclave_call(
+pub unsafe extern "C" fn ingest_enclave_call(
     inbuf: *const u8,
     inbuf_len: usize,
     outbuf: *mut u8,

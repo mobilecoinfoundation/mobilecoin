@@ -1,9 +1,12 @@
 [package]
 name = "mc-consensus-enclave-trusted"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "The MobileCoin Consensus Service's internal enclave entry point."
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = "1.68.0"
 
 [workspace]
 

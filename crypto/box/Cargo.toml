@@ -1,8 +1,11 @@
 [package]
 name = "mc-crypto-box"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-crypto-hashes = { path = "../hashes" }

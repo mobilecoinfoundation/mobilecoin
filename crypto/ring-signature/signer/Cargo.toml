@@ -1,9 +1,11 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-dalek/serde"]
@@ -36,7 +38,7 @@ zeroize = { version = "1", default-features = false }
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }
 mc-crypto-rand = { path = "../../rand" }
 # Enable all default features not known to break code coverage builds
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
 rand_hc = "0.3"
 tempdir = "0.3"

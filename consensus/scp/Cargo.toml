@@ -1,11 +1,13 @@
 [package]
 name = "mc-consensus-scp"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "Stellar Consensus Protocol"
+edition = "2021"
 keywords = ["SCP", "Stellar Consensus Protocol", "Consensus", "Stellar", "Byzantine"]
+license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 test_utils = ["mc-consensus-scp-types/test_utils"]
@@ -33,7 +35,7 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
-serial_test = "0.10"
+serial_test = "1.0"
 tempdir = "0.3"
 
 [[test]]

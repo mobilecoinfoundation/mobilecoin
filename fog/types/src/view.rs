@@ -697,7 +697,7 @@ mod tests {
     fn tx_out_search_result_conversion(payload_length: usize) {
         let fixed_tx_out_search_results = (0..10)
             .map(|i| {
-                let payload = vec![i; payload_length as usize];
+                let payload = vec![i; payload_length];
                 FixedTxOutSearchResult::new(vec![i], &payload, TxOutSearchResultCode::Found)
             })
             .collect::<Vec<_>>();

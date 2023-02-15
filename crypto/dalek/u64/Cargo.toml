@@ -1,10 +1,11 @@
 [package]
 name = "mc-crypto-dalek-backend-u64"
-description = "MobileCoin Dalek Crypto Backend Helper (u64)"
 version = "2.0.0"
 authors = ["MobileCoin"]
+description = "MobileCoin Dalek Crypto Backend Helper (u64)"
 edition = "2021"
-
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [features]
 default = [ "curve25519-dalek" ]

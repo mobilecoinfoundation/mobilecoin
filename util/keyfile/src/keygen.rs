@@ -60,7 +60,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
 /// Helper: Make i'th user's keyfiles' names
 fn keyfile_name(i: usize) -> String {
-    format!("account_keys_{}", i)
+    format!("account_keys_{i}")
 }
 
 /// Write the sequence of default user key files used in tests and demos

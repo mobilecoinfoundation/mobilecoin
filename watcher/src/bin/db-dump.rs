@@ -47,7 +47,7 @@ fn main() {
 
     println!("Last synced blocks:");
     for (url, block_index) in last_synced_blocks.iter() {
-        println!("{:width$}: {:?}", url, block_index, width = max_url_len);
+        println!("{url:max_url_len$}: {block_index:?}");
     }
     println!();
 
@@ -66,10 +66,7 @@ fn main() {
                 Ok(block_data) => block_data.signature().map(|sig| *sig.signer()),
                 Err(WatcherDBError::NotFound) => None,
                 Err(err) => {
-                    panic!(
-                        "Failed getting block {}@{}: {}",
-                        tx_src_url, cur_start_index, err
-                    );
+                    panic!("Failed getting block {tx_src_url}@{cur_start_index}: {err}");
                 }
             };
 
@@ -84,7 +81,7 @@ fn main() {
         }
         ranges.push(((cur_start_index, cur_end_index), cur_signer.take()));
 
-        println!("{}", tx_src_url);
+        println!("{tx_src_url}");
         for ((start, end), signer) in ranges.iter() {
             let report_status = display_report_status(&watcher_db, tx_src_url, signer);
 

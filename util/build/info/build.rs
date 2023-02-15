@@ -9,22 +9,23 @@ use std::{
 
 /// Get git revision by running `git describe` in a given directory.
 fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
+    const UNKNOWN_COMMIT: &str = "unknown";
     match Command::new("git")
-        .args(&["describe", "--always", "--dirty=-modified"])
+        .args(["describe", "--always", "--dirty=-modified"])
         .current_dir(current_dir)
         .output()
     {
         Err(err) => {
-            eprintln!("Couldn't run git: {}", err);
-            "??????".to_string()
+            eprintln!("Couldn't run git: {err}");
+            UNKNOWN_COMMIT.to_string()
         }
         Ok(proc_output) => {
             if !proc_output.status.success() {
                 eprintln!(
                     "git describe failed: {}",
-                    String::from_utf8(proc_output.stderr.clone()).expect("utf8-error")
+                    String::from_utf8(proc_output.stderr).expect("utf8-error")
                 );
-                String::from_utf8(proc_output.stderr[0..24].to_vec()).expect("utf8-error")
+                UNKNOWN_COMMIT.to_string()
             } else {
                 String::from_utf8(proc_output.stdout)
                     .expect("utf8-error")
@@ -40,7 +41,7 @@ fn get_git_commit(current_dir: impl AsRef<Path>) -> String {
 /// Use the GIT_COMMIT environment variable to override this.
 fn get_root_git_commit() -> String {
     if let Ok(result) = env::var("GIT_COMMIT") {
-        eprintln!("GIT_COMMIT from env: {}", result);
+        eprintln!("GIT_COMMIT from env: {result}");
         return result;
     }
 
@@ -115,32 +116,20 @@ fn main() {
     let gen_contents = format!(
         r###"
 // This file is generated
-pub fn git_commit() -> &'static str {{ "{}" }}
-pub fn mobilecoin_git_commit() -> &'static str {{ "{}" }}
-pub fn profile() -> &'static str {{ "{}" }}
-pub fn debug() -> &'static str {{ "{}" }}
-pub fn opt_level() -> &'static str {{ "{}" }}
-pub fn debug_assertions() -> &'static str {{ "{}" }}
-pub fn target_arch() -> &'static str {{ "{}" }}
-pub fn target_os() -> &'static str {{ "{}" }}
-pub fn target_feature() -> &'static str {{ "{}" }}
-pub fn rustflags() -> &'static str {{ "{}" }}
-pub fn sgx_mode() -> &'static str {{ "{}" }}
-pub fn ias_mode() -> &'static str {{ "{}" }}
+pub fn git_commit() -> &'static str {{ "{root_git_commit}" }}
+pub fn mobilecoin_git_commit() -> &'static str {{ "{mobilecoin_git_commit}" }}
+pub fn profile() -> &'static str {{ "{profile}" }}
+pub fn debug() -> &'static str {{ "{debug}" }}
+pub fn opt_level() -> &'static str {{ "{opt_level}" }}
+pub fn debug_assertions() -> &'static str {{ "{debug_assertions}" }}
+pub fn target_arch() -> &'static str {{ "{target_arch}" }}
+pub fn target_os() -> &'static str {{ "{target_os}" }}
+pub fn target_feature() -> &'static str {{ "{target_feature}" }}
+pub fn rustflags() -> &'static str {{ "{rustflags}" }}
+pub fn sgx_mode() -> &'static str {{ "{sgx_mode}" }}
+pub fn ias_mode() -> &'static str {{ "{ias_mode}" }}
 // Note: Please update `build-info/src/lib.rs` if you add more stuff
 "###,
-        root_git_commit,
-        mobilecoin_git_commit,
-        profile,
-        debug,
-        opt_level,
-        debug_assertions,
-        target_arch,
-        target_os,
-        target_feature,
-        rustflags,
-        sgx_mode,
-        ias_mode
     );
 
     // Check the current contents and see if they are different
@@ -151,8 +140,8 @@ pub fn ias_mode() -> &'static str {{ "{}" }}
         out_file.clone().into_os_string().into_string().unwrap()
     );
     if let Ok(current_contents) = fs::read_to_string(out_file.clone()) {
-        eprintln!("current contents:\n{}", current_contents);
-        eprintln!("gen contents:\n{}", gen_contents);
+        eprintln!("current contents:\n{current_contents}");
+        eprintln!("gen contents:\n{gen_contents}");
         if current_contents == gen_contents {
             // Early return, don't cause make to rerun everything
             return;
@@ -162,5 +151,5 @@ pub fn ias_mode() -> &'static str {{ "{}" }}
     // rewrite the file
     let mut file = fs::File::create(out_file).expect("File creation");
     use std::io::Write;
-    write!(&mut file, "{}", gen_contents).expect("File I/O");
+    write!(&mut file, "{gen_contents}").expect("File I/O");
 }

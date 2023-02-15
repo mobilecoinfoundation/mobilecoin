@@ -47,13 +47,13 @@ fn main() {
     // Check for env var and override
     fee_spend_public_key[..].copy_from_slice(
         &hex::decode(
-            &var("FEE_SPEND_PUBLIC_KEY").unwrap_or_else(|_| default_fee_spend_pub.to_string()),
+            var("FEE_SPEND_PUBLIC_KEY").unwrap_or_else(|_| default_fee_spend_pub.to_string()),
         )
         .expect("Failed parsing public spend key."),
     );
     fee_view_public_key[..].copy_from_slice(
         &hex::decode(
-            &var("FEE_VIEW_PUBLIC_KEY").unwrap_or_else(|_| default_fee_view_pub.to_string()),
+            var("FEE_VIEW_PUBLIC_KEY").unwrap_or_else(|_| default_fee_view_pub.to_string()),
         )
         .expect("Failed parsing public view key."),
     );
@@ -76,7 +76,7 @@ fn main() {
     };
 
     let parsed_pem =
-        pem::parse(&pem_bytes).expect("Failed parsing minting trust root public key PEM file");
+        pem::parse(pem_bytes).expect("Failed parsing minting trust root public key PEM file");
     let minting_trust_root_public_key = Ed25519Public::try_from_der(&parsed_pem.contents[..])
         .expect("Failed parsing minting trust root public key DER");
     let minting_trust_root_public_key_bytes = minting_trust_root_public_key.to_bytes();
@@ -85,16 +85,13 @@ fn main() {
         "// Copyright (c) 2018-2022 The MobileCoin Foundation\n\n// Auto-generated file\n\n"
             .to_string();
     constants.push_str(&format!(
-        "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};\n\n",
-        fee_spend_public_key
+        "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {fee_spend_public_key:?};\n\n"
     ));
     constants.push_str(&format!(
-        "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};\n",
-        fee_view_public_key
+        "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {fee_view_public_key:?};\n"
     ));
     constants.push_str(&format!(
-        "pub const MINTING_TRUST_ROOT_PUBLIC_KEY: [u8; 32] = {:?};\n",
-        minting_trust_root_public_key_bytes
+        "pub const MINTING_TRUST_ROOT_PUBLIC_KEY: [u8; 32] = {minting_trust_root_public_key_bytes:?};\n"
     ));
 
     // Output directory for generated constants.

@@ -1,9 +1,11 @@
 [package]
 name = "mc-crypto-ring-signature"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-transaction-types/alloc", "mc-crypto-dalek/alloc"]
@@ -35,7 +37,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false 
 mc-util-serial = { path = "../../util/serial", optional = true }
 
 # Enable all default features not known to break code coverage builds
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"], optional = true }
+proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"], optional = true }
 prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6.4", default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
@@ -48,5 +50,5 @@ mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
 tempdir = "0.3"

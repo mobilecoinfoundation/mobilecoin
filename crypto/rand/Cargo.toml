@@ -1,8 +1,7 @@
 [package]
 name = "mc-crypto-rand"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = '''
 This crate provides a no-std compatible rng called `McRng`.
 
@@ -16,6 +15,10 @@ On wasm, `ThreadRng` is not available, so `McRng` is `OsRng`.
 
 `McRng` is in all configurations a zero-width type.
 '''
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = []

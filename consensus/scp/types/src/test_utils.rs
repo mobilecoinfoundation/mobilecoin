@@ -26,7 +26,7 @@ pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
     let signer_keypair = Ed25519Pair::from_random(&mut seeded_rng);
     (
         NodeID {
-            responder_id: ResponderId::from_str(&format!("node{}.test.com:8443", node_id)).unwrap(),
+            responder_id: ResponderId::from_str(&format!("node{node_id}.test.com:8443")).unwrap(),
             public_key: signer_keypair.public_key(),
         },
         signer_keypair,

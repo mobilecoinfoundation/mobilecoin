@@ -85,11 +85,11 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
             let thread_logger = self.logger.clone();
             let thread_results_and_condvar = results_and_condvar.clone();
             thread::Builder::new()
-                .name(format!("Poll:{}", responder_id))
+                .name(format!("Poll:{responder_id}"))
                 .spawn(move || {
                     log::debug!(thread_logger, "Getting last block from {}", conn);
 
-                    let &(ref lock, ref condvar) = &*thread_results_and_condvar;
+                    let (lock, condvar) = &*thread_results_and_condvar;
 
                     let block_info_result = conn.fetch_block_info(Self::get_retry_iterator());
 
@@ -121,7 +121,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         }
 
         // Wait until we get all results.
-        let &(ref lock, ref condvar) = &*results_and_condvar;
+        let (lock, condvar) = &*results_and_condvar;
         let num_peers = self.manager.len();
         let results = condvar //.wait(lock.lock().unwrap()).unwrap();
             .wait_while(lock.lock().unwrap(), |ref mut results| {

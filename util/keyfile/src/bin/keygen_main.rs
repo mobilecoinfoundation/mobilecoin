@@ -42,7 +42,7 @@ fn main() {
     let mnemonic = Mnemonic::from_entropy(&entropy, Language::English)
         .expect("Could not create mnemonic from entropy");
 
-    println!("Writing to {:?}", path);
+    println!("Writing to {path:?}");
 
     keygen::write_keyfiles(
         path,

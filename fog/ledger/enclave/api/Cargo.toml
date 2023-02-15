@@ -1,12 +1,14 @@
 [package]
 name = "mc-fog-ledger-enclave-api"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = """
 The ECALL API declarations and API for operating a ledger enclave.
 """
+edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin

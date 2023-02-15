@@ -94,18 +94,18 @@ impl ServiceMetrics {
 
         ServiceMetrics {
             num_req: IntCounterVec::new(
-                Opts::new(format!("{}_num_req", name_str), "Number of requests"),
+                Opts::new(format!("{name_str}_num_req"), "Number of requests"),
                 &["method"],
             )
             .unwrap(),
             num_error: IntCounterVec::new(
-                Opts::new(format!("{}_num_error", name_str), "Number of errors"),
+                Opts::new(format!("{name_str}_num_error"), "Number of errors"),
                 &["method"],
             )
             .unwrap(),
             num_status_code: IntCounterVec::new(
                 Opts::new(
-                    format!("{}_num_status_code", name_str),
+                    format!("{name_str}_num_status_code"),
                     "Number of grpc status codes",
                 ),
                 &["method", "status_code"],
@@ -114,7 +114,7 @@ impl ServiceMetrics {
             duration: HistogramVec::new(
                 //TODO: frumious: how to ensure units?
                 HistogramOpts::new(
-                    format!("{}_duration", name_str),
+                    format!("{name_str}_duration"),
                     "Duration for a request, in units of time",
                 ),
                 &["method"],
@@ -122,7 +122,7 @@ impl ServiceMetrics {
             .unwrap(),
             message_size: HistogramVec::new(
                 HistogramOpts::new(
-                    format!("{}_message_size", name_str),
+                    format!("{name_str}_message_size"),
                     "gRPC message size, in bytes (or close to)",
                 )
                 .buckets(message_size_buckets),
@@ -131,7 +131,9 @@ impl ServiceMetrics {
             .unwrap(),
         }
     }
+}
 
+impl ServiceMetrics {
     /// Register Prometheus metrics family
     pub fn new_and_registered<S: Into<String>>(name: S) -> ServiceMetrics {
         let svc = ServiceMetrics::new(name);

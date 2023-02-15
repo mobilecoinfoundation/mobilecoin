@@ -52,7 +52,7 @@ runs:
         echo "HOST_TARGET_TRIPLE=$HOST_TARGET_TRIPLE" >> $GITHUB_ENV
 
         CARGO_PRESENT=$(command -v cargo >/dev/null && echo true || echo false)
-        echo ::set-output name=cargo_present::$CARGO_PRESENT
+        echo "cargo_present=$CARGO_PRESENT" >> $GITHUB_OUTPUT
 
     # Install rust per `rust-toolchain`. No-op most of the time.
     - name: Install Rust

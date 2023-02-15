@@ -116,10 +116,10 @@ impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(&src.get_tx_out_hash()),
+            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
+            tx_out_hash: hex::encode(src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(&src.get_confirmation_number()),
+            confirmation_number: hex::encode(src.get_confirmation_number()),
         }
     }
 }
@@ -146,11 +146,11 @@ pub struct JsonPublicAddress {
 impl From<&PublicAddress> for JsonPublicAddress {
     fn from(src: &PublicAddress) -> Self {
         Self {
-            view_public_key: hex::encode(&src.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(&src.get_spend_public_key().get_data()),
+            view_public_key: hex::encode(src.get_view_public_key().get_data()),
+            spend_public_key: hex::encode(src.get_spend_public_key().get_data()),
             fog_report_url: src.get_fog_report_url().into(),
             fog_report_id: src.get_fog_report_id().into(),
-            fog_authority_sig: hex::encode(&src.get_fog_authority_sig()),
+            fog_authority_sig: hex::encode(src.get_fog_authority_sig()),
         }
     }
 }
@@ -240,7 +240,7 @@ impl TryFrom<&JsonSlamRequest> for SlamParams {
                 .iter()
                 .map(|uri| FromStr::from_str(uri.as_str()))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| format!("Invalid uri: {}", err))?;
+                .map_err(|err| format!("Invalid uri: {err}"))?;
         }
         Ok(result)
     }
@@ -298,18 +298,25 @@ pub struct JsonSlamReport {
     /// Num txs submitted
     pub num_submitted_txs: u32,
     /// Prepare duration in milliseconds
-    pub prepare_time: u32,
+    pub prepare_time_ms: u32,
     /// Submit duration in milliseconds
-    pub submit_time: u32,
+    pub submit_time_ms: u32,
+    /// Average slam rate in tx per second
+    pub avg_slam_rate_tx_per_second: String,
 }
 
 impl From<SlamReport> for JsonSlamReport {
     fn from(src: SlamReport) -> JsonSlamReport {
+        let submit_time_ms = src.submit_time.as_millis().try_into().unwrap_or(0);
         Self {
             num_prepared_utxos: src.num_prepared_utxos,
             num_submitted_txs: src.num_submitted_txs,
-            prepare_time: src.prepare_time.as_millis().try_into().unwrap_or(0),
-            submit_time: src.submit_time.as_millis().try_into().unwrap_or(0),
+            prepare_time_ms: src.prepare_time.as_millis().try_into().unwrap_or(0),
+            submit_time_ms,
+            avg_slam_rate_tx_per_second: format!(
+                "{:.4}",
+                (src.num_submitted_txs as f64) / (submit_time_ms as f64 * 1000f64)
+            ),
         }
     }
 }

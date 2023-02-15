@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-test-infra"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 # This is used by fog-conformance-testing
 [[bin]]

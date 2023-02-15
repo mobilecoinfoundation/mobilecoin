@@ -57,7 +57,7 @@ fn main() {
         }
 
         Err(err) => {
-            println!("Failed decoding b58 into a known object: {}", err);
+            println!("Failed decoding b58 into a known object: {err}");
             std::process::exit(1);
         }
     }

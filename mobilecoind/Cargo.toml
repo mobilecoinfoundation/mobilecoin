@@ -1,8 +1,11 @@
 [package]
 name = "mc-mobilecoind"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mobilecoind"
@@ -59,11 +62,11 @@ displaydoc = "0.2"
 grpcio = "0.12.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
-num_cpus = "1.14"
+num_cpus = "1.15"
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"
 rand = "0.8"
-rayon = "1.5"
+rayon = "1.6"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "2.0"
 serde_json = "1.0"

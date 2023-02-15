@@ -3,6 +3,8 @@ name = "mc-consensus-mint-client-types"
 version = "2.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [lib]
 path = "src/lib.rs"

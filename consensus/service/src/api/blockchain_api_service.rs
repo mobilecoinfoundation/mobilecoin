@@ -96,7 +96,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         // Get "persistence type" blocks.
         let mut blocks: Vec<mc_blockchain_types::Block> = Vec::new();
         for block_index in start_index..end_index {
-            match self.ledger.get_block(block_index as u64) {
+            match self.ledger.get_block(block_index) {
                 Ok(block) => blocks.push(block),
                 Err(mc_ledger_db::Error::NotFound) => {
                     // This is okay - it means we have reached the last block in the ledger in the
@@ -207,7 +207,7 @@ mod tests {
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
             .expect("Could not create anonymous bind");
         server.start();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = BlockchainApiClient::new(ch);
         (client, server)
     }
@@ -268,13 +268,13 @@ mod tests {
 
         match client.get_last_block_info(&Empty::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }
@@ -422,13 +422,13 @@ mod tests {
 
         match client.get_blocks(&BlocksRequest::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }

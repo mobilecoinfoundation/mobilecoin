@@ -1,10 +1,13 @@
 [package]
 name = "mc-mobilecoind-api"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
 links = "mc-mobilecoind-api"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-api = { path = "../../api" }

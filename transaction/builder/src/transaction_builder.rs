@@ -2845,7 +2845,7 @@ pub mod transaction_builder_tests {
             // Signing should fail if value is not conserved.
             match result {
                 Err(TxBuilderError::RingSignatureFailed(_)) => {} // Expected.
-                _ => panic!("Unexpected result {:?}", result),
+                _ => panic!("Unexpected result {result:?}"),
             }
         }
     }

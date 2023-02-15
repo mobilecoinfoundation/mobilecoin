@@ -1,11 +1,13 @@
 [package]
 authors = ["MobileCoin"]
 name = "mc-sgx-types"
-version = "4.0.0"
+version = "4.0.2"
 repository = "https://github.com/baidu/rust-sgx-sdk"
 license-file = "LICENSE"
 documentation = "https://dingelish.github.io/"
 description = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."
+# TODO: Consider making sgx a self-contained workspace and get the value from there.
+rust-version = "1.68.0"
 
 include = [
     "LICENSE",

@@ -20,7 +20,7 @@ fn mesh_test_helper(
     let mut test_options = mock_network::TestOptions::new();
     test_options.values_to_submit = 10000;
     let network_config = mock_network::mesh_topology::dense_mesh(n, k);
-    mock_network::build_and_test(&network_config, &test_options, logger.clone());
+    mock_network::build_and_test(&network_config, &test_options, logger);
 }
 
 #[test_with_logger]

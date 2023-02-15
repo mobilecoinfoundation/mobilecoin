@@ -1,8 +1,10 @@
 [package]
 name = "mc-blockchain-types"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [dependencies]
 # MobileCoin dependencies
