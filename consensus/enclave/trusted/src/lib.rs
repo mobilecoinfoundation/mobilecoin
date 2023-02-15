@@ -86,8 +86,10 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 ///
 /// See mc_consensus_enclave_api::mobileenclave() declaration for more
 /// information
+/// # Safety
+/// This method dereferences raw pointers and is therefore unsafe.
 #[no_mangle]
-pub extern "C" fn mobileenclave_call(
+pub unsafe extern "C" fn mobileenclave_call(
     inbuf: *const u8,
     inbuf_len: usize,
     outbuf: *mut u8,

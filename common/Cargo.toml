@@ -3,6 +3,7 @@ name = "mc-common"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
 
 [features]
 default = [
@@ -53,7 +54,7 @@ backtrace = { version = "0.3", optional = true }
 cfg-if = "1.0"
 chrono = { version = "0.4", optional = true }
 displaydoc = { version = "0.2", default-features = false }
-hashbrown = { version = "0.13.1", default-features = false, features = ["serde", "nightly"] }
+hashbrown = { version = "0.13.2", default-features = false, features = ["serde", "nightly"] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 hostname = { version = "0.3.1", optional = true }
@@ -75,5 +76,5 @@ slog-stdlog = { version = "4.1.1", optional = true }
 slog-term = { version = "2.9", optional = true }
 
 [dev-dependencies]
-proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
 scoped_threadpool = "0.1.*"

@@ -311,7 +311,7 @@ pub fn run_server(
     let mut server = server_builder.build().expect("Could not build server");
 
     let port = server
-        .add_listening_port(&format!("0.0.0.0:{port}"), ServerCredentials::insecure())
+        .add_listening_port(format!("0.0.0.0:{port}"), ServerCredentials::insecure())
         .expect("Could not create anonymous bind");
     server.start();
 

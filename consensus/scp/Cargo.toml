@@ -2,9 +2,10 @@
 name = "mc-consensus-scp"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "Stellar Consensus Protocol"
+edition = "2021"
 keywords = ["SCP", "Stellar Consensus Protocol", "Consensus", "Stellar", "Byzantine"]
+license = "GPL-3.0"
 readme = "README.md"
 
 [features]

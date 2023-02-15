@@ -4,6 +4,7 @@ version = "2.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Library"
+license = "Apache-2.0"
 readme = "README.md"
 
 [features]
@@ -30,7 +31,7 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 
 [dev-dependencies]
 
-anyhow = { version = "1.0.68" }
+anyhow = { version = "1.0.69" }
 clap = { version = "4.0.32", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
@@ -40,7 +41,7 @@ mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
 
 serde = { version = "1.0.152", features = [ "derive" ] }
-serde_json = { version = "1.0.91" }
+serde_json = { version = "1.0.93" }
 
 [[example]]
 name = "slip10"

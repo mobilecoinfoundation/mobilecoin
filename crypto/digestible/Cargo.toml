@@ -3,6 +3,8 @@ name = "mc-crypto-digestible"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
 
 [dependencies]
 cfg-if = "1.0"

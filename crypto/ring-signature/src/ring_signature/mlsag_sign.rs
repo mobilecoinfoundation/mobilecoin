@@ -189,9 +189,9 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
     ///
     /// NOTE THIS _MUST_ FOLLOW A CALL TO INIT AND TRAVERSE THE RING STARTING
     /// WITH THE REAL TXOUT
-    pub fn update<'a>(
+    pub fn update(
         &mut self,
-        params: &MlsagSignParams<'a>,
+        params: &MlsagSignParams<'_>,
         i: usize,
         tx_out: &(RistrettoPublic, Commitment),
     ) -> Result<(), Error> {

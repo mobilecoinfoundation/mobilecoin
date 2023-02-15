@@ -2,11 +2,13 @@
 name = "mc-attest-verifier"
 version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = '''
 This crate contains necessary functions and utilities to perform verification of
 remote attestation data returned by IAS.
 '''
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
 
 [features]
 default = ["std"]

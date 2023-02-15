@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! gRPC APIs
+#![allow(clippy::result_large_err)]
 
 mod attested_api_service;
 mod blockchain_api_service;

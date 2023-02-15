@@ -2,6 +2,7 @@
 
 //! Peer-to-Peer Networking.
 
+#![allow(clippy::result_large_err)]
 extern crate alloc;
 
 mod broadcast;

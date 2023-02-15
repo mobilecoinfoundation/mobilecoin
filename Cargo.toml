@@ -47,6 +47,7 @@ members = [
     "crypto/rand",
     "crypto/ring-signature",
     "crypto/ring-signature/signer",
+    "crypto/sig",
     "crypto/x509/test-vectors",
     "crypto/x509/utils",
     "enclave-boundary",

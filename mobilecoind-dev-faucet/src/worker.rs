@@ -936,14 +936,14 @@ impl WorkerTokenState {
 
                 let mut resp = client
                     .generate_tx(&req)
-                    .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+                    .map_err(|err| format!("Failed to generate split tx: {err}"))?;
 
                 // Submit the Tx
                 let mut req = api::SubmitTxRequest::new();
                 req.set_tx_proposal(resp.take_tx_proposal());
                 let submit_tx_response = client
                     .submit_tx(&req)
-                    .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+                    .map_err(|err| format!("Failed to submit split tx: {err}"))?;
 
                 // This lets us keep tabs on when this split payment has resolved, so that we
                 // can avoid sending another payment until it does
@@ -1041,14 +1041,14 @@ impl WorkerTokenState {
 
         let mut resp = client
             .generate_tx(&req)
-            .map_err(|err| format!("Failed to generate split tx: {}", err))?;
+            .map_err(|err| format!("Failed to generate split tx: {err}"))?;
 
         // Submit the Tx
         let mut req = api::SubmitTxRequest::new();
         req.set_tx_proposal(resp.take_tx_proposal());
         let submit_tx_response = client
             .submit_tx(&req)
-            .map_err(|err| format!("Failed to submit split tx: {}", err))?;
+            .map_err(|err| format!("Failed to submit split tx: {err}"))?;
 
         // This lets us keep tabs on when this split payment has resolved, so that we
         // can avoid sending another payment until it does
