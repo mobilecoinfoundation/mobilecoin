@@ -215,8 +215,8 @@ impl MaskedAmountV1 {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
     let mut hasher = Blake2b512::new();
-    hasher.update(&AMOUNT_VALUE_DOMAIN_TAG);
-    hasher.update(&shared_secret.to_bytes());
+    hasher.update(AMOUNT_VALUE_DOMAIN_TAG);
+    hasher.update(shared_secret.to_bytes());
     let scalar = Scalar::from_hash(hasher);
     let mut temp = [0u8; 8];
     temp.copy_from_slice(&scalar.as_bytes()[0..8]);
@@ -231,8 +231,8 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_token_id_mask(shared_secret: &RistrettoPublic) -> u64 {
     let mut hasher = Blake2b512::new();
-    hasher.update(&AMOUNT_TOKEN_ID_DOMAIN_TAG);
-    hasher.update(&shared_secret.to_bytes());
+    hasher.update(AMOUNT_TOKEN_ID_DOMAIN_TAG);
+    hasher.update(shared_secret.to_bytes());
     u64::from_le_bytes(hasher.finalize()[0..8].try_into().unwrap())
 }
 
@@ -242,8 +242,8 @@ fn get_token_id_mask(shared_secret: &RistrettoPublic) -> u64 {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b512::new();
-    hasher.update(&AMOUNT_BLINDING_DOMAIN_TAG);
-    hasher.update(&shared_secret.to_bytes());
+    hasher.update(AMOUNT_BLINDING_DOMAIN_TAG);
+    hasher.update(shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
 

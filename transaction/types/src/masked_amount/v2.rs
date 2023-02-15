@@ -119,8 +119,8 @@ impl MaskedAmountV2 {
     /// Get the amount shared secret from the tx out shared secret
     pub fn compute_amount_shared_secret(tx_out_shared_secret: &RistrettoPublic) -> [u8; 32] {
         let mut hasher = Blake2b512::new();
-        hasher.update(&AMOUNT_SHARED_SECRET_DOMAIN_TAG);
-        hasher.update(&tx_out_shared_secret.to_bytes());
+        hasher.update(AMOUNT_SHARED_SECRET_DOMAIN_TAG);
+        hasher.update(tx_out_shared_secret.to_bytes());
         // Safety: Blake2b is a 512-bit (64-byte) hash.
         hasher.finalize()[0..32].try_into().unwrap()
     }
