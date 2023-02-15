@@ -183,11 +183,15 @@ pub fn direct_key_image_store_check(logger: Logger) {
         Arc::new(AnonymousAuthenticator::default()),
         logger.clone(),
     );
+    let ra_client =
+        AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
 
     let mut store_server = KeyImageStoreServer::new_from_service(
         store_service,
         client_listen_uri,
         enclave.clone(),
+        ra_client,
+        store_config.ias_spid,
         EpochShardingStrategy::default(),
         logger.clone(),
     );
