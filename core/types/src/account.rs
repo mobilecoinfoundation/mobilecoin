@@ -239,7 +239,7 @@ pub struct AccountId([u8; 32]);
 impl core::fmt::Display for AccountId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for v in self.0 {
-            write!(f, "{:02X}", v)?;
+            write!(f, "{v:02X}")?;
         }
         Ok(())
     }
@@ -249,7 +249,7 @@ impl core::fmt::Debug for AccountId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "AccountId(")?;
         for v in self.0 {
-            write!(f, "{:02X}", v)?;
+            write!(f, "{v:02X}")?;
         }
         write!(f, ")")
     }
@@ -309,7 +309,7 @@ impl subtle::ConstantTimeEq for ShortAddressHash {
 impl core::fmt::Display for ShortAddressHash {
     fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         for b in self.0 {
-            write!(formatter, "{:02x}", b)?;
+            write!(formatter, "{b:02x}")?;
         }
         Ok(())
     }
