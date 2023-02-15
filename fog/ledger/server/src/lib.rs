@@ -27,7 +27,6 @@ mod router_handlers;
 mod router_server;
 mod router_service;
 mod server;
-pub mod sharding_strategy;
 mod untrusted_tx_out_service;
 
 use mc_util_metrics::ServiceMetrics;
@@ -35,6 +34,3 @@ use mc_util_metrics::ServiceMetrics;
 lazy_static::lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
 }
-pub use key_image_store_server::KeyImageStoreServer;
-pub use router_server::LedgerRouterServer;
-pub use server::DbPollSharedState;
