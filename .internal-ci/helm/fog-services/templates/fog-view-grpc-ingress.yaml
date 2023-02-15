@@ -24,8 +24,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            # Hack: this ing should be managed by fog router now as that should front all
-            # gRPC traffic to fog-view
-            name: fog-router
+            name: {{ include "fogServices.fullname" . }}-fog-view-router
             port:
               number: 3225
