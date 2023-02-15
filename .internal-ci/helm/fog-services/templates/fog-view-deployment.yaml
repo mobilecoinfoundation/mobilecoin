@@ -74,6 +74,10 @@ spec:
                 sources:
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
+                - configMap:
+                    name: {{ include "fogServices.fullname" . }}-supervisord-sgx
+                - configMap:
+                    name: {{ include "fogServices.fullname" . }}-supervisord-daemon
             nodeSelector:
               {{- toYaml .Values.fogView.nodeSelector | nindent 14 }}
             tolerations:
