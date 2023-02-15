@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 # Build everything with std flags turned on. This is generally needed in targets that use std

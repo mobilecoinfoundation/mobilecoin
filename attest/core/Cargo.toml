@@ -12,6 +12,7 @@ verify the contents of the report as returned by Intel.
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]

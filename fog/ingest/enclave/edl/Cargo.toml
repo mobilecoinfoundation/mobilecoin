@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 links = "ingest_enclave_edl"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../../util/build/script" }

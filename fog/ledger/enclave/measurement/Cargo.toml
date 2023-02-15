@@ -7,6 +7,7 @@ edition = "2021"
 links = "ledger_enclave_measurement"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built

@@ -6,6 +6,7 @@ description = "Runtime gRPC Utilities"
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [badges]
 circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
