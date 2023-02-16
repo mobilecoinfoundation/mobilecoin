@@ -1236,12 +1236,22 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "ed25519"
-version = "1.5.2"
+version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9c280362032ea4203659fc489832d0204ef09f247a0506f170dafcac08c369"
+checksum = "91cff35c70bba8a626e3185d8cd48cc11b5437e1a5bcd15b9b5fa3c64b6dfee7"
 dependencies = [
  "serde",
- "signature",
+ "signature 1.6.4",
+]
+
+[[package]]
+name = "ed25519"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cf420a7ec85d98495b0c34aa4a58ca117f982ffbece111aeb545160148d7010"
+dependencies = [
+ "serde",
+ "signature 2.0.0",
 ]
 
 [[package]]
@@ -1250,7 +1260,7 @@ version = "2.0.0-pre.1"
 source = "git+https://github.com/mobilecoinfoundation/ed25519-dalek.git?rev=4194e36abc75722e6fba7d552e719448fc38c51f#4194e36abc75722e6fba7d552e719448fc38c51f"
 dependencies = [
  "curve25519-dalek",
- "ed25519",
+ "ed25519 1.5.3",
  "rand 0.8.5",
  "serde",
  "serde_bytes",
@@ -3218,7 +3228,7 @@ version = "4.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
@@ -3246,7 +3256,7 @@ dependencies = [
  "curve25519-dalek",
  "digest 0.10.6",
  "displaydoc",
- "ed25519",
+ "ed25519 2.1.0",
  "ed25519-dalek",
  "hex",
  "hex_fmt",
@@ -3266,7 +3276,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
- "signature",
+ "signature 1.6.4",
  "static_assertions",
  "subtle",
  "tempdir",
@@ -4209,7 +4219,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "signature",
+ "signature 1.6.4",
  "tempdir",
  "x509-signature",
  "zeroize",
@@ -4315,7 +4325,7 @@ dependencies = [
  "pem",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
- "signature",
+ "signature 1.6.4",
  "x509-signature",
 ]
 
@@ -4327,7 +4337,7 @@ dependencies = [
  "mc-util-from-random",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
@@ -4342,7 +4352,7 @@ dependencies = [
  "mc-util-from-random",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
@@ -7755,6 +7765,12 @@ checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 dependencies = [
  "digest 0.10.6",
 ]
+
+[[package]]
+name = "signature"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fe458c98333f9c8152221191a77e2a44e8325d0193484af2e9421a53019e57d"
 
 [[package]]
 name = "siphasher"
