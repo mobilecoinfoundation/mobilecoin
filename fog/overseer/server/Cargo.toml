@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 # third-party
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 lazy_static = "1.4"
 prometheus = "0.13.3"
 retry = "2.0"
