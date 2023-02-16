@@ -3,7 +3,6 @@
 use std::{
     collections::HashMap,
     env,
-    str::FromStr,
     sync::{Arc, RwLock},
 };
 
@@ -14,10 +13,8 @@ use mc_common::logger::log;
 use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerRouterConfig, LedgerRouterServer};
-use mc_fog_uri::{KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 fn main() {
@@ -64,14 +61,7 @@ fn main() {
             .name_prefix("Main-RPC".to_string())
             .build(),
     );
-    for i in 0..50 {
-        let shard_uri_string = format!(
-            "{}://node{}.test.mobilecoin.com:3225",
-            KeyImageStoreScheme::SCHEME_INSECURE,
-            i
-        );
-        let shard_uri = KeyImageStoreUri::from_str(&shard_uri_string)
-            .unwrap_or_else(|_| panic!("Invalid shard URI string {shard_uri_string}!"));
+    for shard_uri in config.shard_uris.clone() {
         let ledger_store_grpc_client = KeyImageStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),
