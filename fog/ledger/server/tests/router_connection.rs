@@ -422,7 +422,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
-                client_responder_id: ResponderId::from_str(&client_listen_uri.addr()).unwrap(),
+                client_responder_id: client_listen_uri
+                    .responder_id()
+                    .expect("couldn't get responder ID for ledger router"),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
