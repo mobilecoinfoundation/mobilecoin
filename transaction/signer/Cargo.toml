@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 [dependencies]
 # External dependencies
 anyhow = "1.0.69"
-clap = { version = "4.0", features = [ "derive" ] }
+clap = { version = "4.1", features = [ "derive" ] }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4.2", default_features = false }
 log = "0.4.17"
