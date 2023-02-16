@@ -30,7 +30,6 @@ mc-core-types = { path = "./types" }
 mc-crypto-dalek = { path = "../crypto/dalek", default-features = false }
 mc-crypto-hashes = { path = "../crypto/hashes", default-features = false }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false }
-mc-crypto-memo-mac = { path = "../crypto/memo-mac", default-features = false }
 
 [dev-dependencies]
 

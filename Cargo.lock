@@ -3044,7 +3044,6 @@ dependencies = [
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-crypto-memo-mac",
  "mc-test-vectors-definitions",
  "mc-util-from-random",
  "mc-util-test-vector",

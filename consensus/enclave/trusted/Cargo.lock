@@ -1004,7 +1004,6 @@ dependencies = [
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-crypto-memo-mac",
  "sha2",
  "zeroize",
 ]
@@ -1146,15 +1145,6 @@ dependencies = [
  "subtle",
  "x25519-dalek",
  "zeroize",
-]
-
-[[package]]
-name = "mc-crypto-memo-mac"
-version = "4.0.2"
-dependencies = [
- "hmac",
- "mc-crypto-keys",
- "sha2",
 ]
 
 [[package]]
