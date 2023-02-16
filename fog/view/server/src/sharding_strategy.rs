@@ -115,11 +115,10 @@ impl FromStr for EpochShardingStrategy {
         if s.eq("default") {
             return Ok(EpochShardingStrategy::default());
         }
-        if let Ok(block_range) = BlockRange::from_str(s) {
-            return Ok(Self::new(block_range));
+        match BlockRange::from_str(s) {
+            Ok(block_range) => Ok(Self::new(block_range)),
+            Err(e) => Err("Invalid epoch sharding strategy: {e}".to_string()),
         }
-
-        Err("Invalid epoch sharding strategy.".to_string())
     }
 }
 
