@@ -123,7 +123,7 @@ pub struct FogViewRouterConfig {
 
     /// gRPC listening URI for Fog View Stores. Should be indexed the same as
     /// the `sharding_strategies` field.
-    #[clap(long, env = "MC_VIEW_SHARD_URIS")]
+    #[clap(long, env = "MC_VIEW_SHARD_URIS", value_delimiter = ",")]
     pub shard_uris: Vec<FogViewStoreUri>,
 
     /// PEM-formatted keypair to send with an Attestation Request.
