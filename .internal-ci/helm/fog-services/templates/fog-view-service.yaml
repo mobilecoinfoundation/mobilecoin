@@ -10,7 +10,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   selector:
-    app: fog-view-router
+    app: fog-view
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
     - name: view
