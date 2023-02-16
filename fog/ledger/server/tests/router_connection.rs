@@ -281,7 +281,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 // a fog ledger server
 #[test_with_logger]
 fn fog_ledger_key_images_test(logger: Logger) {
-    let base_port = 3240;
+    let base_port = 9990;
 
     let mut rng = RngType::from_seed([0u8; 32]);
 
