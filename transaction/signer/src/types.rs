@@ -3,9 +3,7 @@
 //! Serializable types for exchange between full-service and offline or hardware
 //! wallet implementations.
 
-use mc_core::{
-    keys::{RootSpendPublic, RootViewPrivate, TxOutPublic},
-};
+use mc_core::keys::{RootSpendPublic, RootViewPrivate, TxOutPublic};
 
 use mc_crypto_ring_signature::KeyImage;
 use mc_transaction_core::{
@@ -150,7 +148,6 @@ pub struct TxSignResp {
     /// Mapping of real Tx public keys to key images
     pub txos: Vec<TxoSynced>,
 }
-
 
 /// Account ID object, derived from an [AccountKey] and used to identify
 /// individual accounts.
