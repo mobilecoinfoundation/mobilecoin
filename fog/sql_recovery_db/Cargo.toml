@@ -35,7 +35,7 @@ mc-fog-types = { path = "../types" }
 chrono = "0.4"
 clap = { version = "4.1", features = ["derive", "env"] }
 diesel = { version = "1.4", features = ["chrono", "postgres", "r2d2"] }
-diesel-derive-enum = { version = "1", features = ["postgres"] }
+diesel-derive-enum = { version = "2", features = ["postgres"] }
 diesel_migrations = { version = "1.4", features = ["postgres"] }
 displaydoc = { version = "0.2", default-features = false }
 prost = "0.11"
