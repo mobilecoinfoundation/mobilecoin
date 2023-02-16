@@ -395,6 +395,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 SystemTimeProvider::default(),
                 logger.clone(),
             );
+            store_server.start();
 
             // Make Key Image Store client
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
@@ -449,7 +450,6 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 logger.clone(),
             );
 
-            store_server.start();
             router_server.start();
 
             // Make ledger enclave client
