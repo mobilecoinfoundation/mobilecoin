@@ -13,7 +13,7 @@ path = "src/bin/ingest.rs"
 
 [dependencies]
 # third party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 grpcio = "0.12"
 retry = "2.0"
 tempdir = "0.3"
