@@ -128,7 +128,7 @@ spec:
               - name: RUST_LOG
                 value: {{ .Values.fogView.rust.log | quote }}
               - name: MC_CLIENT_RESPONDER_ID
-                value: {{ include "fogServices.fogPublicFQDN" . }}
+                value: {{ include "fogServices.fogPublicFQDN" . }}:443
               - name: MC_CLIENT_LISTEN_URI
                 value: insecure-fog-view://0.0.0.0:3225/
               - name: FOG_VIEW_SENTRY_DSN
