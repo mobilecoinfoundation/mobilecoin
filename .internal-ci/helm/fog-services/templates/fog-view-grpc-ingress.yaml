@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view-grpc
+  name: {{ include "fogServices.fullname" . }}-fog-view-router-grpc
   labels:
     app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
