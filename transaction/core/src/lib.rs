@@ -43,7 +43,10 @@ pub use tx_summary::TxSummaryNew;
 
 // Re-export from transaction-types, and some from RingSignature crate.
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
-pub use mc_transaction_types::prelude::*;
+pub use mc_transaction_types::{
+    constants, domain_separators, Amount, AmountError, BlockVersion, BlockVersionError,
+    MaskedAmount, MaskedAmountV1, MaskedAmountV2, TokenId, TxSummary, UnmaskedAmount,
+};
 
 /// Re-export all of mc-crypto-ring-signature
 pub mod ring_signature {

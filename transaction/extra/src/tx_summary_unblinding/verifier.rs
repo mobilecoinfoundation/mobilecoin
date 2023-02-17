@@ -22,12 +22,8 @@ use mc_crypto_ring_signature::{
     CompressedCommitment,
 };
 use mc_transaction_types::{
-    amount::{Amount, AmountError},
-    domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG,
-    masked_amount::MaskedAmount,
-    tx_summary::{TxInSummary, TxOutSummary, TxSummary},
-    unmasked_amount::UnmaskedAmount,
-    BlockVersion,
+    domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, Amount, AmountError,
+    BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, TxSummary, UnmaskedAmount,
 };
 use mc_util_zip_exact::zip_exact;
 

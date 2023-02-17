@@ -11,9 +11,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     FeeMap,
 };
-use mc_transaction_types::{
-    amount::Amount, tx_summary::TxSummary, unmasked_amount::UnmaskedAmount, BlockVersion, TokenId,
-};
+use mc_transaction_types::{Amount, BlockVersion, TokenId, TxSummary, UnmaskedAmount};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 

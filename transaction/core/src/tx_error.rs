@@ -8,7 +8,7 @@ use core::str::Utf8Error;
 use crate::MemoError;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
-use mc_transaction_types::amount::AmountError;
+use mc_transaction_types::AmountError;
 use serde::{Deserialize, Serialize};
 
 /// An error that occurs when creating a new TxOut

@@ -94,7 +94,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::CompressedCommitment;
 use mc_util_zip_exact::{zip_exact, ZipExactError};
 
-pub use mc_transaction_types::tx_summary::*;
+pub use mc_transaction_types::{TxInSummary, TxOutSummary, TxSummary};
 
 /// [TxSummaryNew] trait for constructing [TxSummary] object
 pub trait TxSummaryNew: Sized {

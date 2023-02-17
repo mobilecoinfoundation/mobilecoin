@@ -3,16 +3,15 @@
 //! An aggregate which represents an amount of some token in the MobileCoin
 //! blockchain.
 
+pub use error::AmountError;
+
 use crate::TokenId;
-
 use mc_crypto_digestible::Digestible;
-
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 mod error;
-pub use error::AmountError;
 
 /// An amount of some token, in the "base" (u64) denomination.
 #[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize)]

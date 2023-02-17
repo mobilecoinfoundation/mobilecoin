@@ -6,10 +6,7 @@ use crate::{tx::TxOut, TxOutConversionError};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::Scalar;
-use mc_transaction_types::{
-    amount::{Amount, AmountError},
-    masked_amount::{MaskedAmount, MaskedAmountV2},
-};
+use mc_transaction_types::{Amount, AmountError, MaskedAmount, MaskedAmountV2};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;

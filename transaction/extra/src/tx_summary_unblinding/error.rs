@@ -2,7 +2,7 @@
 
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
-use mc_transaction_types::{amount::AmountError, BlockVersionError};
+use mc_transaction_types::{AmountError, BlockVersionError};
 use mc_util_zip_exact::ZipExactError;
 
 /// An error which can occur when verifying a TxSummary against unblinding data
