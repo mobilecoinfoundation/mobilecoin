@@ -85,8 +85,8 @@ where
     }
 }
 
-/// Used for the implementation of FogKeyImageApi::check_key_images() on
-/// LedgerRouterService.
+/// Used for the implementation of FogKeyImageApi::check_key_images(),
+/// the legacy unary key-image API, for LedgerRouterService.
 async fn unary_check_key_image_inner<E>(
     request: Message,
     query_retries: usize,
@@ -124,6 +124,7 @@ where
     }
 }
 
+// This API is the unary key-image-specific equivalent of LedgerApi.
 impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
     fn check_key_images(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
