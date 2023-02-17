@@ -1,4 +1,4 @@
-# fog-test-client 
+# fog-test-client
 
 ## Requirements
 
@@ -24,14 +24,11 @@ This assumes that all the fog-test-client instances will be installed on the sam
 ### For MC networks
 
 ```bash
-helm -n ${namespace} upgrade fog-test-client ./ -i \
---set fogTestClient.image.tag=0.0.1
+helm -n ${namespace} upgrade fog-test-client mcf-public/fog-test-client -i --version v3.0.0
 ```
 
 ### For Signal networks
 
 ```bash
-helm -n ${namespace} upgrade fog-test-client ./ -i \
---set fogTestClient.image.tag=0.0.1 \
---set fogTestClientConfig.fogClientAuthTokenSecret.enabled=true
+helm -n ${namespace} upgrade fog-test-client mcf-public/fog-test-client -i --version v3.0.0 --set fogTestClientConfig.fogClientAuthTokenSecret.enabled=true
 ```
