@@ -395,7 +395,7 @@ where
     /// initial work.
     db_fetcher_readiness_indicator: ReadinessIndicator,
 
-    /// Flag which we set to indicate when the server as a whole is read.
+    /// Flag which we set to indicate when the server as a whole is ready.
     server_readiness_indicator: ReadinessIndicator,
 
     /// Keeps track how long ago it since we made progress, (or complained about
