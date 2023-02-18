@@ -72,8 +72,7 @@ impl StatusVerifierConfig {
                 mitigated_config_advisories,
                 mitigated_hardening_advisories,
             } => {
-                let mut mr_enclave_verifier =
-                    MrEnclaveVerifier::new(MrEnclave::from(MRENCLAVE.clone()));
+                let mut mr_enclave_verifier = MrEnclaveVerifier::new(MrEnclave::from(*MRENCLAVE));
                 for advisory in mitigated_config_advisories.iter() {
                     mr_enclave_verifier.allow_config_advisory(advisory);
                 }
@@ -89,11 +88,8 @@ impl StatusVerifierConfig {
                 mitigated_config_advisories,
                 mitigated_hardening_advisories,
             } => {
-                let mut mr_signer_verifier = MrSignerVerifier::new(
-                    MrSigner::from(MRSIGNER.clone()),
-                    (*product_id).into(),
-                    (*minimum_svn).into(),
-                );
+                let mut mr_signer_verifier =
+                    MrSignerVerifier::new(MrSigner::from(*MRSIGNER), *product_id, *minimum_svn);
                 for advisory in mitigated_config_advisories.iter() {
                     mr_signer_verifier.allow_config_advisory(advisory);
                 }
