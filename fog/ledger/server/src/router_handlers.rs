@@ -156,7 +156,7 @@ pub fn process_shard_responses(
 }
 
 /// Handles a client's authentication request.
-fn handle_auth_request<E>(
+pub(crate) fn handle_auth_request<E>(
     enclave: E,
     auth_message: attest::AuthMessage,
     logger: Logger,
@@ -174,7 +174,7 @@ where
 }
 
 /// Handles a client's query request.
-async fn handle_query_request<E>(
+pub(crate) async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,

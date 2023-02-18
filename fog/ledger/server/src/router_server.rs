@@ -94,11 +94,9 @@ where
             logger.clone(),
         );
 
-        // Init streaming ledger API.
         let ledger_router_service = ledger_grpc::create_ledger_api(ledger_service.clone());
         log::debug!(logger, "Constructed Ledger Router GRPC Service");
 
-        // Init a unary-API key image router service.
         let unary_key_image_service = ledger_grpc::create_fog_key_image_api(ledger_service);
 
         // Init ledger router admin service.
