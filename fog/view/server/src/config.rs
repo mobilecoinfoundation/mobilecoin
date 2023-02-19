@@ -77,4 +77,11 @@ pub struct MobileAcctViewConfig {
     /// and should not much harm performance otherwise when loading the DB.
     #[clap(long, default_value = "1000", env = "MC_BLOCK_QUERY_BATCH_SIZE")]
     pub block_query_batch_size: usize,
+
+    /// How many user events to request at once when requesting user events from
+    /// postgres.
+    /// This limit affects the maximum possible size of a grpc response from the
+    /// server.
+    #[clap(long, default_value = "10000", env = "MC_MAX_USER_EVENTS")]
+    pub max_user_events: usize,
 }

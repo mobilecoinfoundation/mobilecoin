@@ -21,6 +21,8 @@ pub fn get_num_blocks(db: &impl RecoveryDb) -> u64 {
         .unwrap_or(0)
 }
 
+const USER_EVENT_LIMIT: usize = 1000;
+
 /// Exercise new recovery db apis and check the results
 /// - Add random blocks and get tx's using new get txs API, check for NotFound
 ///   result with junk queries
@@ -49,8 +51,9 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
         );
 
         // Test that they have no rng records when the cursor value is up-to-date
-        let (user_events, _next_start_from_user_event_id) =
-            db.search_user_events(start_from_user_event_id).unwrap();
+        let (user_events, _next_start_from_user_event_id) = db
+            .search_user_events(start_from_user_event_id, USER_EVENT_LIMIT)
+            .unwrap();
         let has_rng_events = user_events
             .iter()
             .any(|event| matches!(event, FogUserEvent::NewRngRecord(_)));
@@ -74,8 +77,9 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
 
         // Test that the user can see them
         {
-            let (user_events, next_start_from_user_event_id) =
-                db.search_user_events(start_from_user_event_id).unwrap();
+            let (user_events, next_start_from_user_event_id) = db
+                .search_user_events(start_from_user_event_id, USER_EVENT_LIMIT)
+                .unwrap();
             let num_rng_events = user_events
                 .iter()
                 .filter(|event| matches!(event, FogUserEvent::NewRngRecord(_)))
@@ -113,8 +117,9 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
         // Test that the user can still see those rng records at
         // start_from_user_event_id.
         {
-            let (user_events, next_start_from_user_event_id) =
-                db.search_user_events(start_from_user_event_id).unwrap();
+            let (user_events, next_start_from_user_event_id) = db
+                .search_user_events(start_from_user_event_id, USER_EVENT_LIMIT)
+                .unwrap();
             assert_rng_record_rows_were_recovered(
                 &user_events[..],
                 &invoc_ids_with_kex_rng_pubkeys[..],
@@ -128,8 +133,9 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
         // Test that the user cannot see those rng records at the updated
         // start_from_user_event_id
         {
-            let (user_events, next_start_from_user_event_id) =
-                db.search_user_events(start_from_user_event_id).unwrap();
+            let (user_events, next_start_from_user_event_id) = db
+                .search_user_events(start_from_user_event_id, USER_EVENT_LIMIT)
+                .unwrap();
             assert_eq!(user_events.len(), 0);
             assert_eq!(
                 next_start_from_user_event_id, start_from_user_event_id,
@@ -140,7 +146,8 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
 
     // Test that if user tries full recovery (cursor = 0) they get 10 rounds worth
     // of rng records
-    let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, _next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let num_rng_events = user_events
         .iter()
         .filter(|event| matches!(event, FogUserEvent::NewRngRecord(_)))
@@ -238,7 +245,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     db.new_ingress_key(&ingress_key, 0).unwrap();
 
     // We start without any rng record events.
-    let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, _next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let has_rng_events = user_events
         .iter()
         .any(|event| matches!(event, FogUserEvent::NewRngRecord(_)));
@@ -253,7 +261,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     // Test that user has rng record event now
     let test_rows0 = vec![kex_rng_pubkey1];
 
-    let (user_events, next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let rng_records: Vec<RngRecord> = user_events
         .iter()
         .filter_map(|event| {
@@ -274,7 +283,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     // Test that user has no new rngs after cursor update
     let (user_events, _next_start_from_user_event_id) = db
-        .search_user_events(next_start_from_user_event_id)
+        .search_user_events(next_start_from_user_event_id, USER_EVENT_LIMIT)
         .unwrap();
     assert_eq!(user_events, vec![]);
 
@@ -294,7 +303,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     let test_rows1 = vec![kex_rng_pubkey2];
 
     let (user_events, _next_start_from_user_event_id) = db
-        .search_user_events(next_start_from_user_event_id)
+        .search_user_events(next_start_from_user_event_id, USER_EVENT_LIMIT)
         .unwrap();
     let rng_records: Vec<RngRecord> = user_events
         .iter()
@@ -315,7 +324,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     assert_eq!(10, rng_records[0].start_block);
 
     // Check that if starting at 0 we see both rngs
-    let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, _next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let rng_records: Vec<RngRecord> = user_events
         .iter()
         .filter_map(|event| {
@@ -393,7 +403,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     assert_eq!(ingestable_ranges[1].last_ingested_block, None);
 
     // Check if we can see an event for that.
-    let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, _next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let decommissioned_invocs: Vec<_> = user_events
         .iter()
         .filter_map(|event| {
@@ -459,7 +470,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     assert!(!ingestable_ranges[2].decommissioned);
     assert_eq!(ingestable_ranges[2].last_ingested_block, None);
 
-    let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+    let (user_events, _next_start_from_user_event_id) =
+        db.search_user_events(0, USER_EVENT_LIMIT).unwrap();
     let decommissioned_invocs: Vec<_> = user_events
         .iter()
         .filter_map(|event| {

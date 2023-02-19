@@ -206,14 +206,15 @@ pub trait RecoveryDb {
     ///
     /// Arguments:
     /// * start_after_event_id: The last event id the user has received.
+    /// * max_num_events: The maximum number of user events to return.
     ///
     /// Returns:
-    /// * List of found events, and higehst event id in the database (to be used
-    ///   as
-    /// start_after_event_id in the next query).
+    /// * List of found events, and highest event id in the database (to be used
+    ///   as start_after_event_id in the next query).
     fn search_user_events(
         &self,
         start_from_user_event_id: i64,
+        max_num_events: usize,
     ) -> Result<(Vec<FogUserEvent>, i64), Self::Error>;
 
     /// Get any TxOutSearchResults corresponding to given search keys.

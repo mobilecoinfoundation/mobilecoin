@@ -76,9 +76,13 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             let (user_events, next_start_from_user_event_id) =
                 tracer.in_span("search_user_events", |_cx| {
                     self.db
-                        .search_user_events(query_request_aad.start_from_user_event_id)
+                        .search_user_events(
+                            query_request_aad.start_from_user_event_id,
+                            self.config.max_user_events,
+                        )
                         .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))
                 })?;
+            let may_have_more_user_events = user_events.len() >= self.config.max_user_events;
 
             let (
                 highest_processed_block_count,
@@ -102,6 +106,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
                 highest_processed_block_signature_timestamp,
                 last_known_block_count,
                 last_known_block_cumulative_txo_count,
+                may_have_more_user_events,
             };
 
             let result_blob = tracer.in_span("enclave_query", |_cx| {

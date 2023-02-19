@@ -75,7 +75,7 @@ pub trait FogViewConnection {
         let mut missed_block_ranges = Vec::<BlockRange>::new();
 
         // Update seeds, get block count
-        let mut new_highest_processed_block_count = {
+        let mut new_highest_processed_block_count = loop {
             match self
                 .request(
                     user_rng_set.get_next_start_from_user_event_id(),
@@ -105,7 +105,10 @@ pub trait FogViewConnection {
                     user_rng_set
                         .set_next_start_from_user_event_id(result.next_start_from_user_event_id);
 
-                    result.highest_processed_block_count
+                    if result.may_have_more_user_events {
+                        continue;
+                    }
+                    break result.highest_processed_block_count;
                 }
             }
         };

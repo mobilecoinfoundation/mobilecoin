@@ -71,6 +71,7 @@ fn get_test_environment(
             client_auth_token_max_lifetime: Default::default(),
             postgres_config: Default::default(),
             block_query_batch_size: 2,
+            max_user_events: 10_000,
         };
 
         let enclave = SgxViewEnclave::new(

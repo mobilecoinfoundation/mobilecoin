@@ -134,6 +134,7 @@ fn fog_view_query_response_round_trip() {
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            may_have_more_user_events: true,
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
@@ -157,6 +158,7 @@ fn fog_view_query_response_round_trip() {
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            may_have_more_user_events: true,
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
@@ -187,6 +189,7 @@ fn fog_view_query_response_round_trip() {
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
+            may_have_more_user_events: true,
         };
         round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,

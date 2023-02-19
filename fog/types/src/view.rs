@@ -93,6 +93,13 @@ pub struct QueryResponse {
     /// clients sample for mixins.
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// If true, this means that due limits, we could not return all the
+    /// requested user events in one response. Clients cannot compute an
+    /// accurate balance check until they have received all relevant user
+    /// events.
+    #[prost(bool, tag = "10")]
+    pub may_have_more_user_events: bool,
 }
 
 /// A record that can be used by the user to produce an Rng shared with fog
