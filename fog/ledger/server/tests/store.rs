@@ -35,6 +35,7 @@ use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
+use portpicker::pick_unused_port;
 use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
@@ -150,8 +151,9 @@ lazy_static::lazy_static! {
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
     const TEST_NAME: &str = "direct_key_image_store_check";
-    const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
+
+    let port = pick_unused_port().expect("No free ports");
 
     let rng = RngType::from_entropy();
     let TestingContext {
@@ -164,7 +166,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         watcher,
         store_config,
         watcher_path: _watcher_path,
-    } = TestingContext::new(TEST_NAME, logger.clone(), PORT_START, OMAP_CAPACITY, rng);
+    } = TestingContext::new(TEST_NAME, logger.clone(), port, OMAP_CAPACITY, rng);
 
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
