@@ -148,5 +148,5 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 {{- end }}
 
 {{- define "consensusNode.rateLimitPeriod" -}}
-{{ add 60000 (include "consensusNode.instanceNumber" .)
-{{- end}}
+{{ add 60000 (include "consensusNode.instanceNumber" .) }}
+{{- end }}
