@@ -32,6 +32,7 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
+use portpicker::pick_unused_port;
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use tempdir::TempDir;
 use url::Url;
@@ -59,8 +60,6 @@ fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
 // hitting a fog ledger server
 #[test_with_logger]
 fn fog_ledger_merkle_proofs_test(logger: Logger) {
-    let base_port = 3230;
-
     let mut rng = RngType::from_seed([0u8; 32]);
 
     for block_version in BlockVersion::iterator() {
@@ -111,7 +110,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                base_port + 7
+                pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -268,8 +267,6 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 // a fog ledger server
 #[test_with_logger]
 fn fog_ledger_key_images_test(logger: Logger) {
-    let base_port = 3240;
-
     let mut rng = RngType::from_seed([0u8; 32]);
 
     for block_version in BlockVersion::iterator() {
@@ -342,7 +339,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                base_port + 7
+                pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -484,8 +481,6 @@ fn fog_ledger_key_images_test(logger: Logger) {
 // a fog ledger server
 #[test_with_logger]
 fn fog_ledger_blocks_api_test(logger: Logger) {
-    let base_port = 3250;
-
     let mut rng = RngType::from_seed([0u8; 32]);
 
     let alice = AccountKey::random_with_fog(&mut rng);
@@ -544,7 +539,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            base_port + 7
+            pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {
@@ -646,8 +641,6 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
 // a fog ledger server
 #[test_with_logger]
 fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
-    let base_port = 3260;
-
     let mut rng = RngType::from_seed([0u8; 32]);
 
     let alice = AccountKey::random_with_fog(&mut rng);
@@ -706,7 +699,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            base_port + 7
+            pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {
