@@ -87,13 +87,17 @@ where
 
         // Build our router server.
         // Init ledger router service.
-        let ledger_router_service = ledger_grpc::create_ledger_api(LedgerRouterService::new(
+        let ledger_service = LedgerRouterService::new(
             enclave.clone(),
             shards.clone(),
             config.query_retries,
             logger.clone(),
-        ));
+        );
+
+        let ledger_router_service = ledger_grpc::create_ledger_api(ledger_service.clone());
         log::debug!(logger, "Constructed Ledger Router GRPC Service");
+
+        let unary_key_image_service = ledger_grpc::create_fog_key_image_api(ledger_service);
 
         // Init ledger router admin service.
         let ledger_router_admin_service = ledger_grpc::create_ledger_router_admin_api(
@@ -138,6 +142,7 @@ where
 
         let router_server = grpcio::ServerBuilder::new(env.clone())
             .register_service(ledger_router_service)
+            .register_service(unary_key_image_service)
             .register_service(merkle_proof_service)
             .register_service(untrusted_tx_out_service)
             .register_service(block_service)
