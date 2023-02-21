@@ -232,7 +232,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             return Err(
                 SignedContingentInputError::FeatureNotSupportedAtBlockVersion(
                     *self.block_version,
-                    "partial fills",
+                    "partial fills".into(),
                 ),
             );
         }

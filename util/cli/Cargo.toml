@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 [dependencies]
 mc-util-build-info = { path = "../build/info" }
 
-clap = { version = "4.0", features = ["string"] }
+clap = { version = "4.1", features = ["string"] }
 
 [dev-dependencies]
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }

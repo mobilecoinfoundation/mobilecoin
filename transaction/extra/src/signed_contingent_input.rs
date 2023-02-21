@@ -2,7 +2,7 @@
 
 //! A signed contingent input as described in MCIP #31
 
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
@@ -36,7 +36,7 @@ pub struct UnmaskedAmount {
 /// A signed contingent input is a "transaction fragment" which can be
 /// incorporated into a transaction signed by a counterparty. See MCIP #31 for
 /// motivation.
-#[derive(Clone, Digestible, Eq, Message, PartialEq, Zeroize)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct SignedContingentInput {
     /// The block version rules we used when making the signature
     #[prost(uint32, required, tag = 1)]
@@ -193,7 +193,7 @@ impl From<&UnmaskedAmount> for Amount {
 }
 
 /// An error which can occur when validating a signed contingent input
-#[derive(Display, Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
 pub enum SignedContingentInputError {
     /// The number of required outputs did not match to the number of amounts
     WrongNumberOfRequiredOutputAmounts,
@@ -226,7 +226,7 @@ pub enum SignedContingentInputError {
     /// Revealing TxOut: {0}
     RevealedTxOut(RevealedTxOutError),
     /// Feature is not supported at this block version ({0}): {1}
-    FeatureNotSupportedAtBlockVersion(u32, &'static str),
+    FeatureNotSupportedAtBlockVersion(u32, String),
     /// Block version mismatch: {0} vs. {1}
     BlockVersionMismatch(u32, u32),
     /// Amount: {0}
