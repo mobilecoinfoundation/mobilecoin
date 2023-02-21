@@ -512,12 +512,12 @@ class FogConformanceTest:
 
         self.fog_ledger_router = FogLedgerRouter(
             name = 'ledger1',
-            ledger_db_path = self.nodes[0].ledger_dir,
+            ledger_db_path = ledger2.ledger_db_path,
             client_responder_id = f'localhost:{BASE_NGINX_CLIENT_PORT}',
             client_port = BASE_LEDGER_CLIENT_PORT,
             admin_port = BASE_LEDGER_ADMIN_PORT,
             admin_http_gateway_port = BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
-            watcher_db_path = self.mobilecoind.watcher_db,
+            watcher_db_path = ledger2.watcher_db_path,
             shard_uris = [self.key_image_store.get_client_listen_uri()],
             release = self.release,
         )
