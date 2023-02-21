@@ -389,7 +389,7 @@ class FogLedgerRouter:
 
 
 class FogKeyImageStore:
-    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release, sharding_strategy):
+    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release, sharding_strategy, ledger_db_path, watcher_db_path):
         self.name = name
         
         self.client_port = client_port
@@ -397,6 +397,8 @@ class FogKeyImageStore:
         self.sharding_strategy = sharding_strategy
         self.client_listen_url = f'insecure-key-image-store://{LISTEN_HOST}:{self.client_port}/?sharding_strategy={self.sharding_strategy}'
         self.sharding_strategy = sharding_strategy
+        self.ledger_db_path = ledger_db_path
+        self.watcher_db_path = watcher_db_path
         
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
@@ -423,6 +425,8 @@ class FogKeyImageStore:
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
             f'--sharding-strategy={self.sharding_strategy}',
+            f'--ledger-db={self.ledger_db_path}',
+            f'--watcher-db={self.watcher_db_path}',
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',

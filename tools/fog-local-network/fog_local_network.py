@@ -129,7 +129,9 @@ class FogNetwork(Network):
             admin_port = BASE_KEY_IMAGE_STORE_ADMIN_PORT,
             admin_http_gateway_port = BASE_KEY_IMAGE_STORE_ADMIN_HTTP_GATEWAY_PORT,
             release = True,
-            sharding_strategy = 'default'
+            sharding_strategy = 'default',
+            ledger_db_path = self.nodes[0].ledger_dir,
+            watcher_db_path = self.mobilecoind.watcher_db,
         )
         self.key_image_store.start()
         

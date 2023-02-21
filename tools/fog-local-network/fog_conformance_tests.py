@@ -506,7 +506,9 @@ class FogConformanceTest:
             admin_port = BASE_KEY_IMAGE_STORE_ADMIN_PORT,
             admin_http_gateway_port = BASE_KEY_IMAGE_STORE_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
-            sharding_strategy = 'default'
+            sharding_strategy = 'default',
+            ledger_db_path = ledger2.ledger_db_path,
+            watcher_db_path = ledger2.watcher_db_path,
         )
         self.key_image_store.start()
 
