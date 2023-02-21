@@ -7,18 +7,16 @@ metadata:
     app: fog-ledger
     {{- include "fogServices.labels" . | nindent 4 }}
   annotations:
-    {{- if .Values.global.certManagerClusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
-    {{- end }}
-    {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
+    {{- if (include "fogServices.blocklist.enabled" .) }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
+    {{ toYaml (tpl .Values.fogLedger.ingress.common.annotations . | fromYaml) | nindent 4 }}
     {{ toYaml (tpl .Values.fogLedger.ingress.grpc.annotations . | fromYaml) | nindent 4 }}
 spec:
   tls:
   - hosts:
     - {{ include "fogServices.fogPublicFQDN" . }}
-    secretName: {{ include "fogServices.fogPublicFQDN" . }}-fog-tls
+    secretName: {{ include "fogServices.fullname" . }}-fog-tls
   rules:
   - host: {{ include "fogServices.fogPublicFQDN" . }}
     http:
@@ -29,25 +27,25 @@ spec:
           service:
             name: {{ include "fogServices.fullname" . }}-fog-ledger
             port:
-              number: 3228
+              name: ledger-grpc
       - path: /fog_ledger.FogKeyImageAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fogServices.fullname" . }}-fog-ledger
             port:
-              number: 3228
+              name: ledger-grpc
       - path: /fog_ledger.FogMerkleProofAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fogServices.fullname" . }}-fog-ledger
             port:
-              number: 3228
+              name: ledger-grpc
       - path: /fog_ledger.FogUntrustedTxOutApi
         pathType: Prefix
         backend:
           service:
             name: {{ include "fogServices.fullname" . }}-fog-ledger
             port:
-              number: 3228
+              name: ledger-grpc

@@ -46,26 +46,22 @@ fogReport:
     crt: ''
     key: ''
   ingress:
-    grpc:
+    common:
       annotations:
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
         haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
+        haproxy.org/abortonclose: 'true'
         haproxy.org/backend-config-snippet: |-
           http-reuse aggressive
 
+    grpc:
+      annotations:
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+
     http:
       annotations:
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
@@ -102,9 +98,8 @@ fogView:
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
 
   ingress:
-    grpc:
+    common:
       annotations: |-
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
@@ -114,17 +109,13 @@ fogView:
           http-reuse aggressive
           dynamic-cookie-key {{ include "fogServices.fogViewGRPCCookieSalt" . }}
           cookie VIEW insert indirect nocache dynamic
+
+    grpc:
+      annotations: |-
+        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
     http:
       annotations: |-
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogViewHTTPCookieSalt" . }}
-          cookie "VIEWHTTP" insert indirect nocache dynamic
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
@@ -189,11 +180,9 @@ fogLedger:
       mountPath: /fog-data
 
   ingress:
-    grpc:
+    common:
       annotations: |-
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
-        # haproxy.org/cookie-persistence: "fog-ledger"
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
         haproxy.org/timeout-http-keep-alive: 120s
@@ -203,17 +192,12 @@ fogLedger:
           dynamic-cookie-key {{ include "fogServices.fogLedgerGRPCCookieSalt" . }}
           cookie "LEDGER" insert indirect nocache dynamic
 
+    grpc:
+      annotations: |-
+        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
     http:
       annotations: |-
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogLedgerHTTPCookieSalt" . }}
-          cookie "LEDGERHTTP" insert indirect nocache dynamic
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:

@@ -240,3 +240,32 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  wait-for-up:
+    needs:
+    - fog-ingest-deploy
+    - fog-services-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Check end points up.
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          # Get fog report
+          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
+
+          # Get fog ledger
+          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks"
+
+          # Get consensus client ports
+          /test/check-ingress-ready.sh --url "https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+          /test/check-ingress-ready.sh --url "https://node2.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+          /test/check-ingress-ready.sh --url "https://node3.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+
+          # no unauthenticated endpoints for view :(

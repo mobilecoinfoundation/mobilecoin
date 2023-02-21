@@ -64,11 +64,11 @@ spec:
         image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
         imagePullPolicy: Always
         ports:
-        - name: cns-client
+        - name: client-grpc
           containerPort: 3223
-        - name: cns-port
+        - name: peer-grpc
           containerPort: 8443
-        - name: cns-mgmt
+        - name: mgmt-http
           containerPort: 8000
         livenessProbe:
           exec:
@@ -149,7 +149,19 @@ spec:
           mountPath: /wallet-seeds
           readOnly: true
         resources:
-          {{- toYaml .Values.node.resources | nindent 10}}
+          {{- toYaml .Values.node.resources | nindent 10 }}
+      - name: http-gateway
+        image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: Always
+        command:
+        - /usr/bin/go-grpc-gateway
+        - -grpc-server-endpoint=127.0.0.1:3223
+        - -grpc-insecure
+        - -http-server-listen=:8223
+        - -logtostderr
+        ports:
+        - name: client-http
+          containerPort: 8223
       {{- if eq .Values.jaegerTracing.enabled true }}
       - name: jaeger-agent
         image: jaegertracing/jaeger-agent:latest

@@ -5,23 +5,22 @@ kind: Ingress
 metadata:
   name: {{ include "consensusNode.fullname" . }}-client-grpc-attest
   annotations:
-    {{- if .Values.global.certManagerClusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
+    {{- if .Values.node.ingress.clientAttest.rateLimits.enabled }}
+    {{- toYaml .Values.node.ingress.clientAttest.rateLimits.annotations | nindent 4 }}
+    haproxy.org/rate-limit-period: {{ include "consensusNode.rateLimitPeriod" . | quote }}
     {{- end }}
-    {{- if .Values.node.client.attest.rateLimits.enabled }}
-    {{- toYaml .Values.node.client.attest.rateLimits.annotations | nindent 4 }}
-    {{- end }}
-    {{- if eq (include "consensusNode.blocklist.enabled" .) "true" }}
+    {{- if (include "consensusNode.blocklist.enabled" .) }}
     haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
     {{- end }}
-    {{- toYaml .Values.node.client.ingress.annotations | nindent 4 }}
+    {{- toYaml .Values.node.ingress.common.annotations | nindent 4 }}
+    {{- toYaml .Values.node.ingress.grpc.annotations | nindent 4 }}
   labels:
     {{- include "consensusNode.labels" . | nindent 4 }}
 spec:
   tls:
   - hosts:
     - {{ include "consensusNode.clientHostname" . }}
-    secretName: {{ include "consensusNode.fullname" . }}-client-tls
+    secretName: {{ include "consensusNode.fullname" . }}-ingress-tls
   rules:
   - host: {{ include "consensusNode.clientHostname" . }}
     http:
@@ -32,4 +31,4 @@ spec:
           service:
             name: {{ include "consensusNode.fullname" . }}
             port:
-              number: 3223
+              name: client-grpc
