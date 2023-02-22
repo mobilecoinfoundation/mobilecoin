@@ -193,9 +193,6 @@ spec:
             - secretRef:
                 name: ias
             env:
-            # Address of this individual replica
-            - name: MC_CLIENT_RESPONDER_ID
-              value: $(HOSTNAME).{{ include "fogServices.fullname" . }}-fog-view.{{ .Release.Namespace }}:3225
             - name: RUST_BACKTRACE
               value: {{ .Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG
