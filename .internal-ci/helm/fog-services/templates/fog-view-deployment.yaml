@@ -12,7 +12,7 @@ spec:
     template:
       containerName: fog-view-router
       spec:
-        replicas: {{ .Values.fogView.replicaCount }}
+        replicas: {{ .Values.fogViewRouter.replicaCount }}
         selector:
           matchLabels:
             app: fog-view-router
@@ -21,7 +21,7 @@ spec:
         template:
           metadata:
             annotations:
-              {{- toYaml .Values.fogView.podAnnotations | nindent 14 }}
+              {{- toYaml .Values.fogViewRouter.podAnnotations | nindent 14 }}
             labels:
               app: fog-view-router
               {{- include "fogServices.labels" . | nindent 14 }}
@@ -117,7 +117,7 @@ spec:
     servicePort: 80
     targetPort: view
     spec:
-      replicas: 1
+      replicas: {{ .Values.fogViewRouter.replicaCount }}
       selector:
         matchLabels:
           app: fog-view
