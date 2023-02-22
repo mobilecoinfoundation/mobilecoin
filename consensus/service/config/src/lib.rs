@@ -125,6 +125,11 @@ pub struct Config {
     /// The configured block version
     #[clap(long, default_value = "0", value_parser = parse_block_version, env = "MC_BLOCK_VERSION")]
     pub block_version: BlockVersion,
+
+    /// Maximum number of client session tracking structures to retain in
+    /// a least-recently-used cache.
+    #[clap(long, default_value = "4096", env = "MC_CLIENT_TRACKING_CAPACITY")]
+    pub client_tracking_capacity: usize,
 }
 
 impl Config {
@@ -212,6 +217,7 @@ mod tests {
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
             block_version: BlockVersion::ZERO,
+            client_tracking_capacity: 4096,
         };
 
         assert_eq!(
@@ -280,6 +286,7 @@ mod tests {
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
             block_version: BlockVersion::ZERO,
+            client_tracking_capacity: 4096,
         };
 
         assert_eq!(
