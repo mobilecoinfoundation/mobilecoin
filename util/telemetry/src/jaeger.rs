@@ -45,7 +45,7 @@ pub fn setup_default_tracer_with_tags(
         tags.push(KeyValue::new(*key, value.clone()));
     }
 
-    opentelemetry_jaeger::new_pipeline()
+    opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(service_name)
         .with_trace_config(sdk::trace::Config::default().with_resource(sdk::Resource::new(tags)))
         .install_simple()
