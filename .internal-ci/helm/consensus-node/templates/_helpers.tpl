@@ -140,8 +140,8 @@ lookup name from configmap if we have created the objects in consensus-node-conf
 
 {{/* Find the instance number of the consensus deploy (1, 2, 3...) */}}
 {{- define "consensusNode.instanceNumber" -}}
-  {{- if (regexMatch ".*-[0-9]+" (include "consensusNode.fullname" .)) }}
-{{- regexFind ".*-[0-9]+" (include "consensusNode.fullname" .) }}
+  {{- if (regexMatch ".*-[0-9]+$" (include "consensusNode.fullname" .)) }}
+{{- regexFind "[0-9]+" (include "consensusNode.fullname" .) }}
   {{- else }}
 0
   {{- end }}

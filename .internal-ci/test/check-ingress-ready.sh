@@ -33,7 +33,7 @@ do
 done
 
 counter=0
-while ! curl -sSLf -X POST -o /dev/null "${url}"
+while ! curl --max-time 5 -sSLf -X POST -o /dev/null "${url}"
 do
     echo "Waiting for url: ${url}"
     sleep 2

@@ -8,7 +8,7 @@ metadata:
     app: fog-report
     {{- include "fogServices.labels" . | nindent 4 }}
   annotations:
-    {{- if (include "fogServices.blocklist.enabled" .) }}
+    {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
     {{- toYaml .Values.fogReport.ingress.common.annotations | nindent 4 }}

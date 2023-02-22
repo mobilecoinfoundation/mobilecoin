@@ -4,7 +4,7 @@ kind: Ingress
 metadata:
   name: {{ include "consensusNode.fullname" . }}-peer-grpc
   annotations:
-    {{- if (include "consensusNode.blocklist.enabled" .) }}
+    {{- if eq (include "consensusNode.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
     {{- end }}
     {{- toYaml .Values.node.ingress.common.annotations | nindent 4 }}

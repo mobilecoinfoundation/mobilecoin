@@ -7,7 +7,7 @@ metadata:
     app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
   annotations:
-    {{- if (include "fogServices.blocklist.enabled" .) }}
+    {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
     {{ toYaml (tpl .Values.fogView.ingress.common.annotations . | fromYaml) | nindent 4 }}
