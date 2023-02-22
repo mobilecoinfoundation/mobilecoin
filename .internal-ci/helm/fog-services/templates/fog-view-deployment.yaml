@@ -103,12 +103,6 @@ spec:
                   configMapKeyRef:
                     name: mobilecoin-network
                     key: network
-              # - name: CLIENT_AUTH_TOKEN_SECRET
-              #   valueFrom:
-              #     secretKeyRef:
-              #       name: client-auth-token
-              #       key: token
-              #       optional: true
               volumeMounts:
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
@@ -193,8 +187,12 @@ spec:
               value: {{ .Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG
               value: {{ .Values.fogView.rust.log | quote }}
-            #- name: CLIENT_RESPONDER_ID
-            #  value: fog-services-fog-view:3225
+            - name: CLIENT_AUTH_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: client-auth-token
+                  key: token
+                  optional: true
             - name: FOG_VIEW_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:
@@ -238,12 +236,12 @@ spec:
                   key: postgresql-ssl-options
             - name: DATABASE_URL
               value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
-            # - name: CLIENT_AUTH_TOKEN_SECRET
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: client-auth-token
-            #       key: token
-            #       optional: true
+            - name: CLIENT_AUTH_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: client-auth-token
+                  key: token
+                  optional: true
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               exec:
