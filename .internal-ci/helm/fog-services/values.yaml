@@ -13,6 +13,51 @@ mcCoreCommonConfig:
 fogServicesConfig:
   enabled: false
 
+fogViewRouter:
+  # TODO verify resources with Sam / James
+  resources:
+    limits:
+      intel.com/sgx: 5000
+    requests:
+      intel.com/sgx: 5000
+  nodeSelector:
+    sgx-enabled-node: 'true'
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+  affinity: {}
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+  image:
+    org: ''
+    name: fogview
+    pullPolicy: Always
+  ingress:
+    grpc:
+      annotations:
+        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+        haproxy.org/server-ssl: "false"             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: "true"
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+
+    http:
+      annotations:
+        haproxy.org/server-ssl: "false"             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: "true"
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
 fogViewStores:
   shards:
   - start: 0
@@ -87,28 +132,6 @@ fogReport:
       name: fog-report-signing-cert
     crt: ''
     key: ''
-  ingress:
-    grpc:
-      annotations:
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-
-    http:
-      annotations:
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
     fluentbit.io/include: 'true' # collect logs with fluentbit

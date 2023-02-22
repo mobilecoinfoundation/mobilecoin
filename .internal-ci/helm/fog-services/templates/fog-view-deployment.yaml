@@ -41,11 +41,11 @@ spec:
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-daemon
             nodeSelector:
-              {{- toYaml .Values.fogView.nodeSelector | nindent 14 }}
+              {{- toYaml .Values.fogViewRouter.nodeSelector | nindent 14 }}
             tolerations:
-              {{- toYaml .Values.fogView.tolerations | nindent 14 }}
+              {{- toYaml .Values.fogViewRouter.tolerations | nindent 14 }}
             affinity:
-              {{- toYaml .Values.fogView.affinity | nindent 14 }}
+              {{- toYaml .Values.fogViewRouter.affinity | nindent 14 }}
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
               maxSkew: 1
@@ -71,8 +71,8 @@ spec:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
             containers:
             - name: fog-view-router
-              image: "{{ .Values.fogView.image.org | default .Values.image.org }}/{{ .Values.fogView.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-              imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
+              image: "{{ .Values.fogViewRouter.image.org | default .Values.image.org }}/{{ .Values.fogViewRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.fogViewRouter.image.pullPolicy }}
               command: [ "/usr/bin/supervisord", "-n" ]
               ports:
               - name: view
@@ -86,9 +86,9 @@ spec:
                   name: ias
               env:
               - name: RUST_BACKTRACE
-                value: {{ .Values.fogView.rust.backtrace | quote }}
+                value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
               - name: RUST_LOG
-                value: {{ .Values.fogView.rust.log | quote }}
+                value: {{ .Values.fogViewRouter.rust.log | quote }}
               - name: MC_CLIENT_RESPONDER_ID
                 value: {{ include "fogServices.fogPublicFQDN" . }}:443
               - name: MC_CLIENT_LISTEN_URI
@@ -110,7 +110,7 @@ spec:
               - mountPath: /var/run/aesmd
                 name: aesm-socket-dir
               resources:
-                {{- toYaml .Values.fogView.resources | nindent 16 }}
+                {{- toYaml .Values.fogViewRouter.resources | nindent 16 }}
         
   store:
     containerName: fog-view
@@ -183,6 +183,9 @@ spec:
             - secretRef:
                 name: ias
             env:
+            # Address of this individual replica
+            - name: MC_CLIENT_RESPONDER_ID
+              value: $(HOSTNAME).{{ include "fogServices.fullname" . }}-fog-view.{{ .Release.Namespace }}:3225
             - name: RUST_BACKTRACE
               value: {{ .Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG

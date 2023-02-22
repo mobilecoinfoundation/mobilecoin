@@ -13,7 +13,7 @@ metadata:
     {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
-    {{ toYaml (tpl .Values.fogView.ingress.http.annotations . | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl .Values.fogViewRouter.ingress.http.annotations . | fromYaml) | nindent 4 }}
 spec:
   tls:
   - hosts:
