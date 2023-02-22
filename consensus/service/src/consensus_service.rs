@@ -3,7 +3,7 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService},
+    api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService, ClientSessionTracking},
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
     counters,
@@ -21,7 +21,7 @@ use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
-    NodeID, ResponderId,
+    NodeID, ResponderId, LruCache,
 };
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
@@ -141,6 +141,10 @@ pub struct ConsensusService<
     // Option is only here because we need a way to drop the ByzantineLedger without mutex,
     // if we want to implement Stop as currently concieved
     byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
+
+    /// Information kept regarding sessions between clients and consensus
+    /// so that we can drop bad sessions. 
+    tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>, 
 }
 
 impl<
@@ -216,7 +220,10 @@ impl<
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-
+        let tracked_sessions = 
+            Arc::new( Mutex::new( 
+                LruCache::new(config.client_tracking_capacity)
+            ));
         // Return
         Self {
             config,
@@ -242,6 +249,7 @@ impl<
             consensus_rpc_server: None,
             user_rpc_server: None,
             byzantine_ledger: Some(Arc::new(Default::default())),
+            tracked_sessions,
         }
     }
 
@@ -344,6 +352,7 @@ impl<
                 self.create_is_serving_user_requests_fn(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
+                self.tracked_sessions.clone(),
             ));
 
         let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(

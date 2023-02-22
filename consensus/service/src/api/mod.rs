@@ -12,5 +12,5 @@ mod peer_service_error;
 
 pub use attested_api_service::AttestedApiService;
 pub use blockchain_api_service::BlockchainApiService;
-pub use client_api_service::ClientApiService;
+pub use client_api_service::{ClientApiService, ClientSessionTracking};
 pub use peer_api_service::PeerApiService;
