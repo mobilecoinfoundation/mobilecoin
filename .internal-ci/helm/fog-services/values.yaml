@@ -41,7 +41,7 @@ fogViewRouter:
     pullPolicy: Always
   ingress:
     grpc:
-      annotations:
+      annotations: |-
         haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
@@ -52,7 +52,7 @@ fogViewRouter:
           http-reuse aggressive
 
     http:
-      annotations:
+      annotations: |-
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
@@ -156,32 +156,6 @@ fogView:
   rust:
     backtrace: full
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
-
-  ingress:
-    grpc:
-      annotations: |-
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogViewGRPCCookieSalt" . }}
-          cookie VIEW insert indirect nocache dynamic
-    http:
-      annotations: |-
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogViewHTTPCookieSalt" . }}
-          cookie "VIEWHTTP" insert indirect nocache dynamic
-        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
     fluentbit.io/include: 'true' # collect logs with fluentbit
