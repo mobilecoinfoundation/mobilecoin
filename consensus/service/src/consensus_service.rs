@@ -147,7 +147,7 @@ pub struct ConsensusService<
 
     /// Information kept regarding sessions between clients and consensus
     /// so that we can drop bad sessions.
-    tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>,
+    tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
 }
 
 impl<
