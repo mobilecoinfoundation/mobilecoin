@@ -3,7 +3,10 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService, ClientSessionTracking},
+    api::{
+        AttestedApiService, BlockchainApiService, ClientApiService, ClientSessionTracking,
+        PeerApiService,
+    },
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
     counters,
@@ -21,7 +24,7 @@ use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
-    NodeID, ResponderId, LruCache,
+    LruCache, NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
@@ -143,8 +146,8 @@ pub struct ConsensusService<
     byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
 
     /// Information kept regarding sessions between clients and consensus
-    /// so that we can drop bad sessions. 
-    tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>, 
+    /// so that we can drop bad sessions.
+    tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>,
 }
 
 impl<
@@ -220,10 +223,7 @@ impl<
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(config.client_tracking_capacity)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(config.client_tracking_capacity)));
         // Return
         Self {
             config,

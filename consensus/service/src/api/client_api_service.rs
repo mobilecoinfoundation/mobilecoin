@@ -34,9 +34,7 @@ const PENDING_LIMIT: i64 = 500;
 
 /// Data retained on a session with a client.
 #[derive(Clone, Debug)]
-pub struct ClientSessionTracking { 
-    /* stub - todo: track failed TX proposals */
-}
+pub struct ClientSessionTracking {/* stub - todo: track failed TX proposals */}
 
 #[derive(Clone)]
 pub struct ClientApiService {
@@ -52,8 +50,8 @@ pub struct ClientApiService {
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
     /// Information kept regarding sessions between clients and consensus
-    /// so that we can drop bad sessions. 
-    _tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>, 
+    /// so that we can drop bad sessions.
+    _tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>,
 }
 
 impl ClientApiService {
@@ -366,7 +364,7 @@ mod client_api_tests {
     use mc_common::{
         logger::{test_with_logger, Logger},
         time::SystemTimeProvider,
-        NodeID, ResponderId, LruCache,
+        LruCache, NodeID, ResponderId,
     };
     use mc_consensus_api::{
         consensus_client::MintValidationResultCode, consensus_client_grpc,
@@ -496,10 +494,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -571,10 +566,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -625,10 +617,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -710,10 +699,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -776,10 +762,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -850,10 +833,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -904,10 +884,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -960,10 +937,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1020,10 +994,7 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1088,10 +1059,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1164,10 +1132,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1221,10 +1186,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { false });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1280,10 +1242,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1348,10 +1307,7 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1414,10 +1370,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1500,10 +1453,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1562,10 +1512,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { false });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1626,10 +1573,7 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
@@ -1699,10 +1643,7 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
-        let tracked_sessions = 
-            Arc::new( Mutex::new( 
-                LruCache::new(4096)
-            ));
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
         let instance = ClientApiService::new(
             get_config(),
