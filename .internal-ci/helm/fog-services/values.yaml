@@ -13,6 +13,48 @@ mcCoreCommonConfig:
 fogServicesConfig:
   enabled: false
 
+fogViewStores:
+  shards:
+  - start: 0
+    end: 200_000
+    replicas: 1
+  - start: 100_000
+    end: 300_000
+    replicas: 1
+  - start: 200_000
+    end: 400_000
+    replicas: 1
+  - start: 300_000
+    end: 500_000
+    replicas: 1
+  - start: 400_000
+    end: 600_000
+    replicas: 1
+  - start: 400_000
+    end: 600_000
+    replicas: 1
+  - start: 500_000
+    end: 700_000
+    replicas: 1
+  - start: 500_000
+    end: 700_000
+    replicas: 1
+  - start: 600_000
+    end: 800_000
+    replicas: 1
+  - start: 700_000
+    end: 900_000
+    replicas: 1
+  - start: 800_000
+    end: 1_000_000
+    replicas: 1
+  - start: 900_000
+    end: 1_100_000
+    replicas: 1
+  - start: 1_000_000
+    end: 1_200_000
+    replicas: 1
+
 imagePullSecrets:
 - name: docker-credentials
 
