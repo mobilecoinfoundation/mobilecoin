@@ -507,7 +507,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
-            tracked_sessions.clone(),
+            tracked_sessions,
         );
 
         // gRPC client and server.
