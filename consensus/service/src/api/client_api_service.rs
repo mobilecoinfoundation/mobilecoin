@@ -12,7 +12,8 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
-use mc_common::{logger::Logger, LruCache, ResponderId};
+use mc_attest_enclave_api::ClientSession;
+use mc_common::{logger::Logger, LruCache};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -51,7 +52,7 @@ pub struct ClientApiService {
     logger: Logger,
     /// Information kept regarding sessions between clients and consensus
     /// so that we can drop bad sessions.
-    _tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>,
+    _tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
 }
 
 impl ClientApiService {
@@ -65,7 +66,7 @@ impl ClientApiService {
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
-        tracked_sessions: Arc<Mutex<LruCache<ResponderId, ClientSessionTracking>>>,
+        tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
     ) -> Self {
         Self {
             config,
