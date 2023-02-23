@@ -134,7 +134,7 @@ spec:
                 - name: view-http
                   containerPort: 8225
               resources:
-                {{- toYaml .Values.grpcGateway.resources | nindent 14 }}
+                {{- toYaml .Values.grpcGateway.resources | nindent 16 }}
         
   store:
     containerName: fog-view
