@@ -117,7 +117,7 @@ impl FromStr for EpochShardingStrategy {
         }
         match BlockRange::from_str(s) {
             Ok(block_range) => Ok(Self::new(block_range)),
-            Err(e) => Err(format!("Invalid epoch sharding strategy: {}", e).to_string()),
+            Err(e) => Err(format!("Invalid epoch sharding strategy: {e}")),
         }
     }
 }
