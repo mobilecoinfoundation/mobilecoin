@@ -67,7 +67,7 @@ releases page: https://github.com/mobilecoinfoundation/mobilecoin/releases.
 
 The use of `MRSIGNER` is also supported, but the product svn (security version number) must be supplied.
 
-```
+```json
 ...
   "v3": {
     "fog-ingest": {
