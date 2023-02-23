@@ -106,7 +106,7 @@ impl StatusVerifierConfig {
 /// See README.md for example.
 ///
 /// The outermost string key of this is the release version number. This is not
-/// interpretted by the software, but could be added as a debug string or
+/// interpreted by the software, but could be added as a debug string or
 /// something, and helps with maintenance of the file.
 ///
 /// The second string key, within a release, is the name of the enclave that
