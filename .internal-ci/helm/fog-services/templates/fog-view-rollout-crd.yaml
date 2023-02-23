@@ -54,7 +54,7 @@ spec:
               labelSelector:
                 matchLabels:
                   # match on this helm chart install
-                  app: fog-view
+                  app: fog-view-router
                   helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 18 }}
             affinity:
@@ -64,7 +64,7 @@ spec:
                 - topologyKey: kubernetes.io/hostname
                   labelSelector:
                     # match on this helm chart install
-                    app: fog-view
+                    app: fog-view-router
                     helm.sh/chart: {{ include "fogServices.chart" . }}
                     {{- include "fogServices.selectorLabels" . | nindent 20 }}
             imagePullSecrets:
