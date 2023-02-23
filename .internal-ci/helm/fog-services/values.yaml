@@ -170,7 +170,7 @@ fogReport:
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
 fogView:
-  replicaCount: 2
+  replicaCount: 1
   image:
     org: ''
     name: fogview
