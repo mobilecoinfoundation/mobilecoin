@@ -129,7 +129,7 @@ impl TrustedMeasurementSet {
         let mut verifier = Verifier::default();
         verifier.debug(DEBUG_ENCLAVE);
 
-        for (_release, measurements) in self.table.iter() {
+        for measurements in self.table.values() {
             if let Some(measurement) = measurements.get(enclave_name) {
                 // TODO: it would be nice to add the release name in also as like
                 // a debug string somewhere that would show up in error messages
