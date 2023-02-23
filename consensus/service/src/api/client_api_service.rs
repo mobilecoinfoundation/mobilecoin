@@ -13,7 +13,7 @@ use crate::{
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
-use mc_common::{logger::Logger, LruCache};
+use mc_common::{logger::{Logger, slog::warn}, LruCache};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -52,7 +52,7 @@ pub struct ClientApiService {
     logger: Logger,
     /// Information kept regarding sessions between clients and consensus
     /// so that we can drop bad sessions.
-    _tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
+    tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
 }
 
 impl ClientApiService {
@@ -78,7 +78,7 @@ impl ClientApiService {
             is_serving_fn,
             authenticator,
             logger,
-            _tracked_sessions: tracked_sessions,
+            tracked_sessions,
         }
     }
 
@@ -217,6 +217,22 @@ impl ConsensusClientApi for ClientApiService {
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+
+        let session = ClientSession::from(msg.channel_id.clone());
+        match self.tracked_sessions.lock() { 
+            Ok(mut tracker) => { 
+                if let Some(_session_info) = tracker.get(&session) {
+                    // TODO: Update fields
+                } 
+                else { 
+                    // TODO: Populate new session metadata
+                    tracker.put(session, ClientSessionTracking{ });
+                }
+            }
+            Err(err) => { 
+                warn!(self.logger, "Unable to acquire mutex on session metadata: {err:?}");
+            }
+        }
 
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
             return send_result(ctx, sink, Err(err), &self.logger);
