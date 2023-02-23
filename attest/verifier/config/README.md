@@ -20,7 +20,7 @@ We propose that the verifier config is stored in a file called e.g. `trusted-mea
 
 The file has the following (example) schema:
 
-```
+```json
 {
     "v3": {
        "consensus": {
