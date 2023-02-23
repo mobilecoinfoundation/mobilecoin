@@ -9,7 +9,7 @@ enclaves in json. These measurements can be grouped by version, and named.
 Then, a helper function can produce an `mc-attest-verifier::Verifier`
 which is appropriate for a given enclave name.
 
-This crate simply provides a serialization format and organizational scheme over
+This crate simply provides a serialization format and organizational schema over
 the data that is martialed into a Verifier using the builder format.
 
 This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
