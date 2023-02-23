@@ -50,7 +50,8 @@ fogViewRouter:
         haproxy.org/abortonclose: "true"
         haproxy.org/backend-config-snippet: |-
           http-reuse aggressive
-
+          dynamic-cookie-key {{ include "fogServices.fogViewGRPCCookieSalt" . }}
+          cookie VIEW insert indirect nocache dynamic
     http:
       annotations: |-
         haproxy.org/server-ssl: "false"             # The backend (server) is http
@@ -60,6 +61,8 @@ fogViewRouter:
         haproxy.org/abortonclose: "true"
         haproxy.org/backend-config-snippet: |-
           http-reuse aggressive
+          dynamic-cookie-key {{ include "fogServices.fogViewHTTPCookieSalt" . }}
+          cookie "VIEWHTTP" insert indirect nocache dynamic
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
 fogViewStores:
