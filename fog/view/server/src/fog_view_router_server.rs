@@ -22,8 +22,7 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
-    TokenAuthenticator,
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use std::sync::{Arc, RwLock};
 
@@ -85,8 +84,6 @@ where
     where
         E: ViewEnclaveProxy,
     {
-        let readiness_indicator = ReadinessIndicator::default();
-
         let env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("Fog-view-router-server".to_string())
@@ -110,9 +107,7 @@ where
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
         // Health check service
-        let health_service =
-            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
-                .into_service();
+        let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
 
         let router_server = match config.client_listen_uri {
             RouterClientListenUri::Streaming(ref streaming_uri) => {
