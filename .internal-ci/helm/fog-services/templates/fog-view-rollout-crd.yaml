@@ -121,6 +121,20 @@ spec:
                 name: aesm-socket-dir
               resources:
                 {{- toYaml .Values.fogViewRouter.resources | nindent 16 }}
+            - name: grpc-gateway
+              image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: Always
+              command:
+              - /usr/bin/go-grpc-gateway
+              - -grpc-server-endpoint=127.0.0.1:3225
+              - -grpc-insecure
+              - -http-server-listen=:8225
+              - -logtostderr
+              ports:
+                - name: view-http
+                  containerPort: 8225
+              resources:
+                {{- toYaml .Values.grpcGateway.resources | nindent 14 }}
         
   store:
     containerName: fog-view
@@ -278,20 +292,6 @@ spec:
               name: aesm-socket-dir
             resources:
               {{- toYaml .Values.fogView.resources | nindent 14 }}
-          - name: grpc-gateway
-            image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-            imagePullPolicy: Always
-            command:
-            - /usr/bin/go-grpc-gateway
-            - -grpc-server-endpoint=127.0.0.1:3225
-            - -grpc-insecure
-            - -http-server-listen=:8225
-            - -logtostderr
-            ports:
-              - name: view-http
-                containerPort: 8225
-            resources:
-              {{- toYaml .Values.grpcGateway.resources | nindent 14 }}
           {{- if eq .Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
