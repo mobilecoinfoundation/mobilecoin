@@ -122,7 +122,8 @@ pub struct TrustedMeasurementSet {
 
 impl TrustedMeasurementSet {
     /// Create a verifier from this measurement set for a given enclave name.
-    pub fn create_verifier(&self, enclave_name: &str) -> Result<Verifier, Error> {
+    pub fn create_verifier(&self, enclave_name: impl AsRef<str>) -> Result<Verifier, Error> {
+        let enclave_name = enclave_name.as_ref();
         let mut count = 0usize;
 
         let mut verifier = Verifier::default();
