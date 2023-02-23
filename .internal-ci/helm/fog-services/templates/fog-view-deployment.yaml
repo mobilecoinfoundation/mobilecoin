@@ -127,7 +127,7 @@ spec:
     servicePort: 80
     targetPort: view
     spec:
-      replicas: {{ .Values.fogViewRouter.replicaCount }}
+      replicas: {{ .Values.fogView.replicaCount }}
       selector:
         matchLabels:
           app: fog-view
