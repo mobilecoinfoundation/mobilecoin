@@ -209,24 +209,15 @@ mod tests {
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        match v3_consensus {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c")
-                );
-                assert_eq!(mitigated_config_advisories, &Vec::<String>::default());
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_consensus = StatusVerifierConfig::Mrenclave {
+            MRENCLAVE: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            mitigated_config_advisories: vec![],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+            ],
         };
+        assert_eq!(v3_consensus, &expected_consensus);
         let v3_fog_view = v3.get("fog-view").unwrap();
         match v3_fog_view {
             StatusVerifierConfig::Mrenclave {
