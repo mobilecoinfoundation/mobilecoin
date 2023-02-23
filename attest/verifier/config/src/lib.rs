@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! This crate defines a serialization format for collections of enclave
 //! measurements and associated hardening advisories and other data, which can
