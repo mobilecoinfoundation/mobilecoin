@@ -451,6 +451,46 @@ mod tests {
         );
         assert!(result.is_err());
 
+        // Missing MRSIGNER required attributes
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRSIGNER": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+                    "product_id": 1
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Missing MRSIGNER required attributes
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRSIGNER": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+                    "minimum_svn": 3
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Working with MRSIGNER required attributes
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRSIGNER": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+                    "product_id": 1,
+                    "minimum_svn": 3
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_ok());
+
         // Misspelled key
         let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
             r#"{
