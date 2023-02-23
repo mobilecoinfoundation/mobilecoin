@@ -37,6 +37,7 @@
 //! | 0x0000          | Unused                                            |
 //! | 0x0001          | Burn Redemption Memo                              |
 //! | 0x0002          | Gift Code Sender Memo                             |
+//! | 0x0003          | Defragmentation Memo                              |
 //! | 0x0100          | Authenticated Sender Memo                         |
 //! | 0x0101          | Authenticated Sender With Payment Request Id Memo |
 //! | 0x0102          | Authenticated Sender With Payment Intent Id Memo  |
@@ -53,6 +54,7 @@ pub use self::{
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,
     credential::SenderMemoCredential,
+    defragmentation::{DefragmentationMemo, DefragmentationMemoError},
     destination::{DestinationMemo, DestinationMemoError},
     destination_with_payment_intent_id::DestinationWithPaymentIntentIdMemo,
     destination_with_payment_request_id::DestinationWithPaymentRequestIdMemo,
@@ -68,6 +70,7 @@ mod authenticated_sender_with_payment_intent_id;
 mod authenticated_sender_with_payment_request_id;
 mod burn_redemption;
 mod credential;
+mod defragmentation;
 mod destination;
 mod destination_with_payment_intent_id;
 mod destination_with_payment_request_id;
@@ -107,6 +110,7 @@ impl_memo_enum! { MemoType,
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
     AuthenticatedSenderWithPaymentIntentId(AuthenticatedSenderWithPaymentIntentIdMemo),
     BurnRedemption(BurnRedemptionMemo),
+    Defragmentation(DefragmentationMemo),
     Destination(DestinationMemo),
     DestinationWithPaymentRequestId(DestinationWithPaymentRequestIdMemo),
     DestinationWithPaymentIntentId(DestinationWithPaymentIntentIdMemo),
@@ -415,4 +419,47 @@ mod tests {
         assert_eq!(memo.get_fee(), 17u64);
         assert_eq!(memo.get_num_recipients(), 4);
     }
+
+    #[test]
+    fn test_defragmentation_memo() {
+
+        let mut uut =
+            DefragmentationMemo::new(48237u64, 9001u64, 3405697037u64).unwrap();
+
+            assert_eq!(48237u64, uut.get_fee());
+            assert_eq!(9001u64, uut.get_total_outlay());
+            assert_eq!(3405697037u64, uut.get_defrag_id());
+
+            uut.set_fee(73284u64).unwrap();
+            uut.set_total_outlay(8999u64);
+            uut.set_defrag_id(!3405697037u64);
+
+            assert_eq!(73284u64, uut.get_fee());
+            assert_eq!(8999u64, uut.get_total_outlay());
+            assert_eq!(!3405697037u64, uut.get_defrag_id());
+
+            assert!(
+                DefragmentationMemo::new(
+                    !0u64,
+                    0u64,
+                    0u64,
+                ).is_err()
+            );
+            assert!(
+                DefragmentationMemo::new(
+                    72057594037927936u64,
+                    0u64,
+                    0u64,
+                ).is_err()
+            );
+            assert!(
+                DefragmentationMemo::new(
+                    72057594037927935u64,
+                    0u64,
+                    0u64,
+                ).is_ok()
+            );
+
+    }
+
 }

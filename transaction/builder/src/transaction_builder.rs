@@ -925,8 +925,9 @@ pub mod transaction_builder_tests {
     use super::*;
     use crate::{
         test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
-        GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, RTHMemoBuilder,
+        BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
+        GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
+        RTHMemoBuilder,
     };
     use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
