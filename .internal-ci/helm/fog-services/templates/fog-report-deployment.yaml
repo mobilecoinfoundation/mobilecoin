@@ -51,9 +51,9 @@ spec:
         image: "{{ .Values.fogReport.image.org | default .Values.image.org }}/{{ .Values.fogReport.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         command: [ "/usr/bin/supervisord" ]
         ports:
-        - name: report
+        - name: report-grpc
           containerPort: 3222
-        - name: mgmt
+        - name: mgmt-http
           containerPort: 8000
         envFrom:
         - configMapRef:
@@ -140,7 +140,7 @@ spec:
           readOnly: true
         resources:
           {{- toYaml .Values.fogReport.resources | nindent 10 }}
-      - name: grpc-gateway
+      - name: http-gateway
         image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
         command:
@@ -150,8 +150,8 @@ spec:
         - -http-server-listen=:8222
         - -logtostderr
         ports:
-          - name: report-http
-            containerPort: 8222
+        - name: report-http
+          containerPort: 8222
         resources:
           {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
 {{- if eq .Values.jaegerTracing.enabled true }}
