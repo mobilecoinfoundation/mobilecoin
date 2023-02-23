@@ -135,6 +135,42 @@ spec:
                   containerPort: 8225
               resources:
                 {{- toYaml .Values.grpcGateway.resources | nindent 16 }}
+            {{- if eq .Values.jaegerTracing.enabled true }}
+            - name: jaeger-agent
+              image: jaegertracing/jaeger-agent:latest
+              imagePullPolicy: IfNotPresent
+              ports:
+                - containerPort: 5775
+                  name: zk-compact-trft
+                  protocol: UDP
+                - containerPort: 5778
+                  name: config-rest
+                  protocol: TCP
+                - containerPort: 6831
+                  name: jg-compact-trft
+                  protocol: UDP
+                - containerPort: 6832
+                  name: jg-binary-trft
+                  protocol: UDP
+                - containerPort: 14271
+                  name: admin-http
+                  protocol: TCP
+              env:
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.name
+                - name: HOST_IP
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: status.hostIP
+              args:
+                - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+                - --reporter.type=grpc
+                - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+            {{- end }}
         
   store:
     containerName: fog-view
