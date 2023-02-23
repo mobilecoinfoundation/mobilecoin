@@ -19,7 +19,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
 use mc_fog_ledger_connection::{
     Error, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient, KeyImageResultExtension,
-    LedgerGrpcClient, OutputResultExtension,
+    LedgerGrpcClient, OutputResultExtension, FogKeyImageGrpcClient,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -861,6 +861,281 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     // objects have been destroyed, and hope that those 6 threads see the
     // shutdown requests within 1 second.
     sleep(Duration::from_millis(1000));
+}
+
+
+// Test that a fog ledger connection is able to check key images by hitting
+// a fog ledger router using the unary API
+#[test_with_logger]
+fn fog_router_unary_key_image_test(logger: Logger) {
+    let mut rng = RngType::from_seed([0u8; 32]);
+
+    for block_version in BlockVersion::iterator() {
+        let alice = AccountKey::random_with_fog(&mut rng);
+
+        let recipients = vec![alice.default_subaddress()];
+
+        let keys: Vec<KeyImage> = (0..20).map(|x| KeyImage::from(x as u64)).collect();
+
+        // Make LedgerDB
+        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let db_full_path = ledger_dir.path();
+        let mut ledger = recreate_ledger_db(db_full_path);
+
+        // Make WatcherDB
+        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+
+        // Populate ledger with some data
+        // Origin block cannot have key images
+        add_block_to_ledger(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &[],
+            &mut rng,
+            &mut watcher,
+        );
+        add_block_to_ledger(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[0..2],
+            &mut rng,
+            &mut watcher,
+        );
+        add_block_to_ledger(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[3..6],
+            &mut rng,
+            &mut watcher,
+        );
+        let num_blocks = add_block_to_ledger(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[6..9],
+            &mut rng,
+            &mut watcher,
+        );
+
+        // Populate watcher with Signature and Timestamp for block 1
+        let url1 = Url::parse(TEST_URL).unwrap();
+        let block1 = ledger.get_block(1).unwrap();
+        let signing_key_a = Ed25519Pair::from_random(&mut rng);
+        let filename = String::from("00/00");
+        let mut signed_block_a1 =
+            BlockSignature::from_block_and_keypair(&block1, &signing_key_a).unwrap();
+        signed_block_a1.set_signed_at(1593798844);
+        watcher
+            .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
+            .unwrap();
+
+        // Update last synced to block 2, to indicate that this URL did not participate
+        // in consensus for block 2.
+        watcher.update_last_synced(&url1, 2).unwrap();
+
+        {
+            // Make Key Image Store
+            let store_uri = KeyImageStoreUri::from_str(&format!(
+                "insecure-key-image-store://127.0.0.1:{}",
+                pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let store_admin_uri = AdminUri::from_str(&format!(
+                "insecure-mca://127.0.0.1:{}",
+                pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let store_config = LedgerStoreConfig {
+                chain_id: "local".to_string(),
+                client_responder_id: store_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for store"),
+                client_listen_uri: store_uri.clone(),
+                ledger_db: db_full_path.to_path_buf(),
+                watcher_db: watcher_dir.clone(),
+                ias_api_key: Default::default(),
+                ias_spid: Default::default(),
+                admin_listen_uri: Some(store_admin_uri),
+                client_auth_token_secret: None,
+                client_auth_token_max_lifetime: Default::default(),
+                omap_capacity: OMAP_CAPACITY,
+                sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+            };
+            let store_enclave = LedgerSgxEnclave::new(
+                get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
+                &store_config.client_responder_id,
+                OMAP_CAPACITY,
+                logger.clone(),
+            );
+            let ra_client =
+                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
+            let mut store_server = KeyImageStoreServer::new_from_config(
+                store_config,
+                store_enclave,
+                ra_client,
+                ledger.clone(),
+                watcher.clone(),
+                EpochShardingStrategy::default(),
+                SystemTimeProvider::default(),
+                logger.clone(),
+            );
+
+            // Make Key Image Store client
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+
+            let store_client = KeyImageStoreApiClient::new(
+                ChannelBuilder::default_channel_builder(grpc_env.clone())
+                    .connect_to_uri(&store_uri, &logger),
+            );
+            let mut store_clients = HashMap::new();
+            store_clients.insert(store_uri, Arc::new(store_client));
+            let shards = Arc::new(RwLock::new(store_clients));
+
+            // Make Router Server
+            let router_client_listen_uri = FogLedgerUri::from_str(&format!(
+                "insecure-fog-ledger://127.0.0.1:{}",
+                pick_unused_port().expect("No free ports"),
+            ))
+            .unwrap();
+            let admin_listen_uri = AdminUri::from_str(&format!(
+                "insecure-mca://127.0.0.1:{}",
+                pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let router_config = LedgerRouterConfig {
+                chain_id: "local".to_string(),
+                ledger_db: db_full_path.to_path_buf(),
+                watcher_db: watcher_dir,
+                admin_listen_uri: admin_listen_uri.clone(),
+                client_listen_uri: router_client_listen_uri.clone(),
+                client_responder_id: ResponderId::from_str(&router_client_listen_uri.addr()).unwrap(),
+                ias_spid: Default::default(),
+                ias_api_key: Default::default(),
+                client_auth_token_secret: None,
+                client_auth_token_max_lifetime: Default::default(),
+                query_retries: 3,
+                omap_capacity: OMAP_CAPACITY,
+            };
+
+            let enclave = LedgerSgxEnclave::new(
+                get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
+                &router_config.client_responder_id,
+                OMAP_CAPACITY,
+                logger.clone(),
+            );
+
+            let ra_client =
+                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
+            let mut router_server = LedgerRouterServer::new(
+                router_config,
+                enclave,
+                ra_client,
+                shards,
+                ledger.clone(),
+                watcher.clone(),
+                logger.clone(),
+            );
+
+            store_server.start();
+            router_server.start();
+
+            // Make ledger enclave client
+            let mut mr_signer_verifier =
+                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
+            mr_signer_verifier.allow_hardening_advisories(
+                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
+            );
+
+            let mut verifier = Verifier::default();
+            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+
+            let mut client = FogKeyImageGrpcClient::new(
+                String::default(),
+                router_client_listen_uri,
+                GRPC_RETRY_CONFIG,
+                verifier,
+                grpc_env,
+                logger.clone(),
+            );
+
+            // Check on key images
+            let mut response = client
+                .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
+                .expect("check_key_images failed");
+
+            let mut n = 1;
+
+            while response.num_blocks != num_blocks {
+                response = client
+                    .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
+                    .expect("check_key_images failed");
+
+                // Ideally this should not require a sleep, but that's for a later PR. 
+                sleep(Duration::from_secs(10));
+                // panic on the 20th time
+                n += 1; //
+                if n > 20 {
+                    panic!("Fog ledger not  fully initialized");
+                }
+            }
+
+            // FIXME assert_eq!(response.num_txos, ...);
+            assert_eq!(response.results[0].key_image, keys[0]);
+            assert_eq!(response.results[0].status(), Ok(Some(1)));
+            assert_eq!(
+                response.results[0].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[0].timestamp, 1);
+
+            assert_eq!(response.results[1].key_image, keys[1]);
+            assert_eq!(response.results[1].status(), Ok(Some(1)));
+            assert_eq!(
+                response.results[1].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[1].timestamp, 1);
+
+            // Check a key_image for a block which will never have signatures & timestamps
+            assert_eq!(response.results[2].key_image, keys[3]);
+            assert_eq!(response.results[2].status(), Ok(Some(2))); // Spent in block 2
+            assert_eq!(
+                response.results[2].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[2].timestamp, 2);
+
+            // Watcher has only synced 1 block, so timestamp should be behind
+            assert_eq!(response.results[3].key_image, keys[7]);
+            assert_eq!(response.results[3].status(), Ok(Some(3))); // Spent in block 3
+            assert_eq!(
+                response.results[3].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[3].timestamp, 3);
+
+            // Check a key_image that has not been spent
+            assert_eq!(response.results[4].key_image, keys[19]);
+            assert_eq!(response.results[4].status(), Ok(None)); // Not spent
+            assert_eq!(
+                response.results[4].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[4].timestamp, u64::MAX);
+        }
+
+        // FIXME: Check a key_image that generates a DatabaseError - tough to generate
+
+        // grpcio detaches all its threads and does not join them :(
+        // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
+        // in the meantime we can just sleep after grpcio env and all related
+        // objects have been destroyed, and hope that those 6 threads see the
+        // shutdown requests within 1 second.
+        sleep(Duration::from_millis(1000));
+    }
 }
 
 // Infra
