@@ -65,7 +65,7 @@ Here, the outermost layer is a list of enclave versions that are trusted. Usuall
 the current release and the next release. These measurements can be checked against the mobilecoin github
 releases page: https://github.com/mobilecoinfoundation/mobilecoin/releases.
 
-The use of `MRSIGNER` is also supported, but the product svn (security version number) must be supplied.
+The use of `MRSIGNER` is also supported, but the product SVN (security version number) must be supplied.
 
 ```json
 ...
