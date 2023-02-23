@@ -254,27 +254,33 @@ spec:
                   optional: true
             # Hold liveness and readiness until this probe passes.
             startupProbe:
-              exec:
-                command:
-                - "/usr/local/bin/grpc_health_probe"
-                - "-addr=:3225"
+              grpc:
+                port: 3225
+              # exec:
+              #   command:
+              #   - "/usr/local/bin/grpc_health_probe"
+              #   - "-addr=:3225"
               # wait up to 4 hours for start up
               failureThreshold: 480
               periodSeconds: 30
             # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
             livenessProbe:
-              exec:
-                command:
-                - "/usr/local/bin/grpc_health_probe"
-                - "-addr=:3225"
+              grpc:
+                port: 3225
+              # exec:
+              #   command:
+              #   - "/usr/local/bin/grpc_health_probe"
+              #   - "-addr=:3225"
               failureThreshold: 5
               periodSeconds: 30
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
-              exec:
-                command:
-                - "/usr/local/bin/grpc_health_probe"
-                - "-addr=:3225"
+              grpc:
+                port: 3225
+              # exec:
+              #   command:
+              #   - "/usr/local/bin/grpc_health_probe"
+              #   - "-addr=:3225"
               failureThreshold: 2
               periodSeconds: 10
             volumeMounts:
