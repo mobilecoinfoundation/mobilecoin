@@ -1,10 +1,8 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 #![doc = include_str!("../README.md")]
-
 #![no_std]
 #![deny(missing_docs)]
-#![allow(non_snake_case)]
 
 extern crate alloc;
 
@@ -13,13 +11,12 @@ use displaydoc::Display;
 use mc_attest_core::{MrEnclave, MrSigner};
 use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHex, Strict};
 
 /// Defines a json schema for an individual attestation status verifier.
 /// This is either a MRENCLAVE or MRSIGNER type, and the type is inferred by
 /// the presence of these fields.
 /// Unknown fields are flagged as an error.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 #[serde(deny_unknown_fields)]
 pub enum StatusVerifierConfig {
@@ -27,8 +24,8 @@ pub enum StatusVerifierConfig {
     Mrenclave {
         /// The hex-encoded bytes of the MRENCLAVE measurement. This is
         /// enclavehash in the .css file
-        #[serde(with = "SerHex::<Strict>")]
-        MRENCLAVE: [u8; 32],
+        #[serde(with = "hex", rename = "MRENCLAVE")]
+        mr_enclave: [u8; 32],
         /// The list of config advisories that are known to be mitigated in
         /// software at this enclave revision.
         #[serde(default)]
@@ -42,8 +39,8 @@ pub enum StatusVerifierConfig {
     Mrsigner {
         /// The hex-encoded bytes of the MRSIGNER measurement. This is a digest
         /// of the modulus in the .css file. Use a tool to see what it is.
-        #[serde(with = "SerHex::<Strict>")]
-        MRSIGNER: [u8; 32],
+        #[serde(with = "hex", rename = "MRSIGNER")]
+        mr_signer: [u8; 32],
         /// The product id that this verifier checks for.
         product_id: u16,
         /// The minimum security version number that is considered valid by this
@@ -66,11 +63,11 @@ impl StatusVerifierConfig {
     pub fn add_to_verifier(&self, verifier: &mut Verifier) {
         match self {
             Self::Mrenclave {
-                MRENCLAVE,
+                mr_enclave,
                 mitigated_config_advisories,
                 mitigated_hardening_advisories,
             } => {
-                let mut mr_enclave_verifier = MrEnclaveVerifier::new(MrEnclave::from(*MRENCLAVE));
+                let mut mr_enclave_verifier = MrEnclaveVerifier::new(MrEnclave::from(*mr_enclave));
                 for advisory in mitigated_config_advisories.iter() {
                     mr_enclave_verifier.allow_config_advisory(advisory);
                 }
@@ -80,14 +77,14 @@ impl StatusVerifierConfig {
                 verifier.mr_enclave(mr_enclave_verifier);
             }
             Self::Mrsigner {
-                MRSIGNER,
+                mr_signer,
                 product_id,
                 minimum_svn,
                 mitigated_config_advisories,
                 mitigated_hardening_advisories,
             } => {
                 let mut mr_signer_verifier =
-                    MrSignerVerifier::new(MrSigner::from(*MRSIGNER), *product_id, *minimum_svn);
+                    MrSignerVerifier::new(MrSigner::from(*mr_signer), *product_id, *minimum_svn);
                 for advisory in mitigated_config_advisories.iter() {
                     mr_signer_verifier.allow_config_advisory(advisory);
                 }
@@ -118,6 +115,18 @@ pub struct TrustedMeasurementSet {
     table: BTreeMap<String, BTreeMap<String, StatusVerifierConfig>>,
 }
 
+// Allow TrustedMeasurementSet to be logged nicely in json format
+impl core::fmt::Display for TrustedMeasurementSet {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            fmt,
+            "{}",
+            serde_json::to_string_pretty(&self.table)
+                .expect("json string formatting not expected to fail here")
+        )
+    }
+}
+
 impl TrustedMeasurementSet {
     /// Create a verifier from this measurement set for a given enclave name.
     pub fn create_verifier(&self, enclave_name: impl AsRef<str>) -> Result<Verifier, Error> {
@@ -145,8 +154,8 @@ impl TrustedMeasurementSet {
     }
 }
 
-/// An error which can occur when trying to load attestation trust roots from a
-/// search path
+/// An error which can occur when trying to build an attestation verifier from a
+/// TrustedMeasurementSet
 #[derive(Display, Debug)]
 pub enum Error {
     /// No measurements found for enclave name "{0}"
@@ -158,6 +167,7 @@ mod tests {
 
     use super::*;
 
+    use alloc::{string::ToString, vec};
     use hex_literal::hex;
 
     const TEST_DATA: &str = r#"{
@@ -208,7 +218,7 @@ mod tests {
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
         let expected_consensus = StatusVerifierConfig::Mrenclave {
-            MRENCLAVE: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            mr_enclave: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
             mitigated_config_advisories: vec![],
             mitigated_hardening_advisories: vec![
                 "INTEL-SA-00334".to_string(),
@@ -217,65 +227,41 @@ mod tests {
         };
         assert_eq!(v3_consensus, &expected_consensus);
         let v3_fog_view = v3.get("fog-view").unwrap();
-        match v3_fog_view {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d")
-                );
-                assert_eq!(mitigated_config_advisories, &Vec::<String>::default());
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_fog_view = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d"),
+            mitigated_config_advisories: vec![],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+            ],
         };
+        assert_eq!(v3_fog_view, &expected_fog_view);
 
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        match v4_consensus {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5")
-                );
-                assert_eq!(mitigated_config_advisories, &Vec::<String>::default());
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_consensus = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            mitigated_config_advisories: vec![],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+                "INTEL-SA-00657".to_string(),
+            ],
         };
+        assert_eq!(v4_consensus, &expected_consensus);
+
         let v4_fog_view = v4.get("fog-view").unwrap();
-        match v4_fog_view {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3")
-                );
-                assert_eq!(mitigated_config_advisories, &Vec::<String>::default());
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_fog_view = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            mitigated_config_advisories: vec![],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+                "INTEL-SA-00657".to_string(),
+            ],
         };
+        assert_eq!(v4_fog_view, &expected_fog_view);
 
         let _ = tms.create_verifier("consensus").unwrap();
         let _ = tms.create_verifier("fog-ingest").unwrap();
@@ -346,88 +332,54 @@ mod tests {
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        match v3_consensus {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c")
-                );
-                assert_eq!(mitigated_config_advisories, &["FOO"]);
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_consensus = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            mitigated_config_advisories: vec!["FOO".to_string()],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+            ],
         };
+        assert_eq!(v3_consensus, &expected_consensus);
+
         let v3_fog_view = v3.get("fog-view").unwrap();
-        match v3_fog_view {
-            StatusVerifierConfig::Mrsigner {
-                MRSIGNER,
-                product_id,
-                minimum_svn,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRSIGNER,
-                    &hex!("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e")
-                );
-                assert_eq!(*product_id, 3);
-                assert_eq!(*minimum_svn, 4);
-                assert_eq!(mitigated_config_advisories, &["FOO"]);
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_fog_view = StatusVerifierConfig::Mrsigner {
+            mr_signer: hex!("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e"),
+            product_id: 3,
+            minimum_svn: 4,
+            mitigated_config_advisories: vec!["FOO".to_string()],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+            ],
         };
+        assert_eq!(v3_fog_view, &expected_fog_view);
 
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        match v4_consensus {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5")
-                );
-                assert_eq!(mitigated_config_advisories, &["FOO"]);
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_consensus = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            mitigated_config_advisories: vec!["FOO".to_string()],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+                "INTEL-SA-00657".to_string(),
+            ],
         };
+        assert_eq!(v4_consensus, &expected_consensus);
+
         let v4_fog_view = v4.get("fog-view").unwrap();
-        match v4_fog_view {
-            StatusVerifierConfig::Mrenclave {
-                MRENCLAVE,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                assert_eq!(
-                    MRENCLAVE,
-                    &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3")
-                );
-                assert_eq!(mitigated_config_advisories, &["FOO"]);
-                assert_eq!(
-                    mitigated_hardening_advisories,
-                    &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
-                );
-            }
-            _ => panic!("unexpected"),
+        let expected_fog_view = StatusVerifierConfig::Mrenclave {
+            mr_enclave: hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            mitigated_config_advisories: vec!["FOO".to_string()],
+            mitigated_hardening_advisories: vec![
+                "INTEL-SA-00334".to_string(),
+                "INTEL-SA-00615".to_string(),
+                "INTEL-SA-00657".to_string(),
+            ],
         };
+        assert_eq!(v4_fog_view, &expected_fog_view);
 
         let _ = tms.create_verifier("consensus").unwrap();
         let _ = tms.create_verifier("fog-ingest").unwrap();
@@ -435,5 +387,94 @@ mod tests {
         let _ = tms.create_verifier("fog-view").unwrap();
 
         assert!(tms.create_verifier("impostor").is_err());
+    }
+
+    #[test]
+    fn test_expected_failures() {
+        // Not enough hex characters
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAVE": "8c80a2b95a549fa8d928d"
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Too many hex characters
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAVE": "8c80a2b95a549fa8d928d99999999999999999999999999999999999999999999999999999"
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Should work with right number of characters
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAVE": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_ok());
+
+        // Mispelled key
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAV": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Missing MRSIGNER required attributes
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRSIGNER": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Misspelled key
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAVE": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+                    "mitigated_hardening_advisorees": ["FOO", "BAR"]
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_err());
+
+        // Corrected key
+        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+            r#"{
+            "v0": {
+                "consensus": {
+                    "MRENCLAVE": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+                    "mitigated_hardening_advisories": ["FOO", "BAR"]
+                }
+            }
+        }"#,
+        );
+        assert!(result.is_ok());
     }
 }

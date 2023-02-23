@@ -1,24 +1,23 @@
 attest-verifier-config
 ======================
 
-This crate specifies and implements a method for configuring an attestation
-verifier based on sigstructs and other configuration data, which it finds using
-a search path which is given to it. This search path is called the "attestation
-trust root search path".
+This crate defines a schema for storing a set of trusted measurements for SGX
+enclaves in json. These measurements can be grouped by version, and named.
+Then, a helper function can produce an `mc-attest-verifier::Verifier`
+which is appropriate for a given enclave name.
 
-This is loosely based on how OS'es like linux often have a designated path where SSL trust roots are stored,
-e.g. `/etc/ssl/certs`, `/usr/local/share/certs`. This is a bit different in that,
-we're not assuming that there's an OS level path for mobilecoin attestation roots,
-rather it's expected that when a mobilecoin client installs itself, somewhere in its installation
-path it would install this trust root file. The app would then load that data using the code in this crate.
-So, these trust roots would be private to an installation of the app.
+This crate simply provides a serialization format and organizational schema over
+the data that is martialed into a Verifier using the builder format.
+
+This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
+appropriately. Thus, it has more to do with clients than the actual attestation implementation.
 
 Format
 ------
 
-We propose that the verifier config is stored in a file called e.g. `trusted-measurements.json`.
+Verifier config for a network may be stored in a file called e.g. `trusted-measurements.json`.
 
-The file has the following (example) schema:
+The file has the following (example) schema, which can be parsed and interpretted by this crate:
 
 ```json
 {
@@ -43,19 +42,19 @@ The file has the following (example) schema:
     "v4": {
        "consensus": {
            "MRENCLAVE": "e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5",
-           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657]
+           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-ingest": {
            "MRENCLAVE": "a8af815564569aae3558d8e4e4be14d1bcec896623166a10494b4eaea3e1c48c",
-           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657]
+           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-ledger": {
            "MRENCLAVE": "da209f4b24e8f4471bd6440c4e9f1b3100f1da09e2836d236e285b274901ed3b",
-           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657]
+           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-view": {
            "MRENCLAVE": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
-           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657]
+           "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        }
     }
 }
@@ -65,16 +64,42 @@ Here, the outermost layer is a list of enclave versions that are trusted. Usuall
 the current release and the next release. These measurements can be checked against the mobilecoin github
 releases page: https://github.com/mobilecoinfoundation/mobilecoin/releases.
 
-The use of `MRSIGNER` is also supported, but the product SVN (security version number) must be supplied.
+The use of `MRSIGNER` is also supported, but the product id and minimum SVN (security version number) must be supplied.
 
 ```json
-...
+{
   "v3": {
     "fog-ingest": {
         "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
-        "product_svn": 5,
+        "product_id": 1,
+        "minimum_svn": 5,
         "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"],
     }
   }
 }
 ```
+
+It is also possible to specify `mitigated_config_advisories`.
+
+```json
+{
+  "v3": {
+    "fog-ingest": {
+        "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
+        "product_id": 1,
+        "minimum_svn": 5,
+        "mitigated_config_advisories": ["INTEL-SA-XXXXX"],
+        "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"],
+    }
+  }
+}
+```
+
+Suggestions for use
+-------------------
+
+It is suggested that clients such as full-service might take the `trusted-measurements.json` file as a startup parameter,
+or have a search location.
+
+For mobile clients, it may be more convenient if they take the bake this json is as a string literal and update it with each release.
+Both approaches are reasonable.
