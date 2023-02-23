@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-//! This crate defines a serialization format for collections of enclave
-//! measurements and associated hardening advisories and other data, which can
-//! be used to configure an attestation verifier appropriately.
+#![doc = include_str!("../README.md")]
 
 #![no_std]
 #![deny(missing_docs)]
