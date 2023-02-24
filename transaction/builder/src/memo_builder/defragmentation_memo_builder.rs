@@ -11,11 +11,11 @@ use mc_transaction_extra::{DefragmentationMemo, DefragmentationMemoError};
 
 /// This memo buidler builds the DefragmentationMemo (0x0003).
 ///
-/// The DefragmentationMemo denotes defragmentation transactions. It contains three
-/// pieces of information: the fee, the total outlay, and an optional defragmentation
-/// ID number. If no defragmentation ID is specified, 0 is used. The fee and
-/// defragmentation ID can be set using this builder. The total outlay is set when
-/// the the memo for the main output is written.
+/// The DefragmentationMemo denotes defragmentation transactions. It contains
+/// three pieces of information: the fee, the total outlay, and an optional
+/// defragmentation ID number. If no defragmentation ID is specified, 0 is used.
+/// The fee and defragmentation ID can be set using this builder. The total
+/// outlay is set when the memo for the main output is written.
 ///
 /// This builder will write a memo for both the main and change outputs of a
 /// defragmentation transaction. The main output will get the fee and outlay of
