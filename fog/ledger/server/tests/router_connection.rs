@@ -18,8 +18,8 @@ use mc_common::{
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
 use mc_fog_ledger_connection::{
-    Error, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient, KeyImageResultExtension,
-    LedgerGrpcClient, OutputResultExtension, FogKeyImageGrpcClient,
+    Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -863,7 +863,6 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     sleep(Duration::from_millis(1000));
 }
 
-
 // Test that a fog ledger connection is able to check key images by hitting
 // a fog ledger router using the unary API
 #[test_with_logger]
@@ -1011,7 +1010,8 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: router_client_listen_uri.clone(),
-                client_responder_id: ResponderId::from_str(&router_client_listen_uri.addr()).unwrap(),
+                client_responder_id: ResponderId::from_str(&router_client_listen_uri.addr())
+                    .unwrap(),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
@@ -1073,7 +1073,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
                     .expect("check_key_images failed");
 
-                // Ideally this should not require a sleep, but that's for a later PR. 
+                // Ideally this should not require a sleep, but that's for a later PR.
                 sleep(Duration::from_secs(10));
                 // panic on the 20th time
                 n += 1; //
