@@ -11,6 +11,7 @@ use crate::{
     router_admin_service::FogViewRouterAdminService,
 };
 use futures::executor::block_on;
+use grpcio::ChannelBuilder;
 use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
@@ -22,7 +23,9 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
+    health_api_grpc::HealthClient, AnonymousAuthenticator, Authenticator,
+    ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer, RouterHealthCheckCallbackProvider,
+    TokenAuthenticator,
 };
 use std::sync::{Arc, RwLock};
 
@@ -106,8 +109,24 @@ where
         );
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
-        // Health check service
-        let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
+        let store_health_clients = shards
+            .read()
+            .expect("RwLock poisoned")
+            .iter()
+            .map(|shard| {
+                let channel = ChannelBuilder::default_channel_builder(env.clone())
+                    .connect_to_uri(&shard.uri, &logger);
+                HealthClient::new(channel)
+            })
+            .collect::<Vec<_>>();
+
+        let mut health_callback_provider =
+            RouterHealthCheckCallbackProvider::new(store_health_clients);
+        let health_service = mc_util_grpc::HealthService::new(
+            Some(health_callback_provider.get_callback()),
+            logger.clone(),
+        )
+        .into_service();
 
         let router_server = match config.client_listen_uri {
             RouterClientListenUri::Streaming(ref streaming_uri) => {
