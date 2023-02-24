@@ -161,7 +161,22 @@ impl RouterHealthCheckCallbackProvider {
         }
     }
 
-    fn get_callback() -> ServiceHealthCheckCallback  {
-        todo!()
+    fn get_callback(&mut self) -> ServiceHealthCheckCallback  {
+        let is_ready = self.store_health_clients.iter().all(|client| {
+            let mut request = HealthCheckRequest::new();
+            request.set_service("fog-view".to_string());
+            match client.check(&request) {
+                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
+                Err(_) => false
+            }
+        });
+
+        Arc::new(move |_| -> HealthCheckStatus {
+            if is_ready {
+                HealthCheckStatus::SERVING
+            } else {
+                HealthCheckStatus::NOT_SERVING
+            }
+        })
     }
 }
