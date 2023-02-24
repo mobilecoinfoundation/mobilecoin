@@ -148,27 +148,28 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
     }
 }
 
-#[allow(dead_code)]
+/// Provides a health check callback for routers.
 pub struct RouterHealthCheckCallbackProvider {
-    store_health_clients: Vec<Arc<health_api_grpc::HealthClient>>,
+    store_health_clients: Vec<health_api_grpc::HealthClient>,
 }
 
-#[allow(dead_code)]
 impl RouterHealthCheckCallbackProvider {
-    fn new(store_health_clients: Vec<Arc<health_api_grpc::HealthClient>>) -> Self {
+    /// Constructs a new `RouterHealthCheckCallbackProvider`
+    pub fn new(store_health_clients: Vec<health_api_grpc::HealthClient>) -> Self {
         Self {
             store_health_clients,
         }
     }
 
-    fn get_callback(&mut self) -> ServiceHealthCheckCallback  {
+    /// Returns a `ServiceHealthCheckCallback` that is used in the gRPC
+    /// readiness check.
+    pub fn get_callback(&mut self) -> ServiceHealthCheckCallback {
         let is_ready = self.store_health_clients.iter().all(|client| {
             let mut request = HealthCheckRequest::new();
             request.set_service("fog-view".to_string());
-            match client.check(&request) {
-                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
-                Err(_) => false
-            }
+            client.check(&request).map_or(false, |response| {
+                response.get_status() == HealthCheckStatus::SERVING
+            })
         });
 
         Arc::new(move |_| -> HealthCheckStatus {
