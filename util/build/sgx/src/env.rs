@@ -4,14 +4,14 @@
 
 use displaydoc::Display;
 use mc_util_build_script::Environment;
-use std::{env::VarError, result::Result as StdResult};
+use std::{env::VarError, fmt, result::Result as StdResult};
 
 pub const ENV_IAS_MODE: &str = "IAS_MODE";
 pub const ENV_SGX_MODE: &str = "SGX_MODE";
 
 /// An enumeration of environment errors which occur when parsing SGX
 /// environments
-#[derive(Debug, Display)]
+#[derive(Display)]
 pub enum Error {
     /// The IAS mode '{0}' is unknown
     UnknownIasMode(String),
@@ -21,6 +21,14 @@ pub enum Error {
 
     /// There was an error reading an environment variable {0}: {1}. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
     Variable(&'static str, VarError),
+}
+
+// Implement Debug by forwarding to Display so that .expect() shows the Display
+// text
+impl fmt::Debug for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, fmt)
+    }
 }
 
 type Result<T> = StdResult<T, Error>;
