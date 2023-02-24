@@ -84,16 +84,16 @@ spec:
                   name: fog-view
               - secretRef:
                   name: ias
-              # livenessProbe:
-              #   grpc:
-              #     port: 3225
-              #   failureThreshold: 5
-              #   periodSeconds: 30
-              # readinessProbe:
-              #   grpc:
-              #     port: 3225
-              #   failureThreshold: 2
-              #   periodSeconds: 10
+              livenessProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 5
+                periodSeconds: 30
+              readinessProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 2
+                periodSeconds: 10
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
