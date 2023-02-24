@@ -1,3 +1,5 @@
+// Copyright (c) 2023 The MobileCoin Foundation
+
 use aes_gcm::Aes256Gcm;
 use futures::{executor::block_on, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment};
@@ -38,10 +40,10 @@ pub struct LedgerGrpcClient {
     /// The AKE state machine object, if one is available.
     attest_cipher: Option<Ready<Aes256Gcm>>,
 
-    /// Sends requests to the fog view router
+    /// Sends requests to the fog ledger router
     request_sender: ClientDuplexSender<LedgerRequest>,
 
-    /// Receives responses from the fog view router
+    /// Receives responses from the fog ledger router
     response_receiver: ClientDuplexReceiver<LedgerResponse>,
 
     /// Low-lever ledger API client

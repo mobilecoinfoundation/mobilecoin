@@ -93,7 +93,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
                     client_error
                 );
                 let rpc_permissions_error = rpc_permissions_error(
-                    "client_auth",
+                    "auth_store",
                     format!("Permission denied: {}", client_error),
                     logger,
                 );
