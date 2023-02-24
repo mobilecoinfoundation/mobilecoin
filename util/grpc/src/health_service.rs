@@ -164,15 +164,15 @@ impl RouterHealthCheckCallbackProvider {
     /// Returns a `ServiceHealthCheckCallback` that is used in the gRPC
     /// readiness check.
     pub fn get_callback(&mut self) -> ServiceHealthCheckCallback {
-        let is_ready = self.store_health_clients.iter().all(|client| {
-            let mut request = HealthCheckRequest::new();
-            request.set_service("fog-view".to_string());
-            client.check(&request).map_or(false, |response| {
-                response.get_status() == HealthCheckStatus::SERVING
-            })
-        });
-
+        let clients = self.store_health_clients.clone();
         Arc::new(move |_| -> HealthCheckStatus {
+            let is_ready = clients.iter().all(|client| {
+                let mut request = HealthCheckRequest::new();
+                request.set_service("fog-view".to_string());
+                client.check(&request).map_or(false, |response| {
+                    response.get_status() == HealthCheckStatus::SERVING
+                })
+            });
             if is_ready {
                 HealthCheckStatus::SERVING
             } else {
