@@ -460,6 +460,11 @@ mod tests {
                 ).is_ok()
             );
 
+            let memo_bytes: [u8; DefragmentationMemo::MEMO_DATA_LEN] = uut.clone().into();
+            let deserialized_memo: DefragmentationMemo = (&memo_bytes).into();
+
+            assert_eq!(uut, deserialized_memo);
+
     }
 
 }

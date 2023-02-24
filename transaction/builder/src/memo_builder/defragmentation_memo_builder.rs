@@ -16,8 +16,6 @@ use mc_transaction_extra::{DefragmentationMemo, DefragmentationMemoError};
 pub struct DefragmentationMemoBuilder {
     // Defragmentation transaction fee
     fee: Amount,
-    // Fee + defragmentation transaction amount
-    total_outlay: u64,
     // Defragmentation ID
     defrag_id: Option<u64>,
     // Tracks whether or not the main defrag memo was already written
@@ -30,7 +28,6 @@ impl Default for DefragmentationMemoBuilder {
     fn default() -> Self {
         Self {
             fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            total_outlay: Mob::MINIMUM_FEE,
             defrag_id: None,
             wrote_main_memo: false,
             wrote_decoy_memo: false,
@@ -41,8 +38,10 @@ impl Default for DefragmentationMemoBuilder {
 impl DefragmentationMemoBuilder {
 
     /// TODO: doc
-    pub fn set_total_outlay(&mut self, value: u64) {
-        self.total_outlay = value;
+    pub fn new(defrag_id: u64) -> Self {
+        let mut result = DefragmentationMemoBuilder::default();
+        result.set_defrag_id(defrag_id);
+        result
     }
 
     /// TODO: doc
@@ -61,7 +60,7 @@ impl MemoBuilder for DefragmentationMemoBuilder {
 
     /// Set the fee
     fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
-        if self.wrote_main_memo {
+        if self.wrote_main_memo {// Since the main memo includes the fee, check for main, not change
             return Err(NewMemoError::FeeAfterChange);
         }
         self.fee = fee;
@@ -77,7 +76,7 @@ impl MemoBuilder for DefragmentationMemoBuilder {
     ) -> Result<MemoPayload, NewMemoError> {
 
         if self.wrote_main_memo {
-            return Err(NewMemoError::MultipleDefragOutputs);
+            return Err(NewMemoError::MultipleOutputs);
         }
         if self.wrote_decoy_memo {
             return Err(NewMemoError::OutputsAfterChange);
@@ -88,7 +87,9 @@ impl MemoBuilder for DefragmentationMemoBuilder {
 
         match DefragmentationMemo::new(
             self.fee.value,
-            self.total_outlay,
+            self.fee.value
+                .checked_add(amount.value)
+                .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?,
             self.defrag_id.unwrap_or(0),
         ) {
             Ok(memo) => {
@@ -110,11 +111,17 @@ impl MemoBuilder for DefragmentationMemoBuilder {
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
 
+        if !self.wrote_main_memo {
+            return Err(NewMemoError::MissingOutput);
+        }
         if self.wrote_decoy_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         }
         if amount.token_id != self.fee.token_id {
             return Err(NewMemoError::MixedTokenIds);
+        }
+        if amount.value != 0 {
+            return Err(NewMemoError::DefragWithChange);
         }
 
         match DefragmentationMemo::new(
