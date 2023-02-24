@@ -4360,7 +4360,7 @@ pub mod transaction_builder_tests {
 
             // Defrag output should have a defrag memo
             let ss = get_tx_out_shared_secret(
-                &sender.view_private_key(),
+                sender.view_private_key(),
                 &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
             );
             let memo = main_output.e_memo.unwrap().decrypt(&ss);
@@ -4451,7 +4451,7 @@ pub mod transaction_builder_tests {
 
             // Defrag output should have a defrag memo
             let ss = get_tx_out_shared_secret(
-                &sender.view_private_key(),
+                sender.view_private_key(),
                 &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
             );
             let memo = main_output.e_memo.unwrap().decrypt(&ss);
