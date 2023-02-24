@@ -1695,7 +1695,7 @@ mod client_api_tests {
         assert!(submitted_values.lock().unwrap().is_empty());
     }
 
-    // Very simple test of the session-tracking feature 
+    // Very simple test of the session-tracking feature
     #[test_with_logger]
     #[serial(counters)]
     fn test_session_tracking_gets_populated(logger: Logger) {
@@ -1753,15 +1753,18 @@ mod client_api_tests {
             Arc::new(authenticator),
             logger,
             // Clone this, maintaining our own ARC reference into the tracked
-            // sessions structure so that we can inspect it later. 
+            // sessions structure so that we can inspect it later.
             tracked_sessions.clone(),
         );
 
         // gRPC client and server.
         let (client, _server) = get_client_server(instance);
         let message = Message::default();
-        // Make sure there are no tracked sessions right up until we actually propose a tx. 
-        let tracker = tracked_sessions.lock().expect("Attempt to lock session-tracking mutex failed.");
+        // Make sure there are no tracked sessions right up until we actually propose a
+        // tx.
+        let tracker = tracked_sessions
+            .lock()
+            .expect("Attempt to lock session-tracking mutex failed.");
         assert!(tracker.is_empty());
         drop(tracker);
 
@@ -1772,8 +1775,10 @@ mod client_api_tests {
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
-        // Inspect our session-tracking 
-        let tracker = tracked_sessions.lock().expect("Attempt to lock session-tracking mutex failed.");
+        // Inspect our session-tracking
+        let tracker = tracked_sessions
+            .lock()
+            .expect("Attempt to lock session-tracking mutex failed.");
         assert_eq!(tracker.len(), 1);
     }
 }
