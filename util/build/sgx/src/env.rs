@@ -19,7 +19,7 @@ pub enum Error {
     /// The SGX mode '{0}' is unknown. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
     UnknownSgxMode(String),
 
-    /// There was an error reading an environment variable {0}: {1}. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
+    /// There was an error reading an environment variable '{0}': {1}. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
     Variable(&'static str, VarError),
 }
 
