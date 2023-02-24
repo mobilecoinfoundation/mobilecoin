@@ -86,7 +86,6 @@ where
         E: ViewEnclaveProxy,
     {
         let readiness_indicator = ReadinessIndicator::default();
-
         let env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("Fog-view-router-server".to_string())

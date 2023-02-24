@@ -9,6 +9,7 @@ use crate::{
         HealthCheckRequest, HealthCheckResponse, HealthCheckResponse_ServingStatus, PingRequest,
         PingResponse,
     },
+    health_api_grpc,
     health_api_grpc::{create_health, Health},
     rpc_logger, send_result, SVC_COUNTERS,
 };
@@ -144,5 +145,23 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
                 HealthCheckStatus::NOT_SERVING
             }
         })
+    }
+}
+
+#[allow(dead_code)]
+pub struct RouterHealthCheckCallbackProvider {
+    store_health_clients: Vec<Arc<health_api_grpc::HealthClient>>,
+}
+
+#[allow(dead_code)]
+impl RouterHealthCheckCallbackProvider {
+    fn new(store_health_clients: Vec<Arc<health_api_grpc::HealthClient>>) -> Self {
+        Self {
+            store_health_clients,
+        }
+    }
+
+    fn get_callback() -> ServiceHealthCheckCallback  {
+        todo!()
     }
 }
