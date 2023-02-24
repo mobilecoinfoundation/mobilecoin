@@ -13,10 +13,10 @@ pub const ENV_SGX_MODE: &str = "SGX_MODE";
 /// environments
 #[derive(Display)]
 pub enum Error {
-    /// The IAS mode '{0}' is unknown
+    /// The IAS mode '{0}' is unknown. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
     UnknownIasMode(String),
 
-    /// The SGX mode '{0}' is unknown
+    /// The SGX mode '{0}' is unknown. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
     UnknownSgxMode(String),
 
     /// There was an error reading an environment variable {0}: {1}. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
