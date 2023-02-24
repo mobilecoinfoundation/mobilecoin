@@ -1,13 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! SGX Build Utilities
 
 use displaydoc::Display;
 use mc_util_build_script::Environment;
-use std::{
-    env::{var, VarError},
-    result::Result as StdResult,
-};
+use std::{env::VarError, result::Result as StdResult};
 
 pub const ENV_IAS_MODE: &str = "IAS_MODE";
 pub const ENV_SGX_MODE: &str = "SGX_MODE";
@@ -22,17 +19,16 @@ pub enum Error {
     /// The SGX mode '{0}' is unknown
     UnknownSgxMode(String),
 
-    /// There was an error reading an environment variable: {0}
-    Variable(VarError),
-}
-
-impl From<VarError> for Error {
-    fn from(src: VarError) -> Error {
-        Error::Variable(src)
-    }
+    /// There was an error reading an environment variable {0}: {1}. Please see https://github.com/mobilecoinfoundation/mobilecoin/blob/master/BUILD.md#build-configuration for more information.
+    Variable(&'static str, VarError),
 }
 
 type Result<T> = StdResult<T, Error>;
+
+// Wrapper around std::env::var which preserves more context about the error
+fn var_helper(var_name: &'static str) -> Result<String> {
+    std::env::var(var_name).map_err(|var_error| Error::Variable(var_name, var_error))
+}
 
 /// The style of interaction with IAS
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -90,14 +86,14 @@ impl SgxEnvironment {
         let ias_mode = if env.feature("ias-dev") {
             IasMode::Development
         } else {
-            let ias_mode = var(ENV_IAS_MODE)?;
+            let ias_mode = var_helper(ENV_IAS_MODE)?;
             IasMode::try_from(ias_mode.as_str())?
         };
 
         let sgx_mode = if env.feature("sgx-sim") {
             SgxMode::Simulation
         } else {
-            let sgx_mode = var(ENV_SGX_MODE)?;
+            let sgx_mode = var_helper(ENV_SGX_MODE)?;
             SgxMode::try_from(sgx_mode.as_str())?
         };
 
