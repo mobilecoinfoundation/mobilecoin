@@ -107,7 +107,6 @@ where
             FogViewRouterAdminService::new(shards.clone(), logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
-
         let shard_health_clients = shards
             .read()
             .expect("RwLock poisoned")
