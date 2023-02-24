@@ -109,7 +109,7 @@ where
         );
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
-        let store_health_clients = shards
+        let shard_health_clients = shards
             .read()
             .expect("RwLock poisoned")
             .iter()
@@ -121,7 +121,7 @@ where
             .collect::<Vec<_>>();
 
         let mut health_callback_provider =
-            RouterHealthCheckCallbackProvider::new(store_health_clients);
+            RouterHealthCheckCallbackProvider::new(shard_health_clients);
         let health_service = mc_util_grpc::HealthService::new(
             Some(health_callback_provider.get_callback()),
             logger.clone(),
