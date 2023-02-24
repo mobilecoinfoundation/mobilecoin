@@ -11,7 +11,18 @@ use mc_transaction_core::{
 };
 use mc_transaction_extra::{DefragmentationMemo, DefragmentationMemoError};
 
-///TODO: doc
+/// This memo buidler builds the DefragmentationMemo (0x0003).
+/// 
+/// The DefragmentationMemo denotes defragmentation transactions. It contains three
+/// pieces of information: the fee, the total outlay, and an optional defragmentation
+/// ID number. If no defragmentation ID is specified, 0 is used. The fee and
+/// defragmentation ID can be set using this builder. The total outlay is set when
+/// the the memo for the main output is written.
+/// 
+/// This builder will write a memo for both the main and change outputs of a
+/// defragmentation transaction. The main output will get the fee and outlay of the
+/// transaction. The change output (if present) will get a defragmentation memo with
+/// the same defragmentation ID number, but 0 fee and outlay.
 #[derive(Clone, Debug)]
 pub struct DefragmentationMemoBuilder {
     // Defragmentation transaction fee
@@ -37,19 +48,21 @@ impl Default for DefragmentationMemoBuilder {
 
 impl DefragmentationMemoBuilder {
 
-    /// TODO: doc
+    /// Creates a new DefragmentationMemoBuilder with the specified defragmentation ID
     pub fn new(defrag_id: u64) -> Self {
         let mut result = DefragmentationMemoBuilder::default();
         result.set_defrag_id(defrag_id);
         result
     }
 
-    /// TODO: doc
+    /// Sets the defragmentation ID
     pub fn set_defrag_id(&mut self, value: u64) {
         self.defrag_id = Some(value);
     }
 
-    /// TODO: doc
+    /// Clears the defragmentation ID
+    /// If the memo is built without a specified defragmentation ID, it will default
+    /// to 0.
     pub fn clear_defrag_id(&mut self) {
         self.defrag_id = None;
     }
@@ -59,6 +72,7 @@ impl DefragmentationMemoBuilder {
 impl MemoBuilder for DefragmentationMemoBuilder {
 
     /// Set the fee
+    /// Throws an error if the specified value cannot be represented in 56 bits
     fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
         if self.wrote_main_memo {// Since the main memo includes the fee, check for main, not change
             return Err(NewMemoError::FeeAfterChange);
