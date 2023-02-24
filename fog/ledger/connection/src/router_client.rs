@@ -153,6 +153,7 @@ impl LedgerGrpcClient {
             queries: key_images_queries,
         };
 
+        // No authenticated data associated with ledger query
         let aad = vec![];
 
         let msg = {

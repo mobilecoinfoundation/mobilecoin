@@ -32,7 +32,6 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
-use portpicker::pick_unused_port;
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use tempdir::TempDir;
 use url::Url;
@@ -110,7 +109,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports"),
+                portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -339,7 +338,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -539,7 +538,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {
@@ -699,7 +698,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {
