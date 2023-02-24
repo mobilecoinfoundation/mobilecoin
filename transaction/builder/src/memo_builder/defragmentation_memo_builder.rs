@@ -45,7 +45,6 @@ impl Default for DefragmentationMemoBuilder {
 }
 
 impl DefragmentationMemoBuilder {
-
     /// Creates a new DefragmentationMemoBuilder with the specified
     /// defragmentation ID
     pub fn new(defrag_id: u64) -> Self {
@@ -68,7 +67,6 @@ impl DefragmentationMemoBuilder {
 }
 
 impl MemoBuilder for DefragmentationMemoBuilder {
-
     /// Set the fee
     /// Throws an error if the specified value cannot be represented in 56 bits
     fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {

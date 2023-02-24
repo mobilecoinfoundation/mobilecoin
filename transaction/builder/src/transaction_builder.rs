@@ -4291,15 +4291,18 @@ pub mod transaction_builder_tests {
             transaction_builder
                 .add_output(Amount::new(113, token_id), &change_address, &mut rng)
                 .unwrap();
-            let result =  transaction_builder
-                .add_change_output(Amount::new(43, token_id), &change_destination, &mut rng);
+            let result =  transaction_builder.add_change_output(
+                Amount::new(43, token_id),
+                &change_destination,
+                &mut rng,
+            );
 
-                assert_matches!(
-                    result,
-                    Err(TxBuilderError::NewTx(NewTxError::Memo(
-                        NewMemoError::DefragWithChange
-                    )))
-                );
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::DefragWithChange
+                )))
+            );
         }
 
         // Test builds memos with no ID
@@ -4483,7 +4486,5 @@ pub mod transaction_builder_tests {
                 }
             }
         }
-
     }
-
 }
