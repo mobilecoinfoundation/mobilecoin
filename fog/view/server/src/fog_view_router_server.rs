@@ -23,9 +23,8 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    health_api_grpc::HealthClient, AnonymousAuthenticator, Authenticator,
-    ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer, RouterHealthCheckCallbackProvider,
-    TokenAuthenticator,
+    get_router_callback, health_api_grpc::HealthClient, AnonymousAuthenticator, Authenticator,
+    ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use std::sync::{Arc, RwLock};
 
@@ -120,10 +119,8 @@ where
             })
             .collect::<Vec<_>>();
 
-        let mut health_callback_provider =
-            RouterHealthCheckCallbackProvider::new(shard_health_clients);
         let health_service = mc_util_grpc::HealthService::new(
-            Some(health_callback_provider.get_callback()),
+            Some(get_router_callback(shard_health_clients)),
             logger.clone(),
         )
         .into_service();
