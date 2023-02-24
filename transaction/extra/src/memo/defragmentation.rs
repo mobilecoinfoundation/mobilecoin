@@ -18,7 +18,7 @@ use displaydoc::Display;
 /// from the three memos with matching defragmentation ID. If used,
 /// the defragmentation ID should be selected randomly. If unused, this
 /// value defaults to 0. This memo has type bytes 0x0003.
-/// 
+///
 /// This memo is written to both the main defragmentation TxOut as well
 /// as the change TxOut (which has 0 value in a defragmentation
 /// transaction). The memo written to the main TxOut will have the fee
@@ -34,7 +34,8 @@ pub struct DefragmentationMemo {
     /// We assume that the high order byte of fee is zero, and use this
     /// to compress the memo into 32 bytes.
     fee: u64,
-    /// The fee plus the amount sent in the defragmentation transaction (picoMOB)
+    /// The fee plus the amount sent in the defragmentation transaction
+    /// (picoMOB)
     total_outlay: u64,
     /// The defragmentation ID used to group multiple rounds together
     defrag_id: u64,
@@ -98,7 +99,6 @@ impl DefragmentationMemo {
     pub fn set_defrag_id(&mut self, value: u64) {
         self.defrag_id = value;
     }
-
 }
 
 impl From<&[u8; DefragmentationMemo::MEMO_DATA_LEN]> for DefragmentationMemo {
@@ -113,7 +113,8 @@ impl From<&[u8; DefragmentationMemo::MEMO_DATA_LEN]> for DefragmentationMemo {
             fee_bytes[1..].copy_from_slice(&src[..7]);
             u64::from_be_bytes(fee_bytes)
         };
-        let total_outlay = u64::from_be_bytes(src[7..15].try_into().expect("BUG! arithmetic error"));
+        let total_outlay =
+            u64::from_be_bytes(src[7..15].try_into().expect("BUG! arithmetic error"));
         let defrag_id = u64::from_be_bytes(src[15..23].try_into().expect("BUG! arithmetic error"));
         Self {
             fee,

@@ -23,9 +23,9 @@ pub use memo::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
     AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DefragmentationMemo,
     DefragmentationMemoError, DestinationMemo, DestinationMemoError,
-    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, GiftCodeCancellationMemo,
-    GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType, RegisteredMemoType,
-    SenderMemoCredential, UnusedMemo,
+    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
+    GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
+    RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
