@@ -14,6 +14,7 @@ use mc_transaction_core::{
     AmountError, RevealedTxOutError, TokenId, TxOutConversionError, UnmaskedAmount,
 };
 use prost::Message;
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A signed contingent input is a "transaction fragment" which can be
