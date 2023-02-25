@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::traits::SignerError;
+use crate::traits::Error;
 
 use super::{OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use mc_account_keys::AccountKey;
@@ -24,11 +24,11 @@ impl RingSigner for LocalRingSigner {
         ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, SignerError> {
+    ) -> Result<RingMLSAG, Error> {
         let real_input = ring
             .members
             .get(ring.real_input_index)
-            .ok_or(SignerError::RealInputIndexOutOfBounds)?;
+            .ok_or(Error::RealInputIndexOutOfBounds)?;
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
         // First, compute the one-time private key
@@ -47,7 +47,7 @@ impl RingSigner for LocalRingSigner {
 
         // Check if this is the correct one-time private key
         if RistrettoPublic::from(&onetime_private_key) != target_key {
-            return Err(SignerError::TrueInputNotOwned);
+            return Err(Error::TrueInputNotOwned);
         }
 
         // Note: Some implementations might be able to cache this generator

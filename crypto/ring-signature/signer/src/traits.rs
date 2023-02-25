@@ -105,7 +105,7 @@ pub trait RingSigner {
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, SignerError>;
+    ) -> Result<RingMLSAG, Error>;
 }
 
 // Implement RingSigner for any &RingSigner
@@ -116,7 +116,7 @@ impl<S: RingSigner> RingSigner for &S {
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, SignerError> {
+    ) -> Result<RingMLSAG, Error> {
         (*self).sign(message, signable_ring, output_blinding, rng)
     }
 }
@@ -124,7 +124,7 @@ impl<S: RingSigner> RingSigner for &S {
 /// An error that can occur when using an abstract RingSigner
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum SignerError {
+pub enum Error {
     /// True input not owned by this subaddress
     TrueInputNotOwned,
     /// Connection failed: {0}
@@ -141,13 +141,13 @@ pub enum SignerError {
     Unknown,
 }
 
-impl From<KeyError> for SignerError {
+impl From<KeyError> for Error {
     fn from(src: KeyError) -> Self {
         Self::Keys(src)
     }
 }
 
-impl From<RingSignatureError> for SignerError {
+impl From<RingSignatureError> for Error {
     fn from(src: RingSignatureError) -> Self {
         Self::RingSignature(src)
     }
