@@ -84,25 +84,25 @@ spec:
                   name: fog-view
               - secretRef:
                   name: ias
-            # Hold liveness and readiness until this probe passes.
-              startupProbe:
-                grpc:
-                  port: 3225
-                failureThreshold: 480
-                periodSeconds: 30
-                timeoutSeconds: 10
-              livenessProbe:
-                grpc:
-                  port: 3225
-                failureThreshold: 5
-                periodSeconds: 30
-                timeoutSeconds: 10
-              readinessProbe:
-                grpc:
-                  port: 3225
-                failureThreshold: 2
-                periodSeconds: 10
-                timeoutSeconds: 10
+              # Hold liveness and readiness until this probe passes.
+              # startupProbe:
+              #   grpc:
+              #     port: 3225
+              #   failureThreshold: 480
+              #   periodSeconds: 30
+              #   timeoutSeconds: 10
+              # livenessProbe:
+              #   grpc:
+              #     port: 3225
+              #   failureThreshold: 5
+              #   periodSeconds: 30
+              #   timeoutSeconds: 10
+              # readinessProbe:
+              #   grpc:
+              #     port: 3225
+              #   failureThreshold: 2
+              #   periodSeconds: 10
+              #   timeoutSeconds: 10
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
