@@ -119,7 +119,7 @@ where
             .collect::<Vec<_>>();
 
         let health_service = mc_util_grpc::HealthService::new(
-            Some(get_router_callback(shard_health_clients)),
+            Some(get_router_callback(shard_health_clients, logger.clone())),
             logger.clone(),
         )
         .into_service();

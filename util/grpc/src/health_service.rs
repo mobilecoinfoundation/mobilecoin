@@ -152,14 +152,19 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
 /// readiness check for routers.
 pub fn get_router_callback(
     shard_health_clients: Vec<health_api_grpc::HealthClient>,
+    logger: Logger
 ) -> ServiceHealthCheckCallback {
     Arc::new(move |_| -> HealthCheckStatus {
         let is_ready = shard_health_clients.iter().all(|client| {
             let mut request = HealthCheckRequest::new();
             request.set_service("fog-view".to_string());
-            client.check(&request).map_or(false, |response| {
-                response.get_status() == HealthCheckStatus::SERVING
-            })
+            match client.check(&request) {
+                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
+                Err(e) => {
+                    log::error!(logger, "Health check error for client: {e}");
+                    false
+                }
+            }
         });
         if is_ready {
             HealthCheckStatus::SERVING
