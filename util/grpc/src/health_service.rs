@@ -148,36 +148,28 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
     }
 }
 
-/// Provides a health check callback for routers.
-pub struct RouterHealthCheckCallbackProvider {
-    store_health_clients: Vec<health_api_grpc::HealthClient>,
-}
-
-impl RouterHealthCheckCallbackProvider {
-    /// Constructs a new `RouterHealthCheckCallbackProvider`
-    pub fn new(store_health_clients: Vec<health_api_grpc::HealthClient>) -> Self {
-        Self {
-            store_health_clients,
-        }
-    }
-
-    /// Returns a `ServiceHealthCheckCallback` that is used in the gRPC
-    /// readiness check.
-    pub fn get_callback(&mut self) -> ServiceHealthCheckCallback {
-        let is_ready = self.store_health_clients.iter().all(|client| {
+/// Returns a `ServiceHealthCheckCallback` that is used in the gRPC
+/// readiness check for routers.
+pub fn get_router_callback(
+    shard_health_clients: Vec<health_api_grpc::HealthClient>,
+    logger: Logger
+) -> ServiceHealthCheckCallback {
+    Arc::new(move |_| -> HealthCheckStatus {
+        let is_ready = shard_health_clients.iter().all(|client| {
             let mut request = HealthCheckRequest::new();
             request.set_service("fog-view".to_string());
-            client.check(&request).map_or(false, |response| {
-                response.get_status() == HealthCheckStatus::SERVING
-            })
-        });
-
-        Arc::new(move |_| -> HealthCheckStatus {
-            if is_ready {
-                HealthCheckStatus::SERVING
-            } else {
-                HealthCheckStatus::NOT_SERVING
+            match client.check(&request) {
+                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
+                Err(e) => {
+                    log::error!(logger, "Health check error for client: {e}");
+                    false
+                }
             }
-        })
-    }
+        });
+        if is_ready {
+            HealthCheckStatus::SERVING
+        } else {
+            HealthCheckStatus::NOT_SERVING
+        }
+    })
 }

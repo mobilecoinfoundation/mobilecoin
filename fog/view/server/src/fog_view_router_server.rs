@@ -23,9 +23,8 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    health_api_grpc::HealthClient, AnonymousAuthenticator, Authenticator,
-    ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer, RouterHealthCheckCallbackProvider,
-    TokenAuthenticator,
+    get_router_callback, health_api_grpc::HealthClient, AnonymousAuthenticator, Authenticator,
+    ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use std::sync::{Arc, RwLock};
 
@@ -108,22 +107,22 @@ where
             FogViewRouterAdminService::new(shards.clone(), logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
-
-        let store_health_clients = shards
+        let shard_health_clients = shards
             .read()
             .expect("RwLock poisoned")
             .iter()
-            .map(|shard| {
+            .enumerate()
+            .map(|(i, shard)| {
+                let uri = &shard.uri;
+                log::info!(logger, "HealthClient {i} uri is: {uri}");
                 let channel = ChannelBuilder::default_channel_builder(env.clone())
                     .connect_to_uri(&shard.uri, &logger);
                 HealthClient::new(channel)
             })
             .collect::<Vec<_>>();
 
-        let mut health_callback_provider =
-            RouterHealthCheckCallbackProvider::new(store_health_clients);
         let health_service = mc_util_grpc::HealthService::new(
-            Some(health_callback_provider.get_callback()),
+            Some(get_router_callback(shard_health_clients, logger.clone())),
             logger.clone(),
         )
         .into_service();
