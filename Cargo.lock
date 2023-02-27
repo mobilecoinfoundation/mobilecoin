@@ -3030,12 +3030,13 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.6",
  "curve25519-dalek",
  "ed25519-dalek",
+ "generic-array",
  "hex",
  "hkdf",
  "lazy_static",
@@ -3044,8 +3045,10 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-test-vectors-definitions",
+ "mc-util-from-random",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -3062,6 +3065,7 @@ dependencies = [
  "mc-crypto-keys",
  "prost",
  "serde",
+ "subtle",
  "zeroize",
 ]
 
@@ -3221,6 +3225,15 @@ dependencies = [
  "tempdir",
  "x25519-dalek",
  "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-memo-mac"
+version = "4.0.2"
+dependencies = [
+ "hmac 0.12.1",
+ "mc-crypto-keys",
+ "sha2 0.10.6",
 ]
 
 [[package]]
@@ -5302,6 +5315,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-core",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
