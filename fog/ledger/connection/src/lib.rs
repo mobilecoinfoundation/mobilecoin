@@ -18,3 +18,6 @@ pub use merkle_proof::{FogMerkleProofGrpcClient, OutputError, OutputResultExtens
 
 mod untrusted;
 pub use untrusted::FogUntrustedLedgerGrpcClient;
+
+mod router_client;
+pub use router_client::LedgerGrpcClient;

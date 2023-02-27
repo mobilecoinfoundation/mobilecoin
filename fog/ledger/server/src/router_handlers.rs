@@ -156,7 +156,7 @@ pub fn process_shard_responses(
 }
 
 /// Handles a client's authentication request.
-fn handle_auth_request<E>(
+pub(crate) fn handle_auth_request<E>(
     enclave: E,
     auth_message: attest::AuthMessage,
     logger: Logger,
@@ -174,7 +174,7 @@ where
 }
 
 /// Handles a client's query request.
-async fn handle_query_request<E>(
+pub(crate) async fn handle_query_request<E>(
     query: attest::Message,
     enclave: E,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
@@ -332,7 +332,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     ledger_store_url: KeyImageStoreUri,
     logger: Logger,
 ) -> Result<(), RouterServerError> {
-    let ledger_store_id = ResponderId::from_str(&ledger_store_url.to_string())?;
+    let ledger_store_id = ledger_store_url.responder_id()?;
     let client_auth_request = enclave.ledger_store_init(ledger_store_id.clone())?;
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()

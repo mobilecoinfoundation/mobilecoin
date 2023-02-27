@@ -3,6 +3,8 @@
 //! Integration tests at the level of the fog ledger connection / fog ledger
 //! grpc API
 
+use futures::executor::block_on;
+use grpcio::ChannelBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
@@ -11,29 +13,39 @@ use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
     time::SystemTimeProvider,
-    ResponderId,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
-use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
 use mc_fog_ledger_connection::{
-    Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    KeyImageResultExtension, OutputResultExtension,
+    Error, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient, KeyImageResultExtension,
+    LedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
-use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
+use mc_fog_ledger_server::{
+    sharding_strategy::EpochShardingStrategy, KeyImageStoreServer, LedgerRouterConfig,
+    LedgerRouterServer, LedgerStoreConfig, ShardingStrategy,
+};
 use mc_fog_test_infra::get_enclave_path;
-use mc_fog_uri::{ConnectionUri, FogLedgerUri};
+use mc_fog_uri::{ConnectionUri, FogLedgerUri, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root, ring_signature::KeyImage, tokens::Mob, Amount,
     Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
-use tempfile::TempDir;
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, RwLock},
+    thread::sleep,
+    time::Duration,
+};
+use tempdir::TempDir;
 use url::Url;
 
 const TEST_URL: &str = "http://www.my_url1.com";
@@ -48,7 +60,7 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
     let url = Url::parse(TEST_URL).unwrap();
 
-    let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
+    let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
     WatcherDB::create(db_tmp.path()).unwrap();
     let watcher = WatcherDB::open_rw(db_tmp.path(), &[url], logger).unwrap();
     let watcher_dir = db_tmp.path().to_path_buf();
@@ -73,7 +85,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         ];
 
         // Make LedgerDB
-        let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
+        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -107,22 +119,30 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
         {
             // Make LedgerServer
-            let client_uri = FogLedgerUri::from_str(&format!(
+            let client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
                 portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
-            let config = LedgerServerConfig {
+            let admin_listen_uri = AdminUri::from_str(&format!(
+                "insecure-mca://127.0.0.1:{}",
+                portpicker::pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir,
-                admin_listen_uri: Default::default(),
-                client_listen_uri: client_uri.clone(),
-                client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+                admin_listen_uri: admin_listen_uri.clone(),
+                client_listen_uri: client_listen_uri.clone(),
+                client_responder_id: client_listen_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for router"),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
+                query_retries: 3,
                 omap_capacity: OMAP_CAPACITY,
             };
 
@@ -133,24 +153,21 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 logger.clone(),
             );
 
-            let ra_client =
-                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-            let mut ledger_server = LedgerServer::new(
+            let ra_client =
+                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+            let mut ledger_server = LedgerRouterServer::new(
                 config,
                 enclave,
+                ra_client,
+                Arc::new(RwLock::new(HashMap::new())),
                 ledger.clone(),
                 watcher.clone(),
-                ra_client,
-                SystemTimeProvider::default(),
                 logger.clone(),
             );
 
-            ledger_server
-                .start()
-                .expect("Failed starting ledger server");
+            ledger_server.start();
 
             // Make ledger enclave client
             let mut mr_signer_verifier =
@@ -164,7 +181,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
             let mut client = FogMerkleProofGrpcClient::new(
                 "local".to_string(),
-                client_uri.clone(),
+                client_listen_uri.clone(),
                 GRPC_RETRY_CONFIG,
                 verifier.clone(),
                 grpc_env.clone(),
@@ -219,7 +236,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Check that wrong chain id results in an error
             let mut client = FogMerkleProofGrpcClient::new(
                 "wrong".to_string(),
-                client_uri,
+                client_listen_uri,
                 GRPC_RETRY_CONFIG,
                 verifier,
                 grpc_env,
@@ -245,13 +262,14 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                         assert_eq!(status.message(), expected);
                     }
                     _ => {
-                        panic!("unexpected grpcio error: {err}");
+                        panic!("unexpected grpcio error: {}", err);
                     }
                 }
             } else {
                 panic!("Expected an error when chain-id is wrong");
             }
         }
+
         // grpcio detaches all its threads and does not join them :(
         // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
         // in the meantime we can just sleep after grpcio env and all related
@@ -275,7 +293,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         let keys: Vec<KeyImage> = (0..20).map(|x| KeyImage::from(x as u64)).collect();
 
         // Make LedgerDB
-        let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
+        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -334,51 +352,112 @@ fn fog_ledger_key_images_test(logger: Logger) {
         watcher.update_last_synced(&url1, 2).unwrap();
 
         {
-            // Make LedgerServer
-            let client_uri = FogLedgerUri::from_str(&format!(
-                "insecure-fog-ledger://127.0.0.1:{}",
+            // Make Key Image Store
+            let store_uri = KeyImageStoreUri::from_str(&format!(
+                "insecure-key-image-store://127.0.0.1:{}",
                 portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
-            let config = LedgerServerConfig {
+            let store_admin_uri = AdminUri::from_str(&format!(
+                "insecure-mca://127.0.0.1:{}",
+                portpicker::pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let store_config = LedgerStoreConfig {
+                chain_id: "local".to_string(),
+                client_responder_id: store_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for store"),
+                client_listen_uri: store_uri.clone(),
+                ledger_db: db_full_path.to_path_buf(),
+                watcher_db: watcher_dir.clone(),
+                ias_api_key: Default::default(),
+                ias_spid: Default::default(),
+                admin_listen_uri: Some(store_admin_uri),
+                client_auth_token_secret: None,
+                client_auth_token_max_lifetime: Default::default(),
+                omap_capacity: OMAP_CAPACITY,
+                sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+            };
+            let store_enclave = LedgerSgxEnclave::new(
+                get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
+                &store_config.client_responder_id,
+                OMAP_CAPACITY,
+                logger.clone(),
+            );
+            let ra_client =
+                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
+            let mut store_server = KeyImageStoreServer::new_from_config(
+                store_config,
+                store_enclave,
+                ra_client,
+                ledger.clone(),
+                watcher.clone(),
+                EpochShardingStrategy::default(),
+                SystemTimeProvider::default(),
+                logger.clone(),
+            );
+
+            // Make Key Image Store client
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+
+            let store_client = KeyImageStoreApiClient::new(
+                ChannelBuilder::default_channel_builder(grpc_env.clone())
+                    .connect_to_uri(&store_uri, &logger),
+            );
+            let mut store_clients = HashMap::new();
+            store_clients.insert(store_uri, Arc::new(store_client));
+            let shards = Arc::new(RwLock::new(store_clients));
+
+            // Make Router Server
+            let client_listen_uri = FogLedgerUri::from_str(&format!(
+                "insecure-fog-ledger://127.0.0.1:{}",
+                portpicker::pick_unused_port().expect("No free ports"),
+            ))
+            .unwrap();
+            let admin_listen_uri = AdminUri::from_str(&format!(
+                "insecure-mca://127.0.0.1:{}",
+                portpicker::pick_unused_port().expect("No free ports")
+            ))
+            .unwrap();
+            let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir,
-                admin_listen_uri: Default::default(),
-                client_listen_uri: client_uri.clone(),
-                client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+                admin_listen_uri: admin_listen_uri.clone(),
+                client_listen_uri: client_listen_uri.clone(),
+                client_responder_id: client_listen_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for router"),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
+                query_retries: 3,
                 omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
-                &config.client_responder_id,
+                &router_config.client_responder_id,
                 OMAP_CAPACITY,
                 logger.clone(),
             );
 
             let ra_client =
-                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
-            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
-
-            let mut ledger_server = LedgerServer::new(
-                config,
+                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
+            let mut router_server = LedgerRouterServer::new(
+                router_config,
                 enclave,
-                ledger.clone(),
-                watcher,
                 ra_client,
-                SystemTimeProvider::default(),
+                shards,
+                ledger.clone(),
+                watcher.clone(),
                 logger.clone(),
             );
 
-            ledger_server
-                .start()
-                .expect("Failed starting ledger server");
+            store_server.start();
+            router_server.start();
 
             // Make ledger enclave client
             let mut mr_signer_verifier =
@@ -390,26 +469,21 @@ fn fog_ledger_key_images_test(logger: Logger) {
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-            let mut client = FogKeyImageGrpcClient::new(
-                String::default(),
-                client_uri,
-                GRPC_RETRY_CONFIG,
-                verifier,
-                grpc_env,
-                logger.clone(),
-            );
+            let mut client =
+                LedgerGrpcClient::new(client_listen_uri, verifier, grpc_env, logger.clone());
 
             // Check on key images
-            let mut response = client
-                .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
-                .expect("check_key_images failed");
+            let mut response =
+                block_on(client.check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]]))
+                    .expect("check_key_images failed");
 
             let mut n = 1;
             // adding a delay to give fog ledger time to fully initialize
             while response.num_blocks != num_blocks {
-                response = client
-                    .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
-                    .expect("check_key_images failed");
+                response = block_on(
+                    client.check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]]),
+                )
+                .expect("check_key_images failed");
 
                 sleep(Duration::from_secs(10));
                 // panic on the 20th time
@@ -488,7 +562,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     let recipients = vec![alice.default_subaddress()];
 
     // Make LedgerDB
-    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -535,22 +609,30 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
 
     {
         // Make LedgerServer
-        let client_uri = FogLedgerUri::from_str(&format!(
+        let client_listen_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
             portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
-        let config = LedgerServerConfig {
+        let admin_listen_uri = AdminUri::from_str(&format!(
+            "insecure-mca://127.0.0.1:{}",
+            portpicker::pick_unused_port().expect("No free ports")
+        ))
+        .unwrap();
+        let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
             ledger_db: db_full_path.to_path_buf(),
             watcher_db: watcher_dir,
-            admin_listen_uri: Default::default(),
-            client_listen_uri: client_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+            admin_listen_uri,
+            client_listen_uri: client_listen_uri.clone(),
+            client_responder_id: client_listen_uri
+                .responder_id()
+                .expect("Couldn't get responder ID for router"),
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
+            query_retries: 3,
             omap_capacity: OMAP_CAPACITY,
         };
 
@@ -561,28 +643,29 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             logger.clone(),
         );
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let mut ledger_server = LedgerServer::new(
+        let ra_client =
+            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+        let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ledger.clone(),
-            watcher,
             ra_client,
-            SystemTimeProvider::default(),
+            Arc::new(RwLock::new(HashMap::new())),
+            ledger.clone(),
+            watcher.clone(),
             logger.clone(),
         );
 
-        ledger_server
-            .start()
-            .expect("Failed starting ledger server");
+        ledger_server.start();
 
         // Make unattested ledger client
-        let client =
-            FogUntrustedLedgerGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, grpc_env, logger);
+        let client = FogUntrustedLedgerGrpcClient::new(
+            client_listen_uri,
+            GRPC_RETRY_CONFIG,
+            grpc_env,
+            logger.clone(),
+        );
 
         // Try to get a block
         let queries = [0..1];
@@ -644,7 +727,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     let recipients = vec![alice.default_subaddress()];
 
     // Make LedgerDB
-    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -691,22 +774,30 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
 
     {
         // Make LedgerServer
-        let client_uri = FogLedgerUri::from_str(&format!(
+        let client_listen_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
             portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
-        let config = LedgerServerConfig {
+        let admin_listen_uri = AdminUri::from_str(&format!(
+            "insecure-mca://127.0.0.1:{}",
+            portpicker::pick_unused_port().expect("No free ports")
+        ))
+        .unwrap();
+        let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
             ledger_db: db_full_path.to_path_buf(),
             watcher_db: watcher_dir,
-            admin_listen_uri: Default::default(),
-            client_listen_uri: client_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+            admin_listen_uri,
+            client_listen_uri: client_listen_uri.clone(),
+            client_responder_id: client_listen_uri
+                .responder_id()
+                .expect("Couldn't get responder ID for router"),
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
+            query_retries: 3,
             omap_capacity: OMAP_CAPACITY,
         };
 
@@ -717,35 +808,36 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             logger.clone(),
         );
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let mut ledger_server = LedgerServer::new(
+        let ra_client =
+            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+        let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ledger.clone(),
-            watcher,
             ra_client,
-            SystemTimeProvider::default(),
+            Arc::new(RwLock::new(HashMap::new())),
+            ledger.clone(),
+            watcher.clone(),
             logger.clone(),
         );
 
-        ledger_server
-            .start()
-            .expect("Failed starting ledger server");
+        ledger_server.start();
 
         // Make unattested ledger client
-        let client =
-            FogUntrustedLedgerGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, grpc_env, logger);
+        let client = FogUntrustedLedgerGrpcClient::new(
+            client_listen_uri,
+            GRPC_RETRY_CONFIG,
+            grpc_env,
+            logger.clone(),
+        );
 
         // Get a tx_out that is actually in the ledger
         let real_tx_out0 = { ledger.get_tx_out_by_index(0).unwrap() };
 
         // Try to get tx out records
-        let key = CompressedRistrettoPublic::try_from(&[0u8; 32]).expect("Could not construct key");
-        let queries: Vec<CompressedRistrettoPublic> = vec![key, real_tx_out0.public_key];
+        let queries: Vec<CompressedRistrettoPublic> =
+            vec![(&[0u8; 32]).into(), real_tx_out0.public_key];
         let result = client.get_tx_outs(queries).unwrap();
         // Check that we got expected num_blocks value
         assert_eq!(result.num_blocks, 4);
@@ -813,7 +905,7 @@ fn add_block_to_ledger(
                 src_url,
                 block_index,
                 signature.clone(),
-                format!("00/{block_index}"),
+                format!("00/{}", block_index),
             )
             .expect("Could not add block signature");
     }
