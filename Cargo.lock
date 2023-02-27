@@ -3739,22 +3739,30 @@ dependencies = [
 name = "mc-fog-ledger-connection"
 version = "4.0.2"
 dependencies = [
+ "aes-gcm",
  "displaydoc",
+ "futures",
  "grpcio",
  "mc-api",
+ "mc-attest-ake",
+ "mc-attest-core",
  "mc-attest-verifier",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-types",
  "mc-fog-uri",
  "mc-transaction-core",
  "mc-util-grpc",
+ "mc-util-serial",
  "mc-util-uri",
  "protobuf",
  "retry",
+ "sha2 0.10.6",
 ]
 
 [[package]]

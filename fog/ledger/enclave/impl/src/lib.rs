@@ -354,7 +354,7 @@ where
         &self,
         auth_request: NonceAuthRequest,
     ) -> Result<(NonceAuthResponse, NonceSession)> {
-        self.ake.frontend_accept(auth_request).map_err(|e| e.into())
+        Ok(self.ake.frontend_accept(auth_request)?)
     }
 }
 

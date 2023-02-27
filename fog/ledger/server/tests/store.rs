@@ -28,7 +28,6 @@ use mc_fog_ledger_server::{
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
-use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::AnonymousAuthenticator;
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
@@ -36,6 +35,7 @@ use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
+use portpicker::pick_unused_port;
 use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
@@ -151,8 +151,9 @@ lazy_static::lazy_static! {
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
     const TEST_NAME: &str = "direct_key_image_store_check";
-    const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
+
+    let port = pick_unused_port().expect("No free ports");
 
     let rng = RngType::from_entropy();
     let TestingContext {
@@ -165,7 +166,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         watcher,
         store_config,
         watcher_path: _watcher_path,
-    } = TestingContext::new(TEST_NAME, logger.clone(), PORT_START, OMAP_CAPACITY, rng);
+    } = TestingContext::new(TEST_NAME, logger.clone(), port, OMAP_CAPACITY, rng);
 
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
@@ -181,27 +182,20 @@ pub fn direct_key_image_store_check(logger: Logger) {
         logger.clone(),
     );
 
-    let mut store_server = KeyImageStoreServer::new_from_service(
-        store_service,
-        client_listen_uri,
-        enclave.clone(),
-        EpochShardingStrategy::default(),
-        logger.clone(),
-    );
-    store_server.start();
-
     // Set up IAS verficiation
     // This will be a SimClient in testing contexts.
     let ias_client =
         AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
-    let _report_cache_thread = ReportCacheThread::start(
+    let mut store_server = KeyImageStoreServer::new_from_service(
+        store_service,
+        client_listen_uri,
         enclave.clone(),
         ias_client,
         store_config.ias_spid,
-        &TEST_ENCLAVE_REPORT_TIMESTAMP,
+        EpochShardingStrategy::default(),
         logger.clone(),
-    )
-    .expect("Failed to start IAS client.");
+    );
+    store_server.start();
 
     // Make GRPC client for sending requests.
 
