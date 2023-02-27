@@ -37,6 +37,7 @@ use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
 use aes_gcm::Aes256Gcm;
+use portpicker::pick_unused_port;
 use sha2::Sha512;
 use tempdir::TempDir;
 use url::Url;
@@ -152,10 +153,9 @@ lazy_static::lazy_static! {
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
     const TEST_NAME: &str = "direct_key_image_store_check";
-    const PORT_START: u16 = 3223;
     const OMAP_CAPACITY: u64 = 768;
 
-    let port = PORT_START;
+    let port = pick_unused_port().expect("No free ports");
 
     let rng = RngType::from_entropy();
     let TestingContext {
@@ -183,11 +183,15 @@ pub fn direct_key_image_store_check(logger: Logger) {
         Arc::new(AnonymousAuthenticator::default()),
         logger.clone(),
     );
+    let ra_client =
+        AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
 
     let mut store_server = KeyImageStoreServer::new_from_service(
         store_service,
         client_listen_uri,
         enclave.clone(),
+        ra_client,
+        store_config.ias_spid,
         EpochShardingStrategy::default(),
         logger.clone(),
     );

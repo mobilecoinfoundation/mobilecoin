@@ -73,7 +73,36 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         self.db_poll_shared_state.clone()
     }
 
-    pub fn auth_impl(
+    pub fn auth_store(
+        &mut self,
+        mut req: AuthMessage,
+        logger: &Logger,
+    ) -> Result<attest::AuthMessage, RpcStatus> {
+        // TODO: Use the prost message directly, once available
+        match self.enclave.frontend_accept(req.take_data().into()) {
+            Ok((response, _)) => {
+                let mut result = attest::AuthMessage::new();
+                result.set_data(response.into());
+                Ok(result)
+            }
+            Err(client_error) => {
+                // There's no requirement on the remote party to trigger this, so it's debug.
+                log::debug!(
+                    logger,
+                    "KeyImageStoreApi::frontend_accept failed: {}",
+                    client_error
+                );
+                let rpc_permissions_error = rpc_permissions_error(
+                    "auth_store",
+                    format!("Permission denied: {}", client_error),
+                    logger,
+                );
+                Err(rpc_permissions_error)
+            }
+        }
+    }
+
+    pub fn auth_service(
         &mut self,
         mut req: AuthMessage,
         logger: &Logger,
@@ -247,7 +276,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            match self.auth_impl(request, logger) {
+            match self.auth_service(request, logger) {
                 Ok(response) => {
                     send_result(ctx, sink, Ok(response), logger);
                 }
@@ -280,7 +309,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
                 return send_result(ctx, sink, err.into(), logger);
             }
 
-            match self.auth_impl(req, logger) {
+            match self.auth_store(req, logger) {
                 Ok(response) => {
                     send_result(ctx, sink, Ok(response), logger);
                 }
@@ -289,7 +318,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
                     // it.
                     log::info!(
                         logger,
-                        "LedgerEnclave::client_accept failed: {}",
+                        "LedgerEnclave::frontend_accept failed: {}",
                         client_error
                     );
                     // TODO: increment failed inbound peering counter.
