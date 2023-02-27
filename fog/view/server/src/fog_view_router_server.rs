@@ -111,7 +111,10 @@ where
             .read()
             .expect("RwLock poisoned")
             .iter()
-            .map(|shard| {
+            .enumerate()
+            .map(|(i, shard)| {
+                let uri = &shard.uri;
+                log::info!(logger, "HealthClient {i} uri is: {uri}");
                 let channel = ChannelBuilder::default_channel_builder(env.clone())
                     .connect_to_uri(&shard.uri, &logger);
                 HealthClient::new(channel)
