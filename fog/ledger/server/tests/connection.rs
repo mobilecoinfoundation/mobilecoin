@@ -110,7 +110,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports"),
+                portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -339,7 +339,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make LedgerServer
             let client_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let config = LedgerServerConfig {
@@ -539,7 +539,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {
@@ -699,7 +699,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         // Make LedgerServer
         let client_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerServerConfig {

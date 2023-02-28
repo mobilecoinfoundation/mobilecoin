@@ -87,7 +87,7 @@ where
 
 /// Used for the implementation of FogKeyImageApi::check_key_images(),
 /// the legacy unary key-image API, for LedgerRouterService.
-async fn unary_check_key_image_inner<E>(
+async fn unary_check_key_image_impl<E>(
     request: Message,
     query_retries: usize,
     enclave: E,
@@ -114,7 +114,8 @@ where
             } else {
                 let error = rpc_internal_error(
                     "Inavlid LedgerRequest response",
-                    "No check key image response to client's key image request.".to_string(),
+                    "Cannot provide a check key image response to the client's key image request."
+                        .to_string(),
                     &scope_logger,
                 );
                 sink.fail(error).await
@@ -132,7 +133,7 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
             let logger = logger.clone();
             let shards = self.shards.read().expect("RwLock poisoned");
 
-            let future = unary_check_key_image_inner(
+            let future = unary_check_key_image_impl(
                 request,
                 self.query_retries,
                 self.enclave.clone(),

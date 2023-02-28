@@ -13,13 +13,12 @@ use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
     time::SystemTimeProvider,
-    ResponderId,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
 use mc_fog_ledger_connection::{
-    Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
+    Error, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient, KeyImageResultExtension,
+    LedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -38,7 +37,6 @@ use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig, CHAIN_ID_MISMATC
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
-use portpicker::pick_unused_port;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -123,12 +121,12 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Make LedgerServer
             let client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports"),
+                portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let admin_listen_uri = AdminUri::from_str(&format!(
                 "insecure-mca://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let config = LedgerRouterConfig {
@@ -137,7 +135,9 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
-                client_responder_id: ResponderId::from_str(&client_listen_uri.addr()).unwrap(),
+                client_responder_id: client_listen_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for router"),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
@@ -355,12 +355,12 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make Key Image Store
             let store_uri = KeyImageStoreUri::from_str(&format!(
                 "insecure-key-image-store://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let store_admin_uri = AdminUri::from_str(&format!(
                 "insecure-mca://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let store_config = LedgerStoreConfig {
@@ -412,12 +412,12 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make Router Server
             let client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports"),
+                portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let admin_listen_uri = AdminUri::from_str(&format!(
                 "insecure-mca://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let router_config = LedgerRouterConfig {
@@ -426,7 +426,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
-                client_responder_id: ResponderId::from_str(&client_listen_uri.addr()).unwrap(),
+                client_responder_id: client_listen_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for router"),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
@@ -609,12 +611,12 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         // Make LedgerServer
         let client_listen_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let admin_listen_uri = AdminUri::from_str(&format!(
             "insecure-mca://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerRouterConfig {
@@ -623,7 +625,9 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             watcher_db: watcher_dir,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_listen_uri.addr()).unwrap(),
+            client_responder_id: client_listen_uri
+                .responder_id()
+                .expect("Couldn't get responder ID for router"),
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
@@ -772,12 +776,12 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         // Make LedgerServer
         let client_listen_uri = FogLedgerUri::from_str(&format!(
             "insecure-fog-ledger://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let admin_listen_uri = AdminUri::from_str(&format!(
             "insecure-mca://127.0.0.1:{}",
-            pick_unused_port().expect("No free ports")
+            portpicker::pick_unused_port().expect("No free ports")
         ))
         .unwrap();
         let config = LedgerRouterConfig {
@@ -786,7 +790,9 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             watcher_db: watcher_dir,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_listen_uri.addr()).unwrap(),
+            client_responder_id: client_listen_uri
+                .responder_id()
+                .expect("Couldn't get responder ID for router"),
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
@@ -939,12 +945,12 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             // Make Key Image Store
             let store_uri = KeyImageStoreUri::from_str(&format!(
                 "insecure-key-image-store://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let store_admin_uri = AdminUri::from_str(&format!(
                 "insecure-mca://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let store_config = LedgerStoreConfig {
@@ -996,12 +1002,12 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             // Make Router Server
             let router_client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports"),
+                portpicker::pick_unused_port().expect("No free ports"),
             ))
             .unwrap();
             let admin_listen_uri = AdminUri::from_str(&format!(
                 "insecure-mca://127.0.0.1:{}",
-                pick_unused_port().expect("No free ports")
+                portpicker::pick_unused_port().expect("No free ports")
             ))
             .unwrap();
             let router_config = LedgerRouterConfig {
@@ -1010,7 +1016,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: router_client_listen_uri.clone(),
-                client_responder_id: ResponderId::from_str(&router_client_listen_uri.addr())
+                client_responder_id: router_client_listen_uri
+                    .responder_id()
+                    .expect("Couldn't get responder ID for router"),
                     .unwrap(),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
