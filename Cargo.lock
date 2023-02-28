@@ -3919,6 +3919,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.6",
  "tempdir",
+ "tokio",
  "url",
  "x509-signature",
 ]
@@ -3927,6 +3928,8 @@ dependencies = [
 name = "mc-fog-ledger-test-infra"
 version = "4.0.2"
 dependencies = [
+ "http",
+ "hyper",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-blockchain-types",
@@ -3938,6 +3941,8 @@ dependencies = [
  "mc-ledger-db",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
+ "rand 0.8.5",
+ "tokio",
 ]
 
 [[package]]
@@ -8238,6 +8243,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "once_cell",
+ "parking_lot 0.11.2",
  "pin-project-lite",
  "signal-hook-registry",
  "tokio-macros",

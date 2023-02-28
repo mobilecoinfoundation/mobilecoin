@@ -22,3 +22,10 @@ mc-transaction-core = {  path = "../../../transaction/core" }
 mc-fog-ledger-enclave = {  path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }
 mc-fog-types = { path = "../../types" }
+
+# third party
+http = "0.2"
+hyper = { version = "0.14", features = ["full"] }
+rand = "0.8"
+tokio = { version = "1", features = ["full"] }
+
