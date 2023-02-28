@@ -155,6 +155,7 @@ pub fn get_router_callback(
     logger: Logger
 ) -> ServiceHealthCheckCallback {
     Arc::new(move |_| -> HealthCheckStatus {
+        log::info!("Health check callback executing...");
         let is_ready = shard_health_clients.iter().all(|client| {
             let mut request = HealthCheckRequest::new();
             request.set_service("fog-view".to_string());
