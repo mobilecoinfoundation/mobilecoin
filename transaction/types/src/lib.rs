@@ -13,7 +13,8 @@ extern crate alloc;
 pub use crate::{
     amount::{Amount, AmountError},
     block_version::{BlockVersion, BlockVersionError, BlockVersionIterator},
-    unmasked_amount::UnmaskedAmount, token::TokenId,
+    token::TokenId,
+    unmasked_amount::UnmaskedAmount,
 };
 #[cfg(feature = "alloc")]
 pub use crate::{
