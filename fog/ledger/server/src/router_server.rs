@@ -6,6 +6,7 @@ use std::{
 };
 
 use futures::executor::block_on;
+use grpcio::ChannelBuilder;
 use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
@@ -17,8 +18,8 @@ use mc_fog_uri::{ConnectionUri, FogLedgerUri, KeyImageStoreUri};
 use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
-    TokenAuthenticator,
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer,
+    ReadinessIndicator, TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -49,6 +50,40 @@ where
     E: LedgerEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
+    pub fn new_from_config(
+        config: LedgerRouterConfig,
+        enclave: E,
+        ra_client: RC,
+        ledger: LedgerDB,
+        watcher: WatcherDB,
+        logger: Logger,
+    ) -> LedgerRouterServer<E, RC> {
+        let mut ledger_store_grpc_clients = HashMap::new();
+        let grpc_env = Arc::new(
+            grpcio::EnvBuilder::new()
+                .name_prefix("Main-RPC".to_string())
+                .build(),
+        );
+        for shard_uri in config.shard_uris.clone() {
+            let ledger_store_grpc_client = ledger_grpc::KeyImageStoreApiClient::new(
+                ChannelBuilder::default_channel_builder(grpc_env.clone())
+                    .connect_to_uri(&shard_uri, &logger),
+            );
+            ledger_store_grpc_clients.insert(shard_uri, Arc::new(ledger_store_grpc_client));
+        }
+        let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
+
+        LedgerRouterServer::new(
+            config,
+            enclave,
+            ra_client,
+            ledger_store_grpc_clients,
+            ledger,
+            watcher,
+            logger,
+        )
+    }
+
     pub fn new(
         config: LedgerRouterConfig,
         enclave: E,

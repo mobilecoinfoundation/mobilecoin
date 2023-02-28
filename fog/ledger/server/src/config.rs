@@ -106,7 +106,7 @@ pub struct LedgerRouterConfig {
     pub client_listen_uri: FogLedgerUri,
 
     /// gRPC listening URIs for preconfigured Key Image Stores.
-    #[clap(long, env = "MC_KEY_IMAGE_SHARD_URIS")]
+    #[clap(long, use_value_delimiter = true, env = "MC_KEY_IMAGE_SHARD_URIS")]
     pub shard_uris: Vec<KeyImageStoreUri>,
 
     /// Router admin listening URI.

@@ -361,7 +361,7 @@ class FogLedgerRouter:
         assert os.path.exists(os.path.join(self.watcher_db_path, 'data.mdb')), self.watcher_db_path
         self.stop()
 
-        print(f'Starting fog ledger {self.name}')
+        print(f'Starting fog ledger router {self.name}')
         cmd = ' '.join([
             f'exec {self.target_dir}/ledger_router',
             f'--ledger-db={self.ledger_db_path}',

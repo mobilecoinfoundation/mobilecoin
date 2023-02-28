@@ -4,7 +4,6 @@
 //! grpc API
 
 use futures::executor::block_on;
-use grpcio::ChannelBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
@@ -15,7 +14,7 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
-use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
+use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -33,7 +32,7 @@ use mc_transaction_core::{
     Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
+use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -138,6 +137,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 client_responder_id: client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
+                shard_uris: vec![],
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
@@ -398,17 +398,6 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 logger.clone(),
             );
 
-            // Make Key Image Store client
-            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
-
-            let store_client = KeyImageStoreApiClient::new(
-                ChannelBuilder::default_channel_builder(grpc_env.clone())
-                    .connect_to_uri(&store_uri, &logger),
-            );
-            let mut store_clients = HashMap::new();
-            store_clients.insert(store_uri, Arc::new(store_client));
-            let shards = Arc::new(RwLock::new(store_clients));
-
             // Make Router Server
             let client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
@@ -426,6 +415,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 watcher_db: watcher_dir,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
+                shard_uris: vec![store_uri],
                 client_responder_id: client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
@@ -446,11 +436,10 @@ fn fog_ledger_key_images_test(logger: Logger) {
 
             let ra_client =
                 AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
-            let mut router_server = LedgerRouterServer::new(
+            let mut router_server = LedgerRouterServer::new_from_config(
                 router_config,
                 enclave,
                 ra_client,
-                shards,
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),
@@ -469,6 +458,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client =
                 LedgerGrpcClient::new(client_listen_uri, verifier, grpc_env, logger.clone());
 
@@ -628,6 +618,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             client_responder_id: client_listen_uri
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
+            shard_uris: vec![],
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
@@ -793,6 +784,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             client_responder_id: client_listen_uri
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
+            shard_uris: vec![],
             ias_spid: Default::default(),
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
