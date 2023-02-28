@@ -1019,7 +1019,6 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_responder_id: router_client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
-                    .unwrap(),
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
