@@ -10,14 +10,16 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-pub use amount::{Amount, AmountError};
-pub use block_version::{BlockVersion, BlockVersionError, BlockVersionIterator};
+pub use crate::{
+    amount::{Amount, AmountError},
+    block_version::{BlockVersion, BlockVersionError, BlockVersionIterator},
+    unmasked_amount::UnmaskedAmount, token::TokenId,
+};
 #[cfg(feature = "alloc")]
-pub use masked_amount::{MaskedAmount, MaskedAmountV1, MaskedAmountV2};
-pub use token::TokenId;
-#[cfg(feature = "alloc")]
-pub use tx_summary::{TxInSummary, TxOutSummary, TxSummary};
-pub use unmasked_amount::UnmaskedAmount;
+pub use crate::{
+    masked_amount::{MaskedAmount, MaskedAmountV1, MaskedAmountV2},
+    tx_summary::{TxInSummary, TxOutSummary, TxSummary},
+};
 
 pub mod constants;
 pub mod domain_separators;

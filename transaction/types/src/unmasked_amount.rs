@@ -2,7 +2,6 @@
 
 //! Unmasked amount types
 use crate::{amount::Amount, TokenId};
-
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::CurveScalar;
 
