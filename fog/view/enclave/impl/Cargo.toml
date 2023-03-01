@@ -1,13 +1,16 @@
 [package]
 name = "mc-fog-view-enclave-impl"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [dependencies]
 aes-gcm = "0.10.1"
 aligned-cmov = "2.2"
+static_assertions = "1.1.0"
+
 mc-attest-ake = { path = "../../../../attest/ake", default-features = false }
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }

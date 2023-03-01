@@ -3,6 +3,7 @@
 //! The MobileCoin consensus node.
 
 #![feature(test)]
+#![allow(clippy::result_large_err)]
 
 #[cfg(test)]
 extern crate test;

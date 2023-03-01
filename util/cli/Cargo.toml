@@ -1,13 +1,16 @@
 [package]
 name = "mc-util-cli"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-util-build-info = { path = "../build/info" }
 
-clap = { version = "4.0", features = ["string"] }
+clap = { version = "4.1", features = ["string"] }
 
 [dev-dependencies]
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }

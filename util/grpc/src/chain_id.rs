@@ -15,7 +15,7 @@ pub fn check_request_chain_id(server_chain_id: &str, ctx: &RpcContext) -> Result
         if header == CHAIN_ID_GRPC_HEADER && server_chain_id.as_bytes() != value {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::FAILED_PRECONDITION,
-                format!("{} '{}'", CHAIN_ID_MISMATCH_ERR_MSG, server_chain_id),
+                format!("{CHAIN_ID_MISMATCH_ERR_MSG} '{server_chain_id}'"),
             ));
         }
     }

@@ -1,8 +1,10 @@
 [package]
 name = "mc-util-grpc-admin-tool"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mc-util-grpc-admin-tool"
@@ -13,5 +15,5 @@ mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
 mc-util-uri = { path = "../uri" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
-grpcio = "0.12.0"
+clap = { version = "4.1", features = ["derive", "env"] }
+grpcio = "0.12.1"

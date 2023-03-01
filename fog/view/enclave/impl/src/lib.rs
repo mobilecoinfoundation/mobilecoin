@@ -3,6 +3,7 @@
 //! View Enclave Implementation
 
 #![no_std]
+#![allow(clippy::result_large_err)]
 
 extern crate alloc;
 

@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-view-connection"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 
@@ -31,7 +33,7 @@ mc-fog-view-protocol = { path = "../protocol" }
 # third-party
 aes-gcm = "0.10.1"
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }
 tokio = "1.16.1"

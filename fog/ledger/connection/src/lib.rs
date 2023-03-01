@@ -3,6 +3,7 @@
 //! Rust objects wrapping the grpc interface
 
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 mod block;
 pub use block::FogBlockGrpcClient;
 

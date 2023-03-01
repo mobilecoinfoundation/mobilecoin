@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [lib]
 name = "mc_fog_ledger_server"
@@ -54,10 +56,10 @@ mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 # third-party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 itertools = "0.10"
 lazy_static = "1.4"
 rand = "0.8"

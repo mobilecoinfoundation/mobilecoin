@@ -157,13 +157,11 @@ fn are_all_remaining_blocks_missing(
     remaining_block_range: BlockRange,
     missed_block_ranges: &[BlockRange],
 ) -> bool {
-    (remaining_block_range.start_block..remaining_block_range.end_block)
-        .into_iter()
-        .all(|block_index| {
-            missed_block_ranges
-                .iter()
-                .any(|missed_block_range| missed_block_range.contains(block_index))
-        })
+    (remaining_block_range.start_block..remaining_block_range.end_block).all(|block_index| {
+        missed_block_ranges
+            .iter()
+            .any(|missed_block_range| missed_block_range.contains(block_index))
+    })
 }
 
 impl From<&[DecryptedMultiViewStoreQueryResponse]> for LastKnownData {

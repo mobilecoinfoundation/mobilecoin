@@ -76,7 +76,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         rng: R,
     ) -> Self {
         // Set up our directories.
-        let test_dir_name = format!("fog_ledger_test_{}", test_name);
+        let test_dir_name = format!("fog_ledger_test_{test_name}");
         let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
         let user_keys_path = test_path.join(PathBuf::from("keys/"));
@@ -106,7 +106,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let ledger = recreate_ledger_db(ledger_path.as_path());
 
         // Set up wallet db.
-        let test_url_name = format!("http://{}.wallet.test.test", test_name);
+        let test_url_name = format!("http://{test_name}.wallet.test.test");
         let url = Url::parse(&test_url_name).unwrap();
 
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
@@ -207,7 +207,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
             ias_client,
             store_config.ias_spid,
             &TEST_ENCLAVE_REPORT_TIMESTAMP,
-            logger.clone(),
+            logger,
         )
         .unwrap(),
     )

@@ -45,8 +45,8 @@ fn main() {
         } else {
             print!(" ");
         }
-        println!("{{\"vpk\":{:?},", vpk);
-        println!("   \"spk\":{:?}}}", spk);
+        println!("{{\"vpk\":{vpk:?},");
+        println!("   \"spk\":{spk:?}}}");
         remaining -= 1;
         i += 1;
     }

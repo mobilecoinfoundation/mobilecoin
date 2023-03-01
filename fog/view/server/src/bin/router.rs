@@ -55,7 +55,7 @@ fn main() {
 
         // TODO: update this logic once we introduce other types of sharding strategies.
         let epoch_sharding_strategy = EpochShardingStrategy::try_from(shard_uri.clone())
-            .expect("Could not get sharding strategy");
+            .unwrap_or_else(|_| panic!("Could not get sharding strategy for uri: {shard_uri:?}"));
         let block_range = epoch_sharding_strategy.get_block_range();
         let shard = Shard::new(shard_uri, Arc::new(fog_view_store_grpc_client), block_range);
         shards.push(shard);

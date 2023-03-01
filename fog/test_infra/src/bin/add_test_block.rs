@@ -111,7 +111,7 @@ fn main() {
     let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
         &config.watcher,
         &[tx_source_url.clone()],
-        logger.clone(),
+        logger,
     )
     .expect("Could not create watcher_db");
 

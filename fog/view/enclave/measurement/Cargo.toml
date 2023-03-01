@@ -1,11 +1,12 @@
 [package]
 name = "mc-fog-view-enclave-measurement"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = "MobileCoin Fog View Enclave - Application Code"
-links = "view_enclave_measurement"
+edition = "2021"
 license = "GPL-3.0"
+links = "view_enclave_measurement"
+rust-version = { workspace = true }
 
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built

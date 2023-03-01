@@ -110,7 +110,7 @@ impl LedgerSgxEnclave {
 
         sgx_enclave
             .enclave_init(self_id, desired_capacity)
-            .unwrap_or_else(|e| panic!("enclave_init({}) failed: {:?}", self_id, e));
+            .unwrap_or_else(|e| panic!("enclave_init({self_id}) failed: {e:?}"));
 
         sgx_enclave
     }

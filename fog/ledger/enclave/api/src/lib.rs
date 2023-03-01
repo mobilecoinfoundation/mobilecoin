@@ -4,6 +4,7 @@
 
 #![no_std]
 #![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 extern crate alloc;
 

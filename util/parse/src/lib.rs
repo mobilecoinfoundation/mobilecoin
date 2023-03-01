@@ -24,9 +24,9 @@ pub fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseI
 /// as other stuff.
 pub fn load_css_file(filename: &str) -> Result<CssSignature, String> {
     let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+        fs::read(filename).map_err(|err| format!("Failed reading file '{filename}': {err}"))?;
     let signature = CssSignature::try_from(&bytes[..])
-        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
+        .map_err(|err| format!("Failed parsing CSS file '{filename}': {err}"))?;
     Ok(signature)
 }
 

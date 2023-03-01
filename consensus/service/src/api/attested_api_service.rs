@@ -161,7 +161,7 @@ mod peer_tests {
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
             .expect("Could not create anonymous bind");
         server.start();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
@@ -188,13 +188,13 @@ mod peer_tests {
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }
@@ -227,7 +227,7 @@ mod client_tests {
             .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
             .expect("Could not create anonymous bind");
         server.start();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
@@ -254,13 +254,13 @@ mod client_tests {
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err) => {
-                panic!("Unexpected error {:?}", err);
+                panic!("Unexpected error {err:?}");
             }
         }
     }

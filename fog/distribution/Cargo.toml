@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-distribution"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "fog-distribution"
@@ -29,12 +31,12 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 lazy_static = "1.4"
 rand = "0.8"
-rayon = "1.5"
+rayon = "1.6"
 retry = "2.0"
 tempfile = "3.3"
 

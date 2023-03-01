@@ -1,9 +1,10 @@
 [package]
 name = "mc-fog-report-cli"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "fog-report-cli"
@@ -25,7 +26,7 @@ mc-util-cli = { path = "../../../util/cli" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-uri = { path = "../../../util/uri" }
 
-base64 = "0.13"
-clap = { version = "4.0", features = ["derive", "env"] }
-grpcio = "0.12.0"
+base64 = "0.21"
+clap = { version = "4.1", features = ["derive", "env"] }
+grpcio = "0.12.1"
 hex = "0.4"

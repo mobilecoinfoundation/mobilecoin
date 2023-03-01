@@ -58,7 +58,7 @@ fn main() {
                 // Append new data to the ledger
                 local_ledger
                     .append_block_data(&block_data)
-                    .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
+                    .unwrap_or_else(|_| panic!("Could not append block {block_index:?}"))
             }
             Err(err) => {
                 log::info!(

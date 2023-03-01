@@ -32,6 +32,7 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
+
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use tempdir::TempDir;
 use url::Url;
@@ -245,14 +246,13 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                         assert_eq!(status.message(), expected);
                     }
                     _ => {
-                        panic!("unexpected grpcio error: {}", err);
+                        panic!("unexpected grpcio error: {err}");
                     }
                 }
             } else {
                 panic!("Expected an error when chain-id is wrong");
             }
         }
-
         // grpcio detaches all its threads and does not join them :(
         // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
         // in the meantime we can just sleep after grpcio env and all related
@@ -582,12 +582,8 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             .expect("Failed starting ledger server");
 
         // Make unattested ledger client
-        let client = FogUntrustedLedgerGrpcClient::new(
-            client_uri,
-            GRPC_RETRY_CONFIG,
-            grpc_env,
-            logger.clone(),
-        );
+        let client =
+            FogUntrustedLedgerGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, grpc_env, logger);
 
         // Try to get a block
         let queries = [0..1];
@@ -742,12 +738,8 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             .expect("Failed starting ledger server");
 
         // Make unattested ledger client
-        let client = FogUntrustedLedgerGrpcClient::new(
-            client_uri,
-            GRPC_RETRY_CONFIG,
-            grpc_env,
-            logger.clone(),
-        );
+        let client =
+            FogUntrustedLedgerGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, grpc_env, logger);
 
         // Get a tx_out that is actually in the ledger
         let real_tx_out0 = { ledger.get_tx_out_by_index(0).unwrap() };
@@ -822,7 +814,7 @@ fn add_block_to_ledger(
                 src_url,
                 block_index,
                 signature.clone(),
-                format!("00/{}", block_index),
+                format!("00/{block_index}"),
             )
             .expect("Could not add block signature");
     }

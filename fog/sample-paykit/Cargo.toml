@@ -1,10 +1,11 @@
 [package]
 name = "mc-fog-sample-paykit"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "Apache-2.0"
 readme = "README.md"
-license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "balance_check"
@@ -52,10 +53,10 @@ mc-fog-view-connection = { path = "../view/connection" }
 mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
 protobuf = "2.27.1"
 rand = "0.8"

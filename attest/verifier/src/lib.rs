@@ -9,6 +9,7 @@
 
 #![doc = include_str!("../README.md")]
 #![no_std]
+#![allow(clippy::result_large_err)]
 
 mod avr;
 mod ias;

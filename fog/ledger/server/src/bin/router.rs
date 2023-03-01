@@ -71,7 +71,7 @@ fn main() {
             i
         );
         let shard_uri = KeyImageStoreUri::from_str(&shard_uri_string)
-            .unwrap_or_else(|_| panic!("Invalid shard URI string {}!", shard_uri_string));
+            .unwrap_or_else(|_| panic!("Invalid shard URI string {shard_uri_string}!"));
         let ledger_store_grpc_client = KeyImageStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
                 .connect_to_uri(&shard_uri, &logger),

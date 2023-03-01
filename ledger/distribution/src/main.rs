@@ -240,7 +240,7 @@ impl BlockHandler for LocalBlockWriter {
         let dir = dest.as_path().parent().expect("failed getting parent");
 
         fs::create_dir_all(dir)
-            .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
+            .unwrap_or_else(|e| panic!("failed creating directory {dir:?}: {e:?}"));
         fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
                 "failed writing block #{} to {:?}: {}",
@@ -281,11 +281,10 @@ impl BlockHandler for LocalBlockWriter {
         let dir = dest.as_path().parent().expect("failed getting parent");
 
         fs::create_dir_all(dir)
-            .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
+            .unwrap_or_else(|e| panic!("failed creating directory {dir:?}: {e:?}"));
         fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
-                "failed writing merged block #{}-{} to {:?}: {}",
-                first_block_index, last_block_index, dest, err,
+                "failed writing merged block #{first_block_index}-{last_block_index} to {dest:?}: {err}",
             )
         });
     }
@@ -336,10 +335,10 @@ fn main() {
             // See if the state file exists and read it if it does.
             if state_file_path.as_path().exists() {
                 let file_data = fs::read_to_string(&state_file_path).unwrap_or_else(|e| {
-                    panic!("Failed reading state file {:?}: {:?}", state_file_path, e)
+                    panic!("Failed reading state file {state_file_path:?}: {e:?}")
                 });
                 let state_data: StateData = serde_json::from_str(&file_data).unwrap_or_else(|e| {
-                    panic!("Failed parsing state file {:?}: {:?}", state_file_path, e)
+                    panic!("Failed parsing state file {state_file_path:?}: {e:?}")
                 });
                 state_data.next_block
             } else {
@@ -355,9 +354,8 @@ fn main() {
         }
 
         Destination::Local { path } => {
-            fs::create_dir_all(&path).unwrap_or_else(|_| {
-                panic!("Failed creating local destination directory {:?}", path)
-            });
+            fs::create_dir_all(&path)
+                .unwrap_or_else(|_| panic!("Failed creating local destination directory {path:?}"));
             Box::new(LocalBlockWriter::new(path, logger.clone()))
         }
     };
@@ -410,9 +408,9 @@ fn main() {
                     // the ledger due to block_index <= next_block_num (which we
                     // successfully fetched or otherwise this code wouldn't be
                     // running).
-                    let block_data = ledger_db.get_block_data(block_index).unwrap_or_else(|err| {
-                        panic!("failed getting block #{}: {}", block_index, err)
-                    });
+                    let block_data = ledger_db
+                        .get_block_data(block_index)
+                        .unwrap_or_else(|err| panic!("failed getting block #{block_index}: {err}"));
                     blocks_data.push(block_data);
                 }
 

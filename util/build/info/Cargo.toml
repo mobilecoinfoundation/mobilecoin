@@ -1,9 +1,12 @@
 [package]
 name = "mc-util-build-info"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [lib]
 path = "src/lib.rs"

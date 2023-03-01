@@ -8,7 +8,7 @@ const BASE_PORT: u16 = 3997;
 
 #[test_with_logger]
 fn test_key_sharing_on_activate(logger: Logger) {
-    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let mut helper = IngestServerTestHelper::new(BASE_PORT, logger);
     helper.add_origin_block();
 
     let nodes = helper.make_nodes(5);
@@ -32,8 +32,7 @@ fn test_key_sharing_on_activate(logger: Logger) {
     nodes.iter().skip(1).enumerate().for_each(|(i, node)| {
         assert!(
             node.activate().is_err(),
-            "node{} should not be able to activate",
-            i
+            "node{i} should not be able to activate"
         )
     });
 

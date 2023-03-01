@@ -10,8 +10,7 @@ mod user_tx;
 
 pub fn test_client_uri(node_id: u32) -> ConsensusClientUri {
     ConsensusClientUri::from_str(&format!(
-        "mc://node{}.test.com?responder-id=loadbalancer.foo.com:4882",
-        node_id
+        "mc://node{node_id}.test.com?responder-id=loadbalancer.foo.com:4882"
     ))
     .expect("Could not construct client uri from string")
 }

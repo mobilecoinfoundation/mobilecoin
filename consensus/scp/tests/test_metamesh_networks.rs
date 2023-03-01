@@ -28,29 +28,29 @@ fn metamesh_test_helper(
     test_options.scp_timebase = Duration::from_millis(100);
 
     let network_config = mock_network::metamesh_topology::metamesh(n, k_n, m, k_m);
-    mock_network::build_and_test(&network_config, &test_options, logger.clone());
+    mock_network::build_and_test(&network_config, &test_options, logger);
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3k2_3k1(logger: Logger) {
-    metamesh_test_helper(3, 2, 3, 1, logger.clone());
+    metamesh_test_helper(3, 2, 3, 1, logger);
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3k2_3k2(logger: Logger) {
-    metamesh_test_helper(3, 2, 3, 2, logger.clone());
+    metamesh_test_helper(3, 2, 3, 2, logger);
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3k2_4k3(logger: Logger) {
-    metamesh_test_helper(3, 2, 4, 3, logger.clone());
+    metamesh_test_helper(3, 2, 4, 3, logger);
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3k2_5k4(logger: Logger) {
-    metamesh_test_helper(3, 2, 5, 4, logger.clone());
+    metamesh_test_helper(3, 2, 5, 4, logger);
 }

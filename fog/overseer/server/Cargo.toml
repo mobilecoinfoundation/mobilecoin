@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-overseer-server"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "fog_overseer_server"
@@ -11,9 +13,9 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third-party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 lazy_static = "1.4"
 prometheus = "0.13.3"
 retry = "2.0"

@@ -950,7 +950,7 @@ impl TestClient {
     /// * token_id: The token id to use
     /// * num_transactions: The number of transactions to run
     pub fn run_test(&self, num_transactions: usize) -> Result<(), TestClientError> {
-        let client_count = self.account_keys.len() as usize;
+        let client_count = self.account_keys.len();
         assert!(client_count > 1);
         log::info!(self.logger, "Creating {} clients", client_count);
         let clients = self.build_clients(client_count);
@@ -1062,7 +1062,7 @@ impl TestClient {
     /// but it should be equal in most cases where the period is sufficiently
     /// larger than the expected transfer duration.
     pub fn run_continuously(&self, period: Duration) {
-        let client_count = self.account_keys.len() as usize;
+        let client_count = self.account_keys.len();
         assert!(client_count > 1);
         log::debug!(self.logger, "Creating {} clients", client_count);
         let clients = self.build_clients(client_count);
@@ -1432,7 +1432,7 @@ impl core::fmt::Display for TxInfo {
             )?;
         }
         if let Some(appeared) = &guard.tx_appeared {
-            write!(f, "Appeared in block index {}, ", appeared)?;
+            write!(f, "Appeared in block index {appeared}, ")?;
         }
         if let Some(tx) = &guard.tx {
             write!(

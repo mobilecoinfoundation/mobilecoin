@@ -172,7 +172,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
         let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -189,7 +189,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
         let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -206,7 +206,7 @@ mod tests {
         let successful_mvq_response = create_successful_mvq_response(shard_index, block_range);
         let shards_and_responses = vec![(shard, successful_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -227,7 +227,7 @@ mod tests {
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -248,7 +248,7 @@ mod tests {
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -269,7 +269,7 @@ mod tests {
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -290,7 +290,7 @@ mod tests {
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -311,7 +311,7 @@ mod tests {
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -331,7 +331,7 @@ mod tests {
             mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_ok());
 
@@ -363,7 +363,7 @@ mod tests {
             shards_and_clients.push((shard, successful_mvq_response));
         }
 
-        let result = process_shard_responses(shards_and_clients, logger.clone());
+        let result = process_shard_responses(shards_and_clients, logger);
         assert!(result.is_ok());
         let processed_shard_response_data = result.unwrap();
 
@@ -395,7 +395,7 @@ mod tests {
         let response = create_successful_mvq_response(shard_index, response_block_range);
         let shards_and_responses = vec![(shard, response)];
 
-        let result = process_shard_responses(shards_and_responses, logger.clone());
+        let result = process_shard_responses(shards_and_responses, logger);
 
         assert!(result.is_err());
     }

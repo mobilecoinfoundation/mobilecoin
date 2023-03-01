@@ -526,7 +526,7 @@ mod test {
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger, &mut rng);
 
         // A test accouunt.
         let account_key = AccountKey::random(&mut rng);
@@ -558,7 +558,7 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::MonitorIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
         // Inserting a monitor with overlapping subaddresses should fail.
@@ -574,7 +574,7 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
         // Inserting a monitor with overlapping subaddresses and a different
@@ -591,7 +591,7 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
         // Inserting a monitor with non overlapping subaddresses should succeed.

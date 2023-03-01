@@ -9,6 +9,7 @@ use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
+    ResponderId,
 };
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
@@ -75,11 +76,11 @@ impl RouterTestEnvironment {
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
-            FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{}", port))
+            FogViewRouterUri::from_str(&format!("insecure-fog-view-router://127.0.0.1:{port}"))
                 .unwrap();
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let admin_listen_uri =
-            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{port}")).unwrap();
         let config = FogViewRouterConfig {
             chain_id: "local".to_string(),
             client_responder_id: router_uri
@@ -115,10 +116,10 @@ impl RouterTestEnvironment {
             Self::create_view_stores(omap_capacity, store_block_ranges, logger.clone());
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let router_uri =
-            FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
+            FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{port}")).unwrap();
         let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let admin_listen_uri =
-            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{}", port)).unwrap();
+            AdminUri::from_str(&format!("insecure-mca://127.0.0.1:{port}")).unwrap();
         let chain_id = "local".to_string();
         let config = FogViewRouterConfig {
             chain_id: chain_id.clone(),
@@ -227,8 +228,11 @@ impl RouterTestEnvironment {
             let (store, store_uri) = {
                 let port = portpicker::pick_unused_port().expect("pick_unused_port");
                 let epoch_sharding_strategy = EpochShardingStrategy::new(store_block_range.clone());
+                let responder_id = ResponderId::from_str(&format!("127.0.0.1:{port}"))
+                    .expect("Could not create responder id");
                 let uri = FogViewStoreUri::from_str(&format!(
-                    "insecure-fog-view-store://127.0.0.1:{port}?sharding_strategy={}",
+                    "insecure-fog-view-store://127.0.0.1:{port}?responder-id={}&sharding_strategy={}",
+                    responder_id,
                     epoch_sharding_strategy.to_string()
                 ))
                 .unwrap();
@@ -278,7 +282,7 @@ impl RouterTestEnvironment {
 
             let grpc_env = Arc::new(
                 grpcio::EnvBuilder::new()
-                    .name_prefix(format!("view-store-{}", i))
+                    .name_prefix(format!("view-store-{i}"))
                     .build(),
             );
             let store_client = FogViewStoreApiClient::new(
@@ -405,8 +409,7 @@ pub fn wait_for_highest_block_to_load(
         let server_num_blocks = get_highest_processed_block_count(store_servers);
         if server_num_blocks > db_num_blocks {
             panic!(
-                "Server num blocks should never be larger than db num blocks: {} > {}",
-                server_num_blocks, db_num_blocks
+                "Server num blocks should never be larger than db num blocks: {server_num_blocks} > {db_num_blocks}"
             );
         }
         if server_num_blocks == db_num_blocks {

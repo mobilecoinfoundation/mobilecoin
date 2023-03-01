@@ -1,8 +1,11 @@
 [package]
 name = "mc-peers-test-utils"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-blockchain-types = { path = "../../blockchain/types" }
@@ -18,7 +21,7 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-uri = { path = "../../util/uri" }
 
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 hex = "0.4"
 rand = "0.8"
 rand_hc = "0.3"

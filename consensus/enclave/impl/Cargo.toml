@@ -1,8 +1,7 @@
 [package]
 name = "mc-consensus-enclave-impl"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.
 
@@ -16,6 +15,10 @@ in-enclave configurations:
 sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
 
 '''
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]
@@ -44,7 +47,7 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
-once_cell = { version = "1.16", default-features = false, features = ["alloc", "race"] }
+once_cell = { version = "1.17", default-features = false, features = ["alloc", "race"] }
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 subtle = { version = "2.4", default-features = false, features = ["i128"] }

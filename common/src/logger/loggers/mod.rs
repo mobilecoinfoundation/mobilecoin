@@ -7,7 +7,7 @@ const CHANNEL_SIZE: usize = 100_000;
 const TRIM_MARKER: &str = "... <trimmed>";
 
 /// Macros to ease with tests/benches that require a Logger instance.
-pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
+pub use mc_util_logger_macros::{async_test_with_logger, bench_with_logger, test_with_logger};
 
 use super::*;
 
@@ -187,7 +187,7 @@ pub fn create_root_logger() -> Logger {
             if !key_val_str.is_empty() {
                 let key_val = key_val_str.split('=').collect::<Vec<&str>>();
                 if key_val.len() != 2 {
-                    panic!("invalid MC_LOG_EXTRA key/val: {}", key_val_str)
+                    panic!("invalid MC_LOG_EXTRA key/val: {key_val_str}")
                 }
 
                 let k = key_val[0].to_string();

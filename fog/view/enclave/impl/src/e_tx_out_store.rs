@@ -107,7 +107,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         key.clone_from_slice(search_key);
         value[0] = (ValueSize::USIZE - 1 - ciphertext.len()) as u8;
         let data_end = ValueSize::USIZE - value[0] as usize;
-        (&mut value[1..data_end]).clone_from_slice(ciphertext);
+        value[1..data_end].clone_from_slice(ciphertext);
         self.last_ciphertext_size_byte = value[0];
 
         // Note: Passing true means we allow overwrite, which seems fine since
@@ -136,12 +136,12 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
 
     // Should this return a FixedTxOutSearchResult or just a TxOutSearchResult?
     pub fn find_record(&mut self, search_key: &[u8]) -> FixedTxOutSearchResult {
-        let payload_length = ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize;
         let mut result = FixedTxOutSearchResult {
             search_key: search_key.to_vec(),
             result_code: TxOutSearchResultCode::InternalError as u32,
             ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
-            payload_length: payload_length as u32,
+            // Use zero as the default. This value will be updated in every scenario.
+            payload_length: 0,
         };
 
         // Early return for bad search key
@@ -180,22 +180,19 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
                 oram_result_code == OMAP_FOUND
                     || oram_result_code == OMAP_NOT_FOUND
                     || oram_result_code == OMAP_INVALID_KEY,
-                "oram_result_code had an unexpected value: {}",
-                oram_result_code
+                "oram_result_code had an unexpected value: {oram_result_code}"
             );
         }
 
-        // TOOO: Per https://github.com/mobilecoinfoundation/mobilecoin/issues/2965, use a
-        // a constant time comparison function to always copy the same number of bytes.
-        // NOTE: As of right now, this code is not constant time and therefore
-        // blocks the v5 release.
-        // Code to implement:
-        // const LENGTH_TO_COPY: usize = core::cmp::min(FIXED_CIPHERTEXT_LENGTH,
-        // ValueSize::USIZE - 1); (&result.ciphertext[..LENGTH_TO_COPY]).
-        // copy_from_slice(&value[1..LENGTH_TO_COPY]);
-        let data_end = ValueSize::USIZE - value[0] as usize;
-        let payload = &value[1..data_end];
-        result.ciphertext[0..payload_length].copy_from_slice(payload);
+        // To preserve constant time execution, we always copy `ValueSize::USIZE - 1`
+        // bytes. To ensure the copy doesn't panic, assert that the length to
+        // copy is less than the maximum length that ciphertext can be, which is
+        // `FIXED_CIPHERTEXT_LENGTH`.
+        const LENGTH_TO_COPY: usize = ValueSize::USIZE - 1;
+        static_assertions::const_assert!(LENGTH_TO_COPY < FIXED_CIPHERTEXT_LENGTH);
+
+        result.ciphertext[..LENGTH_TO_COPY].copy_from_slice(&value[1..(LENGTH_TO_COPY + 1)]);
+        result.payload_length = (ValueSize::USIZE - 1 - (value[0] as usize)) as u32;
 
         result
     }

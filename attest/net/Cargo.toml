@@ -1,12 +1,15 @@
 [package]
 name = "mc-attest-net"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
-edition = "2021"
 description = '''
 This crate contains necessary functions and utilities to communicate with
 remote attestation services. As such this only works in untrusted code.
 '''
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["network-tests"]

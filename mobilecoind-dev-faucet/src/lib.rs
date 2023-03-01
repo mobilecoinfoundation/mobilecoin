@@ -64,12 +64,18 @@ pub struct Config {
     /// Target Queue Depth. When the queue for a token id is less than this in
     /// depth, the worker attempts to make a split Tx to produce more TxOuts
     /// for the queue.
-    #[clap(long, default_value = "10000", env = "MC_TARGET_QUEUE_DEPTH")]
+    #[clap(long, default_value = "100000", env = "MC_TARGET_QUEUE_DEPTH")]
     pub target_queue_depth: usize,
 
     /// Worker poll period in milliseconds.
     #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
     pub worker_poll_period_ms: u64,
+
+    /// If enabled, activate the background worker immediately on startup.
+    /// Otherwise, the faucet doesn't submit any transactions until after the
+    /// first POST HTTP interaction.
+    #[clap(long, default_value = "false", env = "MC_ACTIVATE")]
+    pub activate: bool,
 
     /// Validator nodes to connect to during a slam run.
     /// This provides a default that can also be overrided in the
@@ -157,7 +163,7 @@ impl State {
 
         let slam_state = SlamState::new(grpc_env);
 
-        State {
+        let result = State {
             mobilecoind_api_client,
             account_key,
             monitor_id,
@@ -167,7 +173,11 @@ impl State {
             slam_state,
             consensus_uris: config.peers.clone(),
             logger: logger.clone(),
+        };
+        if config.activate {
+            result.activate()
         }
+        result
     }
 
     // Try to issue commands to mobilecoind to set up a new faucet, returning an
@@ -196,7 +206,7 @@ impl State {
 
             let resp = mobilecoind_api_client
                 .add_monitor(&req)
-                .map_err(|err| format!("Failed adding a monitor: {}", err))?;
+                .map_err(|err| format!("Failed adding a monitor: {err}"))?;
 
             resp.monitor_id
         };
@@ -208,7 +218,7 @@ impl State {
 
             let resp = mobilecoind_api_client
                 .get_public_address(&req)
-                .map_err(|err| format!("Failed getting public address: {}", err))?;
+                .map_err(|err| format!("Failed getting public address: {err}"))?;
 
             resp.b58_code
         };
@@ -224,7 +234,7 @@ impl State {
 
             let resp = mobilecoind_api_client
                 .get_network_status(&Default::default())
-                .map_err(|err| format!("Failed getting network status: {}", err))?;
+                .map_err(|err| format!("Failed getting network status: {err}"))?;
 
             for (k, v) in resp.get_last_block_info().minimum_fees.iter() {
                 result.insert(k.into(), *v);
@@ -248,7 +258,7 @@ impl State {
         req: &JsonFaucetRequest,
     ) -> Result<api::SubmitTxResponse, String> {
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
-            .map_err(|err| format!("Could not decode b58 address: {}", err))?;
+            .map_err(|err| format!("Could not decode b58 address: {err}"))?;
 
         let public_address = if printable_wrapper.has_public_address() {
             printable_wrapper.get_public_address()
@@ -279,9 +289,9 @@ impl State {
         let resp = self
             .mobilecoind_api_client
             .generate_tx_from_tx_out_list_async(&req)
-            .map_err(|err| format!("Failed to build Tx: {}", err))?
+            .map_err(|err| format!("Failed to build Tx: {err}"))?
             .await
-            .map_err(|err| format!("Build Tx ended in error: {}", err))?;
+            .map_err(|err| format!("Build Tx ended in error: {err}"))?;
 
         // Submit the tx proposal
         let mut req = api::SubmitTxRequest::new();
@@ -290,9 +300,9 @@ impl State {
         let resp = self
             .mobilecoind_api_client
             .submit_tx_async(&req)
-            .map_err(|err| format!("Failed to submit Tx: {}", err))?
+            .map_err(|err| format!("Failed to submit Tx: {err}"))?
             .await
-            .map_err(|err| format!("Submit Tx ended in error: {}", err))?;
+            .map_err(|err| format!("Submit Tx ended in error: {err}"))?;
 
         // Tell the worker that this utxo was submitted, so that it can track and
         // recycle the utxo if this payment fails
@@ -318,18 +328,10 @@ impl State {
             let resp = self
                 .mobilecoind_api_client
                 .get_balance_async(&req)
-                .map_err(|err| {
-                    format!(
-                        "Failed to check balance for token id '{}': {}",
-                        token_id, err
-                    )
-                })?
+                .map_err(|err| format!("Failed to check balance for token id '{token_id}': {err}"))?
                 .await
                 .map_err(|err| {
-                    format!(
-                        "Balance check request for token id '{}' ended in error: {}",
-                        token_id, err
-                    )
+                    format!("Balance check request for token id '{token_id}' ended in error: {err}")
                 })?;
             balances.insert(*token_id, resp.balance);
         }
@@ -430,5 +432,12 @@ impl State {
     pub fn request_stop(&self) {
         log::info!(self.logger, "Stop requested");
         self.slam_state.request_stop();
+    }
+
+    /// Request the worker thread to activate, if it isn't already
+    pub fn activate(&self) {
+        if !self.worker.activate() {
+            log::info!(self.logger, "Worker is now activated");
+        }
     }
 }

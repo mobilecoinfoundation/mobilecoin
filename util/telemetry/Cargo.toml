@@ -1,11 +1,14 @@
 [package]
 name = "mc-util-telemetry"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
-jaeger = ["opentelemetry-jaeger"]
+jaeger = ["dep:opentelemetry-jaeger"]
 
 [lib]
 path = "src/lib.rs"
@@ -14,7 +17,5 @@ path = "src/lib.rs"
 cfg-if = "1.0"
 displaydoc = "0.2"
 hostname = "0.3.1"
-
-# requires a fork due to a dependency upgrade on the `thrift` crate that has not yet been released
-opentelemetry = { git = "https://github.com/mobilecoinofficial/opentelemetry-rust.git", rev = "1817229c56340bbb4a6dca63c8dfb5154606e5bf" }
-opentelemetry-jaeger = { git = "https://github.com/mobilecoinofficial/opentelemetry-rust.git", rev = "1817229c56340bbb4a6dca63c8dfb5154606e5bf", features = ["collector_client", "isahc"], optional = true }
+opentelemetry = "0.18.0"
+opentelemetry-jaeger = { version = "0.17.0", features = ["reqwest_rustls_collector_client"], optional = true }

@@ -1,9 +1,11 @@
 [package]
 name = "mc-fog-ledger-connection"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
@@ -31,7 +33,7 @@ mc-fog-uri = { path = "../../uri" }
 aes-gcm = "0.10.1"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 protobuf = "2.27.1"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

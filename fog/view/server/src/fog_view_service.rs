@@ -102,7 +102,7 @@ where
                 );
                 let rpc_permissions_error = rpc_permissions_error(
                     "fontend_accept",
-                    format!("Permission denied: {}", frontend_error),
+                    format!("Permission denied: {frontend_error}"),
                     logger,
                 );
                 Err(rpc_permissions_error)
@@ -119,7 +119,7 @@ where
         let query_request_aad: QueryRequestAAD = mc_util_serial::decode(aad).map_err(|err| {
             RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                format!("AAD deserialization error: {}", err),
+                format!("AAD deserialization error: {err}"),
             )
         })?;
 
@@ -201,7 +201,8 @@ where
         queries: Vec<attest::NonceMessage>,
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
-        response.set_store_uri(fog_view_store_uri.url().to_string());
+        let fog_view_store_uri_string = fog_view_store_uri.url().to_string();
+        response.set_store_uri(fog_view_store_uri_string);
         let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
         response.set_block_range(block_range);
         for query in queries.into_iter() {

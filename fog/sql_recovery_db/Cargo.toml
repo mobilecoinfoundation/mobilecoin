@@ -1,9 +1,10 @@
 [package]
 name = "mc-fog-sql-recovery-db"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [lib]
 name = "mc_fog_sql_recovery_db"
@@ -32,7 +33,7 @@ mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
 mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 diesel = { version = "1.4", features = ["chrono", "postgres", "r2d2"] }
 diesel-derive-enum = { version = "1", features = ["postgres"] }
 diesel_migrations = { version = "1.4", features = ["postgres"] }

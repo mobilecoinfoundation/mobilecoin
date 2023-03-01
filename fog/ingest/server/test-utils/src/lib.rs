@@ -36,7 +36,7 @@ const OMAP_CAPACITY: u64 = 4096;
 fn make_uris(base_port: u16, idx: u8) -> (FogIngestUri, IngestPeerUri) {
     let port = base_port + 5 * (idx as u16 + 1);
     let client_listen_uri =
-        FogIngestUri::from_str(&format!("insecure-fog-ingest://0.0.0.0:{}/", port)).unwrap();
+        FogIngestUri::from_str(&format!("insecure-fog-ingest://0.0.0.0:{port}/")).unwrap();
     let peer_listen_uri =
         IngestPeerUri::from_str(&format!("insecure-igp://0.0.0.0:{}/", port + 1)).unwrap();
 
@@ -72,9 +72,7 @@ impl TestIngestNode {
             }
             assert!(
                 start.elapsed() <= timeout,
-                "Timed out waiting for ingest node to process blocks; ingested {} blocks, target is {}",
-                ingest_height,
-                height,
+                "Timed out waiting for ingest node to process blocks; ingested {ingest_height} blocks, target is {height}",
             );
             sleep(Duration::from_millis(100));
         }
@@ -193,7 +191,7 @@ impl IngestServerTestHelper {
         let state_file_path = TempDir::new("ingest_state")
             .expect("Could not make tempdir for ingest state")
             .into_path()
-            .join(format!("mc-fog-ingest-state-{}", idx));
+            .join(format!("mc-fog-ingest-state-{idx}"));
         self.make_node_with_state(idx, peer_idxs, state_file_path)
     }
 
@@ -313,9 +311,7 @@ impl IngestServerTestHelper {
             }
             assert!(
                 start.elapsed() <= *timeout,
-                "Timed out waiting for active node to process data; recovery_db has {} blocks, target is {}",
-                recovery_db_count,
-                target,
+                "Timed out waiting for active node to process data; recovery_db has {recovery_db_count} blocks, target is {target}",
             );
             sleep(Duration::from_millis(100));
         }

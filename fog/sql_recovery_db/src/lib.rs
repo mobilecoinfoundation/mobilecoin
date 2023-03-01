@@ -251,8 +251,7 @@ impl SqlRecoveryDb {
             }))
         } else {
             Err(Error::IngressKeysSchemaViolation(format!(
-                "Found multiple entries for key: {:?}",
-                key
+                "Found multiple entries for key: {key:?}"
             )))
         }
     }
@@ -347,8 +346,7 @@ impl SqlRecoveryDb {
                     Ok(accepted_start_block_count)
                 } else {
                     Err(Error::IngressKeyUnsuccessfulInsert(format!(
-                        "Unable to insert ingress key: {:?}",
-                        key
+                        "Unable to insert ingress key: {key:?}"
                     )))
                 }
             })
@@ -662,8 +660,7 @@ impl SqlRecoveryDb {
                 }
             } else {
                 return Err(Error::IngressKeysSchemaViolation(format!(
-                    "Found multiple entries for key: {:?}",
-                    lost_ingress_key
+                    "Found multiple entries for key: {lost_ingress_key:?}"
                 )));
             };
 
@@ -1093,8 +1090,7 @@ impl SqlRecoveryDb {
                 Ok(Some(cumulative_txo_count as u64))
             } else {
                 Err(Error::IngestedBlockSchemaViolation(format!(
-                    "Found multiple cumulative_txo_count values for block {}: {:?}",
-                    block_index, data
+                    "Found multiple cumulative_txo_count values for block {block_index}: {data:?}"
                 )))
             }
         }
@@ -2526,9 +2522,9 @@ mod tests {
             .collect();
 
         VerificationReport {
-            sig: format!("{} sig", name).into_bytes().into(),
+            sig: format!("{name} sig").into_bytes().into(),
             chain,
-            http_body: format!("{} body", name),
+            http_body: format!("{name} body"),
         }
     }
 
@@ -3609,7 +3605,7 @@ mod tests {
 
     #[test_with_logger]
     fn get_expired_invocations_multiple_expired(logger: Logger) {
-        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger.clone());
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
         let db = db_test_context.get_db_instance();
 
         let mut rng = thread_rng();
@@ -3644,7 +3640,7 @@ mod tests {
 
     #[test_with_logger]
     fn get_expired_invocations_mixed(logger: Logger) {
-        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger.clone());
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
         let db = db_test_context.get_db_instance();
 
         let mut rng = thread_rng();

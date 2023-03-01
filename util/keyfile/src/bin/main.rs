@@ -14,21 +14,21 @@ use std::{
 fn print_keyfile_bytes(bytes: &[u8]) {
     let acct_key =
         if let Ok(identity) = mc_util_keyfile::read_root_entropy_keyfile_data(Cursor::new(bytes)) {
-            println!("Identity: {:?}", identity);
+            println!("Identity: {identity:?}");
             AccountKey::from(&identity)
         } else {
             mc_util_keyfile::read_keyfile_data(Cursor::new(bytes))
                 .expect("Could not parse key file as either mnemonic or legacy entropy")
         };
 
-    println!("{:?}", acct_key);
+    println!("{acct_key:?}");
 }
 
 fn main() {
     let mut n_files = 0usize;
     for path in env::args().skip(1) {
         print_keyfile_bytes(
-            &fs::read(path.clone()).unwrap_or_else(|_| panic!("Could not read file '{}'", path)),
+            &fs::read(path.clone()).unwrap_or_else(|_| panic!("Could not read file '{path}'")),
         );
         n_files += 1;
     }

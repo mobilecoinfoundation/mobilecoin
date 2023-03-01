@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![allow(clippy::result_large_err)]
 pub use block_service::BlockService;
 pub use config::{
     KeyImageClientListenUri, LedgerRouterConfig, LedgerServerConfig, LedgerStoreConfig,

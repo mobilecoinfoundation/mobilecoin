@@ -1,8 +1,11 @@
 [package]
 name = "mc-fog-report-types"
-version = "4.0.0"
+version = "4.0.2"
 authors = ["Mobilecoin"]
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

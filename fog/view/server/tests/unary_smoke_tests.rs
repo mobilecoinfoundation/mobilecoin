@@ -482,8 +482,8 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
         sort_txs.sort_by(|x, y| x.search_key.cmp(&y.search_key));
         assert_eq!(sort_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_txs[0].result_code, 3);
-        assert_eq!(sort_txs[0].ciphertext, vec![0u8; 232]);
-        assert_eq!(sort_txs[0].padding, vec![0u8; 23]);
+        assert_eq!(sort_txs[0].ciphertext, vec![0u8; 0]);
+        assert_eq!(sort_txs[0].padding, vec![0u8; 255]);
     }
     {
         let mut sort_fixed_txs = result.fixed_tx_out_search_results.clone();
@@ -492,7 +492,7 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
         assert_eq!(sort_fixed_txs[0].search_key, vec![200u8; 17]);
         assert_eq!(sort_fixed_txs[0].result_code, 3);
         assert_eq!(sort_fixed_txs[0].ciphertext, vec![0u8; 255]);
-        assert_eq!(sort_fixed_txs[0].payload_length, 232);
+        assert_eq!(sort_fixed_txs[0].payload_length, 0);
     }
     assert_eq!(result.missed_block_ranges.len(), 1);
     assert_eq!(result.missed_block_ranges[0], BlockRange::new(3, 4));
@@ -643,7 +643,7 @@ fn test_start_with_missing_range(store_count: usize, blocks_per_store: u64) {
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
-        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
+        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger);
     let db = test_environment
         .db_test_context
         .as_ref()
@@ -705,7 +705,7 @@ fn test_middle_missing_range_with_decommission(store_count: usize, blocks_per_st
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
-        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger.clone());
+        RouterTestEnvironment::new_unary(VIEW_OMAP_CAPACITY, store_block_ranges, logger);
     let db = test_environment
         .db_test_context
         .as_ref()

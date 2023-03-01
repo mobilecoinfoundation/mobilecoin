@@ -6,16 +6,16 @@ net="${1}"
 
 case ${net} in
     mc-testnet)
-        namespace="fog-test-client-mc-testnet"
+        namespace="fog-test-client-mc-test"
         ;;
     signal-testnet)
-        namespace="fog-test-client-signal-testnet"
+        namespace="fog-test-client-signal-test"
         ;;
     mc-mainnet)
-        namespace="fog-test-client-mc-mainnet"
+        namespace="fog-test-client-mc-main"
         ;;
     signal-mainnet)
-        namespace="fog-test-client-signal-mainnet"
+        namespace="fog-test-client-signal-main"
         ;;
     *)
         echo "Unknown network"

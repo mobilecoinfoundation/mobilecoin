@@ -47,6 +47,7 @@ members = [
     "crypto/rand",
     "crypto/ring-signature",
     "crypto/ring-signature/signer",
+    "crypto/sig",
     "crypto/x509/test-vectors",
     "crypto/x509/utils",
     "enclave-boundary",
@@ -132,6 +133,7 @@ members = [
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/extra",
+    "transaction/signer",
     "transaction/types",
     "util/b58-decoder",
     "util/build/enclave",
@@ -178,6 +180,9 @@ exclude = [
     "util/serial",
 ]
 
+[workspace.package]
+rust-version = "1.68.0"
+
 [profile.dev]
 opt-level = 0
 rpath = true
@@ -215,16 +220,13 @@ lto = "thin"
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
 
-# This version contains iOS build fixes
-cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d7789832963bffdb2dcb5939e6199c" }
-
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "8e16a2fd8c3b80ee3111ac0b51c48ce2029f46e0" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "8e16a2fd8c3b80ee3111ac0b51c48ce2029f46e0" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
@@ -242,3 +244,7 @@ x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git
 
 # Override diesel dependency with our fork, to statically link SQLite.
 diesel = { git = "https://github.com/mobilecoinofficial/diesel", rev = "026f6379715d27c8be48396e5ca9059f4a263198" }
+
+# latest mbedtls needs spin `^0.9.4`, but `mc-util-vec-map` resolves spin to `^0.9.2` through `heapless` `^0.7`,
+# This specifies we use the latest version of heapless ~`0.9.4` to solve the dependency constraints. 
+heapless = { git = "https://github.com/mobilecoinofficial/heapless", rev = "2726f63bdc767d025f370d88341b1eb785178f2b" }

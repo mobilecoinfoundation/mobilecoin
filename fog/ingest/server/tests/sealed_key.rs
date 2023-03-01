@@ -7,7 +7,7 @@ const BASE_PORT: u16 = 3457;
 
 #[test_with_logger]
 fn test_ingest_sealed_key_recovery(logger: Logger) {
-    let helper = IngestServerTestHelper::new(BASE_PORT, logger.clone());
+    let helper = IngestServerTestHelper::new(BASE_PORT, logger);
 
     let node = helper.make_node(1, 1..=1);
     let original_key = node.get_ingress_key();
