@@ -221,7 +221,7 @@ spec:
               {{- toYaml .Values.fogLedger.affinity | nindent 14 }}
             volumes:
             {{- if eq .Values.fogLedger.persistence.enabled false }}
-            - name: fog-data
+            - name: fog-router-data
               emptyDir: {}
             {{- end }}
             - name: aesm-socket-dir
