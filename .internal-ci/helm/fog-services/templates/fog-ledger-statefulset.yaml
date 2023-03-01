@@ -157,8 +157,6 @@ spec:
               volumeMounts:
               - name: aesm-socket-dir
                 mountPath: /var/run/aesmd
-              - name: fog-data
-                mountPath: /fog-data
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
                 readOnly: true
@@ -237,16 +235,9 @@ spec:
                 - configMap:
                     name: fog-supervisord-mobilecoind
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger
+                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-router
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-admin
-        {{- if .Values.fogLedger.persistence.enabled }}
-        volumeClaimTemplates:
-        - metadata:
-            name: fog-data
-          spec:
-            {{- toYaml .Values.fogLedger.persistence.spec | nindent 12 }}
-        {{- end }}
   store:
     containerName: fog-ledger
     servicePort: 80
@@ -258,7 +249,7 @@ spec:
         matchLabels:
           app: fog-ledger-store
           {{- include "fogServices.selectorLabels" . | nindent 10 }}
-      serviceName: {{ include "fogServices.fullname" . }}-fog-ledger
+      serviceName: {{ include "fogServices.fullname" . }}-fog-ledger-store
       template:
         metadata:
           annotations:
