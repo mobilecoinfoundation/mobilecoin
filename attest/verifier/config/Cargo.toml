@@ -3,18 +3,7 @@ name = "mc-attest-verifier-config"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
-description = '''
-This crate defines a schema for storing a set of trusted measurements for SGX
-enclaves in json. These measurements can be grouped by version, and named.
-Then, the object representing the loaded schema can produce an appropriate
-`mc-attest-verifier::Verifier` for a given enclave name.
-
-This crate simply provides a serialization format and organizational schema over
-the data that is martialed into a Verifier using the builder.
-
-This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
-appropriately. Thus, it has more to do with clients than the actual attestation implementation.
-'''
+description = "A JSON schema for basic attestation configs"
 readme = "README.md"
 
 [dependencies]
