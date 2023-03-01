@@ -64,11 +64,13 @@ impl Health for HealthService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let logger = rpc_logger(&ctx, &self.logger);
+        log::info!(logger, "Health check request received: {req:?}");
 
         let status = match &self.service_health_check_callback {
             None => HealthCheckResponse_ServingStatus::SERVING,
             Some(callback) => callback(req.get_service()),
         };
+        log::info!(logger, "Health check request status calculated: {status:?}");
 
         let mut resp = HealthCheckResponse::new();
         resp.set_status(status);
