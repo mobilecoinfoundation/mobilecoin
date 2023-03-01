@@ -129,7 +129,7 @@ where
             config.chain_id.clone(),
             ledger,
             watcher,
-            client_authenticator.clone(),
+            client_authenticator,
             logger.clone(),
         ));
 

@@ -798,7 +798,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-types"
-version = "4.0.0"
+version = "4.0.2"
 dependencies = [
  "displaydoc",
  "hex_fmt",
@@ -843,7 +843,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-types"
-version = "4.0.0"
+version = "4.0.2"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
