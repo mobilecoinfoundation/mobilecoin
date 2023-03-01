@@ -3,8 +3,8 @@
 //! Convert to/from external::SignedContingentInput.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{ring_signature::RingMLSAG, tx::TxIn};
-use mc_transaction_extra::{SignedContingentInput, UnmaskedAmount};
+use mc_transaction_core::{ring_signature::RingMLSAG, tx::TxIn, UnmaskedAmount};
+use mc_transaction_extra::SignedContingentInput;
 
 /// Convert mc_transaction_extra::SignedContingentInput -->
 /// external::SignedContingentInput.

@@ -14,16 +14,16 @@ use super::{
     Error, TransactionEntity, TxOutSummaryUnblindingData, TxSummaryUnblindingData,
     TxSummaryUnblindingReport,
 };
-use crate::UnmaskedAmount;
 use mc_core::account::{RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_crypto_ring_signature::onetime_keys::{
-    create_shared_secret, create_tx_out_public_key, create_tx_out_target_key,
+use mc_crypto_ring_signature::{
+    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
+    CompressedCommitment,
 };
-use mc_transaction_core::{
+use mc_transaction_types::{
     domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, Amount, AmountError,
-    BlockVersion, CompressedCommitment, MaskedAmount, TxInSummary, TxOutSummary, TxSummary,
+    BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, TxSummary, UnmaskedAmount,
 };
 use mc_util_zip_exact::zip_exact;
 
