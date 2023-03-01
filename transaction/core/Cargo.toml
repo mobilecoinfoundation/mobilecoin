@@ -45,7 +45,8 @@ mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false, features = ["avx2_backend"] }
+# TODO: Figure out how to use avx2_backend...
+bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 
 [target.'cfg(not(target_feature = "avx2"))'.dependencies]
 bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
