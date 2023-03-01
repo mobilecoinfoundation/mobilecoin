@@ -70,7 +70,6 @@ where
             };
 
         Self::new(
-            config.chain_id,
             client_authenticator,
             config.client_listen_uri,
             enclave,
@@ -84,7 +83,6 @@ where
     }
 
     pub fn new(
-        chain_id: String,
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
@@ -99,7 +97,6 @@ where
 
         let key_image_service = KeyImageService::new(
             KeyImageClientListenUri::Store(client_listen_uri.clone()),
-            chain_id,
             ledger,
             watcher,
             enclave.clone(),

@@ -173,7 +173,6 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let client_listen_uri = store_config.client_listen_uri.clone();
     let store_service = KeyImageService::new(
         KeyImageClientListenUri::Store(client_listen_uri.clone()),
-        store_config.chain_id.clone(),
         ledger,
         watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally

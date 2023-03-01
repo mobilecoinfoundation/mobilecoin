@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 use crate::{server::DbPollSharedState, KeyImageClientListenUri, SVC_COUNTERS};
-use grpcio::{RpcContext, RpcStatus, UnarySink};
+use grpcio::RpcStatus;
 use mc_attest_api::{
     attest,
-    attest::{AuthMessage, Message},
+    attest::AuthMessage,
 };
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
@@ -11,14 +11,14 @@ use mc_fog_api::{
     ledger::{
         MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
     },
-    ledger_grpc::{FogKeyImageApi, KeyImageStoreApi},
+    ledger_grpc::KeyImageStoreApi,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
-    check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
     rpc_permissions_error, send_result, Authenticator,
 };
 use mc_watcher::watcher_db::WatcherDB;
@@ -28,7 +28,6 @@ use std::sync::{Arc, Mutex};
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
     /// The ClientListenUri for this Fog Ledger Service.
     client_listen_uri: KeyImageClientListenUri,
-    chain_id: String,
     ledger: L,
     watcher: WatcherDB,
     enclave: E,
@@ -41,7 +40,6 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     pub fn new(
         client_listen_uri: KeyImageClientListenUri,
-        chain_id: String,
         ledger: L,
         watcher: WatcherDB,
         enclave: E,
@@ -51,7 +49,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     ) -> Self {
         Self {
             client_listen_uri,
-            chain_id,
             ledger,
             watcher,
             enclave,
@@ -155,31 +152,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
         }
     }
-
-    /// Unwrap and forward to enclave
-    // self.enclave.check_key_images should take both an AttestMessage and an
-    // UntrustedKeyImageQueryResponse object that contains any data that is
-    // needed that isn't in the ORAM. This might be like "num_blocks" and similar
-    // stuff. self.enclave.check_key_images should return an AttestMessage that
-    // we send back to the user.
-    fn check_key_images_auth(
-        &mut self,
-        request: attest::Message,
-    ) -> Result<attest::Message, RpcStatus> {
-        log::trace!(self.logger, "Getting encrypted request");
-
-        let untrusted_query_response = self.prepare_untrusted_query();
-
-        let result_blob = self
-            .enclave
-            .check_key_images(request.into(), untrusted_query_response)
-            .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
-
-        let mut resp = attest::Message::new();
-        resp.set_data(result_blob);
-        Ok(resp)
-    }
-
+    
     /// Unwrap and forward to enclave
     // self.enclave.check_key_images should take both a NonceMessage and an
     // UntrustedKeyImageQueryResponse object that contains any data that is
@@ -246,53 +219,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
 
         response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
         response
-    }
-}
-
-impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageService<L, E> {
-    fn check_key_images(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
-        let _timer = SVC_COUNTERS.req(&ctx);
-        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
-                return send_result(ctx, sink, Err(err), logger);
-            }
-
-            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), logger);
-            }
-
-            send_result(ctx, sink, self.check_key_images_auth(request), logger)
-        })
-    }
-
-    fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
-        let _timer = SVC_COUNTERS.req(&ctx);
-        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
-                return send_result(ctx, sink, Err(err), logger);
-            }
-
-            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), logger);
-            }
-
-            match self.auth_service(request, logger) {
-                Ok(response) => {
-                    send_result(ctx, sink, Ok(response), logger);
-                }
-                Err(client_error) => {
-                    // This is debug because there's no requirement on the remote party to trigger
-                    // it.
-                    log::info!(
-                        logger,
-                        "LedgerEnclave::client_accept failed: {}",
-                        client_error
-                    );
-                    // TODO: increment failed inbound peering counter.
-                    send_result(ctx, sink, Err(client_error), logger);
-                }
-            }
-        });
     }
 }
 
