@@ -1,6 +1,8 @@
 attest-verifier-config
 ======================
 
+A JSON schema for basic attestation configs.
+
 This crate defines a schema for storing a set of trusted measurements for SGX
 enclaves in json. These measurements can be grouped by version, and named.
 Then, a helper function can produce an `mc-attest-verifier::Verifier`
