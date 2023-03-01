@@ -35,6 +35,7 @@ spec:
     end: 1_200_000
   router:
     template:
+      containerName: fog-ledger
       spec:
         podManagementPolicy: {{ .Values.fogLedger.podManagementPolicy }}
         replicas: {{ .Values.fogLedger.replicaCount }}
