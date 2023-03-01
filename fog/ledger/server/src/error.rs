@@ -17,25 +17,25 @@ pub enum RouterServerError {
 
 impl From<grpcio::Error> for RouterServerError {
     fn from(src: grpcio::Error) -> Self {
-        RouterServerError::LedgerStoreError(format!("{}", src))
+        RouterServerError::LedgerStoreError(format!("{src}"))
     }
 }
 
 impl From<mc_common::ResponderIdParseError> for RouterServerError {
     fn from(src: mc_common::ResponderIdParseError) -> Self {
-        RouterServerError::LedgerStoreError(format!("{}", src))
+        RouterServerError::LedgerStoreError(format!("{src}"))
     }
 }
 
 impl From<mc_util_uri::UriParseError> for RouterServerError {
     fn from(src: mc_util_uri::UriParseError) -> Self {
-        RouterServerError::LedgerStoreError(format!("{}", src))
+        RouterServerError::LedgerStoreError(format!("{src}"))
     }
 }
 
 impl From<mc_util_uri::UriConversionError> for RouterServerError {
     fn from(src: mc_util_uri::UriConversionError) -> Self {
-        RouterServerError::LedgerStoreError(format!("{}", src))
+        RouterServerError::LedgerStoreError(format!("{src}"))
     }
 }
 
@@ -46,11 +46,9 @@ pub fn router_server_err_to_rpc_status(
 ) -> RpcStatus {
     match src {
         RouterServerError::LedgerStoreError(_) => {
-            rpc_internal_error(context, format!("{}", src), &logger)
+            rpc_internal_error(context, format!("{src}"), &logger)
         }
-        RouterServerError::Enclave(_) => {
-            rpc_permissions_error(context, format!("{}", src), &logger)
-        }
+        RouterServerError::Enclave(_) => rpc_permissions_error(context, format!("{src}"), &logger),
     }
 }
 

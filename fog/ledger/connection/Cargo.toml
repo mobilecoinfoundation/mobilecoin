@@ -32,8 +32,8 @@ mc-fog-uri = { path = "../../uri" }
 # third-party
 aes-gcm = "0.10.1"
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.1"
 futures = "0.3"
+grpcio = "0.12.1"
 protobuf = "2.27.1"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

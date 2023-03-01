@@ -263,8 +263,7 @@ where
         return Err(router_server_err_to_rpc_status(
             "Key Images Query: timed out connecting to key image stores",
             RouterServerError::LedgerStoreError(format!(
-                "Received {} responses which failed to advance the MultiKeyImageStoreRequest",
-                query_retries
+                "Received {query_retries} responses which failed to advance the MultiKeyImageStoreRequest"
             )),
             logger.clone(),
         ));
@@ -347,7 +346,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     let auth_unary_receiver = ledger_store_client.auth_async(&client_auth_request.into())?;
     let auth_response = auth_unary_receiver.await?;
 
-    let result = enclave.ledger_store_connect(ledger_store_id, auth_response.into())?;
-
-    Ok(result)
+    enclave
+        .ledger_store_connect(ledger_store_id, auth_response.into())
+        .map_err(|e| e.into())
 }

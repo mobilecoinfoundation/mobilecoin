@@ -104,7 +104,7 @@ where
             watcher,
             enclave.clone(),
             shared_state,
-            client_authenticator.clone(),
+            client_authenticator,
             logger.clone(),
         );
         Self::new_from_service(

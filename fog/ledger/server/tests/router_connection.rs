@@ -262,7 +262,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                         assert_eq!(status.message(), expected);
                     }
                     _ => {
-                        panic!("unexpected grpcio error: {}", err);
+                        panic!("unexpected grpcio error: {err}");
                     }
                 }
             } else {
@@ -664,7 +664,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             client_listen_uri,
             GRPC_RETRY_CONFIG,
             grpc_env,
-            logger.clone(),
+            logger,
         );
 
         // Try to get a block
@@ -829,7 +829,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             client_listen_uri,
             GRPC_RETRY_CONFIG,
             grpc_env,
-            logger.clone(),
+            logger,
         );
 
         // Get a tx_out that is actually in the ledger
@@ -1181,7 +1181,7 @@ fn add_block_to_ledger(
                 src_url,
                 block_index,
                 signature.clone(),
-                format!("00/{}", block_index),
+                format!("00/{block_index}"),
             )
             .expect("Could not add block signature");
     }

@@ -3862,8 +3862,8 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "4.0.2"
 dependencies = [
- "clap 4.1.6",
  "aes-gcm",
+ "clap 4.1.6",
  "displaydoc",
  "futures",
  "grpcio",
