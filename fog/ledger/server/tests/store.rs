@@ -79,7 +79,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
         let user_keys_path = test_path.join("keys");
-        std::fs::create_dir_all(&user_keys_path).expect("Failed creating user keys directory");
+        std::fs::create_dir_all(user_keys_path).expect("Failed creating user keys directory");
 
         let test_uri = uri_for_test(port);
         // This ID needs to match the host:port clients use in their URI when
@@ -193,7 +193,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         ias_client,
         store_config.ias_spid,
         EpochShardingStrategy::default(),
-        logger.clone(),
+        logger,
     );
     store_server.start();
 
