@@ -136,7 +136,7 @@ spec:
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
                 readOnly: true
-              - name: fog-router-data
+              - name: fog-data
                 mountPath: /fog-data
             - name: grpc-gateway
               image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -196,7 +196,7 @@ spec:
               {{- toYaml .Values.fogLedger.affinity | nindent 14 }}
             volumes:
             {{- if eq .Values.fogLedger.persistence.enabled false }}
-            - name: fog-router-data
+            - name: fog-data
               emptyDir: {}
             {{- end }}
             - name: aesm-socket-dir
@@ -217,7 +217,7 @@ spec:
         {{- if .Values.fogLedger.persistence.enabled }}
         volumeClaimTemplates:
         - metadata:
-            name: fog-router-data
+            name: fog-data
           spec:
             {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
         {{- end }}
