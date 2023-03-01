@@ -257,15 +257,15 @@ spec:
       selector:
         matchLabels:
           app: fog-ledger-store
-          {{- include "fogServices.selectorLabels" . | nindent 12 }}
+          {{- include "fogServices.selectorLabels" . | nindent 10 }}
       serviceName: {{ include "fogServices.fullname" . }}-fog-ledger
       template:
         metadata:
           annotations:
-            {{- toYaml .Values.fogLedger.podAnnotations | nindent 14 }}
+            {{- toYaml .Values.fogLedger.podAnnotations | nindent 12 }}
           labels:
             app: fog-ledger-store
-            {{- include "fogServices.labels" . | nindent 14 }}
+            {{- include "fogServices.labels" . | nindent 12 }}
         spec:
           # Try to balance pods across zones
           topologySpreadConstraints:
@@ -278,7 +278,7 @@ spec:
                 # match on this helm chart install
                 app: fog-ledger-store
                 helm.sh/chart: {{ include "fogServices.chart" . }}
-                {{- include "fogServices.selectorLabels" . | nindent 16 }}
+                {{- include "fogServices.selectorLabels" . | nindent 14 }}
           affinity:
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
@@ -288,16 +288,16 @@ spec:
                   # match on this helm chart install
                   app: fog-ledger-store
                   helm.sh/chart: {{ include "fogServices.chart" . }}
-                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
+                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
           imagePullSecrets:
-          {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+          {{- toYaml .Values.imagePullSecrets | nindent 10 }}
           terminationGracePeriodSeconds: 30
           dnsConfig:
             options:
             - name: ndots
               value: "1"
           initContainers:
-          {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 12 }}
+          {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 10 }}
           containers:
           - name: fog-ledger
             image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -379,7 +379,7 @@ spec:
               mountPath: /etc/supervisor/conf.d
               readOnly: true
             resources:
-              {{- toYaml .Values.fogLedger.resources | nindent 16 }}
+              {{- toYaml .Values.fogLedger.resources | nindent 14 }}
           - name: grpc-gateway
             image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: Always
@@ -393,7 +393,7 @@ spec:
               - name: ledger-http
                 containerPort: 8228
             resources:
-              {{- toYaml .Values.grpcGateway.resources | nindent 16 }}
+              {{- toYaml .Values.grpcGateway.resources | nindent 14 }}
           {{- if eq .Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
@@ -431,11 +431,11 @@ spec:
               - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
           {{- end }}
           nodeSelector:
-            {{- toYaml .Values.fogLedger.nodeSelector | nindent 14 }}
+            {{- toYaml .Values.fogLedger.nodeSelector | nindent 12 }}
           tolerations:
-            {{- toYaml .Values.fogLedger.tolerations | nindent 14 }}
+            {{- toYaml .Values.fogLedger.tolerations | nindent 12 }}
           affinity:
-            {{- toYaml .Values.fogLedger.affinity | nindent 14 }}
+            {{- toYaml .Values.fogLedger.affinity | nindent 12 }}
           volumes:
           {{- if eq .Values.fogLedger.persistence.enabled false }}
           - name: fog-data
@@ -461,6 +461,6 @@ spec:
       - metadata:
           name: fog-data
         spec:
-          {{- toYaml .Values.fogLedger.persistence.spec | nindent 12 }}
+          {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
       {{- end }}
     
