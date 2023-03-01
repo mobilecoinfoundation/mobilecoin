@@ -160,13 +160,17 @@ pub fn get_router_callback(
             let mut request = HealthCheckRequest::new();
             request.set_service("fog-view".to_string());
             match client.check(&request) {
-                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
+                Ok(response) => {
+                    log::info!(logger, "Fog view store is healthy");
+                    response.get_status() == HealthCheckStatus::SERVING
+                },
                 Err(e) => {
                     log::error!(logger, "Health check error for client: {e}");
                     false
                 }
             }
         });
+        log::info!(logger, "Client health check responded, is_ready: {is_ready}");
         if is_ready {
             HealthCheckStatus::SERVING
         } else {
