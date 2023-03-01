@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 aes = "0.8.2"
 crc = { version = "3.0.0", default-features = false }
 ctr = "0.9.2"
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"

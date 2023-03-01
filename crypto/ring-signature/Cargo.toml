@@ -17,7 +17,7 @@ default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-d
 
 [dependencies]
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
