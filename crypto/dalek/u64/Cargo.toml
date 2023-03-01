@@ -11,6 +11,6 @@ rust-version = { workspace = true }
 default = [ "curve25519-dalek" ]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-rc.1", optional=true, default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", optional=true, default-features = false, features = ["nightly", "u64_backend"]  }
 x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false, features = ["nightly", "u64_backend"] }

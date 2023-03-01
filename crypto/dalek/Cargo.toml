@@ -16,7 +16,8 @@ alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc" ]
 default = [ "serde", "alloc", "mc-crypto-dalek-backend-u64/default", "mc-crypto-dalek-backend-simd/default" ]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+# TODO: add u64 backend as build command
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"]  }
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
 

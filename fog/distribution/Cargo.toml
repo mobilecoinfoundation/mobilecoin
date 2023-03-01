@@ -40,7 +40,7 @@ rayon = "1.7"
 retry = "2.0"
 tempfile = "3.4"
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

@@ -29,7 +29,7 @@ crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.27.1"
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
