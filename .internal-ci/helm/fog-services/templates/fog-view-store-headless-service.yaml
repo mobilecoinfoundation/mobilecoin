@@ -8,6 +8,7 @@ metadata:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
+  clusterIP: None
   selector:
     app: fog-view
     {{- include "fogServices.selectorLabels" . | nindent 4 }}

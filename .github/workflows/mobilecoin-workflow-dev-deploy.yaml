@@ -156,6 +156,14 @@ jobs:
               intel.com/sgx: 2000
             requests:
               intel.com/sgx: 2000
+        fogViewStores:
+          shards:
+          - start: 0
+            end: 400_000
+          - start: 400_000
+            end: 800_000
+          - start: 800_000
+            end: 1_200_000
         EOF
 
     - name: Deploy fog-services

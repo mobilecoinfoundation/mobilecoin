@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view-grpc
+  name: {{ include "fogServices.fullname" . }}-fog-view-router-http
   labels:
     app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
@@ -13,7 +13,7 @@ metadata:
     {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
     haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
     {{- end }}
-    {{ toYaml (tpl .Values.fogView.ingress.grpc.annotations . | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl .Values.fogViewRouter.ingress.http.annotations . | fromYaml) | nindent 4 }}
 spec:
   tls:
   - hosts:
@@ -23,10 +23,10 @@ spec:
   - host: {{ include "fogServices.fogPublicFQDN" . }}
     http:
       paths:
-      - path: /fog_view.FogViewAPI
+      - path: /gw/fog_view.FogViewAPI
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fogServices.fullname" . }}-fog-view
+            name: {{ include "fogServices.fullname" . }}-fog-view-router
             port:
-              number: 3225
+              number: 8225
