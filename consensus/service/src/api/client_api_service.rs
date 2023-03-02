@@ -13,10 +13,7 @@ use crate::{
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
-use mc_common::{
-    logger::{slog::warn, Logger},
-    LruCache,
-};
+use mc_common::{logger::Logger, LruCache};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -221,24 +218,15 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        let session = ClientSession::from(msg.channel_id.clone());
-        match self.tracked_sessions.lock() {
-            Ok(mut tracker) => {
-                if let Some(_session_info) = tracker.get(&session) {
-                    // TODO: Update fields
-                } else {
-                    // TODO: Populate new session metadata
-                    tracker.put(session, ClientSessionTracking {});
-                }
-            }
-            Err(err) => {
-                warn!(
-                    self.logger,
-                    "Unable to acquire mutex on session metadata: {err:?}"
-                );
+        {
+            let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
+            if let Some(_session_info) = tracker.get(&session) {
+                // TODO: Update fields
+            } else {
+                // TODO: Populate new session metadata
+                tracker.put(session, ClientSessionTracking {});
             }
         }
-
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
             return send_result(ctx, sink, Err(err), &self.logger);
         }
