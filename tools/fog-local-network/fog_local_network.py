@@ -123,17 +123,30 @@ class FogNetwork(Network):
         )
         self.fog_report.start()
 
-        self.fog_ledger = FogLedger(
-            'ledger1',
-            self.nodes[0].ledger_dir,
-            f'localhost:{BASE_NGINX_CLIENT_PORT}',
-            BASE_LEDGER_CLIENT_PORT,
-            BASE_LEDGER_ADMIN_PORT,
-            BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
-            self.mobilecoind.watcher_db,
-            release=True,
+        self.key_image_store = FogKeyImageStore(
+            name = 'keyimage1',
+            client_port = BASE_KEY_IMAGE_STORE_PORT,
+            admin_port = BASE_KEY_IMAGE_STORE_ADMIN_PORT,
+            admin_http_gateway_port = BASE_KEY_IMAGE_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            release = True,
+            sharding_strategy = 'default',
+            ledger_db_path = self.nodes[0].ledger_dir,
+            watcher_db_path = self.mobilecoind.watcher_db,
         )
-        self.fog_ledger.start()
+        self.key_image_store.start()
+        
+        self.fog_ledger_router = FogLedgerRouter(
+            name = 'ledger1',
+            ledger_db_path = self.nodes[0].ledger_dir,
+            client_responder_id = f'localhost:{BASE_NGINX_CLIENT_PORT}',
+            client_port = BASE_LEDGER_CLIENT_PORT,
+            admin_port = BASE_LEDGER_ADMIN_PORT,
+            admin_http_gateway_port = BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
+            watcher_db_path = self.mobilecoind.watcher_db,
+            shard_uris = [self.key_image_store.get_client_listen_uri()],
+            release = True,
+        )
+        self.fog_ledger_router.start()
 
         # Tell the ingest server to activate, giving it a little time for RPC to wakeup
         time.sleep(15)
@@ -151,7 +164,8 @@ class FogNetwork(Network):
             if server is not None:
                 server.stop()
 
-        stop_server("fog_ledger")
+        stop_server("key_image_store")
+        stop_server("fog_ledger_router")
         stop_server("fog_report")
         stop_server("fog_view_store")
         stop_server("fog_view_router")
