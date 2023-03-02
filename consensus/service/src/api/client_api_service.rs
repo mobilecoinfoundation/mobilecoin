@@ -1721,12 +1721,12 @@ mod client_api_tests {
             },
         );
 
-        const NUM_BLOCKS: u64= 5;
+        const NUM_BLOCKS: u64 = 5;
         let mut ledger = MockLedger::new();
         ledger
             .expect_num_blocks()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(NUM_BLOCKS));
 
         let mut tx_manager = MockTxManager::new();
         tx_manager
@@ -1771,7 +1771,7 @@ mod client_api_tests {
 
         let propose_tx_response =  client.client_tx_propose(&message).expect("Client tx propose error");
        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-       assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+       assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
 
         let tracker = tracked_sessions
             .lock()
