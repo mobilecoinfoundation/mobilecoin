@@ -122,7 +122,7 @@ impl RingMLSAG {
 
         // Setup buffers
         let (mut responses, mut decompressed_ring) = (
-            alloc::vec![CurveScalar::from(Scalar::zero()); 2 * ring_size],
+            alloc::vec![CurveScalar::from(Scalar::ZERO); 2 * ring_size],
             alloc::vec![(RistrettoPublic::default(), Commitment::default()); ring_size],
         );
 
@@ -174,7 +174,7 @@ impl RingMLSAG {
 
         // Setup buffers for recomputed_c and decompressed rings
         let (mut recomputed_c, mut decompressed_ring) = (
-            alloc::vec![Scalar::zero(); ring_size],
+            alloc::vec![Scalar::ZERO; ring_size],
             alloc::vec![(RistrettoPublic::default(), Commitment::default()); ring_size],
         );
 

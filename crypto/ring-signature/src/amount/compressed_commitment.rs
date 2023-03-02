@@ -60,11 +60,11 @@ impl AsRef<[u8; 32]> for CompressedCommitment {
     }
 }
 
-impl From<&[u8; 32]> for CompressedCommitment {
-    fn from(src: &[u8; 32]) -> Self {
-        Self {
-            point: CompressedRistretto::from_slice(src),
-        }
+impl TryFrom<&[u8; 32]> for CompressedCommitment {
+    type Error = Error;
+    fn try_from(src: &[u8; 32]) -> Result<Self, Self::Error> {
+        let point = CompressedRistretto::from_slice(src).map_err(|_e| Error::InvalidCurvePoint)?;
+        Ok(Self { point })
     }
 }
 
@@ -75,9 +75,9 @@ impl ReprBytes for CompressedCommitment {
         self.point.to_bytes().into()
     }
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Error> {
-        Ok(Self {
-            point: CompressedRistretto::from_slice(src.as_slice()),
-        })
+        let point = CompressedRistretto::from_slice(src.as_slice())
+            .map_err(|_e| Error::InvalidCurvePoint)?;
+        Ok(Self { point })
     }
 }
 
