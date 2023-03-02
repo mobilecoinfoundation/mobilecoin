@@ -1,20 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    collections::HashMap,
-    env,
-    sync::{Arc, RwLock},
-};
+use std::env;
 
 use clap::Parser;
-use grpcio::ChannelBuilder;
 use mc_attest_net::{Client, RaClient};
 use mc_common::logger::log;
-use mc_fog_api::ledger_grpc::KeyImageStoreApiClient;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerRouterConfig, LedgerRouterServer};
 use mc_ledger_db::LedgerDB;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_watcher::watcher_db::WatcherDB;
 
 fn main() {
@@ -55,35 +48,13 @@ fn main() {
         logger.clone(),
     );
 
-    let mut ledger_store_grpc_clients = HashMap::new();
-    let grpc_env = Arc::new(
-        grpcio::EnvBuilder::new()
-            .name_prefix("Main-RPC".to_string())
-            .build(),
-    );
-    for shard_uri in config.shard_uris.clone() {
-        let ledger_store_grpc_client = KeyImageStoreApiClient::new(
-            ChannelBuilder::default_channel_builder(grpc_env.clone())
-                .connect_to_uri(&shard_uri, &logger),
-        );
-        ledger_store_grpc_clients.insert(shard_uri, Arc::new(ledger_store_grpc_client));
-    }
-    let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
-
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
     let watcher_db =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-    let mut router_server = LedgerRouterServer::new(
-        config,
-        enclave,
-        ias_client,
-        ledger_store_grpc_clients,
-        ledger_db,
-        watcher_db,
-        logger,
-    );
+    let mut router_server =
+        LedgerRouterServer::new(config, enclave, ias_client, ledger_db, watcher_db, logger);
     router_server.start();
 
     loop {

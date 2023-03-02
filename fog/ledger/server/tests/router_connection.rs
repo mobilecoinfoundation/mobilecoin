@@ -4,7 +4,6 @@
 //! grpc API
 
 use futures::executor::block_on;
-use grpcio::ChannelBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
@@ -15,7 +14,7 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
-use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
+use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -33,18 +32,11 @@ use mc_transaction_core::{
     Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
+use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    str::FromStr,
-    sync::{Arc, RwLock},
-    thread::sleep,
-    time::Duration,
-};
+use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use tempdir::TempDir;
 use url::Url;
 
@@ -162,7 +154,6 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 config,
                 enclave,
                 ra_client,
-                Arc::new(RwLock::new(HashMap::new())),
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),
@@ -437,7 +428,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
 
             let ra_client =
                 AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
-            let mut router_server = LedgerRouterServer::new_from_config(
+            let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
                 ra_client,
@@ -643,7 +634,6 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             config,
             enclave,
             ra_client,
-            Arc::new(RwLock::new(HashMap::new())),
             ledger.clone(),
             watcher.clone(),
             logger.clone(),
@@ -809,7 +799,6 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             config,
             enclave,
             ra_client,
-            Arc::new(RwLock::new(HashMap::new())),
             ledger.clone(),
             watcher.clone(),
             logger.clone(),
@@ -981,17 +970,6 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 logger.clone(),
             );
 
-            // Make Key Image Store client
-            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
-
-            let store_client = KeyImageStoreApiClient::new(
-                ChannelBuilder::default_channel_builder(grpc_env.clone())
-                    .connect_to_uri(&store_uri, &logger),
-            );
-            let mut store_clients = HashMap::new();
-            store_clients.insert(store_uri.clone(), Arc::new(store_client));
-            let shards = Arc::new(RwLock::new(store_clients));
-
             // Make Router Server
             let router_client_listen_uri = FogLedgerUri::from_str(&format!(
                 "insecure-fog-ledger://127.0.0.1:{}",
@@ -1034,7 +1012,6 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 router_config,
                 enclave,
                 ra_client,
-                shards,
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),
@@ -1053,6 +1030,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client = FogKeyImageGrpcClient::new(
                 String::default(),
                 router_client_listen_uri,

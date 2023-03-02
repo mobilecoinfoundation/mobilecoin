@@ -14,7 +14,7 @@ use mc_common::{
 };
 use mc_fog_api::ledger_grpc;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
-use mc_fog_uri::{ConnectionUri, FogLedgerUri, KeyImageStoreUri};
+use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
@@ -50,7 +50,7 @@ where
     E: LedgerEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
-    pub fn new_from_config(
+    pub fn new(
         config: LedgerRouterConfig,
         enclave: E,
         ra_client: RC,
@@ -73,29 +73,6 @@ where
         }
         let ledger_store_grpc_clients = Arc::new(RwLock::new(ledger_store_grpc_clients));
 
-        LedgerRouterServer::new(
-            config,
-            enclave,
-            ra_client,
-            ledger_store_grpc_clients,
-            ledger,
-            watcher,
-            logger,
-        )
-    }
-
-    pub fn new(
-        config: LedgerRouterConfig,
-        enclave: E,
-        ra_client: RC,
-        shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
-        logger: Logger,
-    ) -> LedgerRouterServer<E, RC>
-    where
-        E: LedgerEnclaveProxy,
-    {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
                 Arc::new(TokenAuthenticator::new(
@@ -124,7 +101,7 @@ where
         // Init ledger router service.
         let ledger_service = LedgerRouterService::new(
             enclave.clone(),
-            shards.clone(),
+            ledger_store_grpc_clients.clone(),
             config.query_retries,
             logger.clone(),
         );
@@ -136,7 +113,7 @@ where
 
         // Init ledger router admin service.
         let ledger_router_admin_service = ledger_grpc::create_ledger_router_admin_api(
-            LedgerRouterAdminService::new(shards, logger.clone()),
+            LedgerRouterAdminService::new(ledger_store_grpc_clients, logger.clone()),
         );
         log::debug!(logger, "Constructed Ledger Router Admin GRPC Service");
 
