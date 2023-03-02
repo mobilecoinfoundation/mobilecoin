@@ -10,16 +10,15 @@ data:
     [program:fog-ledger]
     priority=100
     environment=MC_SENTRY_DSN="%(ENV_FOG_LEDGER_SENTRY_DSN)s"
-  %(ENV_HOSTNAME).{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}
     command=/usr/bin/ledger_server
       --ledger-db /fog-data/ledger
       --watcher-db /fog-data/watcher
       --client-responder-id "%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
       --client-listen-uri insecure-fog-ledger://0.0.0.0:3228/?responder_id="%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
-{{- if (include "fogServices.clientAuth" .) }}
+      {{- if (include "fogServices.clientAuth" .) }}
       --client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
       --client-auth-token-max-lifetime 31536000
-{{- end }}
+      {{- end }}
       --ias-spid %(ENV_IAS_SPID)s
       --ias-api-key %(ENV_IAS_API_KEY)s
       --admin-listen-uri insecure-mca://127.0.0.1:8001/
