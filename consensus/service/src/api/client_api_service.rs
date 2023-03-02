@@ -1769,13 +1769,10 @@ mod client_api_tests {
         assert!(tracker.is_empty());
         drop(tracker);
 
-        match client.client_tx_propose(&message) {
-            Ok(propose_tx_response) => {
-                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
-            }
-            Err(e) => panic!("Unexpected error: {e:?}"),
-        }
+        let propose_tx_response =  client.client_tx_propose(&message).expect("Client tx propose error");
+       assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+       assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+
         // Inspect our session-tracking
         let tracker = tracked_sessions
             .lock()
