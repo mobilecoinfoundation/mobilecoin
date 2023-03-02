@@ -125,7 +125,7 @@ pub fn process_shard_responses(
         let store_uri = KeyImageStoreUri::from_str(response.get_store_uri())?;
         match response.get_status() {
             MultiKeyImageStoreResponseStatus::SUCCESS => {
-                let store_responder_id = store_uri.responder_id()?;
+                let store_responder_id = store_uri.host_and_port_responder_id()?;
                 new_query_responses.push((store_responder_id, response.take_query_response()));
             }
             MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => {
