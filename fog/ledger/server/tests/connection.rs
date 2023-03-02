@@ -32,7 +32,6 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
-
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use tempdir::TempDir;
 use url::Url;
