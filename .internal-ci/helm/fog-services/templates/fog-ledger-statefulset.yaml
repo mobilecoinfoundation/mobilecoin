@@ -10,6 +10,7 @@ spec:
   {{- toYaml .Values.fogLedgerStores.shards | nindent 4}}
   router:
     shardingScheme: insecure-key-image-store
+    shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
     template:
       containerName: fog-ledger
       spec:
