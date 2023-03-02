@@ -1721,7 +1721,7 @@ mod client_api_tests {
             },
         );
 
-        let num_blocks = 5;
+        const NUM_BLOCKS: u64= 5;
         let mut ledger = MockLedger::new();
         // The service should request num_blocks.
         ledger
