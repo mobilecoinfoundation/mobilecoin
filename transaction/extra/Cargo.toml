@@ -22,6 +22,7 @@ zeroize = "1"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
+mc-core = { path = "../../core" }
 mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }

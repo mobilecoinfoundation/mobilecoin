@@ -880,9 +880,9 @@ checksum = "6548a0ad5d2549e111e1f6a11a6c2e2d00ce6a3dafe22948d67c2b443f775e52"
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2dd04ddaf88237dc3b8d8f9a3c1004b506b54b3313403944054d23c0870c521"
+checksum = "cf2b3e8478797446514c91ef04bafcb59faba183e621ad488df88983cc14128c"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils",
@@ -1767,6 +1767,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex-literal"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
+
+[[package]]
 name = "hex_fmt"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2504,6 +2510,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-attest-verifier-config"
+version = "4.0.2"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "hex-literal",
+ "mc-attest-core",
+ "mc-attest-verifier",
+ "mc-common",
+ "mc-util-logger-macros",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "mc-attest-verifier-types"
 version = "4.0.2"
 dependencies = [
@@ -3030,12 +3051,13 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "2.0.0"
+version = "4.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.6",
  "curve25519-dalek",
  "ed25519-dalek",
+ "generic-array",
  "hex",
  "hkdf",
  "lazy_static",
@@ -3044,8 +3066,10 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-test-vectors-definitions",
+ "mc-util-from-random",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -3062,6 +3086,7 @@ dependencies = [
  "mc-crypto-keys",
  "prost",
  "serde",
+ "subtle",
  "zeroize",
 ]
 
@@ -3224,6 +3249,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-memo-mac"
+version = "4.0.2"
+dependencies = [
+ "hmac 0.12.1",
+ "mc-crypto-keys",
+ "sha2 0.10.6",
+]
+
+[[package]]
 name = "mc-crypto-message-cipher"
 version = "4.0.2"
 dependencies = [
@@ -3297,7 +3331,6 @@ dependencies = [
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -5302,6 +5335,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-core",
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
@@ -5360,9 +5394,18 @@ dependencies = [
 name = "mc-transaction-types"
 version = "4.0.2"
 dependencies = [
+ "crc",
  "displaydoc",
+ "hkdf",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "proptest",
+ "prost",
  "serde",
+ "sha2 0.10.6",
  "subtle",
  "zeroize",
 ]
@@ -6557,9 +6600,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.11.6"
+version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21dc42e00223fc37204bd4aa177e69420c604ca4a183209a8f9de30c6d934698"
+checksum = "e48e50df39172a3e7eb17e14642445da64996989bc212b583015435d39a58537"
 dependencies = [
  "bytes 1.1.0",
  "prost-derive",
@@ -6567,9 +6610,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.11.6"
+version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bda8c0881ea9f722eb9629376db3d0b903b462477c1aafcb0566610ac28ac5d"
+checksum = "4ea9b0f8cbe5e15a8a042d030bd96668db28ecb567ec37d691971ff5731d2b1b"
 dependencies = [
  "anyhow",
  "itertools",
@@ -7360,9 +7403,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6f8ce69326daef9d845c3fd17149bd3dbd7caf5dc65dbbad9f5441a40ee407f"
+checksum = "b5ce6d3512e2617c209ec1e86b0ca2fea06454cd34653c91092bf0f3ec41f8e3"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -7381,9 +7424,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ed6c0254d4cce319800609aa0d41b486ee57326494802045ff27434fc9a2030"
+checksum = "0e7fe408d4d1f8de188a9309916e02e129cbe51ca19e55badea5a64899399b1a"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -7393,9 +7436,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3277dc5d2812562026f2095c7841f3d61bbe6789159b7da54f41d540787f818"
+checksum = "5695096a059a89973ec541062d331ff4c9aeef9c2951416c894f0fff76340e7d"
 dependencies = [
  "hostname",
  "libc",
@@ -7407,9 +7450,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5acbd3da4255938cf0384b6b140e6c07ff65919c26e4d7a989d8d90ee88fa91"
+checksum = "5b22828bfd118a7b660cf7a155002a494755c0424cebb7061e4743ecde9c7dbc"
 dependencies = [
  "once_cell",
  "rand 0.8.5",
@@ -7420,9 +7463,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4b922394014861334c24388a55825e4c715afb8ec7c1db900175aa9951f8241"
+checksum = "bfa3a3f4477e77541c26eb84d0e355729dfa35c74c682eb8678f146db5126013"
 dependencies = [
  "log",
  "sentry-core",
@@ -7430,9 +7473,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beebc7aedbd3aa470cd19caad208a5efe6c48902595c0d111a193d8ce4f7bd15"
+checksum = "1f4ced2a7a8c14899d58eec402d946f69d5ed26a3fc363a7e8b1e5cb88473a01"
 dependencies = [
  "sentry-backtrace",
  "sentry-core",
@@ -7440,9 +7483,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1e44ec68003718729f966c5ecbe7875279073b50d8965bfb9433063569a2091"
+checksum = "051ce412f07e7d131194270d832cd72e112d4a175a310b4a7aa2ffb859f01d8c"
 dependencies = [
  "sentry-core",
  "serde_json",
@@ -7451,9 +7494,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.29.3"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10d8587b12c0b8211bb3066979ee57af6e8657e23cf439dc6c8581fd86de24e8"
+checksum = "360ee3270f7a4a1eee6c667f7d38360b995431598a73b740dfe420da548d9cc9"
 dependencies = [
  "debugid",
  "getrandom 0.2.8",
@@ -7923,9 +7966,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.107"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4064b5b16e03ae50984a5a8ed5d4f8803e6bc1fd170a3cda91a1be4b18e3f5"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",

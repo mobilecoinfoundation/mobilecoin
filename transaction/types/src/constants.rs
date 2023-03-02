@@ -44,7 +44,5 @@ pub const MICROMOB_TO_PICOMOB: u64 = 1_000_000;
 /// one milliMOB = 1e9 picoMOB
 pub const MILLIMOB_TO_PICOMOB: u64 = 1_000_000_000;
 
-lazy_static! {
-    /// Blinding for the implicit fee outputs.
-    pub static ref FEE_BLINDING: Scalar = Scalar::zero();
-}
+/// Blinding for the implicit fee outputs.
+pub const FEE_BLINDING: Scalar = Scalar::from_bits([0u8; 32]);

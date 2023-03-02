@@ -26,9 +26,7 @@ pub use memo::{
     GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
-pub use signed_contingent_input::{
-    SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
-};
+pub use signed_contingent_input::{SignedContingentInput, SignedContingentInputError};
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;
 pub use tx_summary_unblinding::{

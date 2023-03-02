@@ -61,7 +61,9 @@ These are set by environment variables, and they must be the same for all artifa
 even those that don't depend directly on SGX. E.g. `mobilecoind` must have the same configuration
 as `consensus_service` for Intel Remote Attestation to work, otherwise an error will occur at runtime.
 
-For testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
+For local testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
+If you are seeking to build a client that you can test against MobileCoin's official testnet,
+you must use `SGX_MODE=HW` and `IAS_MODE=PROD`, because testnet is configured as a production environment.
 
 #### SGX_MODE
 
