@@ -392,7 +392,8 @@ class FogConformanceTest:
         self.fog_view_router = None
         # TODO: Add more fog view instances with sharding.
         self.fog_view_store = None
-        self.fog_ledger = None
+        self.fog_ledger_router = None
+        self.key_image_store = None
         self.fog_report = None
         self.multi_balance_checker = None
 
@@ -499,17 +500,30 @@ class FogConformanceTest:
         )
         self.fog_view_router.start()
 
-        self.fog_ledger = FogLedger(
-            name = 'ledger_server1',
+        self.key_image_store = FogKeyImageStore(
+            name = 'keyimage1',
+            client_port = BASE_KEY_IMAGE_STORE_PORT,
+            admin_port = BASE_KEY_IMAGE_STORE_ADMIN_PORT,
+            admin_http_gateway_port = BASE_KEY_IMAGE_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            release = self.release,
+            sharding_strategy = 'default',
+            ledger_db_path = ledger2.ledger_db_path,
+            watcher_db_path = ledger2.watcher_db_path,
+        )
+        self.key_image_store.start()
+
+        self.fog_ledger_router = FogLedgerRouter(
+            name = 'ledger1',
             ledger_db_path = ledger2.ledger_db_path,
             client_responder_id = f'localhost:{BASE_NGINX_CLIENT_PORT}',
             client_port = BASE_LEDGER_CLIENT_PORT,
             admin_port = BASE_LEDGER_ADMIN_PORT,
             admin_http_gateway_port = BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT,
             watcher_db_path = ledger2.watcher_db_path,
+            shard_uris = [self.key_image_store.get_client_listen_uri()],
             release = self.release,
         )
-        self.fog_ledger.start()
+        self.fog_ledger_router.start()
 
         self.fog_report = FogReport(
             name = 'report1',
@@ -1029,8 +1043,11 @@ class FogConformanceTest:
         if self.multi_balance_checker:
             self.multi_balance_checker.stop()
 
-        if self.fog_ledger:
-            self.fog_ledger.stop()
+        if self.fog_ledger_router:
+            self.fog_ledger_router.stop()
+        
+        if self.key_image_store:
+            self.key_image_store.stop()
 
         if self.fog_report:
             self.fog_report.stop()
