@@ -9,6 +9,7 @@ spec:
   shards:
   {{- toYaml .Values.fogLedgerStores.shards | nindent 4}}
   router:
+    shardingScheme: insecure-key-image-store
     template:
       containerName: fog-ledger
       spec:
@@ -319,8 +320,6 @@ spec:
                   name: client-auth-token
                   key: token
                   optional: true
-            - name: CLIENT_RESPONDER_ID
-              value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               exec:
