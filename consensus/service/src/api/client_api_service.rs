@@ -219,6 +219,7 @@ impl ConsensusClientApi for ClientApiService {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         {
+            let session = ClientSession::from(msg.channel_id.clone());
             let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
             if let Some(_session_info) = tracker.get(&session) {
                 // TODO: Update fields
