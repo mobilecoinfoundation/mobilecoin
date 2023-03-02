@@ -1739,7 +1739,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        const LRU_CAPACITY : usize = 4096
+        const LRU_CAPACITY : usize = 4096;
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));
 
         let instance = ClientApiService::new(
