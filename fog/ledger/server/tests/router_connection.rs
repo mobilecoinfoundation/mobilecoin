@@ -4,6 +4,7 @@
 //! grpc API
 
 use futures::executor::block_on;
+use grpcio::ChannelBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
@@ -14,7 +15,7 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
-use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_api::{ledger::TxOutResultCode, ledger_grpc::KeyImageStoreApiClient};
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -32,7 +33,7 @@ use mc_transaction_core::{
     Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -988,7 +989,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .connect_to_uri(&store_uri, &logger),
             );
             let mut store_clients = HashMap::new();
-            store_clients.insert(store_uri, Arc::new(store_client));
+            store_clients.insert(store_uri.clone(), Arc::new(store_client));
             let shards = Arc::new(RwLock::new(store_clients));
 
             // Make Router Server
@@ -1011,6 +1012,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_responder_id: router_client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
+                shard_uris: vec![store_uri],
                 ias_spid: Default::default(),
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
