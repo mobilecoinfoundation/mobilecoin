@@ -97,8 +97,15 @@ where
     ) -> KeyImageStoreServer<E, SS, RC> {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
+        let use_tls = client_listen_uri.use_tls();
+        let responder_id = client_listen_uri
+            .responder_id()
+            .expect("Could not get store responder ID");
+        let uri = KeyImageStoreUri::try_from_responder_id(responder_id, use_tls)
+            .expect("Could not create URI from Responder ID");
+
         let key_image_service = KeyImageService::new(
-            KeyImageClientListenUri::Store(client_listen_uri.clone()),
+            KeyImageClientListenUri::Store(uri),
             chain_id,
             ledger,
             watcher,
