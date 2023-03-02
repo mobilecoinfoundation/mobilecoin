@@ -1739,7 +1739,7 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
-        const LRU_CAPACITY : usize = 4096;
+        const LRU_CAPACITY: usize = 4096;
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));
 
         let instance = ClientApiService::new(
@@ -1761,7 +1761,7 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         let message = Message::default();
         {
-            // Make sure there are no tracked sessions right up until we 
+            // Make sure there are no tracked sessions right up until we
             // actually propose a tx.
             let tracker = tracked_sessions
                 .lock()
@@ -1769,9 +1769,11 @@ mod client_api_tests {
             assert!(tracker.is_empty());
         }
 
-        let propose_tx_response =  client.client_tx_propose(&message).expect("Client tx propose error");
-       assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-       assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
+        let propose_tx_response = client
+            .client_tx_propose(&message)
+            .expect("Client tx propose error");
+        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+        assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
 
         let tracker = tracked_sessions
             .lock()
