@@ -128,7 +128,13 @@ pub struct Config {
 
     /// Maximum number of client session tracking structures to retain in
     /// a least-recently-used cache.
-    #[clap(long, default_value = "4096", env = "MC_CLIENT_TRACKING_CAPACITY")]
+    /// 
+    /// MAX_CLIENT_SESSIONS in crypto/ake/enclave/src/lib.rs controls what is,
+    /// effectively, the same session-tracking data on the unsecure side that 
+    /// this variable controls in the enclave. 
+    /// If MAX_CLIENT_SESSIONS changes, please change the default on this
+    /// config setting to match. 
+    #[clap(long, default_value = "10000", env = "MC_CLIENT_TRACKING_CAPACITY")]
     pub client_tracking_capacity: usize,
 }
 
