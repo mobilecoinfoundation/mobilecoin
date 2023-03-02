@@ -104,7 +104,7 @@ fn add_block_to_ledger(
                 src_url,
                 block_index,
                 signature.clone(),
-                format!("00/{}", block_index),
+                format!("00/{block_index}"),
             )
             .expect("Could not add block signature");
     }
@@ -174,7 +174,7 @@ fn create_store(
         watcher,
         EpochShardingStrategy::new(block_range),
         SystemTimeProvider::default(),
-        logger.clone(),
+        logger,
     );
     store.start();
 
@@ -259,8 +259,7 @@ fn create_router(
 
     let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
-    let mut router =
-        LedgerRouterServer::new_from_config(config, enclave, ra_client, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(config, enclave, ra_client, ledger, watcher, logger);
     router.start();
     router
 }
@@ -280,7 +279,7 @@ fn create_router_client(
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-    LedgerGrpcClient::new(uri, verifier, grpc_env, logger.clone())
+    LedgerGrpcClient::new(uri, verifier, grpc_env, logger)
 }
 
 fn create_env(
@@ -306,7 +305,7 @@ fn create_env(
     }
 
     let router = create_router(&config, &blocks_config, grpc_env.clone(), logger.clone());
-    let router_client = create_router_client(&config, grpc_env, logger.clone());
+    let router_client = create_router_client(&config, grpc_env, logger);
 
     TestEnvironment {
         stores,
@@ -392,7 +391,7 @@ async fn smoke_test() {
             let account = AccountKey::random_with_fog(&mut rng);
             let mut keys = vec![];
             for _ in 0..3 {
-                keys.push(KeyImage::from(key_index as u64));
+                keys.push(KeyImage::from(key_index));
                 key_index += 1;
             }
             block.insert(account.default_subaddress(), keys);
@@ -406,7 +405,7 @@ async fn smoke_test() {
 
     // Check that we can get all the key images from each shard
     for i in 0..key_index {
-        let key = KeyImage::from(i as u64);
+        let key = KeyImage::from(i);
         let response = test_environment
             .router_client
             .check_key_images(&[key])
@@ -421,14 +420,14 @@ async fn smoke_test() {
     }
 
     // Grab them all at once
-    let keys: Vec<_> = (0..key_index).map(|i| KeyImage::from(i as u64)).collect();
+    let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
     let response = test_environment
         .router_client
         .check_key_images(&keys)
         .await
         .expect("check_key_images failed");
     for i in 0..key_index {
-        let key = KeyImage::from(i as u64);
+        let key = KeyImage::from(i);
         assert_eq!(response.results[i as usize].key_image, key);
         assert_eq!(response.results[i as usize].status(), Ok(Some((i / 9) + 1)));
         assert_eq!(
@@ -502,7 +501,7 @@ async fn overlapping_stores() {
             let account = AccountKey::random_with_fog(&mut rng);
             let mut keys = vec![];
             for _ in 0..3 {
-                keys.push(KeyImage::from(key_index as u64));
+                keys.push(KeyImage::from(key_index));
                 key_index += 1;
             }
             block.insert(account.default_subaddress(), keys);
@@ -516,7 +515,7 @@ async fn overlapping_stores() {
 
     // Check that we can get all the key images from each shard
     for i in 0..key_index {
-        let key = KeyImage::from(i as u64);
+        let key = KeyImage::from(i);
         let response = test_environment
             .router_client
             .check_key_images(&[key])
@@ -531,14 +530,14 @@ async fn overlapping_stores() {
     }
 
     // Grab them all at once
-    let keys: Vec<_> = (0..key_index).map(|i| KeyImage::from(i as u64)).collect();
+    let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
     let response = test_environment
         .router_client
         .check_key_images(&keys)
         .await
         .expect("check_key_images failed");
     for i in 0..key_index {
-        let key = KeyImage::from(i as u64);
+        let key = KeyImage::from(i);
         assert_eq!(response.results[i as usize].key_image, key);
         assert_eq!(response.results[i as usize].status(), Ok(Some((i / 9) + 1)));
         assert_eq!(
