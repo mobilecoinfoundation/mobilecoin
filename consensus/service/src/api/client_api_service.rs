@@ -1723,7 +1723,6 @@ mod client_api_tests {
 
         const NUM_BLOCKS: u64= 5;
         let mut ledger = MockLedger::new();
-        // The service should request num_blocks.
         ledger
             .expect_num_blocks()
             .times(1)
@@ -1753,7 +1752,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
-            // Clone this, maintaining our own ARC reference into the tracked
+            // Clone this, maintaining our own Arc reference into the tracked
             // sessions structure so that we can inspect it later.
             tracked_sessions.clone(),
         );
@@ -1761,19 +1760,19 @@ mod client_api_tests {
         // gRPC client and server.
         let (client, _server) = get_client_server(instance);
         let message = Message::default();
-        // Make sure there are no tracked sessions right up until we actually propose a
-        // tx.
-        let tracker = tracked_sessions
-            .lock()
-            .expect("Attempt to lock session-tracking mutex failed.");
-        assert!(tracker.is_empty());
-        drop(tracker);
+        {
+            // Make sure there are no tracked sessions right up until we 
+            // actually propose a tx.
+            let tracker = tracked_sessions
+                .lock()
+                .expect("Attempt to lock session-tracking mutex failed.");
+            assert!(tracker.is_empty());
+        }
 
         let propose_tx_response =  client.client_tx_propose(&message).expect("Client tx propose error");
        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
        assert_eq!(propose_tx_response.get_block_count(), num_blocks);
 
-        // Inspect our session-tracking
         let tracker = tracked_sessions
             .lock()
             .expect("Attempt to lock session-tracking mutex failed.");
