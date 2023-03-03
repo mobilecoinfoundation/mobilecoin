@@ -13,8 +13,8 @@ use digest::{
 };
 use ed25519::Signature;
 use ed25519_dalek::{
-    SecretKey, Signature as DalekSignature, SigningKey, VerifyingKey as DalekPublicKey,
-    PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
+    SecretKey, Signature as DalekSignature, Signer as DalekSigner, SigningKey,
+    VerifyingKey as DalekPublicKey, PUBLIC_KEY_LENGTH,
 };
 use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
@@ -130,7 +130,7 @@ impl TryFrom<&[u8]> for Ed25519Public {
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
         Ok(Self(
-            DalekPublicKey::from_bytes(src).map_err(|_e| KeyError::InvalidPublicKey)?,
+            DalekPublicKey::try_from(src).map_err(|_e| KeyError::InvalidPublicKey)?,
         ))
     }
 }
@@ -207,7 +207,7 @@ impl DistinguishedEncoding for Ed25519Public {
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Public {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::from_bytes(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -216,7 +216,8 @@ impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed2551
 
 impl From<&Ed25519Private> for Ed25519Public {
     fn from(src: &Ed25519Private) -> Self {
-        Self(DalekPublicKey::from(&src.0))
+        let signing_key = SigningKey::from(&src.0);
+        Self(DalekPublicKey::from(&signing_key))
     }
 }
 
@@ -225,7 +226,7 @@ impl PublicKey for Ed25519Public {}
 impl Verifier<Ed25519Signature> for Ed25519Public {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::from_bytes(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_strict(message, &sig)
             .map_err(|_e| SignatureError::new())
@@ -291,7 +292,7 @@ impl DistinguishedEncoding for Ed25519Private {
     }
 
     fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
-        let mut key = self.0.to_bytes();
+        let mut key = self.0;
         buff[..ED25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
 
         let prefix_len = ED25519_PKI_DER_PREFIX.len();
@@ -308,7 +309,8 @@ impl PrivateKey for Ed25519Private {
 
 impl FromRandom for Ed25519Private {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        Self(SecretKey::generate(csprng))
+        let signing_key = SigningKey::generate(csprng);
+        Self(signing_key.to_bytes())
     }
 }
 
@@ -316,9 +318,8 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
     type Error = SignatureError;
 
     fn try_from(src: &[u8]) -> Result<Ed25519Private, Self::Error> {
-        Ok(Self(
-            SecretKey::from_bytes(src).map_err(|_e| SignatureError::new())?,
-        ))
+        let secret_key = SecretKey::try_from(src).map_err(|_e| SignatureError::new())?;
+        Ok(Self(secret_key))
     }
 }
 
@@ -337,17 +338,21 @@ pub struct Ed25519Pair(SigningKey);
 
 impl Ed25519Pair {
     pub fn private_key(&self) -> Ed25519Private {
-        Ed25519Private::try_from(self.0.secret.as_ref()).expect("Invalid private key in keypair")
+        let secret_key = self.0.to_bytes();
+        Ed25519Private::try_from(secret_key.as_slice()).expect("Invalid private key in keypair")
     }
 
     pub fn public_key(&self) -> Ed25519Public {
-        Ed25519Public(self.0.public)
+        Ed25519Public(self.0.verifying_key())
     }
 }
 
 impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519Pair {
     fn try_sign_digest(&self, digest: D) -> Result<Ed25519Signature, SignatureError> {
-        let sig = self.0.sign_prehashed(digest, None)?;
+        let sig = self
+            .0
+            .sign_prehashed(digest, None)
+            .map_err(|_e| SignatureError::new())?;
         Ok(Ed25519Signature::new(sig.to_bytes()))
     }
 }
@@ -355,7 +360,7 @@ impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519P
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Pair {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::from_bytes(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -364,15 +369,8 @@ impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed2551
 
 impl From<Ed25519Private> for Ed25519Pair {
     fn from(src: Ed25519Private) -> Ed25519Pair {
-        let mut bytes = [0u8; SECRET_KEY_LENGTH + PUBLIC_KEY_LENGTH];
-        bytes[..SECRET_KEY_LENGTH].copy_from_slice(src.0.as_ref());
-
-        let public = DalekPublicKey::from(&src.0);
-        bytes[SECRET_KEY_LENGTH..].copy_from_slice(public.as_ref());
-
-        let retval = SigningKey::from_bytes(&bytes);
-        bytes.zeroize();
-        Ed25519Pair(retval.expect("Invalid keypair construction"))
+        let signing_key = SigningKey::from_bytes(&src.0);
+        Ed25519Pair(signing_key)
     }
 }
 
@@ -396,7 +394,7 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
 
     fn try_from(src: &[u8]) -> Result<Self, SignatureError> {
         Ok(Self(
-            SigningKey::from_bytes(src).map_err(|_e| SignatureError::new())?,
+            SigningKey::try_from(src).map_err(|_e| SignatureError::new())?,
         ))
     }
 }
@@ -413,9 +411,9 @@ impl TryFrom<Vec<u8>> for Ed25519Pair {
 impl Verifier<Ed25519Signature> for Ed25519Pair {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::from_bytes(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
-            .public
+            .verifying_key()
             .verify_strict(message, &sig)
             .map_err(|_e| SignatureError::new())
     }

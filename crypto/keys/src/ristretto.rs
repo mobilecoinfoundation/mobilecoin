@@ -72,7 +72,7 @@ impl TryFrom<&[u8; 32]> for RistrettoPrivate {
 
     fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
         Ok(Self(
-            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
+            Option::from(Scalar::from_canonical_bytes(*src)).ok_or(KeyError::InvalidPrivateKey)?,
         ))
     }
 }
@@ -288,6 +288,7 @@ impl ReprBytes for RistrettoPublic {
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
         Ok(Self(
             CompressedRistretto::from_slice(src.as_slice())
+                .map_err(|_e| KeyError::InvalidPublicKey)?
                 .decompress()
                 .ok_or(KeyError::InvalidPublicKey)?,
         ))
@@ -490,13 +491,18 @@ impl TryFrom<&[u8]> for CompressedRistrettoPublic {
         if src.len() != 32 {
             return Err(KeyError::LengthMismatch(src.len(), 32));
         }
-        Ok(Self(CompressedRistretto::from_slice(src)))
+        let compressed_ristretto =
+            CompressedRistretto::from_slice(src).map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
-impl From<&[u8; 32]> for CompressedRistrettoPublic {
-    fn from(src: &[u8; 32]) -> Self {
-        Self(CompressedRistretto::from_slice(&src[..]))
+impl TryFrom<&[u8; 32]> for CompressedRistrettoPublic {
+    type Error = KeyError;
+    fn try_from(src: &[u8; 32]) -> Result<Self, Self::Error> {
+        let compressed_ristretto = CompressedRistretto::from_slice(src.as_slice())
+            .map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
