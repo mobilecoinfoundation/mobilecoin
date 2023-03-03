@@ -1256,6 +1256,7 @@ source = "git+https://github.com/dalek-cryptography/ed25519-dalek?rev=619ef68d73
 dependencies = [
  "curve25519-dalek",
  "ed25519 2.1.0",
+ "rand_core 0.6.4",
  "serde",
  "serde_bytes",
  "sha2 0.10.6",

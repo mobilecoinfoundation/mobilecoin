@@ -656,7 +656,7 @@ cfg_if! {
             }
         }
 
-        impl Digestible for ed25519_dalek::PublicKey {
+        impl Digestible for ed25519_dalek::VerifyingKey {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 transcript.append_primitive(context, b"ed25519", self.as_bytes())
