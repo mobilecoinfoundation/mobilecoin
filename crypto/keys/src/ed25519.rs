@@ -13,7 +13,7 @@ use digest::{
 };
 use ed25519::Signature;
 use ed25519_dalek::{
-    Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
+    SecretKey, Signature as DalekSignature, SigningKey, VerifyingKey as DalekPublicKey,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
 };
 use mc_crypto_digestible::{DigestTranscript, Digestible};
@@ -333,7 +333,7 @@ impl TryFrom<alloc::vec::Vec<u8>> for Ed25519Private {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Ed25519Pair(Keypair);
+pub struct Ed25519Pair(SigningKey);
 
 impl Ed25519Pair {
     pub fn private_key(&self) -> Ed25519Private {
@@ -370,7 +370,7 @@ impl From<Ed25519Private> for Ed25519Pair {
         let public = DalekPublicKey::from(&src.0);
         bytes[SECRET_KEY_LENGTH..].copy_from_slice(public.as_ref());
 
-        let retval = Keypair::from_bytes(&bytes);
+        let retval = SigningKey::from_bytes(&bytes);
         bytes.zeroize();
         Ed25519Pair(retval.expect("Invalid keypair construction"))
     }
@@ -378,7 +378,7 @@ impl From<Ed25519Private> for Ed25519Pair {
 
 impl FromRandom for Ed25519Pair {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        Self(Keypair::generate(csprng))
+        Self(SigningKey::generate(csprng))
     }
 }
 
@@ -396,7 +396,7 @@ impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
 
     fn try_from(src: &[u8]) -> Result<Self, SignatureError> {
         Ok(Self(
-            Keypair::from_bytes(src).map_err(|_e| SignatureError::new())?,
+            SigningKey::from_bytes(src).map_err(|_e| SignatureError::new())?,
         ))
     }
 }
