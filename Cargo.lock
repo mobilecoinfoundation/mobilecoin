@@ -1252,15 +1252,13 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek"
 version = "2.0.0-pre.0"
-source = "git+https://github.com/dalek-cryptography/ed25519-dalek?rev=619ef68d730b10bbade8b0d89fc4628b8fe8afc7#619ef68d730b10bbade8b0d89fc4628b8fe8afc7"
+source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=619ef68d730b10bbade8b0d89fc4628b8fe8afc7#619ef68d730b10bbade8b0d89fc4628b8fe8afc7"
 dependencies = [
  "curve25519-dalek",
  "ed25519 2.1.0",
- "rand_core 0.6.4",
  "serde",
  "serde_bytes",
  "sha2 0.10.6",
- "signature 2.0.0",
  "zeroize",
 ]
 
@@ -7821,9 +7819,6 @@ name = "signature"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fe458c98333f9c8152221191a77e2a44e8325d0193484af2e9421a53019e57d"
-dependencies = [
- "digest 0.10.6",
-]
 
 [[package]]
 name = "siphasher"
