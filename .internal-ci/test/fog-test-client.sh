@@ -74,7 +74,7 @@ then
     token_opt="--token-ids ${token_ids}"
 fi
 
-export RUST_LOG=info
+export RUST_LOG=trace
 test_client \
     --key-dir "${key_dir}" \
     --consensus "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
