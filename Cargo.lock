@@ -1260,6 +1260,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "sha2 0.10.6",
+ "signature 2.0.0",
  "zeroize",
 ]
 
@@ -7820,6 +7821,9 @@ name = "signature"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fe458c98333f9c8152221191a77e2a44e8325d0193484af2e9421a53019e57d"
+dependencies = [
+ "digest 0.10.6",
+]
 
 [[package]]
 name = "siphasher"
