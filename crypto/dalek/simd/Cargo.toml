@@ -14,4 +14,4 @@ default = [ "curve25519-dalek" ]
 # Todo: Add simd as build command...
 curve25519-dalek = { version = "4.0.0-rc.1", optional=true, default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.1", optional=true, default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false, features = ["nightly"] }
+x25519-dalek = { version = "2.0.0-pre.2", optional=true, default-features = false }

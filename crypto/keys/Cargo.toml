@@ -21,7 +21,7 @@ curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 ed25519 = { version = "1.5", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = [ "rand" ] }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 
