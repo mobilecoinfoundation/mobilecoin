@@ -13,6 +13,7 @@ ARG RUST_BIN_PATH=target/release
 COPY ${RUST_BIN_PATH}/libledger-enclave.signed.so /usr/bin/
 COPY ${RUST_BIN_PATH}/ledger_server /usr/bin/
 COPY ${RUST_BIN_PATH}/ledger_router /usr/bin/
+COPY ${RUST_BIN_PATH}/key_image_store /usr/bin/
 COPY ${RUST_BIN_PATH}/mobilecoind /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-admin-http-gateway /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
