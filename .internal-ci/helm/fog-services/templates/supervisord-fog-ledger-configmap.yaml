@@ -14,7 +14,7 @@ data:
       --ledger-db /fog-data/ledger
       --watcher-db /fog-data/watcher
       --client-responder-id "%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
-      --client-listen-uri insecure-fog-ledger://0.0.0.0:3228/?responder-id="%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
+      --client-listen-uri insecure-key-image-store://0.0.0.0:3228/?responder-id="%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-ledger-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
       {{- if (include "fogServices.clientAuth" .) }}
       --client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
       --client-auth-token-max-lifetime 31536000
