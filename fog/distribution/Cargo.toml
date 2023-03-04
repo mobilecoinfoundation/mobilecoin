@@ -38,7 +38,7 @@ lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.6"
 retry = "2.0"
-tempfile = "3.3"
+tempfile = "3.4"
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 
