@@ -36,7 +36,7 @@ crossbeam-channel = "0.5"
 grpcio = "0.12.1"
 lazy_static = "1.4"
 rand = "0.8"
-rayon = "1.6"
+rayon = "1.7"
 retry = "2.0"
 tempfile = "3.4"
 
