@@ -23,7 +23,8 @@ impl TryFrom<&external::CompressedRistretto> for CompressedCommitment {
         if bytes.len() != 32 {
             return Err(ConversionError::ArrayCastError);
         }
-        let point = CompressedRistretto::from_slice(bytes).map_err(|_e| ConversionError::InvalidSignature)?;
+        let point = CompressedRistretto::from_slice(bytes)
+            .map_err(|_e| ConversionError::InvalidSignature)?;
         Ok(CompressedCommitment { point })
     }
 }

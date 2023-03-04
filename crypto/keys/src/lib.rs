@@ -78,7 +78,7 @@ pub use digest::Digest;
 pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
 pub use schnorrkel_og::SignatureError as SchnorrkelError;
 pub use signature::{
-    DigestSigner, DigestVerifier, Error as SignatureError, Signature, Signer, Verifier,
+    DigestSigner, DigestVerifier, Error as SignatureError, SignatureEncoding, Signer, Verifier,
 };
 
 pub use traits::DER_MAX_LEN;

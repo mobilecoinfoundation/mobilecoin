@@ -5,16 +5,16 @@
 
 use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
-    Signature as SignatureTrait, SignatureError, Signer, Verifier,
+    SignatureEncoding, SignatureError, Signer, Verifier,
 };
 use digest::{
     generic_array::typenum::{U32, U64},
     Digest,
 };
-use ed25519::Signature;
+use ed25519::{Signature, SignatureBytes};
 use ed25519_dalek::{
-    SecretKey, Signature as DalekSignature, Signer as DalekSigner, SigningKey,
-    VerifyingKey as DalekPublicKey, PUBLIC_KEY_LENGTH,
+    SecretKey, Signature as DalekSignature, SigningKey, VerifyingKey as DalekPublicKey,
+    PUBLIC_KEY_LENGTH,
 };
 use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
@@ -36,6 +36,9 @@ use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
 use serde::{self as serde, Deserialize, Serialize};
+
+#[cfg(feature = "serde")]
+use mc_util_serial::BigArray;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
 // a detached signature -- use https://lapo.it/asn1js/
@@ -92,7 +95,7 @@ impl DistinguishedEncoding for Ed25519Signature {
             return Err(KeyError::InvalidPublicKey);
         }
         Ok(Self(
-            Signature::try_from(&src[12..]).map_err(|_e| KeyError::InternalError)?,
+            SignatureBytes::try_from(&src[12..]).map_err(|_e| KeyError::InternalError)?,
         ))
     }
 
@@ -207,7 +210,7 @@ impl DistinguishedEncoding for Ed25519Public {
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Public {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -226,7 +229,7 @@ impl PublicKey for Ed25519Public {}
 impl Verifier<Ed25519Signature> for Ed25519Public {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_strict(message, &sig)
             .map_err(|_e| SignatureError::new())
@@ -360,7 +363,7 @@ impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519P
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Pair {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -383,9 +386,10 @@ impl FromRandom for Ed25519Pair {
 impl Signer<Ed25519Signature> for Ed25519Pair {
     fn try_sign(&self, msg: &[u8]) -> Result<Ed25519Signature, SignatureError> {
         let sig = self.0.sign(msg);
-        Ok(Ed25519Signature(Signature::from_bytes(
-            &sig.to_bytes()[..],
-        )?))
+        let signature = Signature::try_from(&sig.to_bytes()[..])?;
+        let signature_bytes = signature.to_bytes();
+
+        Ok(Ed25519Signature(signature_bytes))
     }
 }
 
@@ -411,7 +415,7 @@ impl TryFrom<Vec<u8>> for Ed25519Pair {
 impl Verifier<Ed25519Signature> for Ed25519Pair {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
-            DalekSignature::try_from(signature.as_bytes()).map_err(|_e| SignatureError::new())?;
+            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
         self.0
             .verifying_key()
             .verify_strict(message, &sig)
@@ -422,7 +426,7 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 /// An Ed25519 signature.
 #[derive(Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Ed25519Signature(Signature);
+pub struct Ed25519Signature(#[serde(with = "BigArray")] SignatureBytes);
 
 impl Ed25519Signature {
     /// Signature length in bytes.
@@ -430,12 +434,18 @@ impl Ed25519Signature {
 
     /// Create a new signature from a byte array
     pub fn new(bytes: [u8; Self::BYTE_SIZE]) -> Self {
-        Self(Signature::from(bytes))
+        Self(bytes)
     }
 
     /// Return the inner byte array
     pub fn to_bytes(&self) -> [u8; Self::BYTE_SIZE] {
-        self.0.to_bytes()
+        self.0
+    }
+}
+
+impl AsRef<[u8]> for Ed25519Signature {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 
@@ -456,15 +466,13 @@ impl Default for Ed25519Signature {
     }
 }
 
-impl SignatureTrait for Ed25519Signature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
-        Ok(Self(Signature::from_bytes(bytes)?))
-    }
+impl SignatureEncoding for Ed25519Signature {
+    type Repr = [u8; Self::BYTE_SIZE];
 }
 
-impl AsRef<[u8]> for Ed25519Signature {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+impl From<Ed25519Signature> for [u8; 64] {
+    fn from(src: Ed25519Signature) -> Self {
+        src.0
     }
 }
 
@@ -472,7 +480,9 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
     type Error = SignatureError;
 
     fn try_from(bytes: &'a [u8]) -> Result<Self, SignatureError> {
-        Ok(Self(Signature::try_from(bytes)?))
+        Ok(Self(
+            SignatureBytes::try_from(bytes).map_err(|_e| SignatureError::new())?,
+        ))
     }
 }
 

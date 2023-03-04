@@ -20,7 +20,7 @@ base64 = { version = "0.21", default-features = false }
 curve25519-dalek = { version = "4.0.0-rc.1", default-features = false, features = ["rand_core"] }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
-ed25519 = { version = "1.5", default-features = false }
+ed25519 = { version = "2.2.0", default-features = false }
 ed25519-dalek = { version = "2.0.0-pre.0", default-features = false, features = ["rand_core", "digest"]}
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
@@ -30,12 +30,13 @@ mc-crypto-digestible = { path = "../../crypto/digestible", default-features = fa
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
+mc-util-serial = { path = "../../util/serial", features = ["std"] }
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
-signature = { version = "1.6.4", default-features = false, features = ["digest-preview"] }
+signature = { version = "2.0.0", default-features = false, features = ["digest"] }
 static_assertions = "1.1.0"
 subtle = { version = "2", default-features = false }
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
