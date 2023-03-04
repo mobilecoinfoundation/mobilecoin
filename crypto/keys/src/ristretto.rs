@@ -4,7 +4,7 @@
 
 use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
-    KeyError, PrivateKey, PublicKey, SignatureEncoding,
+    KeyError, PrivateKey, PublicKey, SignatureEncoding, SignatureError,
 };
 use core::{
     cmp::Ordering,
@@ -44,7 +44,6 @@ use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 #[cfg(feature = "prost")]
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
-use signature::Error as SignatureError;
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
