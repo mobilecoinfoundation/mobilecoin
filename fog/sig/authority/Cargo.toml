@@ -11,8 +11,6 @@ rust-version = { workspace = true }
 [dependencies]
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 
-signature = { version = "1.6.4", default-features = false, features = ["digest-preview"] }
-
 [dev-dependencies]
 mc-util-from-random = { path = "../../../util/from-random" }
 
