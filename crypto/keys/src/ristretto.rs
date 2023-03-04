@@ -4,7 +4,7 @@
 
 use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
-    KeyError, PrivateKey, PublicKey, Signature,
+    KeyError, PrivateKey, PublicKey, SignatureEncoding,
 };
 use core::{
     cmp::Ordering,
@@ -576,7 +576,18 @@ impl Kex for Ristretto {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct RistrettoSignature([u8; SIGNATURE_LENGTH]);
+
+impl SignatureEncoding for RistrettoSignature {
+    type Repr = [u8; SIGNATURE_LENGTH];
+}
+
+impl From<RistrettoSignature> for [u8; 64] {
+    fn from(src: RistrettoSignature) -> Self {
+        src.0
+    }
+}
 
 impl AsRef<[u8]> for RistrettoSignature {
     fn as_ref(&self) -> &[u8] {
@@ -605,12 +616,6 @@ impl From<SchnorrkelSignature> for RistrettoSignature {
 impl From<&SchnorrkelSignature> for RistrettoSignature {
     fn from(src: &SchnorrkelSignature) -> RistrettoSignature {
         Self(src.to_bytes())
-    }
-}
-
-impl Signature for RistrettoSignature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
-        Self::try_from(bytes)
     }
 }
 

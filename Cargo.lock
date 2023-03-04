@@ -1038,9 +1038,9 @@ dependencies = [
 
 [[package]]
 name = "der"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1a467a65c5e759bce6e65eaf91cc29f466cdc57cb65777bd646872a8a1fd4de"
+checksum = "bc302fd9b18d66834a6f092d10ea85489c0ca8ad6b7304092135fab171d853cd"
 dependencies = [
  "const-oid",
  "zeroize",
@@ -1217,19 +1217,9 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "ed25519"
-version = "1.5.2"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9c280362032ea4203659fc489832d0204ef09f247a0506f170dafcac08c369"
-dependencies = [
- "serde",
- "signature 1.6.4",
-]
-
-[[package]]
-name = "ed25519"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cf420a7ec85d98495b0c34aa4a58ca117f982ffbece111aeb545160148d7010"
+checksum = "be522bee13fa6d8059f4903a4084aa3bd50725e18150202f0238deb615cd6371"
 dependencies = [
  "pkcs8",
  "serde",
@@ -3192,7 +3182,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
- "signature 1.6.4",
+ "signature 2.0.0",
 ]
 
 [[package]]
@@ -3220,7 +3210,7 @@ dependencies = [
  "curve25519-dalek",
  "digest 0.10.6",
  "displaydoc",
- "ed25519 1.5.2",
+ "ed25519",
  "ed25519-dalek",
  "hex",
  "hex_fmt",
@@ -3240,7 +3230,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
- "signature 1.6.4",
+ "signature 2.0.0",
  "static_assertions",
  "subtle",
  "tempfile",
@@ -5700,6 +5690,7 @@ dependencies = [
  "protobuf",
  "serde",
  "serde_cbor",
+ "serde_derive",
  "serde_json",
  "serde_with",
 ]
@@ -6367,9 +6358,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkcs8"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9eca2c590a5f85da82668fa685c09ce2888b9430e83299debf1f34b65fd4a4ba"
+checksum = "e34154ec92c136238e7c210443538e64350962b8e2788cadcf5f781a6da70c36"
 dependencies = [
  "der",
  "spki",
@@ -7784,9 +7775,9 @@ dependencies = [
 
 [[package]]
 name = "spki"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67cf02bbac7a337dc36e4f5a693db6c21e7863f45070f7064577eb4367a3212b"
+checksum = "c0445c905640145c7ea8c1993555957f65e7c46d0535b91ba501bc9bfc85522f"
 dependencies = [
  "base64ct",
  "der",
