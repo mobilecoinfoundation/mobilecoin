@@ -1683,4 +1683,90 @@ mod client_api_tests {
 
         assert!(submitted_values.lock().unwrap().is_empty());
     }
+
+    // Very simple test of the session-tracking feature
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_session_tracking_gets_populated(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        const NUM_BLOCKS: u64 = 5;
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(NUM_BLOCKS));
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+        tx_manager.expect_validate().times(1).return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        const LRU_CAPACITY: usize = 4096;
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+            // Clone this, maintaining our own Arc reference into the tracked
+            // sessions structure so that we can inspect it later.
+            tracked_sessions.clone(),
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
+        {
+            // Make sure there are no tracked sessions right up until we
+            // actually propose a tx.
+            let tracker = tracked_sessions
+                .lock()
+                .expect("Attempt to lock session-tracking mutex failed.");
+            assert!(tracker.is_empty());
+        }
+
+        let propose_tx_response = client
+            .client_tx_propose(&message)
+            .expect("Client tx propose error");
+        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+        assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
+
+        let tracker = tracked_sessions
+            .lock()
+            .expect("Attempt to lock session-tracking mutex failed.");
+        assert_eq!(tracker.len(), 1);
+    }
 }
