@@ -5,7 +5,7 @@
 use crate::BlockMetadataContents;
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_crypto_keys::{
-    Ed25519Pair, Ed25519Public, Ed25519Signature, Signature as SignatureTrait, SignatureError,
+    Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureEncoding, SignatureError,
 };
 
 /// The context to use for [BlockMetadataContents] digests.
@@ -16,7 +16,7 @@ pub fn block_metadata_context() -> &'static [u8] {
 /// Helper for signing [BlockMetadataContents].
 pub trait MetadataSigner: DigestibleSigner<Self::Signature, BlockMetadataContents> {
     /// The signature type.
-    type Signature: SignatureTrait;
+    type Signature: SignatureEncoding;
 
     /// Sign the given [BlockMetadataContents].
     fn sign_metadata(
@@ -34,7 +34,7 @@ impl MetadataSigner for Ed25519Pair {
 /// Helper for verifying a signature against [BlockMetadataContents].
 pub trait MetadataVerifier: DigestibleVerifier<Self::Signature, BlockMetadataContents> {
     /// The signature type.
-    type Signature: SignatureTrait;
+    type Signature: SignatureEncoding;
 
     /// Verify the given signature against the given [BlockMetadataContents].
     fn verify_metadata(
