@@ -10,6 +10,7 @@ use mc_common::{
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
+use mc_fog_types::common::BlockRange;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
@@ -183,8 +184,7 @@ impl<
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while block_range.contains(next_block_index)
-                && self.load_block_data(&mut next_block_index)
+            while self.load_block_data(&mut next_block_index, &block_range)
                 && !self.stop_requested.load(Ordering::SeqCst)
             {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
@@ -220,7 +220,7 @@ impl<
     /// Attempt to load the next block that we
     /// are aware of and tracking.
     /// Returns true if we might have more block data to load.
-    fn load_block_data(&mut self, next_block_index: &mut u64) -> bool {
+    fn load_block_data(&mut self, next_block_index: &mut u64, block_range: &BlockRange) -> bool {
         // Default to true: if there is an error, we may have more work, we don't know
         let mut may_have_more_work = true;
         let watcher_timeout: Duration = Duration::from_millis(5000);
@@ -250,26 +250,29 @@ impl<
 
                 let _active = mark_span_as_active(span);
 
-                // Get the timestamp for the block.
-                let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                    self.watcher
-                        .poll_block_timestamp(*next_block_index, watcher_timeout)
-                });
+                // Only add blocks within the epoch to the ORAM
+                if block_range.contains(*next_block_index) {
+                    // Get the timestamp for the block.
+                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                        self.watcher
+                            .poll_block_timestamp(*next_block_index, watcher_timeout)
+                    });
 
-                // Add block to enclave.
-                let records = block_contents
-                    .key_images
-                    .iter()
-                    .map(|key_image| KeyImageData {
-                        key_image: *key_image,
-                        block_index: *next_block_index,
-                        timestamp,
-                    })
-                    .collect();
+                    // Add block to enclave.
+                    let records = block_contents
+                        .key_images
+                        .iter()
+                        .map(|key_image| KeyImageData {
+                            key_image: *key_image,
+                            block_index: *next_block_index,
+                            timestamp,
+                        })
+                        .collect();
 
-                tracer.in_span("add_records_to_enclave", |_cx| {
-                    self.add_records_to_enclave(*next_block_index, records);
-                });
+                    tracer.in_span("add_records_to_enclave", |_cx| {
+                        self.add_records_to_enclave(*next_block_index, records);
+                    });
+                }
 
                 // Update shared state.
                 tracer.in_span("update_shared_state", |_cx| {
