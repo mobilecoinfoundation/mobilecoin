@@ -29,7 +29,9 @@ fn parse_ristretto_hex(src: &str) -> Result<CompressedRistrettoPublic, String> {
     let mut key_bytes = [0u8; 32];
     hex::decode_to_slice(src.as_bytes(), &mut key_bytes[..])
         .map_err(|err| format!("Hex decode error: {err:?}"))?;
-    Ok(CompressedRistrettoPublic::from(&key_bytes))
+    let key = CompressedRistrettoPublic::try_from(&key_bytes)
+        .map_err(|err| format!("Key construction error: {err:?}"))?;
+    Ok(key)
 }
 
 /// The command to run.
