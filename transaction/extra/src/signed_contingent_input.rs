@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! A signed contingent input as described in MCIP #31
 
@@ -63,7 +63,7 @@ impl SignedContingentInput {
     /// * The required output amounts actually correspond to the required
     ///   outputs
     ///
-    /// Note: This does check any other rules like tombstone block, or
+    /// Note: This does not check any other rules like tombstone block, or
     /// confirm proofs of membership, which are normally added only when this
     /// is incorporated into a transaction
     pub fn validate(&self) -> Result<(), SignedContingentInputError> {
