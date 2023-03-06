@@ -203,40 +203,6 @@ impl<
                 };
             }
 
-            // Update global shared values
-            let tracer = tracer!();
-            tracer.in_span("update_global_values", |_cx| {
-                let mut shared_state =
-                    self.db_poll_shared_state.lock().expect("mutex poisoned");
-                match self.db.num_txos() {
-                    Err(e) => {
-                        log::error!(
-                            self.logger,
-                            "Unexpected error when checking for ledger num txos {}: {:?}",
-                            next_block_index,
-                            e
-                        );
-                    }
-                    Ok(global_txo_count) => {
-                        // keep track of count for ledger enclave untrusted
-                        shared_state.last_known_block_cumulative_txo_count = global_txo_count;
-                    }
-                }
-                match self.db.get_latest_block() {
-                    Err(e) => {
-                        log::error!(
-                            self.logger,
-                            "Unexpected error when checking for ledger latest block version {}: {:?}",
-                            next_block_index,
-                            e
-                        );
-                    }
-                    Ok(block) => {
-                        shared_state.latest_block_version = block.version;
-                    }
-                }
-            });
-
             // If we get this far then we loaded all available block data from the DB into
             // the enclave.
             //
@@ -305,15 +271,41 @@ impl<
                     self.add_records_to_enclave(*next_block_index, records);
                 });
 
-                // Update highest processed block count.
-                tracer.in_span("update_highest_processed_block_count", |_cx| {
+                // Update shared state.
+                tracer.in_span("update_shared_state", |_cx| {
                     let mut shared_state =
                         self.db_poll_shared_state.lock().expect("mutex poisoned");
                     // this is next_block_index + 1 because next_block_index is actually the block
                     // we just processed, so we have fully processed next_block_index + 1 blocks
                     shared_state.highest_processed_block_count = *next_block_index + 1;
+                    match self.db.num_txos() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger num txos {}: {:?}",
+                                next_block_index,
+                                e
+                            );
+                        }
+                        Ok(global_txo_count) => {
+                            // keep track of count for ledger enclave untrusted
+                            shared_state.last_known_block_cumulative_txo_count = global_txo_count;
+                        }
+                    }
+                    match self.db.get_latest_block() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger latest block version {}: {:?}",
+                                next_block_index,
+                                e
+                            );
+                        }
+                        Ok(block) => {
+                            shared_state.latest_block_version = block.version;
+                        }
+                    }
                 });
-                
 
                 *next_block_index += 1;
             }
