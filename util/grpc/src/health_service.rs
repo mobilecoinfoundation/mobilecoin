@@ -9,7 +9,6 @@ use crate::{
         HealthCheckRequest, HealthCheckResponse, HealthCheckResponse_ServingStatus, PingRequest,
         PingResponse,
     },
-    health_api_grpc,
     health_api_grpc::{create_health, Health},
     rpc_logger, send_result, SVC_COUNTERS,
 };
@@ -146,31 +145,4 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
             }
         })
     }
-}
-
-/// Returns a `ServiceHealthCheckCallback` that is used in the gRPC
-/// readiness check for routers.
-pub fn get_router_callback(
-    shard_health_clients: Vec<health_api_grpc::HealthClient>,
-    logger: Logger
-) -> ServiceHealthCheckCallback {
-    Arc::new(move |_| -> HealthCheckStatus {
-        log::info!(logger, "Health check callback executing...");
-        let is_ready = shard_health_clients.iter().all(|client| {
-            let mut request = HealthCheckRequest::new();
-            request.set_service("fog-view".to_string());
-            match client.check(&request) {
-                Ok(response) => response.get_status() == HealthCheckStatus::SERVING,
-                Err(e) => {
-                    log::error!(logger, "Health check error for client: {e}");
-                    false
-                }
-            }
-        });
-        if is_ready {
-            HealthCheckStatus::SERVING
-        } else {
-            HealthCheckStatus::NOT_SERVING
-        }
-    })
 }
