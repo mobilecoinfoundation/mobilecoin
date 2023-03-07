@@ -164,6 +164,8 @@ jobs:
             end: 800_000
           - start: 800_000
             end: 1_200_000
+        fogViewRouter:
+          replicaCount: 2
         EOF
 
     - name: Deploy fog-services

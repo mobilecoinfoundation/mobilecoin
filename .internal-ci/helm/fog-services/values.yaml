@@ -14,8 +14,7 @@ fogServicesConfig:
   enabled: false
 
 fogViewRouter:
-  replicaCount: 2
-  # TODO verify resources with Sam / James
+  replicaCount: 3
   resources:
     limits:
       intel.com/sgx: 5000
@@ -172,7 +171,7 @@ fogReport:
       POSTGRES_MAX_CONNECTIONS: '3'
 
 fogView:
-  replicaCount: 1
+  replicaCount: 3
   image:
     org: ''
     name: fogview

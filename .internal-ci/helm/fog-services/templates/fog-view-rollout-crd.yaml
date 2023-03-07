@@ -44,6 +44,8 @@ spec:
                     name: {{ include "fogServices.fullname" . }}-supervisord-sgx
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+                - configMap:
+                    name: {{ include "fogServices.fullname" . }}-supervisord-admin
             nodeSelector:
               {{- toYaml .Values.fogViewRouter.nodeSelector | nindent 14 }}
             tolerations:
