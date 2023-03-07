@@ -95,18 +95,21 @@ spec:
                 failureThreshold: 480
                 periodSeconds: 30
                 timeoutSeconds: 10
+                successThreshold: 1
               livenessProbe:
                 grpc:
                   port: 3225
                 failureThreshold: 5
                 periodSeconds: 30
                 timeoutSeconds: 5
+                successThreshold: 1
               readinessProbe:
                 grpc:
                   port: 3225
                 failureThreshold: 2
                 periodSeconds: 5
                 timeoutSeconds: 1
+                successThreshold: 1
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
