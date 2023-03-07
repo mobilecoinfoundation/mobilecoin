@@ -12,6 +12,7 @@ spec:
     template:
       containerName: fog-view-router
       spec:
+        podManagementPolicy: Parallel
         replicas: {{ .Values.fogViewRouter.replicaCount }}
         selector:
           matchLabels:
@@ -193,6 +194,7 @@ spec:
     servicePort: 80
     targetPort: view
     spec:
+      podManagementPolicy: Parallel
       replicas: {{ .Values.fogView.replicaCount }}
       selector:
         matchLabels:
