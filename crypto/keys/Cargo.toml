@@ -30,7 +30,7 @@ mc-crypto-digestible = { path = "../../crypto/digestible", default-features = fa
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
-mc-util-serial = { path = "../../util/serial", features = ["std"] }
+mc-util-serial = { path = "../../util/serial" }
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
@@ -44,7 +44,6 @@ zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]
 mc-crypto-hashes = { path = "../hashes" }
-mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper", default-features = false }
 
 pem = "1.1"
