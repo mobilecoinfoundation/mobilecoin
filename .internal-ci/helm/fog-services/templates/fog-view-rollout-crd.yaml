@@ -26,7 +26,10 @@ spec:
               app: fog-view-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
-            # Try to balance pods across zones
+            # This will cause the router to be unready when any shard's pods are all unready.
+            # This is not visible with a typical kubectl get, but endpoints will be empty and the condition status will be present.
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
             volumes:
             - emptyDir: {}
               name: aesm-socket-dir
@@ -46,6 +49,7 @@ spec:
               {{- toYaml .Values.fogViewRouter.tolerations | nindent 14 }}
             affinity:
               {{- toYaml .Values.fogViewRouter.affinity | nindent 14 }}
+            # Try to balance pods across zones
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
               maxSkew: 1
@@ -85,24 +89,24 @@ spec:
               - secretRef:
                   name: ias
               # Hold liveness and readiness until this probe passes.
-              # startupProbe:
-              #   grpc:
-              #     port: 3225
-              #   failureThreshold: 480
-              #   periodSeconds: 30
-              #   timeoutSeconds: 10
-              # livenessProbe:
-              #   grpc:
-              #     port: 3225
-              #   failureThreshold: 5
-              #   periodSeconds: 30
-              #   timeoutSeconds: 10
-              # readinessProbe:
-              #   grpc:
-              #     port: 3225
-              #   failureThreshold: 2
-              #   periodSeconds: 10
-              #   timeoutSeconds: 10
+              startupProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 480
+                periodSeconds: 30
+                timeoutSeconds: 10
+              livenessProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 5
+                periodSeconds: 30
+                timeoutSeconds: 5
+              readinessProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 2
+                periodSeconds: 5
+                timeoutSeconds: 1
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
@@ -323,12 +327,14 @@ spec:
                 port: 3225
               failureThreshold: 5
               periodSeconds: 30
+              timeoutSeconds: 4
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
               grpc:
                 port: 3225
-              failureThreshold: 2
-              periodSeconds: 10
+              failureThreshold: 1
+              periodSeconds: 1
+              timeoutSeconds: 1
             volumeMounts:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
