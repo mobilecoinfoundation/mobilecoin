@@ -110,7 +110,12 @@ impl RistrettoPrivate {
     pub fn to_bytes(&self) -> [u8; 32] {
         *self.0.as_bytes()
     }
-
+    /// This function should be used instead of the from_bytes() function if the
+    /// bytes are **anything** other than the result of calling to_bytes() on a
+    /// RistrettoPrivate.
+    pub fn unchecked_from_bytes(bytes: [u8; 32]) -> Self {
+        Self(Scalar::from_bytes_mod_order(bytes))
+    }
     /// Sign the given bytes using a deterministic scheme based on Schnorrkel.
     pub fn sign_schnorrkel(&self, context: &[u8], message: &[u8]) -> RistrettoSignature {
         // Create a deterministic nonce using a merlin transcript. See this crate's
