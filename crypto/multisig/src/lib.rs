@@ -268,7 +268,7 @@ mod test {
     /// Helper for constructing a multi signature from a list of signers.
     fn make_multi_sig<S>(message: &[u8], signers: &[&impl Signer<S>]) -> MultiSig<S>
     where
-        S: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + SignatureEncoding,
+        S: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + SignatureEncoding + AsRef<[u8]>,
     {
         MultiSig::new(signers.iter().map(|s| s.sign(message)).collect())
     }

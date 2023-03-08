@@ -752,8 +752,8 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         let real_tx_out0 = { ledger.get_tx_out_by_index(0).unwrap() };
 
         // Try to get tx out records
-        let queries: Vec<CompressedRistrettoPublic> =
-            vec![(&[0u8; 32]).into(), real_tx_out0.public_key];
+        let key = CompressedRistrettoPublic::try_from(&[0u8; 32]).expect("Could not construct key");
+        let queries: Vec<CompressedRistrettoPublic> = vec![key, real_tx_out0.public_key];
         let result = client.get_tx_outs(queries).unwrap();
         // Check that we got expected num_blocks value
         assert_eq!(result.num_blocks, 4);
