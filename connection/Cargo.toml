@@ -34,4 +34,4 @@ sha2 = "0.10"
 [dev-dependencies]
 rand = "0.8"
 rand_hc = "0.3"
-tempdir = "0.3"
+tempfile = "3.4"

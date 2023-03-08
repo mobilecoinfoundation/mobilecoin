@@ -31,7 +31,7 @@ use std::{
     str::FromStr,
     sync::{Arc, RwLock},
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 pub use mc_blockchain_types::BlockVersion;
 
@@ -70,7 +70,7 @@ pub fn get_test_databases(
 
     // Note that TempDir manages uniqueness by constructing paths
     // like: /tmp/ledger_db.tvF0XHTKsilx
-    let ledger_db_tmp = TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
+    let ledger_db_tmp = TempDir::new().expect("Could not make tempdir for ledger db");
     let ledger_db_path = ledger_db_tmp.path();
     let mut ledger_db = recreate_ledger_db(ledger_db_path);
 
@@ -91,8 +91,7 @@ pub fn get_test_databases(
         .unwrap();
     }
 
-    let mobilecoind_db_tmp =
-        TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+    let mobilecoind_db_tmp = TempDir::new().expect("Could not make tempdir for mobilecoind db");
     let mobilecoind_db_path = mobilecoind_db_tmp.path();
     let mobilecoind_db =
         Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");

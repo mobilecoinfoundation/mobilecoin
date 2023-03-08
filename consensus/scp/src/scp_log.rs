@@ -356,12 +356,12 @@ mod tests {
     use crate::{node::MockScpNode, scp_log::LoggingScpNode};
     use mc_common::logger::{test_with_logger, Logger};
     use std::fs::create_dir_all;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test_with_logger]
     fn test_new(logger: Logger) {
         // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
+        let dir = TempDir::new().unwrap();
         let out_path = dir.path().join("debug_output");
 
         let node = MockScpNode::<&'static str>::new();
@@ -380,7 +380,7 @@ mod tests {
     // Should not panic if `out_path` exists. This allows a node to restart.
     fn test_new_outpath_exists(logger: Logger) {
         // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
+        let dir = TempDir::new().unwrap();
         let out_path = dir.path().join("debug_output");
 
         let cur_slot = out_path.join("cur-slot");

@@ -33,7 +33,7 @@ use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
-use tempdir::TempDir;
+use tempfile::TempDir;
 use url::Url;
 
 const TEST_URL: &str = "http://www.my_url1.com";
@@ -48,7 +48,7 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
     let url = Url::parse(TEST_URL).unwrap();
 
-    let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
+    let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
     WatcherDB::create(db_tmp.path()).unwrap();
     let watcher = WatcherDB::open_rw(db_tmp.path(), &[url], logger).unwrap();
     let watcher_dir = db_tmp.path().to_path_buf();
@@ -75,7 +75,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         ];
 
         // Make LedgerDB
-        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -279,7 +279,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         let keys: Vec<KeyImage> = (0..20).map(|x| KeyImage::from(x as u64)).collect();
 
         // Make LedgerDB
-        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -494,7 +494,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     let recipients = vec![alice.default_subaddress()];
 
     // Make LedgerDB
-    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
@@ -652,7 +652,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     let recipients = vec![alice.default_subaddress()];
 
     // Make LedgerDB
-    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
