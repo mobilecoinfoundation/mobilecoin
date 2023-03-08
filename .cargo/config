@@ -8,16 +8,16 @@ rustflags = ["-D", "warnings"]
 # ...so instead we list all target triples (Tier 1 64-bit platforms)
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"']
 
 [target.x86_64-pc-windows-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"']
 
 [target.x86_64-pc-windows-msvc]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"']
 
 [target.x86_64-apple-darwin]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"']
 
 [cargo-new]
 name = "MobileCoin"
