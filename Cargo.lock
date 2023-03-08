@@ -2391,7 +2391,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempfile",
  "zeroize",
 ]
 
@@ -2757,7 +2756,6 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.10.6",
- "tempfile",
 ]
 
 [[package]]
@@ -3421,7 +3419,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "subtle",
- "tempfile",
  "zeroize",
 ]
 
