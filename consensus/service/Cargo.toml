@@ -84,4 +84,5 @@ rand_hc = "0.3"
 serial_test = "1.0"
 tempfile = "3.4"
 
+# TODO: Consider using mc-crypto-dalek instead...
 curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
