@@ -17,7 +17,7 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_logger, send_result,
 };
 use prost::DecodeError;
-use signature::{Error as SignatureError, Signature};
+use signature::{Error as SignatureError};
 #[derive(Clone)]
 pub struct Service<R: ReportDb + Clone + Send + Sync> {
     /// Access to the Report db is needed to retrieve the ingest report for
@@ -103,8 +103,8 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
         let signature = self
             .materials
             .signing_keypair
-            .sign_reports(&reports[..])?
-            .as_bytes()
+            .sign_reports(&reports[..]).map_err(|_| Error::Signature)?
+            .to_bytes()
             .into();
         log::trace!(self.logger, "Reports list signature: {:?}", signature);
         Ok(ReportResponse {
