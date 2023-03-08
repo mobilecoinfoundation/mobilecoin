@@ -3448,7 +3448,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -3625,7 +3624,6 @@ dependencies = [
  "rand 0.8.5",
  "retry",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -3800,7 +3798,6 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "tempdir",
  "url",
 ]
 
@@ -4137,7 +4134,6 @@ dependencies = [
  "retry",
  "rocket",
  "serde",
- "tempdir",
  "url",
 ]
 
@@ -4273,7 +4269,6 @@ dependencies = [
  "serde",
  "serde_json",
  "signature",
- "tempdir",
  "x509-signature",
  "zeroize",
 ]
@@ -4439,7 +4434,6 @@ dependencies = [
  "rand_core 0.6.4",
  "retry",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4602,7 +4596,6 @@ dependencies = [
  "mc-util-serial",
  "pkg-config",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4756,7 +4749,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -5386,7 +5378,6 @@ dependencies = [
  "serde",
  "sha2 0.10.6",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 

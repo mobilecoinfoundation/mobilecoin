@@ -40,4 +40,3 @@ mc-crypto-rand = { path = "../../rand" }
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
 rand_hc = "0.3"
-tempdir = "0.3"

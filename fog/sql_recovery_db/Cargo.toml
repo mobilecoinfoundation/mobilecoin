@@ -55,9 +55,6 @@ mc-util-test-helper = { path = "../../util/test-helper" }
 
 pem = "1.1"
 rand = "0.8"
-# Note: tempdir is deprecated, but tempfile doesn't build because it depends
-# on the wrong version of rand.
-tempdir = "0.3"
 
 [build-dependencies]
 # clippy fails to run without this.

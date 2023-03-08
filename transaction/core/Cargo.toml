@@ -61,4 +61,3 @@ mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
-tempdir = "0.3"
