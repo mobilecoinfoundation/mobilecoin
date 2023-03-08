@@ -340,7 +340,7 @@ mod mlsag_tests {
 
             // All responses should be non-zero.
             for r in &signature.responses {
-                assert_ne!(r.scalar, Scalar::zero());
+                assert_ne!(r.scalar, Scalar::ZERO);
             }
         }
 
