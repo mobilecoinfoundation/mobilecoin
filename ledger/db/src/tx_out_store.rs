@@ -929,7 +929,8 @@ pub mod tx_out_store_tests {
 
         // `get_tx_out_index_by_public_key` should return `Error::NotFound` for an
         // unrecognized hash.
-        let unrecognized_public_key = CompressedRistrettoPublic::try_from(&[0; 32]).expect("Could not construct key");
+        let unrecognized_public_key =
+            CompressedRistrettoPublic::try_from(&[0; 32]).expect("Could not construct key");
         match tx_out_store.get_tx_out_index_by_public_key(&unrecognized_public_key, &ro_transaction)
         {
             Ok(index) => panic!("Returned index {index:?} for unrecognized public key."),

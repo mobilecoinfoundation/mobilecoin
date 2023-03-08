@@ -40,7 +40,7 @@ loggers = [
 ]
 
 [dependencies]
-mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "serde", "alloc" ] }
+mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "serde", "alloc"] }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "serde", "alloc", "prost" ] }
 mc-crypto-rand = { path = "../crypto/rand" }

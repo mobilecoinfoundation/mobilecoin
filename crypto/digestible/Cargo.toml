@@ -11,7 +11,9 @@ rust-version = { workspace = true }
 cfg-if = "1.0"
 
 # Built-in support for dalek primitives
+# TODO: Consider using mc-crypto-dalek instead...
 curve25519-dalek = { version = "4.0.0-rc.1", default-features = false, optional = true }
+# TODO: Consider using mc-crypto-dalek instead...
 ed25519-dalek = { version = "2.0.0-pre.0", default-features = false, optional = true }
 generic-array = "0.14"
 
@@ -19,6 +21,7 @@ generic-array = "0.14"
 mc-crypto-dalek = { path = "../dalek", optional = true, default-features = false }
 mc-crypto-digestible-derive = { path = "./derive", optional = true, default-features = false }
 merlin = { version = "3.0", default-features = false }
+# TODO: Consider using mc-crypto-dalek instead...
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false, optional = true }
 
 [features]

@@ -269,9 +269,9 @@ dependencies = [
 
 [[package]]
 name = "clear_on_drop"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
+checksum = "38508a63f4979f0048febc9966fadbd48e5dab31fd0ec6a3f151bbf4a74f7423"
 dependencies = [
  "cc",
 ]
@@ -947,23 +947,8 @@ version = "4.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
- "mc-crypto-dalek-backend-simd",
- "mc-crypto-dalek-backend-u64",
  "x25519-dalek",
-]
-
-[[package]]
-name = "mc-crypto-dalek-backend-simd"
-version = "2.0.0"
-dependencies = [
- "curve25519-dalek",
-]
-
-[[package]]
-name = "mc-crypto-dalek-backend-u64"
-version = "2.0.0"
-dependencies = [
- "curve25519-dalek",
+ "zeroize",
 ]
 
 [[package]]
