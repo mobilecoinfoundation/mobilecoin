@@ -912,13 +912,10 @@ name = "mc-crypto-digestible"
 version = "4.1.0-pre0"
 dependencies = [
  "cfg-if",
- "curve25519-dalek",
- "ed25519-dalek",
  "generic-array",
  "mc-crypto-dalek",
  "mc-crypto-digestible-derive",
  "merlin",
- "x25519-dalek",
 ]
 
 [[package]]

@@ -631,8 +631,7 @@ cfg_if! {
         /// We have several new-type wrappers around these in MobileCoin and it
         /// would be nice if we could derive digestible for everything in other
         /// MobileCoin crates.
-        use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-        use curve25519_dalek::scalar::Scalar;
+        use mc_crypto_dalek::{ed25519::VerifyingKey, x25519::PublicKey, curve25519::{scalar::Scalar, ristretto::{CompressedRistretto, RistrettoPoint}}};
 
         // RistrettoPoint requires compression before it can be hashed
         impl Digestible for RistrettoPoint {
@@ -656,14 +655,14 @@ cfg_if! {
             }
         }
 
-        impl Digestible for ed25519_dalek::VerifyingKey {
+        impl Digestible for VerifyingKey {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 transcript.append_primitive(context, b"ed25519", self.as_bytes())
             }
         }
 
-        impl Digestible for x25519_dalek::PublicKey {
+        impl Digestible for PublicKey {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 transcript.append_primitive(context, b"x25519", self.as_bytes())
