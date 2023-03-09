@@ -14,8 +14,6 @@ serde = ["mc-crypto-keys/serde"]
 default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/default", "mc-crypto-hashes/default", "mc-crypto-keys/default"]
 
 [dependencies]
-
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
@@ -29,6 +27,7 @@ zeroize = { version = "1", default-features = false }
 # MobileCoin dependencies
 mc-account-keys-types = { path = "types" }
 mc-core = { path = "../core", default_features = false }
+mc-crypto-dalek = { path = "../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../crypto/digestible", default_features = false }
 mc-crypto-hashes = { path = "../crypto/hashes", default_features = false }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false }

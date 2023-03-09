@@ -21,7 +21,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
 };
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_core::{
     keys::{
         RootSpendPrivate, RootSpendPublic, RootViewPrivate, SubaddressSpendPublic,

@@ -2297,12 +2297,12 @@ name = "mc-account-keys"
 version = "4.1.0-pre0"
 dependencies = [
  "criterion",
- "curve25519-dalek",
  "displaydoc",
  "hex_fmt",
  "hkdf",
  "mc-account-keys-types",
  "mc-core",
+ "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",

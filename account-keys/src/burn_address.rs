@@ -39,7 +39,7 @@
 //! private keys.
 
 use crate::{domain_separators::BURN_ADDRESS_DOMAIN_SEPARATOR, PublicAddress};
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
@@ -62,7 +62,7 @@ pub fn burn_address() -> PublicAddress {
     )
 }
 
-// The burn address spend public key, in the curve25519-dalek ristretto point
+// The burn address spend public key, in the curve25519 ristretto point
 // type
 //
 // This is meant to be a nothing-up-my-sleeve number hashed to the elliptic
@@ -78,7 +78,7 @@ fn burn_address_spend_public() -> RistrettoPoint {
     RistrettoPoint::from_hash(hasher)
 }
 
-// The burn address view public key, in the curve25519-dalek ristretto point
+// The burn address view public key, in the curve25519 ristretto point
 // type.
 //
 // This needs to be chosen in such a way that it corresponds to a sub-address
