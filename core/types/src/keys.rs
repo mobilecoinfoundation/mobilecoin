@@ -7,7 +7,7 @@ use core::{
     marker::PhantomData,
 };
 
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 use zeroize::Zeroize;
 
 use mc_crypto_keys::{KeyError, ReprBytes, RistrettoPrivate, RistrettoPublic};

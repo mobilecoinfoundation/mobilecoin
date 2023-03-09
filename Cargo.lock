@@ -3115,7 +3115,7 @@ dependencies = [
 name = "mc-core-types"
 version = "2.0.0"
 dependencies = [
- "curve25519-dalek",
+ "mc-crypto-dalek",
  "mc-crypto-keys",
  "prost",
  "serde",

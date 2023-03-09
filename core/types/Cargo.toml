@@ -13,9 +13,6 @@ serde = ["dep:serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost"]
 
 [dependencies]
-# External dependencies
-# TODO: Consider using mc-crypto-dalek instead...
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 prost = { version = "0.11", optional = true, default-features = false }
 serde = { version = "1.0.154", optional = true, default-features = false, features = [ "derive" ] }
 subtle = { version = "2.4.1", default-features = false }
@@ -23,3 +20,4 @@ zeroize = { version = "1.5", default-features = false }
 
 # MobileCoin dependencies
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
