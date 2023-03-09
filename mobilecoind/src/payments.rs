@@ -1283,8 +1283,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Create sci_builder.
         // TODO (GH #1522): Use RTH memo builder, optionally?
+        // Note: Clippy thinks the closure is redundant, but it doesn't build without
+        // it.
+        #[allow(clippy::redundant_closure)]
         let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
-            .unwrap_or_else(Box::<mc_transaction_builder::EmptyMemoBuilder>::default);
+            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
 
         let mut sci_builder = SignedContingentInputBuilder::new_with_box(
             block_version,

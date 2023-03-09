@@ -142,16 +142,6 @@ message UnspentTxOut {
     bytes monitor_id = 10;
 }
 
-// Structure used to refer to an SCI that we want to add to a transaction.
-// The structure has additional information -- if it's a partial fill SCI, we need to know the partial fill amount.
-message SciForTx {
-    /// The signed input we want to add
-    external.SignedContingentInput sci = 1;
-
-    /// If it's a partial fill SCI, the value we wish to fill it for
-    uint64 partial_fill_value = 2;
-}
-
 // Structure used to refer to a prepared transaction
 message TxProposal {
     // List of inputs being spent.
@@ -503,9 +493,6 @@ message GenerateTxRequest {
 
     // Token id to use for the transaction.
     uint64 token_id = 7;
-
-    // List of SCIs to be added to the transaction
-    repeated SciForTx scis = 8;
 }
 
 message GenerateTxResponse {
