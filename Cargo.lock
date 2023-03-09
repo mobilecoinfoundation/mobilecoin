@@ -2391,7 +2391,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -2757,7 +2756,6 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.10.6",
- "tempdir",
 ]
 
 [[package]]
@@ -3004,7 +3002,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -3098,7 +3096,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -3332,7 +3330,7 @@ dependencies = [
  "signature",
  "static_assertions",
  "subtle",
- "tempdir",
+ "tempfile",
  "x25519-dalek",
  "zeroize",
 ]
@@ -3421,7 +3419,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -3448,7 +3445,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -3625,7 +3621,6 @@ dependencies = [
  "rand 0.8.5",
  "retry",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -3800,7 +3795,6 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "tempdir",
  "url",
 ]
 
@@ -3825,7 +3819,7 @@ dependencies = [
  "mc-watcher",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -4009,7 +4003,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -4055,7 +4049,7 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "retry",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -4137,7 +4131,6 @@ dependencies = [
  "retry",
  "rocket",
  "serde",
- "tempdir",
  "url",
 ]
 
@@ -4273,7 +4266,6 @@ dependencies = [
  "serde",
  "serde_json",
  "signature",
- "tempdir",
  "x509-signature",
  "zeroize",
 ]
@@ -4439,7 +4431,6 @@ dependencies = [
  "rand_core 0.6.4",
  "retry",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4602,7 +4593,6 @@ dependencies = [
  "mc-util-serial",
  "pkg-config",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4756,7 +4746,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -4785,7 +4774,7 @@ dependencies = [
  "mockall",
  "prost",
  "rand 0.8.5",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -4865,7 +4854,7 @@ dependencies = [
  "reqwest",
  "retry",
  "serde",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -4935,7 +4924,7 @@ dependencies = [
  "reqwest",
  "retry",
  "serde_json",
- "tempdir",
+ "tempfile",
  "tiny-bip39",
 ]
 
@@ -5386,7 +5375,6 @@ dependencies = [
  "serde",
  "sha2 0.10.6",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -5908,7 +5896,7 @@ dependencies = [
  "rayon",
  "serde",
  "serial_test",
- "tempdir",
+ "tempfile",
  "toml",
  "url",
 ]
@@ -8149,16 +8137,15 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cdb1ef4eaeeaddc8fbd371e5017057064af0911902ef36b39801f67cc6d79e4"
+checksum = "af18f7ae1acd354b992402e9ec5864359d693cd8a79dcbef59f76891701c1e95"
 dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
- "libc",
  "redox_syscall",
- "remove_dir_all",
- "winapi",
+ "rustix",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]

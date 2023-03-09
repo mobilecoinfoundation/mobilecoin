@@ -27,7 +27,7 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 use url::Url;
 
 const OMAP_CAPACITY: u64 = 4096;
@@ -120,7 +120,7 @@ impl IngestServerTestHelper {
         db_test_context: impl Into<Option<Arc<SqlRecoveryDbTestContext>>>,
         logger: Logger,
     ) -> Self {
-        let blockchain_path = TempDir::new("blockchain")
+        let blockchain_path = TempDir::new()
             .expect("Could not make tempdir for blockchain state")
             .into_path();
 
@@ -188,7 +188,7 @@ impl IngestServerTestHelper {
 
     /// Helper which makes i'th server and temp dir for its data.
     pub fn make_node(&self, idx: u8, peer_idxs: impl Iterator<Item = u8>) -> TestIngestNode {
-        let state_file_path = TempDir::new("ingest_state")
+        let state_file_path = TempDir::new()
             .expect("Could not make tempdir for ingest state")
             .into_path()
             .join(format!("mc-fog-ingest-state-{idx}"));
