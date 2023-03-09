@@ -1086,7 +1086,6 @@ dependencies = [
  "generic-array",
  "hex_fmt",
  "mc-account-keys",
- "mc-crypto-dalek",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
  "mc-transaction-types",

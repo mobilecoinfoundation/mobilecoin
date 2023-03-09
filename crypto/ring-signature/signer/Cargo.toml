@@ -8,10 +8,10 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-crypto-dalek/serde"]
-alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "mc-crypto-dalek/alloc"]
+serde = ["dep:serde", "mc-crypto-ring-signature/serde"]
+alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc"]
 
-default = ["serde", "alloc", "mc-crypto-dalek/default"]
+default = ["serde", "alloc"]
 
 [dependencies]
 # External dependencies
@@ -21,7 +21,6 @@ hex_fmt = "0.3"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys", default-features = false }
-mc-crypto-dalek = { path = "../../dalek", default-features = false }
 mc-crypto-keys = { path = "../../keys", default-features = false }
 mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc", "serde", "prost" ] }
 mc-transaction-types = { path = "../../../transaction/types" }
