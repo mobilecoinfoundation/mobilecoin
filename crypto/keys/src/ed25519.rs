@@ -12,7 +12,7 @@ use digest::{
     Digest,
 };
 use ed25519::{Signature, SignatureBytes};
-use ed25519_dalek::{
+use mc_crypto_dalek::ed25519::{
     SecretKey, Signature as DalekSignature, SigningKey, VerifyingKey as DalekPublicKey,
     PUBLIC_KEY_LENGTH,
 };
@@ -569,12 +569,9 @@ mod ed25519_tests {
     // published constant in the dalek interface.
     #[test]
     fn test_key_len() {
+        assert_eq!(PUBLIC_KEY_LENGTH, <Ed25519Public as ReprBytes>::Size::USIZE);
         assert_eq!(
-            ed25519_dalek::PUBLIC_KEY_LENGTH,
-            <Ed25519Public as ReprBytes>::Size::USIZE
-        );
-        assert_eq!(
-            ed25519_dalek::Signature::BYTE_SIZE,
+            Signature::BYTE_SIZE,
             <Ed25519Signature as ReprBytes>::Size::USIZE
         );
     }

@@ -3224,11 +3224,9 @@ name = "mc-crypto-keys"
 version = "4.1.0-pre0"
 dependencies = [
  "base64 0.21.0",
- "curve25519-dalek",
  "digest 0.10.6",
  "displaydoc",
  "ed25519",
- "ed25519-dalek",
  "hex",
  "hex_fmt",
  "mc-crypto-dalek",

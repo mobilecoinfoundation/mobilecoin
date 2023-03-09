@@ -28,8 +28,10 @@ use serde::{
     ser::{Serialize, Serializer},
 };
 
+use mc_crypto_dalek::x25519::{
+    EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret,
+};
 use sha2::{self, Sha256};
-use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
 /// The length in bytes of canonical representation of x25519 (public and

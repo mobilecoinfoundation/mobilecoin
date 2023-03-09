@@ -11,13 +11,13 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use curve25519_dalek::{
+use digest::generic_array::typenum::{U32, U64};
+use hex_fmt::HexFmt;
+use mc_crypto_dalek::curve25519::{
     constants::RISTRETTO_BASEPOINT_POINT,
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use digest::generic_array::typenum::{U32, U64};
-use hex_fmt::HexFmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
