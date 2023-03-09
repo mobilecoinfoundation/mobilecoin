@@ -967,7 +967,6 @@ dependencies = [
  "signature",
  "static_assertions",
  "subtle",
- "x25519-dalek",
  "zeroize",
 ]
 

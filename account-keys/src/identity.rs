@@ -15,8 +15,8 @@
 use crate::AccountKey;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use core::hash::Hash;
-use mc_crypto_dalek::curve25519::scalar::Scalar;
 use hkdf::SimpleHkdf;
+use mc_crypto_dalek::curve25519::scalar::Scalar;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;

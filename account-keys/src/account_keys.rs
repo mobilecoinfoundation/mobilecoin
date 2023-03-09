@@ -21,7 +21,6 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
 };
-use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_core::{
     keys::{
         RootSpendPrivate, RootSpendPublic, RootViewPrivate, SubaddressSpendPublic,
@@ -30,6 +29,7 @@ use mc_core::{
     slip10::Slip10Key,
     subaddress::Subaddress,
 };
+use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
