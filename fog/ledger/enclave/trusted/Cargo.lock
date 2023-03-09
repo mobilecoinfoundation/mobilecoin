@@ -1381,7 +1381,6 @@ dependencies = [
  "bulletproofs-og",
  "crc",
  "ctr",
- "curve25519-dalek",
  "displaydoc",
  "generic-array",
  "hex_fmt",

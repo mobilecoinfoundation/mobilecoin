@@ -10,7 +10,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use bulletproofs_og::{BulletproofGens, PedersenGens as BPPedersenGens, RangeProof};
-use curve25519_dalek::{ristretto::CompressedRistretto, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{ristretto::CompressedRistretto, scalar::Scalar};
 use mc_crypto_ring_signature::PedersenGens;
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
@@ -132,7 +132,7 @@ fn convert_gens(src: &PedersenGens) -> BPPedersenGens {
 pub mod tests {
     use super::*;
     use crate::ring_signature::generators;
-    use curve25519_dalek::ristretto::RistrettoPoint;
+    use mc_crypto_dalek::curve25519::ristretto::RistrettoPoint;
     use mc_util_test_helper::{get_seeded_rng, RngCore};
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {

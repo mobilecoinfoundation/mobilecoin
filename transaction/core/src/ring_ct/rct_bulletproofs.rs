@@ -11,11 +11,11 @@ extern crate alloc;
 use alloc::{collections::BTreeSet, vec, vec::Vec};
 use bulletproofs_og::RangeProof;
 use core::convert::TryFrom;
-use curve25519_dalek::{
+use mc_common::HashSet;
+use mc_crypto_dalek::curve25519::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     traits::Identity,
 };
-use mc_common::HashSet;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_ring_signature::{
     Commitment, CompressedCommitment, KeyImage, ReducedTxOut, RingMLSAG, Scalar,
@@ -968,7 +968,7 @@ mod rct_bulletproofs_tests {
     use alloc::vec::Vec;
     use assert_matches::assert_matches;
     use core::convert::TryInto;
-    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_dalek::curve25519::scalar::Scalar;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_crypto_ring_signature_signer::{
         InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing,
