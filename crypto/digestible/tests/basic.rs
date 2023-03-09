@@ -3,7 +3,7 @@
 
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use std::collections::{BTreeMap, BTreeSet};
 
