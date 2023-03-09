@@ -18,7 +18,7 @@ mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
+mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
@@ -39,9 +39,6 @@ rand = "0.8"
 rayon = "1.7"
 retry = "2.0"
 tempfile = "3.4"
-
-# TODO: Consider using mc-crypto-dalek instead...
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

@@ -3464,7 +3464,6 @@ version = "4.1.0-pre0"
 dependencies = [
  "clap 4.1.8",
  "crossbeam-channel",
- "curve25519-dalek",
  "grpcio",
  "lazy_static",
  "mc-account-keys",
