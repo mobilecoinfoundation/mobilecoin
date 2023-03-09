@@ -1279,14 +1279,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if subaddress_id.monitor_id != sender_monitor_id {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                format!("input.monitor_id"),
+                "input.monitor_id".to_string(),
             ));
         }
 
         if request.ask_value == 0 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                format!("ask_value"),
+                "ask_value".to_string(),
             ));
         }
 
@@ -3784,7 +3784,7 @@ mod test {
             request.set_input(
                 utxos
                     .iter()
-                    .filter(|utxo| utxo.token_id == TokenId::from(1))
+                    .filter(|utxo| utxo.token_id == 1)
                     .map(api::UnspentTxOut::from)
                     .next()
                     .unwrap(),

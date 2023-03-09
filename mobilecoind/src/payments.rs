@@ -1284,7 +1284,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Create sci_builder.
         // TODO (GH #1522): Use RTH memo builder, optionally?
         let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
-            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
+            .unwrap_or_else(Box::<mc_transaction_builder::EmptyMemoBuilder>::default);
 
         let mut sci_builder = SignedContingentInputBuilder::new_with_box(
             block_version,
@@ -1356,9 +1356,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Build sci.
-        Ok(sci_builder
+        sci_builder
             .build(&NoKeysRingSigner {}, rng)
-            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?)
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))
     }
 }
 
