@@ -2,7 +2,7 @@
 
 use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
 use core::fmt;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use mc_crypto_dalek::curve25519::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
     derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
@@ -86,7 +86,7 @@ mod commitment_tests {
         ring_signature::{generators, Scalar, B_BLINDING},
         Commitment,
     };
-    use curve25519_dalek::ristretto::RistrettoPoint;
+    use mc_crypto_dalek::curve25519::ristretto::RistrettoPoint;
     use mc_util_test_helper::run_with_several_seeds;
     use rand_core::RngCore;
 

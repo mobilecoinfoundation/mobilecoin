@@ -4,14 +4,14 @@
 
 #![allow(non_snake_case)]
 
-pub use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::{
+pub use mc_crypto_dalek::curve25519::scalar::Scalar;
+use mc_crypto_dalek::curve25519::{
     constants::{RISTRETTO_BASEPOINT_COMPRESSED, RISTRETTO_BASEPOINT_POINT},
     ristretto::RistrettoPoint,
 };
 
 #[cfg(feature = "alloc")]
-use curve25519_dalek::traits::MultiscalarMul;
+use mc_crypto_dalek::curve25519::traits::MultiscalarMul;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};

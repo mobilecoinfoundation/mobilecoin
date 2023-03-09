@@ -2,7 +2,7 @@
 
 //! RingMLSAG verification internals
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use mc_crypto_dalek::curve25519::ristretto::RistrettoPoint;
 
 use crate::{
     ring_signature::{

@@ -4,7 +4,7 @@
 
 use core::fmt::Debug;
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use mc_crypto_dalek::curve25519::ristretto::RistrettoPoint;
 use rand_core::CryptoRngCore;
 use zeroize::Zeroize;
 

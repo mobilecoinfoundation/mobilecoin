@@ -1059,9 +1059,7 @@ dependencies = [
 name = "mc-crypto-ring-signature"
 version = "4.1.0-pre0"
 dependencies = [
- "curve25519-dalek",
  "displaydoc",
- "ed25519-dalek",
  "mc-account-keys-types",
  "mc-core-types",
  "mc-crypto-dalek",

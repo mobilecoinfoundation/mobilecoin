@@ -6,7 +6,7 @@
 //! represents an element of \\(\mathbb Z / \ell\\).
 
 use super::Error;
-use curve25519_dalek::scalar::Scalar;
+use mc_crypto_dalek::curve25519::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{

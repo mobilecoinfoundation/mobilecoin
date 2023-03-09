@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::{hash_to_point, Error, Scalar};
-use curve25519_dalek::ristretto::CompressedRistretto;
+use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{

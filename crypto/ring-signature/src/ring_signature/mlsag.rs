@@ -208,7 +208,7 @@ impl RingMLSAG {
 mod mlsag_tests {
     use super::*;
     use crate::generators;
-    use curve25519_dalek::ristretto::CompressedRistretto;
+    use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{RngCore, RngType, SeedableRng};

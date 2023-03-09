@@ -4,7 +4,7 @@ use crate::{
     ring_signature::{Error, PedersenGens, Scalar},
     Commitment,
 };
-use curve25519_dalek::ristretto::CompressedRistretto;
+use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
@@ -95,7 +95,7 @@ mod compressed_commitment_tests {
         ring_signature::{generators, Scalar},
         CompressedCommitment,
     };
-    use curve25519_dalek::ristretto::CompressedRistretto;
+    use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
     use mc_util_test_helper::{run_with_several_seeds, RngCore};
 
     #[test]
