@@ -10,7 +10,7 @@ use crate::{
     database::Database,
     error::Error,
     monitor_store::{MonitorData, MonitorId},
-    payments::{Outlay, TransactionsManager, TxProposal},
+    payments::{Outlay, OutlayV2, SciForTx, TransactionsManager, TxProposal},
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
@@ -916,6 +916,113 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Success.
         let mut response = api::GenerateTxResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
+    fn generate_mixed_tx_impl(
+        &mut self,
+        request: api::GenerateMixedTxRequest,
+    ) -> Result<api::GenerateMixedTxResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the list of potential inputs passed to.
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .enumerate()
+            .map(|(i, proto_utxo)| {
+                // Proto -> Rust struct conversion.
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Verify this output belongs to the monitor.
+                let subaddress_id = self
+                    .mobilecoind_db
+                    .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+                    .map_err(|err| {
+                        rpc_internal_error(
+                            "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                            err,
+                            &self.logger,
+                        )
+                    })?;
+
+                if subaddress_id.monitor_id != sender_monitor_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list.{i}"),
+                    ));
+                }
+
+                // Success.
+                Ok(utxo)
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        // Get the list of outlays.
+        let outlays: Vec<OutlayV2> = request
+            .get_outlay_list()
+            .iter()
+            .map(OutlayV2::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(|err| rpc_internal_error("outlay_v2.try_from", err, &self.logger))?;
+
+        // Get the list of SCIs
+        let scis: Vec<SciForTx> = request
+            .get_scis()
+            .iter()
+            .map(SciForTx::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(|err| rpc_internal_error("sci_from_tx.try_from", err, &self.logger))?;
+
+        // Attempt to construct a transaction.
+        let tx_proposal = self
+            .transactions_manager
+            .build_mixed_transaction(
+                &sender_monitor_id,
+                TokenId::from(request.fee_token_id),
+                request.change_subaddress,
+                &input_list,
+                &scis,
+                &outlays,
+                &self.get_last_block_infos(),
+                request.fee,
+                request.tombstone,
+                None, // opt_memo_builder
+            )
+            .map_err(|err| {
+                rpc_internal_error(
+                    "transactions_manager.build_mixed_transaction",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        // Success.
+        let mut response = api::GenerateMixedTxResponse::new();
         response.set_tx_proposal((&tx_proposal).into());
         Ok(response)
     }
@@ -2173,6 +2280,7 @@ build_api! {
 
     // Signed contingent inputs
     generate_swap GenerateSwapRequest GenerateSwapResponse generate_swap_impl,
+    generate_mixed_tx GenerateMixedTxRequest GenerateMixedTxResponse generate_mixed_tx_impl,
 
     // Databases
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
@@ -4185,6 +4293,126 @@ mod test {
     }
 
     #[test_with_logger]
+    fn test_generate_mixed_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let swap_originator = AccountKey::random(&mut rng);
+        let swap_originator_data = MonitorData::new(
+            swap_originator.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        let swap_counterparty = AccountKey::random(&mut rng);
+        let swap_counterparty_data = MonitorData::new(
+            swap_counterparty.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[
+                    swap_originator.default_subaddress(),
+                    swap_counterparty.default_subaddress(),
+                ],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BlockVersion::MAX,
+            &[
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                swap_originator.default_subaddress(),
+                swap_counterparty.default_subaddress(),
+            ],
+            Amount::new(1_000_000_000_000, TokenId::from(1)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let originator_monitor_id = mobilecoind_db.add_monitor(&swap_originator_data).unwrap();
+        let counterparty_monitor_id = mobilecoind_db.add_monitor(&swap_counterparty_data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&originator_monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        let offered_input = utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == *Mob::ID)
+            .map(api::UnspentTxOut::from)
+            .next()
+            .unwrap();
+        let offered_value = offered_input.value;
+
+        // Generate a swap.
+        let generate_swap_response = {
+            let mut request = api::GenerateSwapRequest::new();
+            request.set_sender_monitor_id(originator_monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input(offered_input);
+            request.set_allow_partial_fill(true);
+            request.set_counter_value(123);
+            request.set_counter_token_id(1);
+            request.set_minimum_fill_value(10);
+            client.generate_swap(&request).unwrap()
+        };
+
+        // Now we will try to build a transaction that incorporates the swap.
+        // The counterparty needs to supply eUSD.
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&counterparty_monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // We will try to take half of the offered input.
+        let mut sci_for_tx = api::SciForTx::new();
+        sci_for_tx.set_sci(generate_swap_response.get_sci().clone());
+        sci_for_tx.set_partial_fill_value(offered_value / 2);
+
+        // Try to add the swap to a mixed transaction
+        let generate_mixed_tx_response = {
+            let mut request = api::GenerateMixedTxRequest::new();
+            request.set_sender_monitor_id(counterparty_monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input_list(utxos.iter().map(Into::into).collect());
+            request.set_scis(vec![sci_for_tx].into());
+            client.generate_mixed_tx(&request).unwrap()
+        };
+
+        assert_eq!(
+            generate_mixed_tx_response
+                .get_tx_proposal()
+                .get_scis()
+                .len(),
+            1
+        );
+    }
+
+    #[test_with_logger]
     fn test_generate_burn_redemption_tx(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
         let token_id2 = TokenId::from(2);
@@ -4537,11 +4765,12 @@ mod test {
             data.account_key.subaddress(0)
         );
         assert_eq!(
-            tx_proposal.outlays[0].value,
+            tx_proposal.outlays[0].amount.value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of
             // those into a single output, minus the fee.
             (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS) - Mob::MINIMUM_FEE,
         );
+        assert_eq!(tx_proposal.outlays[0].amount.token_id, Mob::ID);
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index[&0], 0);
@@ -4556,7 +4785,7 @@ mod test {
             .unwrap()
             .get_value(&shared_secret)
             .unwrap();
-        assert_eq!(amount.value, tx_proposal.outlays[0].value);
+        assert_eq!(amount.value, tx_proposal.outlays[0].amount.value);
         assert_eq!(amount.token_id, Mob::ID);
 
         // Santity test fee

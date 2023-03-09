@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Utility for building and signing a transaction.
 //!
@@ -33,6 +33,7 @@ use mc_transaction_extra::{
     TxOutSummaryUnblindingData, UnsignedTx,
 };
 use mc_util_from_random::FromRandom;
+use mc_util_u64_ratio::U64Ratio;
 use rand_core::{CryptoRng, RngCore};
 
 /// A trait used to compare the transaction outputs
@@ -269,9 +270,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             return Err(SignedContingentInputError::ChangeLimitExceeded);
         }
 
-        let fill_fraction_num =
-            (partial_fill_change_amount.value - sci_change_amount.value) as u128;
-        let fill_fraction_denom = partial_fill_change_amount.value as u128;
+        let fill_fraction = U64Ratio::new(
+            partial_fill_change_amount.value - sci_change_amount.value,
+            partial_fill_change_amount.value,
+        )
+        .ok_or(SignedContingentInputError::ZeroPartialFillChange)?;
 
         // Ensure that we can reveal all amounts
         let partial_fill_outputs_and_amounts: Vec<(&RevealedTxOut, Amount, Scalar)> = rules
@@ -285,15 +288,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             )
             .collect::<Result<_, _>>()?;
 
-        // Fill all partial fill outputs to precisely the smallest degree required
-        // This helper function function takes a partial fill output value, and returns
-        // num / denom * partial_fill_output_value, rounded up
-        fn division_helper(partial_fill_output_value: u64, num: u128, denom: u128) -> u64 {
-            let num_128 = partial_fill_output_value as u128 * num;
-            // Divide by fill_fraction_denom, rounding up, and truncate to u64
-            ((num_128 + (denom - 1)) / denom) as u64
-        }
-
         // Add fractional outputs (corresponding to partial fill outputs) into the list
         // which is added to tx prefix
         let fractional_amounts = partial_fill_outputs_and_amounts
@@ -301,7 +295,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .map(
                 |(r_tx_out, amount, blinding)| -> Result<Amount, RevealedTxOutError> {
                     let fractional_amount = Amount::new(
-                        division_helper(amount.value, fill_fraction_num, fill_fraction_denom),
+                        fill_fraction
+                            .checked_mul_round_up(amount.value)
+                            .expect("should be unreachable, because fill fraction is <= 1"),
                         amount.token_id,
                     );
                     let fractional_tx_out = r_tx_out.change_committed_amount(fractional_amount)?;
