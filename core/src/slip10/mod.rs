@@ -11,8 +11,8 @@
 //! [`Mnemonic`](tiny_bip32::Mnemonic) with a given BIP-32 path into a
 //! [`Slip10Key`](Slip10Key) usable within MobileCoin.
 
-use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
+use mc_crypto_dalek::curve25519::scalar::Scalar;
 use sha2::Sha512;
 use zeroize::Zeroize;
 
@@ -145,7 +145,7 @@ mod test {
     use alloc::{string::String, vec::Vec};
     use serde::{Deserialize, Serialize};
 
-    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_dalek::curve25519::scalar::Scalar;
 
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 

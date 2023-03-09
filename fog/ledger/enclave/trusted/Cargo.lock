@@ -842,8 +842,6 @@ dependencies = [
 name = "mc-core"
 version = "4.0.2"
 dependencies = [
- "curve25519-dalek",
- "ed25519-dalek",
  "generic-array",
  "hkdf",
  "mc-core-types",

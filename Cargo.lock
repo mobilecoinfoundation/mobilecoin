@@ -3087,8 +3087,6 @@ version = "4.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.8",
- "curve25519-dalek",
- "ed25519-dalek",
  "generic-array",
  "hex",
  "hkdf",

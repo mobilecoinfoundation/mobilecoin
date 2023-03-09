@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case)]
 
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use mc_crypto_dalek::curve25519::{ristretto::RistrettoPoint, scalar::Scalar};
 
 use mc_core_types::account::{PublicSubaddress, ViewAccount};
 use mc_crypto_hashes::{Blake2b512, Digest};
