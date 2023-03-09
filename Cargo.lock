@@ -5224,12 +5224,10 @@ version = "4.1.0-pre0"
 dependencies = [
  "assert_matches",
  "cfg-if 1.0.0",
- "curve25519-dalek",
  "displaydoc",
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
- "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-ring-signature-signer",
