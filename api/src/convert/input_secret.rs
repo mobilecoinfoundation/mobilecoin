@@ -63,7 +63,7 @@ impl TryFrom<&external::InputSecret> for InputSecret {
 #[cfg(test)]
 mod tests {
     use crate::external;
-    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_dalek::curve25519::scalar::Scalar;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData};
     use mc_transaction_core::{Amount, TokenId};

@@ -31,7 +31,7 @@ impl TryFrom<&external::OutputSecret> for OutputSecret {
 #[cfg(test)]
 mod tests {
     use crate::external;
-    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_dalek::curve25519::scalar::Scalar;
     use mc_transaction_core::{ring_ct::OutputSecret, Amount, TokenId};
     use rand::{rngs::StdRng, SeedableRng};
 

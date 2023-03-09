@@ -3,7 +3,7 @@
 //! Convert to/from external::CurveScalar
 
 use crate::{external, ConversionError};
-use curve25519_dalek::scalar::Scalar;
+use mc_crypto_dalek::curve25519::scalar::Scalar;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_core::ring_signature::CurveScalar;
 
@@ -62,7 +62,7 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
 
     // Test converting between external::CurveScalar and
-    // curve25519_dalek::Scalar
+    // curve25519::Scalar
     #[test]
     fn test_scalar_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);

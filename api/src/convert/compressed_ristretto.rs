@@ -3,7 +3,7 @@
 //! Convert to/from external::CompressedRistretto.
 
 use crate::{external, ConversionError};
-use curve25519_dalek::ristretto::CompressedRistretto;
+use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_transaction_core::CompressedCommitment;
 

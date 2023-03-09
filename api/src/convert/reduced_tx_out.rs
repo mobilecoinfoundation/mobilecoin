@@ -29,7 +29,7 @@ impl TryFrom<&external::ReducedTxOut> for ReducedTxOut {
 
 #[cfg(test)]
 mod tests {
-    use curve25519_dalek::ristretto::CompressedRistretto;
+    use mc_crypto_dalek::curve25519::ristretto::CompressedRistretto;
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_transaction_core::{ring_signature::ReducedTxOut, CompressedCommitment};
     use mc_util_from_random::FromRandom;

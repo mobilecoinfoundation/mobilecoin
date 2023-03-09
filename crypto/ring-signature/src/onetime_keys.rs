@@ -72,10 +72,10 @@
 #![allow(non_snake_case)]
 
 use crate::domain_separators::HASH_TO_SCALAR_DOMAIN_TAG;
+use mc_core_types::account::RingCtAddress;
 use mc_crypto_dalek::curve25519::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use mc_core_types::account::RingCtAddress;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 

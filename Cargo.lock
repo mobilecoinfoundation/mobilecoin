@@ -2352,7 +2352,6 @@ dependencies = [
  "bs58",
  "cargo-emit",
  "crc",
- "curve25519-dalek",
  "displaydoc",
  "generic-array",
  "mc-account-keys",
