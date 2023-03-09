@@ -1041,7 +1041,6 @@ dependencies = [
 name = "mc-crypto-ring-signature-signer"
 version = "4.1.0-pre0"
 dependencies = [
- "curve25519-dalek",
  "displaydoc",
  "generic-array",
  "hex_fmt",

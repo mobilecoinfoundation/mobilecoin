@@ -14,8 +14,6 @@ alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "mc-crypto-dalek/alloc
 default = ["serde", "alloc", "mc-crypto-dalek/default"]
 
 [dependencies]
-# TODO: Consider using mc-crypto-dalek instead...
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
