@@ -1315,7 +1315,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .map_err(|err| Error::TxBuild(format!("failed adding fractional output: {err}")))?;
         }
 
-        // Figure out about the change output
+        // Add an appropriate change output to the sci
         if let Some(change_amount) = change_amount.as_ref() {
             if change_amount.token_id != utxo.token_id {
                 return Err(Error::TxBuild("Incorrect change Token Id".to_string()));
