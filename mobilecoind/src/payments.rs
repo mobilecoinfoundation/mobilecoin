@@ -1013,6 +1013,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 None => {
                     // The input is not already in the ring.
                     if ring.is_empty() {
+                        // The ring is probably not empty, but ring[0] will panic if it is.
                         // Append the input and its proof of membership.
                         ring.push(utxo.tx_out.clone());
                         membership_proofs.push(proof.clone());
@@ -1033,7 +1034,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 "Each ring element must have a corresponding membership proof."
             );
 
-            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key).unwrap();
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
             let onetime_private_key = recover_onetime_private_key(
                 &public_key,
                 from_account_key.view_private_key(),
@@ -1240,6 +1241,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             None => {
                 // The input is not already in the ring.
                 if ring.is_empty() {
+                    // The ring is probably not empty, but ring[0] will panic if it is.
                     // Append the input and its proof of membership.
                     ring.push(utxo.tx_out.clone());
                     global_indices.push(global_index);
@@ -1264,7 +1266,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 "Each ring element must have a corresponding membership proof."
             );
 
-            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key).unwrap();
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
             let onetime_private_key = recover_onetime_private_key(
                 &public_key,
                 from_account_key.view_private_key(),
