@@ -352,9 +352,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// the deqs.
     ///
     /// # Arguments
-    /// * `sender_monitor_id` - Indicates the account key needed to spend
-    ///   the txo's.
-    /// * `token_id` - The token id to transact in.
+    /// * `sender_monitor_id` - Indicates the account key needed to spend the
+    ///   txo's.
     /// * `change_subaddress` - Recipient of any change.
     /// * `utxo` - UTXO that will be offered for swap
     /// * `counter_amount` - The amount that we are asking from the counterparty
@@ -363,8 +362,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `min_fill_value` - When it is a partial fill quote, the minimum amount
     ///   the counterparty must supply to match against the quote.
     /// * `last_block_infos` - Last block info responses from the network, for
-    ///   determining fees. This should normally come from polling_network_state
-    /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
+    ///   determining block version. This should come from polling_network_state
+    /// * `opt_tombstone` - Tombstone block. If zero, the swap offer doesn't
+    ///   expire.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
     pub fn build_swap_proposal(
