@@ -10,6 +10,7 @@ use mc_common::{
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
+use mc_fog_types::common::BlockRange;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
@@ -172,7 +173,7 @@ impl<
     pub fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
         let block_range = self.sharding_strategy.get_block_range();
-        let mut next_block_index = block_range.start_block;
+        let mut next_block_index = 0;
         loop {
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::info!(self.logger, "Db fetcher thread stop requested.");
@@ -183,8 +184,7 @@ impl<
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while block_range.contains(next_block_index)
-                && self.load_block_data(&mut next_block_index)
+            while self.load_block_data(&mut next_block_index, &block_range)
                 && !self.stop_requested.load(Ordering::SeqCst)
             {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
@@ -203,40 +203,6 @@ impl<
                 };
             }
 
-            // Update global shared values
-            let tracer = tracer!();
-            tracer.in_span("update_global_values", |_cx| {
-                let mut shared_state =
-                    self.db_poll_shared_state.lock().expect("mutex poisoned");
-                match self.db.num_txos() {
-                    Err(e) => {
-                        log::error!(
-                            self.logger,
-                            "Unexpected error when checking for ledger num txos {}: {:?}",
-                            next_block_index,
-                            e
-                        );
-                    }
-                    Ok(global_txo_count) => {
-                        // keep track of count for ledger enclave untrusted
-                        shared_state.last_known_block_cumulative_txo_count = global_txo_count;
-                    }
-                }
-                match self.db.get_latest_block() {
-                    Err(e) => {
-                        log::error!(
-                            self.logger,
-                            "Unexpected error when checking for ledger latest block version {}: {:?}",
-                            next_block_index,
-                            e
-                        );
-                    }
-                    Ok(block) => {
-                        shared_state.latest_block_version = block.version;
-                    }
-                }
-            });
-
             // If we get this far then we loaded all available block data from the DB into
             // the enclave.
             //
@@ -254,7 +220,7 @@ impl<
     /// Attempt to load the next block that we
     /// are aware of and tracking.
     /// Returns true if we might have more block data to load.
-    fn load_block_data(&mut self, next_block_index: &mut u64) -> bool {
+    fn load_block_data(&mut self, next_block_index: &mut u64, block_range: &BlockRange) -> bool {
         // Default to true: if there is an error, we may have more work, we don't know
         let mut may_have_more_work = true;
         let watcher_timeout: Duration = Duration::from_millis(5000);
@@ -284,36 +250,65 @@ impl<
 
                 let _active = mark_span_as_active(span);
 
-                // Get the timestamp for the block.
-                let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                    self.watcher
-                        .poll_block_timestamp(*next_block_index, watcher_timeout)
-                });
+                // Only add blocks within the epoch to the ORAM
+                if block_range.contains(*next_block_index) {
+                    // Get the timestamp for the block.
+                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                        self.watcher
+                            .poll_block_timestamp(*next_block_index, watcher_timeout)
+                    });
 
-                // Add block to enclave.
-                let records = block_contents
-                    .key_images
-                    .iter()
-                    .map(|key_image| KeyImageData {
-                        key_image: *key_image,
-                        block_index: *next_block_index,
-                        timestamp,
-                    })
-                    .collect();
+                    // Add block to enclave.
+                    let records = block_contents
+                        .key_images
+                        .iter()
+                        .map(|key_image| KeyImageData {
+                            key_image: *key_image,
+                            block_index: *next_block_index,
+                            timestamp,
+                        })
+                        .collect();
 
-                tracer.in_span("add_records_to_enclave", |_cx| {
-                    self.add_records_to_enclave(*next_block_index, records);
-                });
+                    tracer.in_span("add_records_to_enclave", |_cx| {
+                        self.add_records_to_enclave(*next_block_index, records);
+                    });
+                }
 
-                // Update highest processed block count.
-                tracer.in_span("update_highest_processed_block_count", |_cx| {
+                // Update shared state.
+                tracer.in_span("update_shared_state", |_cx| {
                     let mut shared_state =
                         self.db_poll_shared_state.lock().expect("mutex poisoned");
                     // this is next_block_index + 1 because next_block_index is actually the block
                     // we just processed, so we have fully processed next_block_index + 1 blocks
                     shared_state.highest_processed_block_count = *next_block_index + 1;
+                    match self.db.num_txos() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger num txos {}: {:?}",
+                                next_block_index,
+                                e
+                            );
+                        }
+                        Ok(global_txo_count) => {
+                            // keep track of count for ledger enclave untrusted
+                            shared_state.last_known_block_cumulative_txo_count = global_txo_count;
+                        }
+                    }
+                    match self.db.get_latest_block() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger latest block version {}: {:?}",
+                                next_block_index,
+                                e
+                            );
+                        }
+                        Ok(block) => {
+                            shared_state.latest_block_version = block.version;
+                        }
+                    }
                 });
-                
 
                 *next_block_index += 1;
             }

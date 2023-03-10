@@ -152,7 +152,7 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
 /// readiness check for routers.
 pub fn get_router_callback(
     shard_health_clients: Vec<health_api_grpc::HealthClient>,
-    logger: Logger
+    logger: Logger,
 ) -> ServiceHealthCheckCallback {
     Arc::new(move |_| -> HealthCheckStatus {
         log::info!(logger, "Health check callback executing...");
