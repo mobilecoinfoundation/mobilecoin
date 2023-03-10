@@ -77,8 +77,7 @@ mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", re
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-# TODO: Point to external GitHub repo when it's merged
-schnorrkel-og = { path = "../../../../schnorrkel" }
+schnorrkel-og = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
