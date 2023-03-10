@@ -352,7 +352,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// the deqs.
     ///
     /// # Arguments
-    /// * `sender_monitor_id` - Indicates the the account key needed to spend
+    /// * `sender_monitor_id` - Indicates the account key needed to spend
     ///   the txo's.
     /// * `token_id` - The token id to transact in.
     /// * `change_subaddress` - Recipient of any change.
