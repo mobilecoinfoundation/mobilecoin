@@ -1283,14 +1283,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
-        if request.ask_value == 0 {
+        if request.counter_value == 0 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "ask_value".to_string(),
+                "counter_value".to_string(),
             ));
         }
 
-        let ask_amount = Amount::new(request.ask_value, request.ask_token_id.into());
+        let counter_amount = Amount::new(request.counter_value, request.counter_token_id.into());
 
         // Attempt to construct an sci
         let sci = self
@@ -1299,8 +1299,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &sender_monitor_id,
                 request.change_subaddress,
                 &utxo,
-                ask_amount,
-                !request.all_or_nothing,
+                counter_amount,
+                request.allow_partial_fill,
                 request.minimum_fill_value,
                 &self.get_last_block_infos(),
                 request.tombstone,
@@ -3741,8 +3741,9 @@ mod test {
                 .next()
                 .unwrap(),
         );
-        request.set_ask_value(123);
-        request.set_ask_token_id(1);
+        request.set_allow_partial_fill(true);
+        request.set_counter_value(123);
+        request.set_counter_token_id(1);
         request.set_minimum_fill_value(10);
 
         // Test the happy flow for MOB -> eUSD, partial fill swap
@@ -3789,9 +3790,9 @@ mod test {
                     .next()
                     .unwrap(),
             );
-            request.set_ask_value(999_999);
-            request.set_ask_token_id(0);
-            request.set_all_or_nothing(true);
+            request.set_counter_value(999_999);
+            request.set_counter_token_id(0);
+            request.set_allow_partial_fill(false);
             request.set_tombstone(1000);
 
             let response = client.generate_swap(&request).unwrap();
@@ -3859,9 +3860,9 @@ mod test {
         }
 
         {
-            // Ask value of zero is an error
+            // Counter value of zero is an error
             let mut request = request.clone();
-            request.set_ask_value(0);
+            request.set_counter_value(0);
             assert!(client.generate_swap(&request).is_err());
         }
     }

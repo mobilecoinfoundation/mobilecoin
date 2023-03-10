@@ -627,24 +627,32 @@ message GenerateSwapRequest {
 
     // A specific input, whose value will be offered in full by the swap.
     //
-    // You may need to conduct a self-spend first to find an input of exactly
+    // This becomes the "base token" amount from the point of view of a quoting service.
+    //
+    // You may need to conduct a self-spend first to make an input of exactly
     // the correct value before using this API if none of your inputs match
-    // the offer you want to make.
+    // the volume of the quote you want to make.
     UnspentTxOut input = 3;
 
     // The u64 value we are asking for in exchange for our input
-    uint64 ask_value = 4;
+    //
+    // This becomes the "counter token" value from the point of view of a quoting service.
+    uint64 counter_value = 4;
 
     // The token_id we are asking for in exchange for our input
-    uint64 ask_token_id = 5;
+    //
+    // This becomes the "counter token" token id from the point of view of a quoting service.
+    uint64 counter_token_id = 5;
 
-    // If set to true, the offer is "all or nothing", the entire ask must be supplied.
-    // Otherwise, it is a "partial-fill" SCI
-    bool all_or_nothing = 6;
+    // If set to false, the offer is "all or nothing", the entire counter token value must be supplied,
+    // in exchange for the entire value of the input we are signing over.
+    // Otherwise, it is a "partial-fill" SCI, and can be filled at less than the maximum volume for
+    // proportionally more of the input value.
+    bool allow_partial_fill = 6;
 
     // The smallest u64 value that we will accept to conduct the swap.
-    // This can be set to avoid receiving "dust" amounts.
-    // This is ignored if all_or_nothing is true.
+    // This can be set to avoid receiving "dust" amounts when allow_partial_fill is true.
+    // This is ignored if allow_partial_fill is false.
     uint64 minimum_fill_value = 7;
 
     // Tombstone block (setting to 0 means this offer does not expire).

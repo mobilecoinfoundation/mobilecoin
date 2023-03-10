@@ -350,19 +350,36 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// Create and return an SCI that offers to trade one of our inputs for a
     /// given amount of some currency. This SCI is in the form accepted by
     /// the deqs.
+    ///
+    /// # Arguments
+    /// * `sender_monitor_id` - Indicates the the account key needed to spend
+    ///   the txo's.
+    /// * `token_id` - The token id to transact in.
+    /// * `change_subaddress` - Recipient of any change.
+    /// * `utxo` - UTXO that will be offered for swap
+    /// * `counter_amount` - The amount that we are asking from the counterparty
+    /// * `is_partial_fill` - Whether we allow partial fills of the quote, if
+    ///   false then it is all or nothing.
+    /// * `min_fill_value` - When it is a partial fill quote, the minimum amount
+    ///   the counterparty must supply to match against the quote.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
+    /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
     pub fn build_swap_proposal(
         &self,
         sender_monitor_id: &MonitorId,
         change_subaddress_index: u64,
         utxo: &UnspentTxOut,
-        ask_amount: Amount,
+        counter_amount: Amount,
         is_partial_fill: bool,
         min_fill_value: u64,
         last_block_infos: &[BlockInfo],
         opt_tombstone: u64,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     ) -> Result<SignedContingentInput, Error> {
-        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "ask" => format!("{ask_amount:?}")));
+        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "counter_amount" => format!("{counter_amount:?}")));
         log::trace!(logger, "Building swap proposal...");
 
         // Get sender monitor data.
@@ -401,9 +418,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Add the ask either as a required or fractional output
         if is_partial_fill {
-            fractional_outputs.push((ask_amount, change_subaddress));
+            fractional_outputs.push((counter_amount, change_subaddress));
         } else {
-            required_outputs.push((ask_amount, change_subaddress));
+            required_outputs.push((counter_amount, change_subaddress));
         }
 
         // Build and return the TxProposal object
