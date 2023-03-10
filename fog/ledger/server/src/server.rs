@@ -105,7 +105,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
 
         let key_image_service = KeyImageService::new(
             KeyImageClientListenUri::ClientFacing(config.client_listen_uri.clone()),
-            config.chain_id.clone(),
             ledger.clone(),
             watcher.clone(),
             enclave.clone(),
@@ -181,8 +180,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             );
 
             // Package endpoints into grpc service
-            let key_image_service =
-                ledger_grpc::create_fog_key_image_api(self.key_image_service.clone());
             let merkle_proof_service =
                 ledger_grpc::create_fog_merkle_proof_api(self.merkle_proof_service.clone());
             let block_service = ledger_grpc::create_fog_block_api(self.block_service.clone());
@@ -203,7 +200,6 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
                 self.config.client_listen_uri.addr(),
             );
             let server_builder = grpcio::ServerBuilder::new(env)
-                .register_service(key_image_service)
                 .register_service(merkle_proof_service)
                 .register_service(block_service)
                 .register_service(untrusted_tx_out_service)
