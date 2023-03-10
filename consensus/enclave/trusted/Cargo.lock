@@ -1724,9 +1724,11 @@ dependencies = [
 [[package]]
 name = "schnorrkel-og"
 version = "0.11.0-pre.0"
+source = "git+https://github.com/mobilecoinofficial/schnorrkel?rev=b76d8c3a50671b08af0874b25b2543d3302d794d#b76d8c3a50671b08af0874b25b2543d3302d794d"
 dependencies = [
  "arrayref",
  "arrayvec",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "merlin",
  "rand_core",
