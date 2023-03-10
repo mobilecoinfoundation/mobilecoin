@@ -1187,7 +1187,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// Create a SignedContingentInput.
     ///
     /// # Arguments
-    /// * `input` - UTXO to spend
+    /// * `utxo` - UTXO to spend
     /// * `global_index` - The global index of the input
     /// * `ring` - A set of mixins for the input, with their global indices.
     /// * `block_version` - The block version to target for this transaction
