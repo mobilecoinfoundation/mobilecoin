@@ -11,10 +11,11 @@ rust-version = { workspace = true }
 [features]
 serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]
 alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc", "zeroize/alloc"]
+precomputed-tables = ["curve25519-dalek/precomputed-tables", "x25519-dalek/precomputed-tables"]
 
 default = [ "serde", "alloc", "curve25519-dalek/default"]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false, features = [ "zeroize"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false, features = ["zeroize"] }
 ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
 x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
