@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -40,7 +40,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    TokenId,
+    Amount, TokenId,
 };
 use mc_transaction_extra::{BurnRedemptionMemo, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
@@ -908,7 +908,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                None,
+                None, // opt_memo_builder
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1226,6 +1226,93 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         response.set_tx_public_key(proto_tx_public_key);
         response.set_memo(request.get_memo().to_string());
         response.set_b58_code(b58_code);
+        Ok(response)
+    }
+
+    fn generate_swap_impl(
+        &mut self,
+        request: api::GenerateSwapRequest,
+    ) -> Result<api::GenerateSwapResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the utxo we are signing for
+        let proto_utxo = request.input.as_ref().ok_or_else(|| {
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "input".into())
+        })?;
+
+        let utxo = UnspentTxOut::try_from(proto_utxo)
+            .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))?;
+
+        // Verify this output belongs to the monitor.
+        let subaddress_id = self
+            .mobilecoind_db
+            .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+            .map_err(|err| {
+                rpc_internal_error(
+                    "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        if subaddress_id.monitor_id != sender_monitor_id {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "input.monitor_id".to_string(),
+            ));
+        }
+
+        if request.counter_value == 0 {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "counter_value".to_string(),
+            ));
+        }
+
+        let counter_amount = Amount::new(request.counter_value, request.counter_token_id.into());
+
+        // Attempt to construct an sci
+        let sci = self
+            .transactions_manager
+            .build_swap_proposal(
+                &sender_monitor_id,
+                request.change_subaddress,
+                &utxo,
+                counter_amount,
+                request.allow_partial_fill,
+                request.minimum_fill_value,
+                &self.get_last_block_infos(),
+                request.tombstone,
+                None, // opt_memo_builder
+            )
+            .map_err(|err| {
+                rpc_internal_error("transactions_manager.generate_swap", err, &self.logger)
+            })?;
+
+        let mut response = api::GenerateSwapResponse::new();
+        response.set_sci((&sci).into());
+
         Ok(response)
     }
 
@@ -2084,6 +2171,9 @@ build_api! {
     generate_burn_redemption_tx GenerateBurnRedemptionTxRequest GenerateBurnRedemptionTxResponse generate_burn_redemption_tx_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
 
+    // Signed contingent inputs
+    generate_swap GenerateSwapRequest GenerateSwapResponse generate_swap_impl,
+
     // Databases
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
@@ -2143,7 +2233,7 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Token,
     };
-    use mc_transaction_extra::MemoType;
+    use mc_transaction_extra::{MemoType, SignedContingentInput};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -3583,6 +3673,197 @@ mod test {
             };
 
             assert_eq!(output_with_proof.get_proof(), &expected_proof);
+        }
+    }
+
+    #[test_with_logger]
+    fn test_generate_swap(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BlockVersion::MAX,
+            &[
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount::new(1_000_000_000_000, TokenId::from(1)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Call generate swap.
+        let mut request = api::GenerateSwapRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == *Mob::ID)
+                .map(api::UnspentTxOut::from)
+                .next()
+                .unwrap(),
+        );
+        request.set_allow_partial_fill(true);
+        request.set_counter_value(123);
+        request.set_counter_token_id(1);
+        request.set_minimum_fill_value(10);
+
+        // Test the happy flow for MOB -> eUSD, partial fill swap
+        {
+            let response = client.generate_swap(&request).unwrap();
+
+            // Sanity test the response.
+            let sci = response.get_sci();
+
+            assert_eq!(sci.tx_out_global_indices.len(), 11);
+            assert_eq!(sci.required_output_amounts.len(), 0);
+
+            let tx_in = sci.get_tx_in();
+            assert_eq!(tx_in.ring.len(), 11);
+
+            let rules = tx_in.get_input_rules();
+            assert_eq!(rules.required_outputs.len(), 0);
+            assert_eq!(rules.partial_fill_outputs.len(), 1);
+            assert!(rules.partial_fill_change.as_ref().is_some());
+            assert_eq!(rules.max_tombstone_block, 0);
+            assert_eq!(rules.min_partial_fill_value, 10);
+
+            let sci = SignedContingentInput::try_from(sci).unwrap();
+
+            sci.validate().unwrap();
+
+            let (amount, _scalar) = sci.tx_in.input_rules.as_ref().unwrap().partial_fill_outputs[0]
+                .reveal_amount()
+                .unwrap();
+            assert_eq!(amount.value, 123);
+            assert_eq!(amount.token_id, TokenId::from(1));
+        }
+
+        // Test the happy flow for eUSD -> MOB, non partial fill swap
+        {
+            let mut request = api::GenerateSwapRequest::new();
+            request.set_sender_monitor_id(monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input(
+                utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == 1)
+                    .map(api::UnspentTxOut::from)
+                    .next()
+                    .unwrap(),
+            );
+            request.set_counter_value(999_999);
+            request.set_counter_token_id(0);
+            request.set_allow_partial_fill(false);
+            request.set_tombstone(1000);
+
+            let response = client.generate_swap(&request).unwrap();
+
+            // Sanity test the response.
+            let sci = response.get_sci();
+            assert_eq!(sci.tx_out_global_indices.len(), 11);
+            assert_eq!(sci.required_output_amounts.len(), 1);
+
+            let tx_in = sci.get_tx_in();
+            assert_eq!(tx_in.ring.len(), 11);
+
+            let rules = tx_in.get_input_rules();
+            assert_eq!(rules.required_outputs.len(), 1);
+            assert_eq!(rules.partial_fill_outputs.len(), 0);
+            assert!(rules.partial_fill_change.as_ref().is_none());
+            assert_eq!(rules.max_tombstone_block, 1000);
+            assert_eq!(rules.min_partial_fill_value, 0);
+
+            let sci = SignedContingentInput::try_from(sci).unwrap();
+
+            sci.validate().unwrap();
+
+            let unmasked_amount = sci.required_output_amounts[0].clone();
+            assert_eq!(unmasked_amount.value, 999_999);
+            assert_eq!(unmasked_amount.token_id, *Mob::ID);
+        }
+
+        // Invalid input scenarios should result in an error.
+        {
+            // No monitor id
+            let mut request = request.clone();
+            request.set_sender_monitor_id(vec![]);
+            assert!(client.generate_swap(&request).is_err());
+        }
+
+        {
+            // Unrecognized monitor id
+            let sender = AccountKey::random(&mut rng);
+            let data = MonitorData::new(
+                sender, 0,  // first_subaddress
+                20, // num_subaddresses
+                0,  // first_block
+                "", // name
+            )
+            .unwrap();
+
+            let mut request = request.clone();
+            request.set_sender_monitor_id(MonitorId::from(&data).to_vec());
+            assert!(client.generate_swap(&request).is_err());
+        }
+
+        {
+            // Subaddress index out of range
+            let mut request = request.clone();
+            request.set_change_subaddress(data.first_subaddress + data.num_subaddresses + 1);
+            assert!(client.generate_swap(&request).is_err());
+        }
+
+        {
+            // Junk input
+            let mut request = request.clone();
+            request.set_input(api::UnspentTxOut::default());
+            assert!(client.generate_swap(&request).is_err());
+        }
+
+        {
+            // Counter value of zero is an error
+            let mut request = request.clone();
+            request.set_counter_value(0);
+            assert!(client.generate_swap(&request).is_err());
         }
     }
 

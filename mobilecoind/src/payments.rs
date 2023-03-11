@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Construct and submit transactions to the validator network.
 
@@ -18,8 +18,8 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_builder::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
-    TxOutContext,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses,
+    SignedContingentInputBuilder, TransactionBuilder, TxOutContext,
 };
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
@@ -28,7 +28,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, FeeMap, TokenId,
 };
-use mc_transaction_extra::TxOutConfirmationNumber;
+use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{
@@ -345,6 +345,106 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tx constructed, hash={}", tx_proposal.tx.tx_hash());
 
         Ok(tx_proposal)
+    }
+
+    /// Create and return an SCI that offers to trade one of our inputs for a
+    /// given amount of some currency. This SCI is in the form accepted by
+    /// the deqs.
+    ///
+    /// # Arguments
+    /// * `sender_monitor_id` - Indicates the account key needed to spend the
+    ///   txo's.
+    /// * `change_subaddress` - Recipient of any change.
+    /// * `utxo` - UTXO that will be offered for swap
+    /// * `counter_amount` - The amount that we are asking from the counterparty
+    /// * `is_partial_fill` - Whether we allow partial fills of the quote, if
+    ///   false then it is all or nothing.
+    /// * `min_fill_value` - When it is a partial fill quote, the minimum amount
+    ///   the counterparty must supply to match against the quote.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining block version. This should come from polling_network_state
+    /// * `opt_tombstone` - Tombstone block. If zero, the swap offer doesn't
+    ///   expire.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
+    pub fn build_swap_proposal(
+        &self,
+        sender_monitor_id: &MonitorId,
+        change_subaddress_index: u64,
+        utxo: &UnspentTxOut,
+        counter_amount: Amount,
+        is_partial_fill: bool,
+        min_fill_value: u64,
+        last_block_infos: &[BlockInfo],
+        opt_tombstone: u64,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+    ) -> Result<SignedContingentInput, Error> {
+        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "counter_amount" => format!("{counter_amount:?}")));
+        log::trace!(logger, "Building swap proposal...");
+
+        // Get sender monitor data.
+        let sender_monitor_data = self.mobilecoind_db.get_monitor_data(sender_monitor_id)?;
+
+        // Get the subaddress.
+        let change_subaddress = sender_monitor_data
+            .account_key
+            .subaddress(change_subaddress_index);
+
+        // Figure out the block version, fee and minimum fee map.
+        let (_fee, _fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, 0.into(), 0)?;
+
+        // Get global index of the utxo
+        let global_index = self
+            .ledger_db
+            .get_tx_out_index_by_hash(&utxo.tx_out.hash())?;
+        log::trace!(logger, "Got global index: {}", global_index);
+
+        // Get a ring of mixins and their proofs
+        let ring = self.get_rings(DEFAULT_RING_SIZE, 1, &[global_index])?;
+        // Convert to a ring of mixins and their indices
+        let ring: Vec<(TxOut, u64)> = ring[0]
+            .clone()
+            .into_iter()
+            .map(|(tx_out, _proof)| {
+                let index = self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash())?;
+                Ok((tx_out, index))
+            })
+            .collect::<Result<_, Error>>()?;
+        log::trace!(logger, "Got ring");
+
+        let mut required_outputs = Vec::default();
+        let mut fractional_outputs = Vec::default();
+
+        // Add the ask either as a required or fractional output
+        if is_partial_fill {
+            fractional_outputs.push((counter_amount, change_subaddress));
+        } else {
+            required_outputs.push((counter_amount, change_subaddress));
+        }
+
+        // Build and return the TxProposal object
+        let mut rng = rand::thread_rng();
+        let sci = Self::build_sci(
+            utxo,
+            global_index,
+            ring,
+            block_version,
+            &sender_monitor_data.account_key,
+            change_subaddress_index,
+            None, // custom change_amount
+            &required_outputs,
+            &fractional_outputs,
+            min_fill_value,
+            opt_tombstone,
+            &self.fog_resolver_factory,
+            opt_memo_builder,
+            &mut rng,
+            &self.logger,
+        )?;
+        log::trace!(logger, "Sci constructed");
+
+        Ok(sci)
     }
 
     /// Create a TxProposal that attempts to merge multiple UTXOs into a single
@@ -930,6 +1030,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 None => {
                     // The input is not already in the ring.
                     if ring.is_empty() {
+                        // The ring is probably not empty, but ring[0] will panic if it is.
                         // Append the input and its proof of membership.
                         ring.push(utxo.tx_out.clone());
                         membership_proofs.push(proof.clone());
@@ -950,7 +1051,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 "Each ring element must have a corresponding membership proof."
             );
 
-            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key).unwrap();
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
             let onetime_private_key = recover_onetime_private_key(
                 &public_key,
                 from_account_key.view_private_key(),
@@ -1081,6 +1182,205 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
         })
+    }
+
+    /// Create a SignedContingentInput.
+    ///
+    /// # Arguments
+    /// * `utxo` - UTXO to spend
+    /// * `global_index` - The global index of the input
+    /// * `ring` - A set of mixins for the input, with their global indices.
+    /// * `block_version` - The block version to target for this transaction
+    /// * `from_account_key` - Owns the inputs. Also the recipient of any
+    ///   change.
+    /// * `change_subaddress_index` - Subaddress for change recipient.
+    /// * `change_amount` - The amount we will return to ourself as change. Must
+    ///   match token id of input, and be between 0 and input. If there are
+    ///   fractional outputs, this will be a fractional change output, otherwise
+    ///   a required change output.
+    /// * `required_outputs` - Required outputs of the sci.
+    /// * `fractional_outputs` - Fractional outputs of the sci.
+    /// * `min_fill_value` - The minimum amount that the counterparty must fill
+    ///   the partial fill order to. Ignored if zero.
+    /// * `tombstone_block` - Tombstone block of the sci. If 0, it is omitted,
+    ///   and the sci does not expire unless fog forces it to.
+    /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
+    /// * `rng` - randomness
+    /// * `logger` - Logger
+    #[allow(clippy::too_many_arguments)]
+    fn build_sci(
+        utxo: &UnspentTxOut,
+        global_index: u64,
+        ring: Vec<(TxOut, u64)>,
+        block_version: BlockVersion,
+        from_account_key: &AccountKey,
+        change_subaddress_index: u64,
+        change_amount: Option<Amount>,
+        required_outputs: &[(Amount, PublicAddress)],
+        fractional_outputs: &[(Amount, PublicAddress)],
+        min_fill_value: u64,
+        tombstone_block: BlockIndex,
+        fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+        rng: &mut (impl RngCore + CryptoRng),
+        _logger: &Logger,
+    ) -> Result<SignedContingentInput, Error> {
+        // Check that we have at least one destination.
+        if required_outputs.is_empty() && fractional_outputs.is_empty() {
+            return Err(Error::TxBuild("Must have at least one destination".into()));
+        }
+
+        // Collect all required FogUris from public addresses, then pass to resolver
+        // factory
+        let fog_resolver = {
+            let change_address = from_account_key.subaddress(change_subaddress_index);
+            let fog_uris = core::slice::from_ref(&change_address)
+                .iter()
+                .chain(required_outputs.iter().map(|x| &x.1))
+                .chain(fractional_outputs.iter().map(|x| &x.1))
+                .filter_map(|x| extract_fog_uri(x).transpose())
+                .collect::<Result<Vec<_>, _>>()?;
+            fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
+        };
+
+        let (mut ring, mut global_indices): (Vec<TxOut>, Vec<u64>) = ring.into_iter().unzip();
+
+        // Add the input to the ring.
+        let position_opt = ring.iter().position(|tx_out| *tx_out == utxo.tx_out);
+        let real_key_index = match position_opt {
+            Some(position) => {
+                // The input is already present in the ring.
+                // This could happen if ring elements are sampled randomly from the ledger.
+                position
+            }
+            None => {
+                // The input is not already in the ring.
+                if ring.is_empty() {
+                    // The ring is probably not empty, but ring[0] will panic if it is.
+                    // Append the input and its proof of membership.
+                    ring.push(utxo.tx_out.clone());
+                    global_indices.push(global_index);
+                } else {
+                    // Replace the first element of the ring.
+                    ring[0] = utxo.tx_out.clone();
+                    global_indices[0] = global_index;
+                }
+                // The real input is always the first element. This is safe because
+                // TransactionBuilder sorts each ring.
+                0
+            }
+        };
+
+        let membership_proofs: Vec<TxOutMembershipProof> = vec![Default::default(); ring.len()];
+
+        // Create input credentials
+        let input_credentials = {
+            assert_eq!(
+                ring.len(),
+                membership_proofs.len(),
+                "Each ring element must have a corresponding membership proof."
+            );
+
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
+            let onetime_private_key = recover_onetime_private_key(
+                &public_key,
+                from_account_key.view_private_key(),
+                &from_account_key.subaddress_spend_private(utxo.subaddress_index),
+            );
+
+            InputCredentials::new(
+                ring,
+                membership_proofs,
+                real_key_index,
+                onetime_private_key,
+                *from_account_key.view_private_key(),
+            )
+            .map_err(|_| Error::TxBuild("failed creating InputCredentials".into()))?
+        };
+
+        // Create sci_builder.
+        // TODO (GH #1522): Use RTH memo builder, optionally?
+        // Note: Clippy thinks the closure is redundant, but it doesn't build without
+        // it.
+        #[allow(clippy::redundant_closure)]
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
+            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
+
+        let mut sci_builder = SignedContingentInputBuilder::new_with_box(
+            block_version,
+            input_credentials,
+            fog_resolver,
+            memo_builder,
+        )
+        .map_err(|err| {
+            Error::TxBuild(format!(
+                "Error creating signed contingent input builder: {err}"
+            ))
+        })?;
+
+        // Add outputs to our destinations.
+        for (amount, recipient) in required_outputs.iter() {
+            sci_builder
+                .add_required_output(*amount, recipient, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding required output: {err}")))?;
+        }
+        for (amount, recipient) in fractional_outputs.iter() {
+            sci_builder
+                .add_partial_fill_output(*amount, recipient, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding fractional output: {err}")))?;
+        }
+
+        // Add an appropriate change output to the sci
+        if let Some(change_amount) = change_amount.as_ref() {
+            if change_amount.token_id != utxo.token_id {
+                return Err(Error::TxBuild("Incorrect change Token Id".to_string()));
+            }
+            if change_amount.value > utxo.value {
+                return Err(Error::InsufficientFunds);
+            }
+        }
+
+        let change_dest = ReservedSubaddresses::from_subaddress_index(
+            from_account_key,
+            Some(change_subaddress_index),
+            None,
+        );
+
+        if fractional_outputs.is_empty() {
+            // When we have an all-or-nothing swap and no change value is given,
+            // we don't have to add a change output. (Maybe we should add a zero-value
+            // change?) If one is specified, add it.
+            if let Some(change_amount) = change_amount.as_ref() {
+                sci_builder
+                    .add_required_change_output(*change_amount, &change_dest, rng)
+                    .map_err(|err| {
+                        Error::TxBuild(format!("failed adding output (change): {err}"))
+                    })?;
+            }
+        } else {
+            // When we have a partial fill swap and no custom change value is given,
+            // add a fractional change output equal in value to the input.
+            let change_amount =
+                change_amount.unwrap_or_else(|| Amount::new(utxo.value, utxo.token_id.into()));
+
+            sci_builder
+                .add_partial_fill_change_output(change_amount, &change_dest, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {err}")))?;
+
+            sci_builder.set_min_partial_fill_value(min_fill_value);
+        }
+
+        // Set tombstone block.
+        if tombstone_block != 0 {
+            sci_builder.set_tombstone_block(tombstone_block);
+        }
+
+        // Build sci.
+        sci_builder
+            .build(&NoKeysRingSigner {}, rng)
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))
     }
 }
 
