@@ -1,10 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 use crate::{server::DbPollSharedState, KeyImageClientListenUri, SVC_COUNTERS};
 use grpcio::RpcStatus;
-use mc_attest_api::{
-    attest,
-    attest::AuthMessage,
-};
+use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
@@ -18,8 +15,8 @@ use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryRes
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger,
-    rpc_permissions_error, send_result, Authenticator,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
+    Authenticator,
 };
 use mc_watcher::watcher_db::WatcherDB;
 use std::sync::{Arc, Mutex};
