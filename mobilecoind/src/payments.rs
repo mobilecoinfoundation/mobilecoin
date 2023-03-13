@@ -226,7 +226,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         } else {
             let fee = last_block_info
                 .minimum_fee_or_none(&token_id)
-                .ok_or(Error::TxBuild("Token cannot be used to pay fees".into()))?;
+                .ok_or_else(|| Error::TxBuild("Token cannot be used to pay fees".into()))?;
             (fee, block_version)
         })
     }

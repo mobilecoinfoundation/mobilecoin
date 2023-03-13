@@ -4404,12 +4404,8 @@ mod test {
             .get_utxos_for_subaddress(&counterparty_monitor_id, 0)
             .unwrap();
         assert!(!utxos.is_empty());
-        let counterparty_eusd_utxo_value = utxos
-            .iter()
-            .filter(|utxo| utxo.token_id == 1)
-            .next()
-            .unwrap()
-            .value;
+        let counterparty_eusd_utxo_value =
+            utxos.iter().find(|utxo| utxo.token_id == 1).unwrap().value;
         // Confirm my testing assumptions -- all eusd utxos here have the same value
         assert!(utxos
             .iter()
