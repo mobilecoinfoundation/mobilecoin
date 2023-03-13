@@ -558,7 +558,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut required_outputs = Vec::default();
         let mut fractional_outputs = Vec::default();
 
-        // Add the ask either as a required or fractional output
+        // Add the counterparty amount either as a required or fractional output
         if is_partial_fill {
             fractional_outputs.push((counter_amount, change_subaddress));
         } else {
@@ -1302,6 +1302,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 );
                 return Err(Error::InsufficientFunds);
             }
+            // When val is negative, that means we have change, because the inputs were
+            // larger than was strictly needed to fulfill the outlays.
             // Note: RTH normally requires that we write change even if it's zero, but we
             // haven't done that here yet, and we're always writing empty memos.
             // Note: RTH doesn't tolerate having multiple change outputs right now IIRC,
@@ -1309,7 +1311,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             // transactions that have multiple change outputs, if we want that
             // to work.
             if *val < 0 {
-                let change_amount = Amount::new(-*val as u64, *token_id);
+                let change_val = u64::try_from(-*val).ok_or_else(|| {
+                    Error::TxBuild(format!("change value overflowed a u64: {}", -*val))
+                })?;
+                let change_amount = Amount::new(change_val, *token_id);
 
                 tx_builder
                     .add_change_output(change_amount, &change_dest, rng)
