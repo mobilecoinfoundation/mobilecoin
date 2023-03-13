@@ -2314,8 +2314,8 @@ mod test {
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         subaddress_store::SubaddressSPKId,
         test_utils::{
-            self, add_block_to_ledger, add_txos_to_ledger, get_testing_environment,
-            wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
+            self, add_block_to_ledger, add_txos_to_ledger, get_test_fee_map,
+            get_testing_environment, wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
     };
@@ -4466,6 +4466,8 @@ mod test {
             {
                 if amount.token_id == Mob::ID {
                     assert_eq!(amount.value, offered_value / 4 - Mob::MINIMUM_FEE);
+                    assert_eq!(tx.prefix.fee, Mob::MINIMUM_FEE);
+                    assert_eq!(tx.prefix.fee_token_id, *Mob::ID);
                     found_counterparty_output = true;
                 } else {
                     assert_eq!(*amount.token_id, 1);
@@ -4527,13 +4529,76 @@ mod test {
                     // The quote asks for 123 eusd, counterparty fulfills to 1/4,
                     // rounding up so they give away 31.
                     // Change is their eusd utxo value minus that, minus the eusd transaction fee.
-                    // FIXME: I'm not sure where the 10 billion number comes from, it is not the
-                    // same as the value of Mob::MINIMUM_FEE, and doesn't appear to be in
-                    // FeeMap::default()
+                    let default_fee_val = get_test_fee_map()
+                        .get_fee_for_token(&TokenId::from(1))
+                        .unwrap();
                     assert_eq!(
                         amount.value,
-                        counterparty_eusd_utxo_value - 31 - 10_000_000_000
+                        counterparty_eusd_utxo_value - 31 - default_fee_val
                     );
+                    assert_eq!(tx.prefix.fee, default_fee_val);
+                    assert_eq!(tx.prefix.fee_token_id, 1);
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    // 31 is 1/4 of 123, rounded up
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Changing the fee in the request should work, and slightly adjust the output
+        // values.
+        let fee_override = 500_000;
+        request.set_fee(fee_override);
+
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+        let mut response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        // The request sci doesn't have proofs, so to test equal, we have to delete
+        // those in resp
+        response_sci.tx_in.proofs = vec![];
+        assert_eq!(response_sci, generated_sci);
+
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that, minus the eusd transaction fee.
+                    assert_eq!(
+                        amount.value,
+                        counterparty_eusd_utxo_value - 31 - fee_override
+                    );
+                    assert_eq!(tx.prefix.fee, fee_override);
+                    assert_eq!(tx.prefix.fee_token_id, 1);
                     found_counterparty_change = true;
                 }
             } else if let Ok((amount, _scalar)) =

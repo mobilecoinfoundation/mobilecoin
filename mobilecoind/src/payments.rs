@@ -22,7 +22,7 @@ use mc_transaction_builder::{
     SignedContingentInputBuilder, TransactionBuilder, TxOutContext,
 };
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
+    constants::{MAX_INPUTS, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -51,10 +51,6 @@ pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 
 /// Default ring size
 pub const DEFAULT_RING_SIZE: usize = RING_SIZE;
-
-/// The original hard-coded 10mMOB fee, used as a fallback when calls to
-/// consensus fail or we have no peers.
-const FALLBACK_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
 
 /// An outlay - the API representation of a desired transaction output.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -220,17 +216,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<(u64, u32), Error> {
         // Figure out the block_version and fee, taking into account if opt_fee is
         // nonzero
-        let candidate_block_version = self.ledger_db.get_latest_block()?.version;
+        let block_version = max(
+            self.ledger_db.get_latest_block()?.version,
+            last_block_info.network_block_version,
+        );
+
         Ok(if opt_fee != 0 {
-            (opt_fee, candidate_block_version)
+            (opt_fee, block_version)
         } else {
             let fee = last_block_info
                 .minimum_fee_or_none(&token_id)
-                .unwrap_or(FALLBACK_FEE);
-            let block_version = max(
-                candidate_block_version,
-                last_block_info.network_block_version,
-            );
+                .ok_or(Error::TxBuild("Token cannot be used to pay fees".into()))?;
             (fee, block_version)
         })
     }
