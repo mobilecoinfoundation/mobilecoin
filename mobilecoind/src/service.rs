@@ -4076,7 +4076,14 @@ mod test {
                 tx_proposal.get_tx().get_prefix().get_inputs().len(),
                 expected_num_inputs as usize
             );
-            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_outlay_list(),
+                request
+                    .get_outlay_list()
+                    .iter()
+                    .map(|outlay| api::OutlayV2::new_from_outlay_and_token_id(outlay, *Mob::ID))
+                    .collect::<Vec<_>>()
+            );
             assert_eq!(
                 tx_proposal.get_tx().get_prefix().get_outputs().len(),
                 outlays.len() + 1
@@ -4166,7 +4173,14 @@ mod test {
 
             assert_eq!(tx_proposal.get_input_list().len(), 1,);
             assert_eq!(tx_proposal.get_tx().get_prefix().get_inputs().len(), 1,);
-            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_outlay_list(),
+                request
+                    .get_outlay_list()
+                    .iter()
+                    .map(|outlay| api::OutlayV2::new_from_outlay_and_token_id(outlay, 2))
+                    .collect::<Vec<_>>()
+            );
             assert_eq!(
                 tx_proposal.get_tx().get_prefix().get_outputs().len(),
                 outlays.len() + 1
