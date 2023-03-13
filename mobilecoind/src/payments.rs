@@ -304,67 +304,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             return Err(Error::TxBuild("Must have at least one destination".into()));
         }
 
-        // Get sender monitor data.
-        let sender_monitor_data = self.mobilecoind_db.get_monitor_data(sender_monitor_id)?;
-
-        // Figure out total amount of transaction (excluding fee).
-        let total_value: u64 = outlays.iter().map(|outlay| outlay.value).sum();
-        log::trace!(
-            logger,
-            "Total transaction value excluding fees: {}",
-            total_value
-        );
-
-        // Figure out the block version, fee and minimum fee map.
-        let (fee, fee_map, block_version) =
-            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
-
-        // Select the UTXOs to be used for this transaction.
-        let selected_utxos =
-            Self::select_utxos_for_value(token_id, inputs, total_value + fee, MAX_INPUTS as usize)?;
-        log::trace!(
-            logger,
-            "Selected {} utxos ({:?})",
-            selected_utxos.len(),
-            selected_utxos,
-        );
-
-        // The selected_utxos with corresponding proofs of membership.
-        let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let outputs: Vec<TxOut> = selected_utxos
-                .iter()
-                .map(|utxo| utxo.tx_out.clone())
-                .collect();
-            let proofs = self.get_membership_proofs(&outputs)?;
-
-            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
-        };
-        log::trace!(logger, "Got membership proofs");
-
-        // A ring of mixins for each UTXO.
-        let rings = {
-            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
-                .iter()
-                .map(|(_, proof)| proof.index)
-                .collect();
-
-            self.get_rings(
-                DEFAULT_RING_SIZE, // TODO configurable ring size
-                selected_utxos_with_proofs.len(),
-                &excluded_tx_out_indices,
-            )?
-        };
-        log::trace!(logger, "Got {} rings", rings.len());
-
-        // Come up with tombstone block.
-        let tombstone_block = if opt_tombstone > 0 {
-            opt_tombstone
-        } else {
-            let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
-            num_blocks_in_ledger + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
-        };
-        log::trace!(logger, "Tombstone block set to {}", tombstone_block);
-
         // Convert outlays into OutlayV2, using fee token id to set the token id.
         let outlays: Vec<OutlayV2> = outlays
             .iter()
@@ -374,28 +313,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })
             .collect();
 
-        // Build and return the TxProposal object
-        let mut rng = rand::thread_rng();
-        let tx_proposal = Self::build_tx_proposal(
-            &selected_utxos_with_proofs,
-            rings,
-            &[],
-            block_version,
+        self.build_mixed_transaction(
+            sender_monitor_id,
             token_id,
-            fee,
-            &sender_monitor_data.account_key,
             change_subaddress,
+            inputs,
+            &[],
             &outlays,
-            tombstone_block,
-            &self.fog_resolver_factory,
+            last_block_infos,
+            opt_fee,
+            opt_tombstone,
             opt_memo_builder,
-            fee_map,
-            &mut rng,
-            &self.logger,
-        )?;
-        log::trace!(logger, "Tx constructed, hash={}", tx_proposal.tx.tx_hash());
-
-        Ok(tx_proposal)
+        )
     }
 
     /// Create a TxProposal, possibly with mixed token ids.
