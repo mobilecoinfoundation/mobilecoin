@@ -4401,8 +4401,19 @@ mod test {
             .get_utxos_for_subaddress(&counterparty_monitor_id, 0)
             .unwrap();
         assert!(!utxos.is_empty());
+        let counterparty_eusd_utxo_value = utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == 1)
+            .next()
+            .unwrap()
+            .value;
+        // Confirm my testing assumptions -- all eusd utxos here have the same value
+        assert!(utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == 1)
+            .all(|utxo| utxo.value == counterparty_eusd_utxo_value));
 
-        // We will try to take half of the offered input.
+        // We will try to take one quarter of the offered input.
         let mut sci_for_tx = api::SciForTx::new();
         sci_for_tx.set_sci(generate_swap_response.get_sci().clone());
         sci_for_tx.set_partial_fill_value(offered_value / 4);
@@ -4447,8 +4458,10 @@ mod test {
                     found_counterparty_output = true;
                 } else {
                     assert_eq!(*amount.token_id, 1);
-                    // It's not very easy to figure out what the value of this change output should
-                    // be, but seems not critical
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that.
+                    assert_eq!(amount.value, counterparty_eusd_utxo_value - 31);
                     found_counterparty_change = true;
                 }
             } else if let Ok((amount, _scalar)) =
@@ -4458,6 +4471,7 @@ mod test {
                     assert_eq!(amount.value, offered_value * 3 / 4);
                     found_originator_change = true;
                 } else {
+                    // 31 is 1/4 of 123, rounded up
                     assert_eq!(amount, Amount::new(31, TokenId::from(1)));
                     found_originator_output = true;
                 }
@@ -4490,8 +4504,16 @@ mod test {
                     found_counterparty_output = true;
                 } else {
                     assert_eq!(*amount.token_id, 1);
-                    // It's not very easy to figure out what the value of this change output should
-                    // be, but seems not critical
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that, minus the eusd transaction fee.
+                    // FIXME: I'm not sure where the 10 billion number comes from, it is not the
+                    // same as the value of Mob::MINIMUM_FEE, and doesn't appear to be in
+                    // FeeMap::default()
+                    assert_eq!(
+                        amount.value,
+                        counterparty_eusd_utxo_value - 31 - 10_000_000_000
+                    );
                     found_counterparty_change = true;
                 }
             } else if let Ok((amount, _scalar)) =
@@ -4501,6 +4523,7 @@ mod test {
                     assert_eq!(amount.value, offered_value * 3 / 4);
                     found_originator_change = true;
                 } else {
+                    // 31 is 1/4 of 123, rounded up
                     assert_eq!(amount, Amount::new(31, TokenId::from(1)));
                     found_originator_output = true;
                 }
@@ -4515,7 +4538,7 @@ mod test {
         request.clear_input_list();
         assert!(client.generate_mixed_tx(&request).is_err());
 
-        // Omitting the inputs with token id 1 which is needed should result in an error
+        // Omitting the inputs with token id 1, which is needed, should give an error
         request.set_input_list(
             utxos
                 .iter()

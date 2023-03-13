@@ -1311,7 +1311,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             // transactions that have multiple change outputs, if we want that
             // to work.
             if *val < 0 {
-                let change_val = u64::try_from(-*val).ok_or_else(|| {
+                let change_val = u64::try_from(-*val).map_err(|_| {
                     Error::TxBuild(format!("change value overflowed a u64: {}", -*val))
                 })?;
                 let change_amount = Amount::new(change_val, *token_id);
