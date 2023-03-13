@@ -17,6 +17,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_util_u64_ratio::U64Ratio;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -165,9 +166,7 @@ impl InputRules {
             // possible trade that could have occurred which did occur. This
             // calculation is used later when checking if real output amounts respected the
             // fill fraction.
-            let fill_fraction_num =
-                (partial_fill_change_amount.value - fractional_change_amount.value) as u128;
-            let fill_fraction_denom = partial_fill_change_amount.value as u128;
+            let fill_fraction = U64Ratio::new(partial_fill_change_amount.value - fractional_change_amount.value, partial_fill_change_amount.value).ok_or(InputRuleError::ZeroPartialFillChange)?;
 
             // Verify partial_fill_outputs
             for partial_fill_output in self.partial_fill_outputs.iter() {
@@ -195,27 +194,19 @@ impl InputRules {
                     return Err(InputRuleError::FractionalOutputTokenIdMismatch);
                 }
 
+                // The ratio of the fractional output and the corresponding partial fill output
+                // (It might be better to have a special error here for partial_fill_output value being zero,
+                // but I don't expect this to actually happen, so I'm okay with reusing the "fill fraction not respected" error.)
+                let this_output_fraction = U64Ratio::new(fractional_output_amount.value, partial_fill_output_amount.value).ok_or(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction)?;
+
                 // Check that the fill fraction is respected.
-                // Intuitively, what we are doing is checking that:
-                //
-                // fractional_output_value >= n/d * partial_fill_output_value,
-                //
-                // where n/d is the fill fraction. The fill fraction is 1 if
-                // fractional_change_amount = 0, and proportionally less as more of
-                // the input is returned as change.
-                // However, to avoid numerical issues, we multiply this out and
-                // verify this as a comparison of u128 values:
-                //
-                // fractional_output_value * d >= n * partial_fill_output_value
                 //
                 // Note: I am not sure if u128 comparison lowers to constant time assembly
                 // in x86-64, but I don't think it matters, because for a well-formed
                 // client this check will always pass. This error condition will only
                 // occur if the client made an arithmetic mistake. So this can't lead
                 // to an information leak if a well-formed client builds the Tx.
-                if (fractional_output_amount.value as u128 * fill_fraction_denom)
-                    < (partial_fill_output_amount.value as u128 * fill_fraction_num)
-                {
+                if this_output_fraction < fill_fraction {
                     return Err(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction);
                 }
             }

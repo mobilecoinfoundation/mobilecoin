@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
+#![doc = include_str!("../README.md")]
+#![no_std]
+#![deny(missing_docs)]
+
 use core::cmp::{Ordering, PartialEq, PartialOrd};
 
 /// A simple type which represents a ratio of two u64 numbers.
