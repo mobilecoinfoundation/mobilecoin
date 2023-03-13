@@ -1378,9 +1378,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Build sci.
-        sci_builder
+        let mut result = sci_builder
             .build(&NoKeysRingSigner {}, rng)
-            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
+
+        result.tx_out_global_indices = global_indices;
+        Ok(result)
     }
 }
 

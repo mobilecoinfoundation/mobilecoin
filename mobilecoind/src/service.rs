@@ -3815,6 +3815,12 @@ mod test {
             let sci = SignedContingentInput::try_from(sci).unwrap();
 
             sci.validate().unwrap();
+            assert_eq!(sci.tx_out_global_indices.len(), 11);
+            // Indices should be distinct
+            assert_eq!(
+                HashSet::from_iter(sci.tx_out_global_indices.iter()).len(),
+                11
+            );
 
             let unmasked_amount = sci.required_output_amounts[0].clone();
             assert_eq!(unmasked_amount.value, 999_999);
