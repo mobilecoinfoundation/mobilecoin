@@ -4393,6 +4393,9 @@ mod test {
             request.set_minimum_fill_value(10);
             client.generate_swap(&request).unwrap()
         };
+        let generated_sci =
+            SignedContingentInput::try_from(generate_swap_response.get_sci()).unwrap();
+        generated_sci.validate().unwrap();
 
         // Now we will try to build a transaction that incorporates the swap.
         // The counterparty needs to supply eUSD.
@@ -4440,6 +4443,14 @@ mod test {
                 .len(),
             1
         );
+        let mut response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        // The request sci doesn't have proofs, so to test equal, we have to delete
+        // those in resp
+        response_sci.tx_in.proofs = vec![];
+        assert_eq!(response_sci, generated_sci);
 
         let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
 
@@ -4487,6 +4498,15 @@ mod test {
         request.set_fee_token_id(1);
 
         let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+        let mut response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        // The request sci doesn't have proofs, so to test equal, we have to delete
+        // those in resp
+        response_sci.tx_in.proofs = vec![];
+        assert_eq!(response_sci, generated_sci);
+
         let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
 
         assert_eq!(tx.prefix.outputs.len(), 4);
