@@ -4391,17 +4391,22 @@ mod test {
         // We will try to take half of the offered input.
         let mut sci_for_tx = api::SciForTx::new();
         sci_for_tx.set_sci(generate_swap_response.get_sci().clone());
-        sci_for_tx.set_partial_fill_value(offered_value / 2);
+        sci_for_tx.set_partial_fill_value(offered_value / 4);
 
         // Try to add the swap to a mixed transaction
-        let generate_mixed_tx_response = {
-            let mut request = api::GenerateMixedTxRequest::new();
-            request.set_sender_monitor_id(counterparty_monitor_id.to_vec());
-            request.set_change_subaddress(0);
-            request.set_input_list(utxos.iter().map(Into::into).collect());
-            request.set_scis(vec![sci_for_tx].into());
-            client.generate_mixed_tx(&request).unwrap()
-        };
+        let mut request = api::GenerateMixedTxRequest::new();
+        request.set_sender_monitor_id(counterparty_monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        // Only token id 1 is needed to fulfill the other side of the sci
+        request.set_input_list(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == 1)
+                .map(Into::into)
+                .collect(),
+        );
+        request.set_scis(vec![sci_for_tx].into());
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
 
         assert_eq!(
             generate_mixed_tx_response
@@ -4410,6 +4415,101 @@ mod test {
                 .len(),
             1
         );
+
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4 - Mob::MINIMUM_FEE);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // It's not very easy to figure out what the value of this change output should
+                    // be, but seems not critical
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Changing the fee token id to 1 should work, and slightly adjust the output
+        // values.
+        request.set_fee_token_id(1);
+
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // It's not very easy to figure out what the value of this change output should
+                    // be, but seems not critical
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Omitting the input list should result in an error
+        request.clear_input_list();
+        assert!(client.generate_mixed_tx(&request).is_err());
+
+        // Omitting the inputs with token id 1 which is needed should result in an error
+        request.set_input_list(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == 0)
+                .map(Into::into)
+                .collect(),
+        );
+        assert!(client.generate_mixed_tx(&request).is_err());
     }
 
     #[test_with_logger]

@@ -439,10 +439,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // A ring of mixins for each UTXO.
         let rings = {
-            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+            let mut excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
                 .iter()
                 .map(|(_, proof)| proof.index)
                 .collect();
+
+            for sci_for_tx in scis {
+                excluded_tx_out_indices.extend(sci_for_tx.sci.tx_out_global_indices.clone());
+            }
 
             self.get_rings(
                 DEFAULT_RING_SIZE, // TODO configurable ring size
