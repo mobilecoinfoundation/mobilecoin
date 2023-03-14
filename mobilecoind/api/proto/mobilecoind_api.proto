@@ -529,7 +529,7 @@ message GenerateTxResponse {
 
 // Generate a transaction proposal object with mixed token types.
 // Notes:
-// - Sum of inputs needs to be greater than sum of outlays and fee.
+// - Sum of inputs needs to be greater than or equal to the sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
 // Right now that fee is hardcoded.
