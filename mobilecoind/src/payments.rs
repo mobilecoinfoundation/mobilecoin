@@ -74,16 +74,6 @@ pub struct OutlayV2 {
     pub receiver: PublicAddress,
 }
 
-impl Outlay {
-    // This is used for some tests
-    pub fn to_outlay_v2(&self, token_id: TokenId) -> OutlayV2 {
-        OutlayV2 {
-            amount: Amount::new(self.value, token_id),
-            receiver: self.receiver.clone(),
-        }
-    }
-}
-
 /// A single pending transaction.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TxProposal {
@@ -205,22 +195,29 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
     }
 
-    // Gets the network fee and block_version, unless opt_fee is nonzero.
-    // If opt fee is nonzero then we use local ledger block version and this fee,
-    // and don't make a network call
+    // Gets the network block version and fee information.
+    //
+    // * The block version is the max of the local ledger block version and the
+    //   network-reported block version.
+    // * If opt_fee is nonzero, then that fee value is returned. Otherwise, the
+    //   minimum fee for this token id reported by the network is returned.
+    //
+    // If the network does not report a minimum fee for this token id, and the user
+    // does not specify a nonzero fee, then we return an error.
     fn get_network_fee_and_block_version(
         &self,
         token_id: TokenId,
         opt_fee: u64,
         last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
-        // Figure out the block_version and fee, taking into account if opt_fee is
-        // nonzero
+        // Figure out the block_version, taking max of local ledger and network
         let block_version = max(
             self.ledger_db.get_latest_block()?.version,
             last_block_info.network_block_version,
         );
 
+        // Figure out the fee using either user-specified fee, or the network-reported
+        // fee.
         Ok(if opt_fee != 0 {
             (opt_fee, block_version)
         } else {
@@ -268,7 +265,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `outlays` - Output amounts and recipients.
     /// * `last_block_infos` - Last block info responses from the network, for
     ///   determining fees. This should normally come from polling_network_state
-    /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
+    /// * `opt_fee` - Transaction fee value in smallest representable units. If
+    ///   zero, use network-reported minimum fee.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
@@ -335,7 +333,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `outlays` - Output amounts and recipients.
     /// * `last_block_infos` - Last block info responses from the network, for
     ///   determining fees. This should normally come from polling_network_state
-    /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
+    /// * `opt_fee` - Transaction fee in smallest representable units. If zero,
+    ///   use network-reported minimum fee.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).

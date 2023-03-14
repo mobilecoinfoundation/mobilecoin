@@ -159,6 +159,14 @@ message SciForTx {
     external.SignedContingentInput sci = 1;
 
     /// If it's a partial fill SCI, the value we wish to fill it for
+    /// This is the amount that, we, the counter-party, take from the SCI originator,
+    /// in exchange for a corresponding fraction of the partial fill outputs in the SCI.
+    ///
+    /// This is a u64 value corresponding to an amount less or equal to the partial_fill_change amount
+    /// in the SCI.
+    ///
+    /// In case of a non partial fill SCI (without partial_fill_change output),
+    /// this must be zero.
     uint64 partial_fill_value = 2;
 }
 
@@ -489,7 +497,7 @@ message GetMembershipProofsResponse {
 // - Sum of inputs needs to be greater than sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
-// Right now that fee is hardcoded.
+// Right now that fee is the network-reported minimum fee for the given token id.
 message GenerateTxRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
@@ -532,7 +540,7 @@ message GenerateTxResponse {
 // - Sum of inputs needs to be greater than or equal to the sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
-// Right now that fee is hardcoded.
+// Right now that fee is the network-reported minimum fee for the fee token id.
 message GenerateMixedTxRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
