@@ -90,4 +90,4 @@ schnorrkel-og = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev 
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a"}
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
