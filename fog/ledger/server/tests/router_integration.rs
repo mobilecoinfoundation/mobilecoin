@@ -29,10 +29,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
+use tempdir::TempDir;
 use url::Url;
 
 const TEST_URL: &str = "http://www.my_url1.com";
@@ -67,15 +68,6 @@ fn create_store_config(
         omap_capacity,
         sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::new(block_range)),
     }
-}
-
-fn temp_dir(name: &str) -> Result<PathBuf, std::env::JoinPathsError> {
-    let path: PathBuf = [std::env::temp_dir(), std::path::PathBuf::from(name)]
-        .iter()
-        .collect();
-    std::fs::create_dir_all(&path)
-        .unwrap_or_else(|_| panic!("Couldn't create temporary path {:?}", &path));
-    Ok(path)
 }
 
 fn add_block_to_ledger(
@@ -132,6 +124,8 @@ fn create_store(
     test_config: &StoreConfig,
     blocks_config: &BlockConfig,
     block_range: BlockRange,
+    watcher_db_path: &Path,
+    ledger_db_path: &Path,
     _grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
 ) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient> {
@@ -153,14 +147,7 @@ fn create_store(
         logger.clone(),
     );
 
-    let ledger_db_tmp =
-        temp_dir(&test_config.address.to_string()).expect("Could not get test_ledger tempdir");
-    let ledger_db_path = ledger_db_tmp.as_path();
     let mut ledger = recreate_ledger_db(ledger_db_path);
-
-    let watcher_db_tmp =
-        temp_dir(&test_config.address.to_string()).expect("Could not make tempdir for watcher db");
-    let watcher_db_path = watcher_db_tmp.as_path();
     let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
     populate_ledger(blocks_config, &mut ledger, &mut watcher);
@@ -199,6 +186,8 @@ fn create_shard(
 fn create_router(
     test_config: &TestEnvironmentConfig,
     blocks_config: &BlockConfig,
+    watcher_db_path: &Path,
+    ledger_db_path: &Path,
     _grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
 ) -> LedgerRouterServer<LedgerSgxEnclave, AttestClient> {
@@ -213,14 +202,7 @@ fn create_router(
     ))
     .unwrap();
 
-    let ledger_db_tmp = temp_dir(&test_config.router_address.to_string())
-        .expect("Could not get test_ledger tempdir");
-    let ledger_db_path = ledger_db_tmp.as_path();
     let mut ledger = recreate_ledger_db(ledger_db_path);
-
-    let watcher_db_tmp = temp_dir(&test_config.router_address.to_string())
-        .expect("Could not make tempdir for watcher db");
-    let watcher_db_path = watcher_db_tmp.as_path();
     let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
     populate_ledger(blocks_config, &mut ledger, &mut watcher);
@@ -290,21 +272,44 @@ fn create_env(
 ) -> TestEnvironment {
     let mut shards = vec![];
     let mut stores = vec![];
+    let mut tempdirs = vec![];
     for shard in config.shards.iter() {
         for store in shard.stores.iter() {
+            let watcher_db_dir =
+                TempDir::new("watcher_db").expect("Couldn't create temporary path for watcher DB");
+            let ledger_db_dir =
+                TempDir::new("ledger_db").expect("Couldn't create temporary path for ledger DB");
             stores.push(create_store(
                 store,
                 &blocks_config,
                 shard.block_range.clone(),
+                watcher_db_dir.path(),
+                ledger_db_dir.path(),
                 grpc_env.clone(),
                 logger.clone(),
             ));
+            tempdirs.push(watcher_db_dir);
+            tempdirs.push(ledger_db_dir);
         }
 
         shards.push(create_shard(shard, grpc_env.clone(), logger.clone()));
     }
 
-    let router = create_router(&config, &blocks_config, grpc_env.clone(), logger.clone());
+    let watcher_db_dir =
+        TempDir::new("watcher_db").expect("Couldn't create temporary path for watcher DB");
+    let ledger_db_dir =
+        TempDir::new("ledger_db").expect("Couldn't create temporary path for ledger DB");
+    let router = create_router(
+        &config,
+        &blocks_config,
+        watcher_db_dir.path(),
+        ledger_db_dir.path(),
+        grpc_env.clone(),
+        logger.clone(),
+    );
+    tempdirs.push(watcher_db_dir);
+    tempdirs.push(ledger_db_dir);
+
     let router_client = create_router_client(&config, grpc_env, logger);
 
     TestEnvironment {
@@ -312,6 +317,7 @@ fn create_env(
         shards,
         _router: router,
         router_client,
+        _tempdirs: tempdirs,
     }
 }
 
@@ -320,6 +326,7 @@ struct TestEnvironment {
     _router: LedgerRouterServer<LedgerSgxEnclave, AttestClient>,
     shards: Vec<ShardProxyServer>,
     stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient>>,
+    _tempdirs: Vec<TempDir>,
 }
 
 impl Drop for TestEnvironment {
