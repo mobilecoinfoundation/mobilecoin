@@ -134,7 +134,7 @@ impl From<DefragmentationMemo> for [u8; DefragmentationMemo::MEMO_DATA_LEN] {
     }
 }
 
-/// An error that can occur when configuring a destination memo
+/// An error that can occur when configuring a defragmentation memo
 #[derive(Display, Debug)]
 pub enum DefragmentationMemoError {
     /// The fee amount is too large to be represented in the DefragmentationMemo
