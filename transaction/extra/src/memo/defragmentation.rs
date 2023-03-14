@@ -35,7 +35,6 @@ pub struct DefragmentationMemo {
     /// to compress the memo into 32 bytes.
     fee: u64,
     /// The fee plus the amount sent in the defragmentation transaction
-    /// (picoMOB)
     total_outlay: u64,
     /// The defragmentation ID used to group multiple rounds together
     defrag_id: u64,
