@@ -310,16 +310,31 @@ fn create_env(
     TestEnvironment {
         stores,
         shards,
-        router,
+        _router: router,
         router_client,
     }
 }
 
 struct TestEnvironment {
-    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient>>,
-    shards: Vec<ShardProxyServer>,
-    router: LedgerRouterServer<LedgerSgxEnclave, AttestClient>,
     router_client: LedgerGrpcClient,
+    _router: LedgerRouterServer<LedgerSgxEnclave, AttestClient>,
+    shards: Vec<ShardProxyServer>,
+    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient>>,
+}
+
+impl Drop for TestEnvironment {
+    fn drop(&mut self) {
+        for shard in &mut self.shards {
+            tokio::task::block_in_place(move || {
+                tokio::runtime::Handle::current().block_on(async move {
+                    shard.stop().await;
+                })
+            });
+        }
+        for store in &mut self.stores {
+            store.stop();
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -351,7 +366,7 @@ fn free_sockaddr() -> SocketAddr {
     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn smoke_test() {
     let logger = logger::create_test_logger("smoke_test".to_string());
     log::info!(logger, "test");
@@ -449,18 +464,9 @@ async fn smoke_test() {
         response.results[0].timestamp_result_code,
         TimestampResultCode::TimestampFound as u32
     );
-
-    drop(test_environment.router_client);
-    test_environment.router.stop();
-    for shard in test_environment.shards {
-        let _ = shard.stop().await;
-    }
-    for mut store in test_environment.stores {
-        store.stop();
-    }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn overlapping_stores() {
     let logger = logger::create_test_logger("overlapping_stores".to_string());
     log::info!(logger, "test");
@@ -559,13 +565,4 @@ async fn overlapping_stores() {
         response.results[0].timestamp_result_code,
         TimestampResultCode::TimestampFound as u32
     );
-
-    drop(test_environment.router_client);
-    test_environment.router.stop();
-    for shard in test_environment.shards {
-        let _ = shard.stop().await;
-    }
-    for mut store in test_environment.stores {
-        store.stop();
-    }
 }

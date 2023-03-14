@@ -297,8 +297,8 @@ impl Ledger for MockLedger {
 }
 
 pub struct ShardProxyServer {
-    server_handle: JoinHandle<Result<(), hyper::Error>>,
-    stop_channel: oneshot::Sender<()>,
+    server_handle: Option<JoinHandle<Result<(), hyper::Error>>>,
+    stop_channel: Option<oneshot::Sender<()>>,
 }
 
 impl ShardProxyServer {
@@ -349,13 +349,17 @@ impl ShardProxyServer {
         let server_handle = tokio::spawn(async move { graceful.await });
 
         Self {
-            server_handle,
-            stop_channel: tx,
+            server_handle: Some(server_handle),
+            stop_channel: Some(tx),
         }
     }
 
-    pub async fn stop(self) -> Result<(), hyper::Error> {
-        self.stop_channel.send(()).unwrap();
-        self.server_handle.await.unwrap_or(Ok(()))
+    pub async fn stop(&mut self) {
+        if let Some(stop_channel) = self.stop_channel.take() {
+            let _ = stop_channel.send(());
+        }
+        if let Some(server_handle) = self.server_handle.take() {
+            let _ = server_handle.await;
+        }
     }
 }
