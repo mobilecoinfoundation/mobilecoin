@@ -9,7 +9,7 @@ use mc_account_keys::PublicAddress;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 use mc_transaction_extra::{DefragmentationMemo, DefragmentationMemoError};
 
-/// This memo buidler builds the DefragmentationMemo (0x0003).
+/// This memo builder builds the [`DefragmentationMemo`] (0x0003).
 ///
 /// The DefragmentationMemo denotes defragmentation transactions. It contains
 /// three pieces of information: the fee, the total outlay, and an optional
