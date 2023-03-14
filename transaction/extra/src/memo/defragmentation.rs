@@ -36,7 +36,7 @@ pub struct DefragmentationMemo {
     fee: u64,
     /// The fee plus the amount sent in the defragmentation transaction
     total_outlay: u64,
-    /// The defragmentation ID used to group multiple rounds together
+    /// The defragmentation ID used to group multiple transactions together
     defrag_id: u64,
 }
 
