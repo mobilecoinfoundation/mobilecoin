@@ -4132,8 +4132,7 @@ pub mod transaction_builder_tests {
     }
 
     #[test]
-    // Transaction builder with Burn Redemption memo builder
-    fn test_transaction_builder_defragmentation_memos() {
+    fn transaction_builder_defragmentation_memos() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let block_version = BlockVersion::MAX;
         let token_id = TokenId::from(62);
