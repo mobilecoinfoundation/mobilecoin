@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Input rules, described in MCIP #31, specify any additional criteria that the
 //! Tx must satisfy to be valid.
@@ -166,7 +166,11 @@ impl InputRules {
             // possible trade that could have occurred which did occur. This
             // calculation is used later when checking if real output amounts respected the
             // fill fraction.
-            let fill_fraction = U64Ratio::new(partial_fill_change_amount.value - fractional_change_amount.value, partial_fill_change_amount.value).ok_or(InputRuleError::ZeroPartialFillChange)?;
+            let fill_fraction = U64Ratio::new(
+                partial_fill_change_amount.value - fractional_change_amount.value,
+                partial_fill_change_amount.value,
+            )
+            .ok_or(InputRuleError::ZeroPartialFillChange)?;
 
             // Verify partial_fill_outputs
             for partial_fill_output in self.partial_fill_outputs.iter() {
@@ -195,9 +199,14 @@ impl InputRules {
                 }
 
                 // The ratio of the fractional output and the corresponding partial fill output
-                // (It might be better to have a special error here for partial_fill_output value being zero,
-                // but I don't expect this to actually happen, so I'm okay with reusing the "fill fraction not respected" error.)
-                let this_output_fraction = U64Ratio::new(fractional_output_amount.value, partial_fill_output_amount.value).ok_or(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction)?;
+                // (It might be better to have a special error here for partial_fill_output
+                // value being zero, but I don't expect this to actually happen,
+                // so I'm okay with reusing the "fill fraction not respected" error.)
+                let this_output_fraction = U64Ratio::new(
+                    fractional_output_amount.value,
+                    partial_fill_output_amount.value,
+                )
+                .ok_or(InputRuleError::FractionalOutputAmountDoesNotRespectFillFraction)?;
 
                 // Check that the fill fraction is respected.
                 //
