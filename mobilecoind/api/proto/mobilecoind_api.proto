@@ -558,7 +558,7 @@ message GenerateMixedTxRequest {
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 6;
 
-    // Token id to use for the transaction.
+    // Token id to use for the transaction fee.
     uint64 fee_token_id = 7;
 
     // Tombstone block (setting to 0 causes mobilecoind to choose a value).
