@@ -94,7 +94,7 @@ pub struct QueryResponse {
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
 
-    /// If true, this means that due limits, we could not return all the
+    /// If true, this means that due to limits, we could not return all the
     /// requested user events in one response. Clients cannot compute an
     /// accurate balance check until they have received all relevant user
     /// events.
