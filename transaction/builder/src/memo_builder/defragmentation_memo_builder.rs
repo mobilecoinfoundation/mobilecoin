@@ -54,15 +54,17 @@ impl DefragmentationMemoBuilder {
     }
 
     /// Sets the defragmentation ID
-    pub fn set_defrag_id(&mut self, value: u64) {
+    pub fn set_defrag_id(&mut self, value: u64) -> &mut Self {
         self.defrag_id = Some(value);
+        self
     }
 
     /// Clears the defragmentation ID
     /// If the memo is built without a specified defragmentation ID, it　will
     /// default　to 0.
-    pub fn clear_defrag_id(&mut self) {
+    pub fn clear_defrag_id(&mut self) -> &mut Self {
         self.defrag_id = None;
+        self
     }
 }
 
