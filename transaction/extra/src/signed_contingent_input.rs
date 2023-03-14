@@ -180,7 +180,7 @@ pub struct SignedContingentInputAmounts {
     pub required_outputs: Vec<Amount>,
     /// The amounts of the partial fill outputs.
     pub partial_fill_outputs: Vec<Amount>,
-    /// The amount of hte partial fill change if present.
+    /// The amount of the partial fill change if present.
     pub partial_fill_change: Option<Amount>,
 }
 
