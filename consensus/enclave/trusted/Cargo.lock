@@ -2110,6 +2110,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "x25519-dalek"
 version = "2.0.0-pre.2"
+source = "git+https://github.com/mobilecoinfoundation/x25519-dalek.git?rev=4fbaa3343301c62cfdbc3023c9f485257e6b718a#4fbaa3343301c62cfdbc3023c9f485257e6b718a"
 dependencies = [
  "curve25519-dalek",
  "rand_core",
