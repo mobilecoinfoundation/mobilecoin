@@ -10,7 +10,7 @@ use crate::{
     database::Database,
     error::Error,
     monitor_store::{MonitorData, MonitorId},
-    payments::{Outlay, TransactionsManager, TxProposal},
+    payments::{Outlay, OutlayV2, SciForTx, TransactionsManager, TxProposal},
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
@@ -916,6 +916,113 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Success.
         let mut response = api::GenerateTxResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
+    fn generate_mixed_tx_impl(
+        &mut self,
+        request: api::GenerateMixedTxRequest,
+    ) -> Result<api::GenerateMixedTxResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the list of potential inputs passed to.
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .enumerate()
+            .map(|(i, proto_utxo)| {
+                // Proto -> Rust struct conversion.
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Verify this output belongs to the monitor.
+                let subaddress_id = self
+                    .mobilecoind_db
+                    .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+                    .map_err(|err| {
+                        rpc_internal_error(
+                            "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                            err,
+                            &self.logger,
+                        )
+                    })?;
+
+                if subaddress_id.monitor_id != sender_monitor_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list.{i}"),
+                    ));
+                }
+
+                // Success.
+                Ok(utxo)
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        // Get the list of outlays.
+        let outlays: Vec<OutlayV2> = request
+            .get_outlay_list()
+            .iter()
+            .map(OutlayV2::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(|err| rpc_internal_error("outlay_v2.try_from", err, &self.logger))?;
+
+        // Get the list of SCIs
+        let scis: Vec<SciForTx> = request
+            .get_scis()
+            .iter()
+            .map(SciForTx::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(|err| rpc_internal_error("sci_from_tx.try_from", err, &self.logger))?;
+
+        // Attempt to construct a transaction.
+        let tx_proposal = self
+            .transactions_manager
+            .build_mixed_transaction(
+                &sender_monitor_id,
+                TokenId::from(request.fee_token_id),
+                request.change_subaddress,
+                &input_list,
+                &scis,
+                &outlays,
+                &self.get_last_block_infos(),
+                request.fee,
+                request.tombstone,
+                None, // opt_memo_builder
+            )
+            .map_err(|err| {
+                rpc_internal_error(
+                    "transactions_manager.build_mixed_transaction",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        // Success.
+        let mut response = api::GenerateMixedTxResponse::new();
         response.set_tx_proposal((&tx_proposal).into());
         Ok(response)
     }
@@ -2173,6 +2280,7 @@ build_api! {
 
     // Signed contingent inputs
     generate_swap GenerateSwapRequest GenerateSwapResponse generate_swap_impl,
+    generate_mixed_tx GenerateMixedTxRequest GenerateMixedTxResponse generate_mixed_tx_impl,
 
     // Databases
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
@@ -2206,8 +2314,8 @@ mod test {
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         subaddress_store::SubaddressSPKId,
         test_utils::{
-            self, add_block_to_ledger, add_txos_to_ledger, get_testing_environment,
-            wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
+            self, add_block_to_ledger, add_txos_to_ledger, get_test_fee_map,
+            get_testing_environment, wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
     };
@@ -3974,7 +4082,14 @@ mod test {
                 tx_proposal.get_tx().get_prefix().get_inputs().len(),
                 expected_num_inputs as usize
             );
-            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_outlay_list(),
+                request
+                    .get_outlay_list()
+                    .iter()
+                    .map(|outlay| api::OutlayV2::new_from_outlay_and_token_id(outlay, *Mob::ID))
+                    .collect::<Vec<_>>()
+            );
             assert_eq!(
                 tx_proposal.get_tx().get_prefix().get_outputs().len(),
                 outlays.len() + 1
@@ -4064,7 +4179,14 @@ mod test {
 
             assert_eq!(tx_proposal.get_input_list().len(), 1,);
             assert_eq!(tx_proposal.get_tx().get_prefix().get_inputs().len(), 1,);
-            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_outlay_list(),
+                request
+                    .get_outlay_list()
+                    .iter()
+                    .map(|outlay| api::OutlayV2::new_from_outlay_and_token_id(outlay, 2))
+                    .collect::<Vec<_>>()
+            );
             assert_eq!(
                 tx_proposal.get_tx().get_prefix().get_outputs().len(),
                 outlays.len() + 1
@@ -4188,6 +4310,321 @@ mod test {
             ));
             assert!(client.generate_tx(&request).is_err());
         }
+    }
+
+    #[test_with_logger]
+    fn test_generate_mixed_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let swap_originator = AccountKey::random(&mut rng);
+        let swap_originator_data = MonitorData::new(
+            swap_originator.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        let swap_counterparty = AccountKey::random(&mut rng);
+        let swap_counterparty_data = MonitorData::new(
+            swap_counterparty.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[
+                    swap_originator.default_subaddress(),
+                    swap_counterparty.default_subaddress(),
+                ],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BlockVersion::MAX,
+            &[
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                swap_originator.default_subaddress(),
+                swap_counterparty.default_subaddress(),
+            ],
+            Amount::new(1_000_000_000_000, TokenId::from(1)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let originator_monitor_id = mobilecoind_db.add_monitor(&swap_originator_data).unwrap();
+        let counterparty_monitor_id = mobilecoind_db.add_monitor(&swap_counterparty_data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&originator_monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        let offered_input = utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == *Mob::ID)
+            .map(api::UnspentTxOut::from)
+            .next()
+            .unwrap();
+        let offered_value = offered_input.value;
+
+        // Generate a swap.
+        let generate_swap_response = {
+            let mut request = api::GenerateSwapRequest::new();
+            request.set_sender_monitor_id(originator_monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input(offered_input);
+            request.set_allow_partial_fill(true);
+            request.set_counter_value(123);
+            request.set_counter_token_id(1);
+            request.set_minimum_fill_value(10);
+            client.generate_swap(&request).unwrap()
+        };
+        let generated_sci =
+            SignedContingentInput::try_from(generate_swap_response.get_sci()).unwrap();
+        generated_sci.validate().unwrap();
+
+        // Now we will try to build a transaction that incorporates the swap.
+        // The counterparty needs to supply eUSD.
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&counterparty_monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+        let counterparty_eusd_utxo_value =
+            utxos.iter().find(|utxo| utxo.token_id == 1).unwrap().value;
+        // Confirm my testing assumptions -- all eusd utxos here have the same value
+        assert!(utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == 1)
+            .all(|utxo| utxo.value == counterparty_eusd_utxo_value));
+
+        // We will try to take one quarter of the offered input.
+        let mut sci_for_tx = api::SciForTx::new();
+        sci_for_tx.set_sci(generate_swap_response.get_sci().clone());
+        sci_for_tx.set_partial_fill_value(offered_value / 4);
+
+        // Try to add the swap to a mixed transaction
+        let mut request = api::GenerateMixedTxRequest::new();
+        request.set_sender_monitor_id(counterparty_monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        // Only token id 1 is needed to fulfill the other side of the sci
+        request.set_input_list(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == 1)
+                .map(Into::into)
+                .collect(),
+        );
+        request.set_scis(vec![sci_for_tx].into());
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+
+        assert_eq!(
+            generate_mixed_tx_response
+                .get_tx_proposal()
+                .get_scis()
+                .len(),
+            1
+        );
+        let response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        assert_eq!(response_sci, generated_sci);
+
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4 - Mob::MINIMUM_FEE);
+                    assert_eq!(tx.prefix.fee, Mob::MINIMUM_FEE);
+                    assert_eq!(tx.prefix.fee_token_id, *Mob::ID);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that.
+                    assert_eq!(amount.value, counterparty_eusd_utxo_value - 31);
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    // 31 is 1/4 of 123, rounded up
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Changing the fee token id to 1 should work, and slightly adjust the output
+        // values.
+        request.set_fee_token_id(1);
+
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+        let response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        assert_eq!(response_sci, generated_sci);
+
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that, minus the eusd transaction fee.
+                    let default_fee_val = get_test_fee_map()
+                        .get_fee_for_token(&TokenId::from(1))
+                        .unwrap();
+                    assert_eq!(
+                        amount.value,
+                        counterparty_eusd_utxo_value - 31 - default_fee_val
+                    );
+                    assert_eq!(tx.prefix.fee, default_fee_val);
+                    assert_eq!(tx.prefix.fee_token_id, 1);
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    // 31 is 1/4 of 123, rounded up
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Changing the fee in the request should work, and slightly adjust the output
+        // values.
+        let fee_override = 500_000;
+        request.set_fee(fee_override);
+
+        let generate_mixed_tx_response = client.generate_mixed_tx(&request).unwrap();
+        let response_sci = SignedContingentInput::try_from(
+            generate_mixed_tx_response.get_tx_proposal().get_scis()[0].get_sci(),
+        )
+        .unwrap();
+        assert_eq!(response_sci, generated_sci);
+
+        let tx = Tx::try_from(generate_mixed_tx_response.get_tx_proposal().get_tx()).unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 4);
+
+        let mut found_counterparty_output = false;
+        let mut found_counterparty_change = false;
+        let mut found_originator_output = false;
+        let mut found_originator_change = false;
+        for output in tx.prefix.outputs.iter() {
+            if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_counterparty.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value / 4);
+                    found_counterparty_output = true;
+                } else {
+                    assert_eq!(*amount.token_id, 1);
+                    // The quote asks for 123 eusd, counterparty fulfills to 1/4,
+                    // rounding up so they give away 31.
+                    // Change is their eusd utxo value minus that, minus the eusd transaction fee.
+                    assert_eq!(
+                        amount.value,
+                        counterparty_eusd_utxo_value - 31 - fee_override
+                    );
+                    assert_eq!(tx.prefix.fee, fee_override);
+                    assert_eq!(tx.prefix.fee_token_id, 1);
+                    found_counterparty_change = true;
+                }
+            } else if let Ok((amount, _scalar)) =
+                output.view_key_match(swap_originator.view_private_key())
+            {
+                if amount.token_id == Mob::ID {
+                    assert_eq!(amount.value, offered_value * 3 / 4);
+                    found_originator_change = true;
+                } else {
+                    // 31 is 1/4 of 123, rounded up
+                    assert_eq!(amount, Amount::new(31, TokenId::from(1)));
+                    found_originator_output = true;
+                }
+            }
+        }
+        assert!(found_counterparty_output);
+        assert!(found_counterparty_change);
+        assert!(found_originator_output);
+        assert!(found_originator_change);
+
+        // Omitting the input list should result in an error
+        request.clear_input_list();
+        assert!(client.generate_mixed_tx(&request).is_err());
+
+        // Omitting the inputs with token id 1, which is needed, should give an error
+        request.set_input_list(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == 0)
+                .map(Into::into)
+                .collect(),
+        );
+        assert!(client.generate_mixed_tx(&request).is_err());
     }
 
     #[test_with_logger]
@@ -4543,11 +4980,12 @@ mod test {
             data.account_key.subaddress(0)
         );
         assert_eq!(
-            tx_proposal.outlays[0].value,
+            tx_proposal.outlays[0].amount.value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of
             // those into a single output, minus the fee.
             (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS) - Mob::MINIMUM_FEE,
         );
+        assert_eq!(tx_proposal.outlays[0].amount.token_id, Mob::ID);
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index[&0], 0);
@@ -4562,7 +5000,7 @@ mod test {
             .unwrap()
             .get_value(&shared_secret)
             .unwrap();
-        assert_eq!(amount.value, tx_proposal.outlays[0].value);
+        assert_eq!(amount.value, tx_proposal.outlays[0].amount.value);
         assert_eq!(amount.token_id, Mob::ID);
 
         // Santity test fee

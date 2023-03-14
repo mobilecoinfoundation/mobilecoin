@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Serializeable data types that wrap the mobilecoind API.
 
@@ -477,6 +477,39 @@ impl TryFrom<&JsonOutlay> for api::Outlay {
     fn try_from(src: &JsonOutlay) -> Result<api::Outlay, String> {
         let mut outlay = api::Outlay::new();
         outlay.set_value(src.value.into());
+        outlay.set_receiver(
+            PublicAddress::try_from(&src.receiver)
+                .map_err(|err| format!("Could not convert receiver: {err}"))?,
+        );
+
+        Ok(outlay)
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+pub struct JsonOutlayV2 {
+    pub value: JsonU64,
+    pub receiver: JsonPublicAddress,
+    pub token_id: JsonU64,
+}
+
+impl From<&api::OutlayV2> for JsonOutlayV2 {
+    fn from(src: &api::OutlayV2) -> Self {
+        Self {
+            value: JsonU64(src.get_value()),
+            token_id: JsonU64(src.get_token_id()),
+            receiver: src.get_receiver().into(),
+        }
+    }
+}
+
+impl TryFrom<&JsonOutlayV2> for api::OutlayV2 {
+    type Error = String;
+
+    fn try_from(src: &JsonOutlayV2) -> Result<api::OutlayV2, String> {
+        let mut outlay = api::OutlayV2::new();
+        outlay.set_value(src.value.into());
+        outlay.set_token_id(src.token_id.into());
         outlay.set_receiver(
             PublicAddress::try_from(&src.receiver)
                 .map_err(|err| format!("Could not convert receiver: {err}"))?,
@@ -1019,10 +1052,11 @@ impl TryFrom<&JsonTx> for Tx {
     }
 }
 
+// FIXME: Add sci's to this?
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxProposal {
     pub input_list: Vec<JsonUnspentTxOut>,
-    pub outlay_list: Vec<JsonOutlay>,
+    pub outlay_list: Vec<JsonOutlayV2>,
     pub tx: JsonTx,
     pub fee: u64,
     pub outlay_index_to_tx_out_index: Vec<(usize, usize)>,
@@ -1042,7 +1076,11 @@ impl From<&api::TxProposal> for JsonTxProposal {
                 .iter()
                 .map(JsonUnspentTxOut::from)
                 .collect(),
-            outlay_list: src.get_outlay_list().iter().map(JsonOutlay::from).collect(),
+            outlay_list: src
+                .get_outlay_list()
+                .iter()
+                .map(JsonOutlayV2::from)
+                .collect(),
             tx: src.get_tx().into(),
             fee: src.get_fee(),
             outlay_index_to_tx_out_index: outlay_map,
@@ -1063,9 +1101,9 @@ impl TryFrom<&JsonTxProposal> for api::TxProposal {
             inputs.push(utxo);
         }
 
-        let mut outlays: Vec<api::Outlay> = Vec::new();
+        let mut outlays: Vec<api::OutlayV2> = Vec::new();
         for outlay in src.outlay_list.iter() {
-            let out = api::Outlay::try_from(outlay)
+            let out = api::OutlayV2::try_from(outlay)
                 .map_err(|err| format!("Failed to convert outlay: {err}"))?;
             outlays.push(out);
         }
@@ -1444,7 +1482,7 @@ mod test {
         };
 
         // Make proto outlay
-        let mut outlay = api::Outlay::new();
+        let mut outlay = api::OutlayV2::new();
         let public_addr = AccountKey::random(&mut rng).default_subaddress();
         outlay.set_receiver(mc_api::external::PublicAddress::from(&public_addr));
         outlay.set_value(1234);

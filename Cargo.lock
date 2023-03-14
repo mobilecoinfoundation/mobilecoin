@@ -5321,6 +5321,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-u64-ratio",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -5418,6 +5419,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-u64-ratio",
  "mc-util-vec-map",
  "mc-util-zip-exact",
  "prost",
@@ -5808,6 +5810,10 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "mc-util-u64-ratio"
+version = "4.0.2"
 
 [[package]]
 name = "mc-util-uri"

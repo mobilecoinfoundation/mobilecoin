@@ -27,7 +27,7 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }
-mc-ledger-db = { path = "../ledger/db" }
+mc-ledger-db = { path = "../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-transaction-extra = { path = "../transaction/extra" }
