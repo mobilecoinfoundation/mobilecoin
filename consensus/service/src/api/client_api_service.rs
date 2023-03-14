@@ -27,7 +27,11 @@ use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use std::{sync::{Arc, Mutex}, collections::VecDeque, time::{Instant, Duration}};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.
@@ -41,7 +45,7 @@ pub struct ClientSessionTracking {
     // oldest tx failure timestamps constantly - if the server is configured to
     // drop clients with over 100 failed tx proposals in the last 30 seconds,
     // we don't care about timestamps from over 30 seconds ago, for example.
-    tx_proposal_failures: VecDeque<Instant>, 
+    tx_proposal_failures: VecDeque<Instant>,
 }
 
 impl ClientSessionTracking {
@@ -54,8 +58,8 @@ impl ClientSessionTracking {
     /// Push a new failed tx proposal record, clear out samples older than
     /// our tracking window, and return the number of tx failures remaining
     /// on the list - as-in, tells you "there have been x number of failures
-    /// within the past `tracking_window` seconds". 
-    /// 
+    /// within the past `tracking_window` seconds".
+    ///
     /// # Arguments
     ///
     /// * `now` - Used as both the instant to record as a new tx proposal
@@ -64,9 +68,7 @@ impl ClientSessionTracking {
     /// of an individual tx proposal failure incident for? Any records which
     /// have existed for longer than this value will be dropped when this
     /// method is called.
-    pub fn fail_tx_proposal(&mut self, 
-            now: &Instant, 
-            tracking_window: &Duration) -> usize { 
+    pub fn fail_tx_proposal(&mut self, now: &Instant, tracking_window: &Duration) -> usize {
         self.tx_proposal_failures.retain(|past_failure| {
             now.saturating_duration_since(*past_failure) <= *tracking_window
         });
@@ -138,18 +140,20 @@ impl ClientApiService {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
-                let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published. 
+                let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published.
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 let record = if let Some(record) = tracker.get_mut(&session_id) {
                     record
                 } else {
                     tracker.put(session_id.clone(), ClientSessionTracking::new());
-                    tracker.get_mut(&session_id)
+                    tracker
+                        .get_mut(&session_id)
                         .expect("Adding session-tracking record should be atomic.")
-                    
                 };
-                let _recent_failure_count = record.fail_tx_proposal(&Instant::now(), &tracking_window);
-                // TODO: drop session when recent_failure_count reaches some number
+                let _recent_failure_count =
+                    record.fail_tx_proposal(&Instant::now(), &tracking_window);
+                // TODO: drop session when recent_failure_count reaches some
+                // number
             }
             err
         })?;
