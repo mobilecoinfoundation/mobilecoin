@@ -1367,8 +1367,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             outlay_confirmation_numbers,
             scis: scis
                 .iter()
-                .map(|(sci_for_tx, _sci_amount)| sci_for_tx)
                 .cloned()
+                .map(|(mut sci_for_tx, _sci_amount)| {
+                    // clear out proofs here since they were not part of the request
+                    sci_for_tx.sci.tx_in.proofs = Vec::default();
+                    sci_for_tx
+                })
                 .collect(),
         })
     }
