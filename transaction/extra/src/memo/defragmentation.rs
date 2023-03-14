@@ -30,7 +30,7 @@ use displaydoc::Display;
 /// defragmentation ID.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct DefragmentationMemo {
-    /// The fee paid to perform the defragmentation transaction (picoMOB)
+    /// The fee paid to perform the defragmentation transaction.
     /// We assume that the high order byte of fee is zero, and use this
     /// to compress the memo into 32 bytes.
     fee: u64,
