@@ -244,5 +244,4 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 diesel = { git = "https://github.com/mobilecoinofficial/diesel", rev = "026f6379715d27c8be48396e5ca9059f4a263198" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-# TODO: Point to external GitHub repo once it's merged
-x25519-dalek = { path = "../x25519-dalek"}
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a"}
