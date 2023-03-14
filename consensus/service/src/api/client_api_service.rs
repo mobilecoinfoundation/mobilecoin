@@ -70,7 +70,7 @@ impl ClientSessionTracking {
         self.tx_proposal_failures.retain(|past_failure| {
             now.saturating_duration_since(*past_failure) <= *tracking_window
         });
-        self.tx_proposal_failures.push_back(now.clone());
+        self.tx_proposal_failures.push_back(*now);
         self.tx_proposal_failures.len()
     }
 }
