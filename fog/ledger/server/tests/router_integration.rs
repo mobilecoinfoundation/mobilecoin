@@ -126,7 +126,6 @@ fn create_store(
     block_range: BlockRange,
     watcher_db_path: &Path,
     ledger_db_path: &Path,
-    _grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
 ) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient> {
     let uri = KeyImageStoreUri::from_str(&format!(
@@ -168,11 +167,7 @@ fn create_store(
     store
 }
 
-fn create_shard(
-    config: &ShardConfig,
-    _grpc_env: Arc<grpcio::Environment>,
-    _logger: Logger,
-) -> ShardProxyServer {
+fn create_shard(config: &ShardConfig, _logger: Logger) -> ShardProxyServer {
     ShardProxyServer::new(
         &config.address,
         config
@@ -188,7 +183,6 @@ fn create_router(
     blocks_config: &BlockConfig,
     watcher_db_path: &Path,
     ledger_db_path: &Path,
-    _grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
 ) -> LedgerRouterServer<LedgerSgxEnclave, AttestClient> {
     let uri = FogLedgerUri::from_str(&format!(
@@ -285,14 +279,13 @@ fn create_env(
                 shard.block_range.clone(),
                 watcher_db_dir.path(),
                 ledger_db_dir.path(),
-                grpc_env.clone(),
                 logger.clone(),
             ));
             tempdirs.push(watcher_db_dir);
             tempdirs.push(ledger_db_dir);
         }
 
-        shards.push(create_shard(shard, grpc_env.clone(), logger.clone()));
+        shards.push(create_shard(shard, logger.clone()));
     }
 
     let watcher_db_dir =
@@ -304,7 +297,6 @@ fn create_env(
         &blocks_config,
         watcher_db_dir.path(),
         ledger_db_dir.path(),
-        grpc_env.clone(),
         logger.clone(),
     );
     tempdirs.push(watcher_db_dir);
