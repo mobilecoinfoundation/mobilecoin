@@ -4276,8 +4276,6 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            transaction_builder.set_fee(3).unwrap();
-
             let input_credentials = get_input_credentials(
                 block_version,
                 Amount::new(113, token_id),
