@@ -13,7 +13,7 @@ spec:
       app: consensus-node
       {{- include "consensusNode.selectorLabels" . | nindent 6 }}
   endpoints:
-  - port: cns-mgmt
+  - port: mgmt-http
     relabelings:
     - targetLabel: instance
       replacement: {{ include "consensusNode.clientHostname" . }}

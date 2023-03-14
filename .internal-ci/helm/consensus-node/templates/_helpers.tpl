@@ -137,3 +137,16 @@ lookup name from configmap if we have created the objects in consensus-node-conf
     {{- tpl .Values.global.blocklist.pattern . }}
   {{- end }}
 {{- end }}
+
+{{/* Find the instance number of the consensus deploy (1, 2, 3...) */}}
+{{- define "consensusNode.instanceNumber" -}}
+  {{- if (regexMatch ".*-[0-9]+$" (include "consensusNode.fullname" .)) }}
+{{- regexFind "[0-9]+" (include "consensusNode.fullname" .) }}
+  {{- else }}
+0
+  {{- end }}
+{{- end }}
+
+{{- define "consensusNode.rateLimitPeriod" -}}
+{{ add 60000 (include "consensusNode.instanceNumber" .) }}
+{{- end }}

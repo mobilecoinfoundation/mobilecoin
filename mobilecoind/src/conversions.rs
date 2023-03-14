@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
 //! types.
 
 use crate::{
-    payments::{Outlay, TxProposal},
+    payments::{Outlay, OutlayV2, SciForTx, TxProposal},
     utxo_store::UnspentTxOut,
 };
 use mc_account_keys::PublicAddress;
@@ -14,6 +14,7 @@ use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut},
+    Amount, TokenId,
 };
 use mc_transaction_extra::TxOutConfirmationNumber;
 use protobuf::RepeatedField;
@@ -80,6 +81,29 @@ impl TryFrom<&api::Outlay> for Outlay {
     }
 }
 
+impl From<&OutlayV2> for api::OutlayV2 {
+    fn from(src: &OutlayV2) -> Self {
+        let mut dst = Self::new();
+
+        dst.set_value(src.amount.value);
+        dst.set_token_id(*src.amount.token_id);
+        dst.set_receiver((&src.receiver).into());
+
+        dst
+    }
+}
+
+impl TryFrom<&api::OutlayV2> for OutlayV2 {
+    type Error = ConversionError;
+
+    fn try_from(src: &api::OutlayV2) -> Result<Self, Self::Error> {
+        let amount = Amount::new(src.value, TokenId::from(src.token_id));
+        let receiver = PublicAddress::try_from(src.get_receiver())?;
+
+        Ok(Self { amount, receiver })
+    }
+}
+
 impl From<&TxProposal> for api::TxProposal {
     fn from(src: &TxProposal) -> api::TxProposal {
         let mut dst = api::TxProposal::new();
@@ -104,6 +128,7 @@ impl From<&TxProposal> for api::TxProposal {
                 .map(|val| val.to_vec())
                 .collect(),
         );
+        dst.set_scis(src.scis.iter().map(Into::into).collect());
 
         dst
     }
@@ -123,11 +148,17 @@ impl TryFrom<&api::TxProposal> for TxProposal {
             .map(UnspentTxOut::try_from)
             .collect::<Result<Vec<UnspentTxOut>, ConversionError>>()?;
 
-        let outlays = src
+        let outlays: Vec<OutlayV2> = src
             .get_outlay_list()
             .iter()
-            .map(Outlay::try_from)
-            .collect::<Result<Vec<Outlay>, ConversionError>>()?;
+            .map(OutlayV2::try_from)
+            .collect::<Result<_, _>>()?;
+
+        let scis: Vec<SciForTx> = src
+            .get_scis()
+            .iter()
+            .map(SciForTx::try_from)
+            .collect::<Result<_, _>>()?;
 
         let tx = Tx::try_from(src.get_tx())?;
 
@@ -167,6 +198,30 @@ impl TryFrom<&api::TxProposal> for TxProposal {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            scis,
+        })
+    }
+}
+
+impl From<&SciForTx> for api::SciForTx {
+    fn from(src: &SciForTx) -> Self {
+        let mut dst = Self::new();
+        dst.set_sci((&src.sci).into());
+        dst.set_partial_fill_value(src.partial_fill_value);
+        dst
+    }
+}
+
+impl TryFrom<&api::SciForTx> for SciForTx {
+    type Error = ConversionError;
+
+    fn try_from(src: &api::SciForTx) -> Result<Self, Self::Error> {
+        let sci = src.get_sci().try_into()?;
+        let partial_fill_value = src.partial_fill_value;
+
+        Ok(Self {
+            sci,
+            partial_fill_value,
         })
     }
 }
@@ -313,9 +368,9 @@ mod test {
 
         let outlay = {
             let public_addr = AccountKey::random(&mut rng).default_subaddress();
-            Outlay {
+            OutlayV2 {
                 receiver: public_addr,
-                value: 1234,
+                amount: Amount::new(1234, TokenId::from(0)),
             }
         };
 
@@ -329,6 +384,7 @@ mod test {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            scis: vec![],
         };
 
         let proto = api::TxProposal::from(&rust);
@@ -340,7 +396,7 @@ mod test {
 
         assert_eq!(
             rust.outlays,
-            vec![Outlay::try_from(&proto.get_outlay_list()[0]).unwrap()],
+            vec![OutlayV2::try_from(&proto.get_outlay_list()[0]).unwrap()],
         );
 
         assert_eq!(proto.get_outlay_index_to_tx_out_index().len(), 1);

@@ -225,11 +225,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
             // If we got this far, then self.load_block_data() must have returned false.
             // This means that at some point no new data was available and it was all
-            // loaded into the queue. For a large data set, this also implies that
-            // the enclave thread has drained the queue many times and actually loaded
-            // most of the data into ORAM.
-            // It might take some more time before it is all actually loaded into the
-            // enclave, but we are very nearly ready now.
+            // loaded into the queue.
             self.readiness_indicator.set_ready();
 
             sleep(DB_POLL_INTERNAL);

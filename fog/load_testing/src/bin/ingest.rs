@@ -39,7 +39,7 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 // Compute mean and std_dev of timings
 #[derive(Default, Clone)]
@@ -192,8 +192,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         std::env::set_var("DATABASE_URL", db_test_context.db_url());
 
         // Set up the Watcher DB
-        let watcher_db_path =
-            TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
+        let watcher_db_path = TempDir::new().expect("Could not make tempdir for wallet db");
         WatcherDB::create(watcher_db_path.path()).unwrap();
         let watcher = WatcherDB::open_rw(
             watcher_db_path.path(),
@@ -203,8 +202,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         .unwrap();
 
         // Set up a fresh ledger db.
-        let ledger_db_path =
-            TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
+        let ledger_db_path = TempDir::new().expect("Could not make tempdir for ledger db");
         LedgerDB::create(ledger_db_path.path()).unwrap();
         let mut ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
@@ -219,8 +217,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         );
 
         // Dir for state file
-        let state_file_dir =
-            TempDir::new("state_file").expect("Could not make tempdir for state file");
+        let state_file_dir = TempDir::new().expect("Could not make tempdir for state file");
         let mut state_file_path = state_file_dir.path().to_path_buf();
         state_file_path.push(".mc-fog-ingest-state");
 

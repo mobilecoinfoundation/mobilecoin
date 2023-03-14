@@ -967,7 +967,7 @@ mod ledger_db_test {
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
     use test::Bencher;
 
     // TODO: Should these tests run over several block versions?
@@ -975,7 +975,7 @@ mod ledger_db_test {
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
-        let temp_dir = TempDir::new("test").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path();
         LedgerDB::create(path).unwrap();
         LedgerDB::open(path).unwrap()

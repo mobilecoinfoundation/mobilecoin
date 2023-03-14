@@ -511,7 +511,7 @@ mod ed25519_tests {
         process::Command,
         string::{String, ToString},
     };
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[derive(Digestible)]
     struct YoloStruct {
@@ -626,7 +626,7 @@ mod ed25519_tests {
     #[test]
     #[ignore]
     fn validate_ed25519_priv_der_prefix() {
-        let tempdir = TempDir::new("keys").unwrap();
+        let tempdir = TempDir::new().unwrap();
         let privder = tempdir
             .path()
             .join("openssl-ed25519-private.der")
@@ -664,7 +664,7 @@ mod ed25519_tests {
     #[test]
     #[ignore]
     fn validate_ed25519_pub_der_prefix() {
-        let tempdir = TempDir::new("keys").unwrap();
+        let tempdir = TempDir::new().unwrap();
         let privkey = tempdir
             .path()
             .join("openssl-ed25519-private.pem")

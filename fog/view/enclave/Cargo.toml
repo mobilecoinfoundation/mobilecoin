@@ -36,7 +36,6 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 
 [dev-dependencies]
 criterion = "0.4"
-tempdir = "0.3"
 
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-from-random = { path = "../../../util/from-random" }

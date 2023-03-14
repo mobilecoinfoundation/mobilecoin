@@ -147,7 +147,8 @@ fi
 
 # Similarly, check if copyright statements are missing and offer to add them if they are
 printf "${PREFIX} Checking copyright statements ... "
-COPYRIGHT_LINE="// Copyright (c) 2018-2023 The MobileCoin Foundation"
+YEAR=$(date +%Y)
+COPYRIGHT_LINE="// Copyright (c) 2018-${YEAR} The MobileCoin Foundation"
 diff=""
 for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx_(tcrypto|urts|types)');
 do
