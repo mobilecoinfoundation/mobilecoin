@@ -72,8 +72,8 @@ impl MemoBuilder for DefragmentationMemoBuilder {
     /// Set the fee
     /// Throws an error if the specified value cannot be represented in 56 bits
     fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
+        // Since the main memo includes the fee, check for main, not change
         if self.wrote_main_memo {
-            // Since the main memo includes the fee, check for main, not change
             return Err(NewMemoError::FeeAfterChange);
         }
         self.fee = fee;
