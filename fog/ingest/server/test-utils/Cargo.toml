@@ -29,5 +29,5 @@ mc-fog-uri = { path = "../../../uri" }
 # third-party
 rand_core = "0.6"
 rand_hc = "0.3"
-tempdir = "0.3"
+tempfile = "3.4"
 url = "2.2"

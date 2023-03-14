@@ -58,9 +58,9 @@ spec:
         imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
         command: [ "/usr/bin/supervisord" ]
         ports:
-        - name: ledger
+        - name: ledger-grpc
           containerPort: 3228
-        - name: mgmt
+        - name: mgmt-http
           containerPort: 8000
         envFrom:
         - secretRef:
@@ -134,7 +134,7 @@ spec:
           readOnly: true
         resources:
           {{- toYaml .Values.fogLedger.resources | nindent 10 }}
-      - name: grpc-gateway
+      - name: http-gateway
         image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
         command:
@@ -144,8 +144,8 @@ spec:
         - -http-server-listen=:8228
         - -logtostderr
         ports:
-          - name: ledger-http
-            containerPort: 8228
+        - name: ledger-http
+          containerPort: 8228
         resources:
           {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
 {{- if eq .Values.jaegerTracing.enabled true }}

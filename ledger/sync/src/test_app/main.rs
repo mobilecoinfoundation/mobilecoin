@@ -12,7 +12,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSync, LedgerSyncService, PollingNetworkState};
 use mc_util_uri::ConsensusClientUri as ClientUri;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 const NETWORK: &str = "test";
 
@@ -52,8 +52,7 @@ fn main() {
     log::info!(logger, "starting, network = {}", NETWORK);
 
     // Get a ledger database to work on.
-    let ledger_dir =
-        TempDir::new("ledger_sync_test_app").expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
     let ledger_path = ledger_dir.path().to_path_buf();
     let ledger_path_str = ledger_dir
         .path()
