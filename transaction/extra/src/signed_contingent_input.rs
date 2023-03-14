@@ -185,16 +185,19 @@ pub struct SignedContingentInputAmounts {
 }
 
 impl SignedContingentInputAmounts {
-    /// Computes the hypothetical change in balances that will occur if we fill
-    /// this SCI to a certain degree
+    /// Computes the hypothetical change in balances that will occur if this SCI
+    /// is filled to a certain degree.
     ///
     /// Add the outputs and inputs to a BTreemap which functions as a balance
     /// sheet. Outputs from the SCI are positive, and the value of the input
-    /// is negative.
+    /// is negative. Fractional outputs are computed based on a caller-specified
+    /// partial fill value.
     ///
     /// Arguments:
-    /// partial_fill_value: The amount of the partial_fill_change we want to
-    /// keep. This should be zero if this is not a partial fill SCI.
+    /// partial_fill_value: The amount of the partial_fill_change that is
+    /// hypothetically kept when this SCI is filled.
+    /// This should be zero if this is not a partial fill SCI.
+    /// Otherwise, it should be between zero and the partial fill change amount.
     /// balance_sheet: A list of tokens and +/- balance changes
     ///
     /// Returns:

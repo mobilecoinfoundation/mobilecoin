@@ -157,4 +157,18 @@ mod tests {
         );
         assert_eq!(r.checked_mul_round_up(u64::MAX), Some(10540996613548315209));
     }
+
+    #[test]
+    fn checked_mul_maxed() {
+        let r = U64Ratio::new(u64::MAX, u64::MAX).unwrap();
+        assert_eq!(r.checked_mul_round_up(u64::MAX), Some(u64::MAX));
+        assert_eq!(r.checked_mul_round_down(u64::MAX), Some(u64::MAX));
+    }
+
+    #[test]
+    fn checked_mul_overflows() {
+        let r = U64Ratio::new(u64::MAX, u64::MAX - 1).unwrap();
+        assert_eq!(r.checked_mul_round_up(u64::MAX), None);
+        assert_eq!(r.checked_mul_round_down(u64::MAX), None);
+    }
 }
