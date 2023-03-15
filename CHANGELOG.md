@@ -8,15 +8,37 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [4.1.0]
 
+### Added
+
+- `mobilecoind` now supports generating SCI transactions ([#3212], [#3232], [#3214])
+
 ### Changed
 
-- mobilecoind-json now always includes the MaskedAmount version in its responses ([#3036])
+- `mobilecoind-json` now always includes the `MaskedAmount` version in its responses ([#3036])
+- Replace `tempdir` with `tempfile` ([#3211])
+- Libraries used by client SDKs are now licensed under the Apache-2.0 license (servers remain GPLv3) ([#3092])
+- Restore ability to read the port a gRPC server is listening on ([#3107])
+
+### Fixed
+
+- Fog view will no longer claim it's ready before ORAM is loaded ([#3149])
+
+[#3212]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3212
+[#3232]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3232
+[#3214]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3214
+[#3036]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3036
+[#3211]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3211
+[#3092]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3092
+[#3107]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3107
+[#3149]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3149
 
 ## [4.0.2]
 
 ### Fixed
 
 - fix(charts): fix blocklist activation logic ([#3048])
+
+[#3048]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3048
 
 ## [4.0.1]
 
@@ -28,6 +50,10 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Changed
 
 - Improved performance of mobilecoind-dev-faucet for better load testing ([#2955])
+
+[#2988]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2988
+[#2952]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2952
+[#2955]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2955
 
 ## [4.0.0]
 
@@ -230,7 +256,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#2779]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2779
 [#2776]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2776
 [#2777]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2777
-[#2575]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2575
 [#2787]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2787
 [#2173]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2173
 [#2346]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2346
@@ -352,7 +377,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#2291]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2291
 [#2293]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2293
 
-
 ## [3.0.0]
 
 ### Added
@@ -378,7 +402,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - TOB-MCCT-4: Make minting nonces unique per-token.
 - Build with SGX SDK 2.17.1 to mitigate and account for INTEL-SA-00657.
 
-
 ## [2.0.0] - 2022-07-25
 
 ### Fixed
@@ -390,7 +413,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Security
 
 - Bump SGX to 2.17, mitigate INTEL-SA-00615
-
 
 ## [1.2.2] - 2022-06-17
 
@@ -406,7 +428,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Replace `structopt` with `clap`.
 - Updated `grpcio` from 0.9 to 0.10.
 
-
 ## [1.2.1] - UNRELEASED
 
 ### Changed
@@ -418,7 +439,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Fixed
 
 - Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
-
 
 ## [1.2.0] - UNRELEASED
 
@@ -880,19 +900,13 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#1806]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1806
 [#1807]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1807
 [#1808]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1808
-[#1808]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1808
 [#1809]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1809
-[#1809]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1809
-[#1812]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1812
 [#1812]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1812
 [#1814]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1814
 [#1815]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1815
 [#1817]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1817
-[#1817]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1817
-[#1824]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1824
 [#1824]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1824
 [#1825]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1825
-[#1826]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1826
 [#1826]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1826
 [#1836]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1836
 [#1837]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1837
