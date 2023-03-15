@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::UnmaskedAmount;
 use alloc::vec::Vec;
 use mc_account_keys::PublicAddress;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPrivate;
+use mc_transaction_core::UnmaskedAmount;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;

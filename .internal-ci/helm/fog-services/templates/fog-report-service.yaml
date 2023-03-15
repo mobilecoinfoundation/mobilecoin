@@ -12,12 +12,12 @@ spec:
     app: fog-report
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
-    - name: report
-      port: 3222
-      targetPort: report
-    - name: mgmt
-      port: 8000
-      targetPort: mgmt
-    - name: report-http
-      port: 8222
-      targetPort: report-http
+  - name: report-grpc
+    port: 3222
+    targetPort: report-grpc
+  - name: mgmt-http
+    port: 8000
+    targetPort: mgmt-http
+  - name: report-http
+    port: 8222
+    targetPort: report-http

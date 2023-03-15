@@ -8,7 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-transaction-types/alloc", "mc-crypto-dalek/alloc"]
+alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-crypto-dalek/alloc"]
 serde = ["dep:serde", "mc-crypto-dalek/serde", "mc-crypto-keys/serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost", "mc-util-serial"]
 internals = []
@@ -31,7 +31,6 @@ mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-transaction-types = { path = "../../transaction/types", default_features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../../util/serial", optional = true }
@@ -51,4 +50,3 @@ mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" 
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
 proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
-tempdir = "0.3"

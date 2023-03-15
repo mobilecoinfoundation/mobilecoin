@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Construct and submit transactions to the validator network.
 
@@ -18,20 +18,24 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_builder::{
-    InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder, TxOutContext,
+    InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
+    TransactionBuilder, TxOutContext,
 };
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
+    constants::{MAX_INPUTS, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, FeeMap, TokenId,
 };
-use mc_transaction_extra::TxOutConfirmationNumber;
+use mc_transaction_extra::{
+    SignedContingentInput, SignedContingentInputAmounts, TxOutConfirmationNumber,
+};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{
     cmp::{max, Reverse},
+    collections::BTreeMap,
     iter::empty,
     str::FromStr,
     sync::{
@@ -48,15 +52,23 @@ pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 /// Default ring size
 pub const DEFAULT_RING_SIZE: usize = RING_SIZE;
 
-/// The original hard-coded 10mMOB fee, used as a fallback when calls to
-/// consensus fail or we have no peers.
-const FALLBACK_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
-
 /// An outlay - the API representation of a desired transaction output.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Outlay {
     /// Value being sent.
     pub value: u64,
+
+    /// Destination.
+    pub receiver: PublicAddress,
+}
+
+/// An outlay, with token id information.
+/// This is the V2 API representation of a desired transaction output, which
+/// works with mixed transactions also.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OutlayV2 {
+    /// Amount being sent.
+    pub amount: Amount,
 
     /// Destination.
     pub receiver: PublicAddress,
@@ -69,7 +81,7 @@ pub struct TxProposal {
     pub utxos: Vec<UnspentTxOut>,
 
     /// Destinations the transaction is being sent to.
-    pub outlays: Vec<Outlay>,
+    pub outlays: Vec<OutlayV2>,
 
     /// The actual transaction.
     pub tx: Tx,
@@ -81,12 +93,28 @@ pub struct TxProposal {
     /// A list of the confirmation numbers, in the same order
     /// as the outlays.
     pub outlay_confirmation_numbers: Vec<TxOutConfirmationNumber>,
+
+    /// A list of scis that were incorporated into the Tx object
+    pub scis: Vec<SciForTx>,
 }
 
 impl TxProposal {
     pub fn fee(&self) -> u64 {
         self.tx.prefix.fee
     }
+}
+
+/// A SignedContingentInput which the client wants to add to a new Tx, with
+/// data about what degree to fill it, if it is a partial fill SCI.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SciForTx {
+    /// The signed contingent input to add to the transaction
+    pub sci: SignedContingentInput,
+    /// The amount to take from the maximum allowed volume of this SCI.
+    /// The remainder is returned to the originator as change.
+    /// For partial fill SCIs, this
+    /// must be nonzero. For non-partial fill SCIs, this must be zero.
+    pub partial_fill_value: u64,
 }
 
 pub struct TransactionsManager<
@@ -167,28 +195,35 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
     }
 
-    // Gets the network fee and block_version, unless opt_fee is nonzero.
-    // If opt fee is nonzero then we use local ledger block version and this fee,
-    // and don't make a network call
+    // Gets the network block version and fee information.
+    //
+    // * The block version is the max of the local ledger block version and the
+    //   network-reported block version.
+    // * If opt_fee is nonzero, then that fee value is returned. Otherwise, the
+    //   minimum fee for this token id reported by the network is returned.
+    //
+    // If the network does not report a minimum fee for this token id, and the user
+    // does not specify a nonzero fee, then we return an error.
     fn get_network_fee_and_block_version(
         &self,
         token_id: TokenId,
         opt_fee: u64,
         last_block_info: &BlockInfo,
     ) -> Result<(u64, u32), Error> {
-        // Figure out the block_version and fee, taking into account if opt_fee is
-        // nonzero
-        let candidate_block_version = self.ledger_db.get_latest_block()?.version;
+        // Figure out the block_version, taking max of local ledger and network
+        let block_version = max(
+            self.ledger_db.get_latest_block()?.version,
+            last_block_info.network_block_version,
+        );
+
+        // Figure out the fee using either user-specified fee, or the network-reported
+        // fee.
         Ok(if opt_fee != 0 {
-            (opt_fee, candidate_block_version)
+            (opt_fee, block_version)
         } else {
             let fee = last_block_info
                 .minimum_fee_or_none(&token_id)
-                .unwrap_or(FALLBACK_FEE);
-            let block_version = max(
-                candidate_block_version,
-                last_block_info.network_block_version,
-            );
+                .ok_or_else(|| Error::TxBuild("Token cannot be used to pay fees".into()))?;
             (fee, block_version)
         })
     }
@@ -219,7 +254,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok((fee, fee_map, block_version))
     }
 
-    /// Create a TxProposal.
+    /// Create a TxProposal, using only one token id for the whole transaction.
     ///
     /// # Arguments
     /// * `sender_monitor_id` - Indicates the the account key needed to spend
@@ -230,7 +265,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `outlays` - Output amounts and recipients.
     /// * `last_block_infos` - Last block info responses from the network, for
     ///   determining fees. This should normally come from polling_network_state
-    /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
+    /// * `opt_fee` - Transaction fee value in smallest representable units. If
+    ///   zero, use network-reported minimum fee.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
@@ -262,49 +298,150 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             return Err(Error::TxBuild("Must have at least one destination".into()));
         }
 
+        // Convert outlays into OutlayV2, using fee token id to set the token id.
+        let outlays: Vec<OutlayV2> = outlays
+            .iter()
+            .map(|outlay_v1| OutlayV2 {
+                receiver: outlay_v1.receiver.clone(),
+                amount: Amount::new(outlay_v1.value, token_id),
+            })
+            .collect();
+
+        self.build_mixed_transaction(
+            sender_monitor_id,
+            token_id,
+            change_subaddress,
+            inputs,
+            &[],
+            &outlays,
+            last_block_infos,
+            opt_fee,
+            opt_tombstone,
+            opt_memo_builder,
+        )
+    }
+
+    /// Create a TxProposal, possibly with mixed token ids.
+    ///
+    /// # Arguments
+    /// * `sender_monitor_id` - Indicates the the account key needed to spend
+    ///   the txo's.
+    /// * `fee_token_id` - The token id to transact in.
+    /// * `change_subaddress` - Recipient of any change.
+    /// * `inputs` - UTXOs that will be spent by the transaction.
+    /// * `scis` - SCIs to incorporate into the transaction
+    /// * `outlays` - Output amounts and recipients.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
+    /// * `opt_fee` - Transaction fee in smallest representable units. If zero,
+    ///   use network-reported minimum fee.
+    /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
+    pub fn build_mixed_transaction(
+        &self,
+        sender_monitor_id: &MonitorId,
+        fee_token_id: TokenId,
+        change_subaddress: u64,
+        inputs: &[UnspentTxOut],
+        scis: &[SciForTx],
+        outlays: &[OutlayV2],
+        last_block_infos: &[BlockInfo],
+        opt_fee: u64,
+        opt_tombstone: u64,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+    ) -> Result<TxProposal, Error> {
+        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{outlays:?}")));
+        log::trace!(logger, "Building pending transaction...");
+
+        // Must have at least one output
+        if outlays.is_empty() && scis.is_empty() {
+            return Err(Error::TxBuild("Must have at least one destination".into()));
+        }
+
         // Get sender monitor data.
         let sender_monitor_data = self.mobilecoind_db.get_monitor_data(sender_monitor_id)?;
 
-        // Figure out total amount of transaction (excluding fee).
-        let total_value: u64 = outlays.iter().map(|outlay| outlay.value).sum();
-        log::trace!(
-            logger,
-            "Total transaction value excluding fees: {}",
-            total_value
-        );
-
         // Figure out the block version, fee and minimum fee map.
         let (fee, fee_map, block_version) =
-            self.get_fee_info_and_block_version(last_block_infos, token_id, opt_fee)?;
+            self.get_fee_info_and_block_version(last_block_infos, fee_token_id, opt_fee)?;
+
+        // Compute what value of inputs we need to supply to satisfy the outputs and
+        // balance the transaction.
+        let mut balance_sheet = BTreeMap::<TokenId, i128>::default();
+        *balance_sheet.entry(fee_token_id).or_default() += fee as i128;
+
+        for outlay in outlays {
+            *balance_sheet.entry(outlay.amount.token_id).or_default() +=
+                outlay.amount.value as i128;
+        }
+
+        let mut scis_and_amounts = Vec::default();
+        for sci_for_tx in scis {
+            let sci_amounts = sci_for_tx.sci.validate()?;
+            sci_amounts.add_to_balance_sheet(sci_for_tx.partial_fill_value, &mut balance_sheet)?;
+
+            // While we are here, also attach membership proofs to the sci
+            // It's assumed that SCI's are usually passed around without membership proofs,
+            // and these are only added when we actually want to build a Tx.
+            let mut sci_for_tx = sci_for_tx.clone();
+            let proofs = self.get_membership_proofs(&sci_for_tx.sci.tx_in.ring)?;
+            sci_for_tx.sci.tx_in.proofs = proofs;
+            scis_and_amounts.push((sci_for_tx, sci_amounts));
+        }
 
         // Select the UTXOs to be used for this transaction.
-        let selected_utxos =
-            Self::select_utxos_for_value(token_id, inputs, total_value + fee, MAX_INPUTS as usize)?;
+        let mut all_selected_utxos = vec![];
+        for (token_id, val) in balance_sheet.iter() {
+            if *val > 0 {
+                let remaining_input_slots =
+                    MAX_INPUTS as usize - all_selected_utxos.len() - scis.len();
+                if remaining_input_slots == 0 {
+                    return Err(Error::TxBuild(
+                        "Ran out of input slots during input selection".to_string(),
+                    ));
+                }
+                let selected_utxos = Self::select_utxos_for_value(
+                    *token_id,
+                    inputs,
+                    *val as u64,
+                    remaining_input_slots,
+                )?;
+                all_selected_utxos.extend(selected_utxos);
+            }
+        }
         log::trace!(
             logger,
             "Selected {} utxos ({:?})",
-            selected_utxos.len(),
-            selected_utxos,
+            all_selected_utxos.len(),
+            all_selected_utxos,
         );
 
         // The selected_utxos with corresponding proofs of membership.
         let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let outputs: Vec<TxOut> = selected_utxos
+            let outputs: Vec<TxOut> = all_selected_utxos
                 .iter()
                 .map(|utxo| utxo.tx_out.clone())
                 .collect();
             let proofs = self.get_membership_proofs(&outputs)?;
 
-            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+            all_selected_utxos
+                .into_iter()
+                .zip(proofs.into_iter())
+                .collect()
         };
         log::trace!(logger, "Got membership proofs");
 
         // A ring of mixins for each UTXO.
         let rings = {
-            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+            let mut excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
                 .iter()
                 .map(|(_, proof)| proof.index)
                 .collect();
+
+            for sci_for_tx in scis {
+                excluded_tx_out_indices.extend(sci_for_tx.sci.tx_out_global_indices.clone());
+            }
 
             self.get_rings(
                 DEFAULT_RING_SIZE, // TODO configurable ring size
@@ -328,8 +465,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
+            &scis_and_amounts,
             block_version,
-            token_id,
+            fee_token_id,
             fee,
             &sender_monitor_data.account_key,
             change_subaddress,
@@ -344,6 +482,106 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tx constructed, hash={}", tx_proposal.tx.tx_hash());
 
         Ok(tx_proposal)
+    }
+
+    /// Create and return an SCI that offers to trade one of our inputs for a
+    /// given amount of some currency. This SCI is in the form accepted by
+    /// the deqs.
+    ///
+    /// # Arguments
+    /// * `sender_monitor_id` - Indicates the account key needed to spend the
+    ///   txo's.
+    /// * `change_subaddress` - Recipient of any change.
+    /// * `utxo` - UTXO that will be offered for swap
+    /// * `counter_amount` - The amount that we are asking from the counterparty
+    /// * `is_partial_fill` - Whether we allow partial fills of the quote, if
+    ///   false then it is all or nothing.
+    /// * `min_fill_value` - When it is a partial fill quote, the minimum amount
+    ///   the counterparty must supply to match against the quote.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining block version. This should come from polling_network_state
+    /// * `opt_tombstone` - Tombstone block. If zero, the swap offer doesn't
+    ///   expire.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
+    pub fn build_swap_proposal(
+        &self,
+        sender_monitor_id: &MonitorId,
+        change_subaddress_index: u64,
+        utxo: &UnspentTxOut,
+        counter_amount: Amount,
+        is_partial_fill: bool,
+        min_fill_value: u64,
+        last_block_infos: &[BlockInfo],
+        opt_tombstone: u64,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+    ) -> Result<SignedContingentInput, Error> {
+        let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "counter_amount" => format!("{counter_amount:?}")));
+        log::trace!(logger, "Building swap proposal...");
+
+        // Get sender monitor data.
+        let sender_monitor_data = self.mobilecoind_db.get_monitor_data(sender_monitor_id)?;
+
+        // Get the subaddress.
+        let change_subaddress = sender_monitor_data
+            .account_key
+            .subaddress(change_subaddress_index);
+
+        // Figure out the block version, fee and minimum fee map.
+        let (_fee, _fee_map, block_version) =
+            self.get_fee_info_and_block_version(last_block_infos, 0.into(), 0)?;
+
+        // Get global index of the utxo
+        let global_index = self
+            .ledger_db
+            .get_tx_out_index_by_hash(&utxo.tx_out.hash())?;
+        log::trace!(logger, "Got global index: {}", global_index);
+
+        // Get a ring of mixins and their proofs
+        let ring = self.get_rings(DEFAULT_RING_SIZE, 1, &[global_index])?;
+        // Convert to a ring of mixins and their indices
+        let ring: Vec<(TxOut, u64)> = ring[0]
+            .clone()
+            .into_iter()
+            .map(|(tx_out, _proof)| {
+                let index = self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash())?;
+                Ok((tx_out, index))
+            })
+            .collect::<Result<_, Error>>()?;
+        log::trace!(logger, "Got ring");
+
+        let mut required_outputs = Vec::default();
+        let mut fractional_outputs = Vec::default();
+
+        // Add the counterparty amount either as a required or fractional output
+        if is_partial_fill {
+            fractional_outputs.push((counter_amount, change_subaddress));
+        } else {
+            required_outputs.push((counter_amount, change_subaddress));
+        }
+
+        // Build and return the TxProposal object
+        let mut rng = rand::thread_rng();
+        let sci = Self::build_sci(
+            utxo,
+            global_index,
+            ring,
+            block_version,
+            &sender_monitor_data.account_key,
+            change_subaddress_index,
+            None, // custom change_amount
+            &required_outputs,
+            &fractional_outputs,
+            min_fill_value,
+            opt_tombstone,
+            &self.fog_resolver_factory,
+            opt_memo_builder,
+            &mut rng,
+            &self.logger,
+        )?;
+        log::trace!(logger, "Sci constructed");
+
+        Ok(sci)
     }
 
     /// Create a TxProposal that attempts to merge multiple UTXOs into a single
@@ -440,9 +678,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // We are paying ourselves the entire amount.
-        let outlays = vec![Outlay {
+        let outlays = vec![OutlayV2 {
             receiver: monitor_data.account_key.subaddress(subaddress_index),
-            value: total_value - fee,
+            amount: Amount::new(total_value - fee, token_id),
         }];
 
         // Build and return the TxProposal object
@@ -450,6 +688,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
+            &[],
             block_version,
             token_id,
             fee,
@@ -543,9 +782,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // The entire value goes to receiver
-        let outlays = vec![Outlay {
+        let outlays = vec![OutlayV2 {
             receiver: receiver.clone(),
-            value: total_value - fee,
+            amount: Amount::new(total_value - fee, token_id),
         }];
 
         // Build and return the TxProposal object
@@ -553,6 +792,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tx_proposal = Self::build_tx_proposal(
             &inputs_with_proofs,
             rings,
+            &[],
             block_version,
             token_id,
             fee,
@@ -829,8 +1069,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// # Arguments
     /// * `inputs` - UTXOs to spend, with membership proofs.
     /// * `rings` - A set of mixins for each input, with membership proofs.
+    /// * `scis` - A set of scis to add to the Tx. Assumes SCI's already
+    ///   validated and had proofs added. The Sci Amounts from validation also
+    ///   need to be included.
     /// * `block_version` - The block version to target for this transaction
-    /// * `token_id` - The token id to transact in
+    /// * `fee_token_id` - The token id of the fee
     /// * `fee` - Transaction fee, in picoMOB.
     /// * `from_account_key` - Owns the inputs. Also the recipient of any
     ///   change.
@@ -847,12 +1090,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
+        scis: &[(SciForTx, SignedContingentInputAmounts)],
         block_version: BlockVersion,
-        token_id: TokenId,
+        fee_token_id: TokenId,
         fee: u64,
         from_account_key: &AccountKey,
         change_subaddress: u64,
-        destinations: &[Outlay],
+        destinations: &[OutlayV2],
         tombstone_block: BlockIndex,
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
@@ -871,8 +1115,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             return Err(Error::TxBuild(err));
         }
 
-        // Check that we have at least one destination.
-        if destinations.is_empty() {
+        // Check that we have at least one destination, or SCIs are involved
+        if destinations.is_empty() && scis.is_empty() {
             return Err(Error::TxBuild("Must have at least one destination".into()));
         }
 
@@ -893,7 +1137,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
             .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
 
-        let fee_amount = Amount::new(fee, token_id);
+        // This balance sheet will be used to keep track of the balance across
+        // the whole Tx, and then determine what change outputs to write.
+        // Outlays are positive and inputs are negative.
+        let mut balance_sheet = BTreeMap::<TokenId, i128>::default();
+        *balance_sheet.entry(fee_token_id).or_default() += fee as i128;
+
+        let fee_amount = Amount::new(fee, fee_token_id);
         let mut tx_builder =
             TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
                 .map_err(|err| {
@@ -929,6 +1179,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 None => {
                     // The input is not already in the ring.
                     if ring.is_empty() {
+                        // The ring is probably not empty, but ring[0] will panic if it is.
                         // Append the input and its proof of membership.
                         ring.push(utxo.tx_out.clone());
                         membership_proofs.push(proof.clone());
@@ -949,7 +1200,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 "Each ring element must have a corresponding membership proof."
             );
 
-            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key).unwrap();
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
             let onetime_private_key = recover_onetime_private_key(
                 &public_key,
                 from_account_key.view_private_key(),
@@ -976,62 +1227,96 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 )
                 .map_err(|_| Error::TxBuild("failed creating InputCredentials".into()))?,
             );
+            *balance_sheet.entry(utxo.token_id.into()).or_default() -= utxo.value as i128;
+        }
+
+        for (sci_for_tx, sci_amounts) in scis {
+            if sci_for_tx.partial_fill_value == 0 {
+                tx_builder.add_presigned_input(sci_for_tx.sci.clone())?;
+            } else {
+                // The tx_builder expects to be given the partial fill change value,
+                // when the sci is a partial fill. However our API is that the user
+                // passes the amount the user wants to claim out of the partial
+                // fill change value. So we have to subtract.
+                let partial_fill_change = sci_amounts
+                    .partial_fill_change
+                    .as_ref()
+                    .ok_or_else(|| Error::TxBuild("sci is missing partial fill change".into()))?;
+
+                if sci_for_tx.partial_fill_value > partial_fill_change.value {
+                    return Err(Error::TxBuild(format!(
+                        "sci partial fill amount is invalid: {} > {}",
+                        sci_for_tx.partial_fill_value, partial_fill_change.value,
+                    )));
+                }
+                let real_change_amount = Amount::new(
+                    partial_fill_change.value - sci_for_tx.partial_fill_value,
+                    partial_fill_change.token_id,
+                );
+                tx_builder
+                    .add_presigned_partial_fill_input(sci_for_tx.sci.clone(), real_change_amount)?;
+            }
+            sci_amounts.add_to_balance_sheet(sci_for_tx.partial_fill_value, &mut balance_sheet)?;
         }
 
         // Add outputs to our destinations.
-        let mut total_value = 0;
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            // TODO (GH #1867): If you want to support mixed transactions, use
-            // outlay-specific token id here
-            let amount = Amount {
-                value: outlay.value,
-                token_id,
-            };
             let TxOutContext {
                 tx_out,
                 confirmation,
                 ..
             } = tx_builder
-                .add_output(amount, &outlay.receiver, rng)
+                .add_output(outlay.amount, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
             outlay_confirmation_numbers.push(confirmation);
 
-            total_value += outlay.value;
+            *balance_sheet.entry(outlay.amount.token_id).or_default() +=
+                outlay.amount.value as i128;
         }
 
-        // Figure out if we have change.
-        let input_value = inputs
-            .iter()
-            .fold(0, |acc, (utxo, _proof)| acc + utxo.value);
-        if total_value > input_value {
-            return Err(Error::InsufficientFunds);
-        }
-        let change = input_value - total_value - tx_builder.get_fee();
+        // Figure out if we have change. Change occurs when the total value of the
+        // inputs exceeds the value of the outlays, so we have a negative entry
+        // in the balance sheet.
+        let change_dest = ReservedSubaddresses::from_subaddress_index(
+            from_account_key,
+            Some(change_subaddress),
+            None,
+        );
 
-        // If we do have nonzero change, add an output for that as well.
-        // TODO (GH #1522): Should the exchange write destination memos?
-        // If so then we must always write a change output, even if the change is zero
-        if change > 0 {
-            // TODO: If you want to support mixed transactions, use outlay-specific token id
-            // here
-            let change_amount = Amount {
-                value: change,
-                token_id,
-            };
+        for (token_id, val) in balance_sheet.iter() {
+            if *val > 0 {
+                log::error!(
+                    logger,
+                    "After input selection we still had an insufficient amount of {}: {}",
+                    token_id,
+                    val
+                );
+                return Err(Error::InsufficientFunds);
+            }
+            // When val is negative, that means we have change, because the inputs were
+            // larger than was strictly needed to fulfill the outlays.
+            // Note: RTH normally requires that we write change even if it's zero, but we
+            // haven't done that here yet, and we're always writing empty memos.
+            // Note: RTH doesn't tolerate having multiple change outputs right now IIRC,
+            // so we would have to extend the scope of RTH to work with complex mixed
+            // transactions that have multiple change outputs, if we want that
+            // to work.
+            if *val < 0 {
+                let change_val = u64::try_from(-*val).map_err(|_| {
+                    Error::TxBuild(format!("change value overflowed a u64: {}", -*val))
+                })?;
+                let change_amount = Amount::new(change_val, *token_id);
 
-            let change_dest = ReservedSubaddresses::from_subaddress_index(
-                from_account_key,
-                Some(change_subaddress),
-                None,
-            );
-
-            tx_builder
-                .add_change_output(change_amount, &change_dest, rng)
-                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {err}")))?;
+                tx_builder
+                    .add_change_output(change_amount, &change_dest, rng)
+                    .map_err(|err| {
+                        Error::TxBuild(format!("failed adding output (change): {err}"))
+                    })?;
+            }
         }
 
         // Set tombstone block.
@@ -1079,7 +1364,218 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            scis: scis
+                .iter()
+                .cloned()
+                .map(|(mut sci_for_tx, _sci_amount)| {
+                    // clear out proofs here since they were not part of the request
+                    sci_for_tx.sci.tx_in.proofs = Vec::default();
+                    sci_for_tx
+                })
+                .collect(),
         })
+    }
+
+    /// Create a SignedContingentInput.
+    ///
+    /// # Arguments
+    /// * `utxo` - UTXO to spend
+    /// * `global_index` - The global index of the input
+    /// * `ring` - A set of mixins for the input, with their global indices.
+    /// * `block_version` - The block version to target for this transaction
+    /// * `from_account_key` - Owns the inputs. Also the recipient of any
+    ///   change.
+    /// * `change_subaddress_index` - Subaddress for change recipient.
+    /// * `change_amount` - The amount we will return to ourself as change. Must
+    ///   match token id of input, and be between 0 and input. If there are
+    ///   fractional outputs, this will be a fractional change output, otherwise
+    ///   a required change output.
+    /// * `required_outputs` - Required outputs of the sci.
+    /// * `fractional_outputs` - Fractional outputs of the sci.
+    /// * `min_fill_value` - The minimum amount that the counterparty must fill
+    ///   the partial fill order to. Ignored if zero.
+    /// * `tombstone_block` - Tombstone block of the sci. If 0, it is omitted,
+    ///   and the sci does not expire unless fog forces it to.
+    /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
+    /// * `rng` - randomness
+    /// * `logger` - Logger
+    #[allow(clippy::too_many_arguments)]
+    fn build_sci(
+        utxo: &UnspentTxOut,
+        global_index: u64,
+        ring: Vec<(TxOut, u64)>,
+        block_version: BlockVersion,
+        from_account_key: &AccountKey,
+        change_subaddress_index: u64,
+        change_amount: Option<Amount>,
+        required_outputs: &[(Amount, PublicAddress)],
+        fractional_outputs: &[(Amount, PublicAddress)],
+        min_fill_value: u64,
+        tombstone_block: BlockIndex,
+        fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+        rng: &mut (impl RngCore + CryptoRng),
+        _logger: &Logger,
+    ) -> Result<SignedContingentInput, Error> {
+        // Check that we have at least one destination.
+        if required_outputs.is_empty() && fractional_outputs.is_empty() {
+            return Err(Error::TxBuild("Must have at least one destination".into()));
+        }
+
+        // Collect all required FogUris from public addresses, then pass to resolver
+        // factory
+        let fog_resolver = {
+            let change_address = from_account_key.subaddress(change_subaddress_index);
+            let fog_uris = core::slice::from_ref(&change_address)
+                .iter()
+                .chain(required_outputs.iter().map(|x| &x.1))
+                .chain(fractional_outputs.iter().map(|x| &x.1))
+                .filter_map(|x| extract_fog_uri(x).transpose())
+                .collect::<Result<Vec<_>, _>>()?;
+            fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
+        };
+
+        let (mut ring, mut global_indices): (Vec<TxOut>, Vec<u64>) = ring.into_iter().unzip();
+
+        // Add the input to the ring.
+        let position_opt = ring.iter().position(|tx_out| *tx_out == utxo.tx_out);
+        let real_key_index = match position_opt {
+            Some(position) => {
+                // The input is already present in the ring.
+                // This could happen if ring elements are sampled randomly from the ledger.
+                position
+            }
+            None => {
+                // The input is not already in the ring.
+                if ring.is_empty() {
+                    // The ring is probably not empty, but ring[0] will panic if it is.
+                    // Append the input and its proof of membership.
+                    ring.push(utxo.tx_out.clone());
+                    global_indices.push(global_index);
+                } else {
+                    // Replace the first element of the ring.
+                    ring[0] = utxo.tx_out.clone();
+                    global_indices[0] = global_index;
+                }
+                // The real input is always the first element. This is safe because
+                // TransactionBuilder sorts each ring.
+                0
+            }
+        };
+
+        let membership_proofs: Vec<TxOutMembershipProof> = vec![Default::default(); ring.len()];
+
+        // Create input credentials
+        let input_credentials = {
+            assert_eq!(
+                ring.len(),
+                membership_proofs.len(),
+                "Each ring element must have a corresponding membership proof."
+            );
+
+            let public_key = RistrettoPublic::try_from(&utxo.tx_out.public_key)?;
+            let onetime_private_key = recover_onetime_private_key(
+                &public_key,
+                from_account_key.view_private_key(),
+                &from_account_key.subaddress_spend_private(utxo.subaddress_index),
+            );
+
+            InputCredentials::new(
+                ring,
+                membership_proofs,
+                real_key_index,
+                onetime_private_key,
+                *from_account_key.view_private_key(),
+            )
+            .map_err(|_| Error::TxBuild("failed creating InputCredentials".into()))?
+        };
+
+        // Create sci_builder.
+        // TODO (GH #1522): Use RTH memo builder, optionally?
+        // Note: Clippy thinks the closure is redundant, but it doesn't build without
+        // it.
+        #[allow(clippy::redundant_closure)]
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> = opt_memo_builder
+            .unwrap_or_else(|| Box::<mc_transaction_builder::EmptyMemoBuilder>::default());
+
+        let mut sci_builder = SignedContingentInputBuilder::new_with_box(
+            block_version,
+            input_credentials,
+            fog_resolver,
+            memo_builder,
+        )
+        .map_err(|err| {
+            Error::TxBuild(format!(
+                "Error creating signed contingent input builder: {err}"
+            ))
+        })?;
+
+        // Add outputs to our destinations.
+        for (amount, recipient) in required_outputs.iter() {
+            sci_builder
+                .add_required_output(*amount, recipient, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding required output: {err}")))?;
+        }
+        for (amount, recipient) in fractional_outputs.iter() {
+            sci_builder
+                .add_partial_fill_output(*amount, recipient, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding fractional output: {err}")))?;
+        }
+
+        // Add an appropriate change output to the sci
+        if let Some(change_amount) = change_amount.as_ref() {
+            if change_amount.token_id != utxo.token_id {
+                return Err(Error::TxBuild("Incorrect change Token Id".to_string()));
+            }
+            if change_amount.value > utxo.value {
+                return Err(Error::InsufficientFunds);
+            }
+        }
+
+        let change_dest = ReservedSubaddresses::from_subaddress_index(
+            from_account_key,
+            Some(change_subaddress_index),
+            None,
+        );
+
+        if fractional_outputs.is_empty() {
+            // When we have an all-or-nothing swap and no change value is given,
+            // we don't have to add a change output. (Maybe we should add a zero-value
+            // change?) If one is specified, add it.
+            if let Some(change_amount) = change_amount.as_ref() {
+                sci_builder
+                    .add_required_change_output(*change_amount, &change_dest, rng)
+                    .map_err(|err| {
+                        Error::TxBuild(format!("failed adding output (change): {err}"))
+                    })?;
+            }
+        } else {
+            // When we have a partial fill swap and no custom change value is given,
+            // add a fractional change output equal in value to the input.
+            let change_amount =
+                change_amount.unwrap_or_else(|| Amount::new(utxo.value, utxo.token_id.into()));
+
+            sci_builder
+                .add_partial_fill_change_output(change_amount, &change_dest, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {err}")))?;
+
+            sci_builder.set_min_partial_fill_value(min_fill_value);
+        }
+
+        // Set tombstone block.
+        if tombstone_block != 0 {
+            sci_builder.set_tombstone_block(tombstone_block);
+        }
+
+        // Build sci.
+        let mut result = sci_builder
+            .build(&NoKeysRingSigner {}, rng)
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
+
+        result.tx_out_global_indices = global_indices;
+        Ok(result)
     }
 }
 

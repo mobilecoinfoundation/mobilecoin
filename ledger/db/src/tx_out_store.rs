@@ -794,11 +794,11 @@ pub mod tx_out_store_tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::path::Path;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     /// Create an LMDB environment that can be used for testing.
     pub fn get_env() -> Environment {
-        let temp_dir = TempDir::new("test").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap().to_string();
         Environment::new()
             .set_max_dbs(10)

@@ -261,7 +261,7 @@ mod test {
         onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
     };
     use rand::{rngs::StdRng, SeedableRng};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     const TEST_SUBADDRESS: u64 = 10;
 
@@ -326,8 +326,7 @@ mod test {
             .collect();
 
         // The instance to test.
-        let db_tmp =
-            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for utxo store db");
         let db_path = db_tmp
             .path()
             .to_str()

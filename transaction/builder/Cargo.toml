@@ -35,6 +35,7 @@ mc-transaction-extra = { path = "../../transaction/extra" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial" }
+mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 
