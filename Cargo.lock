@@ -1229,7 +1229,7 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek"
 version = "2.0.0-pre.0"
-source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=bf7aacdc4bfe74ca3923f52c2335ce123be466b3#bf7aacdc4bfe74ca3923f52c2335ce123be466b3"
+source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=64b26ad07448637d0116951e70dcffcbd5816e3d#64b26ad07448637d0116951e70dcffcbd5816e3d"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
