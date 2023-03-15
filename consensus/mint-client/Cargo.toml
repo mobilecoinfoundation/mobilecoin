@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-mint-client"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
