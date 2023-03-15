@@ -105,6 +105,7 @@ fn main() {
             "Fog Ingest".to_owned(),
             config.local_node_id.to_string(),
             Some(get_config_json),
+            vec![],
             logger,
         )
         .expect("Failed starting fog-ingest admin server")
