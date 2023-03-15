@@ -2342,6 +2342,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "mc-util-uri",
  "mc-util-zip-exact",
  "mc-watcher-api",
  "pem",
@@ -2439,6 +2440,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-crypto-noise",
  "mc-sgx-compat",
+ "mc-util-serial",
  "serde",
 ]
 
@@ -3106,6 +3108,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
+ "mc-util-serial",
  "sha2 0.10.6",
 ]
 
@@ -3426,6 +3429,7 @@ dependencies = [
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-enclave-api",
  "mc-consensus-api",
  "mc-crypto-keys",
  "mc-fog-enclave-connection",
@@ -4440,6 +4444,8 @@ dependencies = [
  "crc",
  "displaydoc",
  "hex",
+ "mc-attest-enclave-api",
+ "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
  "mc-test-vectors-tx-out-records",
@@ -4451,6 +4457,7 @@ dependencies = [
  "mc-watcher-api",
  "prost",
  "serde",
+ "yare",
 ]
 
 [[package]]
@@ -4465,11 +4472,17 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "4.0.2"
 dependencies = [
+ "aes-gcm",
+ "futures",
  "grpcio",
+ "mc-attest-ake",
+ "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-types",
@@ -4478,7 +4491,10 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-telemetry",
+ "mc-util-uri",
  "retry",
+ "sha2 0.10.6",
+ "tokio",
 ]
 
 [[package]]
@@ -4491,6 +4507,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-verifier",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-fog-ocall-oram-storage-edl",
@@ -4523,7 +4540,9 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
+ "mc-crypto-ake-enclave",
  "mc-crypto-keys",
+ "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
  "mc-fog-types",
  "mc-sgx-compat",
@@ -4545,7 +4564,10 @@ dependencies = [
 name = "mc-fog-view-enclave-impl"
 version = "4.0.2"
 dependencies = [
+ "aes-gcm",
  "aligned-cmov",
+ "itertools",
+ "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
@@ -4561,6 +4583,7 @@ dependencies = [
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-util-serial",
+ "static_assertions",
 ]
 
 [[package]]
@@ -4626,9 +4649,13 @@ dependencies = [
  "displaydoc",
  "futures",
  "grpcio",
+ "hex",
+ "itertools",
  "lazy_static",
+ "mc-api",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
  "mc-blockchain-types",
@@ -4647,6 +4674,7 @@ dependencies = [
  "mc-fog-view-enclave-api",
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
+ "mc-fog-view-server-test-utils",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-util-cli",
@@ -4666,6 +4694,35 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
+ "tempdir",
+ "yare",
+]
+
+[[package]]
+name = "mc-fog-view-server-test-utils"
+version = "2.0.0"
+dependencies = [
+ "grpcio",
+ "mc-attest-net",
+ "mc-attest-verifier",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-fog-api",
+ "mc-fog-recovery-db-iface",
+ "mc-fog-sql-recovery-db",
+ "mc-fog-test-infra",
+ "mc-fog-types",
+ "mc-fog-uri",
+ "mc-fog-view-connection",
+ "mc-fog-view-enclave",
+ "mc-fog-view-enclave-measurement",
+ "mc-fog-view-protocol",
+ "mc-fog-view-server",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "portpicker",
 ]
 
 [[package]]
@@ -8915,6 +8972,26 @@ name = "yansi"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"
+
+[[package]]
+name = "yare"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df119f412cd2150ab3e88ebee015a615b00140ff81acd07746262df4a4678c47"
+dependencies = [
+ "yare-macro",
+]
+
+[[package]]
+name = "yare-macro"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9467ac0aa6668b663fa80addde47e40ac364dc9d9a243b4df26ba647e4605633"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "yasna"
