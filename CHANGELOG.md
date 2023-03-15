@@ -256,6 +256,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#2779]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2779
 [#2776]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2776
 [#2777]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2777
+[#2575]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2575
 [#2787]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2787
 [#2173]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2173
 [#2346]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2346
