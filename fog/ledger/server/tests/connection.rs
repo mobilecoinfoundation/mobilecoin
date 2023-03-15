@@ -16,8 +16,7 @@ use mc_common::{
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
-    Error, FogMerkleProofGrpcClient, 
-    FogUntrustedLedgerGrpcClient, OutputResultExtension,
+    Error, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
