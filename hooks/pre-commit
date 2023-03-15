@@ -155,11 +155,9 @@ for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx
 do
 	if [[ ${file: -3} == ".rs" ]]; then
 	    FIRST_LINE=$(head -n 1 ${file})
-	    if ! [[ "${FIRST_LINE}" =~ "// Copyright (c)" ]]
-	    then
+	    if ! [[ "${FIRST_LINE}" =~ "// Copyright (c)" ]]; then
 	        missing_copyright="$file\n$missing_copyright"
-	    elif ! [[ "${FIRST_LINE}" == "${COPYRIGHT_LINE}" ]]
-	    then
+	    elif [[ "${FIRST_LINE}" != "${COPYRIGHT_LINE}" ]]; then
 	        wrong_copyright="$file\n$wrong_copyright"
 	    fi
 	fi
