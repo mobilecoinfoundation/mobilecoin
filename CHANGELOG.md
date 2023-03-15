@@ -10,7 +10,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Added
 
-- `mobilecoind` now supports generating SCI transactions ([#3212], [#3232], [#3214])
+- `mobilecoind` now supports generating SCI transactions ([#3212], [#3214], [#3232])
+- `mobilecoind-dev-faucet --activate` now auto-activates the faucet on startup ([#3062])
+- `mc-transaction-signer` crate to define types for view-only accounts and offline signing ([#2926])
 
 ### Changed
 
@@ -24,13 +26,14 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Fog view will no longer claim it's ready before ORAM is loaded ([#3149])
 
 [#3212]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3212
-[#3232]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3232
 [#3214]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3214
+[#3232]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3232
+[#3062]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3062
+[#2926]: https://github.com/mobilecoinfoundation/mobilecoin/pull/2926
 [#3036]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3036
 [#3211]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3211
 [#3092]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3092
 [#3107]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3107
-[#3149]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3149
 
 ## [4.0.2]
 
@@ -119,7 +122,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `pem` from 1.0.2 to 1.1.0 ([#2262])
 - Bump `percent-encoding` from 2.1.0 to 2.2.0 ([#2499])
 - Bump `pkg-config` from 0.3.25 to 0.3.26 ([#2774], [#2778], [#2779], [#2776], [#2777])
-- Bump `primitive-types` from 0.11.1 to 0.12.1 ([#2575][#2787])
+- Bump `primitive-types` from 0.11.1 to 0.12.1 ([#2575], [#2787])
 - Bump `proc-macro2` from 1.0.39 to 1.0.47 ([#2173], [#2346], [#2633], [#2723])
 - Bump `prometheus` from 0.13.1 to 0.13.3 ([#2498], [#2758])
 - Bump `prost` from 0.11.0 to 0.11.2 ([#2051], [#2048], [#2049], [#2047], [#2050], [#2320], [#2824], [#2818], [#2819], [#2820])
