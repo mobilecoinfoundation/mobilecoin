@@ -89,6 +89,9 @@ impl Ord for U64Ratio {
         // a/b > c/d
         // iff
         // a*d > c*b
+        //
+        // Everything has been extended to a u128 to prevent the possibility of
+        // overflow.
         (self.num * other.denom).cmp(&(other.num * self.denom))
     }
 }
