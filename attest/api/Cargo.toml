@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-api"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 description = "gRPC APIs for encrypted communications with an enclave"
 edition = "2021"
