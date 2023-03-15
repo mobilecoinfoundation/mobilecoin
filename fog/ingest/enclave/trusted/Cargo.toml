@@ -73,7 +73,8 @@ bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.
 cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "7c1804bf4f95ef84a7a53be93552ddf1708135bb" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "64b26ad07448637d0116951e70dcffcbd5816e3d" }
+# TODO: Once this fork's branch is merged, point to the main repo's main branch commit.
+ed25519-dalek = { git = "https://github.com/semenov-vladyslav/ed25519-dalek.git", branch = "serde-no_std" }
 
 # Our patches for newer bindgen, no-std
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
