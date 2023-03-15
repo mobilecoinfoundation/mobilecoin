@@ -1730,7 +1730,7 @@ dependencies = [
  "atomic-polyfill",
  "hash32",
  "rustc_version",
- "spin 0.9.5",
+ "spin 0.9.6",
  "stable_deref_trait",
 ]
 
@@ -2236,7 +2236,7 @@ dependencies = [
  "mbedtls-sys-auto",
  "rs-libc",
  "serde",
- "spin 0.9.5",
+ "spin 0.9.6",
  "yasna",
 ]
 
@@ -2284,7 +2284,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -2665,7 +2664,6 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.10.6",
- "tempdir",
 ]
 
 [[package]]
@@ -2912,7 +2910,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -3006,7 +3004,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -3244,7 +3242,7 @@ dependencies = [
  "signature",
  "static_assertions",
  "subtle",
- "tempdir",
+ "tempfile",
  "x25519-dalek",
  "zeroize",
 ]
@@ -3341,7 +3339,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -3368,7 +3365,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -3545,7 +3541,6 @@ dependencies = [
  "rand 0.8.5",
  "retry",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -3720,7 +3715,6 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "tempdir",
  "url",
 ]
 
@@ -3745,7 +3739,7 @@ dependencies = [
  "mc-watcher",
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -3929,7 +3923,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -3975,7 +3969,7 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "retry",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -4057,7 +4051,6 @@ dependencies = [
  "retry",
  "rocket",
  "serde",
- "tempdir",
  "url",
 ]
 
@@ -4193,7 +4186,6 @@ dependencies = [
  "serde",
  "serde_json",
  "signature",
- "tempdir",
  "x509-signature",
  "zeroize",
 ]
@@ -4359,7 +4351,6 @@ dependencies = [
  "rand_core 0.6.4",
  "retry",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4522,7 +4513,6 @@ dependencies = [
  "mc-util-serial",
  "pkg-config",
  "serde",
- "tempdir",
 ]
 
 [[package]]
@@ -4676,7 +4666,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
- "tempdir",
 ]
 
 [[package]]
@@ -4705,7 +4694,7 @@ dependencies = [
  "mockall",
  "prost",
  "rand 0.8.5",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]
@@ -4785,7 +4774,7 @@ dependencies = [
  "reqwest",
  "retry",
  "serde",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -4855,7 +4844,7 @@ dependencies = [
  "reqwest",
  "retry",
  "serde_json",
- "tempdir",
+ "tempfile",
  "tiny-bip39",
 ]
 
@@ -5252,6 +5241,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-u64-ratio",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -5306,7 +5296,6 @@ dependencies = [
  "serde",
  "sha2 0.10.6",
  "subtle",
- "tempdir",
  "zeroize",
 ]
 
@@ -5351,6 +5340,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-u64-ratio",
  "mc-util-vec-map",
  "mc-util-zip-exact",
  "prost",
@@ -5752,6 +5742,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-u64-ratio"
+version = "4.0.2"
+
+[[package]]
 name = "mc-util-uri"
 version = "4.0.2"
 dependencies = [
@@ -5838,7 +5832,7 @@ dependencies = [
  "rayon",
  "serde",
  "serial_test",
- "tempdir",
+ "tempfile",
  "toml 0.7.2",
  "url",
 ]
@@ -6010,7 +6004,7 @@ dependencies = [
  "log",
  "memchr",
  "mime",
- "spin 0.9.5",
+ "spin 0.9.6",
  "tokio",
  "tokio-util 0.6.9",
  "version_check",
@@ -7910,9 +7904,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spin"
-version = "0.9.5"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dccf47db1b41fa1573ed27ccf5e08e3ca771cb994f776668c5ebda893b248fc"
+checksum = "b5d6e0250b93c8427a177b849d144a96d5acc57006149479403d7861ab721e34"
 dependencies = [
  "lock_api",
 ]
