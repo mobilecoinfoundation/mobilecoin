@@ -391,7 +391,7 @@ class FogConformanceTest:
         self.fog_ingest2 = None
         self.fog_view_router = None
         # TODO: Add more fog view instances with sharding.
-        self.fog_view_store = None
+        self.fog_view_stores = None
         self.fog_ledger = None
         self.fog_report = None
         self.multi_balance_checker = None
@@ -478,15 +478,25 @@ class FogConformanceTest:
         )
         self.fog_ingest.start()
 
-        self.fog_view_store = FogViewStore(
+        fog_view_store_1 = FogViewStore(
             name = 'view1',
             client_port = BASE_VIEW_STORE_PORT,
             admin_port = BASE_VIEW_STORE_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
-            sharding_strategy= 'default'
+            sharding_strategy= '0-6'
         )
-        self.fog_view_store.start()
+        fog_view_store_2 = FogViewStore(
+            name = 'view1',
+            client_port = BASE_VIEW_STORE_PORT,
+            admin_port = BASE_VIEW_STORE_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            release = self.release,
+            sharding_strategy= '5-12'
+        )
+        self.fog_view_stores = [fog_view_store_1, fog_view_store_2]
+        for store in self.fog_view_stores:
+            store.start()
 
         self.fog_view_router = FogViewRouter(
             name = 'router1',
@@ -495,7 +505,7 @@ class FogConformanceTest:
             admin_port = BASE_VIEW_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
-            shard_uris = [self.fog_view_store.get_client_listen_uri()],
+            shard_uris = map(lambda x: x.get_client_listen_uri(), self.fog_view_stores)
         )
         self.fog_view_router.start()
 
@@ -911,9 +921,9 @@ class FogConformanceTest:
         #######################################################################
 
         # Restarting the view store should not impact things.
-        print("Restarting fog view store")
-        self.fog_view_store.stop()
-        self.fog_view_store.start()
+        print("Restarting fog view store 1")
+        self.fog_view_stores[0].stop()
+        self.fog_view_stores[0].start()
         time.sleep(10 if self.release else 30)
 
         # We will encounter 0: 0 while we wait for the view server to come up.
@@ -1038,8 +1048,8 @@ class FogConformanceTest:
         if self.fog_view_router:
             self.fog_view_router.stop()
 
-        if self.fog_view_store:
-            self.fog_view_store.stop()
+        for store in self.fog_view_stores:
+            store.stop()
 
         if self.fog_ingest:
             self.fog_ingest.stop()
