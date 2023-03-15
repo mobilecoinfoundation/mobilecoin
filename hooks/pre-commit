@@ -149,30 +149,44 @@ fi
 printf "${PREFIX} Checking copyright statements ... "
 YEAR=$(date +%Y)
 COPYRIGHT_LINE="// Copyright (c) 2018-${YEAR} The MobileCoin Foundation"
-diff=""
+missing_copyright=""
+wrong_copyright=""
 for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx_(tcrypto|urts|types)');
 do
 	if [[ ${file: -3} == ".rs" ]]; then
-		if ! [[ $(head -n 1 ${file}) == "${COPYRIGHT_LINE}" ]]
-		then
-		    diff="$file\n$diff"
-		fi
+	    FIRST_LINE=$(head -n 1 ${file})
+	    if ! [[ "${FIRST_LINE}" =~ "// Copyright (c)" ]]; then
+	        missing_copyright="$file\n$missing_copyright"
+	    elif [[ "${FIRST_LINE}" != "${COPYRIGHT_LINE}" ]]; then
+	        wrong_copyright="$file\n$wrong_copyright"
+	    fi
 	fi
 done
 
 if [[ "${SKIP_RUSTFMT}" == 1 ]]; then
 	printf "${SKIPPED}\n"
-elif [[ -n "$diff" ]]; then
+elif [[ -n "$missing_copyright$wrong_copyright" ]]; then
 	FAILED=1
 	printf "${FAILURE}\n"
-	echo -e "\033[33;1mFiles Needing Copyright:\033[0m"
-	echo -e "$diff" | sort -u
+	if [[ -n "$missing_copyright" ]]; then
+		echo -e "\033[33;1mFiles Needing Copyright:\033[0m"
+		echo -e "$missing_copyright" | sort -u
+	fi
+	if [[ -n "$wrong_copyright" ]]; then
+		echo -e "\033[33;1mFiles Needing Copyright Update:\033[0m"
+		echo -e "$wrong_copyright" | sort -u
+	fi
 	if [[ -n "$(which tty)" ]] && [[ -n "$(tty)" ]]; then
 		exec < /dev/tty
 		echo "Do you want to fix all these files automatically? (y/N) "
 		read YESNO
 		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
-			echo -e "$diff" | sort -u | xargs -n 1 sed -i "1s;^;${COPYRIGHT_LINE}\n\n;"
+			if [[ -n "$missing_copyright" ]]; then
+				echo -e "$missing_copyright" | sort -u | xargs -n 1 sed -i "1s;^;${COPYRIGHT_LINE}\n\n;"
+			fi
+			if [[ -n "$wrong_copyright" ]]; then
+				echo -e "$wrong_copyright" | sort -u | xargs -n 1 sed -i "1s;^.*$;${COPYRIGHT_LINE};"
+			fi
 			echo "You should attempt this commit again to pick up these changes."
 		else
 			echo -e "Add copyright statements to the files."
