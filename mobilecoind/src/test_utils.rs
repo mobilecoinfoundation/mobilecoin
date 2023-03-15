@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Utilities for mobilecoind unit tests
 
@@ -23,7 +23,7 @@ use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, FeeMap, Token};
+use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, FeeMap, Token, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
 use mc_watcher::watcher_db::WatcherDB;
@@ -31,7 +31,7 @@ use std::{
     str::FromStr,
     sync::{Arc, RwLock},
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 pub use mc_blockchain_types::BlockVersion;
 
@@ -70,7 +70,7 @@ pub fn get_test_databases(
 
     // Note that TempDir manages uniqueness by constructing paths
     // like: /tmp/ledger_db.tvF0XHTKsilx
-    let ledger_db_tmp = TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
+    let ledger_db_tmp = TempDir::new().expect("Could not make tempdir for ledger db");
     let ledger_db_path = ledger_db_tmp.path();
     let mut ledger_db = recreate_ledger_db(ledger_db_path);
 
@@ -91,8 +91,7 @@ pub fn get_test_databases(
         .unwrap();
     }
 
-    let mobilecoind_db_tmp =
-        TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+    let mobilecoind_db_tmp = TempDir::new().expect("Could not make tempdir for mobilecoind db");
     let mobilecoind_db_path = mobilecoind_db_tmp.path();
     let mobilecoind_db =
         Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");
@@ -122,6 +121,15 @@ pub fn get_free_port() -> u16 {
     portpicker::pick_unused_port().expect("pick_unused_port")
 }
 
+pub fn get_test_fee_map() -> FeeMap {
+    FeeMap::try_from_iter([
+        (Mob::ID, Mob::MINIMUM_FEE),
+        (TokenId::from(1), 20_480),
+        (TokenId::from(2), 1_024_000),
+    ])
+    .unwrap()
+}
+
 pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     logger: Logger,
     ledger_db: LedgerDB,
@@ -133,10 +141,11 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
+    let fee_map = get_test_fee_map();
+
     let peer1 =
-        MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0, FeeMap::default());
-    let peer2 =
-        MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0, FeeMap::default());
+        MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0, fee_map.clone());
+    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0, fee_map);
 
     let node_ids = vec![
         peer1.uri().host_and_port_responder_id().unwrap(),

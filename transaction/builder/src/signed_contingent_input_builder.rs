@@ -17,9 +17,9 @@ use mc_transaction_core::{
     ring_signature::Scalar,
     tx::{TxIn, TxOut},
     Amount, BlockVersion, InputRules, MaskedAmount, MemoContext, MemoPayload, NewMemoError,
-    RevealedTxOut, TokenId,
+    RevealedTxOut, TokenId, UnmaskedAmount,
 };
-use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber, UnmaskedAmount};
+use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber};
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper utility for creating signed contingent inputs with required outputs,

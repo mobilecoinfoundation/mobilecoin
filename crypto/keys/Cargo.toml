@@ -11,7 +11,7 @@ rust-version = { workspace = true }
 [features]
 alloc = ["base64/alloc", "mc-crypto-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
 serde = ["dep:serde", "ed25519/serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde"]
-prost = ["mc-util-repr-bytes/prost"]
+prost = ["alloc", "mc-util-repr-bytes/prost"]
 default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default"]
 
 [dependencies]
@@ -50,4 +50,4 @@ pem = "1.1"
 rand_hc = "0.3"
 semver = "1.0"
 serde_json = "1.0"
-tempdir = "0.3"
+tempfile = "3.4"

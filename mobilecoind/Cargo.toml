@@ -66,7 +66,7 @@ num_cpus = "1.15"
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"
 rand = "0.8"
-rayon = "1.6"
+rayon = "1.7"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "2.0"
 serde_json = "1.0"
@@ -86,7 +86,7 @@ pem = "1.1"
 portpicker = "0.1.1"
 rand_chacha = "0.3"
 rand_core = "0.6"
-tempdir = "0.3"
+tempfile = "3.4"
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25

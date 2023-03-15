@@ -49,7 +49,7 @@ fn impl_with_logger(item: TokenStream, params: TokenStream2, args: TokenStream2)
 }
 
 #[proc_macro_attribute]
-pub fn async_test_with_logger(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn async_test_with_logger(attrs: TokenStream, item: TokenStream) -> TokenStream {
     let mut original_fn = syn::parse_macro_input!(item as syn::ItemFn);
 
     let orig_ident = original_fn.sig.ident.clone();
@@ -58,8 +58,10 @@ pub fn async_test_with_logger(_attr: TokenStream, item: TokenStream) -> TokenStr
     let new_ident = quote::format_ident!("__wrapped_{}", orig_ident);
     original_fn.sig.ident = new_ident.clone();
 
+    let attrs: TokenStream2 = attrs.into();
+
     let mut new_fn: syn::ItemFn = syn::parse_quote! {
-        #[tokio::test]
+        #[tokio::test(#attrs)]
         async fn #orig_ident() {
             let test_name = format!("{}::{}", module_path!(), #orig_name);
             let logger = mc_common::logger::create_test_logger(test_name);

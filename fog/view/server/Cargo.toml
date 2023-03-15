@@ -62,6 +62,11 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 serde_json = "1.0"
 
 [dev-dependencies]
+pem = "1.1"
+portpicker = "0.1.1"
+rand = "0.8"
+rand_core = "0.6"
+
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }

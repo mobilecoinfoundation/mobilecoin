@@ -433,7 +433,7 @@ mod test {
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     fn setup_test_utxo_store(
         mut rng: &mut (impl CryptoRng + RngCore),
@@ -460,8 +460,7 @@ mod test {
             .collect();
 
         // The instance to test.
-        let db_tmp =
-            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for utxo store db");
         let db_path = db_tmp
             .path()
             .to_str()

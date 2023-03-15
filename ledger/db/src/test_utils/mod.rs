@@ -24,7 +24,7 @@ use mc_transaction_core::{
 use mc_transaction_core_test_utils::{get_outputs, MockFogResolver, NoKeysRingSigner};
 use mc_util_test_helper::{CryptoRng, RngCore};
 use std::{cmp::Ordering, path::Path};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 /// The amount minted by `initialize_ledger`, 1 million milliMOB.
 pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
@@ -254,7 +254,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
 
 /// Creates a LedgerDB instance in a new temporary directory.
 pub fn create_ledger() -> LedgerDB {
-    let temp_dir = TempDir::new("ledger_db").unwrap();
+    let temp_dir = TempDir::new().unwrap();
     create_ledger_in(temp_dir.path())
 }
 

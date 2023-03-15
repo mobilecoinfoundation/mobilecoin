@@ -3,7 +3,7 @@
 use crate::{
     domain_separators::{EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, EXTENDED_MESSAGE_DOMAIN_TAG},
     tx::TxPrefix,
-    BlockVersion, CompressedCommitment, TxSummary,
+    BlockVersion, CompressedCommitment, TxSummary, TxSummaryNew,
 };
 use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};

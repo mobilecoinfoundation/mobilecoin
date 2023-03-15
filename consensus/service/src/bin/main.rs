@@ -167,14 +167,14 @@ mod tests {
         fs::File,
         io::{Read, Write},
     };
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     #[should_panic]
     fn test_missing_origin_dir() {
         // If a origin directory is provided but doesn't exist we should panic
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
             ledger_path.path(),
@@ -185,10 +185,10 @@ mod tests {
     fn test_empty_ledger_dir() {
         // If the ledger directory exists and is empty, the origin files should be
         // copied
-        let origin_block_path = TempDir::new("origin").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
 
         // This will create the ledger path
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let ledger_path = TempDir::new().unwrap();
         assert!(ledger_path.path().exists());
 
         let data_path = origin_block_path.path().join("data.mdb");
@@ -207,8 +207,8 @@ mod tests {
     fn test_new_ledger_dir() {
         // If the ledger directory does not exist, it should be created and the origin
         // files copied
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
 
         // TempDir will create the ledger path, remove it to make sure it gets created
         std::fs::remove_dir(&ledger_path).unwrap();
@@ -229,8 +229,8 @@ mod tests {
     #[test]
     fn test_existing_ledger_data() {
         // If there is already ledger data it should not be overwritten
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
 
         // Create empty files in origin
         let data_path = origin_block_path.path().join("data.mdb");

@@ -13,7 +13,7 @@ spec:
       app: fog-report
       {{- include "fogServices.selectorLabels" . | nindent 6 }}
   endpoints:
-  - port: mgmt
+  - port: mgmt-http
     relabelings:
     - targetLabel: network
       replacement: {{ include "fogServices.mobileCoinNetwork.network" . }}
