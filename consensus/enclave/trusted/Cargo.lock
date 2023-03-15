@@ -1011,7 +1011,6 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "x25519-dalek",
- "zeroize",
 ]
 
 [[package]]
