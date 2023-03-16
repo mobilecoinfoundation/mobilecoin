@@ -73,7 +73,7 @@ jobs:
     - generate-metadata
     runs-on: [self-hosted, Linux, large-cd]
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.21
+      image: mobilecoin/rust-sgx-base:v0.0.23
 
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
@@ -263,7 +263,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
@@ -333,7 +333,7 @@ jobs:
 
     - name: Publish to DockerHub
       id: docker_publish_dockerhub
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}

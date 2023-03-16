@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mc-util-grpc-token-generator"
@@ -14,5 +15,5 @@ mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
 mc-util-parse = { path = "../parse" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 percent-encoding = "2.2.0"

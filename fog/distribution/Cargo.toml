@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "fog-distribution"
@@ -30,14 +31,14 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 lazy_static = "1.4"
 rand = "0.8"
-rayon = "1.5"
+rayon = "1.7"
 retry = "2.0"
-tempfile = "3.3"
+tempfile = "3.4"
 
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
 

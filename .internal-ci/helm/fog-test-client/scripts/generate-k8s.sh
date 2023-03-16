@@ -25,14 +25,14 @@ case ${net} in
         export FOG_VIEW="fog-view://fog.prod.mobilecoinww.com:443"
         export FOG_LEDGER="fog-ledger://fog.prod.mobilecoinww.com:443"
         export MC_PARTNER="mc"
-        export MC_NETWORK="prod"
+        export MC_NETWORK="main"
         ;;
     signal-mainnet)
         export CONSENSUS_VALIDATORS="mc://node1.prod.mobilecoinww.com/,mc://node2.prod.mobilecoinww.com/,mc://node3.prod.mobilecoinww.com/"
         export FOG_VIEW="fog-view://service.fog.mob.production.namda.net:443"
         export FOG_LEDGER="fog-ledger://service.fog.mob.production.namda.net:443"
         export MC_PARTNER="signal"
-        export MC_NETWORK="prod"
+        export MC_NETWORK="main"
         export CLIENT_AUTH_TOKEN_SECRET="${CLIENT_AUTH_TOKEN_SECRET}"
         ;;
     *)
@@ -55,6 +55,7 @@ kubectl create configmap fog-test-client -o yaml --dry-run=client \
     --from-literal=FOG_VIEW="${FOG_VIEW}" \
     --from-literal=FOG_LEDGER="${FOG_LEDGER}" \
     --from-literal=CONSENSUS_VALIDATORS="${CONSENSUS_VALIDATORS}" \
+    --from-literal=CONSENSUS_WAIT="20" \
     | grep -v creationTimestamp > "${net_path}/k8s/fog-test-client-configMap.yaml"
 
 kubectl create secret generic fog-test-client-keys -o yaml --dry-run=client \

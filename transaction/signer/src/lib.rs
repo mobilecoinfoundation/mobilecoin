@@ -10,7 +10,7 @@ use clap::Parser;
 use log::debug;
 
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_extra::{TxSummaryUnblindingData, UnmaskedAmount};
+use mc_transaction_extra::TxSummaryUnblindingData;
 use rand_core::{CryptoRng, OsRng, RngCore};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -22,7 +22,7 @@ use mc_transaction_core::{
         SigningData,
     },
     tx::Tx,
-    Amount, TokenId, TxSummary,
+    Amount, TokenId, TxSummary, UnmaskedAmount,
 };
 
 pub mod types;

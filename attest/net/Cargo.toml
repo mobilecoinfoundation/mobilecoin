@@ -9,6 +9,7 @@ remote attestation services. As such this only works in untrusted code.
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["network-tests"]

@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [lib]
 name = "mc_fog_report_server"
@@ -29,10 +30,10 @@ mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-uri = { path = "../../../util/uri" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 lazy_static = "1.4"
 pem = "1.1"
 prost = "0.11"

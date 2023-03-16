@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 default-run = "stub"
+rust-version = { workspace = true }
 
 [lib]
 name = "fog_stub_server"
@@ -29,8 +30,8 @@ mc-fog-report-server = { path = "../../fog/report/server" }
 mc-fog-report-types = { path = "../../fog/report/types" }
 
 # third-party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 serde = { version = "1.0", features = ["derive"] }

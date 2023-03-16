@@ -27,7 +27,7 @@ pub use memo::{
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
 pub use signed_contingent_input::{
-    SignedContingentInput, SignedContingentInputAmounts, SignedContingentInputError, UnmaskedAmount,
+    SignedContingentInput, SignedContingentInputAmounts, SignedContingentInputError,
 };
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;

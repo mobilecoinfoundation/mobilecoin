@@ -1,0 +1,23 @@
+[package]
+name = "mc-attest-verifier-config"
+version = "4.0.2"
+authors = ["MobileCoin"]
+edition = "2021"
+description = "A JSON schema for basic attestation configs"
+readme = "README.md"
+
+[dependencies]
+mc-attest-core = { path = "../../core" }
+mc-attest-verifier = { path = ".." }
+mc-common = { path = "../../../common" }
+
+displaydoc = "0.2"
+hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
+serde = { version = "1.0", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["std"] }
+mc-util-logger-macros = { path = "../../../util/logger-macros" }
+
+hex-literal = "0.3.4"

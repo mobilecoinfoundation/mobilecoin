@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 # The migration_support feature exposes some internals that should only be used by the `mc-ledger-migration` tool.

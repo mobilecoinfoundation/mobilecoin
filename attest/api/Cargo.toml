@@ -8,6 +8,7 @@ keywords = ["SIGMA", "Cryptography", "Key Exchange", "Diffie-Hellman", "SGX", "A
 license = "Apache-2.0"
 links = "mc-attest-api"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
@@ -24,5 +25,5 @@ mc-crypto-noise = { path = "../../crypto/noise" }
 aead = "0.5"
 digest = "0.10"
 futures = "0.3"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 protobuf = "2.27.1"

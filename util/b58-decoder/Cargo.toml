@@ -4,6 +4,7 @@ version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mc-util-b58-decoder"
@@ -12,5 +13,5 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-api = { path = "../../api" }
 
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 hex = "0.4"

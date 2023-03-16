@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [lib]
 path = "src/lib.rs"
@@ -35,7 +36,7 @@ mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
 base64 = "0.21"
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
 pem = "1.1"
@@ -52,4 +53,4 @@ x509-signature = "0.5"
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-tempfile = "3.2"
+tempfile = "3.4"

@@ -6,6 +6,7 @@ description = "A trait for constructing an object from a random number generator
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 rand_core = { version = "0.6", default_features = false }

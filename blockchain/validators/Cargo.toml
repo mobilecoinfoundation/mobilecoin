@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # MobileCoin dependencies
@@ -17,11 +18,11 @@ hex = "0.4"
 pem = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.5"
+toml = "0.7"
 
 [dev-dependencies]
 mc-blockchain-test-utils = { path = "../test-utils" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-tempfile = "3.3"
+tempfile = "3.4"

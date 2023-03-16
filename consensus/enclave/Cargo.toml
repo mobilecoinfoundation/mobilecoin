@@ -6,6 +6,7 @@ edition = "2021"
 description = "MobileCoin Consensus Enclave - Application Code"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }

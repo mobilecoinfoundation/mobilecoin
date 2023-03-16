@@ -37,10 +37,10 @@ impl Config {
     /// Load the config as TOML or JSON from the given file path.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ParseError> {
         let path = path.as_ref();
-        let bytes = fs::read(path)?;
+        let contents = String::from_utf8(fs::read(path)?)?;
         let mut config: Config = match path.extension().and_then(OsStr::to_str) {
-            Some("toml") => Ok(toml::from_slice(&bytes)?),
-            Some("json") => Ok(serde_json::from_slice(&bytes)?),
+            Some("toml") => Ok(toml::from_str(&contents)?),
+            Some("json") => Ok(serde_json::from_str(&contents)?),
             _ => Err(ParseError::UnrecognizedExtension(path.into())),
         }?;
         config.base_path = path.parent().map(Into::into);

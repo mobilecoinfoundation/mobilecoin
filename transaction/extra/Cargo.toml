@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # External dependencies
@@ -21,6 +22,7 @@ zeroize = "1"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
+mc-core = { path = "../../core" }
 mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }

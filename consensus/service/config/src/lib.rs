@@ -125,6 +125,17 @@ pub struct Config {
     /// The configured block version
     #[clap(long, default_value = "0", value_parser = parse_block_version, env = "MC_BLOCK_VERSION")]
     pub block_version: BlockVersion,
+
+    /// Maximum number of client session tracking structures to retain in
+    /// a least-recently-used cache.
+    ///
+    /// MAX_CLIENT_SESSIONS in crypto/ake/enclave/src/lib.rs controls what is,
+    /// effectively, the same session-tracking data on the unsecure side that
+    /// this variable controls in the enclave.
+    /// If MAX_CLIENT_SESSIONS changes, please change the default on this
+    /// config setting to match.
+    #[clap(long, default_value = "10000", env = "MC_CLIENT_TRACKING_CAPACITY")]
+    pub client_tracking_capacity: usize,
 }
 
 impl Config {
@@ -212,6 +223,7 @@ mod tests {
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
             block_version: BlockVersion::ZERO,
+            client_tracking_capacity: 4096,
         };
 
         assert_eq!(
@@ -280,6 +292,7 @@ mod tests {
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
             block_version: BlockVersion::ZERO,
+            client_tracking_capacity: 4096,
         };
 
         assert_eq!(

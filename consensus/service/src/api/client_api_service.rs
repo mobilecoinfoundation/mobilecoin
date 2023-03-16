@@ -12,7 +12,8 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
-use mc_common::logger::Logger;
+use mc_attest_enclave_api::ClientSession;
+use mc_common::{logger::Logger, LruCache};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -26,11 +27,15 @@ use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.
 const PENDING_LIMIT: i64 = 500;
+
+/// Data retained on a session with a client.
+#[derive(Clone, Debug)]
+pub struct ClientSessionTracking {/* stub - todo: track failed TX proposals */}
 
 #[derive(Clone)]
 pub struct ClientApiService {
@@ -45,6 +50,9 @@ pub struct ClientApiService {
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
+    /// Information kept regarding sessions between clients and consensus
+    /// so that we can drop bad sessions.
+    tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
 }
 
 impl ClientApiService {
@@ -58,6 +66,7 @@ impl ClientApiService {
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
+        tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
     ) -> Self {
         Self {
             config,
@@ -69,6 +78,7 @@ impl ClientApiService {
             is_serving_fn,
             authenticator,
             logger,
+            tracked_sessions,
         }
     }
 
@@ -208,6 +218,16 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        {
+            let session = ClientSession::from(msg.channel_id.clone());
+            let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
+            if let Some(_session_info) = tracker.get(&session) {
+                // TODO: Update fields
+            } else {
+                // TODO: Populate new session metadata
+                tracker.put(session, ClientSessionTracking {});
+            }
+        }
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
             return send_result(ctx, sink, Err(err), &self.logger);
         }
@@ -355,7 +375,7 @@ mod client_api_tests {
     use mc_common::{
         logger::{test_with_logger, Logger},
         time::SystemTimeProvider,
-        NodeID, ResponderId,
+        LruCache, NodeID, ResponderId,
     };
     use mc_consensus_api::{
         consensus_client::MintValidationResultCode, consensus_client_grpc,
@@ -485,6 +505,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -495,6 +517,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -554,6 +577,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -564,6 +589,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -602,6 +628,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -612,6 +640,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -681,6 +710,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -691,6 +722,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -741,6 +773,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -751,6 +785,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -809,6 +844,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -819,6 +856,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -857,6 +895,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(enclave),
@@ -867,6 +907,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -907,6 +948,8 @@ mod client_api_tests {
 
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(enclave),
@@ -917,6 +960,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -961,6 +1005,8 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(enclave),
@@ -971,6 +1017,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1023,6 +1070,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1033,6 +1082,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1093,6 +1143,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1103,6 +1155,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1144,6 +1197,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { false });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1154,6 +1209,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1197,6 +1253,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1207,6 +1265,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // Set the number of pending values to be above the PENDING_LIMIT
@@ -1259,6 +1318,8 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1269,6 +1330,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1319,6 +1381,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1329,6 +1393,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1399,6 +1464,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1409,6 +1476,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1455,6 +1523,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { false });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1465,6 +1535,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1513,6 +1584,8 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
         let authenticator = AnonymousAuthenticator::default();
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1523,6 +1596,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // Set the number of pending values to be above the PENDING_LIMIT
@@ -1580,6 +1654,8 @@ mod client_api_tests {
             SystemTimeProvider::default(),
         );
 
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
+
         let instance = ClientApiService::new(
             get_config(),
             Arc::new(consensus_enclave),
@@ -1590,6 +1666,7 @@ mod client_api_tests {
             is_serving_fn,
             Arc::new(authenticator),
             logger,
+            tracked_sessions,
         );
 
         // gRPC client and server.
@@ -1605,5 +1682,91 @@ mod client_api_tests {
         }
 
         assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    // Very simple test of the session-tracking feature
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_session_tracking_gets_populated(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        const NUM_BLOCKS: u64 = 5;
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(NUM_BLOCKS));
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+        tx_manager.expect_validate().times(1).return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = AnonymousAuthenticator::default();
+
+        const LRU_CAPACITY: usize = 4096;
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+            // Clone this, maintaining our own Arc reference into the tracked
+            // sessions structure so that we can inspect it later.
+            tracked_sessions.clone(),
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
+        {
+            // Make sure there are no tracked sessions right up until we
+            // actually propose a tx.
+            let tracker = tracked_sessions
+                .lock()
+                .expect("Attempt to lock session-tracking mutex failed.");
+            assert!(tracker.is_empty());
+        }
+
+        let propose_tx_response = client
+            .client_tx_propose(&message)
+            .expect("Client tx propose error");
+        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+        assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
+
+        let tracker = tracked_sessions
+            .lock()
+            .expect("Attempt to lock session-tracking mutex failed.");
+        assert_eq!(tracker.len(), 1);
     }
 }

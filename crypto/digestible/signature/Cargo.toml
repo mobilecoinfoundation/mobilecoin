@@ -6,6 +6,7 @@ edition = "2021"
 description = "Digestible Signatures"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 alloc = ["mc-crypto-digestible/alloc"]

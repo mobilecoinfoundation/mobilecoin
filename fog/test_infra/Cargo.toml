@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 # This is used by fog-conformance-testing
 [[bin]]
@@ -42,7 +43,7 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.1", features = ["derive", "env"] }
 digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"

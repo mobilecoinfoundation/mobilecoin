@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
@@ -25,7 +26,7 @@ mc-fog-uri = { path = "../../uri" }
 
 # third-party
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 protobuf = "2.27.1"
 retry = "2.0"
 

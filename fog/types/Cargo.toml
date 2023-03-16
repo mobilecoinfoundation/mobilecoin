@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
@@ -16,7 +17,7 @@ mc-watcher-api = { path = "../../watcher/api" }
 mc-fog-kex-rng = { path = "../kex_rng" }
 
 # third-party
-crc = { version = "3.0.0", default-features = false }
+crc = { version = "3.0.1", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

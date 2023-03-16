@@ -6,6 +6,7 @@ description = "Verification of X509 certificate chains"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dev-dependencies]
 mc-crypto-x509-test-vectors = { path = "../test-vectors" }

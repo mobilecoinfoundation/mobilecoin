@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 test_utils = []
@@ -29,7 +30,7 @@ mc-util-uri = { path = "../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.12.0"
+grpcio = "0.12.1"
 mockall = "0.11.3"
 protobuf = "2.27.1"
 retry = "2.0"
