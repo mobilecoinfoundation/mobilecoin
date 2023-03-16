@@ -97,22 +97,16 @@ impl MemoBuilder for DefragmentationMemoBuilder {
             return Err(NewMemoError::MixedTokenIds);
         }
 
-        match DefragmentationMemo::new(
+        let memo = DefragmentationMemo::new(
             self.fee.value,
             self.fee
                 .value
                 .checked_add(amount.value)
                 .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?,
             self.defrag_id.unwrap_or(0),
-        ) {
-            Ok(memo) => {
-                self.wrote_main_memo = true;
-                Ok(memo.into())
-            }
-            Err(err) => match err {
-                DefragmentationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
-            },
-        }
+        )?;
+        self.wrote_main_memo = true;
+        Ok(memo.into())
     }
 
     /// Build the memo for the change output (zero amount)
