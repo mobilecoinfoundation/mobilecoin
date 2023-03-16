@@ -65,6 +65,7 @@ fn main() {
             "Fog Test Client".to_owned(),
             "".to_string(),
             Some(get_config_json),
+            vec![],
             logger.clone(),
         )
         .expect("Failed starting admin server")
