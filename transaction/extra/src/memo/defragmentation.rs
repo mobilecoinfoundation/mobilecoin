@@ -141,3 +141,61 @@ pub enum DefragmentationMemoError {
 }
 
 impl_memo_type_conversions! { DefragmentationMemo }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const MAX_FEE: u64 = 0x00FFFFFF_FFFFFFFF;
+
+    #[test]
+    fn getters_and_setters() {
+        let mut memo = DefragmentationMemo::new(48237, 9001, 3405697037).unwrap();
+
+        assert_eq!(48237, memo.get_fee());
+        assert_eq!(9001, memo.get_total_outlay());
+        assert_eq!(3405697037, memo.get_defrag_id());
+
+        memo.set_fee(73284).unwrap();
+        memo.set_total_outlay(8999);
+        memo.set_defrag_id(10);
+
+        assert_eq!(73284, memo.get_fee());
+        assert_eq!(8999, memo.get_total_outlay());
+        assert_eq!(10, memo.get_defrag_id());
+    }
+
+    #[test]
+    fn max_fee_succeeds() {
+        let memo = DefragmentationMemo::new(MAX_FEE, 0, 0).unwrap();
+        assert_eq!(MAX_FEE, memo.get_fee());
+    }
+
+    #[test]
+    fn exceeding_max_fee_fails() {
+        let mut memo = DefragmentationMemo::new(0, 0u64, 0u64).unwrap();
+        assert_eq!(
+            memo.set_fee(MAX_FEE + 1),
+            Err(DefragmentationMemoError::FeeTooLarge)
+        );
+    }
+
+    #[test]
+    fn new_propagates_error() {
+        assert_eq!(
+            DefragmentationMemo::new(MAX_FEE + 1, 0u64, 0u64),
+            Err(DefragmentationMemoError::FeeTooLarge)
+        );
+    }
+
+    #[test]
+    fn serialization() {
+        let memo = DefragmentationMemo::new(2525, 36, 80).unwrap();
+
+        let memo_bytes: [u8; DefragmentationMemo::MEMO_DATA_LEN] = memo.clone().into();
+        let deserialized_memo = DefragmentationMemo::from(&memo_bytes);
+
+        assert_eq!(memo, deserialized_memo);
+    }
+}
+
