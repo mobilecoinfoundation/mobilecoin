@@ -371,11 +371,14 @@ async fn smoke_test() {
     log::info!(logger, "test");
     // Three shards, three stores each, correct config, each stores three blocks,
     // each has three users with three keys each
+    let num_shards = 3;
+    let stores_per_shard = 3;
+    let blocks_per_shard = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
     let mut shards_config = vec![];
-    for i in 0..3 {
+    for i in 0..num_shards {
         let mut stores_config = vec![];
-        for _ in 0..3 {
+        for _ in 0..stores_per_shard {
             let store = StoreConfig {
                 address: free_sockaddr(),
                 block_range: None,
@@ -385,7 +388,8 @@ async fn smoke_test() {
         }
         let shard = ShardConfig {
             address: free_sockaddr(),
-            block_range: BlockRange::new((i * 3) + 1, ((i + 1) * 3) + 1),
+            // the 1-block offset is because block 0 cannot contain key images
+            block_range: BlockRange::new_from_length((i * blocks_per_shard) + 1, blocks_per_shard),
             stores: stores_config,
         };
         shards_config.push(shard);
@@ -399,12 +403,15 @@ async fn smoke_test() {
 
     let mut blocks_config = vec![];
     let mut key_index = 0;
-    for _ in 1..10 {
+    let num_blocks = blocks_per_shard * num_shards;
+    let users_per_block = 3;
+    let keys_per_user = 3;
+    for _ in 0..num_blocks {
         let mut block = HashMap::new();
-        for _ in 0..3 {
+        for _ in 0..users_per_block {
             let account = AccountKey::random_with_fog(&mut rng);
             let mut keys = vec![];
-            for _ in 0..3 {
+            for _ in 0..keys_per_user {
                 keys.push(KeyImage::from(key_index));
                 key_index += 1;
             }
@@ -418,6 +425,7 @@ async fn smoke_test() {
     let mut test_environment = create_env(config, blocks_config, grpc_env, logger.clone());
 
     // Check that we can get all the key images from each shard
+    let keys_per_block = users_per_block * keys_per_user;
     for i in 0..key_index {
         let key = KeyImage::from(i);
         let response = test_environment
@@ -425,8 +433,12 @@ async fn smoke_test() {
             .check_key_images(&[key])
             .await
             .expect("check_key_images failed");
+        assert_eq!(response.results.len(), 1);
         assert_eq!(response.results[0].key_image, key);
-        assert_eq!(response.results[0].status(), Ok(Some((i / 9) + 1)));
+        assert_eq!(
+            response.results[0].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
         assert_eq!(
             response.results[0].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
@@ -440,10 +452,14 @@ async fn smoke_test() {
         .check_key_images(&keys)
         .await
         .expect("check_key_images failed");
+    assert_eq!(response.results.len(), key_index as usize);
     for i in 0..key_index {
         let key = KeyImage::from(i);
         assert_eq!(response.results[i as usize].key_image, key);
-        assert_eq!(response.results[i as usize].status(), Ok(Some((i / 9) + 1)));
+        assert_eq!(
+            response.results[i as usize].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
         assert_eq!(
             response.results[i as usize].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
@@ -457,6 +473,7 @@ async fn smoke_test() {
         .check_key_images(&[key])
         .await
         .expect("check_key_images failed");
+    assert_eq!(response.results.len(), 1);
     assert_eq!(response.results[0].key_image, key);
     assert_eq!(response.results[0].status(), Ok(None)); // Not spent
     assert_eq!(
@@ -472,11 +489,14 @@ async fn overlapping_stores() {
     // Three shards, three stores each, correct config, each stores three blocks,
     // each has three users with three keys each - but the blocks overlap (so
     // total of 5 blocks)
+    let num_shards = 3;
+    let stores_per_shard = 3;
+    let blocks_per_shard = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
     let mut shards_config = vec![];
-    for i in 0..3 {
+    for i in 0..num_shards {
         let mut stores_config = vec![];
-        for _ in 0..3 {
+        for _ in 0..stores_per_shard {
             let store = StoreConfig {
                 address: free_sockaddr(),
                 block_range: None,
@@ -486,7 +506,7 @@ async fn overlapping_stores() {
         }
         let shard = ShardConfig {
             address: free_sockaddr(),
-            block_range: BlockRange::new(i + 1, i + 4),
+            block_range: BlockRange::new_from_length(i + 1, blocks_per_shard),
             stores: stores_config,
         };
         shards_config.push(shard);
@@ -500,12 +520,15 @@ async fn overlapping_stores() {
 
     let mut blocks_config = vec![];
     let mut key_index = 0;
-    for _ in 1..5 {
+    let num_blocks = 5;
+    let users_per_block = 3;
+    let keys_per_user = 3;
+    for _ in 0..num_blocks {
         let mut block = HashMap::new();
-        for _ in 0..3 {
+        for _ in 0..users_per_block {
             let account = AccountKey::random_with_fog(&mut rng);
             let mut keys = vec![];
-            for _ in 0..3 {
+            for _ in 0..keys_per_user {
                 keys.push(KeyImage::from(key_index));
                 key_index += 1;
             }
@@ -519,6 +542,7 @@ async fn overlapping_stores() {
     let mut test_environment = create_env(config, blocks_config, grpc_env, logger.clone());
 
     // Check that we can get all the key images from each shard
+    let keys_per_block = users_per_block * keys_per_user;
     for i in 0..key_index {
         let key = KeyImage::from(i);
         let response = test_environment
@@ -526,8 +550,12 @@ async fn overlapping_stores() {
             .check_key_images(&[key])
             .await
             .expect("check_key_images failed");
+        assert_eq!(response.results.len(), 1);
         assert_eq!(response.results[0].key_image, key);
-        assert_eq!(response.results[0].status(), Ok(Some((i / 9) + 1)));
+        assert_eq!(
+            response.results[0].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
         assert_eq!(
             response.results[0].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
@@ -541,10 +569,14 @@ async fn overlapping_stores() {
         .check_key_images(&keys)
         .await
         .expect("check_key_images failed");
+    assert_eq!(response.results.len(), key_index as usize);
     for i in 0..key_index {
         let key = KeyImage::from(i);
         assert_eq!(response.results[i as usize].key_image, key);
-        assert_eq!(response.results[i as usize].status(), Ok(Some((i / 9) + 1)));
+        assert_eq!(
+            response.results[i as usize].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
         assert_eq!(
             response.results[i as usize].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
@@ -558,6 +590,7 @@ async fn overlapping_stores() {
         .check_key_images(&[key])
         .await
         .expect("check_key_images failed");
+    assert_eq!(response.results.len(), 1);
     assert_eq!(response.results[0].key_image, key);
     assert_eq!(response.results[0].status(), Ok(None)); // Not spent
     assert_eq!(
