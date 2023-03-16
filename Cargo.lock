@@ -375,6 +375,9 @@ name = "bitflags"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5dd14596c0e5b954530d0e6f1fd99b89c03e313aa2086e8da4303701a09e1cf"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitvec"
