@@ -26,7 +26,7 @@ pub struct DefragmentationMemoBuilder {
     // Defragmentation transaction fee
     fee: Amount,
     // Defragmentation ID
-    defrag_id: Option<u64>,
+    defrag_id: u64,
     // Tracks whether or not the main defrag memo was already written
     wrote_main_memo: bool,
     // Tracks whether or not the change (0 value) defrag memo was already written
@@ -37,7 +37,7 @@ impl Default for DefragmentationMemoBuilder {
     fn default() -> Self {
         Self {
             fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            defrag_id: None,
+            defrag_id: 0,
             wrote_main_memo: false,
             wrote_decoy_memo: false,
         }
@@ -55,17 +55,10 @@ impl DefragmentationMemoBuilder {
 
     /// Sets the defragmentation ID
     pub fn set_defrag_id(&mut self, value: u64) -> &mut Self {
-        self.defrag_id = Some(value);
+        self.defrag_id = value;
         self
     }
 
-    /// Clears the defragmentation ID
-    /// If the memo is built without a specified defragmentation ID, it　will
-    /// default　to 0.
-    pub fn clear_defrag_id(&mut self) -> &mut Self {
-        self.defrag_id = None;
-        self
-    }
 }
 
 impl MemoBuilder for DefragmentationMemoBuilder {
@@ -103,7 +96,7 @@ impl MemoBuilder for DefragmentationMemoBuilder {
                 .value
                 .checked_add(amount.value)
                 .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?,
-            self.defrag_id.unwrap_or(0),
+            self.defrag_id,
         )?;
         self.wrote_main_memo = true;
         Ok(memo.into())
@@ -129,7 +122,7 @@ impl MemoBuilder for DefragmentationMemoBuilder {
             return Err(NewMemoError::DefragWithChange);
         }
 
-        let memo = DefragmentationMemo::new(0, 0, self.defrag_id.unwrap_or(0))?;
+        let memo = DefragmentationMemo::new(0, 0, self.defrag_id)?;
         self.wrote_main_memo = true;
         Ok(memo.into())
     }
