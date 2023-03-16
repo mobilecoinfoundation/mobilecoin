@@ -66,7 +66,7 @@ impl DefragmentationMemo {
     }
 
     /// Returns the fee recorded in this memo
-    pub fn get_fee(&self) -> u64 {
+    pub fn fee(&self) -> u64 {
         self.fee
     }
 
