@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 alloc = ["base64/alloc", "mc-crypto-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
 serde = ["dep:serde", "ed25519/serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde"]
 prost = ["alloc", "mc-util-repr-bytes/prost"]
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default", "mc-util-serial"]
 
 [dependencies]
 
@@ -30,7 +30,7 @@ mc-crypto-digestible = { path = "../../crypto/digestible", default-features = fa
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
-mc-util-serial = { path = "../../util/serial" }
+mc-util-serial = { path = "../../util/serial", optional = true }
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
