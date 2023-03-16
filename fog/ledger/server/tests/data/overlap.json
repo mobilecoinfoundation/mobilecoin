@@ -1,0 +1,79 @@
+{
+  "router_address": "127.0.0.1:19336",
+  "router_admin_address": "127.0.0.1:21616",
+  "shards": [
+    {
+      "address": "127.0.0.1:22977",
+      "block_range": {
+        "start_block": 1,
+        "end_block": 4
+      },
+      "stores": [
+        {
+          "address": "127.0.0.1:21902",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:19791",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:17895",
+          "block_range": null,
+          "omap_capacity": 1000
+        }
+      ]
+    },
+    {
+      "address": "127.0.0.1:21165",
+      "block_range": {
+        "start_block": 2,
+        "end_block": 5
+      },
+      "stores": [
+        {
+          "address": "127.0.0.1:20836",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:20965",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:18061",
+          "block_range": null,
+          "omap_capacity": 1000
+        }
+      ]
+    },
+    {
+      "address": "127.0.0.1:17297",
+      "block_range": {
+        "start_block": 3,
+        "end_block": 6
+      },
+      "stores": [
+        {
+          "address": "127.0.0.1:22423",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:22547",
+          "block_range": null,
+          "omap_capacity": 1000
+        },
+        {
+          "address": "127.0.0.1:23316",
+          "block_range": null,
+          "omap_capacity": 1000
+        }
+      ]
+    }
+  ],
+  "omap_capacity": 1000
+}
