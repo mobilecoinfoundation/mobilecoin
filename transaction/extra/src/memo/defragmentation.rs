@@ -208,4 +208,3 @@ mod test {
         assert_eq!(memo, deserialized_memo);
     }
 }
-
