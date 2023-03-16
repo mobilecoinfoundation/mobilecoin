@@ -12,10 +12,6 @@ name = "mc_fog_ledger_server"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ledger_server"
-path = "src/bin/main.rs"
-
-[[bin]]
 name = "ledger_router"
 path = "src/bin/router.rs"
 

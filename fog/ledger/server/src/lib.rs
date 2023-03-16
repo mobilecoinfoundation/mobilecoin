@@ -2,9 +2,7 @@
 
 #![allow(clippy::result_large_err)]
 pub use block_service::BlockService;
-pub use config::{
-    LedgerRouterConfig, LedgerStoreConfig, ShardingStrategy,
-};
+pub use config::{LedgerRouterConfig, LedgerStoreConfig, ShardingStrategy};
 pub use key_image_service::KeyImageService;
 pub use key_image_store_server::KeyImageStoreServer;
 pub use merkle_proof_service::MerkleProofService;

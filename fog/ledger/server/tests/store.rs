@@ -22,8 +22,8 @@ use mc_fog_ledger_enclave::{
 };
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{
-    sharding_strategy::EpochShardingStrategy, DbPollSharedState,
-    KeyImageService, KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
+    sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageService,
+    KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};

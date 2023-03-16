@@ -262,7 +262,8 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
-            let response = self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
+            let response =
+                self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
             send_result(ctx, sink, Ok(response), logger)
         });
     }

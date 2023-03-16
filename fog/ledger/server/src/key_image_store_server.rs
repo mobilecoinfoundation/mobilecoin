@@ -21,8 +21,8 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher, DbPollSharedState,
-    sharding_strategy::ShardingStrategy, KeyImageService,
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
 };
 
 pub struct KeyImageStoreServer<E, SS, RC>
