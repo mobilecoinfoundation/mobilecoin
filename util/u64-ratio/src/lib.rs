@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
+#![doc = include_str!("../README.md")]
+#![no_std]
+#![deny(missing_docs)]
+
 use core::cmp::{Ordering, PartialEq, PartialOrd};
 
 /// A simple type which represents a ratio of two u64 numbers.
@@ -68,7 +72,7 @@ impl PartialEq for U64Ratio {
 impl Ord for U64Ratio {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        // Intuitively, to check if two u64 fractions are equal, we want to compare
+        // Intuitively, to compare two u64 fractions, we want to compare
         // a/b and c/d as rational numbers. However, as before, we would like to
         // avoid the use of more complex numeric types.
         //
@@ -85,6 +89,9 @@ impl Ord for U64Ratio {
         // a/b > c/d
         // iff
         // a*d > c*b
+        //
+        // Everything has been extended to a u128 to prevent the possibility of
+        // overflow.
         (self.num * other.denom).cmp(&(other.num * self.denom))
     }
 }

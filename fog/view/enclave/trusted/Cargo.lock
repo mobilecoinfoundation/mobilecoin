@@ -1461,6 +1461,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
+ "mc-util-u64-ratio",
  "mc-util-zip-exact",
  "merlin",
  "prost",
@@ -1548,6 +1549,10 @@ dependencies = [
  "serde",
  "serde_cbor",
 ]
+
+[[package]]
+name = "mc-util-u64-ratio"
+version = "4.0.2"
 
 [[package]]
 name = "mc-util-zip-exact"
