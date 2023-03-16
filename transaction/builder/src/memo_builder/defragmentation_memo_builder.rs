@@ -7,7 +7,7 @@ use super::MemoBuilder;
 use crate::ReservedSubaddresses;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
-use mc_transaction_extra::{DefragmentationMemo, DefragmentationMemoError};
+use mc_transaction_extra::DefragmentationMemo;
 
 /// This memo builder builds the [`DefragmentationMemo`] (0x0003).
 ///

@@ -122,11 +122,6 @@ impl From<&[u8; DefragmentationMemo::MEMO_DATA_LEN]> for DefragmentationMemo {
             total_outlay,
             defrag_id,
         }
-        Self {
-            fee,
-            total_outlay,
-            defrag_id,
-        }
     }
 }
 
@@ -167,7 +162,7 @@ mod test {
     fn getters_and_setters() {
         let mut memo = DefragmentationMemo::new(48237, 9001, 3405697037).unwrap();
 
-        assert_eq!(48237, memo.get_fee());
+        assert_eq!(48237, memo.fee());
         assert_eq!(9001, memo.get_total_outlay());
         assert_eq!(3405697037, memo.get_defrag_id());
 
@@ -175,7 +170,7 @@ mod test {
         memo.set_total_outlay(8999);
         memo.set_defrag_id(10);
 
-        assert_eq!(73284, memo.get_fee());
+        assert_eq!(73284, memo.fee());
         assert_eq!(8999, memo.get_total_outlay());
         assert_eq!(10, memo.get_defrag_id());
     }
@@ -183,7 +178,7 @@ mod test {
     #[test]
     fn max_fee_succeeds() {
         let memo = DefragmentationMemo::new(MAX_FEE, 0, 0).unwrap();
-        assert_eq!(MAX_FEE, memo.get_fee());
+        assert_eq!(MAX_FEE, memo.fee());
     }
 
     #[test]
