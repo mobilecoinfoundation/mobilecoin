@@ -28,7 +28,7 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    net::SocketAddr,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -360,17 +360,43 @@ struct StoreConfig {
 
 type BlockConfig = Vec<HashMap<PublicAddress, Vec<KeyImage>>>;
 
+fn free_sockaddr() -> SocketAddr {
+    let port = portpicker::pick_unused_port().unwrap();
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn smoke_test() {
     let logger = logger::create_test_logger("smoke_test".to_string());
     log::info!(logger, "test");
     // Three shards, three stores each, correct config, each stores three blocks,
     // each has three users with three keys each
-    let env_config_str = include_str!("data/normal.json");
-    let config: TestEnvironmentConfig =
-        serde_json::from_str(env_config_str).expect("Couldn't load config");
-
     let mut rng = RngType::from_seed([0u8; 32]);
+    let mut shards_config = vec![];
+    for i in 0..3 {
+        let mut stores_config = vec![];
+        for _ in 0..3 {
+            let store = StoreConfig {
+                address: free_sockaddr(),
+                block_range: None,
+                omap_capacity: 1000,
+            };
+            stores_config.push(store);
+        }
+        let shard = ShardConfig {
+            address: free_sockaddr(),
+            block_range: BlockRange::new((i * 3) + 1, ((i + 1) * 3) + 1),
+            stores: stores_config,
+        };
+        shards_config.push(shard);
+    }
+    let config = TestEnvironmentConfig {
+        router_address: free_sockaddr(),
+        router_admin_address: free_sockaddr(),
+        shards: shards_config,
+        omap_capacity: 1000,
+    };
+
     let mut blocks_config = vec![];
     let mut key_index = 0;
     for _ in 1..10 {
@@ -446,11 +472,32 @@ async fn overlapping_stores() {
     // Three shards, three stores each, correct config, each stores three blocks,
     // each has three users with three keys each - but the blocks overlap (so
     // total of 5 blocks)
-    let env_config_str = include_str!("data/overlap.json");
-    let config: TestEnvironmentConfig =
-        serde_json::from_str(env_config_str).expect("Couldn't load config");
-
     let mut rng = RngType::from_seed([0u8; 32]);
+    let mut shards_config = vec![];
+    for i in 0..3 {
+        let mut stores_config = vec![];
+        for _ in 0..3 {
+            let store = StoreConfig {
+                address: free_sockaddr(),
+                block_range: None,
+                omap_capacity: 1000,
+            };
+            stores_config.push(store);
+        }
+        let shard = ShardConfig {
+            address: free_sockaddr(),
+            block_range: BlockRange::new(i + 1, i + 4),
+            stores: stores_config,
+        };
+        shards_config.push(shard);
+    }
+    let config = TestEnvironmentConfig {
+        router_address: free_sockaddr(),
+        router_admin_address: free_sockaddr(),
+        shards: shards_config,
+        omap_capacity: 1000,
+    };
+
     let mut blocks_config = vec![];
     let mut key_index = 0;
     for _ in 1..5 {
