@@ -4366,9 +4366,9 @@ pub mod transaction_builder_tests {
             let memo = main_output.e_memo.unwrap().decrypt(&ss);
             match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                 MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.get_defrag_id(), 0u64);
-                    assert_eq!(memo.get_fee(), 3u64);
-                    assert_eq!(memo.get_total_outlay(), 432u64);
+                    assert_eq!(memo.defrag_id(), 0u64);
+                    assert_eq!(memo.fee(), 3u64);
+                    assert_eq!(memo.total_outlay(), 432u64);
                 }
                 _ => {
                     panic!("unexpected memo type")
@@ -4383,9 +4383,9 @@ pub mod transaction_builder_tests {
             let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
             match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                 MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.get_defrag_id(), 0u64);
-                    assert_eq!(memo.get_fee(), 0u64);
-                    assert_eq!(memo.get_total_outlay(), 0u64);
+                    assert_eq!(memo.defrag_id(), 0u64);
+                    assert_eq!(memo.fee(), 0u64);
+                    assert_eq!(memo.total_outlay(), 0u64);
                 }
                 _ => {
                     panic!("unexpected memo type")
@@ -4457,9 +4457,9 @@ pub mod transaction_builder_tests {
             let memo = main_output.e_memo.unwrap().decrypt(&ss);
             match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                 MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.get_defrag_id(), 64u64);
-                    assert_eq!(memo.get_fee(), 3u64);
-                    assert_eq!(memo.get_total_outlay(), 432u64);
+                    assert_eq!(memo.defrag_id(), 64u64);
+                    assert_eq!(memo.fee(), 3u64);
+                    assert_eq!(memo.total_outlay(), 432u64);
                 }
                 _ => {
                     panic!("unexpected memo type")
@@ -4474,9 +4474,9 @@ pub mod transaction_builder_tests {
             let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
             match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                 MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.get_defrag_id(), 64u64);
-                    assert_eq!(memo.get_fee(), 0u64);
-                    assert_eq!(memo.get_total_outlay(), 0u64);
+                    assert_eq!(memo.defrag_id(), 64u64);
+                    assert_eq!(memo.fee(), 0u64);
+                    assert_eq!(memo.total_outlay(), 0u64);
                 }
                 _ => {
                     panic!("unexpected memo type")

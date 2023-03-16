@@ -81,7 +81,7 @@ impl DefragmentationMemo {
     }
 
     /// Returns the total outlay of the defragmentation transaction
-    pub fn get_total_outlay(&self) -> u64 {
+    pub fn total_outlay(&self) -> u64 {
         self.total_outlay
     }
 
@@ -91,7 +91,7 @@ impl DefragmentationMemo {
     }
 
     /// Returns the defragmentation ID
-    pub fn get_defrag_id(&self) -> u64 {
+    pub fn defrag_id(&self) -> u64 {
         self.defrag_id
     }
 
@@ -156,23 +156,23 @@ impl_memo_type_conversions! { DefragmentationMemo }
 mod test {
     use super::*;
 
-    const MAX_FEE: u64 = 0x00FFFFFF_FFFFFFFF;
+    const MAX_FEE: u64 = 0x00FF_FFFF_FFFF_FFFF;
 
     #[test]
     fn getters_and_setters() {
         let mut memo = DefragmentationMemo::new(48237, 9001, 3405697037).unwrap();
 
         assert_eq!(48237, memo.fee());
-        assert_eq!(9001, memo.get_total_outlay());
-        assert_eq!(3405697037, memo.get_defrag_id());
+        assert_eq!(9001, memo.total_outlay());
+        assert_eq!(3405697037, memo.defrag_id());
 
         memo.set_fee(73284).unwrap();
         memo.set_total_outlay(8999);
         memo.set_defrag_id(10);
 
         assert_eq!(73284, memo.fee());
-        assert_eq!(8999, memo.get_total_outlay());
-        assert_eq!(10, memo.get_defrag_id());
+        assert_eq!(8999, memo.total_outlay());
+        assert_eq!(10, memo.defrag_id());
     }
 
     #[test]
