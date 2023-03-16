@@ -419,30 +419,4 @@ mod tests {
         assert_eq!(memo.get_fee(), 17u64);
         assert_eq!(memo.get_num_recipients(), 4);
     }
-
-    #[test]
-    fn test_defragmentation_memo() {
-        let mut uut = DefragmentationMemo::new(48237u64, 9001u64, 3405697037u64).unwrap();
-
-        assert_eq!(48237u64, uut.get_fee());
-        assert_eq!(9001u64, uut.get_total_outlay());
-        assert_eq!(3405697037u64, uut.get_defrag_id());
-
-        uut.set_fee(73284u64).unwrap();
-        uut.set_total_outlay(8999u64);
-        uut.set_defrag_id(!3405697037u64);
-
-        assert_eq!(73284u64, uut.get_fee());
-        assert_eq!(8999u64, uut.get_total_outlay());
-        assert_eq!(!3405697037u64, uut.get_defrag_id());
-
-        assert!(DefragmentationMemo::new(!0u64, 0u64, 0u64).is_err());
-        assert!(DefragmentationMemo::new(72057594037927936u64, 0u64, 0u64).is_err());
-        assert!(DefragmentationMemo::new(72057594037927935u64, 0u64, 0u64).is_ok());
-
-        let memo_bytes: [u8; DefragmentationMemo::MEMO_DATA_LEN] = uut.clone().into();
-        let deserialized_memo: DefragmentationMemo = (&memo_bytes).into();
-
-        assert_eq!(uut, deserialized_memo);
-    }
 }

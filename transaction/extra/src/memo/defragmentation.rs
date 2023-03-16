@@ -7,6 +7,7 @@
 use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;
 use displaydoc::Display;
+use mc_transaction_core::NewMemoError;
 
 /// Memo denoting a defragmentation transaction. This memo contains
 /// the amount and fee of a defragmentation transaction as well as
@@ -134,10 +135,18 @@ impl From<DefragmentationMemo> for [u8; DefragmentationMemo::MEMO_DATA_LEN] {
 }
 
 /// An error that can occur when configuring a defragmentation memo
-#[derive(Display, Debug)]
+#[derive(Display, Debug, PartialEq)]
 pub enum DefragmentationMemoError {
     /// The fee amount is too large to be represented in the DefragmentationMemo
     FeeTooLarge,
+}
+
+impl From<DefragmentationMemoError> for NewMemoError {
+    fn from(src: DefragmentationMemoError) -> Self {
+        match src {
+            DefragmentationMemoError::FeeTooLarge => NewMemoError::LimitsExceeded("fee"),
+        }
+    }
 }
 
 impl_memo_type_conversions! { DefragmentationMemo }
