@@ -58,7 +58,6 @@ impl DefragmentationMemoBuilder {
         self.defrag_id = value;
         self
     }
-
 }
 
 impl MemoBuilder for DefragmentationMemoBuilder {
