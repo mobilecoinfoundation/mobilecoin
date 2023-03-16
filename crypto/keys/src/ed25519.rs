@@ -426,7 +426,7 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 /// An Ed25519 signature.
 #[derive(Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Ed25519Signature(#[serde(with = "BigArray")] SignatureBytes);
+pub struct Ed25519Signature(#[cfg_attr(feature = "serde", serde(with = "BigArray"))] SignatureBytes);
 
 impl Ed25519Signature {
     /// Signature length in bytes.
