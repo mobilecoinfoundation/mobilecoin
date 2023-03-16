@@ -21,8 +21,8 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher, server::DbPollSharedState,
-    sharding_strategy::ShardingStrategy, KeyImageClientListenUri, KeyImageService,
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher, DbPollSharedState,
+    sharding_strategy::ShardingStrategy, KeyImageService,
 };
 
 pub struct KeyImageStoreServer<E, SS, RC>
@@ -103,7 +103,7 @@ where
             .expect("Could not create URI from Responder ID");
 
         let key_image_service = KeyImageService::new(
-            KeyImageClientListenUri::Store(uri),
+            uri,
             ledger,
             watcher,
             enclave.clone(),

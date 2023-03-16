@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{server::DbPollSharedState, KeyImageClientListenUri, SVC_COUNTERS};
+use crate::{DbPollSharedState, SVC_COUNTERS};
 use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
@@ -24,7 +24,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
     /// The ClientListenUri for this Fog Ledger Service.
-    client_listen_uri: KeyImageClientListenUri,
+    client_listen_uri: KeyImageStoreUri,
     ledger: L,
     watcher: WatcherDB,
     enclave: E,
@@ -36,7 +36,7 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
 
 impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     pub fn new(
-        client_listen_uri: KeyImageClientListenUri,
+        client_listen_uri: KeyImageStoreUri,
         ledger: L,
         watcher: WatcherDB,
         enclave: E,
@@ -262,18 +262,8 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
-            if let KeyImageClientListenUri::Store(store_uri) = self.client_listen_uri.clone() {
-                let response = self.process_queries(store_uri, req.queries.into_vec());
-                send_result(ctx, sink, Ok(response), logger)
-            } else {
-                let rpc_permissions_error = rpc_permissions_error(
-                    "multi_key_image_store_query",
-                    "Permission denied: the multi_key_image_store_query is not accessible to clients"
-                        .to_string(),
-                    logger,
-                );
-                send_result(ctx, sink, Err(rpc_permissions_error), logger)
-            }
+            let response = self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
+            send_result(ctx, sink, Ok(response), logger)
         });
     }
 }
