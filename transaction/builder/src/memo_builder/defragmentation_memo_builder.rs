@@ -129,14 +129,8 @@ impl MemoBuilder for DefragmentationMemoBuilder {
             return Err(NewMemoError::DefragWithChange);
         }
 
-        match DefragmentationMemo::new(0, 0, self.defrag_id.unwrap_or(0)) {
-            Ok(memo) => {
-                self.wrote_main_memo = true;
-                Ok(memo.into())
-            }
-            Err(err) => match err {
-                DefragmentationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
-            },
-        }
+        let memo = DefragmentationMemo::new(0, 0, self.defrag_id.unwrap_or(0))?;
+        self.wrote_main_memo = true;
+        Ok(memo.into())
     }
 }
