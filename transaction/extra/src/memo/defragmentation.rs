@@ -108,14 +108,20 @@ impl From<&[u8; DefragmentationMemo::MEMO_DATA_LEN]> for DefragmentationMemo {
     // [15-23): defrag ID
     // [23-64) unused
     fn from(src: &[u8; DefragmentationMemo::MEMO_DATA_LEN]) -> Self {
-        let fee = {
-            let mut fee_bytes = [0u8; 8];
-            fee_bytes[1..].copy_from_slice(&src[..7]);
-            u64::from_be_bytes(fee_bytes)
-        };
-        let total_outlay =
-            u64::from_be_bytes(src[7..15].try_into().expect("BUG! arithmetic error"));
-        let defrag_id = u64::from_be_bytes(src[15..23].try_into().expect("BUG! arithmetic error"));
+        let mut u64_bytes = [0u8; 8];
+        u64_bytes[1..].copy_from_slice(&src[..7]);
+        let fee = u64::from_be_bytes(u64_bytes);
+
+        u64_bytes.copy_from_slice(&src[7..15]);
+        let total_outlay = u64::from_be_bytes(u64_bytes);
+
+        u64_bytes.copy_from_slice(&src[15..23]);
+        let defrag_id = u64::from_be_bytes(u64_bytes);
+        Self {
+            fee,
+            total_outlay,
+            defrag_id,
+        }
         Self {
             fee,
             total_outlay,
