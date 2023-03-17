@@ -2983,6 +2983,7 @@ dependencies = [
  "base64 0.21.0",
  "chrono",
  "clap 4.1.8",
+ "curve25519-dalek",
  "displaydoc",
  "fs_extra",
  "futures",
@@ -3037,6 +3038,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "tempdir",
  "tempfile",
 ]
 
@@ -3249,7 +3251,6 @@ dependencies = [
  "static_assertions",
  "subtle",
  "tempfile",
- "x25519-dalek",
  "zeroize",
 ]
 
