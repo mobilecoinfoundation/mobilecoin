@@ -100,6 +100,8 @@ pub enum NewMemoError {
     MaxFeeExceeded(u64, u64),
     /// Payment request and intent ID both are set
     RequestAndIntentIdSet,
+    /// Defragmentation transaction with non-zero change
+    DefragWithChange,
     /// Other: {0}
     Other(String),
 }
