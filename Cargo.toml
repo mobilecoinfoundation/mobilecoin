@@ -223,7 +223,7 @@ lto = "thin"
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
 # TODO: Once curve25519 resolves https://github.com/dalek-cryptography/curve25519-dalek/issues/515, use external repo
-curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek", branch = "4.0.0-rc.1"}
+curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek", branch = "4.0.0-rc.1" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 # TODO: Once this fork's branch is merged, point to the main repo's main branch commit.
