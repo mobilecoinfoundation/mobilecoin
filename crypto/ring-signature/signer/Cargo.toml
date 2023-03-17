@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -41,4 +41,3 @@ mc-crypto-rand = { path = "../../rand" }
 proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
 rand_hc = "0.3"
-tempdir = "0.3"

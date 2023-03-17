@@ -1,9 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 pub use mc_crypto_ring_signature::{proptest_fixtures::*, CurveScalar, Scalar};
-pub use mc_transaction_types::Amount;
 
-use crate::{tokens::Mob, MaskedAmountV1, Token};
+use crate::{amount::Amount, masked_amount::MaskedAmountV1, TokenId};
 use mc_crypto_keys::RistrettoPublic;
 use proptest::prelude::*;
 
@@ -14,7 +13,7 @@ prop_compose! {
                 (value in 0..=max_value) -> MaskedAmountV1 {
             let amount = Amount {
                 value,
-                token_id: Mob::ID,
+                token_id: TokenId::MOB,
             };
             MaskedAmountV1::new(amount, &shared_secret).unwrap()
     }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-net"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 description = '''
 This crate contains necessary functions and utilities to communicate with

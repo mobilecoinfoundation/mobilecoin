@@ -352,7 +352,7 @@ mod test {
     use mc_blockchain_types::BlockVersion;
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     // Test that encryption happy path works as expected.
     #[test_with_logger]
@@ -360,8 +360,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let account_key = AccountKey::random(&mut rng);
 
-        let mobilecoind_db_tmp =
-            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_tmp = TempDir::new().expect("Could not make tempdir for mobilecoind db");
         let mobilecoind_db_path = mobilecoind_db_tmp
             .path()
             .to_str()

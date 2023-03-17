@@ -77,6 +77,7 @@ fn main() {
             "Fog Ledger".to_owned(),
             config.client_responder_id.to_string(),
             Some(get_config_json),
+            vec![],
             logger,
         )
         .expect("Failed starting admin server")

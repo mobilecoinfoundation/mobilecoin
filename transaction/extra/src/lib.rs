@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Ancillary structures and schema on top of the core Mobilecoin transaction
 //! logic.
@@ -21,13 +21,14 @@ mod unsigned_tx;
 
 pub use memo::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
-    AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DestinationMemo,
-    DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
+    AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DefragmentationMemo,
+    DefragmentationMemoError, DestinationMemo, DestinationMemoError,
+    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
     GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
 pub use signed_contingent_input::{
-    SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
+    SignedContingentInput, SignedContingentInputAmounts, SignedContingentInputError,
 };
 pub use tx_out_confirmation_number::TxOutConfirmationNumber;
 pub use tx_out_gift_code::TxOutGiftCode;

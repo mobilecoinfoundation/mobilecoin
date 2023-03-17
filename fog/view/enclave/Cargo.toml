@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -37,7 +37,6 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 
 [dev-dependencies]
 criterion = "0.4"
-tempdir = "0.3"
 
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-from-random = { path = "../../../util/from-random" }

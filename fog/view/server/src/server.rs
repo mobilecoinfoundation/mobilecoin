@@ -421,6 +421,13 @@ where
     /// Keeps track of which blocks we have fed into the enclave.
     enclave_block_tracker: BlockTracker<SS>,
 
+    /// Flag which the db fetcher sets to indicate when it has exhausted it's
+    /// initial work.
+    db_fetcher_readiness_indicator: ReadinessIndicator,
+
+    /// Flag which we set to indicate when the server as a whole is ready.
+    server_readiness_indicator: ReadinessIndicator,
+
     /// Keeps track how long ago it since we made progress, (or complained about
     /// not making progress) When this gets too distant in the past, we log
     /// a warning
@@ -451,23 +458,29 @@ where
         enclave: E,
         db: DB,
         shared_state: Arc<Mutex<DbPollSharedState>>,
-        readiness_indicator: ReadinessIndicator,
+        server_readiness_indicator: ReadinessIndicator,
         sharding_strategy: SS,
         logger: Logger,
     ) -> Self {
+        let db_fetcher_readiness_indicator = ReadinessIndicator::default();
+
+        let db_fetcher = DbFetcher::new(
+            db.clone(),
+            db_fetcher_readiness_indicator.clone(),
+            sharding_strategy.clone(),
+            config.block_query_batch_size,
+            logger.clone(),
+        );
+
         Self {
             stop_requested,
             enclave,
-            db: db.clone(),
+            db,
             shared_state,
-            db_fetcher: DbFetcher::new(
-                db,
-                readiness_indicator,
-                sharding_strategy.clone(),
-                config.block_query_batch_size,
-                logger.clone(),
-            ),
+            db_fetcher,
             enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
+            db_fetcher_readiness_indicator,
+            server_readiness_indicator,
             last_unblocked_at: Instant::now(),
             logger,
         }
@@ -488,6 +501,16 @@ where
         let fetch_start = std::time::SystemTime::now();
         let fetched_records_list = self.db_fetcher.get_pending_fetched_records();
         let fetch_end = std::time::SystemTime::now();
+
+        // Readiness: If
+        // * db_fetcher reports readiness (at some point, there was no more data to
+        //   load)
+        // * we have no more work to do loading things into the enclave
+        // then at that point we declare the server ready, and there is no code path
+        // on which it becomes unready after that.
+        if fetched_records_list.is_empty() && self.db_fetcher_readiness_indicator.ready() {
+            self.server_readiness_indicator.set_ready()
+        }
 
         for fetched_records in fetched_records_list.into_iter() {
             // Early exit if stop as requested.

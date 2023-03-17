@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-generate-sample-ledger"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -27,4 +27,4 @@ rand = "0.8"
 rand_hc = "0.3"
 
 [dev-dependencies]
-tempfile = "3.3"
+tempfile = "3.4"

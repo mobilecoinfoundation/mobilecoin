@@ -4,7 +4,7 @@ use crate::{
     AdminService, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthService,
 };
 use futures::executor::block_on;
-use grpcio::{Environment, ShutdownFuture};
+use grpcio::{Environment, Service, ShutdownFuture};
 use mc_common::logger::{log, Logger};
 use mc_util_uri::{AdminUri, ConnectionUri};
 use std::sync::Arc;
@@ -22,6 +22,7 @@ impl AdminServer {
         name: String,
         id: String,
         get_config_json: Option<GetConfigJsonFn>,
+        extra_services: Vec<Service>,
         logger: Logger,
     ) -> Result<Self, grpcio::Error> {
         log::info!(
@@ -45,10 +46,13 @@ impl AdminServer {
         let health_service = HealthService::new(None, logger.clone()).into_service();
         let build_info_service = BuildInfoService::new(logger.clone()).into_service();
 
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let mut server_builder = grpcio::ServerBuilder::new(env)
             .register_service(admin_service)
             .register_service(health_service)
             .register_service(build_info_service);
+        for extra_service in extra_services {
+            server_builder = server_builder.register_service(extra_service);
+        }
 
         let mut server = server_builder.build_using_uri(admin_listen_uri, logger.clone())?;
         server.start();

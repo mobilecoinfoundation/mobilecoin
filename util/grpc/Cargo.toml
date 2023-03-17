@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 description = "Runtime gRPC Utilities"
 edition = "2021"
@@ -43,6 +43,6 @@ mc-util-build-grpc = { path = "../build/grpc" }
 
 [dev-dependencies]
 libc = "0.2"
-tempfile = "3.3"
+tempfile = "3.4"
 
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }

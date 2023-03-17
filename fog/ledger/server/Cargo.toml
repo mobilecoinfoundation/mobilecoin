@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -80,4 +80,4 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
-tempdir = "0.3"
+tempfile = "3.4"

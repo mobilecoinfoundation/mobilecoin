@@ -104,8 +104,26 @@ node:
         requests:
           storage: 512Gi
 
-  client:
-    attest:
+  ingress:
+    common:
+      annotations:
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: 'true'
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+
+    grpc:
+      annotations:
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+
+    http:
+      annotations:
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+    clientAttest:
       rateLimits:
         enabled: true
         # Assume 2 ingress controllers.
@@ -113,43 +131,12 @@ node:
         # total requests we want to allow by the number of nodes.  Its a little bit funky since
         # we also need to assume that load-balancing between ingest nodes is even (or close enough).
         # Another limitation is this stick-table is shared across all ingresses that use the same
-        # rate-limit-period.  Need to file a pr?
-        # rate limit attest endpoint to 20 requests/min from any single IP.
+        # rate-limit-period.
+        # rate limit attest endpoint to 60 requests/min from any single IP.
         annotations:
           haproxy.org/rate-limit-status-code: "429"
-          haproxy.org/rate-limit-requests: "20"
-          haproxy.org/rate-limit-period: 1m
-
-    ingress:
-      annotations:
-        # HAProxy Ingress
-        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
-        haproxy.org/server-ssl: 'false'             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: 'true'
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-        # Nginx Ingress
-        nginx.ingress.kubernetes.io/ssl-redirect: 'true'
-        nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
-
-  peer:
-    ingress:
-      annotations:
-        # HAProxy Ingress
-        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
-        haproxy.org/server-ssl: 'false'             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: 'true'
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-        # Nginx Ingress
-        nginx.ingress.kubernetes.io/ssl-redirect: 'true'
-        nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
+          haproxy.org/rate-limit-requests: "60"
+          # rate-limit-period is defined in _helpers.tpl based on the consensus node instance number
 
 # GRPC Gateway settings
 grpcGateway:
@@ -157,18 +144,6 @@ grpcGateway:
     org: ''
     name: go-grpc-gateway
   nodeSelector: {}
-  ingress:
-    #HAProxy Ingress
-    haproxy.org/path-rewrite: /gw/(.*) /\1      # Strip the /gw prefix
-    haproxy.org/server-ssl: 'false'             # The backend (server) is http
-    haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-    haproxy.org/timeout-server: 239s
-    haproxy.org/timeout-http-keep-alive: 120s
-    haproxy.org/abortonclose: 'true'
-    haproxy.org/backend-config-snippet: |-
-      http-reuse aggressive
-    # Nginx ingress
-    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
 
 # Disable Client Connects
 acceptClientConnections: true

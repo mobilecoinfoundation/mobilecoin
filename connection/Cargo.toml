@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -36,4 +36,3 @@ sha2 = "0.10"
 [dev-dependencies]
 rand = "0.8"
 rand_hc = "0.3"
-tempdir = "0.3"

@@ -1097,10 +1097,10 @@ pub mod tests {
     use mc_util_test_helper::{get_seeded_rng, run_with_one_seed};
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
-        let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path()).expect("Failed to create WatcherDB");
         WatcherDB::open_rw(db_tmp.path(), src_urls, logger).unwrap()
     }

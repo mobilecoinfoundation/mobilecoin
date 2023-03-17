@@ -37,6 +37,7 @@
 //! | 0x0000          | Unused                                            |
 //! | 0x0001          | Burn Redemption Memo                              |
 //! | 0x0002          | Gift Code Sender Memo                             |
+//! | 0x0003          | Defragmentation Memo                              |
 //! | 0x0100          | Authenticated Sender Memo                         |
 //! | 0x0101          | Authenticated Sender With Payment Request Id Memo |
 //! | 0x0102          | Authenticated Sender With Payment Intent Id Memo  |
@@ -53,6 +54,7 @@ pub use self::{
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,
     credential::SenderMemoCredential,
+    defragmentation::{DefragmentationMemo, DefragmentationMemoError},
     destination::{DestinationMemo, DestinationMemoError},
     destination_with_payment_intent_id::DestinationWithPaymentIntentIdMemo,
     destination_with_payment_request_id::DestinationWithPaymentRequestIdMemo,
@@ -68,6 +70,7 @@ mod authenticated_sender_with_payment_intent_id;
 mod authenticated_sender_with_payment_request_id;
 mod burn_redemption;
 mod credential;
+mod defragmentation;
 mod destination;
 mod destination_with_payment_intent_id;
 mod destination_with_payment_request_id;
@@ -107,6 +110,7 @@ impl_memo_enum! { MemoType,
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
     AuthenticatedSenderWithPaymentIntentId(AuthenticatedSenderWithPaymentIntentIdMemo),
     BurnRedemption(BurnRedemptionMemo),
+    Defragmentation(DefragmentationMemo),
     Destination(DestinationMemo),
     DestinationWithPaymentRequestId(DestinationWithPaymentRequestIdMemo),
     DestinationWithPaymentIntentId(DestinationWithPaymentIntentIdMemo),

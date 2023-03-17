@@ -146,7 +146,7 @@ then
     docker cp "fogreport:/usr/bin/report_server" ./
     docker cp "fogview:/usr/bin/libview-enclave.signed.so" ./
     docker cp "fogview:/usr/bin/fog_view_server" ./
-    docker cp "go-grpc-gateway:/usr/bin/go-grpc-gateway" ./grpc-proxy
+    docker cp "go-grpc-gateway:/usr/bin/go-grpc-gateway" ./
     docker cp "node_hw:/usr/bin/consensus-service" ./
     docker cp "node_hw:/usr/bin/ledger-distribution" ./
     docker cp "node_hw:/usr/bin/ledger-from-archive" ./

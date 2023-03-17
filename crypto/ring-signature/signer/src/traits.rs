@@ -137,6 +137,8 @@ pub enum Error {
     RingSignature(RingSignatureError),
     /// No path to spend key (logic error)
     NoPathToSpendKey,
+    /// Unknown device / implementation Error
+    Unknown,
 }
 
 impl From<KeyError> for Error {

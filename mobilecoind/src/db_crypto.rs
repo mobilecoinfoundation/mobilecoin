@@ -317,11 +317,11 @@ impl DbCryptoProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
     const TEST_DATA: &[u8; 10] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     fn get_test_db_crypto_provider() -> (DbCryptoProvider, TempDir) {
-        let path = TempDir::new("db_crypto_test").expect("Could not make tempdir for ledger db");
+        let path = TempDir::new().expect("Could not make tempdir for ledger db");
 
         let env = Arc::new(
             Environment::new()

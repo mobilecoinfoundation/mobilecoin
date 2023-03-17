@@ -1,6 +1,6 @@
 [package]
 name = "mc-watcher"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -44,7 +44,7 @@ hex = "0.4"
 lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
-rayon = "1.6"
+rayon = "1.7"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 toml = "0.7"
 url = "2.3"
@@ -59,4 +59,4 @@ lazy_static = "1.4"
 rand_core = "0.6"
 rand_hc = "0.3"
 serial_test = "1.0"
-tempdir = "0.3"
+tempfile = "3.4"

@@ -394,11 +394,7 @@ if args.name:
 image_and_tag = get_image(conf='.mobconf', image=args.image, tag=args.tag)
 if not args.no_pull:
     pull_image_command = ["docker", "image", "pull", image_and_tag]
-
-    if args.verbose:
-        maybe_run(pull_image_command)
-    else:
-        maybe_run_quiet(pull_image_command)
+    maybe_run(pull_image_command)
 
 docker_run.append(image_and_tag)
 

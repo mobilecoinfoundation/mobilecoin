@@ -1,9 +1,9 @@
 [image]
 url = mobilecoin/builder-install
-tag = v0.0.21
+tag = v0.0.25
 [builder-install]
 url = mobilecoin/builder-install
-tag = v0.0.21
+tag = v0.0.25
 [signing-tools]
 url = mobilecoin/signing-tools
 tag = v0.0.1

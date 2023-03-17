@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-load-testing"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -16,7 +16,7 @@ path = "src/bin/ingest.rs"
 clap = { version = "4.1", features = ["derive", "env"] }
 grpcio = "0.12"
 retry = "2.0"
-tempdir = "0.3"
+tempfile = "3.4"
 
 # mc
 mc-account-keys = { path = "../../account-keys" }

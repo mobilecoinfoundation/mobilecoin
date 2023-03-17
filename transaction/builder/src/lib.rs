@@ -22,8 +22,9 @@ pub mod test_utils;
 pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
 pub use memo_builder::{
-    BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
-    GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
+    BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
+    GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
+    MemoBuilder, RTHMemoBuilder,
 };
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;

@@ -149,6 +149,13 @@ impl MemoHandler {
                     Err(MemoHandlerError::FailedSubaddressValidation)
                 }
             }
+            MemoType::Defragmentation(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
+            }
         }
     }
 }

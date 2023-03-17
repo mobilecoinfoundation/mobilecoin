@@ -2,11 +2,13 @@
 
 //! Errors that can occur when creating a new TxOut
 
-use crate::{AmountError, MemoError};
 use alloc::{format, string::String};
 use core::str::Utf8Error;
+
+use crate::MemoError;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
+use mc_transaction_types::AmountError;
 use serde::{Deserialize, Serialize};
 
 /// An error that occurs when creating a new TxOut
@@ -98,6 +100,8 @@ pub enum NewMemoError {
     MaxFeeExceeded(u64, u64),
     /// Payment request and intent ID both are set
     RequestAndIntentIdSet,
+    /// Defragmentation transaction with non-zero change
+    DefragWithChange,
     /// Other: {0}
     Other(String),
 }
