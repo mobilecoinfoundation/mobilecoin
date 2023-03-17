@@ -105,19 +105,6 @@ where
             FogViewRouterAdminService::new(shards.clone(), logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
-        let shard_health_clients = shards
-            .read()
-            .expect("RwLock poisoned")
-            .iter()
-            .enumerate()
-            .map(|(i, shard)| {
-                let uri = &shard.uri;
-                log::info!(logger, "HealthClient {i} uri is: {uri}");
-                let channel = ChannelBuilder::default_channel_builder(env.clone())
-                    .connect_to_uri(&shard.uri, &logger);
-                HealthClient::new(channel)
-            })
-            .collect::<Vec<_>>();
 
         // Health check service
         let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
