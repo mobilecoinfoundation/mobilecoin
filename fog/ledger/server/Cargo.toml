@@ -98,4 +98,5 @@ pem = "1.1"
 portpicker = "0.1.1"
 sha2 = "0.10"
 tempdir = "0.3"
+tokio = { version = "1.0", features = ["full"] }
 x509-signature = "0.5"
