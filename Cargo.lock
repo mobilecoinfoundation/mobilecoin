@@ -4202,9 +4202,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "signature",
  "signature 1.6.4",
- "tempdir",
  "x509-signature",
  "zeroize",
 ]
