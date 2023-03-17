@@ -425,6 +425,7 @@ impl<
                     "Consensus Service".to_owned(),
                     self.config.peer_responder_id.to_string(),
                     Some(self.create_get_config_json_fn()),
+                    vec![],
                     self.logger.clone(),
                 )
                 .expect("Failed starting admin grpc server"),

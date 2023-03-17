@@ -217,7 +217,7 @@ jobs:
         ./install_tools.sh
         ./build.sh
         mkdir -p ../go_build_artifacts
-        cp grpc-proxy ../go_build_artifacts/
+        cp go-grpc-gateway ../go_build_artifacts/
 
     - name: check artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"
