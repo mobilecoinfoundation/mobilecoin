@@ -343,7 +343,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "4.0.0-rc.1"
-source = "git+https://github.com/mobilecoinfoundation/curve25519-dalek?branch=4.0.0-rc.1#a83ffe5373c39079f46b37fb6d200ea68ddad7a6"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek?rev=99c0520aa79401b69fb51d38172cd58c6a256cfb#99c0520aa79401b69fb51d38172cd58c6a256cfb"
 dependencies = [
  "cfg-if 1.0.0",
  "digest",

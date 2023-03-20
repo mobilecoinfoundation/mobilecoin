@@ -66,8 +66,8 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
-# TODO: Once curve25519 resolves https://github.com/dalek-cryptography/curve25519-dalek/issues/515, use external repo
-curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek", branch = "4.0.0-rc.1" }
+# TODO: Once curve25519-dalek creates a release that incorporates the backend feature selection, remove this patch.
+curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
 
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
