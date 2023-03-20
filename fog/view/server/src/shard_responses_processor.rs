@@ -45,6 +45,10 @@ pub fn process_shard_responses(
     let mut view_store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
+    for (shard, response) in shards_and_responses.iter() {
+        println!("configured block range: {}, response block range: {}", shard.block_range, response.block_range);
+    }
+
     for (shard, response) in shards_and_responses {
         if response.block_range != shard.block_range {
             return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));

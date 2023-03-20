@@ -498,6 +498,9 @@ class FogConformanceTest:
         for store in self.fog_view_stores:
             store.start()
 
+        client_listen_uris = map(lambda x: x.get_client_listen_uri(), self.fog_view_stores)
+        print("client_listen_uris" + client_listen_uris)
+
         self.fog_view_router = FogViewRouter(
             name = 'router1',
             client_responder_id = f'localhost:{BASE_NGINX_CLIENT_PORT}',
@@ -505,7 +508,7 @@ class FogConformanceTest:
             admin_port = BASE_VIEW_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
-            shard_uris = map(lambda x: x.get_client_listen_uri(), self.fog_view_stores)
+            shard_uris = client_listen_uris
         )
         self.fog_view_router.start()
 
