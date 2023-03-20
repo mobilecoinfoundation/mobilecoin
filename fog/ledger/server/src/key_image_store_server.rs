@@ -21,8 +21,8 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher, server::DbPollSharedState,
-    sharding_strategy::ShardingStrategy, KeyImageClientListenUri, KeyImageService,
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
 };
 
 pub struct KeyImageStoreServer<E, SS, RC>
@@ -70,7 +70,6 @@ where
             };
 
         Self::new(
-            config.chain_id,
             client_authenticator,
             config.client_listen_uri,
             enclave,
@@ -84,7 +83,6 @@ where
     }
 
     pub fn new(
-        chain_id: String,
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
@@ -105,8 +103,7 @@ where
             .expect("Could not create URI from Responder ID");
 
         let key_image_service = KeyImageService::new(
-            KeyImageClientListenUri::Store(uri),
-            chain_id,
+            uri,
             ledger,
             watcher,
             enclave.clone(),
