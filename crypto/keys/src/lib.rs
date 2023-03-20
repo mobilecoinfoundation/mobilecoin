@@ -60,7 +60,7 @@ pub use crate::{
     ed25519::{Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature},
     ristretto::{
         CompressedRistrettoPublic, Ristretto, RistrettoEphemeralPrivate, RistrettoPrivate,
-        RistrettoPublic, RistrettoSecret, RistrettoSignature, SchnorrkelError,
+        RistrettoPublic, RistrettoSecret, RistrettoSignature,
     },
     traits::{
         DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate, KexPublic,
@@ -76,6 +76,7 @@ pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 
 pub use digest::Digest;
 pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
+pub use schnorrkel_og::{SignatureError as SchnorrkelError};
 pub use signature::{
     DigestSigner, DigestVerifier, Error as SignatureError, Signature, Signer, Verifier,
 };
