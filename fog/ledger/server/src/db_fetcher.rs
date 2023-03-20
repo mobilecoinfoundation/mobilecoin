@@ -3,7 +3,7 @@
 //! A background thread, in the server side, that continuously checks the
 //! LedgerDB for new blocks, then gets all the key images associated to those
 //! blocks and adds them to the enclave.
-use crate::{counters, server::DbPollSharedState, sharding_strategy::ShardingStrategy};
+use crate::{counters, sharding_strategy::ShardingStrategy, DbPollSharedState};
 use mc_common::{
     logger::{log, Logger},
     trace_time,
