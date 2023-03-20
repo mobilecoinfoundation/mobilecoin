@@ -106,7 +106,7 @@ where
         shard_clients,
         query_retries,
         scope_logger.clone(),
-        &tracer
+        &tracer,
     )
     .await;
 
