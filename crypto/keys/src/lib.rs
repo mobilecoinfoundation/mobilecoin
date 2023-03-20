@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! A thin wrapper around Dalek libraries for key handling.
 //!
@@ -60,7 +60,7 @@ pub use crate::{
     ed25519::{Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature},
     ristretto::{
         CompressedRistrettoPublic, Ristretto, RistrettoEphemeralPrivate, RistrettoPrivate,
-        RistrettoPublic, RistrettoSecret, RistrettoSignature,
+        RistrettoPublic, RistrettoSecret, RistrettoSignature, SchnorrkelError,
     },
     traits::{
         DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate, KexPublic,
