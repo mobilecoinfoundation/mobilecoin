@@ -22,8 +22,8 @@ use mc_fog_ledger_enclave::{
 };
 use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
 use mc_fog_ledger_server::{
-    sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageClientListenUri,
-    KeyImageService, KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
+    sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageService,
+    KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
@@ -172,8 +172,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let client_listen_uri = store_config.client_listen_uri.clone();
     let store_service = KeyImageService::new(
-        KeyImageClientListenUri::Store(client_listen_uri.clone()),
-        store_config.chain_id.clone(),
+        client_listen_uri.clone(),
         ledger,
         watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
