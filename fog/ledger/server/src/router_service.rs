@@ -15,6 +15,7 @@ use mc_fog_api::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::{rpc_internal_error, rpc_logger};
+use mc_util_metrics::ServiceMetrics;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -68,7 +69,10 @@ where
             let logger = logger.clone();
 
             let shards = self.shards.read().expect("RwLock poisoned");
+            let method_name = ServiceMetrics::get_method_name(&ctx);
+            
             let future = router_handlers::handle_requests(
+                method_name,
                 shards.values().cloned().collect(),
                 self.enclave.clone(),
                 requests,
