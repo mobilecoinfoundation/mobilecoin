@@ -68,7 +68,7 @@ where
     let tracer = tracer!();
     match request.request_data {
         Some(LedgerRequest_oneof_request_data::auth(request)) => tracer
-            .in_span("router_auth", |_cx| {
+            .in_span("auth", |_cx| {
                 handle_auth_request(enclave, request, logger)
             }),
         Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
@@ -80,7 +80,7 @@ where
                 logger,
                 &tracer,
             )
-            .with_context(create_context(&tracer, "router_query"))
+            .with_context(create_context(&tracer, "check_key_images"))
             .await
         }
         None => {
@@ -219,7 +219,7 @@ where
     let mut remaining_retries = query_retries;
     while remaining_retries > 0 {
         let multi_ledger_store_query_request = tracer
-            .in_span("router_create_multi_key_image_store_query_data", |_cx| {
+            .in_span("create_multi_key_image_query", |_cx| {
                 enclave
                     .create_multi_key_image_store_query_data(sealed_query.clone())
                     .map_err(|err| {
@@ -233,7 +233,7 @@ where
             .into();
         let clients_and_responses =
             route_query(&multi_ledger_store_query_request, shards_to_query.clone())
-                .with_context(create_context(tracer, "router_route_query"))
+                .with_context(create_context(tracer, "send_multi_key_image_request_to_shards"))
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
@@ -244,7 +244,7 @@ where
                 })?;
 
         let processed_shard_response_data =
-            tracer.in_span("router_process_shard_responses", |_cx| {
+            tracer.in_span("process_key_image_shard_responses", |_cx| {
                 process_shard_responses(clients_and_responses, logger.clone()).map_err(|err| {
                     router_server_err_to_rpc_status(
                         "Key Images Query: internal query response processing",
@@ -272,7 +272,7 @@ where
                 processed_shard_response_data.store_uris_for_authentication,
                 logger.clone(),
             )
-            .with_context(create_context(tracer, "router_authenticate_ledger_stores"))
+            .with_context(create_context(tracer, "authn_key_image_stores"))
             .await?;
         } else {
             remaining_retries -= 1;
@@ -289,7 +289,7 @@ where
         ));
     }
 
-    let query_response = tracer.in_span("router_collate_shard_query_responses", |_cx| {
+    let query_response = tracer.in_span("collate_key_image_responses", |_cx| {
         enclave
             .collate_shard_query_responses(sealed_query, query_responses)
             .map_err(|err| {
