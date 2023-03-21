@@ -70,7 +70,7 @@ where
 
             let shards = self.shards.read().expect("RwLock poisoned");
             let method_name = ServiceMetrics::get_method_name(&ctx);
-            
+
             let future = router_handlers::handle_requests(
                 method_name,
                 shards.values().cloned().collect(),

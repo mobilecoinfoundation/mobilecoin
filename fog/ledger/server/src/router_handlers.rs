@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{error::{router_server_err_to_rpc_status, RouterServerError}, SVC_COUNTERS};
+use crate::{
+    error::{router_server_err_to_rpc_status, RouterServerError},
+    SVC_COUNTERS,
+};
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
