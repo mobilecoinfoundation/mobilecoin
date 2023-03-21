@@ -15,6 +15,7 @@ use mc_fog_api::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::{rpc_internal_error, rpc_logger};
+use mc_util_telemetry::tracer;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -98,12 +99,14 @@ async fn unary_check_key_image_impl<E>(
 where
     E: LedgerEnclaveProxy,
 {
+    let tracer = tracer!();
     let result = handle_query_request(
         request,
         enclave,
         shard_clients,
         query_retries,
         scope_logger.clone(),
+        &tracer,
     )
     .await;
 
