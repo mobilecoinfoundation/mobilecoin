@@ -480,17 +480,17 @@ class FogConformanceTest:
 
         fog_view_store_1 = FogViewStore(
             name = 'view1',
-            client_port = BASE_VIEW_STORE_PORT,
-            admin_port = BASE_VIEW_STORE_ADMIN_PORT,
-            admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            client_port = BASE_VIEW_STORE_1_PORT,
+            admin_port = BASE_VIEW_STORE_1_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_1_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
             sharding_strategy= '0-6'
         )
         fog_view_store_2 = FogViewStore(
-            name = 'view1',
-            client_port = BASE_VIEW_STORE_PORT,
-            admin_port = BASE_VIEW_STORE_ADMIN_PORT,
-            admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            name = 'view2',
+            client_port = BASE_VIEW_STORE_2_PORT,
+            admin_port = BASE_VIEW_STORE_2_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_2_ADMIN_HTTP_GATEWAY_PORT,
             release = self.release,
             sharding_strategy= '5-12'
         )
@@ -498,8 +498,8 @@ class FogConformanceTest:
         for store in self.fog_view_stores:
             store.start()
 
-        client_listen_uris = map(lambda x: x.get_client_listen_uri(), self.fog_view_stores)
-        print("client_listen_uris" + client_listen_uris)
+
+        client_listen_uris = list(map(lambda x: x.get_client_listen_uri(), self.fog_view_stores))
 
         self.fog_view_router = FogViewRouter(
             name = 'router1',
