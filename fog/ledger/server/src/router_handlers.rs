@@ -67,10 +67,9 @@ where
 {
     let tracer = tracer!();
     match request.request_data {
-        Some(LedgerRequest_oneof_request_data::auth(request)) => tracer
-            .in_span("auth", |_cx| {
-                handle_auth_request(enclave, request, logger)
-            }),
+        Some(LedgerRequest_oneof_request_data::auth(request)) => {
+            tracer.in_span("auth", |_cx| handle_auth_request(enclave, request, logger))
+        }
         Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
             handle_query_request(
                 request,
@@ -233,7 +232,10 @@ where
             .into();
         let clients_and_responses =
             route_query(&multi_ledger_store_query_request, shards_to_query.clone())
-                .with_context(create_context(tracer, "send_multi_key_image_request_to_shards"))
+                .with_context(create_context(
+                    tracer,
+                    "send_multi_key_image_request_to_shards",
+                ))
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
