@@ -378,13 +378,12 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek"
 version = "2.0.0-pre.0"
-source = "git+https://github.com/semenov-vladyslav/ed25519-dalek.git?branch=serde-no_std#f709b595befcc10e38bb5e23b9ff05df03e7f1db"
+source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=2931c688eb11341a1145e257bc41d8ecbe36277c#2931c688eb11341a1145e257bc41d8ecbe36277c"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
  "rand_core",
  "serde",
- "serde_bytes",
  "sha2",
  "signature",
  "zeroize",
@@ -1756,15 +1755,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cdd151213925e7f1ab45a9bbfb129316bd00799784b174b7cc7bcd16961c49e"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde_bytes"
-version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16ae07dd2f88a366f15bd0632ba725227018c69a1c8550a927324f8eb8368bb9"
-dependencies = [
- "serde",
 ]
 
 [[package]]

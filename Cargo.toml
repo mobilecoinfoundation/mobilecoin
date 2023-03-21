@@ -226,8 +226,7 @@ bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.
 curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-# TODO: Once this fork's branch is merged, point to the main repo's main branch commit.
-ed25519-dalek = { git = "https://github.com/semenov-vladyslav/ed25519-dalek.git", branch = "serde-no_std" }
+ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
