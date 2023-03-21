@@ -23,6 +23,7 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
 use mc_util_metrics::GrpcMethodName;
+use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
@@ -80,12 +81,22 @@ pub async fn handle_request<E>(
 where
     E: LedgerEnclaveProxy,
 {
+    let tracer = tracer!();
     match request.request_data {
         Some(LedgerRequest_oneof_request_data::auth(request)) => {
-            handle_auth_request(enclave, request, logger)
+            tracer.in_span("auth", |_cx| handle_auth_request(enclave, request, logger))
         }
         Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
-            handle_query_request(request, enclave, shard_clients, query_retries, logger).await
+            handle_query_request(
+                request,
+                enclave,
+                shard_clients,
+                query_retries,
+                logger,
+                &tracer,
+            )
+            .with_context(create_context(&tracer, "check_key_images"))
+            .await
         }
         None => {
             let rpc_status = rpc_invalid_arg_error(
@@ -196,6 +207,7 @@ pub(crate) async fn handle_query_request<E>(
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     query_retries: usize,
     logger: Logger,
+    tracer: &BoxedTracer,
 ) -> Result<LedgerResponse, RpcStatus>
 where
     E: LedgerEnclaveProxy,
@@ -221,18 +233,25 @@ where
     // remaining_retries and loop
     let mut remaining_retries = query_retries;
     while remaining_retries > 0 {
-        let multi_ledger_store_query_request = enclave
-            .create_multi_key_image_store_query_data(sealed_query.clone())
-            .map_err(|err| {
-                router_server_err_to_rpc_status(
-                    "Key Images Query: internal encryption error",
-                    err.into(),
-                    logger.clone(),
-                )
+        let multi_ledger_store_query_request = tracer
+            .in_span("create_multi_key_image_query", |_cx| {
+                enclave
+                    .create_multi_key_image_store_query_data(sealed_query.clone())
+                    .map_err(|err| {
+                        router_server_err_to_rpc_status(
+                            "Key Images Query: internal encryption error",
+                            err.into(),
+                            logger.clone(),
+                        )
+                    })
             })?
             .into();
         let clients_and_responses =
             route_query(&multi_ledger_store_query_request, shards_to_query.clone())
+                .with_context(create_context(
+                    tracer,
+                    "send_multi_key_image_request_to_shards",
+                ))
                 .await
                 .map_err(|err| {
                     router_server_err_to_rpc_status(
@@ -243,12 +262,14 @@ where
                 })?;
 
         let processed_shard_response_data =
-            process_shard_responses(clients_and_responses, logger.clone()).map_err(|err| {
-                router_server_err_to_rpc_status(
-                    "Key Images Query: internal query response processing",
-                    err,
-                    logger.clone(),
-                )
+            tracer.in_span("process_key_image_shard_responses", |_cx| {
+                process_shard_responses(clients_and_responses, logger.clone()).map_err(|err| {
+                    router_server_err_to_rpc_status(
+                        "Key Images Query: internal query response processing",
+                        err,
+                        logger.clone(),
+                    )
+                })
             })?;
 
         for (store_responder_id, new_query_response) in processed_shard_response_data
@@ -269,6 +290,7 @@ where
                 processed_shard_response_data.store_uris_for_authentication,
                 logger.clone(),
             )
+            .with_context(create_context(tracer, "authn_key_image_stores"))
             .await?;
         } else {
             remaining_retries -= 1;
@@ -285,15 +307,17 @@ where
         ));
     }
 
-    let query_response = enclave
-        .collate_shard_query_responses(sealed_query, query_responses)
-        .map_err(|err| {
-            router_server_err_to_rpc_status(
-                "Key Images Query: shard response collation error",
-                RouterServerError::Enclave(err),
-                logger.clone(),
-            )
-        })?;
+    let query_response = tracer.in_span("collate_key_image_responses", |_cx| {
+        enclave
+            .collate_shard_query_responses(sealed_query, query_responses)
+            .map_err(|err| {
+                router_server_err_to_rpc_status(
+                    "Key Images Query: shard response collation error",
+                    RouterServerError::Enclave(err),
+                    logger.clone(),
+                )
+            })
+    })?;
 
     let mut response = LedgerResponse::new();
     response.set_check_key_image_response(query_response.into());
