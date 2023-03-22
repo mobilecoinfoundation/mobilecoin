@@ -39,7 +39,7 @@ base64 = "0.21"
 clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
-pem = "1.1"
+pem = "2.0"
 prost = "0.11"
 rand = "0.8"
 rand_core = "0.6.4"
