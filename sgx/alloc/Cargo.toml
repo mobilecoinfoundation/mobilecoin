@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-alloc"
-version = "4.1.0-pre0"
+version = "4.1.0"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
 readme = "README.md"
