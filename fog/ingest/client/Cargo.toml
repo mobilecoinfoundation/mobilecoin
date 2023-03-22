@@ -29,7 +29,7 @@ mc-watcher = { path = "../../../watcher" }
 
 # third party
 assert_cmd = "2.0.8"
-predicates = "2"
+predicates = "3"
 rand = "0.8"
 
 [dependencies]
