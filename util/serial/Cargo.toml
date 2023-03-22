@@ -20,7 +20,6 @@ prost = { version = "0.11", default-features = false, features = ["prost-derive"
 protobuf = { version = "2.27", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_cbor = { version = "0.11.1", default-features = false, features = ["alloc"] }
-serde_derive = "1.0.1"
 serde_with = { version = "2.0", default-features = false, features = ["macros"], optional = true }
 
 [dev-dependencies]
