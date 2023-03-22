@@ -352,9 +352,7 @@ impl Ed25519Pair {
 
 impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519Pair {
     fn try_sign_digest(&self, digest: D) -> Result<Ed25519Signature, SignatureError> {
-        let sig = self
-            .0
-            .sign_prehashed(digest, None)?;
+        let sig = self.0.sign_prehashed(digest, None)?;
         Ok(Ed25519Signature::new(sig.to_bytes()))
     }
 }
