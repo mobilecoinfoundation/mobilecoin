@@ -1562,7 +1562,6 @@ dependencies = [
  "prost",
  "serde",
  "serde_cbor",
- "serde_derive",
 ]
 
 [[package]]
