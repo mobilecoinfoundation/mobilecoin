@@ -115,7 +115,7 @@ impl RaClient for IasClient {
 
         let chain = pem::parse_many(pem_str.as_bytes())?
             .into_iter()
-            .map(|p| p.contents)
+            .map(|p| p.contents().to_vec())
             .collect();
         let http_body = response.text()?;
 

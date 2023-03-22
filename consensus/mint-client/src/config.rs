@@ -500,7 +500,7 @@ pub fn load_mint_private_key_from_pem(filename: &str) -> Result<MintPrivateKey, 
     let parsed_pem =
         pem::parse(bytes).map_err(|err| format!("Failed parsing PEM file '{filename}': {err}"))?;
 
-    let key = Ed25519Private::try_from_der(&parsed_pem.contents[..])
+    let key = Ed25519Private::try_from_der(parsed_pem.contents())
         .map_err(|err| format!("Failed parsing DER from PEM file '{filename}': {err}"))?;
     Ok(MintPrivateKey(key))
 }
@@ -512,7 +512,7 @@ pub fn load_key_from_pem<K: DistinguishedEncoding>(filename: &str) -> Result<K, 
     let parsed_pem =
         pem::parse(bytes).map_err(|err| format!("Failed parsing PEM file '{filename}': {err}"))?;
 
-    let key = K::try_from_der(&parsed_pem.contents[..])
+    let key = K::try_from_der(parsed_pem.contents())
         .map_err(|err| format!("Failed parsing DER from PEM file '{filename}': {err}"))?;
     Ok(key)
 }
@@ -529,7 +529,7 @@ pub fn load_or_parse_ed25519_signature(
             format!("Failed parsing PEM file '{filename_or_hex_signature}': {err}")
         })?;
 
-        parsed_pem.contents
+        parsed_pem.contents().to_vec()
     } else if filename_or_hex_signature.len() == Ed25519Signature::BYTE_SIZE * 2 {
         // *2 due to hex encoding
         hex::decode(filename_or_hex_signature)

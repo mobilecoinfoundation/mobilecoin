@@ -101,7 +101,7 @@ mod tests {
             public_address,
             der_chain
                 .into_iter()
-                .map(|p| p.contents)
+                .map(|p| p.contents().to_vec())
                 .collect::<Vec<Vec<u8>>>(),
             keypair,
         )

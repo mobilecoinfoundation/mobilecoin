@@ -742,7 +742,7 @@ mod tests {
         let chain = pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
             .expect("Could not parse PEM chain")
             .into_iter()
-            .map(|p| p.contents)
+            .map(|p| p.contents().to_vec())
             .collect();
 
         VerificationReport {

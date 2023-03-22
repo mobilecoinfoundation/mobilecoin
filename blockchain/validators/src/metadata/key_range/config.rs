@@ -129,16 +129,16 @@ fn parse_pem_or_hex(
 
     Ok(if path.exists() {
         let pem = pem::parse(fs::read(path)?)?;
-        if pem.tag == PUBLIC_KEY_TAG {
-            Ed25519Public::try_from_der(&pem.contents)?
+        if pem.tag() == PUBLIC_KEY_TAG {
+            Ed25519Public::try_from_der(pem.contents())?
         } else {
-            Err(ParseError::InvalidPemTag(pem.tag))?
+            Err(ParseError::InvalidPemTag(pem.tag().to_string()))?
         }
     } else if let Ok(pem) = pem::parse(value) {
-        if pem.tag == PUBLIC_KEY_TAG {
-            Ed25519Public::try_from_der(&pem.contents)?
+        if pem.tag() == PUBLIC_KEY_TAG {
+            Ed25519Public::try_from_der(pem.contents())?
         } else {
-            Err(ParseError::InvalidPemTag(pem.tag))?
+            Err(ParseError::InvalidPemTag(pem.tag().to_string()))?
         }
     } else if value.len() == 64 {
         Ed25519Public::try_from(hex::decode(value)?)?

@@ -105,7 +105,7 @@ impl RaClient for SimClient {
         let sig = VerificationSignature::from(signature);
         let chain = pem::parse_many(IAS_SIM_SIGNING_CHAIN.as_bytes())?
             .into_iter()
-            .map(|p| p.contents)
+            .map(|p| p.contents().to_vec())
             .collect();
 
         Ok(VerificationReport {

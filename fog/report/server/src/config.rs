@@ -109,7 +109,7 @@ impl Materials {
     /// Construct from a pair of PEM strings
     pub fn from_pems(pem_chain: String, pem_privkey: String) -> Result<Self> {
         let signing_keypair =
-            Ed25519Private::try_from_der(&pem::parse(pem_privkey)?.contents)?.into();
+            Ed25519Private::try_from_der(pem::parse(pem_privkey)?.contents())?.into();
         Self::from_pem_keypair(pem_chain, signing_keypair)
     }
 
@@ -119,7 +119,7 @@ impl Materials {
         let chain = pem::parse_many(pem_chain)
             .expect("Could not parse PEM chain")
             .into_iter()
-            .map(|pem| pem.contents)
+            .map(|pem| pem.contents().to_vec())
             .collect();
 
         Self::from_ders_keypair(chain, signing_keypair)

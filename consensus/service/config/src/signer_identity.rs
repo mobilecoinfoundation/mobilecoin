@@ -24,7 +24,7 @@ impl FromStr for PemEd25519Public {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let pem = pem::parse(s).map_err(|e| format!("Failed to parse PEM {s:?}: {e}"))?;
-        let public_key = Ed25519Public::try_from_der(&pem.contents)
+        let public_key = Ed25519Public::try_from_der(pem.contents())
             .map_err(|e| format!("Failed to parse public key {s:?}: {e}"))?;
         Ok(PemEd25519Public(public_key))
     }
@@ -32,10 +32,7 @@ impl FromStr for PemEd25519Public {
 
 impl fmt::Display for PemEd25519Public {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let pem = pem::Pem {
-            tag: "PUBLIC KEY".to_string(),
-            contents: self.0.to_der().to_vec(),
-        };
+        let pem = pem::Pem::new("PUBLIC KEY".to_string(), self.0.to_der());
         let encoding = EncodeConfig {
             line_ending: LineEnding::LF,
         };
