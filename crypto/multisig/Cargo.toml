@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-multisig"
-version = "4.1.0-pre0"
+version = "4.1.0"
 authors = ["MobileCoin"]
 description = "MobileCoin multi-signature implementations"
 edition = "2021"

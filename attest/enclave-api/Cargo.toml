@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-enclave-api"
-version = "4.1.0-pre0"
+version = "4.1.0"
 authors = ["MobileCoin"]
 description = """
 no_std structs used commonly in enclave api's in connection with attestation and key exchange

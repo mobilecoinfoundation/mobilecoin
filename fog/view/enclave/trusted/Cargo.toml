@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave-trusted"
-version = "4.1.0-pre0"
+version = "4.1.0"
 authors = ["MobileCoin"]
 description = "The MobileCoin Fog user-facing server's enclave entry point."
 edition = "2021"
