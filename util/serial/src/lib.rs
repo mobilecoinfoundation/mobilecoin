@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 pub extern crate prost;
 
-pub mod big_array;
+mod big_array;
 
 pub use prost::{DecodeError, EncodeError, Message};
 use serde::{Deserialize, Serialize};
