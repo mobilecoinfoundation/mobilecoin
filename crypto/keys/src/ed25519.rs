@@ -354,8 +354,7 @@ impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519P
     fn try_sign_digest(&self, digest: D) -> Result<Ed25519Signature, SignatureError> {
         let sig = self
             .0
-            .sign_prehashed(digest, None)
-            .map_err(|_e| SignatureError::new())?;
+            .sign_prehashed(digest, None)?;
         Ok(Ed25519Signature::new(sig.to_bytes()))
     }
 }

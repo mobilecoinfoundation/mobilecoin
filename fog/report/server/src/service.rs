@@ -103,8 +103,7 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
         let signature = self
             .materials
             .signing_keypair
-            .sign_reports(&reports[..])
-            .map_err(|_| Error::Signature)?
+            .sign_reports(&reports[..])?
             .to_bytes()
             .into();
         log::trace!(self.logger, "Reports list signature: {:?}", signature);
