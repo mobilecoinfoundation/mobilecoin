@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Errors that can occur when creating a new TxOut
 
@@ -100,6 +100,8 @@ pub enum NewMemoError {
     MaxFeeExceeded(u64, u64),
     /// Payment request and intent ID both are set
     RequestAndIntentIdSet,
+    /// Error in the Flexible memo generation
+    FlexibleMemoGenerator(String),
     /// Defragmentation transaction with non-zero change
     DefragWithChange,
     /// Other: {0}

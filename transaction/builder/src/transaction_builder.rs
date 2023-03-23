@@ -1845,7 +1845,9 @@ pub mod transaction_builder_tests {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
-                memo_builder.set_payment_request_id(42);
+                memo_builder
+                    .set_payment_request_id(42)
+                    .expect("No other memo types should be set");
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
@@ -2010,7 +2012,9 @@ pub mod transaction_builder_tests {
             {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
-                memo_builder.set_payment_request_id(47);
+                memo_builder
+                    .set_payment_request_id(47)
+                    .expect("No other memo types should be set");
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
@@ -2162,7 +2166,9 @@ pub mod transaction_builder_tests {
             {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.enable_destination_memo();
-                memo_builder.set_payment_request_id(47);
+                memo_builder
+                    .set_payment_request_id(47)
+                    .expect("No other memo types should be set");
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
@@ -2310,7 +2316,9 @@ pub mod transaction_builder_tests {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
-                memo_builder.set_payment_intent_id(4855282172840142080);
+                memo_builder
+                    .set_payment_intent_id(4855282172840142080)
+                    .expect("No other memo types should be set");
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
