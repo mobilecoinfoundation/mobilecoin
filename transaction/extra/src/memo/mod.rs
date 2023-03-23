@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Defines an object for each known high-level memo type,
 //! and an enum to allow matching recovered memos to one of these types.
@@ -48,14 +48,14 @@
 //! | 0x0204          | Destination With Payment Intent Id Memo           |
 
 pub use self::{
-    authenticated_common::compute_category1_hmac,
+    authenticated_common::{compute_authenticated_sender_memo, compute_category1_hmac},
     authenticated_sender::AuthenticatedSenderMemo,
     authenticated_sender_with_payment_intent_id::AuthenticatedSenderWithPaymentIntentIdMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,
     credential::SenderMemoCredential,
     defragmentation::{DefragmentationMemo, DefragmentationMemoError},
-    destination::{DestinationMemo, DestinationMemoError},
+    destination::{compute_destination_memo, DestinationMemo, DestinationMemoError},
     destination_with_payment_intent_id::DestinationWithPaymentIntentIdMemo,
     destination_with_payment_request_id::DestinationWithPaymentRequestIdMemo,
     gift_code_cancellation::GiftCodeCancellationMemo,
@@ -106,18 +106,18 @@ pub enum MemoDecodingError {
 }
 
 impl_memo_enum! { MemoType,
-    AuthenticatedSender(AuthenticatedSenderMemo),
-    AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
-    AuthenticatedSenderWithPaymentIntentId(AuthenticatedSenderWithPaymentIntentIdMemo),
-    BurnRedemption(BurnRedemptionMemo),
-    Defragmentation(DefragmentationMemo),
-    Destination(DestinationMemo),
-    DestinationWithPaymentRequestId(DestinationWithPaymentRequestIdMemo),
-    DestinationWithPaymentIntentId(DestinationWithPaymentIntentIdMemo),
-    GiftCodeCancellation(GiftCodeCancellationMemo),
-    GiftCodeFunding(GiftCodeFundingMemo),
-    GiftCodeSender(GiftCodeSenderMemo),
-    Unused(UnusedMemo),
+    AuthenticatedSender(AuthenticatedSenderMemo), //[0x01, 0x00]
+    AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo), //[0x01, 0x01]
+    AuthenticatedSenderWithPaymentIntentId(AuthenticatedSenderWithPaymentIntentIdMemo), //[0x01, 0x02]
+    BurnRedemption(BurnRedemptionMemo), //[0x00, 0x01]
+    Defragmentation(DefragmentationMemo), //[0x00, 0x03]
+    Destination(DestinationMemo), //[0x02, 0x00]
+    DestinationWithPaymentRequestId(DestinationWithPaymentRequestIdMemo), //[0x02, 0x03]
+    DestinationWithPaymentIntentId(DestinationWithPaymentIntentIdMemo), //[0x02, 0x04]
+    GiftCodeCancellation(GiftCodeCancellationMemo), //[0x02, 0x02]
+    GiftCodeFunding(GiftCodeFundingMemo), //[0x02, 0x01]
+    GiftCodeSender(GiftCodeSenderMemo), //[0x00, 0x02]
+    Unused(UnusedMemo), //[0x00, 0x00]
 }
 
 #[cfg(test)]
