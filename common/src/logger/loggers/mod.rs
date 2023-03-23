@@ -19,7 +19,6 @@ use chrono::{Local, Utc};
 use lazy_static::lazy_static;
 use sentry_logger::SentryLogger;
 use slog::Drain;
-use slog_gelf::Gelf;
 use slog_json::Json;
 use slog_term::TermDecorator;
 use std::{env, io, sync::Mutex};
@@ -52,28 +51,6 @@ fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
 /// Create a basic stderr logger.
 fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
     create_std_logger(slog_term::TermDecorator::new().stderr().build())
-}
-
-/// Create a GELF (https://docs.graylog.org/en/3.0/pages/gelf.html) logger.
-fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
-    env::var("MC_LOG_GELF").ok().map(|remote_host_port| {
-        let local_hostname = hostname::get().expect("Could not retrieve hostname");
-
-        let drain = slog_envlogger::new(
-            Gelf::new(
-                local_hostname.to_str().expect("Invalid UTF-8 in hostname"),
-                &remote_host_port[..],
-            )
-            .expect("failed creating Gelf logger for")
-            .fuse(),
-        );
-
-        slog_async::Async::new(drain)
-            .thread_name("slog-gelf".into())
-            .chan_size(CHANNEL_SIZE)
-            .build()
-            .fuse()
-    })
 }
 
 /// Create a json logger.
@@ -132,9 +109,8 @@ fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
     })
 }
 
-/// Create the root logger, which logs to stdout and optionally a GELF endpoint
-/// (if the `MC_LOG_GELF` environment variable is set) or a UDP JSON endpoint
-/// (if the `MC_LOG_UDP_JSON` environment variable is set).
+/// Create the root logger, which logs to a UDP JSON endpoint (if the
+/// `MC_LOG_UDP_JSON` environment variable is set).
 pub fn create_root_logger() -> Logger {
     // Support MC_LOG in addition to RUST_LOG. This makes allows us to not affect
     // cargo's logs when doing stuff like MC_LOG=trace cargo test -p ...
@@ -149,12 +125,7 @@ pub fn create_root_logger() -> Logger {
     }
 
     // Create our loggers.
-    let network_logger = match (create_gelf_logger(), create_udp_json_logger()) {
-        (None, None) => None,
-        (Some(gelf), None) => Some(gelf),
-        (None, Some(udp_json)) => Some(udp_json),
-        (Some(_), Some(_)) => panic!("MC_LOG_GELF and MC_LOG_UDP_JSON are mutually exclusive!"),
-    };
+    let network_logger = create_udp_json_logger();
 
     // Create stdout / stderr sink
     let std_logger = match (
