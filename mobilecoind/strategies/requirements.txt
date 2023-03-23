@@ -12,12 +12,12 @@ idna==3.3
 ipdb==0.12.2
 ipython==8.10.0
 ipython-genutils==0.2.0
-jedi==0.15.1
+jedi==0.18.2
 jmespath==0.10.0
-parso==0.5.1
+parso==0.8.3
 pexpect==4.7.0
 pickleshare==0.7.5
-prompt-toolkit==2.0.10
+prompt-toolkit==3.0.30
 protobuf==3.19.5
 ptyprocess==0.6.0
 Pygments==2.7.4
@@ -25,6 +25,6 @@ python-dateutil==2.8.2
 requests==2.27.1
 s3transfer==0.5.2
 six==1.12.0
-traitlets==4.3.3
+traitlets==5.9.0
 urllib3==1.26.8
 wcwidth==0.1.7
