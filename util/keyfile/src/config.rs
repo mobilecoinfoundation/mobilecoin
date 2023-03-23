@@ -39,9 +39,9 @@ pub struct KeyConfig {
 /// DER into x509, and extract the subjectPublicKeyInfo as bytes.
 fn load_spki_from_pemfile(src: &str) -> Result<Vec<u8>, String> {
     x509_signature::parse_certificate(
-        &pem::parse(fs::read(src).map_err(|e| e.to_string())?)
+        pem::parse(fs::read(src).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?
-            .contents,
+            .contents(),
     )
     .map_err(|e| format!("{e:?}"))
     .map(|cert| cert.subject_public_key_info().spki().to_vec())

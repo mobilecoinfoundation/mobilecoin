@@ -77,7 +77,7 @@ fn main() {
 
     let parsed_pem =
         pem::parse(pem_bytes).expect("Failed parsing minting trust root public key PEM file");
-    let minting_trust_root_public_key = Ed25519Public::try_from_der(&parsed_pem.contents[..])
+    let minting_trust_root_public_key = Ed25519Public::try_from_der(parsed_pem.contents())
         .expect("Failed parsing minting trust root public key DER");
     let minting_trust_root_public_key_bytes = minting_trust_root_public_key.to_bytes();
 

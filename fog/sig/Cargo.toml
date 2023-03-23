@@ -16,7 +16,7 @@ mc-fog-sig-authority = { path = "./authority" }
 mc-fog-sig-report = { path = "./report" }
 
 displaydoc = "0.2"
-pem = "1.1"
+pem = "2.0"
 signature = { version = "1.6.4" }
 x509-signature = "0.5"
 
