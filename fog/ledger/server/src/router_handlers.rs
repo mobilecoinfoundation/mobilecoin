@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::error::{router_server_err_to_rpc_status, RouterServerError};
+use crate::{
+    error::{router_server_err_to_rpc_status, RouterServerError},
+    SVC_COUNTERS,
+};
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
@@ -18,13 +21,15 @@ use mc_fog_api::{
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
+use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
 /// routing them out to shards.
 pub async fn handle_requests<E>(
+    method_name: GrpcMethodName,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
     mut requests: RequestStream<LedgerRequest>,
@@ -36,6 +41,12 @@ where
     E: LedgerEnclaveProxy,
 {
     while let Some(request) = requests.try_next().await? {
+        // Per the comment thread on pull request #2976, this should be
+        // req_impl() and not req().
+        // This is so that one call of the original request() method is
+        // reported per each actual request the client sends.
+        let _timer = SVC_COUNTERS.req_impl(&method_name);
+
         let result = handle_request(
             request,
             shard_clients.clone(),
@@ -44,6 +55,11 @@ where
             logger.clone(),
         )
         .await;
+
+        let response_status = ResponseStatus::from(&result);
+        SVC_COUNTERS.resp_impl(&method_name, response_status.is_success);
+        SVC_COUNTERS.status_code_impl(&method_name, response_status.code);
+
         match result {
             Ok(response) => responses.send((response, WriteFlags::default())).await?,
             Err(rpc_status) => return responses.fail(rpc_status).await,
