@@ -29,6 +29,7 @@ impl From<&external::VerificationReport> for VerificationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pem::Pem;
 
     const IAS_JSON: &str = include_str!("../../tests/data/ias_ok.json");
 
@@ -40,7 +41,7 @@ mod tests {
             chain: pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
                 .expect("Could not parse PEM input")
                 .into_iter()
-                .map(|p| p.contents().to_vec())
+                .map(Pem::into_contents)
                 .collect(),
             http_body: IAS_JSON.to_owned(),
         };

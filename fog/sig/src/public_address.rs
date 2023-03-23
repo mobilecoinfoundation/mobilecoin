@@ -68,6 +68,7 @@ mod tests {
     use mc_crypto_x509_utils::X509CertificateIterable;
     use mc_fog_report_types::Report;
     use mc_fog_sig_report::Signer;
+    use pem::Pem;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -101,7 +102,7 @@ mod tests {
             public_address,
             der_chain
                 .into_iter()
-                .map(|p| p.contents().to_vec())
+                .map(Pem::into_contents)
                 .collect::<Vec<Vec<u8>>>(),
             keypair,
         )

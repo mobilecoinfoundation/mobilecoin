@@ -529,7 +529,7 @@ pub fn load_or_parse_ed25519_signature(
             format!("Failed parsing PEM file '{filename_or_hex_signature}': {err}")
         })?;
 
-        parsed_pem.contents().to_vec()
+        parsed_pem.into_contents()
     } else if filename_or_hex_signature.len() == Ed25519Signature::BYTE_SIZE * 2 {
         // *2 due to hex encoding
         hex::decode(filename_or_hex_signature)

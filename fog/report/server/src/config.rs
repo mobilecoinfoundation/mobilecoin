@@ -9,7 +9,7 @@ use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519
 use mc_crypto_x509_utils::{ChainError, X509CertificateChain, X509CertificateIter};
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_util_uri::{AdminUri, FogUri};
-use pem::PemError;
+use pem::{Pem, PemError};
 use serde::Serialize;
 use std::{fs, io::Error as IoError, path::PathBuf, result::Result as StdResult};
 use x509_signature::X509Certificate;
@@ -119,7 +119,7 @@ impl Materials {
         let chain = pem::parse_many(pem_chain)
             .expect("Could not parse PEM chain")
             .into_iter()
-            .map(|pem| pem.contents().to_vec())
+            .map(Pem::into_contents)
             .collect();
 
         Self::from_ders_keypair(chain, signing_keypair)
