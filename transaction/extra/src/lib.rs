@@ -20,9 +20,10 @@ mod tx_summary_unblinding;
 mod unsigned_tx;
 
 pub use memo::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+    compute_authenticated_sender_memo, compute_destination_memo, AuthenticatedSenderMemo,
+    AuthenticatedSenderWithDataMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
     AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DefragmentationMemo,
-    DefragmentationMemoError, DestinationMemo, DestinationMemoError,
+    DefragmentationMemoError, DestinationMemo, DestinationMemoError, DestinationWithDataMemo,
     DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
     GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
