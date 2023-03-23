@@ -378,14 +378,13 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
         let expected = hex::decode(HEXPECTED).expect("Could not decode expected data to bytes");
         assert_eq!(expected, id.as_bytes().to_vec(), "{}", hex_fmt::HexFmt(id));
 
-        let fog_authority_spki = pem::parse(AUTHORITY_PUBKEY)
-            .expect("Could not parse pubkey")
-            .contents;
+        let pem = pem::parse(AUTHORITY_PUBKEY).expect("Could not parse pubkey");
+        let fog_authority_spki = pem.contents();
         let fog_identity = RootIdentity::random_with_fog(
             &mut rng,
             "fog://fog.unittest.mobilecoin.com",
             "",
-            &fog_authority_spki,
+            fog_authority_spki,
         );
         let fog_key = AccountKey::from(&fog_identity);
         let fog_data = MonitorData::new(fog_key, 10, 100, 10, "fog test")

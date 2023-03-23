@@ -26,9 +26,6 @@ fn main() {
     let mut rng: Hc128Rng = SeedableRng::from_seed(config.seed);
     let keypair = Ed25519Pair::from_random(&mut rng);
     let der_bytes = keypair.private_key().to_der();
-    let pem = encode(&Pem {
-        tag: String::from("PRIVATE KEY"),
-        contents: der_bytes,
-    });
+    let pem = encode(&Pem::new(String::from("PRIVATE KEY"), der_bytes));
     println!("{pem}");
 }

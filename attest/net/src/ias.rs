@@ -10,6 +10,7 @@ use mc_attest_core::{
 };
 use mc_common::logger::global_log;
 use mc_util_encodings::{FromBase64, ToBase64};
+use pem::Pem;
 use percent_encoding::percent_decode;
 use reqwest::{
     blocking::Client,
@@ -115,7 +116,7 @@ impl RaClient for IasClient {
 
         let chain = pem::parse_many(pem_str.as_bytes())?
             .into_iter()
-            .map(|p| p.contents)
+            .map(Pem::into_contents)
             .collect();
         let http_body = response.text()?;
 

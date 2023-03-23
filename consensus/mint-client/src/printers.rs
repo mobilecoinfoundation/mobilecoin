@@ -113,10 +113,7 @@ pub fn print_multi_sig(multi_sig: &MultiSig<Ed25519Signature>, indent: usize) {
 
 pub fn print_pem(obj: &impl DistinguishedEncoding, tag: &str, indent: usize) {
     let indent_str = INDENT_STR.repeat(indent);
-    let pem_str = pem::encode(&Pem {
-        tag: tag.into(),
-        contents: obj.to_der(),
-    });
+    let pem_str = pem::encode(&Pem::new(tag, obj.to_der()));
     for line in pem_str.lines() {
         println!("{indent_str}{line}");
     }
