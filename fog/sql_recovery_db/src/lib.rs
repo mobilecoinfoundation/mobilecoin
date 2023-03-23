@@ -1623,6 +1623,7 @@ mod tests {
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
+    use pem::Pem;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
     #[test_with_logger]
@@ -2518,7 +2519,7 @@ mod tests {
         let chain = pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
             .expect("Could not parse PEM contents")
             .into_iter()
-            .map(|p| p.contents)
+            .map(Pem::into_contents)
             .collect();
 
         VerificationReport {

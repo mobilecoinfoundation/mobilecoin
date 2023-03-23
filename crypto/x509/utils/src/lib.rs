@@ -49,7 +49,7 @@ impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
     fn iter_x509(&self) -> X509CertificateIter {
         self.as_ref()
             .iter()
-            .map(|pem| &pem.contents[..])
+            .map(Pem::contents)
             .collect::<Vec<&[u8]>>()
             .into()
     }

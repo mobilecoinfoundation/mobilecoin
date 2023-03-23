@@ -212,10 +212,9 @@ mod test {
         let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
         let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
 
-        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
-            .expect("Could not parse DER bytes from PEM certificate file")
-            .contents;
-        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+        let pem = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file");
+        let fog_authority_spki = x509_signature::parse_certificate(pem.contents())
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();
