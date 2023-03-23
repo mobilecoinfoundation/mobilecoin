@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 // Mobilenode-side support for sgx_panic crate impl
 //
@@ -15,11 +15,14 @@ pub unsafe extern "C" fn report_panic_message(msg: *const u8, msg_len: usize) {
 
 fn report_panic_message_impl(panic_msg_bytes: &[u8]) {
     match str::from_utf8(panic_msg_bytes) {
-        Ok(v) => global_log::crit!("Enclave panic:\n{}\n", v),
-        Err(e) => global_log::crit!(
+        Ok(v) => { eprintln!("Enclave panic:\n{}\n", v); global_log::crit!("Enclave panic:\n{}\n", v)},
+        Err(e) => {
+            eprintln!("Enclave panic message contained invalid utf8:\n{}\n{:?}", e, panic_msg_bytes);
+            global_log::crit!(
             "Enclave panic message contained invalid utf8:\n{}\n{:?}",
             e,
             panic_msg_bytes
-        ),
+        )
+        },
     }
 }
