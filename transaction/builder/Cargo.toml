@@ -25,7 +25,6 @@ zeroize = "1"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }

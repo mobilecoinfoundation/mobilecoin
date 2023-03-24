@@ -8,12 +8,12 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-crypto-dalek/alloc"]
-serde = ["dep:serde", "mc-crypto-dalek/serde", "mc-crypto-keys/serde"]
+alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "curve25519-dalek/alloc", "ed25519-dalek/alloc"]
+serde = ["dep:serde", "curve25519-dalek/serde", "ed25519-dalek/serde", "mc-crypto-keys/serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost", "mc-util-serial"]
 internals = []
 
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default", "mc-crypto-hashes/default"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "mc-crypto-hashes/default"]
 
 [dependencies]
 
@@ -27,7 +27,6 @@ hex_fmt = { version = "0.3", optional = true }
 # MobileCoin dependencies
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
 mc-core-types = { path = "../../core/types", default-features = false }
-mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
