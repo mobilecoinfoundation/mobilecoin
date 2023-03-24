@@ -6,9 +6,6 @@
 //! following variables are relevant:
 //! - MC_LOG - Specifies the logging level (see
 //! https://docs.rs/slog-envlogger/2.1.0/slog_envlogger/ for format)
-//! - MC_LOG_GELF - When set to host:port, enables logging into a
-//! [GELF](https://docs.graylog.org/en/3.0/pages/gelf.html) UDP receiver. Suitable for use with
-//! [logstash](https://www.elastic.co/products/logstash).
 //! - MC_LOG_UDP_JSON - When set to host:port, enables logging JSON log messages
 //!   into a UDP socket.
 //! Suitable for use with [filebeat](https://www.elastic.co/products/beats/filebeat).
