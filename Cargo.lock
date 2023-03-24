@@ -972,6 +972,7 @@ dependencies = [
  "digest 0.10.6",
  "fiat-crypto",
  "packed_simd_2",
+ "platforms",
  "rand_core",
  "serde",
  "subtle",
@@ -1232,7 +1233,7 @@ source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=2931c6
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "rand",
+ "rand_core",
  "serde",
  "sha2 0.10.6",
  "signature 2.0.0",
@@ -4259,7 +4260,7 @@ dependencies = [
  "pem",
  "rand_core",
  "rand_hc",
- "signature",
+ "signature 1.6.4",
  "x509-signature",
 ]
 
@@ -4271,7 +4272,6 @@ dependencies = [
  "mc-util-from-random",
  "rand_core",
  "rand_hc",
- "signature",
 ]
 
 [[package]]
@@ -4286,7 +4286,7 @@ dependencies = [
  "mc-util-from-random",
  "rand_core",
  "rand_hc",
- "signature",
+ "signature 1.6.4",
 ]
 
 [[package]]
