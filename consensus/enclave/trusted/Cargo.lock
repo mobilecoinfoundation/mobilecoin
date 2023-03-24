@@ -1001,15 +1001,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-dalek"
-version = "4.1.0-pre0"
-dependencies = [
- "curve25519-dalek",
- "ed25519-dalek",
- "x25519-dalek",
-]
-
-[[package]]
 name = "mc-crypto-digestible"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1327,7 +1318,6 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
