@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use aligned_cmov::{
-    typenum::{U1024, U16, U32, U4096, U64, U8},
+    typenum::{U16, U2048, U32, U4096, U8},
     Aligned, GenericArray,
 };
 use alloc::boxed::Box;
@@ -9,7 +9,7 @@ use mc_common::logger::Logger;
 use mc_crypto_rand::McRng;
 use mc_fog_kex_rng::{KexRng20201124, KexRngCore};
 use mc_oblivious_map::CuckooHashTableCreator;
-use mc_oblivious_ram::PathORAM4096Z4Creator;
+use mc_oblivious_ram::CircuitORAM4096Z2Creator;
 use mc_oblivious_traits::{
     OMapCreator, ORAMStorageCreator, ObliviousHashMap, OMAP_INVALID_KEY, OMAP_OVERFLOW,
 };
@@ -24,10 +24,10 @@ type KeySize = U32;
 type ValueSize = U8;
 // BlockSize is a tuning parameter for OMap which must become the ValueSize of
 // the selected ORAM
-type BlockSize = U1024;
+type BlockSize = U2048;
 // This selects an oblivious ram algorithm which can support queries of size
 // BlockSize The ORAMStorageCreator type is a generic parameter to RngStore
-type ObliviousRAMAlgo<OSC> = PathORAM4096Z4Creator<McRng, OSC>;
+type ObliviousRAMAlgo<OSC> = CircuitORAM4096Z2Creator<McRng, OSC>;
 
 // These are the requirements on the storage, this is imposed by the choice of
 // oram algorithm
@@ -35,7 +35,7 @@ type ObliviousRAMAlgo<OSC> = PathORAM4096Z4Creator<McRng, OSC>;
 /// The storage data size which OSC must be able to support
 pub type StorageDataSize = U4096;
 /// The storage meta size which OSC must be able to support
-pub type StorageMetaSize = U64;
+pub type StorageMetaSize = U32;
 
 // This is the stash size we will construct the ORAM with
 // TODO: FOG-298 This should be a runtime configurable parameter with a

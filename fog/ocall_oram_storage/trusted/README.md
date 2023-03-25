@@ -74,7 +74,7 @@ A series of works by Ren, Yu, Fletcher, van Dijk, and Devadas, considered this p
 - [Integrity Verification for Path Oblivious RAM 2013](https://people.csail.mit.edu/devadas/pubs/integrity-hpec13.pdf)
 - [Freecursive ORAM 2015](https://people.csail.mit.edu/devadas/pubs/freecursive.pdf)
 
-They observe that since PathORAM always accesses its storage by loading an entire branch in a binary tree, a straightforward approach to integrity verification
+They observe that since Tree based Orams always accesses its storage by loading an entire branch in a binary tree, a straightforward approach to integrity verification
 is to view this tree like a Merkle-tree and compute a Merkle root hash to perform validation. These hashes can be computed over the ciphertexts to verify them
 before anything else happens. Then, authenticated encryption is unnecessary, and we don't need
 to use an AEAD like AES-GCM. They proceed from this idea to invent increasingly sophisticated and optimized designs, specifically for the secure processor setting.

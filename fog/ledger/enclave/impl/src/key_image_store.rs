@@ -5,7 +5,7 @@
 #![deny(missing_docs)]
 use aligned_cmov::{
     subtle::{Choice, ConstantTimeEq},
-    typenum::{U1024, U16, U32, U4096, U64},
+    typenum::{U16, U2048, U32, U4096},
     A8Bytes, CMov,
 };
 use alloc::boxed::Box;
@@ -14,7 +14,7 @@ use mc_crypto_rand::McRng;
 use mc_fog_ledger_enclave_api::AddRecordsError;
 use mc_fog_types::ledger::{KeyImageResult, KeyImageResultCode};
 use mc_oblivious_map::CuckooHashTableCreator;
-use mc_oblivious_ram::PathORAM4096Z4Creator;
+use mc_oblivious_ram::CircuitORAM4096Z2Creator;
 use mc_oblivious_traits::{
     OMapCreator, ORAMStorageCreator, ObliviousHashMap, OMAP_FOUND, OMAP_INVALID_KEY,
     OMAP_NOT_FOUND, OMAP_OVERFLOW,
@@ -29,17 +29,17 @@ type KeySize = U32;
 type ValueSize = U16;
 /// BlockSize is a tuning parameter for OMap which must become the ValueSize of
 /// the selected ORAM
-type BlockSize = U1024;
+type BlockSize = U2048;
 /// This selects an oblivious ram algorithm which can support queries of size
 /// BlockSize The ORAMStorageCreator type is a generic parameter to
 /// KeyImageStore
-type ObliviousRAMAlgo<OSC> = PathORAM4096Z4Creator<McRng, OSC>;
+type ObliviousRAMAlgo<OSC> = CircuitORAM4096Z2Creator<McRng, OSC>;
 /// These are the requirements on the storage, this is imposed by the choice of
 /// oram algorithm
 /// Storage Data Size U4096 for ORAM algorithm
 pub type StorageDataSize = U4096;
 /// Storage Meta Size U64 for ORAL algorithm
-pub type StorageMetaSize = U64;
+pub type StorageMetaSize = U32;
 
 /// This selects the stash size we will construct the oram with
 const STASH_SIZE: usize = 32;

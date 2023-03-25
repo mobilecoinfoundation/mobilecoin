@@ -9,8 +9,8 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mc-oblivious
-aligned-cmov = "2.2"
-mc-oblivious-traits = "2.2"
+aligned-cmov = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e" }
+mc-oblivious-traits = {git = "https://github.com/wjuan-mob/mc-oblivious", rev  = "3437ebad33904040b48308a45e34a141163b416e"}
 
 # fog
 mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }
