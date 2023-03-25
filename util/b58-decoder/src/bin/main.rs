@@ -4,7 +4,8 @@
 //! A utility for decoding b58 strings
 
 use clap::Parser;
-use mc_api::{external::PublicAddress, printable::PrintableWrapper};
+use mc_account_keys::{PublicAddress, ShortAddressHash};
+use mc_api::{external::PublicAddress as PublicAddressProto, printable::PrintableWrapper};
 
 #[derive(Parser)]
 struct Config {
@@ -63,7 +64,7 @@ fn main() {
     }
 }
 
-fn print_public_address(pub_addr: &PublicAddress) {
+fn print_public_address(pub_addr: &PublicAddressProto) {
     println!(
         "View public key: {}",
         hex::encode(pub_addr.get_view_public_key().get_data())
@@ -78,4 +79,17 @@ fn print_public_address(pub_addr: &PublicAddress) {
         "Fog authority sig: {}",
         hex::encode(pub_addr.get_fog_authority_sig())
     );
+
+    let parse_result = PublicAddress::try_from(pub_addr);
+    match parse_result {
+        Ok(parsed_addr) => {
+            println!("Validated: {:?}", &parsed_addr);
+
+            let address_hash = ShortAddressHash::from(&parsed_addr);
+            println!("Address hash: {}", &address_hash);
+        }
+        Err(err) => {
+            println!("Failed to validate PublicAddress struct: {err}");
+        }
+    }
 }
