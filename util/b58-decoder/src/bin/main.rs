@@ -89,7 +89,7 @@ fn print_public_address(pub_addr: &PublicAddressProto) {
             println!("Address hash: {}", &address_hash);
         }
         Err(err) => {
-            println!("Failed to validate PublicAddress struct: {}", err);
+            println!("Failed to validate PublicAddress struct: {err}");
         }
     }
 }
