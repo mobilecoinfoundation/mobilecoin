@@ -79,9 +79,9 @@ dependencies = [
 
 [[package]]
 name = "aligned-cmov"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac09d3ea1089af7eb2784eca92ed14a41168352d47565f1eb1bdd23460909ba1"
+checksum = "618b842c70f8bbf37d814e3216dccdcedb5e4995e81fbb42f709cd10116df6f2"
 dependencies = [
  "aligned-array",
  "generic-array",
@@ -270,9 +270,9 @@ dependencies = [
 
 [[package]]
 name = "balanced-tree-index"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31868e43a6cb114c4924fdf682ca8caa4649f2e1968e38951d2ee9e9087a35c1"
+checksum = "9cb637edbca91c1be6b05b38c94fbd173d8e92ba2317e2368ee1f70fe1d83244"
 dependencies = [
  "aligned-cmov",
  "rand_core",
@@ -4901,9 +4901,9 @@ dependencies = [
 
 [[package]]
 name = "mc-oblivious-map"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a5d3ec41e27ef685e5aa261d3de25c42354771015865af874a5fbb0ceb1a87"
+checksum = "4c82467a05c5a181f3113f181a0df2a01aa66c87072081071ee2652ccc5858e3"
 dependencies = [
  "aligned-array",
  "aligned-cmov",
@@ -4915,9 +4915,9 @@ dependencies = [
 
 [[package]]
 name = "mc-oblivious-ram"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85056a9110ea75a46f1d3ae58b67d90c70bed41b42509814cf4533673fe98d17"
+checksum = "86b391b564c9f19123eaa078531b89858fa1764b8e92edf5c59c1e3460d3aadc"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
@@ -4927,9 +4927,9 @@ dependencies = [
 
 [[package]]
 name = "mc-oblivious-traits"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3282b221fd65da0ce7c0749c21c41a73db062a1bde1bd57eafb3cdd2ac5ab848"
+checksum = "56a0bf3928f85cb40f30954d0882f595b0543343e978f5d7e24afd392bd5e127"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",

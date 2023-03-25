@@ -9,8 +9,8 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mc-oblivious
-aligned-cmov = "2.2"
-mc-oblivious-traits = "2.2"
+aligned-cmov = "2.3"
+mc-oblivious-traits = "2.3"
 
 # fog
 mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }
