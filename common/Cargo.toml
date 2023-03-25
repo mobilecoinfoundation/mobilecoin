@@ -42,7 +42,7 @@ loggers = [
 mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "serde", "alloc" ] }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "serde", "alloc", "prost" ] }
-mc-crypto-rand = { path = "../crypto/rand" }
+mc-rand = "1"
 # loggers-only dependencies
 mc-util-build-info = { path = "../util/build/info", optional = true }
 # log- and loggers-only dependencies

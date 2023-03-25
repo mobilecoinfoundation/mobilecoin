@@ -797,7 +797,7 @@ dependencies = [
  "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-util-serial",
  "prost",
  "rand_core",
@@ -855,7 +855,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
@@ -951,7 +951,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
@@ -1111,15 +1111,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-rand"
-version = "4.1.0-pre0"
-dependencies = [
- "cfg-if 1.0.0",
- "rand",
- "rand_core",
-]
-
-[[package]]
 name = "mc-crypto-ring-signature"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1168,7 +1159,7 @@ name = "mc-enclave-boundary"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-common",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-types",
  "rand_core",
@@ -1195,6 +1186,17 @@ dependencies = [
  "ghash",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "mc-rand"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38bcaf65701dad419f0361d0a7ada1b19e92b69d0a7656833aad4916895bfcb6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rand",
+ "rand_core",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Object representing trusted storage for tx out records.
 //! Mediates between the bytes used in ORAM and the protobuf format,
@@ -13,7 +13,6 @@ use aligned_cmov::{
 };
 use alloc::boxed::Box;
 use mc_common::logger::Logger;
-use mc_crypto_rand::McRng;
 use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
 use mc_fog_view_enclave_api::AddRecordsError;
 use mc_oblivious_map::CuckooHashTableCreator;
@@ -22,6 +21,7 @@ use mc_oblivious_traits::{
     OMapCreator, ORAMStorageCreator, ObliviousHashMap, OMAP_FOUND, OMAP_INVALID_KEY,
     OMAP_NOT_FOUND, OMAP_OVERFLOW,
 };
+use mc_rand::McRng;
 
 // internal constants
 // KeySize and ValueSize reflect the needs of e_tx_out_store

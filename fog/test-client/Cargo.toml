@@ -16,7 +16,7 @@ path = "src/bin/main.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
-mc-crypto-rand = { path = "../../crypto/rand" }
+mc-rand = "1.0"
 mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-extra = { path = "../../transaction/extra" }

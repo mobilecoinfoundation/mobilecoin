@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Connection implementations required for the thick client.
 //! The attested client implementation.
@@ -38,7 +38,7 @@ use mc_consensus_api::{
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use mc_transaction_core::tx::Tx;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;

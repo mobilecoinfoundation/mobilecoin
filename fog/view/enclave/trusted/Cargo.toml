@@ -36,7 +36,7 @@ mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-trusted = { path = "../../../../attest/trusted" }
 mc-attest-verifier = { path = "../../../../attest/verifier", default-features = false }
 mc-crypto-keys = { path = "../../../../crypto/keys" }
-mc-crypto-rand = { path = "../../../../crypto/rand" }
+mc-rand = "1.0"
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
 mc-sgx-compat = { path = "../../../../sgx/compat", features = ["sgx"] }
 mc-sgx-compat-edl = { path = "../../../../sgx/compat-edl" }

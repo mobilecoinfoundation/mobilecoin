@@ -16,7 +16,7 @@ mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../api" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-multisig = { path = "../../../crypto/multisig" }
-mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-rand = "1.0"
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }

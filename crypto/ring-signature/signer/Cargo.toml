@@ -36,7 +36,7 @@ zeroize = { version = "1", default-features = false }
 
 [dev-dependencies]
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }
-mc-crypto-rand = { path = "../../rand" }
+mc-rand = "1.0"
 # Enable all default features not known to break code coverage builds
 proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
