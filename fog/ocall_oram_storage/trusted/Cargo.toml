@@ -14,7 +14,7 @@ mc-sgx-compat = { path = "../../../sgx/compat" }
 # mc-oblivious
 aligned-cmov = "2.2"
 balanced-tree-index = "2.2"
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = "2.3"
 
 # third-party
 aes = "0.8.2"

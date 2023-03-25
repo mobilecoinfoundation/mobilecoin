@@ -22,7 +22,7 @@ mc-util-serial = { path = "../../../../util/serial", default-features = false }
 aligned-cmov = "2.2"
 mc-oblivious-map = "2.2"
 mc-oblivious-ram = "2.2"
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = "2.3"
 
 # fog
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }

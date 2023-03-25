@@ -26,7 +26,7 @@ mc-util-serial = { path = "../../../../util/serial" }
 aligned-cmov = "2.2"
 mc-oblivious-map = "2.2"
 mc-oblivious-ram = "2.2"
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = "2.3"
 
 # fog
 mc-fog-ingest-enclave-api = { path = "../api", default-features = false }

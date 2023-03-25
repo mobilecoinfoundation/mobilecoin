@@ -26,7 +26,7 @@ mc-watcher-api = { path = "../../../../watcher/api" }
 aligned-cmov = "2.2"
 mc-oblivious-map = "2.2"
 mc-oblivious-ram = "2.2"
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = "2.3"
 
 # fog
 mc-fog-ledger-enclave-api = { path = "../api", default-features = false }
