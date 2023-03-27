@@ -177,4 +177,11 @@ pub fn compute_destination_memo(
     memo_data
 }
 
+/// Shared code that returns the payload portion of destination memos
+pub fn get_data_from_destination_memo(memo_data: &[u8]) -> [u8; 32] {
+    let mut data = [0u8; 32];
+    data.copy_from_slice(&memo_data[32..64]);
+    data
+}
+
 impl_memo_type_conversions! { DestinationMemo }

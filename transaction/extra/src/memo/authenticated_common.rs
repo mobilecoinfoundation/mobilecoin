@@ -101,3 +101,10 @@ pub fn compute_authenticated_sender_memo(
     memo_data[48..].copy_from_slice(&hmac_value);
     memo_data
 }
+
+/// Shared code that returns the payload portion of authenticated sender memos
+pub fn get_data_from_authenticated_sender_memo(memo_data: &[u8]) -> [u8; 32] {
+    let mut data = [0u8; 32];
+    data.copy_from_slice(&memo_data[16..48]);
+    data
+}
