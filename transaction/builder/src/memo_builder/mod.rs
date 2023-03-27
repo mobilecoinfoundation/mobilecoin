@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Defines the MemoBuilder trait, and the Default implementation
 //! The memo builder for recoverable transaction history is defined in a
@@ -22,7 +22,11 @@ pub use defragmentation_memo_builder::DefragmentationMemoBuilder;
 pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
 pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;
 pub use gift_code_sender_memo_builder::GiftCodeSenderMemoBuilder;
-pub use rth_memo_builder::RTHMemoBuilder;
+pub use rth_memo_builder::{
+    FlexibleChangeMemoGenerator, FlexibleMemoBuilderContext, FlexibleMemoChangeContext,
+    FlexibleMemoGenerator, FlexibleMemoOutputContext, FlexibleMemoPayload,
+    FlexibleOutputMemoGenerator, RTHMemoBuilder,
+};
 
 /// The MemoBuilder trait defines the API that the transaction builder uses
 /// to ask the memo builder to build a memo for a particular TxOut.

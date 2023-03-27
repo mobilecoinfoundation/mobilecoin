@@ -91,43 +91,72 @@ pub type FlexibleChangeMemoGenerator = Box<
     dyn Fn(FlexibleMemoChangeContext) -> Result<FlexibleMemoPayload, NewMemoError> + Sync + Send,
 >;
 
+///This is the context provided to the flexible memo generator which is set on
+/// the rth memo builder. Each of these fields has a direct corresponds to a
+/// field in the RTHMemoBuilder
 pub struct FlexibleMemoBuilderContext {
+    /// The credential used to form 0x0100 and 0x0101 memos, if present.
     pub sender_cred: Option<SenderMemoCredential>,
-    // Tracks the last recipient
+    /// Tracks the last recipient
     pub last_recipient: ShortAddressHash,
-    // Tracks the total outlay so far
+    /// Tracks the total outlay so far
     pub total_outlay: u64,
-    // Tracks the total outlay token id
+    /// Tracks the total outlay token id
     pub outlay_token_id: Option<TokenId>,
-    // Tracks the number of recipients so far
+    /// Tracks the number of recipients so far
     pub num_recipients: u8,
-    // Tracks the fee
+    /// Tracks the fee
     pub fee: Amount,
 }
 
+///This is the context provided to the flexible memo generator which is set
+/// when generating the output memo
 pub struct FlexibleMemoOutputContext<'a> {
+    /// Output amount
     pub amount: Amount,
+    /// Memo recipient
     pub recipient: &'a PublicAddress,
+    /// Additional context provided for generating the output memo.
     pub memo_context: MemoContext<'a>,
+    /// Context available from the RthMemoBuilder
     pub builder_context: FlexibleMemoBuilderContext,
 }
 
+///This is the context provided to the flexible memo generator which is set
+/// when generating specifically the change memo
 pub struct FlexibleMemoChangeContext<'a> {
+    /// Additional context provided for generating the output memo.
     pub memo_context: MemoContext<'a>,
+    /// Change amount
     pub amount: Amount,
+    /// The subaddress that the change is being sent to.
     pub change_destination: &'a ReservedSubaddresses,
+    /// Context available from the RthMemoBuilder
     pub builder_context: FlexibleMemoBuilderContext,
 }
 
+/// This is the result of the flexible memo generators.
 pub struct FlexibleMemoPayload {
-    memo_type_bytes: [u8; 2],
-    memo_data: [u8; 32],
+    /// memo_type_bytes corresponds to the returned memo type. This should be
+    /// listed in an mcip.
+    pub memo_type_bytes: [u8; 2],
+    /// memo_data: corresponds to some 32 byte encoding of data used for
+    /// the returned memo type, and does not include fields used for the
+    /// authenticated sender or destination super types like the
+    /// SenderMemoCredential
+    pub memo_data: [u8; 32],
 }
 
+/// This is a pair of generators used for creating flexible output memos and
+/// flexible change memos
 #[derive(Clone)]
 pub struct FlexibleMemoGenerator {
-    flexible_output_memo_generator: Arc<FlexibleOutputMemoGenerator>,
-    flexible_change_memo_generator: Arc<FlexibleChangeMemoGenerator>,
+    /// Flexible_output_memo_generator: Is called when generating output memos.
+    /// It must return a memo payload with the first byte being 0x01
+    pub flexible_output_memo_generator: Arc<FlexibleOutputMemoGenerator>,
+    /// Flexible_change_memo_generator: Is called when genearting change memos.
+    /// It must return a memo payload with the first byte being 0x02
+    pub flexible_change_memo_generator: Arc<FlexibleChangeMemoGenerator>,
 }
 
 impl Debug for FlexibleMemoGenerator {
@@ -484,7 +513,8 @@ mod tests {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
     use mc_transaction_extra::{
-        AuthenticatedSenderWithDataMemo, DestinationWithDataMemo, RegisteredMemoType,
+        get_data_from_authenticated_sender_memo, get_data_from_destination_memo,
+        validate_authenticated_sender, RegisteredMemoType,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -684,20 +714,27 @@ mod tests {
         );
 
         // Verify memo data
-        let authenticated_memo = AuthenticatedSenderWithDataMemo::from(output_memo.get_memo_data());
-        let destination_memo = DestinationWithDataMemo::from(change_memo.get_memo_data());
+        let destination_memo = DestinationMemo::from(change_memo.get_memo_data());
 
-        authenticated_memo.validate(
+        validate_authenticated_sender(
             &memo_test_context.sender.default_subaddress(),
             memo_test_context.receiver.view_private_key(),
             &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
+            output_memo.get_memo_type().clone(),
+            output_memo.get_memo_data(),
         );
 
         let derived_fee = destination_memo.get_fee();
         assert_eq!(fee.value, derived_fee);
 
-        assert_eq!(authenticated_memo.data(), [0x01; 32]);
-        assert_eq!(destination_memo.get_data(), [0x01; 32]);
+        assert_eq!(
+            get_data_from_authenticated_sender_memo(output_memo.get_memo_data()),
+            [1u8; 32]
+        );
+        assert_eq!(
+            get_data_from_destination_memo(change_memo.get_memo_data()),
+            [1u8; 32]
+        );
     }
 
     #[test]

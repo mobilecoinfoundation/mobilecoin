@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Utilities for creating MobileCoin transactions, intended for client-side
 //! use and not intended to be used inside of enclaves.
@@ -23,8 +23,10 @@ pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
 pub use memo_builder::{
     BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
-    GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
-    MemoBuilder, RTHMemoBuilder,
+    FlexibleChangeMemoGenerator, FlexibleMemoBuilderContext, FlexibleMemoChangeContext,
+    FlexibleMemoGenerator, FlexibleMemoOutputContext, FlexibleMemoPayload,
+    FlexibleOutputMemoGenerator, GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder,
+    GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
 };
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
