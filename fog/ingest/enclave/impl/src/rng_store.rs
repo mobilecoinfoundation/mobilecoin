@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use aligned_cmov::{
     typenum::{U1024, U16, U32, U4096, U64, U8},
@@ -6,13 +6,13 @@ use aligned_cmov::{
 };
 use alloc::boxed::Box;
 use mc_common::logger::Logger;
-use mc_crypto_rand::McRng;
 use mc_fog_kex_rng::{KexRng20201124, KexRngCore};
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
 use mc_oblivious_traits::{
     OMapCreator, ORAMStorageCreator, ObliviousHashMap, OMAP_INVALID_KEY, OMAP_OVERFLOW,
 };
+use mc_rand::McRng;
 
 // internal helpers
 // KexRng algo that is used at this revision

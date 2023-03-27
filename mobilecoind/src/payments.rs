@@ -13,10 +13,10 @@ use mc_connection::{
     BlockInfo, BlockchainConnection, ConnectionManager, RetryableUserTxConnection, UserTxConnection,
 };
 use mc_crypto_keys::RistrettoPublic;
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
+use mc_rand::{CryptoRng, RngCore};
 use mc_transaction_builder::{
     InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
     TransactionBuilder, TxOutContext,

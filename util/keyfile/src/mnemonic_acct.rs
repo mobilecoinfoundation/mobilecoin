@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! This module contains code related to reading/writing mnemonic-based accounts
 //! (either as protobuf or JSON strings) and converting them into AccountKey
@@ -8,7 +8,7 @@ use bip39::{Language, Mnemonic};
 use displaydoc::Display;
 use mc_account_keys::AccountKey;
 use mc_core::slip10::Slip10KeyGenerator;
-use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_rand::{CryptoRng, RngCore};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 

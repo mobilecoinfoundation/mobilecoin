@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 //! Object representing trusted storage for key image records.
 //! Mediates between the bytes used in ORAM and the protobuf format,
 //! the various ORAM vs. fog api error codes, etc.
@@ -10,7 +10,6 @@ use aligned_cmov::{
 };
 use alloc::boxed::Box;
 use mc_common::logger::{log, Logger};
-use mc_crypto_rand::McRng;
 use mc_fog_ledger_enclave_api::AddRecordsError;
 use mc_fog_types::ledger::{KeyImageResult, KeyImageResultCode};
 use mc_oblivious_map::CuckooHashTableCreator;
@@ -19,6 +18,7 @@ use mc_oblivious_traits::{
     OMapCreator, ORAMStorageCreator, ObliviousHashMap, OMAP_FOUND, OMAP_INVALID_KEY,
     OMAP_NOT_FOUND, OMAP_OVERFLOW,
 };
+use mc_rand::McRng;
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_watcher_api::TimestampResultCode;
 

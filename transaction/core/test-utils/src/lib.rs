@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 mod mint;
 
@@ -22,7 +22,7 @@ pub use mint::{
 };
 
 use mc_crypto_keys::RistrettoPrivate;
-use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_rand::{CryptoRng, RngCore};
 use mc_util_from_random::FromRandom;
 
 /// Generate a set of outputs that "mint" coins for each recipient.

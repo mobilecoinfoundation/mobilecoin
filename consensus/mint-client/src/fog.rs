@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Bits for correctly creating encrypted fog hints when minting
 
@@ -6,10 +6,10 @@ use grpcio::Environment;
 use mc_account_keys::PublicAddress;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::Logger;
-use mc_crypto_rand::McRng;
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_resolver::FogResolver;
 use mc_fog_report_validation::{FogPubkeyResolver, FullyValidatedFogPubkey};
+use mc_rand::McRng;
 use mc_sgx_css::Signature;
 use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, fog_hint::FogHint};
 use mc_util_uri::FogUri;

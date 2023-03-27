@@ -856,7 +856,7 @@ dependencies = [
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-util-serial",
  "prost",
  "rand_core",
@@ -916,7 +916,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
@@ -1037,15 +1037,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-rand"
-version = "4.1.0-pre0"
-dependencies = [
- "cfg-if 1.0.0",
- "rand",
- "rand_core",
-]
-
-[[package]]
 name = "mc-crypto-ring-signature"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1092,7 +1083,7 @@ name = "mc-enclave-boundary"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-common",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-types",
  "rand_core",
@@ -1210,13 +1201,13 @@ dependencies = [
  "mc-common",
  "mc-crypto-ake-enclave",
  "mc-crypto-keys",
- "mc-crypto-rand",
  "mc-fog-recovery-db-iface",
  "mc-fog-types",
  "mc-fog-view-enclave-api",
  "mc-oblivious-map",
  "mc-oblivious-ram",
  "mc-oblivious-traits",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-util-serial",
@@ -1234,7 +1225,6 @@ dependencies = [
  "mc-attest-trusted",
  "mc-attest-verifier",
  "mc-crypto-keys",
- "mc-crypto-rand",
  "mc-enclave-boundary",
  "mc-fog-ocall-oram-storage-edl",
  "mc-fog-ocall-oram-storage-trusted",
@@ -1243,6 +1233,7 @@ dependencies = [
  "mc-fog-view-enclave-api",
  "mc-fog-view-enclave-edl",
  "mc-fog-view-enclave-impl",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-compat-edl",
  "mc-sgx-debug-edl",
@@ -1308,6 +1299,17 @@ checksum = "56a0bf3928f85cb40f30954d0882f595b0543343e978f5d7e24afd392bd5e127"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
+ "rand_core",
+]
+
+[[package]]
+name = "mc-rand"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce58f86dffd114bcefd8bcc6043658feec24b1f29be9972924651fe999ecf4a8"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rand",
  "rand_core",
 ]
 
