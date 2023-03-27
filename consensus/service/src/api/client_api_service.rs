@@ -274,6 +274,16 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        {
+            let session = ClientSession::from(msg.channel_id.clone());
+            let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
+            // Calling get() on the LRU bumps the entry to show up as more 
+            // recently-used.
+            if tracker.get(&session).is_none() { 
+                tracker.put(session, ClientSessionTracking::new());
+            }
+        }
+
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
             return send_result(ctx, sink, Err(err), &self.logger);
         }
