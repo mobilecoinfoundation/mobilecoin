@@ -277,9 +277,9 @@ impl ConsensusClientApi for ClientApiService {
         {
             let session = ClientSession::from(msg.channel_id.clone());
             let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
-            // Calling get() on the LRU bumps the entry to show up as more 
+            // Calling get() on the LRU bumps the entry to show up as more
             // recently-used.
-            if tracker.get(&session).is_none() { 
+            if tracker.get(&session).is_none() {
                 tracker.put(session, ClientSessionTracking::new());
             }
         }
