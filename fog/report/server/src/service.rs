@@ -6,6 +6,7 @@ pub use crate::{config::Materials, SVC_COUNTERS};
 use displaydoc::Display;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{self, log, Logger};
+use mc_crypto_keys::SignatureError;
 use mc_fog_api::{
     report::{ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse},
     report_grpc::ReportApi,
@@ -17,7 +18,7 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_logger, send_result,
 };
 use prost::DecodeError;
-use signature::{Error as SignatureError, Signature};
+
 #[derive(Clone)]
 pub struct Service<R: ReportDb + Clone + Send + Sync> {
     /// Access to the Report db is needed to retrieve the ingest report for
@@ -104,7 +105,7 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
             .materials
             .signing_keypair
             .sign_reports(&reports[..])?
-            .as_bytes()
+            .to_bytes()
             .into();
         log::trace!(self.logger, "Reports list signature: {:?}", signature);
         Ok(ReportResponse {

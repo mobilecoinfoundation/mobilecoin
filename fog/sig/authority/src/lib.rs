@@ -13,7 +13,7 @@ extern crate alloc;
 mod ristretto;
 
 use core::fmt::{Debug, Display};
-use signature::Signature;
+use mc_crypto_keys::SignatureEncoding;
 
 /// Retrieve the canonical signing context byte string.
 ///
@@ -27,7 +27,7 @@ pub fn context() -> &'static [u8] {
 /// types.
 pub trait Signer {
     /// The signature output type
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type
     type Error: Debug + Display;
 
@@ -39,7 +39,7 @@ pub trait Signer {
 /// public key types.
 pub trait Verifier {
     /// The signature type to be verified
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type if a signature could not be verified
     type Error: Debug + Display;
 

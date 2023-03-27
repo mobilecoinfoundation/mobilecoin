@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_to_from_bytes() {
-        let one = Scalar::one();
+        let one = Scalar::ONE;
         let curve_scalar = CurveScalar::from_bytes_mod_order(*one.as_bytes());
         assert_eq!(curve_scalar.scalar, one);
         assert_eq!(curve_scalar.as_bytes(), one.as_bytes());
@@ -146,7 +146,7 @@ mod tests {
         ];
 
         let curve_scalar = CurveScalar::from_bytes_mod_order(l_plus_two_bytes);
-        let two: Scalar = Scalar::one() + Scalar::one();
+        let two: Scalar = Scalar::ONE + Scalar::ONE;
 
         assert_eq!(curve_scalar.scalar, two);
     }

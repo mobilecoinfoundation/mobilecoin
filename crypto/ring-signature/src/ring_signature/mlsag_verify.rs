@@ -60,19 +60,21 @@ impl<'a, R: Ring> MlsagVerify<'a, R> {
         self.ring.check()?;
 
         // Scalars must be canonical.
-        if !self.c_zero.scalar.is_canonical() {
+        let is_canonical = bool::from(self.c_zero.scalar.is_canonical());
+        if !is_canonical {
             return Err(Error::InvalidCurveScalar);
         }
 
         // Scalars must be canonical.
         for response in self.responses {
-            if !response.scalar.is_canonical() {
+            let is_canonical = bool::from(response.scalar.is_canonical());
+            if !is_canonical {
                 return Err(Error::InvalidCurveScalar);
             }
         }
 
         // Recompute challenges.
-        recomputed_c.iter_mut().for_each(|v| *v = Scalar::zero());
+        recomputed_c.iter_mut().for_each(|v| *v = Scalar::ZERO);
 
         for i in 0..ring_size {
             let (P_i, input_commitment) = &self.ring.index(i)?;
@@ -109,7 +111,7 @@ impl<'a, R: Ring> MlsagVerify<'a, R> {
         };
 
         // Clear challenge buffer
-        recomputed_c.iter_mut().for_each(|v| *v = Scalar::zero());
+        recomputed_c.iter_mut().for_each(|v| *v = Scalar::ZERO);
 
         res
     }

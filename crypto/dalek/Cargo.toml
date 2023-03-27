@@ -10,23 +10,12 @@ rust-version = { workspace = true }
 
 [features]
 serde = [ "curve25519-dalek/serde", "ed25519-dalek/serde" ]
-alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc" ]
+alloc = [ "curve25519-dalek/alloc", "ed25519-dalek/alloc"]
+precomputed-tables = ["curve25519-dalek/precomputed-tables", "x25519-dalek/precomputed-tables"]
 
-# `default` feature enables curve25519-dalek target detection for x86_64 with and without AVX
-default = [ "serde", "alloc", "mc-crypto-dalek-backend-u64/default", "mc-crypto-dalek-backend-simd/default" ]
+default = [ "serde", "alloc", "curve25519-dalek/default"]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"]  }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false, features = ["nightly"] }
-
-# We can't have per-target-features, but we can have per-target dependencies with feature gates...
-# This is a wild hack so we can magically pick up backends while allowing them to be disabled when required.
-# if `mc-crypto-dalek/default` is selected we'll pull in the avx or u64 backends based on the target,
-# otherwise backend selection is up to the user
-
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-mc-crypto-dalek-backend-simd = { path = "./simd", default_features = false }
-
-[target.'cfg(all(not(any(target_feature = "avx2", target_feature = "avx"))))'.dependencies]
-mc-crypto-dalek-backend-u64 = { path = "./u64", default_features = false }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
+x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
