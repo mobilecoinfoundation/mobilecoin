@@ -14,7 +14,6 @@ mc-account-keys = { path = "../account-keys" }
 mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", default-features = false }
-mc-crypto-dalek = { path = "../crypto/dalek" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }

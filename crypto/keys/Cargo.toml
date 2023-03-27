@@ -9,10 +9,10 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-alloc = ["base64/alloc", "mc-crypto-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
-serde = ["dep:serde", "ed25519/serde", "mc-crypto-dalek/serde", "mc-util-repr-bytes/serde"]
+alloc = ["base64/alloc", "curve25519-dalek/alloc", "ed25519-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
+serde = ["dep:serde", "ed25519/serde", "curve25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
 prost = ["alloc", "mc-util-repr-bytes/prost"]
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default", "mc-util-serial"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "mc-util-serial"]
 
 [dependencies]
 
@@ -25,7 +25,6 @@ ed25519-dalek = { version = "2.0.0-pre.0", default-features = false, features = 
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 
-mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
