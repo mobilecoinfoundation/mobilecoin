@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-// Copyright (c) 2018-2022 The MobileCoin Foundation
-
 //! Defines the RTHMemoBuilder.
 //! (RTH is an abbrevation of Recoverable Transaction History.)
 //! This MemoBuilder policy implements Recoverable Transaction History using
@@ -106,12 +104,14 @@ pub struct FlexibleMemoBuilderContext {
     // Tracks the fee
     pub fee: Amount,
 }
+
 pub struct FlexibleMemoOutputContext<'a> {
     pub amount: Amount,
     pub recipient: &'a PublicAddress,
     pub memo_context: MemoContext<'a>,
     pub builder_context: FlexibleMemoBuilderContext,
 }
+
 pub struct FlexibleMemoChangeContext<'a> {
     pub memo_context: MemoContext<'a>,
     pub amount: Amount,
@@ -162,6 +162,8 @@ impl Default for RTHMemoBuilder {
 pub enum MemoBuilderError {
     /// Invalid state change
     StateChange(String),
+    /// Other
+    Other(String),
 }
 
 impl RTHMemoBuilder {
