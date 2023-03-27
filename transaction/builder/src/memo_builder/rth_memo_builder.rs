@@ -720,7 +720,7 @@ mod tests {
             &memo_test_context.sender.default_subaddress(),
             memo_test_context.receiver.view_private_key(),
             &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
-            output_memo.get_memo_type(),
+            *output_memo.get_memo_type(),
             output_memo.get_memo_data(),
         );
 
