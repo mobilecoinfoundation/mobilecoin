@@ -11,6 +11,7 @@ name = "mc-util-b58-decoder"
 path = "src/bin/main.rs"
 
 [dependencies]
+mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 
 clap = { version = "4.1", features = ["derive", "env"] }
