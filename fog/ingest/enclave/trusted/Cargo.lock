@@ -1305,9 +1305,9 @@ dependencies = [
 
 [[package]]
 name = "mc-rand"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38bcaf65701dad419f0361d0a7ada1b19e92b69d0a7656833aad4916895bfcb6"
+checksum = "ce58f86dffd114bcefd8bcc6043658feec24b1f29be9972924651fe999ecf4a8"
 dependencies = [
  "cfg-if 1.0.0",
  "rand",
