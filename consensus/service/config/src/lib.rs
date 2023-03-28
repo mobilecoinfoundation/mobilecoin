@@ -136,6 +136,24 @@ pub struct Config {
     /// config setting to match.
     #[clap(long, default_value = "10000", env = "MC_CLIENT_TRACKING_CAPACITY")]
     pub client_tracking_capacity: usize,
+
+    /// How many seconds to retain instances of proposed-transaction
+    /// failures, per-client. This is used to implement DOS-protection, 
+    /// along the lines of kicking clients who make too many failed transaction
+    /// proposals within the span of tx_failure_window
+    // TODO: slam-testing to derive reasonable default
+    #[clap(long, default_value = "30", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_TX_FAILURE_WINDOW")]
+    pub tx_failure_window: Duration,
+
+    /// How many tx proposal failures within the rolling window are required
+    /// before it's treated as concerning, thereby tripping denial-of-service
+    /// protection?
+    /// In other words, how many failed transaction proposals are permitted
+    /// within the last tx_failure_window seconds before a user is
+    /// disconnected or temporarily blocked?
+    // TODO: slam-testing to derive reasonable default
+    #[clap(long, default_value = "16384", env = "MC_CLIENT_TX_FAILURE_LIMIT")]
+    pub tx_failure_limit: u32,
 }
 
 impl Config {
@@ -224,6 +242,9 @@ mod tests {
             tokens_path: None,
             block_version: BlockVersion::ZERO,
             client_tracking_capacity: 4096,
+            tx_failure_window: Duration::from_secs(30),
+            tx_failure_limit: 16384,
+            
         };
 
         assert_eq!(
@@ -293,6 +314,8 @@ mod tests {
             tokens_path: None,
             block_version: BlockVersion::ZERO,
             client_tracking_capacity: 4096,
+            tx_failure_window: Duration::from_secs(30),
+            tx_failure_limit: 16384,
         };
 
         assert_eq!(

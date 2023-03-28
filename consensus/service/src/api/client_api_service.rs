@@ -13,7 +13,7 @@ use crate::{
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
-use mc_common::{logger::Logger, LruCache};
+use mc_common::{logger::{Logger, log}, LruCache};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -140,7 +140,6 @@ impl ClientApiService {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
-                let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published.
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 let record = if let Some(record) = tracker.get_mut(&session_id) {
                     record
@@ -150,10 +149,17 @@ impl ClientApiService {
                         .get_mut(&session_id)
                         .expect("Adding session-tracking record should be atomic.")
                 };
-                let _recent_failure_count =
-                    record.fail_tx_proposal(&Instant::now(), &tracking_window);
-                // TODO: drop session when recent_failure_count reaches some
-                // number
+                let recent_failure_count =
+                    record.fail_tx_proposal(&Instant::now(), &self.config.tx_failure_window);
+
+                if (recent_failure_count as u32) >= self.config.tx_failure_limit { 
+                    // TODO: Some action to take to counter the harmful traffic
+                    log::warn!(self.logger,
+                        "Client has {} recent failed tx proposals within the last {}",
+                        recent_failure_count,
+                        self.config.tx_failure_window.as_secs_f32()
+                    );
+                }
             }
             err
         })?;
@@ -260,6 +266,10 @@ impl ClientApiService {
         response.set_block_signing_key((&self.enclave.get_signer()?).into());
         response.set_block_version(*self.config.block_version);
         response.set_scp_message_signing_key((&self.config.msg_signer_key.public_key()).into());
+
+        response.set_client_tracking_capacity(self.config.client_tracking_capacity as u64);
+        response.set_tx_failure_window_seconds(self.config.tx_failure_window.as_secs());
+        response.set_tx_failure_limit(self.config.tx_failure_limit);
 
         Ok(response)
     }
