@@ -80,7 +80,7 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
-pem = "1.0"
+pem = "2.0"
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
