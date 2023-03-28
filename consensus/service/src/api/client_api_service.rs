@@ -152,21 +152,24 @@ impl ClientApiService {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
-                // This will become a proper config option, already implemented
-                // in pull request #3296 "Failure limit on tx proposals"
-                let tracking_window = Duration::from_secs(60);
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 if !tracker.contains(&session_id) {
                     tracker.put(session_id.clone(), ClientSessionTracking::new());
-                }
-                let record = tracker
-                    .get_mut(&session_id)
-                    .expect("Session id {session_id} should be tracked.");
+                    tracker
+                        .get_mut(&session_id)
+                        .expect("Adding session-tracking record should be atomic.")
+                };
+                let recent_failure_count =
+                    record.fail_tx_proposal(Instant::now(), self.config.tx_failure_window);
 
-                let _recent_failure_count =
-                    record.fail_tx_proposal(Instant::now(), tracking_window);
-                // Dropping the client after a limit has been reached will be
-                // implemented in a future pull request.
+                if (recent_failure_count as u32) >= self.config.tx_failure_limit { 
+                    // TODO: Some action to take to counter the harmful traffic
+                    log::warn!(self.logger,
+                        "Client has {} recent failed tx proposals within the last {}",
+                        recent_failure_count,
+                        self.config.tx_failure_window.as_secs_f32()
+                    );
+                }
             }
             err
         })?;
