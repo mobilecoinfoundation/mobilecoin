@@ -313,7 +313,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cb637edbca91c1be6b05b38c94fbd173d8e92ba2317e2368ee1f70fe1d83244"
 dependencies = [
  "aligned-cmov",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -499,7 +499,7 @@ dependencies = [
  "clear_on_drop",
  "curve25519-dalek",
  "merlin",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "serde_derive",
  "sha3",
@@ -794,7 +794,19 @@ dependencies = [
 name = "const-oid"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "520fbf3c07483f94e3e3ca9d0cfd913d7718ef2483d2cfd91c0d9e91474ab913"
+checksum = "e859cd57d0710d9e06c381b550c06e76992472a8c6d527aecd2fc673dcc231fb"
+dependencies = [
+ "aes-gcm",
+ "base64 0.20.0",
+ "hkdf",
+ "hmac 0.12.1",
+ "percent-encoding",
+ "rand 0.8.5",
+ "sha2 0.10.6",
+ "subtle",
+ "time 0.3.15",
+ "version_check",
+]
 
 [[package]]
 name = "cookie"
@@ -954,7 +966,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
- "rand_core",
+ "rand_core 0.6.4",
  "typenum",
 ]
 
@@ -987,7 +999,7 @@ dependencies = [
  "fiat-crypto",
  "packed_simd_2",
  "platforms",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "subtle",
  "zeroize",
@@ -1296,7 +1308,7 @@ source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=2931c6
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "rand_core",
+ "rand 0.8.5",
  "serde",
  "sha2 0.10.6",
  "signature",
@@ -1425,7 +1437,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
 dependencies = [
  "byteorder",
- "rand",
+ "rand 0.8.5",
  "rustc-hex",
  "static_assertions",
 ]
@@ -1475,6 +1487,12 @@ name = "fs_extra"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
+
+[[package]]
+name = "fuchsia-cprng"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 
 [[package]]
 name = "funty"
@@ -2339,8 +2357,8 @@ dependencies = [
  "mc-util-test-vector",
  "mc-util-test-with-data",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "subtle",
@@ -2408,8 +2426,8 @@ dependencies = [
  "pem",
  "prost",
  "protobuf",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
 ]
 
@@ -2432,7 +2450,7 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-from-random",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "sha2 0.10.6",
@@ -2481,8 +2499,8 @@ dependencies = [
  "mc-util-serial",
  "pem",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "rjson",
  "serde",
@@ -2518,7 +2536,7 @@ dependencies = [
  "mc-util-encodings",
  "pem",
  "percent-encoding",
- "rand",
+ "rand 0.8.5",
  "reqwest",
  "serde_json",
  "sha2 0.10.6",
@@ -2565,7 +2583,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "serde",
  "sha2 0.10.6",
@@ -2636,7 +2654,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-test-helper",
  "prost",
- "rand",
+ "rand 0.8.5",
  "serde",
  "zeroize",
 ]
@@ -2680,7 +2698,7 @@ dependencies = [
  "mc-util-serial",
  "proptest",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "scoped_threadpool",
  "sentry",
  "serde",
@@ -2718,7 +2736,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "retry",
  "secrecy",
@@ -2755,7 +2773,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-serial",
  "protobuf",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
 ]
 
@@ -2859,8 +2877,8 @@ dependencies = [
  "once_cell",
  "pem",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "subtle",
 ]
@@ -2931,7 +2949,7 @@ dependencies = [
  "mc-util-uri",
  "pem",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "serde",
  "serde_json",
 ]
@@ -2965,7 +2983,7 @@ dependencies = [
  "mc-util-test-helper",
  "mockall",
  "primitive-types",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "serde",
  "serde_json",
@@ -2996,7 +3014,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "prost",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "serde",
 ]
@@ -3055,8 +3073,8 @@ dependencies = [
  "mockall",
  "once_cell",
  "protobuf",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "rayon",
  "retry",
@@ -3126,7 +3144,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-test-vector",
  "mc-util-test-with-data",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "sha2 0.10.6",
@@ -3181,7 +3199,7 @@ dependencies = [
  "mc-oblivious-aes-gcm",
  "mc-util-from-random",
  "mc-util-test-helper",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -3260,7 +3278,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "pem",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "schnorrkel-og",
  "semver",
@@ -3293,7 +3311,7 @@ dependencies = [
  "generic-array",
  "mc-util-serial",
  "mc-util-test-helper",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "subtle",
 ]
@@ -3307,7 +3325,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
 ]
@@ -3324,13 +3342,22 @@ dependencies = [
  "hkdf",
  "mc-crypto-keys",
  "mc-util-from-random",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "secrecy",
  "serde",
  "sha2 0.10.6",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-rand"
+version = "4.1.0-pre0"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -3354,7 +3381,7 @@ dependencies = [
  "mc-util-test-helper",
  "proptest",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "subtle",
  "zeroize",
@@ -3377,8 +3404,8 @@ dependencies = [
  "mc-util-serial",
  "proptest",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "subtle",
@@ -3393,7 +3420,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-test-helper",
  "merlin",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "schnorrkel-og",
 ]
@@ -3429,7 +3456,7 @@ dependencies = [
  "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-types",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -3492,7 +3519,7 @@ dependencies = [
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
  "mc-util-uri",
- "rand",
+ "rand 0.8.5",
  "rayon",
  "retry",
  "tempfile",
@@ -3555,7 +3582,7 @@ dependencies = [
  "mc-watcher",
  "predicates 3.0.3",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "retry",
  "serde_json",
 ]
@@ -3649,7 +3676,7 @@ dependencies = [
  "mc-util-logger-macros",
  "mc-util-serial",
  "mc-util-test-helper",
- "rand_core",
+ "rand_core 0.6.4",
  "zeroize",
 ]
 
@@ -3727,7 +3754,7 @@ dependencies = [
  "mc-watcher",
  "mc-watcher-api",
  "protobuf",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "retry",
  "serde",
@@ -3754,7 +3781,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-watcher",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "tempfile",
  "url",
@@ -3772,7 +3799,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-test-helper",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
 ]
 
@@ -3905,7 +3932,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "clap 4.2.4",
  "aes-gcm",
- "clap 4.1.6",
+ "clap 4.1.11",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3953,15 +3980,15 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "mc-watcher-api",
- "rand",
  "pem",
  "portpicker",
+ "rand 0.8.5",
  "retry",
  "serde",
  "serde_json",
- "tempfile",
  "sha2 0.10.6",
  "tempdir",
+ "tempfile",
  "tokio",
  "url",
  "x509-signature",
@@ -4048,7 +4075,7 @@ dependencies = [
  "mc-oblivious-traits",
  "mc-sgx-compat",
  "mc-util-test-helper",
- "rand_core",
+ "rand_core 0.6.4",
  "subtle",
 ]
 
@@ -4089,7 +4116,7 @@ dependencies = [
  "mc-util-metrics",
  "mc-watcher",
  "prometheus",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "regex",
  "retry",
@@ -4226,7 +4253,7 @@ dependencies = [
  "mc-util-uri",
  "pem",
  "prost",
- "rand",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "signature",
@@ -4313,7 +4340,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-uri",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "serde_json",
 ]
 
@@ -4332,7 +4359,7 @@ dependencies = [
  "mc-fog-sig-report",
  "mc-util-from-random",
  "pem",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "signature",
  "x509-signature",
@@ -4344,7 +4371,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
 ]
 
@@ -4358,7 +4385,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-fog-report-types",
  "mc-util-from-random",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "signature",
 ]
@@ -4390,8 +4417,8 @@ dependencies = [
  "pem",
  "prost",
  "r2d2",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "retry",
  "serde",
 ]
@@ -4436,7 +4463,7 @@ dependencies = [
  "mc-util-uri",
  "more-asserts",
  "once_cell",
- "rand",
+ "rand 0.8.5",
  "retry",
  "serde",
  "serde_json",
@@ -4469,7 +4496,7 @@ dependencies = [
  "mc-util-parse",
  "mc-watcher",
  "mc-watcher-api",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "serde_json",
@@ -4671,7 +4698,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-watcher-api",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "zeroize",
@@ -4724,8 +4751,8 @@ dependencies = [
  "mc-util-uri",
  "pem",
  "portpicker",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "yare",
@@ -4783,7 +4810,7 @@ dependencies = [
  "mc-util-test-helper",
  "mockall",
  "prost",
- "rand",
+ "rand 0.8.5",
  "tempfile",
 ]
 
@@ -4860,7 +4887,7 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "reqwest",
  "retry",
  "serde",
@@ -4927,9 +4954,9 @@ dependencies = [
  "portpicker",
  "prost",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "rand_chacha",
- "rand_core",
+ "rand_core 0.6.4",
  "rayon",
  "reqwest",
  "retry",
@@ -4953,7 +4980,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-uri",
  "protobuf",
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -4980,7 +5007,7 @@ dependencies = [
  "mc-util-keyfile",
  "mc-util-serial",
  "mc-util-uri",
- "rand",
+ "rand 0.8.5",
  "rocket",
  "serde",
  "serde_derive",
@@ -5007,7 +5034,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "rocket",
  "serde",
  "serde_derive",
@@ -5038,7 +5065,7 @@ dependencies = [
  "aligned-cmov",
  "generic-array",
  "mc-oblivious-traits",
- "rand_core",
+ "rand_core 0.6.4",
  "siphasher",
 ]
 
@@ -5051,7 +5078,7 @@ dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
  "mc-oblivious-traits",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -5062,7 +5089,7 @@ checksum = "56a0bf3928f85cb40f30954d0882f595b0543343e978f5d7e24afd392bd5e127"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -5092,7 +5119,7 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "retry",
  "serde",
@@ -5116,7 +5143,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-uri",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "retry",
  "sha2 0.10.6",
@@ -5293,7 +5320,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -5315,7 +5342,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-vector",
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -5343,8 +5370,8 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-u64-ratio",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "serde",
  "sha2 0.10.6",
  "subtle",
@@ -5391,8 +5418,8 @@ dependencies = [
  "merlin",
  "proptest",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "serde",
  "sha2 0.10.6",
  "subtle",
@@ -5444,8 +5471,8 @@ dependencies = [
  "mc-util-vec-map",
  "mc-util-zip-exact",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "serde",
  "sha2 0.10.6",
  "subtle",
@@ -5474,7 +5501,7 @@ dependencies = [
  "mc-transaction-summary",
  "mc-util-repr-bytes",
  "mc-util-serial",
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "subtle",
@@ -5543,7 +5570,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "pkg-config",
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -5624,7 +5651,7 @@ version = "4.1.0-pre0"
 name = "mc-util-from-random"
 version = "4.1.0-pre0"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -5641,7 +5668,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-keyfile",
  "mc-util-parse",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "tempfile",
 ]
@@ -5670,7 +5697,7 @@ dependencies = [
  "mc-util-uri",
  "prometheus",
  "protobuf",
- "rand",
+ "rand 0.8.5",
  "retry",
  "serde",
  "sha2 0.10.6",
@@ -5725,8 +5752,8 @@ dependencies = [
  "mc-util-test-helper",
  "pem",
  "prost",
- "rand",
- "rand_core",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
  "rand_hc",
  "serde",
  "serde_json",
@@ -5804,7 +5831,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-parse",
  "pem",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
 ]
 
@@ -5840,7 +5867,7 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-common",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
 ]
 
@@ -5877,7 +5904,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-host-cert",
  "percent-encoding",
- "rand",
+ "rand 0.8.5",
  "rand_hc",
  "serde",
  "url",
@@ -5908,7 +5935,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-transaction-builder",
  "mc-transaction-core",
- "rand",
+ "rand 0.8.5",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]
@@ -5947,7 +5974,7 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher-api",
  "prost",
- "rand_core",
+ "rand_core 0.6.4",
  "rand_hc",
  "rayon",
  "serde",
@@ -5999,7 +6026,7 @@ checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
 dependencies = [
  "byteorder",
  "keccak",
- "rand_core",
+ "rand_core 0.6.4",
  "zeroize",
 ]
 
@@ -6300,7 +6327,7 @@ dependencies = [
  "once_cell",
  "opentelemetry_api",
  "percent-encoding",
- "rand",
+ "rand 0.8.5",
  "thiserror",
 ]
 
@@ -6529,7 +6556,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be97d76faf1bfab666e1375477b23fde79eccf0276e9b63b92a39d676a889ba9"
 dependencies = [
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -6686,7 +6713,7 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "quick-error 2.0.1",
- "rand",
+ "rand 0.8.5",
  "rand_chacha",
  "rand_xorshift",
  "regex-syntax",
@@ -6797,13 +6824,26 @@ checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 
 [[package]]
 name = "rand"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
+dependencies = [
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "rdrand",
+ "winapi",
+]
+
+[[package]]
+name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
  "rand_chacha",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -6813,8 +6853,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
- "rand_core",
+ "rand_core 0.6.4",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
+dependencies = [
+ "rand_core 0.4.2",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
 
 [[package]]
 name = "rand_core"
@@ -6831,7 +6886,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b363d4f6370f88d62bf586c80405657bde0f0e1b8945d47d2ad59b906cb4f54"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -6840,7 +6895,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -6863,6 +6918,15 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
  "num_cpus",
+]
+
+[[package]]
+name = "rdrand"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
+dependencies = [
+ "rand_core 0.3.1",
 ]
 
 [[package]]
@@ -6941,6 +7005,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
+name = "remove_dir_all"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.11.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6988,7 +7061,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9166d72162de3575f950507683fac47e30f6f2c3836b71b7fbc61aa517c9c5f4"
 dependencies = [
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -7034,7 +7107,7 @@ dependencies = [
  "num_cpus",
  "parking_lot",
  "pin-project-lite",
- "rand",
+ "rand 0.8.5",
  "ref-cast",
  "rocket_codegen",
  "rocket_http",
@@ -7320,7 +7393,7 @@ dependencies = [
  "cfg-if",
  "curve25519-dalek",
  "merlin",
- "rand_core",
+ "rand_core 0.6.4",
  "sha2 0.10.6",
  "subtle",
  "zeroize",
@@ -7455,7 +7528,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b22828bfd118a7b660cf7a155002a494755c0424cebb7061e4743ecde9c7dbc"
 dependencies = [
  "once_cell",
- "rand",
+ "rand 0.8.5",
  "sentry-types",
  "serde",
  "serde_json",
@@ -7983,6 +8056,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
+name = "tempdir"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+dependencies = [
+ "rand 0.4.6",
+ "remove_dir_all",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8138,7 +8221,7 @@ dependencies = [
  "hmac 0.12.1",
  "once_cell",
  "pbkdf2",
- "rand",
+ "rand 0.8.5",
  "rustc-hash",
  "sha2 0.10.6",
  "thiserror",
@@ -8183,8 +8266,7 @@ dependencies = [
  "libc",
  "mio",
  "num_cpus",
- "once_cell",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
@@ -8930,7 +9012,7 @@ version = "2.0.0-pre.2"
 source = "git+https://github.com/mobilecoinfoundation/x25519-dalek.git?rev=4fbaa3343301c62cfdbc3023c9f485257e6b718a#4fbaa3343301c62cfdbc3023c9f485257e6b718a"
 dependencies = [
  "curve25519-dalek",
- "rand_core",
+ "rand_core 0.6.4",
  "zeroize",
 ]
 

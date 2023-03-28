@@ -9,7 +9,7 @@
 // its way into the client.
 
 use mc_blockchain_types::{Block, BlockID, BlockVersion};
-use mc_common::logger::{create_app_logger, o};
+use mc_common::logger;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
@@ -31,7 +31,7 @@ large_omap_one_store = { 1048576, 1, 6 },
 large_omap_multiple_stores = { 1048576, 6, 1 },
 )]
 fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per_store: u64) {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = logger::create_test_logger("overlapping_stores".to_string());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
@@ -509,7 +509,7 @@ one_store = { 1, 40 },
 multiple_stores = { 5, 8 },
 )]
 fn test_overlapping_ingest_ranges(store_count: usize, blocks_per_store: u64) {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = logger::create_test_logger("overlapping_stores".to_string());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
     let store_block_ranges =
@@ -637,7 +637,7 @@ one_store = { 1, 40 },
 multiple_stores = { 5, 8 },
 )]
 fn test_start_with_missing_range(store_count: usize, blocks_per_store: u64) {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = logger::create_test_logger("overlapping_stores".to_string());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
     let store_block_ranges =
@@ -699,7 +699,7 @@ one_store = { 1, 40 },
 multiple_stores = { 5, 8 },
 )]
 fn test_middle_missing_range_with_decommission(store_count: usize, blocks_per_store: u64) {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = logger::create_test_logger("overlapping_stores".to_string());
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     const VIEW_OMAP_CAPACITY: u64 = 512;
     let store_block_ranges =
