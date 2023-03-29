@@ -36,6 +36,7 @@ mc-crypto-keys = { path = "../../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
 
 mc-fog-view-enclave-api = { path = "../api" }
+mc-fog-view-enclave-edl = { path = "../edl" }
 mc-fog-view-enclave-impl = { path = "../impl" }
 mc-rand = "1.0"
 mc-sgx-compat = { path = "../../../../sgx/compat", features = ["sgx"] }
