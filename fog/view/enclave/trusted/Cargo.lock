@@ -1107,30 +1107,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-fog-ocall-oram-storage-edl"
-version = "4.1.0-pre0"
-dependencies = [
- "cargo-emit",
-]
-
-[[package]]
-name = "mc-fog-ocall-oram-storage-trusted"
-version = "4.1.0-pre0"
-dependencies = [
- "aes",
- "aligned-cmov",
- "balanced-tree-index",
- "blake2",
- "ctr",
- "displaydoc",
- "lazy_static",
- "mc-oblivious-traits",
- "mc-sgx-compat",
- "rand_core",
- "subtle",
-]
-
-[[package]]
 name = "mc-fog-recovery-db-iface"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1190,14 +1166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-fog-view-enclave-edl"
-version = "4.1.0-pre0"
-dependencies = [
- "cargo-emit",
- "mc-util-build-script",
-]
-
-[[package]]
 name = "mc-fog-view-enclave-impl"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1235,12 +1203,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-crypto-keys",
  "mc-enclave-boundary",
- "mc-fog-ocall-oram-storage-edl",
- "mc-fog-ocall-oram-storage-trusted",
- "mc-fog-recovery-db-iface",
- "mc-fog-types",
  "mc-fog-view-enclave-api",
- "mc-fog-view-enclave-edl",
  "mc-fog-view-enclave-impl",
  "mc-rand",
  "mc-sgx-compat",
