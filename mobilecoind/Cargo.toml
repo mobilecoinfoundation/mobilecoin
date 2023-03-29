@@ -32,7 +32,6 @@ mc-core = { path = "../core" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }
 mc-crypto-hashes = { path = "../crypto/hashes" }
 mc-crypto-keys = { path = "../crypto/keys" }
-mc-crypto-rand = { path = "../crypto/rand" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-fog-report-connection = { path = "../fog/report/connection" }
 mc-fog-report-resolver = { path = "../fog/report/resolver" }
@@ -41,6 +40,7 @@ mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-migration = { path = "../ledger/migration" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
+mc-rand = "1.0"
 mc-sgx-css = { path = "../sgx/css" }
 mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }

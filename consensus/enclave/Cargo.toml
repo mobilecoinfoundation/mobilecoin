@@ -37,9 +37,9 @@ pkg-config = "0.3"
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-net = { path = "../../attest/net" }
-mc-crypto-rand = { path = "../../crypto/rand" }
 mc-fog-test-infra = { path = "../../fog/test_infra" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mc-rand = "1.0"
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-metrics = { path = "../../util/metrics" }

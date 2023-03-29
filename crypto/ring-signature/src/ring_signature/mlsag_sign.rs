@@ -158,7 +158,7 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
 
         // Responses `r_{0,0}, r_{0,1}, ... , r_{ring_size-1,0}, r_{ring_size-1,1}`.
         r.iter_mut()
-            .for_each(|v| *v = CurveScalar::from(Scalar::zero()));
+            .for_each(|v| *v = CurveScalar::from(Scalar::ZERO));
 
         for i in 0..params.ring_size {
             if i == params.real_index {

@@ -77,6 +77,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
+name = "base64ct"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
+
+[[package]]
 name = "bindgen"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -131,12 +137,11 @@ dependencies = [
 [[package]]
 name = "bulletproofs-og"
 version = "3.0.0-pre.1"
-source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e#65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=9abfdc054d9ba65f1e185ea1e6eff3947ce879dc#9abfdc054d9ba65f1e185ea1e6eff3947ce879dc"
 dependencies = [
  "byteorder",
  "clear_on_drop",
  "curve25519-dalek",
- "digest",
  "merlin",
  "rand_core",
  "serde",
@@ -234,9 +239,9 @@ dependencies = [
 
 [[package]]
 name = "clear_on_drop"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
+checksum = "38508a63f4979f0048febc9966fadbd48e5dab31fd0ec6a3f151bbf4a74f7423"
 dependencies = [
  "cc",
 ]
@@ -249,6 +254,12 @@ checksum = "db34956e100b30725f2eb215f90d4871051239535632f84fea3bc92722c66b7c"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "const-oid"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "520fbf3c07483f94e3e3ca9d0cfd913d7718ef2483d2cfd91c0d9e91474ab913"
 
 [[package]]
 name = "core-foundation-sys"
@@ -301,15 +312,27 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "4.0.0-pre.2"
-source = "git+https://github.com/mobilecoinfoundation/curve25519-dalek.git?rev=8791722e0273762552c9a056eaccb7df6baf44d7#8791722e0273762552c9a056eaccb7df6baf44d7"
+version = "4.0.0-rc.1"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek?rev=99c0520aa79401b69fb51d38172cd58c6a256cfb#99c0520aa79401b69fb51d38172cd58c6a256cfb"
 dependencies = [
- "byteorder",
+ "cfg-if 1.0.0",
  "digest",
+ "fiat-crypto",
  "packed_simd_2",
+ "platforms",
  "rand_core",
  "serde",
  "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "der"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc302fd9b18d66834a6f092d10ea85489c0ca8ad6b7304092135fab171d853cd"
+dependencies = [
+ "const-oid",
  "zeroize",
 ]
 
@@ -337,25 +360,26 @@ dependencies = [
 
 [[package]]
 name = "ed25519"
-version = "1.5.2"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9c280362032ea4203659fc489832d0204ef09f247a0506f170dafcac08c369"
+checksum = "be522bee13fa6d8059f4903a4084aa3bd50725e18150202f0238deb615cd6371"
 dependencies = [
+ "pkcs8",
  "serde",
  "signature",
 ]
 
 [[package]]
 name = "ed25519-dalek"
-version = "2.0.0-pre.1"
-source = "git+https://github.com/mobilecoinfoundation/ed25519-dalek.git?rev=4194e36abc75722e6fba7d552e719448fc38c51f#4194e36abc75722e6fba7d552e719448fc38c51f"
+version = "2.0.0-pre.0"
+source = "git+https://github.com/dalek-cryptography/ed25519-dalek.git?rev=2931c688eb11341a1145e257bc41d8ecbe36277c#2931c688eb11341a1145e257bc41d8ecbe36277c"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "rand",
+ "rand_core",
  "serde",
- "serde_bytes",
  "sha2",
+ "signature",
  "zeroize",
 ]
 
@@ -364,6 +388,12 @@ name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+
+[[package]]
+name = "fiat-crypto"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a214f5bb88731d436478f3ae1f8a277b62124089ba9fb67f4f93fb100ef73c90"
 
 [[package]]
 name = "form_urlencoded"
@@ -795,10 +825,9 @@ dependencies = [
  "hashbrown",
  "hex",
  "hex_fmt",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-util-serial",
  "prost",
  "rand_core",
@@ -856,7 +885,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
@@ -922,7 +951,6 @@ dependencies = [
  "generic-array",
  "hkdf",
  "mc-core-types",
- "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "sha2",
@@ -952,7 +980,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-common",
  "mc-crypto-keys",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
@@ -975,31 +1003,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-dalek"
-version = "4.1.0-pre0"
-dependencies = [
- "curve25519-dalek",
- "ed25519-dalek",
- "mc-crypto-dalek-backend-simd",
- "mc-crypto-dalek-backend-u64",
- "x25519-dalek",
-]
-
-[[package]]
-name = "mc-crypto-dalek-backend-simd"
-version = "2.0.0"
-dependencies = [
- "curve25519-dalek",
-]
-
-[[package]]
-name = "mc-crypto-dalek-backend-u64"
-version = "2.0.0"
-dependencies = [
- "curve25519-dalek",
-]
-
-[[package]]
 name = "mc-crypto-digestible"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1007,7 +1010,6 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
- "mc-crypto-dalek",
  "mc-crypto-digestible-derive",
  "merlin",
  "x25519-dalek",
@@ -1052,11 +1054,11 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex_fmt",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
  "mc-util-from-random",
  "mc-util-repr-bytes",
+ "mc-util-serial",
  "rand_core",
  "rand_hc",
  "schnorrkel-og",
@@ -1113,15 +1115,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-rand"
-version = "4.1.0-pre0"
-dependencies = [
- "cfg-if 1.0.0",
- "rand",
- "rand_core",
-]
-
-[[package]]
 name = "mc-crypto-ring-signature"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1130,7 +1123,6 @@ dependencies = [
  "ed25519-dalek",
  "mc-account-keys-types",
  "mc-core-types",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1153,7 +1145,6 @@ dependencies = [
  "generic-array",
  "hex_fmt",
  "mc-account-keys",
- "mc-crypto-dalek",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
  "mc-transaction-types",
@@ -1170,7 +1161,7 @@ name = "mc-enclave-boundary"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-common",
- "mc-crypto-rand",
+ "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-types",
  "rand_core",
@@ -1181,7 +1172,6 @@ name = "mc-fog-sig-authority"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-keys",
- "signature",
 ]
 
 [[package]]
@@ -1197,6 +1187,17 @@ dependencies = [
  "ghash",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "mc-rand"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce58f86dffd114bcefd8bcc6043658feec24b1f29be9972924651fe999ecf4a8"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rand",
+ "rand_core",
 ]
 
 [[package]]
@@ -1321,7 +1322,6 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1350,7 +1350,6 @@ dependencies = [
  "crc",
  "displaydoc",
  "hkdf",
- "mc-crypto-dalek",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1541,10 +1540,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
+name = "pkcs8"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e34154ec92c136238e7c210443538e64350962b8e2788cadcf5f781a6da70c36"
+dependencies = [
+ "der",
+ "spki",
+]
+
+[[package]]
 name = "pkg-config"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
+
+[[package]]
+name = "platforms"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3d7ddaed09e0eb771a79ab0fd64609ba0afb0a8366421957936ad14cbd13630"
 
 [[package]]
 name = "polyval"
@@ -1692,10 +1707,11 @@ dependencies = [
 [[package]]
 name = "schnorrkel-og"
 version = "0.11.0-pre.0"
-source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=5c98ae068ee4652d6df6463b549fbf2d5d132faa#5c98ae068ee4652d6df6463b549fbf2d5d132faa"
+source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=b76d8c3a50671b08af0874b25b2543d3302d794d#b76d8c3a50671b08af0874b25b2543d3302d794d"
 dependencies = [
  "arrayref",
  "arrayvec",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "merlin",
  "rand_core",
@@ -1720,15 +1736,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cdd151213925e7f1ab45a9bbfb129316bd00799784b174b7cc7bcd16961c49e"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde_bytes"
-version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16ae07dd2f88a366f15bd0632ba725227018c69a1c8550a927324f8eb8368bb9"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -1780,9 +1787,9 @@ checksum = "42a568c8f2cd051a4d283bd6eb0343ac214c1b0f1ac19f93e1175b2dee38c73d"
 
 [[package]]
 name = "signature"
-version = "1.6.4"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
+checksum = "8fe458c98333f9c8152221191a77e2a44e8325d0193484af2e9421a53019e57d"
 dependencies = [
  "digest",
 ]
@@ -1810,6 +1817,16 @@ name = "spin"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dccf47db1b41fa1573ed27ccf5e08e3ca771cb994f776668c5ebda893b248fc"
+
+[[package]]
+name = "spki"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0445c905640145c7ea8c1993555957f65e7c46d0535b91ba501bc9bfc85522f"
+dependencies = [
+ "base64ct",
+ "der",
+]
 
 [[package]]
 name = "static_assertions"
@@ -2062,7 +2079,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "x25519-dalek"
 version = "2.0.0-pre.2"
-source = "git+https://github.com/mobilecoinfoundation/x25519-dalek.git?rev=c1966b8743d320cd07a54191475e5c0f94b2ea30#c1966b8743d320cd07a54191475e5c0f94b2ea30"
+source = "git+https://github.com/mobilecoinfoundation/x25519-dalek.git?rev=4fbaa3343301c62cfdbc3023c9f485257e6b718a#4fbaa3343301c62cfdbc3023c9f485257e6b718a"
 dependencies = [
  "curve25519-dalek",
  "rand_core",

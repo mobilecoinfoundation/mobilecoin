@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 #![no_std]
 #![allow(clippy::result_large_err)]
@@ -24,7 +24,7 @@ use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 use sha2::{Sha256, Sha512};

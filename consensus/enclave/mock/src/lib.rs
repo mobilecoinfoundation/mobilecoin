@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Mock enclave, used for tests
 
@@ -21,7 +21,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
 use mc_crypto_multisig::SignerSet;
-use mc_crypto_rand::{McRng, RngCore};
+use mc_rand::{McRng, RngCore};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,

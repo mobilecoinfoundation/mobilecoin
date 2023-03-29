@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use aes_gcm::Aes256Gcm;
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
@@ -11,12 +11,12 @@ use mc_common::{
 use mc_consensus_enclave::{ConsensusEnclave, ConsensusServiceSgxEnclave, Error, ENCLAVE_FILE};
 use mc_consensus_enclave_api::BlockchainConfig;
 use mc_crypto_keys::X25519;
-use mc_crypto_rand::McRng;
 use mc_fog_test_infra::get_enclave_path;
 use mc_ledger_db::{
     test_utils::{create_ledger, create_transaction, initialize_ledger},
     Ledger,
 };
+use mc_rand::McRng;
 use mc_sgx_report_cache_untrusted::ReportCache;
 use mc_transaction_core::{AccountKey, BlockVersion, FeeMap};
 use mc_util_metrics::IntGauge;

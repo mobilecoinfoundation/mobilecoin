@@ -67,6 +67,7 @@ impl ReprBytes for Commitment {
     }
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Self::Error> {
         let point = CompressedRistretto::from_slice(src.as_slice())
+            .map_err(|_e| Error::InvalidCurvePoint)?
             .decompress()
             .ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })

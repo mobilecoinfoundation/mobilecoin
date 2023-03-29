@@ -8,8 +8,8 @@ use crate::governors_map::GovernorsMap;
 use core::fmt::{Debug, Display};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
-    Ed25519Pair, Ed25519Public, Ed25519Signature, Signature, SignatureError, Signer as SignerTrait,
-    Verifier as VerifierTrait,
+    Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureEncoding, SignatureError,
+    Signer as SignerTrait, Verifier as VerifierTrait,
 };
 
 /// Retrieve the canonical signing context byte string.
@@ -24,7 +24,7 @@ pub fn context() -> &'static [u8] {
 /// private-key types.
 pub trait Signer {
     /// The signature output type
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type
     type Error: Debug + Display;
 
@@ -36,7 +36,7 @@ pub trait Signer {
 /// existing public key types.
 pub trait Verifier {
     /// The signature type to be verified
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type if a signature could not be verified
     type Error: Debug + Display;
 

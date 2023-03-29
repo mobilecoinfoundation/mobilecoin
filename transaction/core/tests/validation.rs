@@ -438,10 +438,12 @@ fn test_validate_outputs_are_sorted() {
         let (tx, _ledger) = create_test_tx(block_version);
 
         let mut output_a = tx.prefix.outputs.get(0).unwrap().clone();
-        output_a.public_key = CompressedRistrettoPublic::from(&[1u8; 32]);
+        output_a.public_key =
+            CompressedRistrettoPublic::try_from(&[1u8; 32]).expect("Could not construct key");
 
         let mut output_b = output_a.clone();
-        output_b.public_key = CompressedRistrettoPublic::from(&[2u8; 32]);
+        output_b.public_key =
+            CompressedRistrettoPublic::try_from(&[2u8; 32]).expect("Could not construct key");
 
         assert!(output_a.public_key < output_b.public_key);
 

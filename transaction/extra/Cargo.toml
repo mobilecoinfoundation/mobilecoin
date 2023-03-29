@@ -23,7 +23,6 @@ zeroize = "1"
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
 mc-core = { path = "../../core" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
@@ -38,7 +37,7 @@ mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

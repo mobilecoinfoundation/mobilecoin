@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! MobileCoin Client Object
 
@@ -17,7 +17,6 @@ use mc_connection::{
     ProposeTxResult, ThickClient, UserTxConnection,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
@@ -29,6 +28,7 @@ use mc_fog_report_resolver::FogResolver;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
+use mc_rand::{CryptoRng, RngCore};
 use mc_transaction_builder::{
     EmptyMemoBuilder, InputCredentials, RTHMemoBuilder, ReservedSubaddresses,
     SignedContingentInputBuilder, TransactionBuilder,

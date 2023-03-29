@@ -2327,10 +2327,10 @@ mod test {
     use mc_blockchain_types::{Block, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_crypto_rand::RngCore;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
+    use mc_rand::RngCore;
     use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
