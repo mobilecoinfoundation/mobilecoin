@@ -2341,7 +2341,7 @@ dependencies = [
  "mc-util-uri",
  "mc-util-zip-exact",
  "mc-watcher-api",
- "pem 2.0.0",
+ "pem",
  "prost",
  "protobuf",
  "rand 0.8.5",
@@ -2415,7 +2415,7 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-repr-bytes",
  "mc-util-serial",
- "pem 2.0.0",
+ "pem",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -2452,7 +2452,7 @@ dependencies = [
  "mc-common",
  "mc-sgx-build",
  "mc-util-encodings",
- "pem 2.0.0",
+ "pem",
  "percent-encoding",
  "rand 0.8.5",
  "reqwest",
@@ -2588,7 +2588,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
- "pem 2.0.0",
+ "pem",
  "serde",
  "serde_json",
  "tempfile",
@@ -2793,7 +2793,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "once_cell",
- "pem 2.0.0",
+ "pem",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -2865,7 +2865,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-parse",
  "mc-util-uri",
- "pem 2.0.0",
+ "pem",
  "protobuf",
  "rand 0.8.5",
  "serde",
@@ -3022,7 +3022,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-serial",
  "mc-util-uri",
- "pem 2.0.0",
+ "pem",
  "serde",
  "serde_json",
  "serde_with",
@@ -3195,7 +3195,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
- "pem 2.0.0",
+ "pem",
  "rand_core 0.6.4",
  "rand_hc",
  "schnorrkel-og",
@@ -3342,7 +3342,7 @@ dependencies = [
  "clap 4.1.11",
  "mc-crypto-keys",
  "mc-util-build-script",
- "pem 2.0.0",
+ "pem",
  "x509-signature",
 ]
 
@@ -3353,7 +3353,7 @@ dependencies = [
  "displaydoc",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
- "pem 2.0.0",
+ "pem",
  "x509-signature",
 ]
 
@@ -4133,7 +4133,7 @@ dependencies = [
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-uri",
- "pem 2.0.0",
+ "pem",
  "prost",
  "rand 0.8.5",
  "serde",
@@ -4240,7 +4240,7 @@ dependencies = [
  "mc-fog-sig-authority",
  "mc-fog-sig-report",
  "mc-util-from-random",
- "pem 2.0.0",
+ "pem",
  "rand_core 0.6.4",
  "rand_hc",
  "signature 1.6.4",
@@ -4296,7 +4296,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-repr-bytes",
  "mc-util-test-helper",
- "pem 2.0.0",
+ "pem",
  "prost",
  "r2d2",
  "rand 0.8.5",
@@ -4636,7 +4636,7 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-test-helper",
  "mc-util-uri",
- "pem 1.1.1",
+ "pem",
  "portpicker",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -4838,7 +4838,7 @@ dependencies = [
  "mc-watcher",
  "more-asserts",
  "num_cpus",
- "pem 2.0.0",
+ "pem",
  "portpicker",
  "prost",
  "protobuf",
@@ -5617,7 +5617,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
- "pem 2.0.0",
+ "pem",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -5697,7 +5697,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-parse",
- "pem 2.0.0",
+ "pem",
  "rand 0.8.5",
  "rand_hc",
 ]
@@ -6346,15 +6346,6 @@ name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
-
-[[package]]
-name = "pem"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8835c273a76a90455d7344889b0964598e3316e2a79ede8e36f16bdcf2228b8"
-dependencies = [
- "base64 0.13.1",
-]
 
 [[package]]
 name = "pem"
