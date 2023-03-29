@@ -19,7 +19,7 @@ use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer,
-    ReadinessIndicator, TokenAuthenticator,
+    TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -84,8 +84,6 @@ where
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        let readiness_indicator = ReadinessIndicator::default();
-
         let env = Arc::new(
             grpcio::EnvBuilder::new()
                 .name_prefix("ledger-router-server".to_string())
@@ -93,9 +91,7 @@ where
         );
 
         // Health check service - will be used in both router + admin interface
-        let health_service =
-            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
-                .into_service();
+        let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
 
         // Build our router server.
         // Init ledger router service.
