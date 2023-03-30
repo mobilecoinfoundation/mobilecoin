@@ -162,9 +162,10 @@ impl ClientApiService {
                 let recent_failure_count =
                     record.fail_tx_proposal(Instant::now(), self.config.tx_failure_window);
 
-                if (recent_failure_count as u32) >= self.config.tx_failure_limit { 
+                if (recent_failure_count as u32) >= self.config.tx_failure_limit {
                     // TODO: Some action to take to counter the harmful traffic
-                    log::warn!(self.logger,
+                    log::warn!(
+                        self.logger,
                         "Client has {} recent failed tx proposals within the last {}",
                         recent_failure_count,
                         self.config.tx_failure_window.as_secs_f32()
