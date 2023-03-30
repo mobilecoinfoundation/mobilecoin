@@ -300,9 +300,9 @@ impl ConsensusClientApi for ClientApiService {
                     ConsensusGrpcError::NotServing.into()
                 }
             } else {
-                let result = self.handle_proposed_tx(msg); 
+                let result = self.handle_proposed_tx(msg);
                 // The block present below rate-limits suspicious behavior.
-                if let Err(err) = &result { 
+                if let Err(err) = &result {
                     let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                     let record = if let Some(record) = tracker.get_mut(&session_id) {
                         record
