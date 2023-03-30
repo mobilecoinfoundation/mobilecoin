@@ -332,7 +332,7 @@ impl ConsensusClientApi for ClientApiService {
                         // only be possible for client_close() to error if a
                         // mutex is poisoned. However, because the
                         // implementation of this method might change, it
-                        // seems wise to handle any error this might throw.  
+                        // seems wise to handle any error this might throw.
                         if let Err(e) = close_result {
                             log::error!(
                                 self.logger,
