@@ -13,7 +13,10 @@ use crate::{
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
-use mc_common::{logger::{Logger, log}, LruCache};
+use mc_common::{
+    logger::{log, Logger},
+    LruCache,
+};
 use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
@@ -152,9 +155,10 @@ impl ClientApiService {
                 let recent_failure_count =
                     record.fail_tx_proposal(&Instant::now(), &self.config.tx_failure_window);
 
-                if (recent_failure_count as u32) >= self.config.tx_failure_limit { 
+                if (recent_failure_count as u32) >= self.config.tx_failure_limit {
                     // TODO: Some action to take to counter the harmful traffic
-                    log::warn!(self.logger,
+                    log::warn!(
+                        self.logger,
                         "Client has {} recent failed tx proposals within the last {}",
                         recent_failure_count,
                         self.config.tx_failure_window.as_secs_f32()

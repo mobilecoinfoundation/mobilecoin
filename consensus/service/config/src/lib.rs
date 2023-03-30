@@ -138,7 +138,7 @@ pub struct Config {
     pub client_tracking_capacity: usize,
 
     /// How many seconds to retain instances of proposed-transaction
-    /// failures, per-client. This is used to implement DOS-protection, 
+    /// failures, per-client. This is used to implement DOS-protection,
     /// along the lines of kicking clients who make too many failed transaction
     /// proposals within the span of tx_failure_window
     // TODO: slam-testing to derive reasonable default
@@ -244,7 +244,6 @@ mod tests {
             client_tracking_capacity: 4096,
             tx_failure_window: Duration::from_secs(30),
             tx_failure_limit: 16384,
-            
         };
 
         assert_eq!(
