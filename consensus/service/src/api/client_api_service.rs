@@ -276,6 +276,8 @@ impl ConsensusClientApi for ClientApiService {
 
         let session_id = ClientSession::from(msg.channel_id.clone());
 
+        let session_id = ClientSession::from(msg.channel_id.clone());
+
         {
             let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
             // Calling get() on the LRU bumps the entry to show up as more
@@ -349,9 +351,9 @@ impl ConsensusClientApi for ClientApiService {
                     ConsensusGrpcError::NotServing.into()
                 }
             } else {
-                let result = self.handle_proposed_tx(msg);
+                let result = self.handle_proposed_tx(msg); 
                 // The block present below rate-limits suspicious behavior.
-                if let Err(_err) = &result {
+                if let Err(err) = &result { 
                     let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                     let record = if let Some(record) = tracker.get_mut(&session_id) {
                         record
@@ -361,7 +363,31 @@ impl ConsensusClientApi for ClientApiService {
                             .get_mut(&session_id)
                             .expect("Adding session-tracking record should be atomic.")
                     };
-                    record.fail_tx_proposal(Instant::now(), self.config.tx_failure_window);
+                    let recent_failure_count =
+                        record.fail_tx_proposal(&Instant::now(), &self.config.tx_failure_window);
+
+                    if (recent_failure_count as u32) >= self.config.tx_failure_limit {
+                        log::warn!(
+                            self.logger,
+                            "Client has {} recent failed tx proposals within the \
+                            last {} seconds - dropping connection. \n\
+                            Most recent proposal failure reason was: {:?}",
+                            recent_failure_count,
+                            self.config.tx_failure_window.as_secs_f32(),
+                            err
+                        );
+                        // Rate-limiting is performed at the auth endpoint, so
+                        // merely dropping the connection will be enough.
+                        let close_result = self.enclave.client_close(session_id.clone());
+                        if let Err(e) = close_result {
+                            log::error!(
+                                self.logger,
+                                "Failed to drop session {:?} due to: {:?}",
+                                &session_id,
+                                e
+                            );
+                        }
+                    }
                 }
                 result.or_else(ConsensusGrpcError::into)
             };
