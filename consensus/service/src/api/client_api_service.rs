@@ -328,6 +328,11 @@ impl ConsensusClientApi for ClientApiService {
                         // Rate-limiting is performed at the auth endpoint, so
                         // merely dropping the connection will be enough.
                         let close_result = self.enclave.client_close(session_id.clone());
+                        // At the time of writing (30th March, 2023), it should
+                        // only be possible for client_close() to error if a
+                        // mutex is poisoned. However, because the
+                        // implementation of this method might change, it
+                        // seems wise to handle any error this might throw.  
                         if let Err(e) = close_result {
                             log::error!(
                                 self.logger,
