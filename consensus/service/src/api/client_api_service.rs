@@ -144,33 +144,12 @@ impl ClientApiService {
         msg: Message,
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
-        let session_id = ClientSession::from(msg.channel_id.clone());
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         // Cache the transaction. This performs the well-formedness checks.
         let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
-
-                let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
-                if !tracker.contains(&session_id) {
-                    tracker.put(session_id.clone(), ClientSessionTracking::new());
-                    tracker
-                        .get_mut(&session_id)
-                        .expect("Adding session-tracking record should be atomic.")
-                };
-                let recent_failure_count =
-                    record.fail_tx_proposal(Instant::now(), self.config.tx_failure_window);
-
-                if (recent_failure_count as u32) >= self.config.tx_failure_limit {
-                    // TODO: Some action to take to counter the harmful traffic
-                    log::warn!(
-                        self.logger,
-                        "Client has {} recent failed tx proposals within the last {}",
-                        recent_failure_count,
-                        self.config.tx_failure_window.as_secs_f32()
-                    );
-                }
             }
             err
         })?;
