@@ -1223,7 +1223,7 @@ checksum = "be522bee13fa6d8059f4903a4084aa3bd50725e18150202f0238deb615cd6371"
 dependencies = [
  "pkcs8",
  "serde",
- "signature 2.0.0",
+ "signature",
 ]
 
 [[package]]
@@ -1236,7 +1236,7 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2 0.10.6",
- "signature 2.0.0",
+ "signature",
  "zeroize",
 ]
 
@@ -3147,7 +3147,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
- "signature 2.0.0",
+ "signature",
 ]
 
 [[package]]
@@ -3194,7 +3194,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
- "signature 2.0.0",
+ "signature",
  "static_assertions",
  "subtle",
  "tempfile",
@@ -4128,7 +4128,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "signature 1.6.4",
+ "signature",
  "x509-signature",
  "zeroize",
 ]
@@ -4233,7 +4233,7 @@ dependencies = [
  "pem",
  "rand_core",
  "rand_hc",
- "signature 1.6.4",
+ "signature",
  "x509-signature",
 ]
 
@@ -4259,7 +4259,7 @@ dependencies = [
  "mc-util-from-random",
  "rand_core",
  "rand_hc",
- "signature 1.6.4",
+ "signature",
 ]
 
 [[package]]
@@ -7558,12 +7558,6 @@ checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "signature"
-version = "1.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
 name = "signature"
