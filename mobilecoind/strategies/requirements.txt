@@ -10,8 +10,6 @@ grpcio==1.44.0
 grpcio-tools==1.44.0
 idna==3.3
 ipdb==0.12.2
-ipython==8.10.0
-ipython-genutils==0.2.0
 jedi==0.18.2
 jmespath==0.10.0
 parso==0.8.3

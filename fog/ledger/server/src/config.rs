@@ -153,7 +153,7 @@ pub struct LedgerStoreConfig {
 
     /// Determines which group of Key Images the Key Image Store instance will
     /// process.
-    #[clap(long, default_value = "default")]
+    #[clap(long, default_value = "default", env = "MC_SHARDING_STRATEGY")]
     pub sharding_strategy: ShardingStrategy,
 }
 
