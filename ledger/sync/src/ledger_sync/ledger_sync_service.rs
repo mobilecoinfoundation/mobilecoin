@@ -41,6 +41,8 @@ const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 /// Telemetry metadata: number of blocks appended to the local ledger.
 const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
 
+const MAX_SLEEP_INTERVAL: u64 = 60;
+
 pub struct LedgerSyncService<
     L: Ledger,
     BC: BlockchainConnection + 'static,
@@ -719,7 +721,12 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                     // Sleep, with a linearly increasing delay. This prevents
                                     // endless retries
                                     // as long as the deadline is not exceeded.
-                                    thread::sleep(Duration::from_secs(num_attempts + 1));
+                                    let interval = if num_attempts + 1 < MAX_SLEEP_INTERVAL {
+                                        num_attempts + 1
+                                    } else {
+                                        MAX_SLEEP_INTERVAL
+                                    };
+                                    thread::sleep(Duration::from_secs(interval));
 
                                     // Put back to queue for a retry
                                     thread_sender

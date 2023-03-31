@@ -456,7 +456,11 @@ impl WatcherDB {
                 Ok((ts, res)) => match res {
                     TimestampResultCode::WatcherBehind => {
                         if watcher_behind_timer.elapsed() > watcher_timeout {
-                            log::warn!(self.logger, "watcher is still behind on block index = {} after waiting {} seconds, caller will be blocked", block_index, watcher_timeout.as_secs());
+                            log::warn!(
+                                self.logger,
+                                "Caller will be blocked in {} seconds",
+                                watcher_timeout.as_secs()
+                            );
                             watcher_behind_timer = Instant::now();
                         }
                         std::thread::sleep(POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY);
