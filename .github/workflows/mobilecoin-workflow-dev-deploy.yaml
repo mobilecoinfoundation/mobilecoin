@@ -86,8 +86,8 @@ jobs:
               intel.com/sgx: 2000
           persistence:
             enabled: false
-          client:
-            attest:
+          ingress:
+            clientAttest:
               rateLimits:
                 enabled: false
         EOF
