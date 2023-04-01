@@ -1863,7 +1863,7 @@ mod client_api_tests {
     #[test_with_logger]
     #[serial(counters)]
     fn test_get_kicked_failure_limit(logger: Logger) {
-        let limit = 3; 
+        let limit = 3;
 
         let mut consensus_enclave = MockConsensusEnclave::new();
 
@@ -1893,19 +1893,18 @@ mod client_api_tests {
         // Permit only 3 failed transactions
         config.tx_failure_limit = limit;
 
-        // Cause the mock enclave to consistently fail each request. 
+        // Cause the mock enclave to consistently fail each request.
         consensus_enclave
             .expect_client_tx_propose()
             .times(limit as usize)
-            .return_const(
-                Err(
-                    EnclaveError::MalformedTx(
-                        TransactionValidationError::ContainsSpentKeyImage
-                    )
-                )
-            );
+            .return_const(Err(EnclaveError::MalformedTx(
+                TransactionValidationError::ContainsSpentKeyImage,
+            )));
         // Expect a close, since this will be exceeding our limit
-        consensus_enclave.expect_client_close().times(1).return_const(Ok(()));
+        consensus_enclave
+            .expect_client_close()
+            .times(1)
+            .return_const(Ok(()));
 
         let instance = ClientApiService::new(
             config,
@@ -1926,12 +1925,15 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
         let message = Message::default();
 
-        for _ in 0..limit { 
+        for _ in 0..limit {
             println!("Sending request");
             let propose_tx_response = client
                 .client_tx_propose(&message)
                 .expect("Client tx propose error");
-            assert_eq!(propose_tx_response.get_result(), ProposeTxResult::ContainsSpentKeyImage);
+            assert_eq!(
+                propose_tx_response.get_result(),
+                ProposeTxResult::ContainsSpentKeyImage
+            );
         }
 
         let tracker = tracked_sessions
@@ -1940,7 +1942,8 @@ mod client_api_tests {
         assert_eq!(tracker.len(), 1);
         let (_session_id, tracking_data) = tracker.iter().next().unwrap();
         assert_eq!(tracking_data.tx_proposal_failures.len(), limit as usize);
+
         // Because of the behavior of Mockall, if this returns without calling
-        // client_close() exactly once, it will panic and the test will fail. 
+        // client_close() exactly once, it will panic and the test will fail.
     }
 }
