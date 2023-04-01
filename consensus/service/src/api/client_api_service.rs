@@ -1859,4 +1859,88 @@ mod client_api_tests {
             .expect("Attempt to lock session-tracking mutex failed.");
         assert_eq!(tracker.len(), 1);
     }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_get_kicked_failure_limit(logger: Logger) {
+        let limit = 3; 
+
+        let mut consensus_enclave = MockConsensusEnclave::new();
+
+        let scp_client_value_sender = Arc::new(
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        const NUM_BLOCKS: u64 = 5;
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_num_blocks()
+            .times(limit as usize)
+            .return_const(Ok(NUM_BLOCKS));
+
+        let tx_manager = MockTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        const LRU_CAPACITY: usize = 4096;
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));
+
+        let mut config = get_config();
+        // Permit only 3 failed transactions
+        config.tx_failure_limit = limit;
+
+        // Cause the mock enclave to consistently fail each request. 
+        consensus_enclave
+            .expect_client_tx_propose()
+            .times(limit as usize)
+            .return_const(
+                Err(
+                    EnclaveError::MalformedTx(
+                        TransactionValidationError::ContainsSpentKeyImage
+                    )
+                )
+            );
+        // Expect a close, since this will be exceeding our limit
+        consensus_enclave.expect_client_close().times(1).return_const(Ok(()));
+
+        let instance = ClientApiService::new(
+            config,
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+            // Clone this, maintaining our own Arc reference into the tracked
+            // sessions structure so that we can inspect it later.
+            tracked_sessions.clone(),
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let message = Message::default();
+
+        for _ in 0..limit { 
+            println!("Sending request");
+            let propose_tx_response = client
+                .client_tx_propose(&message)
+                .expect("Client tx propose error");
+            assert_eq!(propose_tx_response.get_result(), ProposeTxResult::ContainsSpentKeyImage);
+        }
+
+        let tracker = tracked_sessions
+            .lock()
+            .expect("Attempt to lock session-tracking mutex failed.");
+        assert_eq!(tracker.len(), 1);
+        let (_session_id, tracking_data) = tracker.iter().next().unwrap();
+        assert_eq!(tracking_data.tx_proposal_failures.len(), limit as usize);
+        // Because of the behavior of Mockall, if this returns without calling
+        // client_close() exactly once, it will panic and the test will fail. 
+    }
 }
