@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-summary"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"

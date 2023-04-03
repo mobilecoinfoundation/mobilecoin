@@ -1,6 +1,6 @@
 [package]
 name = "mc-core"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Library"
