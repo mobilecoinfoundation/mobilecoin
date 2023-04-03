@@ -137,12 +137,24 @@ impl Watcher {
         max_blocks_per_iteration: Option<usize>,
         log_sync_failures: bool,
     ) -> Result<SyncResult, WatcherError> {
-        log::info!(
-            self.logger,
-            "Now syncing signatures from {} to {:?}",
-            start,
-            max_block_height,
-        );
+        match max_block_height {
+            None => {
+                log::debug!(
+                    self.logger,
+                    "Now syncing signatures from {} to {:?}",
+                    start,
+                    max_block_height,
+                );
+            }
+            Some(_) => {
+                log::info!(
+                    self.logger,
+                    "Now syncing signatures from {} to {:?}",
+                    start,
+                    max_block_height,
+                );
+            }
+        }
 
         let mut counter = 0usize;
 

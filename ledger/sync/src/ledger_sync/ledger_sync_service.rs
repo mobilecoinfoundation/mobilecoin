@@ -25,6 +25,7 @@ use mc_util_telemetry::{
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
+    cmp::min,
     collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, Condvar, Mutex},
     thread,
@@ -40,6 +41,8 @@ const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 
 /// Telemetry metadata: number of blocks appended to the local ledger.
 const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
+
+const MAX_SLEEP_INTERVAL: Duration = Duration::from_secs(60);
 
 pub struct LedgerSyncService<
     L: Ledger,
@@ -719,7 +722,8 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                     // Sleep, with a linearly increasing delay. This prevents
                                     // endless retries
                                     // as long as the deadline is not exceeded.
-                                    thread::sleep(Duration::from_secs(num_attempts + 1));
+                                    let attempts = Duration::from_secs(num_attempts + 1);
+                                    thread::sleep(min(attempts, MAX_SLEEP_INTERVAL));
 
                                     // Put back to queue for a retry
                                     thread_sender
