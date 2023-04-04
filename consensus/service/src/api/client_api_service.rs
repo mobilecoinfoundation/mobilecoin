@@ -1975,8 +1975,7 @@ mod client_api_tests {
             }
             _ => panic!(
                 "Unexpected response upon continuing to use\
-                        a rate-limited session: {:?}",
-                propose_tx_response
+                        a rate-limited session: {propose_tx_response:?}"
             ),
         }
 
