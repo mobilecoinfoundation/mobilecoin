@@ -11,7 +11,7 @@ use mc_transaction_core::{
     tx::{Tx, TxPrefix},
     BlockVersion,
 };
-use mc_transaction_extra::TxOutSummaryUnblindingData;
+use mc_transaction_summary::TxOutSummaryUnblindingData;
 use serde::{Deserialize, Serialize};
 
 /// View account credentials produced by a signer implementation

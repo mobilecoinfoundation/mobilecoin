@@ -2324,6 +2324,7 @@ dependencies = [
  "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
@@ -3037,7 +3038,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "4.0.2"
+version = "4.1.0-pre0"
 dependencies = [
  "anyhow",
  "clap 4.1.11",
@@ -3204,7 +3205,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "4.0.2"
+version = "4.1.0-pre0"
 dependencies = [
  "hmac 0.12.1",
  "mc-crypto-keys",
@@ -5189,6 +5190,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-serial",
@@ -5286,6 +5288,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-builder",
  "mc-transaction-core",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -5306,7 +5309,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-signer"
-version = "4.0.1"
+version = "4.1.0-pre0"
 dependencies = [
  "anyhow",
  "clap 4.1.11",
@@ -5322,6 +5325,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "rand_core",
@@ -5329,6 +5333,25 @@ dependencies = [
  "serde_json",
  "subtle",
  "tiny-bip39",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-summary"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-core",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-vec-map",
+ "mc-util-zip-exact",
+ "prost",
+ "serde",
+ "subtle",
  "zeroize",
 ]
 
@@ -5582,7 +5605,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.12",
 ]
 
 [[package]]
@@ -7790,9 +7813,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.11"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e3787bb71465627110e7d87ed4faaa36c1f61042ee67badb9e2ef173accc40"
+checksum = "79d9531f94112cfc3e4c8f5f02cb2b58f72c97b7efd85f70203cc6d8efda5927"
 dependencies = [
  "proc-macro2",
  "quote",

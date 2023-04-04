@@ -17,7 +17,8 @@ use mc_transaction_core::{
     tx::Tx,
     Amount, BlockVersion, Token, TokenId,
 };
-use mc_transaction_extra::{verify_tx_summary, TransactionEntity, UnsignedTx};
+use mc_transaction_extra::UnsignedTx;
+use mc_transaction_summary::{verify_tx_summary, TransactionEntity};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};

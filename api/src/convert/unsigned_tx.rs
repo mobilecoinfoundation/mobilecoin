@@ -5,7 +5,8 @@
 use crate::{external, ConversionError};
 use mc_blockchain_types::BlockVersion;
 use mc_transaction_core::UnmaskedAmount;
-use mc_transaction_extra::{TxOutSummaryUnblindingData, UnsignedTx};
+use mc_transaction_extra::UnsignedTx;
+use mc_transaction_summary::TxOutSummaryUnblindingData;
 
 impl From<&UnsignedTx> for external::UnsignedTx {
     fn from(source: &UnsignedTx) -> Self {

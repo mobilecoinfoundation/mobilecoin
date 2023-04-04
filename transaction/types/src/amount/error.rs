@@ -3,10 +3,12 @@
 //! Errors that can occur when handling an amount commitment.
 
 use displaydoc::Display;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur when handling an amount commitment.
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum AmountError {
     /**
      * The masked value, token id, or shared secret are not consistent with
