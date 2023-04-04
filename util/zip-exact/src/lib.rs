@@ -9,6 +9,7 @@ use core::{
     fmt::{self, Debug, Display},
     iter::Zip,
 };
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// An alternate version of `Iterator::zip` which returns an error if the two
@@ -30,7 +31,8 @@ where
 }
 
 /// An error that occurs when zip_exact fails
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ZipExactError(usize, usize);
 
 impl Display for ZipExactError {

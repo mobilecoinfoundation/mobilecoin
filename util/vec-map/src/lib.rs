@@ -102,6 +102,19 @@ impl<K: Clone + Eq, V, const N: usize> VecMap<K, V, N> {
     pub fn iter(&self) -> IterVecMap<K, V, N> {
         IterVecMap::new(self)
     }
+
+    /// Fetch a (K, V) item by index
+    #[inline]
+    pub fn index(&self, index: usize) -> Option<(&K, &V)> {
+        if index + 1 > self.len() {
+            return None;
+        }
+
+        match (self.keys.get(index), self.values.get(index)) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None,
+        }
+    }
 }
 
 // Sorting is possible when keys are ordered, and keys and values are cloneable
@@ -110,7 +123,7 @@ impl<K: Clone + Ord, V: Clone, const N: usize> VecMap<K, V, N> {
     pub fn sort(&mut self) {
         // First compute the order that would sort the set of keys
         let mut indices: Vec<usize, N> = (0..self.keys.len()).collect();
-        indices.sort_by_key(|&i| &self.keys[i]);
+        indices.sort_unstable_by_key(|&i| &self.keys[i]);
         // Make new key and val sets
         let mut new_keys = Vec::<K, N>::default();
         let mut new_vals = Vec::<V, N>::default();
