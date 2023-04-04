@@ -10,7 +10,7 @@ use crate::{
     tx_manager::{TxManager, TxManagerError},
     SVC_COUNTERS,
 };
-use grpcio::{RpcContext, RpcStatus, UnarySink};
+use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
 use mc_common::{
@@ -58,6 +58,18 @@ impl ClientSessionTracking {
         }
     }
 
+    pub fn get_proposetx_failures(&self) -> usize {
+        self.tx_proposal_failures.len()
+    }
+
+    /// Remove any transaction proposal failure record that is older than our
+    /// tracking window.
+    fn clear_stale_records(&mut self, now: &Instant, tracking_window: &Duration) {
+        self.tx_proposal_failures.retain(|past_failure| {
+            now.saturating_duration_since(*past_failure) <= *tracking_window
+        });
+    }
+
     /// Push a new failed tx proposal record, clear out samples older than
     /// our tracking window, and return the number of tx failures remaining
     /// on the list - as-in, tells you "there have been x number of failures
@@ -72,9 +84,7 @@ impl ClientSessionTracking {
     /// have existed for longer than this value will be dropped when this
     /// method is called.
     pub fn fail_tx_proposal(&mut self, now: &Instant, tracking_window: &Duration) -> usize {
-        self.tx_proposal_failures.retain(|past_failure| {
-            now.saturating_duration_since(*past_failure) <= *tracking_window
-        });
+        self.clear_stale_records(now, tracking_window);
         self.tx_proposal_failures.push_back(*now);
         self.tx_proposal_failures.len()
     }
@@ -274,6 +284,46 @@ impl ConsensusClientApi for ClientApiService {
             if tracker.get(&session_id).is_none() {
                 tracker.put(session_id.clone(), ClientSessionTracking::new());
             }
+
+            let session_info = tracker
+                .get(&session_id)
+                .expect("Session should be present after insert");
+            let recent_failures = session_info.get_proposetx_failures() as u32;
+            if recent_failures >= self.config.tx_failure_limit {
+                log::debug!(
+                    self.logger,
+                    "Client has {} recent failed tx proposals within the \
+                    last {} seconds - dropping connection.",
+                    recent_failures,
+                    self.config.tx_failure_window.as_secs_f32()
+                );
+                // Rate-limiting is performed at the auth endpoint, so
+                // merely dropping the connection will be enough.
+                let close_result = self.enclave.client_close(session_id.clone());
+                // At the time of writing (30th March, 2023), it should
+                // only be possible for client_close() to error if a
+                // mutex is poisoned. However, because the
+                // implementation of this method might change, it
+                // seems wise to handle any error this might throw.
+                if let Err(e) = close_result {
+                    log::error!(
+                        self.logger,
+                        "Failed to drop session {:?} due to: {:?}",
+                        &session_id,
+                        e
+                    );
+                } else {
+                    let _ = tracker.pop(&session_id);
+                }
+
+                // Send an error indicating the rate-limiting.
+                let rpc_code = RpcStatusCode::RESOURCE_EXHAUSTED;
+                let rpc_error = ConsensusGrpcError::RpcStatus(RpcStatus::new(rpc_code));
+                let result: Result<_, RpcStatus> = rpc_error.into();
+
+                // Send the error and return early.
+                return send_result(ctx, sink, result, &self.logger);
+            }
         }
 
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
@@ -302,7 +352,7 @@ impl ConsensusClientApi for ClientApiService {
             } else {
                 let result = self.handle_proposed_tx(msg);
                 // The block present below rate-limits suspicious behavior.
-                if let Err(err) = &result {
+                if let Err(_err) = &result {
                     let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                     let record = if let Some(record) = tracker.get_mut(&session_id) {
                         record
@@ -312,36 +362,7 @@ impl ConsensusClientApi for ClientApiService {
                             .get_mut(&session_id)
                             .expect("Adding session-tracking record should be atomic.")
                     };
-                    let recent_failure_count =
-                        record.fail_tx_proposal(&Instant::now(), &self.config.tx_failure_window);
-
-                    if (recent_failure_count as u32) >= self.config.tx_failure_limit {
-                        log::warn!(
-                            self.logger,
-                            "Client has {} recent failed tx proposals within the \
-                            last {} seconds - dropping connection. \n\
-                            Most recent proposal failure reason was: {:?}",
-                            recent_failure_count,
-                            self.config.tx_failure_window.as_secs_f32(),
-                            err
-                        );
-                        // Rate-limiting is performed at the auth endpoint, so
-                        // merely dropping the connection will be enough.
-                        let close_result = self.enclave.client_close(session_id.clone());
-                        // At the time of writing (30th March, 2023), it should
-                        // only be possible for client_close() to error if a
-                        // mutex is poisoned. However, because the
-                        // implementation of this method might change, it
-                        // seems wise to handle any error this might throw.
-                        if let Err(e) = close_result {
-                            log::error!(
-                                self.logger,
-                                "Failed to drop session {:?} due to: {:?}",
-                                &session_id,
-                                e
-                            );
-                        }
-                    }
+                    record.fail_tx_proposal(&Instant::now(), &self.config.tx_failure_window);
                 }
                 result.or_else(ConsensusGrpcError::into)
             };
@@ -1926,7 +1947,6 @@ mod client_api_tests {
         let message = Message::default();
 
         for _ in 0..limit {
-            println!("Sending request");
             let propose_tx_response = client
                 .client_tx_propose(&message)
                 .expect("Client tx propose error");
@@ -1935,13 +1955,36 @@ mod client_api_tests {
                 ProposeTxResult::ContainsSpentKeyImage
             );
         }
+        // No failed transaction proposals over the limit yet, so the session
+        // shouldn't have been dropped
+        {
+            let tracker = tracked_sessions
+                .lock()
+                .expect("Attempt to lock session-tracking mutex failed.");
+            assert_eq!(tracker.len(), 1);
+            let (_session_id, tracking_data) = tracker.iter().next().unwrap();
+            assert_eq!(tracking_data.tx_proposal_failures.len(), limit as usize);
+        }
+
+        let propose_tx_response = client.client_tx_propose(&message);
+        assert!(propose_tx_response.is_err());
+
+        match propose_tx_response {
+            Err(grpcio::Error::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::RESOURCE_EXHAUSTED);
+            }
+            _ => panic!(
+                "Unexpected response upon continuing to use\
+                        a rate-limited session: {:?}",
+                propose_tx_response
+            ),
+        }
 
         let tracker = tracked_sessions
             .lock()
             .expect("Attempt to lock session-tracking mutex failed.");
-        assert_eq!(tracker.len(), 1);
-        let (_session_id, tracking_data) = tracker.iter().next().unwrap();
-        assert_eq!(tracking_data.tx_proposal_failures.len(), limit as usize);
+        // This session should have been dropped at this point.
+        assert_eq!(tracker.len(), 0);
 
         // Because of the behavior of Mockall, if this returns without calling
         // client_close() exactly once, it will panic and the test will fail.
