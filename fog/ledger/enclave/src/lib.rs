@@ -187,6 +187,12 @@ impl LedgerEnclave for LedgerSgxEnclave {
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
+
+    fn swap(&self) -> Result<String> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::Swap)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
 }
 
 extern "C" {

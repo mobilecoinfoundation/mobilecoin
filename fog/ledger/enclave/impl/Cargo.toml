@@ -31,3 +31,6 @@ mc-oblivious-traits = "2.3"
 # fog
 mc-fog-ledger-enclave-api = { path = "../api", default-features = false }
 mc-fog-types = { path = "../../../types" }
+
+mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
+mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }

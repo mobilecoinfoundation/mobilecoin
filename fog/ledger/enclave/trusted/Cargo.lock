@@ -1094,6 +1094,8 @@ name = "mc-fog-ledger-enclave-impl"
 version = "4.1.0-pre0"
 dependencies = [
  "aligned-cmov",
+ "mbedtls",
+ "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",

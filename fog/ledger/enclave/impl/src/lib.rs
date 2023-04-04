@@ -14,6 +14,7 @@ extern crate alloc;
 
 mod key_image_store;
 use alloc::vec::Vec;
+use alloc::string::String;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
@@ -190,6 +191,10 @@ where
         }
 
         Ok(())
+    }
+
+    fn swap(&self) -> Result<String> {
+        Ok("cool".into())
     }
 }
 

@@ -49,39 +49,43 @@ fn main() {
         logger.clone(),
     );
 
-    let db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
-    let watcher =
-        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-    let mut server = LedgerServer::new(
-        config.clone(),
-        enclave,
-        db,
-        watcher,
-        ias_client,
-        SystemTimeProvider::default(),
-        logger.clone(),
-    );
+    use mc_fog_ledger_enclave::LedgerEnclave;
+    println!("{:?}", enclave.swap());
 
-    server.start().expect("Server failed to start");
+    // let db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger
+    // DB"); let watcher =
+    //     WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not
+    // open watcher DB"); let ias_client =
+    // Client::new(&config.ias_api_key).expect("Could not create IAS client");
+    // let mut server = LedgerServer::new(
+    //     config.clone(),
+    //     enclave,
+    //     db,
+    //     watcher,
+    //     ias_client,
+    //     SystemTimeProvider::default(),
+    //     logger.clone(),
+    // );
 
-    let config2 = config.clone();
-    let get_config_json = Arc::new(move || {
-        serde_json::to_string(&config2)
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{err:?}")))
-    });
-    let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
-        AdminServer::start(
-            None,
-            admin_listen_uri,
-            "Fog Ledger".to_owned(),
-            config.client_responder_id.to_string(),
-            Some(get_config_json),
-            vec![],
-            logger,
-        )
-        .expect("Failed starting admin server")
-    });
+    // server.start().expect("Server failed to start");
+
+    // let config2 = config.clone();
+    // let get_config_json = Arc::new(move || {
+    //     serde_json::to_string(&config2)
+    //         .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL,
+    // format!("{err:?}"))) });
+    // let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
+    //     AdminServer::start(
+    //         None,
+    //         admin_listen_uri,
+    //         "Fog Ledger".to_owned(),
+    //         config.client_responder_id.to_string(),
+    //         Some(get_config_json),
+    //         vec![],
+    //         logger,
+    //     )
+    //     .expect("Failed starting admin server")
+    // });
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));

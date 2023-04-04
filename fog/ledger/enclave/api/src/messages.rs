@@ -101,4 +101,7 @@ pub enum EnclaveCall {
     ///
     ///  Add key image data to the ORAM.
     AddKeyImageData(Vec<KeyImageData>),
+
+    /// Do a 4swap swap
+    Swap,
 }

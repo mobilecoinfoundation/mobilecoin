@@ -24,6 +24,7 @@ pub use mc_fog_types::ledger::{
 };
 use mc_sgx_report_cache_api::ReportableEnclave;
 use serde::{Deserialize, Serialize};
+use alloc::string::String;
 
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
@@ -99,6 +100,9 @@ pub trait LedgerEnclave: ReportableEnclave {
 
     /// Add a key image data to the oram Using thrm -rf targete key image
     fn add_key_image_data(&self, records: Vec<KeyImageData>) -> Result<()>;
+
+    /// Doc
+    fn swap(&self) -> Result<String>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side
