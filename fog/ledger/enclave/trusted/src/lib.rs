@@ -122,3 +122,4 @@ pub unsafe extern "C" fn ledger_enclave_call(
         Err(_) => sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED,
     }
 }
+

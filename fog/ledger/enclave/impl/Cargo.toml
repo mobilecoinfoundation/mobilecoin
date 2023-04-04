@@ -34,3 +34,6 @@ mc-fog-types = { path = "../../../types" }
 
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
+rand = { version = "0.8", default_features = false }
+mc-sgx-types = { path = "../../../../sgx/types" }
+genio = { version = "0.2.1", default-features = false }

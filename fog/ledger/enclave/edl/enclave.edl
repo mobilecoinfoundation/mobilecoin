@@ -19,4 +19,10 @@ enclave {
                                                 [in, out] uint64_t* outbuf_retry_id);
 
     };
+
+    untrusted {
+        void enclave_socket_send([in, size=len] const uint8_t* buf, size_t len, [out] int64_t * out_retval);
+        void enclave_socket_recv([out, size=len] uint8_t* buf, size_t len, [out] int64_t * out_retval);
+    };
 };
+

@@ -1,5 +1,4 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-#![deny(missing_docs)]
 
 //! Ledger Server target
 
@@ -15,7 +14,10 @@ use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{env, sync::Arc};
+use std::{
+    env,
+    sync::{Arc, Mutex},
+};
 
 fn main() {
     let _sentry_guard = mc_common::sentry::init();
@@ -50,6 +52,9 @@ fn main() {
     );
 
     use mc_fog_ledger_enclave::LedgerEnclave;
+
+    *SOCK.lock().unwrap() = Some(std::net::TcpStream::connect("api.4swap.org:443").unwrap());
+
     println!("{:?}", enclave.swap());
 
     // let db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger
@@ -89,5 +94,45 @@ fn main() {
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+}
+
+lazy_static::lazy_static! {
+    static ref SOCK: Mutex<Option<std::net::TcpStream>> = Mutex::new(None);
+}
+
+use std::io::{Read, Write};
+#[no_mangle]
+pub unsafe extern "C" fn enclave_socket_send(buf: *const u8, len: usize, out_retval: *mut i64) {
+    let slice = std::slice::from_raw_parts(buf, len);
+
+    let mut sock = SOCK.lock().unwrap();
+
+    let s = sock.as_mut().unwrap();
+    match s.write(slice) {
+        Ok(bytes_written) => {
+            *out_retval = bytes_written as i64;
+        }
+        Err(err) => {
+            println!("Error writing to socket: {:?}", err);
+            *out_retval = -1;
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn enclave_socket_recv(buf: *mut u8, len: usize, out_retval: *mut i64) {
+    let slice = std::slice::from_raw_parts_mut(buf, len);
+    let mut sock = SOCK.lock().unwrap();
+
+    let s = sock.as_mut().unwrap();
+    match s.read(slice) {
+        Ok(bytes_read) => {
+            *out_retval = bytes_read as i64;
+        }
+        Err(err) => {
+            println!("Error reading from socket: {:?}", err);
+            *out_retval = -1;
+        }
     }
 }

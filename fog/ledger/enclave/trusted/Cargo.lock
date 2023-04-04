@@ -1094,6 +1094,7 @@ name = "mc-fog-ledger-enclave-impl"
 version = "4.1.0-pre0"
 dependencies = [
  "aligned-cmov",
+ "genio",
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
@@ -1109,9 +1110,11 @@ dependencies = [
  "mc-rand",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
+ "mc-sgx-types",
  "mc-transaction-core",
  "mc-util-serial",
  "mc-watcher-api",
+ "rand",
 ]
 
 [[package]]

@@ -9,13 +9,21 @@
 //! of irony...
 
 #![no_std]
-#![deny(missing_docs)]
 extern crate alloc;
 
 mod key_image_store;
-use alloc::vec::Vec;
-use alloc::string::String;
+use core::{ptr::null_mut, slice::from_raw_parts_mut};
+
+use alloc::{string::String, sync::Arc, vec::Vec};
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
+use mbedtls::{
+    rng::RngCallback,
+    ssl::{
+        config::{Endpoint, Preset, Transport},
+        Config, Context,
+    },
+    x509::Certificate,
+};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::{
@@ -31,8 +39,10 @@ use mc_fog_types::ledger::{
     CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
 };
 use mc_oblivious_traits::ORAMStorageCreator;
+use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
+use rand::RngCore;
 
 /// In-enclave state associated to the ledger enclaves
 pub struct SgxLedgerEnclave<OSC>
@@ -194,7 +204,115 @@ where
     }
 
     fn swap(&self) -> Result<String> {
-        Ok("cool".into())
+        use mbedtls_sys::types::{
+            raw_types::{c_int, c_uchar, c_void},
+            size_t,
+        };
+        struct RngForMbedTls;
+        impl RngCallback for RngForMbedTls {
+            #[inline(always)]
+            unsafe extern "C" fn call(_: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
+                let outbuf = from_raw_parts_mut(data, len);
+                let mut rng = McRng::default();
+                rng.fill_bytes(outbuf);
+                0
+            }
+
+            fn data_ptr(&self) -> *mut c_void {
+                null_mut()
+            }
+        }
+
+        const ROOT_CA_CERT: &str = concat!(include_str!("certs.pem"), "\0");
+        let rng = Arc::new(RngForMbedTls {});
+        let cert = Arc::new(
+            Certificate::from_pem_multiple(ROOT_CA_CERT.as_bytes()).expect("cert from pem"),
+        );
+        let mut config = Config::new(Endpoint::Client, Transport::Stream, Preset::Default);
+        config.set_rng(rng);
+        config.set_ca_list(cert, None);
+        let mut ctx = Context::new(Arc::new(config));
+
+        // let buf = "ke ke ke".as_bytes().to_vec();
+        // let r = enclave_socket_send_ocall(&buf);
+
+        // let mut boof = [0u8; 10];
+        // let r = enclave_socket_recv_ocall(&mut boof);
+
+        // Ok(alloc::format!("cool: {:?} {:?}", r, boof).into())
+        let conn = Conn {};
+        use genio::{Read, Write};
+        ctx.establish(conn, None).expect("establish");
+
+        let line = "GET /api/info HTTP/1.0\r\nHost: api.4swap.org\r\n\r\n";
+        ctx.write_all(line.as_bytes()).unwrap();
+
+        let mut buf = [0; 1024];
+        ctx.read(&mut buf);
+
+        use crate::alloc::string::ToString;
+        Ok(alloc::str::from_utf8(&buf).unwrap().to_string())
+    }
+}
+
+struct Conn;
+
+impl genio::Read for Conn {
+    type ReadError = String;
+
+    fn read(&mut self, buf: &mut [u8]) -> core::result::Result<usize, Self::ReadError> {
+        let retval =
+            enclave_socket_recv_ocall(buf).map_err(|err| alloc::format!("Grr: {:?}", err))?;
+        if retval < 0 {
+            return Err(alloc::format!("Grr2: {:?}", retval));
+        }
+
+        Ok(retval as usize)
+    }
+}
+
+impl genio::Write for Conn {
+    type WriteError = String;
+    type FlushError = String;
+
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, Self::WriteError> {
+        let retval =
+            enclave_socket_send_ocall(buf).map_err(|err| alloc::format!("Grr: {:?}", err))?;
+        if retval < 0 {
+            return Err(alloc::format!("Grr2: {:?}", retval));
+        }
+
+        Ok(retval as usize)
+    }
+
+    fn flush(&mut self) -> core::result::Result<(), Self::FlushError> {
+        Ok(())
+    }
+
+    fn size_hint(&mut self, bytes: usize) {}
+}
+
+use mc_sgx_types::sgx_status_t;
+extern "C" {
+    fn enclave_socket_send(buf: *const u8, len: usize, out_retval: *mut i64) -> sgx_status_t;
+    fn enclave_socket_recv(buf: *mut u8, len: usize, out_retval: *mut i64) -> sgx_status_t;
+}
+pub fn enclave_socket_send_ocall(buf: &[u8]) -> core::result::Result<i64, sgx_status_t> {
+    let mut retval = 0;
+    let sgx_ret = unsafe { enclave_socket_send(buf.as_ptr(), buf.len(), &mut retval) };
+    if sgx_ret != sgx_status_t::SGX_SUCCESS {
+        Err(sgx_ret)
+    } else {
+        Ok(retval)
+    }
+}
+pub fn enclave_socket_recv_ocall(buf: &mut [u8]) -> core::result::Result<i64, sgx_status_t> {
+    let mut retval = 0;
+    let sgx_ret = unsafe { enclave_socket_recv(buf.as_mut_ptr(), buf.len(), &mut retval) };
+    if sgx_ret != sgx_status_t::SGX_SUCCESS {
+        Err(sgx_ret)
+    } else {
+        Ok(retval)
     }
 }
 
