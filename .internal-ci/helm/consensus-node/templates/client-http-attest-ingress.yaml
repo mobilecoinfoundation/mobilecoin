@@ -17,10 +17,12 @@ metadata:
   labels:
     {{- include "consensusNode.labels" . | nindent 4 }}
 spec:
+{{- if .Values.global.ingress.tls.enabled }}
   tls:
   - hosts:
     - {{ include "consensusNode.clientHostname" . }}
     secretName: {{ include "consensusNode.fullname" . }}-ingress-tls
+{{- end }}
   rules:
   - host: {{ include "consensusNode.clientHostname" . }}
     http:

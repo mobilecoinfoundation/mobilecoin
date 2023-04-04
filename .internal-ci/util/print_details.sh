@@ -18,23 +18,20 @@ https://kibana.logit.io/app/kibana#/discover?_g=()&_a=(columns:!(_source),filter
 
 --- Consensus Endpoints ---
 
-node1.${NAMESPACE}.development.mobilecoin.com
-node2.${NAMESPACE}.development.mobilecoin.com
-node3.${NAMESPACE}.development.mobilecoin.com
-node4.${NAMESPACE}.development.mobilecoin.com
-node5.${NAMESPACE}.development.mobilecoin.com
+node1-${NAMESPACE}.${BASE_DOMAIN}
+node2-${NAMESPACE}.${BASE_DOMAIN}
+node3-${NAMESPACE}.${BASE_DOMAIN}
+
 
 --- Consensus S3 Buckets ---
 
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node4.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node5.${NAMESPACE}.development.mobilecoin.com/
+https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1-${NAMESPACE}.${BASE_DOMAIN}/
+https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2-${NAMESPACE}.${BASE_DOMAIN}/
+https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3-${NAMESPACE}.${BASE_DOMAIN}/
 
 --- Fog Endpoint ---
 
-fog.${NAMESPACE}.development.mobilecoin.com
+fog-${NAMESPACE}.${BASE_DOMAIN}
 
 --- mobilecoind ---
 
@@ -50,18 +47,13 @@ Then Connect to localhost:<port>
 
 --- mobilecoind config options ---
 
---peer mc://node1.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node2.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node3.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node4.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node4.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node5.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node5.${NAMESPACE}.development.mobilecoin.com/ \
---poll-interval 1 \
---quorum-set '{ "threshold": 3, "members": [{"args":"node1.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node2.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node3.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node4.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node5.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"}] }'
+--peer mc://node1-${NAMESPACE}.${BASE_DOMAIN}:443/ \
+--tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1-${NAMESPACE}.${BASE_DOMAIN}/ \
+--peer mc://node2-${NAMESPACE}.${BASE_DOMAIN}:443/ \
+--tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2-${NAMESPACE}.${BASE_DOMAIN}/ \
+--peer mc://node3-${NAMESPACE}.${BASE_DOMAIN}:443/ \
+--tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3-${NAMESPACE}.${BASE_DOMAIN}/ \
+--quorum-set '{ "threshold": 3, "members": [{"args":"node1-${NAMESPACE}.${BASE_DOMAIN}:443","type":"Node"},{"args":"node2-${NAMESPACE}.${BASE_DOMAIN}:443","type":"Node"},{"args":"node3-${NAMESPACE}.${BASE_DOMAIN}:443","type":"Node"}] }'
 
 --- Get key seeds ---
 
@@ -81,7 +73,7 @@ kubectl -n ${NAMESPACE} get secrets sample-keys-seeds -ojsonpath='{.data.FOG_REP
 
 # Regenerate keys to /tmp/sample_keys:
 docker run -it --rm \
-  --env FOG_REPORT_URL="fog://fog.${NAMESPACE}.development.mobilecoin.com" \
+  --env FOG_REPORT_URL="fog://fog-${NAMESPACE}.${BASE_DOMAIN}" \
   --env FOG_REPORT_SIGNING_CA_CERT="\$(cat fog_report_signing_ca_cert.pem)" \
   --env FOG_KEYS_SEED \
   --env INITIAL_KEYS_SEED \

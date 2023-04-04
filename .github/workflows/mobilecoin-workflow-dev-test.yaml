@@ -99,6 +99,7 @@ jobs:
       V3_DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
       START_KEYS: '494'
       END_KEYS: '499'
+      BASE_DOMAIN: dev.mc.dance
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -127,7 +128,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           INITIALIZE_LEDGER="true" \
-          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
+          FOG_REPORT_URL="fog://fog-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}:443" \
           /util/generate_origin_data.sh
 
     - name: Test - fog-distribution
@@ -156,15 +157,15 @@ jobs:
         command: |
           test_client \
             --key-dir /tmp/sample_data/fog_keys \
-            --consensus mc://node1.${{ inputs.namespace }}.development.mobilecoin.com/ \
-            --consensus mc://node2.${{ inputs.namespace }}.development.mobilecoin.com/ \
-            --consensus mc://node3.${{ inputs.namespace }}.development.mobilecoin.com/ \
+            --consensus mc://node1-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}/ \
+            --consensus mc://node2-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}/ \
+            --consensus mc://node3-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}/ \
             --num-clients 6 \
             --num-transactions 32 \
             --consensus-wait 300 \
             --transfer-amount 20 \
-            --fog-view fog-view://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
-            --fog-ledger fog-ledger://fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+            --fog-view fog-view://fog-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}:443 \
+            --fog-ledger fog-ledger://fog-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}:443
 
     - name: Test - block-v0 - mobilecoind-grpc (previously Wallet Integration)
       if: inputs.testing_block_v0
@@ -229,8 +230,9 @@ jobs:
             JSON_FLAG="--json"
           fi
           /test/minting-config-tx-test.sh \
-            $JSON_FLAG \
-            --token-id 8192
+            "${JSON_FLAG}" \
+            --token-id 8192 \
+            --node node1-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}
 
     - name: Test - block-v2 - Minting tx
       if: inputs.testing_block_v2
@@ -245,7 +247,8 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.V2_DST_KEYS_DIR }} \
-            --token-id 8192
+            --token-id 8192 \
+            --node node1-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}
 
     - name: Test - block-v2 - mobilecoind-json integration
       if: inputs.testing_block_v2
@@ -358,8 +361,9 @@ jobs:
             JSON_FLAG="--json"
           fi
           /test/minting-config-tx-test.sh \
-            $JSON_FLAG \
-            --token-id 8192
+            "${JSON_FLAG}" \
+            --token-id 8192 \
+            --node node1-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}
 
     - name: Test - block-v3 - Minting tx
       if: inputs.testing_block_v3
@@ -374,7 +378,8 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.V3_DST_KEYS_DIR }} \
-            --token-id 8192
+            --token-id 8192 \
+            --node node1-${{ inputs.namespace }}.${{ env.BASE_DOMAIN }}
 
     - name: Test - block-v3 - mobilecoind-json integration
       if: inputs.testing_block_v3

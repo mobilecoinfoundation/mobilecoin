@@ -46,6 +46,10 @@ do
             json_flag="1"
             shift 1
             ;;
+        --node )
+            node="${2}"
+            shift 2
+            ;;
         *)
             echo "${1} unknown option"
             usage
@@ -68,7 +72,7 @@ token_signer_key="/minting-keys/token_${token_id}_signer_1.public.pem"
 
 if [ "$json_flag" == "0" ]; then
     mc-consensus-mint-client generate-and-submit-mint-config-tx \
-        --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+        --node "mc://${node}/" \
         --signing-key "${governor_signer_key}" \
         --token-id "${token_id}" \
         --config "1000000000:1:${token_signer_key}" \
@@ -89,10 +93,10 @@ else
     echo $json
 
     json_file="/tmp/mint-config.${token_id}.json"
-    echo $json > ${json_file}
+    echo $json > "${json_file}"
 
     mc-consensus-mint-client generate-and-submit-mint-config-tx \
-        --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+        --node "mc://${node}/" \
         --signing-key "${governor_signer_key}" \
         --mint-config-tx-file "${json_file}"
 fi

@@ -77,7 +77,10 @@ jobs:
         image:
           org: ${{ inputs.docker_image_org }}
         global:
-          certManagerClusterIssuer: zerossl-prod-http
+          ingress:
+            tls:
+              # use cluster default cert
+              enabled: false
         node:
           resources:
             limits:
@@ -86,8 +89,8 @@ jobs:
               intel.com/sgx: 2000
           persistence:
             enabled: false
-          client:
-            attest:
+          ingress:
+            clientAttest:
               rateLimits:
                 enabled: false
         EOF
@@ -140,7 +143,10 @@ jobs:
         image:
           org: ${{ inputs.docker_image_org }}
         global:
-          certManagerClusterIssuer: zerossl-prod-http
+          ingress:
+            tls:
+              # use cluster default cert
+              enabled: false
         fogLedger:
           resources:
             limits:
@@ -258,14 +264,14 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           # Get fog report
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
+          /test/check-ingress-ready.sh --url "https://fog-${{ inputs.namespace }}.mc.dance/gw/report.ReportAPI/GetReports"
 
           # Get fog ledger
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks"
+          /test/check-ingress-ready.sh --url "https://fog-${{ inputs.namespace }}.dev.mc.dance/gw/fog_ledger.FogBlockAPI/GetBlocks"
 
           # Get consensus client ports
-          /test/check-ingress-ready.sh --url "https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node2.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node3.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+          /test/check-ingress-ready.sh --url "https://node1-${{ inputs.namespace }}.dev.mc.dance/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+          /test/check-ingress-ready.sh --url "https://node2-${{ inputs.namespace }}.dev.mc.dance/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
+          /test/check-ingress-ready.sh --url "https://node3-${{ inputs.namespace }}.dev.mc.dance/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
 
           # no unauthenticated endpoints for view :(

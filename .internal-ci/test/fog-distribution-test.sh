@@ -17,9 +17,9 @@ fi
 touch "${run_file}"
 
 fog-distribution --sample-data-dir /tmp/sample_data \
-    --peer "mc://node1.${NAMESPACE}.development.mobilecoin.com:443" \
-    --peer "mc://node2.${NAMESPACE}.development.mobilecoin.com:443" \
-    --peer "mc://node3.${NAMESPACE}.development.mobilecoin.com:443" \
+    --peer "mc://node1-${NAMESPACE}.${BASE_DOMAIN}:443" \
+    --peer "mc://node2-${NAMESPACE}.${BASE_DOMAIN}:443" \
+    --peer "mc://node3-${NAMESPACE}.${BASE_DOMAIN}:443" \
     --num-tx-to-send 20
 
 

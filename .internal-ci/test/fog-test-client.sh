@@ -54,6 +54,7 @@ done
 is_set key_dir
 is_set token_ids
 is_set NAMESPACE
+is_set BASE_DOMAIN
 
 if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]
 then
@@ -77,13 +78,13 @@ fi
 export RUST_LOG=info
 test_client \
     --key-dir "${key_dir}" \
-    --consensus "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
-    --consensus "mc://node2.${NAMESPACE}.development.mobilecoin.com/" \
-    --consensus "mc://node3.${NAMESPACE}.development.mobilecoin.com/" \
+    --consensus "mc://node1-${NAMESPACE}.${BASE_DOMAIN}/" \
+    --consensus "mc://node2-${NAMESPACE}.${BASE_DOMAIN}/" \
+    --consensus "mc://node3-${NAMESPACE}.${BASE_DOMAIN}/" \
     ${token_opt} \
     --num-clients 6 \
     --num-transactions 32 \
     --consensus-wait 300 \
     --transfer-amount 20 \
-    --fog-view "fog-view://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
-    --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"
+    --fog-view "fog-view://${user}fog-${NAMESPACE}.${BASE_DOMAIN}:443" \
+    --fog-ledger "fog-ledger://${user}fog-${NAMESPACE}.${BASE_DOMAIN}:443"

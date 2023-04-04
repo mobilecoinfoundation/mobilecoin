@@ -39,6 +39,10 @@ do
             token_id="${2}"
             shift 2
             ;;
+        --node )
+            node="${2}"
+            shift 2
+            ;;
         *)
             echo "${1} unknown option"
             usage
@@ -49,6 +53,7 @@ done
 
 is_set key_dir
 is_set token_id
+is_set node
 is_set NAMESPACE
 
 # These should be populated by volume in toolbox container.
@@ -68,7 +73,7 @@ do
     echo "-- sending mint tx for account key ${k}"
 
     mc-consensus-mint-client generate-and-submit-mint-tx \
-        --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+        --node "mc://${node}/" \
         --signing-key "${token_signer_key}" \
         --recipient "$(cat "${k}")" \
         --token-id "${token_id}" \

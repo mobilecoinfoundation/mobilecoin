@@ -1,6 +1,8 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 
 global:
+  baseDomain: dev.mc.dance
+
   node:
     ledgerDistribution:
       awsRegion: eu-central-1
@@ -12,22 +14,22 @@ global:
       peers:
         1:
           peer:
-            hostname: '{{ printf "peer1.%s.development.mobilecoin.com" .Release.Namespace }}'
+            hostname: '{{ printf "peer1-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
             port: '443'
           signerPublicKey: ''
-          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
         2:
           peer:
-            hostname: '{{ printf "peer2.%s.development.mobilecoin.com" .Release.Namespace }}'
+            hostname: '{{ printf "peer2-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
             port: '443'
           signerPublicKey: ''
-          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2-%s.%s" $.Release.Namespace $.Values.global.baseDomain $.Values.global.baseDomain) }}{{ end }}'
         3:
           peer:
-            hostname: '{{ printf "peer3.%s.development.mobilecoin.com" .Release.Namespace }}'
+            hostname: '{{ printf "peer3-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
             port: '443'
           signerPublicKey: ''
-          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+          ledgerArchiveLocation: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3-%s.%s" $.Release.Namespace $.Values.global.baseDomain $.Values.global.baseDomain) }}{{ end }}'
 
     # Add signed tokens.json with --set-file=global.node.tokensConfig."tokens\.signed\.json"=tokens.signed.json
     tokensConfig:
@@ -46,42 +48,42 @@ mcCoreCommonConfig:
   mobilecoind:
     threshold: '2'
     nodes:
-    - client: '{{ printf "node1.%s.development.mobilecoin.com:443" .Release.Namespace }}'
-      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
-    - client: '{{ printf "node2.%s.development.mobilecoin.com:443" .Release.Namespace }}'
-      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
-    - client: '{{ printf "node3.%s.development.mobilecoin.com:443" .Release.Namespace }}'
-      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+    - client: '{{ printf "node1-%s.%s:443" .Release.Namespace .Values.global.baseDomain }}'
+      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
+    - client: '{{ printf "node2-%s.%s:443" .Release.Namespace .Values.global.baseDomain }}'
+      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
+    - client: '{{ printf "node3-%s.%s:443" .Release.Namespace .Values.global.baseDomain }}'
+      txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
 
 consensusNodeConfig1:
   enabled: true
   fullnameOverride: consensus-node-1
   node:
     client:
-      hostname: '{{ printf "node1.%s.development.mobilecoin.com" .Release.Namespace }}'
+      hostname: '{{ printf "node1-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
     peer:
-      hostname: '{{ printf "peer1.%s.development.mobilecoin.com" .Release.Namespace }}'
-    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+      hostname: '{{ printf "peer1-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node1-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
 
 consensusNodeConfig2:
   enabled: true
   fullnameOverride: consensus-node-2
   node:
     client:
-      hostname: '{{ printf "node2.%s.development.mobilecoin.com" .Release.Namespace }}'
+      hostname: '{{ printf "node2-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
     peer:
-      hostname: '{{ printf "peer2.%s.development.mobilecoin.com" .Release.Namespace }}'
-    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+      hostname: '{{ printf "peer2-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node2-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
 
 consensusNodeConfig3:
   enabled: true
   fullnameOverride: 'consensus-node-3'
   node:
     client:
-      hostname: '{{ printf "node3.%s.development.mobilecoin.com" .Release.Namespace }}'
+      hostname: '{{ printf "node3-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
     peer:
-      hostname: '{{ printf "peer3.%s.development.mobilecoin.com" .Release.Namespace }}'
-    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
+      hostname: '{{ printf "peer3-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
+    txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3-%s.%s" $.Release.Namespace $.Values.global.baseDomain) }}{{ end }}'
 
 fogIngestConfig:
   enabled: true
@@ -97,5 +99,5 @@ fogServicesConfig:
     configMap:
       enabled: true
   fogPublicFQDN:
-    domainname: '{{ printf "fog.%s.development.mobilecoin.com" .Release.Namespace }}'
-    fogReportSANs: '{{ printf "fog-report.%s.development.mobilecoin.com" .Release.Namespace }}'
+    domainname: '{{ printf "fog-%s.%s" .Release.Namespace .Values.global.baseDomain }}'
+    fogReportSANs: '{{ printf "fog-report-%s.%s" .Release.Namespace .Values.global.baseDomain }}'

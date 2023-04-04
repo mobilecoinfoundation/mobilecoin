@@ -63,7 +63,7 @@ jobs:
         do
           aws s3 cp --only-show-errors --recursive --acl public-read \
             "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
-            "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com"
+            "s3://${BUCKET}/node${i}-${NAMESPACE}.dev.mc.dance"
         done
 
   setup-environment:

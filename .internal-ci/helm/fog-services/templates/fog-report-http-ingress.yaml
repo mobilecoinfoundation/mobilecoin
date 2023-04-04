@@ -14,12 +14,14 @@ metadata:
     {{- toYaml .Values.fogReport.ingress.common.annotations | nindent 4 }}
     {{- toYaml .Values.fogReport.ingress.http.annotations | nindent 4 }}
 spec:
+{{- if .Values.global.ingress.tls.enabled }}
   tls:
   - hosts:
     {{- range $hosts }}
     - {{ . }}
     {{- end }}
     secretName: {{ include "fogServices.fullname" . }}-fog-tls
+{{- end }}
   rules:
   {{- range $hosts }}
   - host: {{ . }}

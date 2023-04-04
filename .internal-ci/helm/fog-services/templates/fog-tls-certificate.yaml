@@ -1,6 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 # fogServices.fogReportHosts contains all the hostnames for all the fog services.
 # 1 cert for all the sans.
+{{- if .Values.global.ingress.tls.enabled }}
 {{- $hosts := split "\n" (include "fogServices.fogReportHosts" . | trim) }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -21,3 +22,4 @@ spec:
   issuerRef:
     name: {{ .Values.global.certManagerClusterIssuer }}
     kind: ClusterIssuer
+{{- end }}

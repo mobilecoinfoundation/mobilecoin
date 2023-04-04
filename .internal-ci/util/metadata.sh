@@ -101,8 +101,10 @@ EOF
         run_number_len=${#GITHUB_RUN_NUMBER}
         # number of separators in tag
         dots=3
+        # 6 chars for node/peer name now that we need to use star certs.
+        node_name=6
 
-        cutoff=$((label_limit - version_len - sha_len - run_number_len - dots))
+        cutoff=$((label_limit - version_len - sha_len - run_number_len - dots - node_name))
 
         if [[ ${#normalized_branch} -gt ${cutoff} ]]
         then

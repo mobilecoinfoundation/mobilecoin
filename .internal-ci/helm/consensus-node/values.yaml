@@ -12,6 +12,11 @@ image:
 global:
   certManagerClusterIssuer: letsencrypt-production-http
 
+  ingress:
+    tls:
+      # if true use cert-manager tls, false use ingress default certificate.
+      enabled: true
+
   # Shared across all instances of consensusNodeConfig config.
   node:
     ledgerDistribution:

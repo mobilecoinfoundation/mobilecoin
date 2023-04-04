@@ -26,6 +26,10 @@ global:
   blocklist:
     enabled: "false"
     pattern: patterns/blocked-countries
+  ingress:
+    tls:
+      # if true use cert-manager tls, false use ingress default certificate.
+      enabled: true
 
 ### Fog Report Service
 fogReport:
@@ -45,6 +49,7 @@ fogReport:
       name: fog-report-signing-cert
     crt: ''
     key: ''
+
   ingress:
     common:
       annotations:

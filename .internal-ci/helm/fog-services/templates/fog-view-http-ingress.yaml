@@ -13,10 +13,12 @@ metadata:
     {{ toYaml (tpl .Values.fogView.ingress.common.annotations . | fromYaml) | nindent 4 }}
     {{ toYaml (tpl .Values.fogView.ingress.http.annotations . | fromYaml) | nindent 4 }}
 spec:
+{{- if .Values.global.ingress.tls.enabled }}
   tls:
   - hosts:
     - {{ include "fogServices.fogPublicFQDN" . }}
     secretName: {{ include "fogServices.fullname" . }}-fog-tls
+{{- end }}
   rules:
   - host: {{ include "fogServices.fogPublicFQDN" . }}
     http:
