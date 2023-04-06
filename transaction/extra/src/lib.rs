@@ -19,10 +19,10 @@ mod tx_out_gift_code;
 mod unsigned_tx;
 
 pub use memo::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
-    AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo, DefragmentationMemo,
-    DefragmentationMemoError, DestinationMemo, DestinationMemoError,
-    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
+    compute_authenticated_sender_memo, compute_destination_memo, AuthenticatedSenderMemo,
+    AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo,
+    BurnRedemptionMemo, DefragmentationMemo, DefragmentationMemoError, DestinationMemo,
+    DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
     GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
