@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Object for 0x0200 Destination memo type
 //!
@@ -141,12 +141,14 @@ impl From<&[u8; 64]> for DestinationMemo {
 
 impl From<DestinationMemo> for [u8; 64] {
     fn from(src: DestinationMemo) -> [u8; 64] {
-        let mut memo_data = [0u8; 64];
-        memo_data[0..16].copy_from_slice(src.address_hash.as_ref());
-        memo_data[16..24].copy_from_slice(&src.fee.to_be_bytes());
-        memo_data[16] = src.num_recipients;
-        memo_data[24..32].copy_from_slice(&src.total_outlay.to_be_bytes());
-        memo_data
+        let data = [0u8; 32];
+        compute_destination_memo(
+            src.address_hash,
+            src.fee,
+            src.num_recipients,
+            src.total_outlay,
+            data,
+        )
     }
 }
 
@@ -155,6 +157,24 @@ impl From<DestinationMemo> for [u8; 64] {
 pub enum DestinationMemoError {
     /// The fee amount is too large to be represented in the destination memo
     FeeTooLarge,
+}
+
+/// Shared code for creation of an destination memo with additional
+/// data
+pub fn compute_destination_memo(
+    address_hash: ShortAddressHash,
+    fee: u64,
+    num_recipients: u8,
+    total_outlay: u64,
+    data: [u8; 32],
+) -> [u8; 64] {
+    let mut memo_data = [0u8; 64];
+    memo_data[0..16].copy_from_slice(address_hash.as_ref());
+    memo_data[16..24].copy_from_slice(&fee.to_be_bytes());
+    memo_data[16] = num_recipients;
+    memo_data[24..32].copy_from_slice(&total_outlay.to_be_bytes());
+    memo_data[32..64].copy_from_slice(&data);
+    memo_data
 }
 
 impl_memo_type_conversions! { DestinationMemo }
