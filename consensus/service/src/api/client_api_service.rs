@@ -152,7 +152,9 @@ impl ClientApiService {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
-                let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published.
+                // This will become a proper config option, already implemented
+                // in pull request #3296 "Failure limit on tx proposals"
+                let tracking_window = Duration::from_secs(60);
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 let record = if let Some(record) = tracker.get_mut(&session_id) {
                     record
@@ -163,9 +165,9 @@ impl ClientApiService {
                         .expect("Adding session-tracking record should be atomic.")
                 };
                 let _recent_failure_count =
-                    record.fail_tx_proposal(&Instant::now(), &tracking_window);
-                // TODO: drop session when recent_failure_count reaches some
-                // number
+                    record.fail_tx_proposal(Instant::now(), tracking_window);
+                // Dropping the client after a limit has been reached will be
+                // implemented in a future pull request.
             }
             err
         })?;
