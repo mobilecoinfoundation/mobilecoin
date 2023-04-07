@@ -69,9 +69,8 @@ impl ClientSessionTracking {
     /// have existed for longer than this value will be dropped when this
     /// method is called.
     pub fn fail_tx_proposal(&mut self, now: Instant, tracking_window: Duration) -> usize {
-        self.tx_proposal_failures.retain(|past_failure| {
-            now.saturating_duration_since(*past_failure) <= tracking_window
-        });
+        self.tx_proposal_failures
+            .retain(|past_failure| now.saturating_duration_since(*past_failure) <= tracking_window);
         self.tx_proposal_failures.push_back(now);
         self.tx_proposal_failures.len()
     }
@@ -145,11 +144,12 @@ impl ClientApiService {
                 let tracking_window = Duration::from_secs(60);
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 if !tracker.contains(&session_id) {
-                  tracker.put(session_id.clone(), ClientSessionTracking::new());
+                    tracker.put(session_id.clone(), ClientSessionTracking::new());
                 }
-                let record = 
-                  tracker.get_mut(&session_id).expect("Session id {session_id} should be tracked.");
-   
+                let record = tracker
+                    .get_mut(&session_id)
+                    .expect("Session id {session_id} should be tracked.");
+
                 let _recent_failure_count =
                     record.fail_tx_proposal(Instant::now(), tracking_window);
                 // Dropping the client after a limit has been reached will be
