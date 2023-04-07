@@ -68,11 +68,11 @@ impl ClientSessionTracking {
     /// of an individual tx proposal failure incident for? Any records which
     /// have existed for longer than this value will be dropped when this
     /// method is called.
-    pub fn fail_tx_proposal(&mut self, now: &Instant, tracking_window: &Duration) -> usize {
+    pub fn fail_tx_proposal(&mut self, now: Instant, tracking_window: Duration) -> usize {
         self.tx_proposal_failures.retain(|past_failure| {
-            now.saturating_duration_since(*past_failure) <= *tracking_window
+            now.saturating_duration_since(*past_failure) <= tracking_window
         });
-        self.tx_proposal_failures.push_back(*now);
+        self.tx_proposal_failures.push_back(now);
         self.tx_proposal_failures.len()
     }
 }
@@ -140,7 +140,9 @@ impl ClientApiService {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
-                let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published.
+                // This will become a proper config option, already implemented
+                // in pull request #3296 "Failure limit on tx proposals"
+                let tracking_window = Duration::from_secs(60);
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
                 if !tracker.contains(&session_id) {
                   tracker.put(session_id.clone(), ClientSessionTracking::new());
@@ -149,9 +151,9 @@ impl ClientApiService {
                   tracker.get_mut(&session_id).expect("Session id {session_id} should be tracked.");
    
                 let _recent_failure_count =
-                    record.fail_tx_proposal(&Instant::now(), &tracking_window);
-                // TODO: drop session when recent_failure_count reaches some
-                // number
+                    record.fail_tx_proposal(Instant::now(), tracking_window);
+                // Dropping the client after a limit has been reached will be
+                // implemented in a future pull request.
             }
             err
         })?;
