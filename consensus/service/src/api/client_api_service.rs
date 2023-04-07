@@ -142,14 +142,12 @@ impl ClientApiService {
 
                 let tracking_window = Duration::from_secs(5); // TODO, placeholder before draft PR gets published.
                 let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
-                let record = if let Some(record) = tracker.get_mut(&session_id) {
-                    record
-                } else {
-                    tracker.put(session_id.clone(), ClientSessionTracking::new());
-                    tracker
-                        .get_mut(&session_id)
-                        .expect("Adding session-tracking record should be atomic.")
-                };
+                if !tracker.contains(&session_id) {
+                  tracker.put(session_id.clone(), ClientSessionTracking::new());
+                }
+                let record = 
+                  tracker.get_mut(&session_id).expect("Session id {session_id} should be tracked.");
+   
                 let _recent_failure_count =
                     record.fail_tx_proposal(&Instant::now(), &tracking_window);
                 // TODO: drop session when recent_failure_count reaches some
