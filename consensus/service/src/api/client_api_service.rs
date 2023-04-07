@@ -65,9 +65,8 @@ impl ClientSessionTracking {
     /// Remove any transaction proposal failure record that is older than our
     /// tracking window.
     fn clear_stale_records(&mut self, now: Instant, tracking_window: Duration) {
-        self.tx_proposal_failures.retain(|past_failure| {
-            now.saturating_duration_since(*past_failure) <= tracking_window
-        });
+        self.tx_proposal_failures
+            .retain(|past_failure| now.saturating_duration_since(*past_failure) <= tracking_window);
     }
 
     /// Push a new failed tx proposal record, clear out samples older than
