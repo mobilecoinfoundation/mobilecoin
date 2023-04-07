@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Object for 0x0203 Destination With Payment Request Id memo type
 //!
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/54
 
-use super::{DestinationMemoError, RegisteredMemoType};
+use super::{compute_destination_memo, DestinationMemoError, RegisteredMemoType};
 use crate::impl_memo_type_conversions;
 use mc_account_keys::ShortAddressHash;
 
@@ -165,13 +165,15 @@ impl From<&[u8; 64]> for DestinationWithPaymentRequestIdMemo {
 
 impl From<DestinationWithPaymentRequestIdMemo> for [u8; 64] {
     fn from(src: DestinationWithPaymentRequestIdMemo) -> [u8; 64] {
-        let mut memo_data = [0u8; 64];
-        memo_data[0..16].copy_from_slice(src.address_hash.as_ref());
-        memo_data[16..24].copy_from_slice(&src.fee.to_be_bytes());
-        memo_data[16] = src.num_recipients;
-        memo_data[24..32].copy_from_slice(&src.total_outlay.to_be_bytes());
-        memo_data[32..40].copy_from_slice(&src.payment_request_id.to_be_bytes());
-        memo_data
+        let mut data = [0u8; 32];
+        data[0..8].copy_from_slice(&src.payment_request_id.to_be_bytes());
+        compute_destination_memo(
+            src.address_hash,
+            src.fee,
+            src.num_recipients,
+            src.total_outlay,
+            data,
+        )
     }
 }
 

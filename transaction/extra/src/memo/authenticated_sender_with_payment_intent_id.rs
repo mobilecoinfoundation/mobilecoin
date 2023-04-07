@@ -1,19 +1,17 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Object for 0x0102 Authenticated Sender With Payment Intent Id memo type
 //!
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/54
 
 use super::{
-    authenticated_common::{compute_category1_hmac, validate_authenticated_sender},
+    authenticated_common::{compute_authenticated_sender_memo, validate_authenticated_sender},
     credential::SenderMemoCredential,
     RegisteredMemoType,
 };
 use crate::impl_memo_type_conversions;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
-use mc_crypto_keys::{
-    CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
-};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use subtle::Choice;
 
 /// A memo that the sender writes to convey their identity in an authenticated
@@ -62,21 +60,16 @@ impl AuthenticatedSenderWithPaymentIntentIdMemo {
         // [24-48) unused
         // [48-64) HMAC
 
-        let mut memo_data = [0u8; 64];
-        memo_data[..16].copy_from_slice(cred.address_hash.as_ref());
-        memo_data[16..24].copy_from_slice(&payment_intent_id.to_be_bytes());
+        let mut data = [0u8; (48 - 16)];
+        data[0..8].copy_from_slice(&payment_intent_id.to_be_bytes());
 
-        let shared_secret = cred
-            .subaddress_spend_private_key
-            .key_exchange(receiving_subaddress_view_public_key);
-
-        let hmac_value = compute_category1_hmac(
-            shared_secret.as_ref(),
-            tx_out_public_key,
+        let memo_data = compute_authenticated_sender_memo(
             Self::MEMO_TYPE_BYTES,
-            &memo_data,
+            cred,
+            receiving_subaddress_view_public_key,
+            tx_out_public_key,
+            &data,
         );
-        memo_data[48..].copy_from_slice(&hmac_value);
 
         Self { memo_data }
     }
