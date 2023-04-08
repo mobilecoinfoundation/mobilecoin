@@ -49,6 +49,9 @@ pub struct UntrustedQueryResponse {
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// True if we might have more user events than the number of events returned in this response.
+    pub may_have_more_user_events: bool,
 }
 
 /// Represents a serialized request for the view enclave to service

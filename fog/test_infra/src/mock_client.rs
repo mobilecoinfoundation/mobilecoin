@@ -31,8 +31,11 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
     ) -> Result<QueryResponse, Self::Error> {
-        let (user_events, next_start_from_user_event_id) =
-            self.db.search_user_events(start_from_user_event_id)?;
+        const USER_EVENT_LIMIT: usize = 10_000;
+        let (user_events, next_start_from_user_event_id) = self
+            .db
+            .search_user_events(start_from_user_event_id, USER_EVENT_LIMIT)?;
+        let may_have_more_user_events = user_events.len() >= USER_EVENT_LIMIT;
 
         let highest_known_block_count = self
             .db
@@ -75,6 +78,7 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
             tx_out_search_results: Default::default(),
             last_known_block_count: highest_known_block_count,
             last_known_block_cumulative_txo_count: cumulative_txo_count,
+            may_have_more_user_events,
         };
 
         resp.tx_out_search_results = self.db.get_tx_outs(start_from_block_index, &search_keys)?;

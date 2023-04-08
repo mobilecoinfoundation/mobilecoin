@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.0]
+
+### Changed
+
+- Fog-view now imposes a limit on how many user events it will return to the user, to ensure that we can avoid exceeding
+  grpc maximums. The new flag `may_have_more_user_events` is set when this limit is reached, so that clients can know to retry. ([#3151])
+
 ## [4.1.0]
 
 ### Added

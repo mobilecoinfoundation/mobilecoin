@@ -713,6 +713,7 @@ impl SqlRecoveryDb {
     fn search_user_events_retriable(
         &self,
         start_from_user_event_id: i64,
+        max_num_events: usize,
     ) -> Result<(Vec<FogUserEvent>, i64), Error> {
         // Early return if start_from_user_event_id is max
         if start_from_user_event_id == i64::MAX {
@@ -737,6 +738,10 @@ impl SqlRecoveryDb {
             // NOTE: sql auto increment columns start from 1, so "start_from_user_event_id = 0"
             // will capture everything
             .filter(schema::user_events::dsl::id.gt(start_from_user_event_id))
+            // Limit the number of responses we can get
+            .limit(max_num_events as i64)
+            // Order by id
+            .order(schema::user_events::dsl::id.asc())
             // Get only the fields that we need
             .select((
                 // Fields for every event type
@@ -1400,9 +1405,10 @@ impl RecoveryDb for SqlRecoveryDb {
     fn search_user_events(
         &self,
         start_from_user_event_id: i64,
+        max_num_events: usize,
     ) -> Result<(Vec<FogUserEvent>, i64), Self::Error> {
         our_retry(self.get_retries(), || {
-            self.search_user_events_retriable(start_from_user_event_id)
+            self.search_user_events_retriable(start_from_user_event_id, max_num_events)
         })
     }
 
@@ -1634,6 +1640,8 @@ mod tests {
     use pem::Pem;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
+    const MAX_USER_EVENTS: usize = 10_000;
+
     #[test_with_logger]
     fn test_new_ingest_invocation(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -1825,7 +1833,8 @@ mod tests {
         assert_eq!(ranges[1].last_ingested_block, None);
 
         // Ensure we do not have any decommissioning events.
-        let (events, next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+        let (events, next_start_from_user_event_id) =
+            db.search_user_events(0, MAX_USER_EVENTS).unwrap();
         assert_eq!(
             events
                 .iter()
@@ -1852,7 +1861,7 @@ mod tests {
 
         // We should have one decommissioning event.
         let (events, next_start_from_user_event_id) = db
-            .search_user_events(next_start_from_user_event_id)
+            .search_user_events(next_start_from_user_event_id, MAX_USER_EVENTS)
             .unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(
@@ -1900,7 +1909,7 @@ mod tests {
 
         // We should have one decommissioning event and one new ingest invocation event.
         let (events, _next_start_from_user_event_id) = db
-            .search_user_events(next_start_from_user_event_id)
+            .search_user_events(next_start_from_user_event_id, MAX_USER_EVENTS)
             .unwrap();
         assert_eq!(events.len(), 2);
         assert_eq!(
@@ -2145,7 +2154,7 @@ mod tests {
         db.report_lost_ingress_key(ingress_key2).unwrap();
 
         // Search for events and verify the results.
-        let (events, _) = db.search_user_events(0).unwrap();
+        let (events, _) = db.search_user_events(0, MAX_USER_EVENTS).unwrap();
         assert_eq!(
             events,
             vec![
@@ -2183,10 +2192,11 @@ mod tests {
 
         // Searching with a start_from_user_id that is higher than the highest available
         // one should return nothing.
-        let (_events, next_start_from_user_event_id) = db.search_user_events(0).unwrap();
+        let (_events, next_start_from_user_event_id) =
+            db.search_user_events(0, MAX_USER_EVENTS).unwrap();
 
         let (events, next_start_from_user_event_id2) = db
-            .search_user_events(next_start_from_user_event_id)
+            .search_user_events(next_start_from_user_event_id, MAX_USER_EVENTS)
             .unwrap();
         assert_eq!(events.len(), 0);
         assert_eq!(
@@ -2195,7 +2205,7 @@ mod tests {
         );
 
         let (events, next_start_from_user_event_id2) = db
-            .search_user_events(next_start_from_user_event_id + 1)
+            .search_user_events(next_start_from_user_event_id + 1, MAX_USER_EVENTS)
             .unwrap();
         assert_eq!(events.len(), 0);
         assert_eq!(

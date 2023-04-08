@@ -154,6 +154,7 @@ where
             last_known_block_count: untrusted_query_response.last_known_block_count,
             last_known_block_cumulative_txo_count: untrusted_query_response
                 .last_known_block_cumulative_txo_count,
+            may_have_more_user_events: untrusted_query_response.may_have_more_user_events,
         };
 
         // Do the txos part, scope lock of e_tx_out_store

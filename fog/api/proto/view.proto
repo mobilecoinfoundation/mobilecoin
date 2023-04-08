@@ -145,6 +145,11 @@ message QueryResponse {
     /// This can be used by the client as a hint when choosing cryptonote mixin indices.
     /// This field doesn't have the same "cursor" semantics as the other fields.
     uint64 last_known_block_cumulative_txo_count = 9;
+
+    /// If true, this means that due to limits, we could not return all the requested
+    /// user events in one response. Clients cannot compute an accurate balance check
+    /// until they have received all relevant user events.
+    bool may_have_more_user_events = 10;
 }
 
 /// A record of an Rng created by a fog ingest enclave.
