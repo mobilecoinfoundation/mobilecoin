@@ -2158,6 +2158,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 RpcStatus::with_message(RpcStatusCode::INTERNAL, "no peers reachable".to_owned())
             })?;
 
+        let mut mcd_last_block_info = api::LastBlockInfo::new();
+        mcd_last_block_info.set_index(last_block_info.index);
+        mcd_last_block_info.set_minimum_fees(last_block_info.minimum_fees);
+        mcd_last_block_info.set_network_block_version(last_block_info.network_block_version);
+
         let mut response = api::GetNetworkStatusResponse::new();
 
         response.set_network_highest_block_index(
@@ -2172,7 +2177,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
-        response.set_last_block_info(last_block_info.into());
+        response.set_last_block_info(mcd_last_block_info);
 
         Ok(response)
     }
