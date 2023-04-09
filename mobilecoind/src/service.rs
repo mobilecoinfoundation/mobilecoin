@@ -2159,8 +2159,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         let mut mcd_last_block_info = api::LastBlockInfo::new();
-        mcd_last_block_info.set_index(last_block_info.index);
-        mcd_last_block_info.set_minimum_fees(last_block_info.minimum_fees);
+        mcd_last_block_info.set_index(last_block_info.block_index);
+        mcd_last_block_info.set_minimum_fees(last_block_info.minimum_fees.into_iter().collect());
         mcd_last_block_info.set_network_block_version(last_block_info.network_block_version);
 
         let mut response = api::GetNetworkStatusResponse::new();
