@@ -336,6 +336,7 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             "SIGNATURE_INVALID" => Err(IasQuoteError::SignatureInvalid),
             "GROUP_REVOKED" => Err(IasQuoteError::GroupRevoked(
                 revocation_reason
+                    .clone()
                     .ok_or_else(|| JsonError::FieldMissing("revocationReason".to_string()))?,
                 platform_info_blob
                     .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_string()))?,
