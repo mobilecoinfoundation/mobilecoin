@@ -2163,7 +2163,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         mcd_last_block_info.set_mob_minimum_fee(
             last_block_info
                 .minimum_fees
-                .get(TokenId::from(0))
+                .get(&TokenId::from(0))
                 .cloned()
                 .unwrap_or(0),
         );
