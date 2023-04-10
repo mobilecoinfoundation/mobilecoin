@@ -4804,7 +4804,6 @@ dependencies = [
  "hex_fmt",
  "mc-api",
  "mc-common",
- "mc-consensus-api",
  "mc-transaction-builder",
  "mc-util-build-grpc",
  "mc-util-build-script",
