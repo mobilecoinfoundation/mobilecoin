@@ -2160,6 +2160,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let mut mcd_last_block_info = api::LastBlockInfo::new();
         mcd_last_block_info.set_index(last_block_info.block_index);
+        mcd_last_block_info.set_mob_minimum_fee(
+            last_block_info
+                .minimum_fees
+                .get(TokenId::from(0))
+                .cloned()
+                .unwrap_or(0),
+        );
         mcd_last_block_info.set_minimum_fees(
             last_block_info
                 .minimum_fees
