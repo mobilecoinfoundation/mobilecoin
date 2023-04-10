@@ -34,9 +34,9 @@ mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
 clap = { version = "4.1", features = ["derive", "env"] }
-diesel = { version = "1.4", features = ["chrono", "postgres", "r2d2"] }
-diesel-derive-enum = { version = "1", features = ["postgres"] }
-diesel_migrations = { version = "1.4", features = ["postgres"] }
+diesel = { version = "2.0.3", features = ["chrono", "postgres", "r2d2"] }
+diesel-derive-enum = { version = "2.0.1", features = ["postgres"] }
+diesel_migrations = { version = "2.0.0", features = ["postgres"] }
 displaydoc = { version = "0.2", default-features = false }
 prost = "0.11"
 r2d2 = "0.8.10"
@@ -56,7 +56,3 @@ mc-util-test-helper = { path = "../../util/test-helper" }
 
 pem = "2.0"
 rand = "0.8"
-
-[build-dependencies]
-# clippy fails to run without this.
-diesel = { version = "1.4.8", features = ["chrono", "postgres", "r2d2"] }
