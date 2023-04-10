@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.0]
+
+### Changed
+
+- mobilecoind now has its own version of the `LastBlockInfo` proto message. ([#3307])
+
 ## [4.1.0]
 
 ### Added
