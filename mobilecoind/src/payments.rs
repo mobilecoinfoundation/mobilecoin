@@ -33,6 +33,7 @@ use mc_transaction_extra::{
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
+use retry::delay::Fibonacci;
 use std::{
     cmp::{max, Reverse},
     collections::BTreeMap,
@@ -41,7 +42,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
-    time::Duration,
 };
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -826,7 +826,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_id = &responder_ids[idx % responder_ids.len()];
 
-        let retry_iterator = std::iter::repeat(Duration::from_millis(50)).take(5);
+        // This is the same retry iterator as is used in full-service in production
+        let retry_iterator = Fibonacci::from_millis(10).take(5);
 
         // Try and submit.
         let block_height = self
