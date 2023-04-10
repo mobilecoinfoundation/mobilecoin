@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! The TestClient supports two use-cases:
 //! - End-to-end testing (used in continuous deployment)
@@ -12,9 +12,9 @@ use maplit::hashmap;
 use mc_account_keys::ShortAddressHash;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
-use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_rand::McRng;
 use mc_sgx_css::Signature;
 use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, Amount, Token};
 use mc_transaction_extra::MemoType;

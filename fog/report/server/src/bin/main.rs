@@ -47,6 +47,7 @@ fn main() {
             "Fog Report".to_owned(),
             config.client_listen_uri.to_string(),
             Some(get_config_json),
+            vec![],
             logger,
         )
         .expect("Failed starting fog-report admin server")

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ocall-oram-storage-testing"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -9,8 +9,8 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mc-oblivious
-aligned-cmov = "2.2"
-mc-oblivious-traits = "2.2"
+aligned-cmov = "2.3"
+mc-oblivious-traits = "2.3"
 
 # fog
 mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }

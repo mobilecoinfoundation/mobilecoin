@@ -61,9 +61,10 @@ impl<DB: Backend<RawValue = [u8]>> FromSql<diesel::sql_types::Binary, DB>
         let mut key = [0; 32];
         key.copy_from_slice(&vec);
 
-        Ok(SqlCompressedRistrettoPublic(
-            CompressedRistrettoPublic::from(&key),
-        ))
+        match CompressedRistrettoPublic::try_from(&key) {
+            Ok(key) => Ok(SqlCompressedRistrettoPublic(key)),
+            Err(e) => Err(format!("Key error: {e:?}").into()),
+        }
     }
 }
 

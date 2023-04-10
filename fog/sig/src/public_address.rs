@@ -5,14 +5,13 @@
 
 use crate::{Error, Verifier};
 use mc_account_keys::PublicAddress;
-use mc_crypto_keys::Ed25519Signature;
+use mc_crypto_keys::{Ed25519Signature, RistrettoSignature, SignatureError};
 use mc_crypto_x509_utils::{
     PublicKeyType, X509CertificateChain, X509CertificateIter, X509KeyExtrator,
 };
 use mc_fog_report_types::ReportResponse;
 use mc_fog_sig_authority::Verifier as AuthorityVerifier;
 use mc_fog_sig_report::Verifier as ReportVerifier;
-use signature::{Error as SignatureError, Signature};
 use x509_signature::X509Certificate;
 
 impl Verifier for PublicAddress {
@@ -34,10 +33,8 @@ impl Verifier for PublicAddress {
         .collect::<Vec<X509Certificate>>();
 
         // Get the authority signature
-        let authority_sig = self
-            .fog_authority_sig()
-            .ok_or(Error::NoSignature)?
-            .try_into()?;
+        let authority_sig =
+            RistrettoSignature::try_from(self.fog_authority_sig().ok_or(Error::NoSignature)?)?;
 
         // Verify the chain and signature over the resulting authority
         self.verify_authority(
@@ -49,7 +46,7 @@ impl Verifier for PublicAddress {
         // Verify the signature over the reports matches the leaf cert in the chain
         match certs.leaf()?.mc_public_key().map_err(Error::Pubkey)? {
             PublicKeyType::Ed25519(pubkey) => {
-                let sig = Ed25519Signature::from_bytes(&report_response.signature)
+                let sig = Ed25519Signature::try_from(report_response.signature.as_slice())
                     .map_err(Error::SignatureParse)?;
                 pubkey
                     .verify_reports(report_response.reports.as_slice(), &sig)
@@ -68,6 +65,7 @@ mod tests {
     use mc_crypto_x509_utils::X509CertificateIterable;
     use mc_fog_report_types::Report;
     use mc_fog_sig_report::Signer;
+    use pem::Pem;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -101,7 +99,7 @@ mod tests {
             public_address,
             der_chain
                 .into_iter()
-                .map(|p| p.contents)
+                .map(Pem::into_contents)
                 .collect::<Vec<Vec<u8>>>(),
             keypair,
         )

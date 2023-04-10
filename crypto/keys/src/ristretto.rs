@@ -4,7 +4,7 @@
 
 use crate::{
     GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
-    KeyError, PrivateKey, PublicKey, Signature,
+    KeyError, PrivateKey, PublicKey, SignatureEncoding, SignatureError,
 };
 use core::{
     cmp::Ordering,
@@ -44,7 +44,6 @@ use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 #[cfg(feature = "prost")]
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
-use signature::Error as SignatureError;
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
@@ -72,7 +71,7 @@ impl TryFrom<&[u8; 32]> for RistrettoPrivate {
 
     fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
         Ok(Self(
-            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
+            Option::from(Scalar::from_canonical_bytes(*src)).ok_or(KeyError::InvalidPrivateKey)?,
         ))
     }
 }
@@ -288,6 +287,7 @@ impl ReprBytes for RistrettoPublic {
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
         Ok(Self(
             CompressedRistretto::from_slice(src.as_slice())
+                .map_err(|_e| KeyError::InvalidPublicKey)?
                 .decompress()
                 .ok_or(KeyError::InvalidPublicKey)?,
         ))
@@ -490,13 +490,18 @@ impl TryFrom<&[u8]> for CompressedRistrettoPublic {
         if src.len() != 32 {
             return Err(KeyError::LengthMismatch(src.len(), 32));
         }
-        Ok(Self(CompressedRistretto::from_slice(src)))
+        let compressed_ristretto =
+            CompressedRistretto::from_slice(src).map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
-impl From<&[u8; 32]> for CompressedRistrettoPublic {
-    fn from(src: &[u8; 32]) -> Self {
-        Self(CompressedRistretto::from_slice(&src[..]))
+impl TryFrom<&[u8; 32]> for CompressedRistrettoPublic {
+    type Error = KeyError;
+    fn try_from(src: &[u8; 32]) -> Result<Self, Self::Error> {
+        let compressed_ristretto = CompressedRistretto::from_slice(src.as_slice())
+            .map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
@@ -570,7 +575,18 @@ impl Kex for Ristretto {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct RistrettoSignature([u8; SIGNATURE_LENGTH]);
+
+impl SignatureEncoding for RistrettoSignature {
+    type Repr = [u8; SIGNATURE_LENGTH];
+}
+
+impl From<RistrettoSignature> for [u8; 64] {
+    fn from(src: RistrettoSignature) -> Self {
+        src.0
+    }
+}
 
 impl AsRef<[u8]> for RistrettoSignature {
     fn as_ref(&self) -> &[u8] {
@@ -599,12 +615,6 @@ impl From<SchnorrkelSignature> for RistrettoSignature {
 impl From<&SchnorrkelSignature> for RistrettoSignature {
     fn from(src: &SchnorrkelSignature) -> RistrettoSignature {
         Self(src.to_bytes())
-    }
-}
-
-impl Signature for RistrettoSignature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
-        Self::try_from(bytes)
     }
 }
 

@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Implementation of ed25519 signer identity for report
 
 use mc_crypto_ake_enclave::EnclaveIdentity;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sig"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Verify Fog Signatures"
@@ -16,8 +16,8 @@ mc-fog-sig-authority = { path = "./authority" }
 mc-fog-sig-report = { path = "./report" }
 
 displaydoc = "0.2"
-pem = "1.1"
-signature = { version = "1.6.4" }
+pem = "2.0"
+signature = { version = "2.0.0" }
 x509-signature = "0.5"
 
 [dev-dependencies]

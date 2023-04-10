@@ -1,6 +1,6 @@
 [package]
 name = "mc-account-keys"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/defa
 
 [dependencies]
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"

@@ -174,10 +174,9 @@ mod testing {
     fn keyfile_roundtrip_with_fog() {
         let fog_report_url = "fog://unittest.mobilecoin.com";
         let fog_report_id = "1";
-        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
-            .expect("Could not parse DER bytes from PEM certificate file")
-            .contents;
-        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+        let pem = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file");
+        let fog_authority_spki = x509_signature::parse_certificate(pem.contents())
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();
@@ -226,10 +225,9 @@ mod testing {
     fn pubfile_roundtrip_with_fog() {
         let fog_report_url = "fog://unittest.mobilecoin.com";
         let fog_report_id = "1";
-        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
-            .expect("Could not parse DER bytes from PEM certificate file")
-            .contents;
-        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+        let pem = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file");
+        let fog_authority_spki = x509_signature::parse_certificate(pem.contents())
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();

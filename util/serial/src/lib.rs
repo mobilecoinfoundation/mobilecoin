@@ -7,8 +7,12 @@ use alloc::vec::Vec;
 
 pub extern crate prost;
 
+mod big_array;
+
 pub use prost::{DecodeError, EncodeError, Message};
 use serde::{Deserialize, Serialize};
+
+pub use big_array::BigArray;
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,
 // because this keeps us compatible with how rmp-serde was exporting its errors,

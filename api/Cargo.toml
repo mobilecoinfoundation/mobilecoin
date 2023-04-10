@@ -1,6 +1,6 @@
 [package]
 name = "mc-api"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -14,12 +14,12 @@ mc-account-keys = { path = "../account-keys" }
 mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", default-features = false }
-mc-crypto-dalek = { path = "../crypto/dalek" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-extra = { path = "../transaction/extra" }
+mc-transaction-summary = { path = "../transaction/summary" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
 mc-watcher-api = { path = "../watcher/api" }
@@ -29,7 +29,7 @@ crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.27.1"
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
@@ -52,7 +52,7 @@ mc-util-test-with-data = { path = "../util/test-with-data" }
 mc-util-zip-exact = { path = "../util/zip-exact" }
 
 generic-array = "0.14"
-pem = "1.1"
+pem = "2.0"
 prost = { version = "0.11", default-features = false }
 rand = "0.8"
 rand_core = "0.6"

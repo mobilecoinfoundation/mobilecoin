@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-tx-out-records"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -20,7 +20,7 @@ mc-fog-ingest-enclave-api = { path = "../../fog/ingest/enclave/api" }
 mc-fog-ingest-enclave-impl = { path = "../../fog/ingest/enclave/impl" }
 mc-fog-types = { path = "../../fog/types" }
 mc-fog-view-protocol = { path = "../../fog/view/protocol" }
-mc-oblivious-traits = "2.2"
+mc-oblivious-traits = "2.3"
 mc-test-vectors-definitions = { path = "../definitions" }
 mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }

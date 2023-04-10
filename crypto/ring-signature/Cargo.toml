@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,32 +8,31 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "mc-crypto-dalek/alloc"]
-serde = ["dep:serde", "mc-crypto-dalek/serde", "mc-crypto-keys/serde"]
+alloc = ["serde?/alloc", "mc-crypto-digestible/alloc", "mc-util-repr-bytes/alloc", "curve25519-dalek/alloc", "ed25519-dalek/alloc"]
+serde = ["dep:serde", "curve25519-dalek/serde", "ed25519-dalek/serde", "mc-crypto-keys/serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost", "mc-util-serial"]
 internals = []
 
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "mc-crypto-dalek/default", "mc-crypto-hashes/default"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "mc-crypto-hashes/default"]
 
 [dependencies]
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["nightly"] }
+ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
 hex_fmt = { version = "0.3", optional = true }
 
 # MobileCoin dependencies
 mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
 mc-core-types = { path = "../../core/types", default-features = false }
-mc-crypto-dalek = { path = "../../crypto/dalek", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
-mc-util-serial = { path = "../../util/serial", optional = true }
+mc-util-serial = { path = "../../util/serial", optional = true, default_features = false }
 
 # Enable all default features not known to break code coverage builds
 proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"], optional = true }

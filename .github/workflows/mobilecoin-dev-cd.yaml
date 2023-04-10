@@ -73,7 +73,7 @@ jobs:
     - generate-metadata
     runs-on: [self-hosted, Linux, large-cd]
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.23
+      image: mobilecoin/rust-sgx-base:v0.0.25
 
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
@@ -217,7 +217,7 @@ jobs:
         ./install_tools.sh
         ./build.sh
         mkdir -p ../go_build_artifacts
-        cp grpc-proxy ../go_build_artifacts/
+        cp go-grpc-gateway ../go_build_artifacts/
 
     - name: check artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"

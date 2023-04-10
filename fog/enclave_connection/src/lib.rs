@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 #![allow(clippy::result_large_err)]
 use aes_gcm::Aes256Gcm;
@@ -19,7 +19,7 @@ use mc_common::{
 };
 use mc_connection::{AttestationError, AttestedConnection, Connection};
 use mc_crypto_keys::X25519;
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use mc_util_grpc::{BasicCredentials, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::ConnectionUri;
 use retry::OperationResult;

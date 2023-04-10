@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	gw "github.com/mobilecoinofficial/grpc-proxy/gen"
+	gw "github.com/mobilecoinfoundation/mobilecoin/go-grpc-gateway/gen"
 )
 
 var (

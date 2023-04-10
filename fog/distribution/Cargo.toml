@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-distribution"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -18,7 +18,6 @@ mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
@@ -40,7 +39,7 @@ rayon = "1.7"
 retry = "2.0"
 tempfile = "3.4"
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

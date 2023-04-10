@@ -9,7 +9,7 @@ ARG BASE_TAG=latest
 FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
 
 ARG GO_BIN_PATH=go-grpc-gateway
-COPY ${GO_BIN_PATH}/grpc-proxy /usr/bin/go-grpc-gateway
+COPY ${GO_BIN_PATH}/go-grpc-gateway /usr/bin/go-grpc-gateway
 
 COPY .internal-ci/docker/entrypoints/go-grpc-gateway.sh /usr/bin/entrypoint.sh
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]

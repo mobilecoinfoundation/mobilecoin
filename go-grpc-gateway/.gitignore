@@ -1,4 +1,4 @@
 docs
 gen
 main
-grpc-proxy
+go-grpc-gateway

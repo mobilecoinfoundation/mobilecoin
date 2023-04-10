@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-digestible-signature"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Digestible Signatures"
@@ -18,4 +18,4 @@ default = ["alloc", "derive", "dalek"]
 mc-crypto-digestible = { path = "..", default_features = false }
 
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
-signature = { version = "1.6.4", default-features = false }
+signature = { version = "2.0.0", default-features = false }

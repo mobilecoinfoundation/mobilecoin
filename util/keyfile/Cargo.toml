@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-keyfile"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -30,7 +30,7 @@ path = "src/bin/read_pubfile.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-core = { path = "../../core" }
-mc-crypto-rand = { path = "../../crypto/rand" }
+mc-rand = "1.0"
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
@@ -39,7 +39,7 @@ base64 = "0.21"
 clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
-pem = "1.1"
+pem = "2.0"
 prost = "0.11"
 rand = "0.8"
 rand_core = "0.6.4"

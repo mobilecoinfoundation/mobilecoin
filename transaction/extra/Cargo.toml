@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-extra"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -23,13 +23,13 @@ zeroize = "1"
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
 mc-core = { path = "../../core" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-summary = { path = "../../transaction/summary" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
@@ -38,7 +38,7 @@ mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

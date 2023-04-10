@@ -29,9 +29,9 @@ use mc_transaction_core::{
     RevealedTxOutError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber,
-    TxOutSummaryUnblindingData, UnsignedTx,
+    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber, UnsignedTx,
 };
+use mc_transaction_summary::TxOutSummaryUnblindingData;
 use mc_util_from_random::FromRandom;
 use mc_util_u64_ratio::U64Ratio;
 use rand_core::{CryptoRng, RngCore};
@@ -921,8 +921,9 @@ pub mod transaction_builder_tests {
     use super::*;
     use crate::{
         test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
-        GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, RTHMemoBuilder,
+        BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
+        GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
+        RTHMemoBuilder,
     };
     use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
@@ -4123,6 +4124,360 @@ pub mod transaction_builder_tests {
                     NewMemoError::DestinationMemoNotAllowed
                 )))
             );
+        }
+    }
+
+    #[test]
+    fn transaction_builder_defragmentation_memos() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let block_version = BlockVersion::MAX;
+        let token_id = TokenId::from(62);
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let change_address = sender.change_subaddress();
+        let change_destination = ReservedSubaddresses::from(&sender);
+
+        // Adding two defrag outputs is not allowed.
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder
+                .add_output(Amount::new(100, token_id), &change_address, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &change_address,
+                &mut rng,
+            );
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Adding the change output before a defrag output is not allowed.
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let result = transaction_builder.add_change_output(
+                Amount::new(0, token_id),
+                &change_destination,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MissingOutput
+                )))
+            );
+        }
+
+        // Setting fee after change output has been written is not allowed.
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            transaction_builder
+                .add_output(Amount::new(113, token_id), &change_address, &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.set_fee(1235);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
+            );
+        }
+
+        // Change in a different token is not allowed.
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder
+                .add_output(Amount::new(100, Mob::ID), &change_address, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_change_output(
+                Amount::new(0, token_id),
+                &change_destination,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MixedTokenIds
+                )))
+            );
+        }
+
+        // Defrag change output should always be 0
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            transaction_builder
+                .add_output(Amount::new(113, token_id), &change_address, &mut rng)
+                .unwrap();
+            let result = transaction_builder.add_change_output(
+                Amount::new(43, token_id),
+                &change_destination,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::DefragWithChange
+                )))
+            );
+        }
+
+        // Test builds memos with no ID
+        {
+            let memo_builder = DefragmentationMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(432, token_id),
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let TxOutContext {
+                tx_out: defrag_tx_out,
+                ..
+            } = transaction_builder
+                .add_output(Amount::new(429, token_id), &change_address, &mut rng)
+                .unwrap();
+
+            let TxOutContext {
+                tx_out: decoy_tx_out,
+                ..
+            } = transaction_builder
+                .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            let main_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == defrag_tx_out.public_key)
+                .expect("Didn't find recipient's output");
+            let decoy_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == decoy_tx_out.public_key)
+                .expect("Didn't find sender's output");
+
+            // Defrag output should have a defrag memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
+            );
+            let memo = main_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Defragmentation(memo) => {
+                    assert_eq!(memo.defrag_id(), 0u64);
+                    assert_eq!(memo.fee(), 3u64);
+                    assert_eq!(memo.total_outlay(), 432u64);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Change output should have a 0 value defrag memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&decoy_output.public_key).unwrap(),
+            );
+            let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Defragmentation(memo) => {
+                    assert_eq!(memo.defrag_id(), 0u64);
+                    assert_eq!(memo.fee(), 0u64);
+                    assert_eq!(memo.total_outlay(), 0u64);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+        }
+
+        // Test builds memos with ID
+        {
+            let memo_builder = DefragmentationMemoBuilder::new(64);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(432, token_id),
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let TxOutContext {
+                tx_out: defrag_tx_out,
+                ..
+            } = transaction_builder
+                .add_output(Amount::new(429, token_id), &change_address, &mut rng)
+                .unwrap();
+
+            let TxOutContext {
+                tx_out: decoy_tx_out,
+                ..
+            } = transaction_builder
+                .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            let main_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == defrag_tx_out.public_key)
+                .expect("Didn't find recipient's output");
+            let decoy_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == decoy_tx_out.public_key)
+                .expect("Didn't find sender's output");
+
+            // Defrag output should have a defrag memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
+            );
+            let memo = main_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Defragmentation(memo) => {
+                    assert_eq!(memo.defrag_id(), 64u64);
+                    assert_eq!(memo.fee(), 3u64);
+                    assert_eq!(memo.total_outlay(), 432u64);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Change output should have a 0 value defrag memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&decoy_output.public_key).unwrap(),
+            );
+            let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Defragmentation(memo) => {
+                    assert_eq!(memo.defrag_id(), 64u64);
+                    assert_eq!(memo.fee(), 0u64);
+                    assert_eq!(memo.total_outlay(), 0u64);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
         }
     }
 }

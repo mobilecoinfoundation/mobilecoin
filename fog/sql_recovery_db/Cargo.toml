@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sql-recovery-db"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -54,7 +54,7 @@ mc-fog-test-infra = { path = "../test_infra" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-pem = "1.1"
+pem = "2.0"
 rand = "0.8"
 
 [build-dependencies]

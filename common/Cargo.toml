@@ -1,15 +1,12 @@
 [package]
 name = "mc-common"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [features]
-default = [
-    "mc-crypto-dalek/default"
-]
 std = [
     "displaydoc/std",
     "mc-util-serial/std",
@@ -33,17 +30,15 @@ loggers = [
     "slog-async",
     "slog-atomic",
     "slog-envlogger",
-    "slog-gelf",
     "slog-json",
     "slog-stdlog",
     "slog-term",
 ]
 
 [dependencies]
-mc-crypto-dalek = { path = "../crypto/dalek", default_features = false, features = [ "serde", "alloc" ] }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false, features = [ "serde", "alloc", "prost" ] }
-mc-crypto-rand = { path = "../crypto/rand" }
+mc-rand = "1.0"
 # loggers-only dependencies
 mc-util-build-info = { path = "../util/build/info", optional = true }
 # log- and loggers-only dependencies
@@ -70,7 +65,6 @@ slog = { version = "2.7", default-features = false, features = ["dynamic-keys", 
 slog-async = { version = "2.7", optional = true }
 slog-atomic = { version = "3.1", optional = true }
 slog-envlogger = { version = "2.2", optional = true }
-slog-gelf = { version = "0.1", optional = true }
 slog-json = { version = "2.6", optional = true }
 slog-scope = { version = "4.4.0", optional = true }
 slog-stdlog = { version = "4.1.1", optional = true }

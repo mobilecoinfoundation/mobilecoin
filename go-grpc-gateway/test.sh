@@ -6,8 +6,8 @@
 
 set -e
 
-if [ ! -f "grpc-proxy" ]; then
-    echo "Missing grpc-proxy, needs go build"
+if [ ! -f "go-grpc-gateway" ]; then
+    echo "Missing go-grpc-gateway, needs go build"
     exit 1
 fi
 
@@ -34,7 +34,7 @@ pid=$!
 sleep 1
 
 # Spawn grpc proxy
-./grpc-proxy -grpc-insecure -grpc-server-endpoint localhost:3000 -http-server-listen :8080 -logtostderr &
+./go-grpc-gateway -grpc-insecure -grpc-server-endpoint localhost:3000 -http-server-listen :8080 -logtostderr &
 pid2=$!
 
 sleep 5

@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-x509-utils"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 description = "Verification of X509 certificate chains"
 edition = "2021"
@@ -15,5 +15,5 @@ mc-crypto-x509-test-vectors = { path = "../test-vectors" }
 mc-crypto-keys = { path = "../../keys" }
 
 displaydoc = { version = "0.2", default-features = false }
-pem = "1.1"
+pem = "2.0"
 x509-signature = "0.5"

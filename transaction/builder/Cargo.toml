@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-builder"
-version = "4.0.2"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -25,19 +25,20 @@ zeroize = "1"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
-mc-crypto-dalek = { path = "../../crypto/dalek" }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-extra = { path = "../../transaction/extra" }
+mc-transaction-summary = { path = "../../transaction/summary" }
 mc-transaction-types = { path = "../../transaction/types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+# `default` feature enables curve25519-dalek target detection for x86_64 with and without AVX
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

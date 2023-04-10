@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! A memo handler object which processes memos, for use in integration tests
 
@@ -86,6 +86,21 @@ impl MemoHandler {
                     Err(MemoHandlerError::UnknownSender)
                 }
             }
+            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
+                if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
+                    if bool::from(memo.validate(
+                        addr,
+                        &account_key.default_subaddress_view_private(),
+                        &tx_out.public_key,
+                    )) {
+                        Ok(Some(memo_type))
+                    } else {
+                        Err(MemoHandlerError::FailedHmacValidation)
+                    }
+                } else {
+                    Err(MemoHandlerError::UnknownSender)
+                }
+            }
             MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
                     if bool::from(memo.validate(
@@ -108,33 +123,6 @@ impl MemoHandler {
                     Err(MemoHandlerError::FailedSubaddressValidation)
                 }
             }
-            MemoType::GiftCodeCancellation(_) => {
-                // TODO: Add Gift Code Memo Validation
-                Ok(Some(memo_type))
-            }
-            MemoType::GiftCodeFunding(_) => {
-                // TODO: Add Gift Code Memo Validation
-                Ok(Some(memo_type))
-            }
-            MemoType::GiftCodeSender(_) => {
-                // TODO: Add Gift Code Validation
-                Ok(Some(memo_type))
-            }
-            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
-                if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
-                    if bool::from(memo.validate(
-                        addr,
-                        &account_key.default_subaddress_view_private(),
-                        &tx_out.public_key,
-                    )) {
-                        Ok(Some(memo_type))
-                    } else {
-                        Err(MemoHandlerError::FailedHmacValidation)
-                    }
-                } else {
-                    Err(MemoHandlerError::UnknownSender)
-                }
-            }
             MemoType::DestinationWithPaymentRequestId(_) => {
                 if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
                     Ok(Some(memo_type))
@@ -148,6 +136,25 @@ impl MemoHandler {
                 } else {
                     Err(MemoHandlerError::FailedSubaddressValidation)
                 }
+            }
+            MemoType::Defragmentation(_) => {
+                if subaddress_matches_tx_out(account_key, CHANGE_SUBADDRESS_INDEX, tx_out)? {
+                    Ok(Some(memo_type))
+                } else {
+                    Err(MemoHandlerError::FailedSubaddressValidation)
+                }
+            }
+            MemoType::GiftCodeCancellation(_) => {
+                // TODO: Add Gift Code Memo Validation
+                Ok(Some(memo_type))
+            }
+            MemoType::GiftCodeFunding(_) => {
+                // TODO: Add Gift Code Memo Validation
+                Ok(Some(memo_type))
+            }
+            MemoType::GiftCodeSender(_) => {
+                // TODO: Add Gift Code Validation
+                Ok(Some(memo_type))
             }
         }
     }

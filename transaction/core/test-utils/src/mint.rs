@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 //! Test helpers for minting transactions
 
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
     mint::{
         constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx,
