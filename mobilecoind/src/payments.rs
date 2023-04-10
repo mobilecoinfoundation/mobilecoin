@@ -36,12 +36,12 @@ use rand::Rng;
 use std::{
     cmp::{max, Reverse},
     collections::BTreeMap,
-    iter::empty,
     str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -826,12 +826,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_id = &responder_ids[idx % responder_ids.len()];
 
+        let retry_iterator = std::iter::repeat(Duration::from_millis(50)).take(5);
+
         // Try and submit.
         let block_height = self
             .peer_manager
             .conn(responder_id)
             .ok_or(Error::NodeNotFound)?
-            .propose_tx(&tx_proposal.tx, empty())
+            .propose_tx(&tx_proposal.tx, retry_iterator)
             .map_err(Error::from)?;
 
         log::info!(
