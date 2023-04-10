@@ -29,9 +29,9 @@ use mc_transaction_core::{
     RevealedTxOutError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber,
-    TxOutSummaryUnblindingData, UnsignedTx,
+    SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber, UnsignedTx,
 };
+use mc_transaction_summary::TxOutSummaryUnblindingData;
 use mc_util_from_random::FromRandom;
 use mc_util_u64_ratio::U64Ratio;
 use rand_core::{CryptoRng, RngCore};

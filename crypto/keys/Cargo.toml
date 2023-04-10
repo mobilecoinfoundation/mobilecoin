@@ -10,9 +10,9 @@ rust-version = { workspace = true }
 
 [features]
 alloc = ["base64/alloc", "curve25519-dalek/alloc", "ed25519-dalek/alloc", "mc-crypto-digestible/alloc", "mc-crypto-digestible-signature/alloc", "mc-util-repr-bytes/alloc"]
-serde = ["dep:serde", "ed25519/serde", "curve25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
+serde = ["dep:serde", "dep:mc-util-serial", "ed25519/serde", "curve25519-dalek/serde", "ed25519-dalek/serde", "mc-util-repr-bytes/serde"]
 prost = ["alloc", "mc-util-repr-bytes/prost"]
-default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "mc-util-serial"]
+default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "dep:mc-util-serial"]
 
 [dependencies]
 

@@ -1223,7 +1223,7 @@ checksum = "be522bee13fa6d8059f4903a4084aa3bd50725e18150202f0238deb615cd6371"
 dependencies = [
  "pkcs8",
  "serde",
- "signature 2.0.0",
+ "signature",
 ]
 
 [[package]]
@@ -1236,7 +1236,7 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2 0.10.6",
- "signature 2.0.0",
+ "signature",
  "zeroize",
 ]
 
@@ -2324,6 +2324,7 @@ dependencies = [
  "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
@@ -3037,7 +3038,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "4.0.2"
+version = "4.1.0-pre0"
 dependencies = [
  "anyhow",
  "clap 4.1.11",
@@ -3147,7 +3148,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
- "signature 2.0.0",
+ "signature",
 ]
 
 [[package]]
@@ -3194,7 +3195,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
- "signature 2.0.0",
+ "signature",
  "static_assertions",
  "subtle",
  "tempfile",
@@ -3204,7 +3205,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "4.0.2"
+version = "4.1.0-pre0"
 dependencies = [
  "hmac 0.12.1",
  "mc-crypto-keys",
@@ -4128,7 +4129,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "signature 1.6.4",
+ "signature",
  "x509-signature",
  "zeroize",
 ]
@@ -4233,7 +4234,7 @@ dependencies = [
  "pem",
  "rand_core",
  "rand_hc",
- "signature 1.6.4",
+ "signature",
  "x509-signature",
 ]
 
@@ -4259,7 +4260,7 @@ dependencies = [
  "mc-util-from-random",
  "rand_core",
  "rand_hc",
- "signature 1.6.4",
+ "signature",
 ]
 
 [[package]]
@@ -5189,6 +5190,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-serial",
@@ -5286,6 +5288,7 @@ dependencies = [
  "mc-fog-report-validation-test-utils",
  "mc-transaction-builder",
  "mc-transaction-core",
+ "mc-transaction-summary",
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -5306,7 +5309,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-signer"
-version = "4.0.1"
+version = "4.1.0-pre0"
 dependencies = [
  "anyhow",
  "clap 4.1.11",
@@ -5322,6 +5325,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
  "mc-transaction-extra",
+ "mc-transaction-summary",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "rand_core",
@@ -5329,6 +5333,25 @@ dependencies = [
  "serde_json",
  "subtle",
  "tiny-bip39",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-summary"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-core",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-vec-map",
+ "mc-util-zip-exact",
+ "prost",
+ "serde",
+ "subtle",
  "zeroize",
 ]
 
@@ -5582,7 +5605,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.12",
 ]
 
 [[package]]
@@ -7348,9 +7371,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.154"
+version = "1.0.159"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cdd151213925e7f1ab45a9bbfb129316bd00799784b174b7cc7bcd16961c49e"
+checksum = "3c04e8343c3daeec41f58990b9d77068df31209f2af111e059e9fe9646693065"
 dependencies = [
  "serde_derive",
 ]
@@ -7376,13 +7399,13 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.154"
+version = "1.0.159"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fc80d722935453bcafdc2c9a73cd6fac4dc1938f0346035d84bf99fa9e33217"
+checksum = "4c614d17805b093df4b147b51339e7e44bf05ef59fba1e45d83500bcfb4d8585"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.12",
 ]
 
 [[package]]
@@ -7558,12 +7581,6 @@ checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "signature"
-version = "1.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
 name = "signature"
@@ -7790,9 +7807,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.11"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e3787bb71465627110e7d87ed4faaa36c1f61042ee67badb9e2ef173accc40"
+checksum = "79d9531f94112cfc3e4c8f5f02cb2b58f72c97b7efd85f70203cc6d8efda5927"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -943,7 +943,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "4.0.2"
+version = "4.1.0-pre0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
