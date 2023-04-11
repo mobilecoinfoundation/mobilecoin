@@ -17,7 +17,7 @@ mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-noise = { path = "../../../crypto/noise" }
-mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-rand = "1.0"
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
