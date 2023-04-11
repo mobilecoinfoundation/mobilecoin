@@ -831,7 +831,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         //   re-attest, and this attestation is successful. So that takes 50 ms.
         // * After that, we back off to 500 ms, because there are rate limits of about
         //   100 / min in place in production.
-        let retry_iterator = (&[50, 500, 500, 750, 1000])
+        let retry_iterator = [50, 500, 500, 750, 1000]
             .iter()
             .cloned()
             .map(Duration::from_millis);
