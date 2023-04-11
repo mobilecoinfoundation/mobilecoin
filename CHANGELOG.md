@@ -10,7 +10,11 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Changed
 
-- mobilecoind now has its own version of the `LastBlockInfo` proto message. ([#3307])
+- `mobilecoind` now has its own version of the `LastBlockInfo` proto message. ([#3307])
+
+### Fixed
+
+- `mobilecoind` now produces SCIs with correct tx_out_global_indices values ([#3311])
 
 ## [4.1.0]
 
