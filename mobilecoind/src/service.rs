@@ -3906,9 +3906,7 @@ mod test {
             let indices = &sci.tx_out_global_indices;
             let ring = &sci.tx_in.ring;
             for (index, tx_out) in indices.iter().zip(ring.iter()) {
-                let real_tx_out =
-                    ledger_db
-                    .get_tx_out_by_index(*index).unwrap();
+                let real_tx_out = ledger_db.get_tx_out_by_index(*index).unwrap();
                 assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
             }
         }
@@ -3966,9 +3964,7 @@ mod test {
             let indices = &sci.tx_out_global_indices;
             let ring = &sci.tx_in.ring;
             for (index, tx_out) in indices.iter().zip(ring.iter()) {
-                let real_tx_out =
-                    ledger_db
-                    .get_tx_out_by_index(*index).unwrap();
+                let real_tx_out = ledger_db.get_tx_out_by_index(*index).unwrap();
                 assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
             }
         }

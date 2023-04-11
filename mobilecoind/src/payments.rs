@@ -1465,12 +1465,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             }
         };
 
-        let membership_proofs: Vec<TxOutMembershipProof> = global_indices.into_iter().map(|index| {
-            TxOutMembershipProof {
+        let membership_proofs: Vec<TxOutMembershipProof> = global_indices
+            .into_iter()
+            .map(|index| TxOutMembershipProof {
                 index,
                 ..Default::default()
-            }
-        }).collect();
+            })
+            .collect();
 
         // Create input credentials
         let input_credentials = {
