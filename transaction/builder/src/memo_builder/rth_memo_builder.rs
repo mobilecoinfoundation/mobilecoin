@@ -91,7 +91,7 @@ pub type FlexibleChangeMemoGenerator = Box<
     dyn Fn(FlexibleMemoChangeContext) -> Result<FlexibleMemoPayload, NewMemoError> + Sync + Send,
 >;
 
-///This is the context provided to the flexible memo generator which is set on
+/// This is the context provided to the flexible memo generator which is set on
 /// the rth memo builder. Each of these fields has a direct corresponds to a
 /// field in the RTHMemoBuilder
 pub struct FlexibleMemoBuilderContext {
@@ -109,7 +109,7 @@ pub struct FlexibleMemoBuilderContext {
     pub fee: Amount,
 }
 
-///This is the context provided to the flexible memo generator which is set
+/// This is the context provided to the flexible memo generator which is set
 /// when generating the output memo
 pub struct FlexibleMemoOutputContext<'a> {
     /// Output amount
@@ -122,7 +122,7 @@ pub struct FlexibleMemoOutputContext<'a> {
     pub builder_context: FlexibleMemoBuilderContext,
 }
 
-///This is the context provided to the flexible memo generator which is set
+/// This is the context provided to the flexible memo generator which is set
 /// when generating specifically the change memo
 pub struct FlexibleMemoChangeContext<'a> {
     /// Additional context provided for generating the output memo.
