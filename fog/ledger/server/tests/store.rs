@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2023 The MobileCoin Foundation
+
 use std::{
     collections::BTreeMap,
     path::PathBuf,
@@ -16,7 +18,6 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_keys::X25519;
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_ledger_enclave::{
     CheckKeyImagesResponse, KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE,
 };
@@ -28,6 +29,7 @@ use mc_fog_ledger_server::{
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
+use mc_rand::{CryptoRng, RngCore};
 use mc_util_grpc::AnonymousAuthenticator;
 use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
@@ -215,7 +217,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let mut test_key_image_bytes: [u8; 32] = [0u8; 32];
     rng.fill(&mut test_key_image_bytes);
     let test_key_image = KeyImageData {
-        key_image: test_key_image_bytes.into(),
+        key_image: test_key_image_bytes.try_into().unwrap(),
         block_index: 1,
         timestamp: 255,
     };
