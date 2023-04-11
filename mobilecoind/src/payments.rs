@@ -33,7 +33,6 @@ use mc_transaction_extra::{
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
-use retry::delay::Fibonacci;
 use std::{
     cmp::{max, Reverse},
     collections::BTreeMap,
