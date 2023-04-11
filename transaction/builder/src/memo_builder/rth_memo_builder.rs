@@ -416,6 +416,10 @@ impl MemoBuilder for RTHMemoBuilder {
             return Err(NewMemoError::MixedTokenIds);
         }
 
+        if self.fee.value.to_be_bytes()[0] != 0u8 {
+            return Err(NewMemoError::LimitsExceeded("fee"));
+        }
+
         self.total_outlay = self
             .total_outlay
             .checked_add(self.fee.value)
@@ -445,7 +449,6 @@ impl MemoBuilder for RTHMemoBuilder {
                     );
                     let payload: MemoPayload =
                         MemoPayload::new(flexible_memo_payload.memo_type_bytes, memo_data);
-                    //TODO: Check whether fee is too large before setting wrote destination memo
                     self.wrote_destination_memo = true;
                     Ok(payload)
                 }
@@ -677,6 +680,26 @@ mod tests {
 
         let derived_fee = destination_memo.get_fee();
         assert_eq!(fee.value, derived_fee);
+    }
+
+    #[test]
+    fn test_funding_memo_rejects_fees_which_are_too_large() {
+        // Create Memo Builder with data
+        let fee = Amount::new(u64::MAX, 0.into());
+        let change_amount = Amount::new(1, 0.into());
+        let funding_amount = Amount::new(10, 0.into());
+
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let (sender, builder) = build_test_memo_builder(&mut rng);
+        // Build the memo payload
+        let memo_test_context =
+            build_rth_memos(sender, builder, funding_amount, change_amount, fee);
+        assert_eq!(
+            memo_test_context
+                .change_memo
+                .expect_err("Should have an invalid destination memo type"),
+            NewMemoError::LimitsExceeded("fee")
+        );
     }
 
     #[test]
