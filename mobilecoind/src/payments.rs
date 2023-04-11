@@ -41,6 +41,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -832,6 +833,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         //   100 / min in place in production.
         let retry_iterator = (&[50, 500, 500, 750, 1000])
             .iter()
+            .cloned()
             .map(Duration::from_millis);
 
         // Try and submit.
