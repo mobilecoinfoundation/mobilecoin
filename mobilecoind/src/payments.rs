@@ -826,8 +826,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_id = &responder_ids[idx % responder_ids.len()];
 
-        // This is the same retry iterator as is used in full-service in production
-        let retry_iterator = Fibonacci::from_millis(10).take(5);
+        // The rationale for these retries is:
+        // * Quite often, the attested connetion was closed and we need to retry once to
+        //   re-attest, and this attestation is successful. So that takes 50 ms.
+        // * After that, we back off to 500 ms, because there are rate limits of about
+        //   100 / min in place in production.
+        let retry_iterator = (&[50, 500, 500, 750, 1000])
+            .iter()
+            .map(Duration::from_millis);
 
         // Try and submit.
         let block_height = self
