@@ -3901,6 +3901,16 @@ mod test {
                 .unwrap();
             assert_eq!(amount.value, 123);
             assert_eq!(amount.token_id, TokenId::from(1));
+
+            // Validate ring vs. indices, as deqs does
+            let indices = &sci.tx_out_global_indices;
+            let ring = &sci.tx_in.ring;
+            for (index, tx_out) in indices.iter().zip(ring.iter()) {
+                let real_tx_out =
+                    ledger_db
+                    .get_tx_out_by_index(*index).unwrap();
+                assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
+            }
         }
 
         // Test the happy flow for eUSD -> MOB, non partial fill swap
@@ -3951,6 +3961,16 @@ mod test {
             let unmasked_amount = sci.required_output_amounts[0].clone();
             assert_eq!(unmasked_amount.value, 999_999);
             assert_eq!(unmasked_amount.token_id, *Mob::ID);
+
+            // Validate ring vs. indices, as deqs does
+            let indices = &sci.tx_out_global_indices;
+            let ring = &sci.tx_in.ring;
+            for (index, tx_out) in indices.iter().zip(ring.iter()) {
+                let real_tx_out =
+                    ledger_db
+                    .get_tx_out_by_index(*index).unwrap();
+                assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
+            }
         }
 
         // Invalid input scenarios should result in an error.

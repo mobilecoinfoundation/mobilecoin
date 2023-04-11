@@ -1465,7 +1465,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             }
         };
 
-        let membership_proofs: Vec<TxOutMembershipProof> = vec![Default::default(); ring.len()];
+        let membership_proofs: Vec<TxOutMembershipProof> = global_indices.into_iter().map(|index| {
+            TxOutMembershipProof {
+                index,
+                ..Default::default()
+            }
+        }).collect();
 
         // Create input credentials
         let input_credentials = {
@@ -1570,11 +1575,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Build sci.
-        let mut result = sci_builder
+        let result = sci_builder
             .build(&NoKeysRingSigner {}, rng)
             .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
 
-        result.tx_out_global_indices = global_indices;
         Ok(result)
     }
 }
