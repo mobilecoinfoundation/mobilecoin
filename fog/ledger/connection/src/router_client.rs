@@ -47,7 +47,7 @@ pub struct LedgerGrpcClient {
     response_receiver: ClientDuplexReceiver<LedgerResponse>,
 
     /// Low-lever ledger API client
-    _client: LedgerApiClient,
+    client: LedgerApiClient,
 }
 
 impl LedgerGrpcClient {
@@ -76,12 +76,25 @@ impl LedgerGrpcClient {
         Self {
             logger,
             attest_cipher: None,
-            _client: client,
+            client,
             request_sender,
             response_receiver,
             uri,
             verifier,
         }
+    }
+
+    /// Need ability to reconnect in case of rate limiting
+    pub fn reconnect(&mut self) {
+        self.deattest();
+
+        let (request_sender, response_receiver) = self
+            .client
+            .request()
+            .expect("Could not retrieve grpc sender and receiver.");
+
+        self.request_sender = request_sender;
+        self.response_receiver = response_receiver;
     }
 
     fn is_attested(&self) -> bool {
@@ -136,7 +149,6 @@ impl LedgerGrpcClient {
         &mut self,
         key_images: &[KeyImage],
     ) -> Result<CheckKeyImagesResponse, Error> {
-        log::trace!(self.logger, "Check key images was called");
         if !self.is_attested() {
             let verification_report = self.attest().await;
             verification_report?;
@@ -202,7 +214,8 @@ impl LedgerGrpcClient {
 
 impl Drop for LedgerGrpcClient {
     fn drop(&mut self) {
-        block_on(self.request_sender.close()).expect("Couldn't close the router request sender");
+        // closing streams that have received an error result will fail, but that's OK
+        let _ = block_on(self.request_sender.close());
     }
 }
 
