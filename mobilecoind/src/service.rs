@@ -72,6 +72,7 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
+        chain_id: String,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -112,6 +113,7 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
+            chain_id,
             logger.clone(),
         );
 
@@ -170,6 +172,7 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+    chain_id: String,
     logger: Logger,
 }
 
@@ -184,6 +187,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
+            chain_id: self.chain_id.clone(),
             logger: self.logger.clone(),
         }
     }
@@ -199,6 +203,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+        chain_id: String,
         logger: Logger,
     ) -> Self {
         Self {
@@ -208,6 +213,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
+            chain_id,
             logger,
         }
     }
@@ -2191,6 +2197,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
         response.set_last_block_info(mcd_last_block_info);
+        response.set_chain_id(self.chain_id.clone());
 
         Ok(response)
     }

@@ -11,6 +11,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Changed
 
 - `mobilecoind` now has its own version of the `LastBlockInfo` proto message. ([#3307])
+- `mobilecoind` now exposes the chain-id of the chain it is connected to via rpc ([#3313])
 
 ### Fixed
 
