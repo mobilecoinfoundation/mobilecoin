@@ -4,7 +4,7 @@
 
 use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
 use diesel::{prelude::*, PgConnection};
-use diesel_migrations::embed_migrations;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use mc_common::logger::{log, Logger};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use retry::{
@@ -13,8 +13,7 @@ use retry::{
 };
 use std::time::Duration;
 
-embed_migrations!("migrations/");
-
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 const DB_CONNECTION_SLEEP_PERIOD: Duration = Duration::from_secs(3);
 const TOTAL_RETRY_COUNT: usize = 5;
 
@@ -44,19 +43,20 @@ impl SqlRecoveryDbTestContext {
         // database.
         let postgres_url = format!("{base_url}/postgres");
         log::info!(&logger, "Connecting to root PG DB {}", postgres_url);
-        let conn = SqlRecoveryDbTestContext::establish_connection(&postgres_url);
+        let mut conn = SqlRecoveryDbTestContext::establish_connection(&postgres_url);
         // Create a new database for the test
         let query = diesel::sql_query(format!("CREATE DATABASE {db_name};").as_str());
         let _ = query
-            .execute(&conn)
+            .execute(&mut conn)
             .unwrap_or_else(|err| panic!("Could not create database {db_name}: {err:?}"));
 
         // Now we can connect to the database and run the migrations
         let db_url = format!("{base_url}/{db_name}");
         log::info!(&logger, "Connecting to newly created PG DB '{}'", db_url);
 
-        let conn = SqlRecoveryDbTestContext::establish_connection(&db_url);
-        embedded_migrations::run(&conn).expect("failed running migrations");
+        let conn = &mut SqlRecoveryDbTestContext::establish_connection(&db_url);
+        conn.run_pending_migrations(MIGRATIONS)
+            .expect("failed running migrations");
 
         // Success
         Self {
@@ -107,7 +107,7 @@ impl SqlRecoveryDbTestContext {
 impl Drop for SqlRecoveryDbTestContext {
     fn drop(&mut self) {
         let postgres_url = format!("{}/postgres", self.base_url);
-        let conn =
+        let mut conn =
             PgConnection::establish(&postgres_url).expect("Cannot connect to postgres database.");
 
         let disconnect_users = format!(
@@ -116,12 +116,12 @@ impl Drop for SqlRecoveryDbTestContext {
         );
 
         diesel::sql_query(disconnect_users.as_str())
-            .execute(&conn)
+            .execute(&mut conn)
             .unwrap();
 
         let query = diesel::sql_query(format!("DROP DATABASE {};", self.db_name).as_str());
         query
-            .execute(&conn)
+            .execute(&mut conn)
             .unwrap_or_else(|err| panic!("Couldn't drop database {}: {:?}", self.db_name, err));
     }
 }

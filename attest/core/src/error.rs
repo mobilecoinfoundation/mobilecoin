@@ -390,7 +390,7 @@ pub enum ReportDetailsError {
 
 bitflags! {
     /// Revocation cause flags
-    #[derive(Deserialize, Serialize)]
+    #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
     pub struct RevocationCause: u64 {
         /// Cause reason was not given (but still revoked)
         const UNSPECIFIED = 0;

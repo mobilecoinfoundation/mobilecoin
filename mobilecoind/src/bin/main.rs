@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 #![deny(missing_docs)]
 
 //! mobilecoind daemon entry point
@@ -134,6 +134,7 @@ fn main() {
                 network_state,
                 listen_uri,
                 config.num_workers,
+                config.peers_config.chain_id.clone(),
                 logger,
             );
 

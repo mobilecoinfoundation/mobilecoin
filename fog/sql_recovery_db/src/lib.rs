@@ -5,7 +5,6 @@
 
 #[macro_use]
 extern crate diesel;
-#[macro_use]
 extern crate diesel_migrations;
 
 pub use error::Error;
@@ -162,7 +161,7 @@ impl SqlRecoveryDb {
     /// Mark a given ingest invocation as decommissioned.
     fn decommission_ingest_invocation_impl(
         &self,
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Error> {
         // Mark the ingest invocation as decommissioned.
@@ -172,7 +171,7 @@ impl SqlRecoveryDb {
         )
         .set((
             schema::ingest_invocations::dsl::decommissioned.eq(true),
-            schema::ingest_invocations::dsl::last_active_at.eq(diesel::expression::dsl::now),
+            schema::ingest_invocations::dsl::last_active_at.eq(diesel::dsl::now),
         ))
         .execute(conn)?;
 
@@ -190,21 +189,24 @@ impl SqlRecoveryDb {
     /// Mark a given ingest invocation as still being alive.
     fn update_last_active_at_impl(
         &self,
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Error> {
         diesel::update(
             schema::ingest_invocations::dsl::ingest_invocations
                 .filter(schema::ingest_invocations::dsl::id.eq(**ingest_invocation_id)),
         )
-        .set(schema::ingest_invocations::dsl::last_active_at.eq(diesel::expression::dsl::now))
+        .set(schema::ingest_invocations::dsl::last_active_at.eq(diesel::dsl::now))
         .execute(conn)?;
 
         Ok(())
     }
 
     /// Get missed block ranges.
-    fn get_missed_block_ranges_impl(&self, conn: &PgConnection) -> Result<Vec<BlockRange>, Error> {
+    fn get_missed_block_ranges_impl(
+        &self,
+        conn: &mut PgConnection,
+    ) -> Result<Vec<BlockRange>, Error> {
         let query = schema::user_events::dsl::user_events
             .filter(schema::user_events::dsl::event_type.eq(UserEventType::MissingBlocks))
             .select((
@@ -231,7 +233,7 @@ impl SqlRecoveryDb {
 
     fn get_ingress_key_status_impl(
         &self,
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         key: &CompressedRistrettoPublic,
     ) -> Result<Option<IngressPublicKeyStatus>, Error> {
         let key_bytes: &[u8] = key.as_ref();
@@ -256,7 +258,7 @@ impl SqlRecoveryDb {
         }
     }
 
-    fn get_highest_known_block_index_impl(conn: &PgConnection) -> Result<Option<u64>, Error> {
+    fn get_highest_known_block_index_impl(conn: &mut PgConnection) -> Result<Option<u64>, Error> {
         Ok(schema::ingested_blocks::dsl::ingested_blocks
             .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
             .first::<Option<i64>>(conn)?
@@ -265,7 +267,7 @@ impl SqlRecoveryDb {
 
     fn get_expired_invocations_impl(
         &self,
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
         use schema::ingest_invocations::dsl;
@@ -310,8 +312,8 @@ impl SqlRecoveryDb {
         &self,
         key: &CompressedRistrettoPublic,
     ) -> Result<Option<IngressPublicKeyStatus>, Error> {
-        let conn = self.pool.get()?;
-        self.get_ingress_key_status_impl(&conn, key)
+        let conn = &mut self.pool.get()?;
+        self.get_ingress_key_status_impl(conn, key)
     }
 
     fn new_ingress_key_retriable(
@@ -319,12 +321,12 @@ impl SqlRecoveryDb {
         key: &CompressedRistrettoPublic,
         start_block_count: u64,
     ) -> Result<u64, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
         conn.build_transaction()
             .read_write()
-            .run(|| -> Result<u64, Error> {
+            .run(|conn| -> Result<u64, Error> {
                 let highest_known_block_count: u64 =
-                    SqlRecoveryDb::get_highest_known_block_index_impl(&conn)?
+                    SqlRecoveryDb::get_highest_known_block_index_impl(conn)?
                         .map(|index| index + 1)
                         .unwrap_or(0);
 
@@ -340,7 +342,7 @@ impl SqlRecoveryDb {
                 let inserted_row_count = diesel::insert_into(schema::ingress_keys::table)
                     .values(&obj)
                     .on_conflict_do_nothing()
-                    .execute(&conn)?;
+                    .execute(conn)?;
 
                 if inserted_row_count > 0 {
                     Ok(accepted_start_block_count)
@@ -359,11 +361,11 @@ impl SqlRecoveryDb {
     ) -> Result<(), Error> {
         let key_bytes: &[u8] = key.as_ref();
 
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
         use schema::ingress_keys::dsl;
         diesel::update(dsl::ingress_keys.filter(dsl::ingress_public_key.eq(key_bytes)))
             .set(dsl::retired.eq(set_retired))
-            .execute(&conn)?;
+            .execute(conn)?;
         Ok(())
     }
 
@@ -373,13 +375,13 @@ impl SqlRecoveryDb {
     ) -> Result<Option<u64>, Error> {
         let key_bytes: &[u8] = key.as_ref();
 
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         use schema::ingested_blocks::dsl;
         let maybe_index: Option<i64> = dsl::ingested_blocks
             .filter(dsl::ingress_public_key.eq(key_bytes))
             .select(diesel::dsl::max(dsl::block_number))
-            .first(&conn)?;
+            .first(conn)?;
 
         Ok(maybe_index.map(|val| val as u64))
     }
@@ -389,7 +391,7 @@ impl SqlRecoveryDb {
         start_block_at_least: u64,
         ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         use schema::ingress_keys::dsl;
         let last_scanned_block = diesel::dsl::sql::<diesel::sql_types::BigInt>(
@@ -433,7 +435,7 @@ impl SqlRecoveryDb {
                 bool,
                 bool,
                 Option<i64>,
-            )>(&conn)?
+            )>(conn)?
             .into_iter()
             .map(
                 |(
@@ -468,15 +470,15 @@ impl SqlRecoveryDb {
         egress_public_key: &KexRngPubkey,
         start_block: u64,
     ) -> Result<IngestInvocationId, Error> {
-        let conn = self.pool.get()?;
-        conn.build_transaction().read_write().run(|| {
+        let conn = &mut self.pool.get()?;
+        conn.build_transaction().read_write().run(|conn| {
             // Optionally decommission old invocation.
             if let Some(prev_ingest_invocation_id) = prev_ingest_invocation_id {
-                self.decommission_ingest_invocation_impl(&conn, &prev_ingest_invocation_id)?;
+                self.decommission_ingest_invocation_impl(conn, &prev_ingest_invocation_id)?;
             }
 
             // Write new invocation.
-            let now = diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(&conn)?;
+            let now = diesel::select(diesel::dsl::now).get_result::<NaiveDateTime>(conn)?;
 
             let obj = models::NewIngestInvocation {
                 ingress_public_key: (*ingress_public_key).into(),
@@ -490,14 +492,14 @@ impl SqlRecoveryDb {
             let inserted_obj: models::IngestInvocation =
                 diesel::insert_into(schema::ingest_invocations::table)
                     .values(&obj)
-                    .get_result(&conn)?;
+                    .get_result(conn)?;
 
             // Write a user event.
             let new_event = models::NewUserEvent::new_ingest_invocation(inserted_obj.id);
 
             diesel::insert_into(schema::user_events::table)
                 .values(&new_event)
-                .execute(&conn)?;
+                .execute(conn)?;
 
             // Success.
             Ok(IngestInvocationId::from(inserted_obj.id))
@@ -507,7 +509,7 @@ impl SqlRecoveryDb {
     fn get_ingestable_ranges_retriable(
         &self,
     ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         // For each ingest invocation we are aware of get its id, start block, is
         // decommissioned and the max block number it has ingested (if
@@ -524,7 +526,7 @@ impl SqlRecoveryDb {
             .order_by(schema::ingest_invocations::dsl::id);
 
         // The list of fields here must match the .select() clause above.
-        let data = query.load::<(i64, i64, bool, Option<i64>)>(&conn)?;
+        let data = query.load::<(i64, i64, bool, Option<i64>)>(conn)?;
         Ok(data
             .into_iter()
             .map(|row| {
@@ -551,11 +553,11 @@ impl SqlRecoveryDb {
         &self,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         conn.build_transaction()
             .read_write()
-            .run(|| self.decommission_ingest_invocation_impl(&conn, ingest_invocation_id))
+            .run(|conn| self.decommission_ingest_invocation_impl(conn, ingest_invocation_id))
     }
 
     fn add_block_data_retriable(
@@ -565,12 +567,12 @@ impl SqlRecoveryDb {
         block_signature_timestamp: u64,
         txs: &[mc_fog_types::ETxOutRecord],
     ) -> Result<AddBlockDataStatus, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         match conn
             .build_transaction()
             .read_write()
-            .run(|| -> Result<(), Error> {
+            .run(|conn| -> Result<(), Error> {
                 // Get ingress pubkey of this ingest invocation id, which is also stored in the
                 // ingested_block record
                 //
@@ -581,7 +583,7 @@ impl SqlRecoveryDb {
                 let ingress_key_bytes: Vec<u8> = schema::ingest_invocations::table
                     .filter(schema::ingest_invocations::dsl::id.eq(**ingest_invocation_id))
                     .select(schema::ingest_invocations::ingress_public_key)
-                    .first(&conn)?;
+                    .first(conn)?;
 
                 // Get bytes of encoded proto ingested block data
                 let proto_bytes = {
@@ -606,10 +608,10 @@ impl SqlRecoveryDb {
 
                 diesel::insert_into(schema::ingested_blocks::table)
                     .values(&new_ingested_block)
-                    .execute(&conn)?;
+                    .execute(conn)?;
 
                 // Update last active at.
-                self.update_last_active_at_impl(&conn, ingest_invocation_id)?;
+                self.update_last_active_at_impl(conn, ingest_invocation_id)?;
 
                 // Success.
                 Ok(())
@@ -638,16 +640,16 @@ impl SqlRecoveryDb {
         &self,
         lost_ingress_key: CompressedRistrettoPublic,
     ) -> Result<(), Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
-        conn.build_transaction().read_write().run(|| {
+        conn.build_transaction().read_write().run(|conn| {
             // Find the ingress key and update it to be marked lost
             let key_bytes: &[u8] = lost_ingress_key.as_ref();
             use schema::ingress_keys::dsl;
             let key_records: Vec<models::IngressKey> =
                 diesel::update(dsl::ingress_keys.filter(dsl::ingress_public_key.eq(key_bytes)))
                     .set(dsl::lost.eq(true))
-                    .get_results(&conn)?;
+                    .get_results(conn)?;
 
             // Compute a missed block range based on looking at the key status,
             // which is correct if no blocks have actually been scanned using the key.
@@ -671,7 +673,7 @@ impl SqlRecoveryDb {
                 dsl::ingested_blocks
                     .filter(dsl::ingress_public_key.eq(key_bytes))
                     .select(diesel::dsl::max(dsl::block_number))
-                    .first(&conn)?
+                    .first(conn)?
             };
 
             if let Some(block_index) = maybe_block_index {
@@ -699,15 +701,15 @@ impl SqlRecoveryDb {
 
             diesel::insert_into(schema::user_events::table)
                 .values(&new_event)
-                .execute(&conn)?;
+                .execute(conn)?;
 
             Ok(())
         })
     }
 
     fn get_missed_block_ranges_retriable(&self) -> Result<Vec<BlockRange>, Error> {
-        let conn = self.pool.get()?;
-        self.get_missed_block_ranges_impl(&conn)
+        let conn = &mut self.pool.get()?;
+        self.get_missed_block_ranges_impl(conn)
     }
 
     fn search_user_events_retriable(
@@ -719,7 +721,7 @@ impl SqlRecoveryDb {
             return Ok((Default::default(), i64::MAX));
         }
 
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
         let mut events: Vec<(i64, FogUserEvent)> = Vec::new();
 
         // Collect all events of interest
@@ -771,7 +773,7 @@ impl SqlRecoveryDb {
             // For MissingBlocks events
             Option<i64>, // user_events.missing_blocks_start
             Option<i64>, // user_events.missing_blocks_end
-        )>(&conn)?;
+        )>(conn)?;
 
         // If no events are found, return start_from_user_event_id and not 0
         let mut max_user_event_id = start_from_user_event_id;
@@ -889,14 +891,14 @@ impl SqlRecoveryDb {
         start_block: u64,
         search_keys: &[Vec<u8>],
     ) -> Result<Vec<FixedTxOutSearchResult>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
             .filter(schema::ingested_blocks::dsl::block_number.ge(start_block as i64))
             .select(schema::ingested_blocks::dsl::proto_ingested_block_data);
 
         let mut search_key_to_payload = HashMap::<Vec<u8>, Vec<u8>>::default();
-        for proto_bytes in query.load::<Vec<u8>>(&conn)? {
+        for proto_bytes in query.load::<Vec<u8>>(conn)? {
             let proto = ProtoIngestedBlockData::decode(&*proto_bytes)?;
             for e_tx_out_record in proto.e_tx_out_records {
                 search_key_to_payload.insert(e_tx_out_record.search_key, e_tx_out_record.payload);
@@ -923,8 +925,8 @@ impl SqlRecoveryDb {
         &self,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        self.update_last_active_at_impl(&conn, ingest_invocation_id)
+        let conn = &mut self.pool.get()?;
+        self.update_last_active_at_impl(conn, ingest_invocation_id)
     }
 
     /// Get any ETxOutRecords produced by a given ingress key for a given
@@ -942,7 +944,7 @@ impl SqlRecoveryDb {
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
     ) -> Result<Option<Vec<ETxOutRecord>>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let key_bytes: &[u8] = ingress_key.as_ref();
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -952,7 +954,7 @@ impl SqlRecoveryDb {
 
         // The result of load should be 0 or 1, since there is a database constraint
         // around ingress keys and block indices
-        let protos: Vec<Vec<u8>> = query.load::<Vec<u8>>(&conn)?;
+        let protos: Vec<Vec<u8>> = query.load::<Vec<u8>>(conn)?;
 
         if protos.is_empty() {
             Ok(None)
@@ -981,7 +983,7 @@ impl SqlRecoveryDb {
         ingress_key: CompressedRistrettoPublic,
         block_range: &BlockRange,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         // The idea is:
         // Similar to get_tx_outs_by_block_and_key_retriable, but now
@@ -1002,7 +1004,7 @@ impl SqlRecoveryDb {
         };
 
         // We will get one row for each hit in the table we found
-        let rows: Vec<(i64, Vec<u8>)> = query.load(&conn)?;
+        let rows: Vec<(i64, Vec<u8>)> = query.load(conn)?;
 
         if (rows.len() as u64) > block_range.len() {
             log::warn!(
@@ -1041,7 +1043,7 @@ impl SqlRecoveryDb {
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
     ) -> Result<Option<IngestInvocationId>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let key_bytes: &[u8] = ingress_key.as_ref();
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -1051,7 +1053,7 @@ impl SqlRecoveryDb {
 
         // The result of load should be 0 or 1, since there is a database constraint
         // around ingress keys and block indices
-        let iids: Vec<i64> = query.load::<i64>(&conn)?;
+        let iids: Vec<i64> = query.load::<i64>(conn)?;
 
         if iids.is_empty() {
             Ok(None)
@@ -1075,13 +1077,13 @@ impl SqlRecoveryDb {
         &self,
         block_index: u64,
     ) -> Result<Option<u64>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
             .filter(schema::ingested_blocks::dsl::block_number.eq(block_index as i64))
             .select(schema::ingested_blocks::dsl::cumulative_txo_count);
 
-        let data = query.load::<i64>(&conn)?;
+        let data = query.load::<i64>(conn)?;
         if data.is_empty() {
             Ok(None)
         } else {
@@ -1111,20 +1113,20 @@ impl SqlRecoveryDb {
         &self,
         block_index: u64,
     ) -> Result<Option<u64>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
             .filter(schema::ingested_blocks::dsl::block_number.eq(block_index as i64))
             .select(schema::ingested_blocks::dsl::block_signature_timestamp);
 
-        let data = query.load::<i64>(&conn)?;
+        let data = query.load::<i64>(conn)?;
         Ok(data.first().map(|val| *val as u64))
     }
 
     /// Get the highest block index for which we have any data at all.
     fn get_highest_known_block_index_retriable(&self) -> Result<Option<u64>, Error> {
-        let conn = self.pool.get()?;
-        SqlRecoveryDb::get_highest_known_block_index_impl(&conn)
+        let conn = &mut self.pool.get()?;
+        SqlRecoveryDb::get_highest_known_block_index_impl(conn)
     }
 
     ////
@@ -1133,7 +1135,7 @@ impl SqlRecoveryDb {
     ////
 
     fn get_all_reports_retriable(&self) -> Result<Vec<(String, ReportData)>, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         let query = schema::reports::dsl::reports
             .select((
@@ -1145,7 +1147,7 @@ impl SqlRecoveryDb {
             .order_by(schema::reports::dsl::id);
 
         query
-            .load::<(Option<i64>, String, Vec<u8>, i64)>(&conn)?
+            .load::<(Option<i64>, String, Vec<u8>, i64)>(conn)?
             .into_iter()
             .map(|(ingest_invocation_id, report_id, report, pubkey_expiry)| {
                 let report = VerificationReport::decode(&*report)?;
@@ -1168,11 +1170,11 @@ impl SqlRecoveryDb {
         report_id: &str,
         data: &ReportData,
     ) -> Result<IngressPublicKeyStatus, Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
 
         conn.build_transaction()
             .read_write()
-            .run(|| -> Result<IngressPublicKeyStatus, Error> {
+            .run(|conn| -> Result<IngressPublicKeyStatus, Error> {
                 // First, try to update the pubkey_expiry value on this ingress key, only
                 // allowing it to increase, and only if it is not retired
                 let result: IngressPublicKeyStatus = {
@@ -1186,7 +1188,7 @@ impl SqlRecoveryDb {
                             .filter(dsl::pubkey_expiry.lt(data.pubkey_expiry as i64)),
                     )
                     .set(dsl::pubkey_expiry.eq(data.pubkey_expiry as i64))
-                    .get_results(&conn)?;
+                    .get_results(conn)?;
 
                     if key_records.is_empty() {
                         // If the result is empty, the key might not exist, or it might have had a
@@ -1194,7 +1196,7 @@ impl SqlRecoveryDb {
                         // so we need to make another query to find which is the case
                         log::info!(self.logger, "update was a no-op");
                         let maybe_key_status =
-                            self.get_ingress_key_status_impl(&conn, ingress_key)?;
+                            self.get_ingress_key_status_impl(conn, ingress_key)?;
                         log::info!(self.logger, "check ingress key passed");
                         maybe_key_status.ok_or(Error::MissingIngressKey(*ingress_key))?
                     } else if key_records.len() > 1 {
@@ -1238,18 +1240,18 @@ impl SqlRecoveryDb {
                         schema::reports::dsl::report.eq(report_bytes.clone()),
                         schema::reports::dsl::pubkey_expiry.eq(report.pubkey_expiry),
                     ))
-                    .execute(&conn)?;
+                    .execute(conn)?;
                 Ok(result)
             })
     }
 
     /// Remove report data associated with a given report id.
     fn remove_report_retriable(&self, report_id: &str) -> Result<(), Error> {
-        let conn = self.pool.get()?;
+        let conn = &mut self.pool.get()?;
         diesel::delete(
             schema::reports::dsl::reports.filter(schema::reports::dsl::fog_report_id.eq(report_id)),
         )
-        .execute(&conn)?;
+        .execute(conn)?;
         Ok(())
     }
 
@@ -1257,8 +1259,8 @@ impl SqlRecoveryDb {
         &self,
         expiration: NaiveDateTime,
     ) -> Result<Vec<ExpiredInvocationRecord>, Error> {
-        let conn = self.pool.get()?;
-        self.get_expired_invocations_impl(&conn, expiration)
+        let conn = &mut self.pool.get()?;
+        self.get_expired_invocations_impl(conn, expiration)
     }
 }
 
@@ -1653,11 +1655,11 @@ mod tests {
         assert_ne!(invoc_id1, invoc_id2);
 
         // Both ingest invocations should appear in the ingest_invocations table
-        let conn = db_test_context.new_conn();
+        let conn = &mut db_test_context.new_conn();
         let ingest_invocations: Vec<models::IngestInvocation> =
             schema::ingest_invocations::dsl::ingest_invocations
                 .order_by(schema::ingest_invocations::dsl::id)
-                .load(&conn)
+                .load(conn)
                 .expect("failed getting ingest invocations");
 
         assert_eq!(ingest_invocations.len(), 2);
@@ -1919,7 +1921,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
         let db = db_test_context.get_db_instance();
-        let conn = db_test_context.new_conn();
+        let conn = &mut db_test_context.new_conn();
 
         let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
         db.new_ingress_key(&ingress_key, 20).unwrap();
@@ -1944,7 +1946,7 @@ mod tests {
             schema::ingest_invocations::dsl::ingest_invocations
                 .select(schema::ingest_invocations::dsl::last_active_at)
                 .order_by(schema::ingest_invocations::dsl::id)
-                .load(&conn)
+                .load(conn)
                 .unwrap();
         let mut invoc1_orig_last_active_at = invocs_last_active_at[0];
         let invoc2_orig_last_active_at = invocs_last_active_at[1];
@@ -1959,7 +1961,7 @@ mod tests {
 
         let blocks: Vec<models::IngestedBlock> = schema::ingested_blocks::dsl::ingested_blocks
             .order_by(schema::ingested_blocks::dsl::id)
-            .load(&conn)
+            .load(conn)
             .unwrap();
         assert_eq!(blocks.len(), 1);
         assert_eq!(
@@ -1988,7 +1990,7 @@ mod tests {
             schema::ingest_invocations::dsl::ingest_invocations
                 .select(schema::ingest_invocations::dsl::last_active_at)
                 .order_by(schema::ingest_invocations::dsl::id)
-                .load(&conn)
+                .load(conn)
                 .unwrap();
         assert!(invocs_last_active_at[0] > invoc1_orig_last_active_at);
         assert_eq!(invocs_last_active_at[1], invoc2_orig_last_active_at);
@@ -2019,7 +2021,7 @@ mod tests {
             schema::ingest_invocations::dsl::ingest_invocations
                 .select(schema::ingest_invocations::dsl::last_active_at)
                 .order_by(schema::ingest_invocations::dsl::id)
-                .load(&conn)
+                .load(conn)
                 .unwrap();
         assert_eq!(invocs_last_active_at[0], invoc1_orig_last_active_at);
         assert_eq!(invocs_last_active_at[1], invoc2_orig_last_active_at);
@@ -2037,7 +2039,7 @@ mod tests {
 
         let blocks: Vec<models::IngestedBlock> = schema::ingested_blocks::dsl::ingested_blocks
             .order_by(schema::ingested_blocks::dsl::id)
-            .load(&conn)
+            .load(conn)
             .unwrap();
         assert_eq!(blocks.len(), 2);
         assert_eq!(
@@ -2077,7 +2079,7 @@ mod tests {
             schema::ingest_invocations::dsl::ingest_invocations
                 .select(schema::ingest_invocations::dsl::last_active_at)
                 .order_by(schema::ingest_invocations::dsl::id)
-                .load(&conn)
+                .load(conn)
                 .unwrap();
         assert_eq!(invocs_last_active_at[0], invoc1_orig_last_active_at);
         assert!(invocs_last_active_at[1] > invoc2_orig_last_active_at);
