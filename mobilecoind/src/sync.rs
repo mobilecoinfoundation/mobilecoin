@@ -346,22 +346,25 @@ fn match_tx_outs_into_utxos(
     logger: &Logger,
 ) -> Result<Vec<UnspentTxOut>, Error> {
     let account_key = &monitor_data.account_key;
-    // let mut results: Vec<UnspentTxOut> = Vec::new();
-    let results = outputs
+    // Iterate over each output and filter the results using a parallel iterator.
+    let results: Result<Vec<UnspentTxOut>, Error> = outputs
         .into_par_iter()
         .filter_map(|tx_out| {
-            // Calculate the subaddress spend public key for tx_out.
+            // Convert target and public keys to RistrettoPublic type.
             let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).ok()?;
             let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).ok()?;
 
+            // Generate subaddress spend public key for tx_out.
             let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
                 account_key.view_private_key(),
                 &tx_out_target_key,
                 &tx_public_key,
             ));
-            // See if it matches any of our monitors.
+
+            // Search the database for the subaddress ID that matches the generated key.
             let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
                 Ok(data) => {
+                    // Log the index and monitor ID of the matched subaddress.
                     log::trace!(
                         logger,
                         "matched subaddress index {} for monitor_id {}",
@@ -372,30 +375,36 @@ fn match_tx_outs_into_utxos(
                     data
                 }
                 Err(Error::SubaddressSPKNotFound) => return None,
-                Err(_err) => {
-                    return None;
-                }
+                Err(e) => return Some(Err(e)),
             };
-            // Sanity - we should only get a match for our own monitor id.
+
+            // Check that the matched subaddress belongs to the current monitor.
             assert_eq!(monitor_id, &subaddress_id.monitor_id);
 
+            // Generate the shared secret between the subaddress and output public key.
             let shared_secret =
                 get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
+            // Get the amount and blinding factor for the output.
             let (amount, _blinding) = tx_out
                 .get_masked_amount()
                 .expect("missing masked amount")
                 .get_value(&shared_secret)
                 .expect("Malformed amount"); // TODO
 
+            // Recover the onetime private key using the account and subaddress spend
+            // private keys.
             let onetime_private_key = recover_onetime_private_key(
                 &tx_public_key,
                 account_key.view_private_key(),
                 &account_key.subaddress_spend_private(subaddress_id.index),
             );
 
+            // Generate the key image from the onetime private key.
             let key_image = KeyImage::from(&onetime_private_key);
-            Some(UnspentTxOut {
+
+            // Construct a new unspent transaction output.
+            Some(Ok(UnspentTxOut {
                 tx_out: tx_out.clone(),
                 subaddress_index: subaddress_id.index,
                 key_image,
@@ -403,10 +412,11 @@ fn match_tx_outs_into_utxos(
                 attempted_spend_height: 0,
                 attempted_spend_tombstone: 0,
                 token_id: *amount.token_id,
-            })
+            }))
         })
         .collect();
-    Ok(results)
+
+    results
 }
 
 #[cfg(test)]
