@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Manages ledger block scanning for mobilecoind monitors.
 //!
@@ -39,6 +39,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::TxOut,
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -345,68 +346,66 @@ fn match_tx_outs_into_utxos(
     logger: &Logger,
 ) -> Result<Vec<UnspentTxOut>, Error> {
     let account_key = &monitor_data.account_key;
-    let mut results = Vec::new();
+    // let mut results: Vec<UnspentTxOut> = Vec::new();
+    let results = outputs
+        .into_par_iter()
+        .filter_map(|tx_out| {
+            // Calculate the subaddress spend public key for tx_out.
+            let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).ok()?;
+            let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).ok()?;
 
-    for tx_out in outputs {
-        // Calculate the subaddress spend public key for tx_out.
-        let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
-        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
+            let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
+                account_key.view_private_key(),
+                &tx_out_target_key,
+                &tx_public_key,
+            ));
+            // See if it matches any of our monitors.
+            let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
+                Ok(data) => {
+                    log::trace!(
+                        logger,
+                        "matched subaddress index {} for monitor_id {}",
+                        data.index,
+                        data.monitor_id,
+                    );
 
-        let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-            account_key.view_private_key(),
-            &tx_out_target_key,
-            &tx_public_key,
-        ));
+                    data
+                }
+                Err(Error::SubaddressSPKNotFound) => return None,
+                Err(_err) => {
+                    return None;
+                }
+            };
+            // Sanity - we should only get a match for our own monitor id.
+            assert_eq!(monitor_id, &subaddress_id.monitor_id);
 
-        // See if it matches any of our monitors.
-        let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
-            Ok(data) => {
-                log::trace!(
-                    logger,
-                    "matched subaddress index {} for monitor_id {}",
-                    data.index,
-                    data.monitor_id,
-                );
+            let shared_secret =
+                get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-                data
-            }
-            Err(Error::SubaddressSPKNotFound) => continue,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+            let (amount, _blinding) = tx_out
+                .get_masked_amount()
+                .expect("missing masked amount")
+                .get_value(&shared_secret)
+                .expect("Malformed amount"); // TODO
 
-        // Sanity - we should only get a match for our own monitor id.
-        assert_eq!(monitor_id, &subaddress_id.monitor_id);
+            let onetime_private_key = recover_onetime_private_key(
+                &tx_public_key,
+                account_key.view_private_key(),
+                &account_key.subaddress_spend_private(subaddress_id.index),
+            );
 
-        let shared_secret =
-            get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
-
-        let (amount, _blinding) = tx_out
-            .get_masked_amount()
-            .expect("missing masked amount")
-            .get_value(&shared_secret)
-            .expect("Malformed amount"); // TODO
-
-        let onetime_private_key = recover_onetime_private_key(
-            &tx_public_key,
-            account_key.view_private_key(),
-            &account_key.subaddress_spend_private(subaddress_id.index),
-        );
-
-        let key_image = KeyImage::from(&onetime_private_key);
-
-        results.push(UnspentTxOut {
-            tx_out: tx_out.clone(),
-            subaddress_index: subaddress_id.index,
-            key_image,
-            value: amount.value,
-            attempted_spend_height: 0,
-            attempted_spend_tombstone: 0,
-            token_id: *amount.token_id,
-        });
-    }
-
+            let key_image = KeyImage::from(&onetime_private_key);
+            Some(UnspentTxOut {
+                tx_out: tx_out.clone(),
+                subaddress_index: subaddress_id.index,
+                key_image,
+                value: amount.value,
+                attempted_spend_height: 0,
+                attempted_spend_tombstone: 0,
+                token_id: *amount.token_id,
+            })
+        })
+        .collect();
     Ok(results)
 }
 
