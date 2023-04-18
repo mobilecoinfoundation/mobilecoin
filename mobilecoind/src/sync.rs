@@ -768,7 +768,7 @@ mod test {
         }
 
         // All our utxos should be unique.
-        assert_eq!(HashSet::from_iter(utxos.clone()).len(), num_blocks);
+        assert_eq!(HashSet::from_iter(utxos).len(), num_blocks);
         let receiver = AccountKey::random(&mut rng);
 
         // Add a block that has a bunch of irrelevant txos.
