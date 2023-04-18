@@ -23,9 +23,8 @@ pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
 pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;
 pub use gift_code_sender_memo_builder::GiftCodeSenderMemoBuilder;
 pub use rth_memo_builder::{
-    FlexibleChangeMemoGenerator, FlexibleMemoBuilderContext, FlexibleMemoChangeContext,
-    FlexibleMemoGenerator, FlexibleMemoOutputContext, FlexibleMemoPayload,
-    FlexibleOutputMemoGenerator, RTHMemoBuilder,
+    FlexibleMemoBuilderContext, FlexibleMemoChangeContext, FlexibleMemoGenerator,
+    FlexibleMemoGeneratorTrait, FlexibleMemoOutputContext, FlexibleMemoPayload, RTHMemoBuilder,
 };
 
 /// The MemoBuilder trait defines the API that the transaction builder uses

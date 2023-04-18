@@ -82,17 +82,41 @@ pub enum CustomMemoType {
     FlexibleMemoGenerator(FlexibleMemoGenerator),
 }
 
-/// A function that returns a flexible memopayload for outputs
-pub type FlexibleOutputMemoGenerator = Box<
-    dyn Fn(FlexibleMemoOutputContext) -> Result<FlexibleMemoPayload, NewMemoError> + Sync + Send,
->;
-/// A function that returns a flexible memopayload for change
-pub type FlexibleChangeMemoGenerator = Box<
-    dyn Fn(FlexibleMemoChangeContext) -> Result<FlexibleMemoPayload, NewMemoError> + Sync + Send,
->;
+/// This is a trait that must be implemented by generators used for creating
+/// flexible output memos and flexible change memos
+pub trait FlexibleMemoGeneratorTrait: Sync + Send + Debug {
+    /// This is called when generating output memos.
+    /// It must return a memo payload with the first byte being 0x01
+    fn create_output_memo(
+        &self,
+        context: FlexibleMemoOutputContext,
+    ) -> Result<FlexibleMemoPayload, NewMemoError>;
+    /// This is called when generating change memos.
+    /// It must return a memo payload with the first byte being 0x02
+    fn create_change_memo(
+        &self,
+        context: FlexibleMemoChangeContext,
+    ) -> Result<FlexibleMemoPayload, NewMemoError>;
+}
+
+/// This is a struct that contains a generator used for creating flexible output
+/// memos and flexible change memos
+#[derive(Clone)]
+pub struct FlexibleMemoGenerator {
+    /// This is a reference to the actual generator that will be called.
+    pub generator: Arc<Box<dyn FlexibleMemoGeneratorTrait>>,
+}
+
+impl Debug for FlexibleMemoGenerator {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("FlexibleMemoGenerator")
+            .field("generator", &self.generator)
+            .finish()
+    }
+}
 
 /// This is the context provided to the flexible memo generator which is set on
-/// the rth memo builder. Each of these fields has a direct corresponds to a
+/// the rth memo builder. Each of these fields has a direct correspondence to a
 /// field in the RTHMemoBuilder
 pub struct FlexibleMemoBuilderContext {
     /// The credential used to form 0x0100 and 0x0101 memos, if present.
@@ -145,24 +169,6 @@ pub struct FlexibleMemoPayload {
     /// authenticated sender or destination super types like the
     /// SenderMemoCredential
     pub memo_data: [u8; 32],
-}
-
-/// This is a pair of generators used for creating flexible output memos and
-/// flexible change memos
-#[derive(Clone)]
-pub struct FlexibleMemoGenerator {
-    /// Flexible_output_memo_generator: Is called when generating output memos.
-    /// It must return a memo payload with the first byte being 0x01
-    pub flexible_output_memo_generator: Arc<FlexibleOutputMemoGenerator>,
-    /// Flexible_change_memo_generator: Is called when genearting change memos.
-    /// It must return a memo payload with the first byte being 0x02
-    pub flexible_change_memo_generator: Arc<FlexibleChangeMemoGenerator>,
-}
-
-impl Debug for FlexibleMemoGenerator {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "FlexibleMemoGenerator")
-    }
 }
 
 impl Default for RTHMemoBuilder {
@@ -337,10 +343,9 @@ impl MemoBuilder for RTHMemoBuilder {
                             recipient,
                             builder_context: self.get_flexible_memo_builder_context(),
                         };
-                        let flexible_memo_payload = (flexible_memo_generator
-                            .flexible_output_memo_generator)(
-                            flexible_memo_context
-                        )?;
+                        let flexible_memo_payload = flexible_memo_generator
+                            .generator
+                            .create_output_memo(flexible_memo_context)?;
                         let memo_data = compute_authenticated_sender_memo(
                             flexible_memo_payload.memo_type_bytes,
                             cred,
@@ -433,10 +438,9 @@ impl MemoBuilder for RTHMemoBuilder {
                         change_destination: _change_destination,
                         builder_context: self.get_flexible_memo_builder_context(),
                     };
-                    let flexible_memo_payload = (flexible_memo_generator
-                        .flexible_change_memo_generator)(
-                        flexible_memo_context
-                    )?;
+                    let flexible_memo_payload = flexible_memo_generator
+                        .generator
+                        .create_change_memo(flexible_memo_context)?;
                     if flexible_memo_payload.memo_type_bytes[0] != 0x02 {
                         return Err(NewMemoError::FlexibleMemoGenerator(format!("The flexible change memo generator created a memo of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
                     }
@@ -532,6 +536,46 @@ mod tests {
         output_memo: Result<MemoPayload, NewMemoError>,
         change_memo: Result<MemoPayload, NewMemoError>,
     }
+    /// A function that returns a flexible memopayload for outputs
+    pub type FlexibleOutputMemoGenerator = Box<
+        dyn Fn(FlexibleMemoOutputContext) -> Result<FlexibleMemoPayload, NewMemoError>
+            + Sync
+            + Send,
+    >;
+    /// A function that returns a flexible memopayload for change
+    pub type FlexibleChangeMemoGenerator = Box<
+        dyn Fn(FlexibleMemoChangeContext) -> Result<FlexibleMemoPayload, NewMemoError>
+            + Sync
+            + Send,
+    >;
+
+    // Test memo generator that allows the use of closures
+    struct FlexibleMemoGeneratorClosure {
+        output_memo_generator: FlexibleOutputMemoGenerator,
+        change_memo_generator: FlexibleChangeMemoGenerator,
+    }
+
+    impl Debug for FlexibleMemoGeneratorClosure {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.debug_struct("FlexibleMemoGeneratorClosure").finish()
+        }
+    }
+
+    impl FlexibleMemoGeneratorTrait for FlexibleMemoGeneratorClosure {
+        fn create_output_memo(
+            &self,
+            context: FlexibleMemoOutputContext,
+        ) -> Result<FlexibleMemoPayload, NewMemoError> {
+            (self.output_memo_generator)(context)
+        }
+
+        fn create_change_memo(
+            &self,
+            context: FlexibleMemoChangeContext,
+        ) -> Result<FlexibleMemoPayload, NewMemoError> {
+            (self.change_memo_generator)(context)
+        }
+    }
 
     fn get_valid_flexible_memo_generator() -> FlexibleMemoGenerator {
         let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
@@ -553,12 +597,15 @@ mod tests {
                 })
             });
 
+        let generator_closure = FlexibleMemoGeneratorClosure {
+            output_memo_generator: flexible_output_memo_generator_closure,
+            change_memo_generator: flexible_change_memo_generator_closure,
+        };
+
         FlexibleMemoGenerator {
-            flexible_output_memo_generator: Arc::new(flexible_output_memo_generator_closure),
-            flexible_change_memo_generator: Arc::new(flexible_change_memo_generator_closure),
+            generator: Arc::new(Box::new(generator_closure)),
         }
     }
-
     fn get_flexible_memo_generator_returning_invalid_types() -> FlexibleMemoGenerator {
         let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
             Box::new(|_context: FlexibleMemoOutputContext| {
@@ -579,9 +626,13 @@ mod tests {
                 })
             });
 
+        let generator_closure = FlexibleMemoGeneratorClosure {
+            output_memo_generator: flexible_output_memo_generator_closure,
+            change_memo_generator: flexible_change_memo_generator_closure,
+        };
+
         FlexibleMemoGenerator {
-            flexible_output_memo_generator: Arc::new(flexible_output_memo_generator_closure),
-            flexible_change_memo_generator: Arc::new(flexible_change_memo_generator_closure),
+            generator: Arc::new(Box::new(generator_closure)),
         }
     }
 

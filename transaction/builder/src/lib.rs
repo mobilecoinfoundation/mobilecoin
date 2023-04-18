@@ -23,10 +23,10 @@ pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
 pub use memo_builder::{
     BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
-    FlexibleChangeMemoGenerator, FlexibleMemoBuilderContext, FlexibleMemoChangeContext,
-    FlexibleMemoGenerator, FlexibleMemoOutputContext, FlexibleMemoPayload,
-    FlexibleOutputMemoGenerator, GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder,
-    GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
+    FlexibleMemoBuilderContext, FlexibleMemoChangeContext, FlexibleMemoGenerator,
+    FlexibleMemoGeneratorTrait, FlexibleMemoOutputContext, FlexibleMemoPayload,
+    GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
+    MemoBuilder, RTHMemoBuilder,
 };
 pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
