@@ -23,6 +23,9 @@ message PaymentRequest {
 
     /// Token id to transact in.
     uint64 token_id = 4;
+
+    /// Payment Id
+    uint64 payment_id = 5;
 }
 
 /// Message encoding a private key and a UTXO, for the purpose of
