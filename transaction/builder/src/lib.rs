@@ -24,7 +24,7 @@ pub use input_credentials::InputCredentials;
 pub use memo_builder::{
     BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
     FlexibleMemoBuilderContext, FlexibleMemoChangeContext, FlexibleMemoGenerator,
-    FlexibleMemoGeneratorTrait, FlexibleMemoOutputContext, FlexibleMemoPayload,
+    FlexibleMemoGeneratorReference, FlexibleMemoOutputContext, FlexibleMemoPayload,
     GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
     MemoBuilder, RTHMemoBuilder,
 };

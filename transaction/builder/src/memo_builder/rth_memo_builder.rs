@@ -79,12 +79,12 @@ pub struct RTHMemoBuilder {
 pub enum CustomMemoType {
     PaymentRequestId(u64),
     PaymentIntentId(u64),
-    FlexibleMemoGenerator(FlexibleMemoGenerator),
+    FlexibleMemoGenerator(FlexibleMemoGeneratorReference),
 }
 
 /// This is a trait that must be implemented by generators used for creating
 /// flexible output memos and flexible change memos
-pub trait FlexibleMemoGeneratorTrait: Sync + Send + Debug {
+pub trait FlexibleMemoGenerator: Sync + Send + Debug {
     /// This is called when generating output memos.
     /// It must return a memo payload with the first byte being 0x01
     fn create_output_memo(
@@ -99,21 +99,8 @@ pub trait FlexibleMemoGeneratorTrait: Sync + Send + Debug {
     ) -> Result<FlexibleMemoPayload, NewMemoError>;
 }
 
-/// This is a struct that contains a generator used for creating flexible output
-/// memos and flexible change memos
-#[derive(Clone)]
-pub struct FlexibleMemoGenerator {
-    /// This is a reference to the actual generator that will be called.
-    pub generator: Arc<Box<dyn FlexibleMemoGeneratorTrait>>,
-}
-
-impl Debug for FlexibleMemoGenerator {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("FlexibleMemoGenerator")
-            .field("generator", &self.generator)
-            .finish()
-    }
-}
+/// This is a thread safe reference to a FlexibleMemoGenerator
+pub type FlexibleMemoGeneratorReference = Arc<Box<dyn FlexibleMemoGenerator>>;
 
 /// This is the context provided to the flexible memo generator which is set on
 /// the rth memo builder. Each of these fields has a direct correspondence to a
@@ -257,7 +244,7 @@ impl RTHMemoBuilder {
     /// Set the flexible memo generator.
     pub fn set_flexible_memo_generator(
         &mut self,
-        generator: FlexibleMemoGenerator,
+        generator: FlexibleMemoGeneratorReference,
     ) -> Result<(), MemoBuilderError> {
         if self.custom_memo_type.is_some() {
             return Err(MemoBuilderError::StateChange(format!(
@@ -343,9 +330,8 @@ impl MemoBuilder for RTHMemoBuilder {
                             recipient,
                             builder_context: self.get_flexible_memo_builder_context(),
                         };
-                        let flexible_memo_payload = flexible_memo_generator
-                            .generator
-                            .create_output_memo(flexible_memo_context)?;
+                        let flexible_memo_payload =
+                            flexible_memo_generator.create_output_memo(flexible_memo_context)?;
                         let memo_data = compute_authenticated_sender_memo(
                             flexible_memo_payload.memo_type_bytes,
                             cred,
@@ -438,9 +424,8 @@ impl MemoBuilder for RTHMemoBuilder {
                         change_destination: _change_destination,
                         builder_context: self.get_flexible_memo_builder_context(),
                     };
-                    let flexible_memo_payload = flexible_memo_generator
-                        .generator
-                        .create_change_memo(flexible_memo_context)?;
+                    let flexible_memo_payload =
+                        flexible_memo_generator.create_change_memo(flexible_memo_context)?;
                     if flexible_memo_payload.memo_type_bytes[0] != 0x02 {
                         return Err(NewMemoError::FlexibleMemoGenerator(format!("The flexible change memo generator created a memo of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
                     }
@@ -561,7 +546,7 @@ mod tests {
         }
     }
 
-    impl FlexibleMemoGeneratorTrait for FlexibleMemoGeneratorClosure {
+    impl FlexibleMemoGenerator for FlexibleMemoGeneratorClosure {
         fn create_output_memo(
             &self,
             context: FlexibleMemoOutputContext,
@@ -577,7 +562,7 @@ mod tests {
         }
     }
 
-    fn get_valid_flexible_memo_generator() -> FlexibleMemoGenerator {
+    fn get_valid_flexible_memo_generator() -> FlexibleMemoGeneratorReference {
         let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
             Box::new(|_context: FlexibleMemoOutputContext| {
                 let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
@@ -602,9 +587,7 @@ mod tests {
             change_memo_generator: flexible_change_memo_generator_closure,
         };
 
-        FlexibleMemoGenerator {
-            generator: Arc::new(Box::new(generator_closure)),
-        }
+        Arc::new(Box::new(generator_closure))
     }
     fn get_flexible_memo_generator_returning_invalid_types() -> FlexibleMemoGenerator {
         let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
@@ -631,9 +614,7 @@ mod tests {
             change_memo_generator: flexible_change_memo_generator_closure,
         };
 
-        FlexibleMemoGenerator {
-            generator: Arc::new(Box::new(generator_closure)),
-        }
+        Arc::new(Box::new(generator_closure))
     }
 
     fn build_rth_memos(

@@ -922,7 +922,7 @@ pub mod transaction_builder_tests {
     use crate::{
         test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
         BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
-        FlexibleMemoChangeContext, FlexibleMemoGenerator, FlexibleMemoGeneratorTrait,
+        FlexibleMemoChangeContext, FlexibleMemoGenerator, FlexibleMemoGeneratorReference,
         FlexibleMemoOutputContext, FlexibleMemoPayload, GiftCodeCancellationMemoBuilder,
         GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, RTHMemoBuilder,
     };
@@ -967,7 +967,7 @@ pub mod transaction_builder_tests {
     #[derive(Debug)]
     struct FlexibleMemoGeneratorPaymentRequest {}
 
-    impl FlexibleMemoGeneratorTrait for FlexibleMemoGeneratorPaymentRequest {
+    impl FlexibleMemoGenerator for FlexibleMemoGeneratorPaymentRequest {
         fn create_output_memo(
             &self,
             _context: FlexibleMemoOutputContext,
@@ -997,10 +997,8 @@ pub mod transaction_builder_tests {
         }
     }
 
-    fn get_valid_flexible_memo_generator() -> FlexibleMemoGenerator {
-        FlexibleMemoGenerator {
-            generator: Arc::new(Box::new(FlexibleMemoGeneratorPaymentRequest {})),
-        }
+    fn get_valid_flexible_memo_generator() -> FlexibleMemoGeneratorReference {
+        Arc::new(Box::new(FlexibleMemoGeneratorPaymentRequest {}))
     }
 
     #[test]
