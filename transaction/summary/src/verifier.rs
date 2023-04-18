@@ -255,8 +255,8 @@ impl TxSummaryStreamingVerifierCtx {
             // add this to the report total
             report.total_add(tx_in_summary_unblinding_data.into())?;
         } else {
-            // we have input rules this is an SCI input and does not impact our
-            // balance TODO: config option to include this
+            // If we have input rules this is an SCI input and does not impact
+            // our balance
         };
 
         // We've now verified the tx_in_summary and added it to the report.

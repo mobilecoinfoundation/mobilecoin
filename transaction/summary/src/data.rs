@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use super::{Error, TxSummaryUnblindingReport};
-use crate::TxSummaryStreamingVerifierCtx;
+use crate::{report::TransactionReport, TxSummaryStreamingVerifierCtx};
 use mc_account_keys::PublicAddress;
 use mc_core::account::{PublicSubaddress, RingCtAddress, ShortAddressHash};
 use mc_crypto_digestible::Digestible;
@@ -122,6 +122,8 @@ pub fn verify_tx_summary(
         &mut digest,
         &mut report,
     )?;
+
+    report.finalize()?;
 
     // In a debug build, confirm the digest by computing it in a non-streaming way
     //

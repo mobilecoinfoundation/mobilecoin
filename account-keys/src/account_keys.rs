@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! MobileCoin account keys.
 //!
@@ -50,9 +50,7 @@ pub use mc_core::{
 };
 
 /// A MobileCoin user's public subaddress.
-#[derive(
-    Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
-)]
+#[derive(Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PublicAddress {

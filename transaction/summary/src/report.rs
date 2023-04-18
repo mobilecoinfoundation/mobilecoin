@@ -189,8 +189,6 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     }
 
     /// Add network fee to the report
-    /// TODO: should this be -set- network fee? seems static? / should not be
-    /// overwritten
     fn network_fee_set(&mut self, amount: Amount) -> Result<(), Error> {
         // Set fee value
         self.network_fee = amount;
