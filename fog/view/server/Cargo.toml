@@ -25,8 +25,6 @@ clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"
-hex = "0.4"
-itertools = "0.10"
 lazy_static = "1.4"
 
 # mobilecoin
@@ -84,5 +82,4 @@ pem = "2.0"
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
-tempdir = "0.3"
 yare = "1.0.2"

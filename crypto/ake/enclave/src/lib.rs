@@ -570,7 +570,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Transforms a sealed client message, i.e. a message sent from a client
     /// to the current enclave which has been sealed for this enclave, into a
-    /// list of outbound  messages for other enclaves that serve as backends to
+    /// list of outbound messages for other enclaves that serve as backends to
     /// the current enclave.
     ///                              / --> Backend Enclave 1
     ///   Client -> Current Enclave ---> Backend Enclave 2

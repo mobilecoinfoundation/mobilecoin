@@ -102,7 +102,7 @@ impl FogViewRouterGrpcClient {
         let mut request = FogViewRouterRequest::new();
         request.set_auth(attested_message);
         self.request_sender
-            .send((request.clone(), grpcio::WriteFlags::default()))
+            .send((request, grpcio::WriteFlags::default()))
             .await?;
 
         let mut response = self
@@ -174,7 +174,7 @@ impl FogViewRouterGrpcClient {
         request.set_query(msg);
 
         self.request_sender
-            .send((request.clone(), grpcio::WriteFlags::default()))
+            .send((request, grpcio::WriteFlags::default()))
             .await?;
 
         let message = self

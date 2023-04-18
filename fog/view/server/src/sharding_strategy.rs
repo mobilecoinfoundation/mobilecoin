@@ -86,7 +86,6 @@ impl ToString for EpochShardingStrategy {
 }
 
 impl EpochShardingStrategy {
-    #[allow(dead_code)]
     pub fn new(epoch_block_range: BlockRange) -> Self {
         Self { epoch_block_range }
     }

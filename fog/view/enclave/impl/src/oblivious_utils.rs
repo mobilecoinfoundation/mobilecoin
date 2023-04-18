@@ -441,14 +441,14 @@ mod tests {
             search_key.clone(),
             0,
             FIXED_CIPHERTEXT_LENGTH - 1,
-            TxOutSearchResultCode::BadSearchKey,
+            TxOutSearchResultCode::InternalError,
         );
 
         let mut shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
             FIXED_CIPHERTEXT_LENGTH - 1,
-            TxOutSearchResultCode::InternalError,
+            TxOutSearchResultCode::NotFound,
         );
         let mut result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
@@ -468,7 +468,7 @@ mod tests {
             &shard_tx_out_search_result,
         )
         .into();
-        assert!(!result);
+        assert!(result);
     }
 
     #[test]

@@ -396,5 +396,5 @@ impl<'aad, 'msg> NonceCiphertext<'aad, 'msg> {
     }
 }
 
-/// Plaintext may be provided to an FST for encryption into a vector
+/// Plaintext may be provided to an FST for decryption into a vector
 impl MealyInput for NonceCiphertext<'_, '_> {}

@@ -134,7 +134,6 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         Ok(())
     }
 
-    // Should this return a FixedTxOutSearchResult or just a TxOutSearchResult?
     pub fn find_record(&mut self, search_key: &[u8]) -> FixedTxOutSearchResult {
         let mut result = FixedTxOutSearchResult {
             search_key: search_key.to_vec(),
