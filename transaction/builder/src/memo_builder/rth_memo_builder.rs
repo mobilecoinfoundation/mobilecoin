@@ -129,7 +129,7 @@ impl Default for RTHMemoBuilder {
 /// These errors are usually created setting invalid field combinations on the
 /// memo builder. We have included error codes for some known useful error
 /// conditions. For a custom MemoBuilder, you can try to reuse those, or use the
-/// Other error code.
+/// other error code.
 #[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum MemoBuilderError {
     /// Invalid state change
