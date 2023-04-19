@@ -802,7 +802,7 @@ mod test {
         let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
 
         let sync_monitor_time = start.elapsed();
-        log::info!(logger, "sync_monitor took {:?}", sync_monitor_time);
+        log::info!(logger, "sync_monitor took {sync_monitor_time:?}");
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
     }
 
