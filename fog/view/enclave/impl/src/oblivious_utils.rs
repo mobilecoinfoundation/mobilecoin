@@ -445,7 +445,7 @@ mod tests {
         );
 
         let shard_tx_out_search_result = create_test_tx_out_search_result(
-            search_key.clone(),
+            search_key,
             0,
             FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::NotFound,
