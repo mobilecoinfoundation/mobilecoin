@@ -101,7 +101,7 @@ pub struct FlexibleMemoPayload {
     /// Corresponds to the returned memo type. This should be
     /// listed in an MCIP.
     pub memo_type_bytes: [u8; 2],
-    /// memo_data: corresponds to some 32 byte encoding of data used for
+    /// Corresponds to some 32 byte encoding of data used for
     /// the returned memo type, and does not include fields used for the
     /// authenticated sender or destination super types like the
     /// SenderMemoCredential
