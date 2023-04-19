@@ -98,7 +98,7 @@ pub struct FlexibleMemoPayloads {
 /// which are defined in MCIPs.
 #[derive(Clone, Debug)]
 pub struct FlexibleMemoPayload {
-    /// memo_type_bytes corresponds to the returned memo type. This should be
+    /// Corresponds to the returned memo type. This should be
     /// listed in an MCIP.
     pub memo_type_bytes: [u8; 2],
     /// memo_data: corresponds to some 32 byte encoding of data used for
