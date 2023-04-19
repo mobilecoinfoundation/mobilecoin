@@ -795,7 +795,7 @@ mod test {
         add_txos_to_ledger(&mut ledger_db, BlockVersion::MAX, &tx_outs, &mut rng).unwrap();
 
         let add_txos_time = start.elapsed();
-        log::info!(logger, "add_txos_to_ledger took {:?}", add_txos_time);
+        log::info!(logger, "add_txos_to_ledger took {add_txos_time:?}");
 
         let start = Instant::now();
 
