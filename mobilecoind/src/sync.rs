@@ -622,12 +622,16 @@ mod test {
 
         let account_keys: Vec<_> = (0..5).map(|_i| AccountKey::random(&mut rng)).collect();
 
+        let first_subaddress = DEFAULT_SUBADDRESS_INDEX;
+        let subaddress_count = 5;
+        let first_block_index = 0;
+        let name = "";
         let data = MonitorData::new(
             account_keys[0].clone(),
-            DEFAULT_SUBADDRESS_INDEX, // first subaddress
-            5,                        // number of subaddresses
-            0,                        // first block
-            "",                       // name
+            first_subaddress,
+            subaddress_count,
+            first_block_index,
+            name,
         )
         .unwrap();
 
