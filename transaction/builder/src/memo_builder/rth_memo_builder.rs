@@ -463,6 +463,7 @@ mod tests {
             change_memo_payload,
         }
     }
+    
     fn get_invalid_flexible_memos() -> FlexibleMemoPayloads {
         let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
         let memo_data = [0x01; 32];
