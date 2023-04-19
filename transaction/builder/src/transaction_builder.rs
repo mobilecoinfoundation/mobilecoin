@@ -922,11 +922,10 @@ pub mod transaction_builder_tests {
     use crate::{
         test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
         BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
-        FlexibleMemoChangeContext, FlexibleMemoGenerator, FlexibleMemoGeneratorReference,
-        FlexibleMemoOutputContext, FlexibleMemoPayload, GiftCodeCancellationMemoBuilder,
+        FlexibleMemoPayload, FlexibleMemoPayloads, GiftCodeCancellationMemoBuilder,
         GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, RTHMemoBuilder,
     };
-    use alloc::{string::ToString, sync::Arc, vec};
+    use alloc::{string::ToString, vec};
     use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{
@@ -962,43 +961,29 @@ pub mod transaction_builder_tests {
             (BlockVersion::try_from(2).unwrap(), TokenId::from(2)),
         ]
     }
-    // Test memo generator that creates a payload which corresponds to a payment
+    // Returns a flexible memo payload which corresponds to a payment
     // request.
-    #[derive(Debug)]
-    struct FlexibleMemoGeneratorPaymentRequest {}
-
-    impl FlexibleMemoGenerator for FlexibleMemoGeneratorPaymentRequest {
-        fn create_output_memo(
-            &self,
-            _context: FlexibleMemoOutputContext,
-        ) -> Result<FlexibleMemoPayload, NewMemoError> {
-            let payment_request_id = 42u64;
-            let memo_type_bytes = AuthenticatedSenderWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
-            let mut memo_data = [0x00; 32];
-            memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
-            Ok(FlexibleMemoPayload {
-                memo_type_bytes,
-                memo_data,
-            })
+    fn get_valid_flexible_memo() -> FlexibleMemoPayloads {
+        let payment_request_id = 42u64;
+        let memo_type_bytes = AuthenticatedSenderWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
+        let mut memo_data = [0x00; 32];
+        memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
+        let output_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
+        };
+        let payment_request_id = 42u64;
+        let memo_type_bytes = DestinationWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
+        let mut memo_data = [0u8; 32];
+        memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
+        let change_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
+        };
+        FlexibleMemoPayloads {
+            output_memo_payload,
+            change_memo_payload,
         }
-
-        fn create_change_memo(
-            &self,
-            _context: FlexibleMemoChangeContext,
-        ) -> Result<FlexibleMemoPayload, NewMemoError> {
-            let payment_request_id = 42u64;
-            let memo_type_bytes = DestinationWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
-            let mut memo_data = [0u8; 32];
-            memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
-            Ok(FlexibleMemoPayload {
-                memo_type_bytes,
-                memo_data,
-            })
-        }
-    }
-
-    fn get_valid_flexible_memo_generator() -> FlexibleMemoGeneratorReference {
-        Arc::new(Box::new(FlexibleMemoGeneratorPaymentRequest {}))
     }
 
     #[test]
@@ -2526,7 +2511,7 @@ pub mod transaction_builder_tests {
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
                 memo_builder
-                    .set_flexible_memo_generator(get_valid_flexible_memo_generator())
+                    .set_flexible_memos(get_valid_flexible_memo())
                     .expect("No other memo types should be set");
 
                 let mut transaction_builder = TransactionBuilder::new(

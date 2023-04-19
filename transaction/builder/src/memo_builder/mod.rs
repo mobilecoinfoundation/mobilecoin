@@ -22,10 +22,7 @@ pub use defragmentation_memo_builder::DefragmentationMemoBuilder;
 pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
 pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;
 pub use gift_code_sender_memo_builder::GiftCodeSenderMemoBuilder;
-pub use rth_memo_builder::{
-    FlexibleMemoBuilderContext, FlexibleMemoChangeContext, FlexibleMemoGenerator,
-    FlexibleMemoGeneratorReference, FlexibleMemoOutputContext, FlexibleMemoPayload, RTHMemoBuilder,
-};
+pub use rth_memo_builder::{FlexibleMemoPayload, FlexibleMemoPayloads, RTHMemoBuilder};
 
 /// The MemoBuilder trait defines the API that the transaction builder uses
 /// to ask the memo builder to build a memo for a particular TxOut.

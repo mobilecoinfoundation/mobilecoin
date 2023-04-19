@@ -6,7 +6,7 @@
 //! the encrypted memos, as envisioned in MCIP #4.
 use super::MemoBuilder;
 use crate::ReservedSubaddresses;
-use alloc::{boxed::Box, fmt::Debug, format, string::String, sync::Arc};
+use alloc::{fmt::Debug, format, string::String};
 use displaydoc::Display;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
@@ -79,77 +79,27 @@ pub struct RTHMemoBuilder {
 pub enum CustomMemoType {
     PaymentRequestId(u64),
     PaymentIntentId(u64),
-    FlexibleMemoGenerator(FlexibleMemoGeneratorReference),
+    FlexibleMemos(FlexibleMemoPayloads),
 }
 
-/// This is a trait that must be implemented by generators used for creating
-/// flexible output memos and flexible change memos
-pub trait FlexibleMemoGenerator: Sync + Send + Debug {
-    /// This is called when generating output memos.
-    /// It must return a memo payload with the first byte being 0x01
-    fn create_output_memo(
-        &self,
-        context: FlexibleMemoOutputContext,
-    ) -> Result<FlexibleMemoPayload, NewMemoError>;
-    /// This is called when generating change memos.
-    /// It must return a memo payload with the first byte being 0x02
-    fn create_change_memo(
-        &self,
-        context: FlexibleMemoChangeContext,
-    ) -> Result<FlexibleMemoPayload, NewMemoError>;
+/// This contains both the output memo payload and the change memo payload which
+/// will be used when generating custom output memos and change memos
+#[derive(Clone, Debug)]
+pub struct FlexibleMemoPayloads {
+    /// This is used when generating output memos.
+    /// It must contain a memo type with the first byte being 0x01
+    pub output_memo_payload: FlexibleMemoPayload,
+    /// This is used when generating change memos.
+    /// It must contain a memo type with the first byte being 0x02
+    pub change_memo_payload: FlexibleMemoPayload,
 }
 
-/// This is a thread safe reference to a FlexibleMemoGenerator
-pub type FlexibleMemoGeneratorReference = Arc<Box<dyn FlexibleMemoGenerator>>;
-
-/// This is the context provided to the flexible memo generator which is set on
-/// the rth memo builder. Each of these fields has a direct correspondence to a
-/// field in the RTHMemoBuilder
-pub struct FlexibleMemoBuilderContext {
-    /// The credential used to form 0x0100 and 0x0101 memos, if present.
-    pub sender_cred: Option<SenderMemoCredential>,
-    /// Tracks the last recipient
-    pub last_recipient: ShortAddressHash,
-    /// Tracks the total outlay so far
-    pub total_outlay: u64,
-    /// Tracks the total outlay token id
-    pub outlay_token_id: Option<TokenId>,
-    /// Tracks the number of recipients so far
-    pub num_recipients: u8,
-    /// Tracks the fee
-    pub fee: Amount,
-}
-
-/// This is the context provided to the flexible memo generator which is set
-/// when generating the output memo
-pub struct FlexibleMemoOutputContext<'a> {
-    /// Output amount
-    pub amount: Amount,
-    /// Memo recipient
-    pub recipient: &'a PublicAddress,
-    /// Additional context provided for generating the output memo.
-    pub memo_context: MemoContext<'a>,
-    /// Context available from the RthMemoBuilder
-    pub builder_context: FlexibleMemoBuilderContext,
-}
-
-/// This is the context provided to the flexible memo generator which is set
-/// when generating specifically the change memo
-pub struct FlexibleMemoChangeContext<'a> {
-    /// Additional context provided for generating the output memo.
-    pub memo_context: MemoContext<'a>,
-    /// Change amount
-    pub amount: Amount,
-    /// The subaddress that the change is being sent to.
-    pub change_destination: &'a ReservedSubaddresses,
-    /// Context available from the RthMemoBuilder
-    pub builder_context: FlexibleMemoBuilderContext,
-}
-
-/// This is the result of the flexible memo generators.
+/// This is the payload data used for creating custom MemoPayloads with types
+/// which are defined in MCIPs.
+#[derive(Clone, Debug)]
 pub struct FlexibleMemoPayload {
     /// memo_type_bytes corresponds to the returned memo type. This should be
-    /// listed in an mcip.
+    /// listed in an MCIP.
     pub memo_type_bytes: [u8; 2],
     /// memo_data: corresponds to some 32 byte encoding of data used for
     /// the returned memo type, and does not include fields used for the
@@ -241,10 +191,10 @@ impl RTHMemoBuilder {
         Ok(())
     }
 
-    /// Set the flexible memo generator.
-    pub fn set_flexible_memo_generator(
+    /// Set the flexible memos.
+    pub fn set_flexible_memos(
         &mut self,
-        generator: FlexibleMemoGeneratorReference,
+        memos: FlexibleMemoPayloads,
     ) -> Result<(), MemoBuilderError> {
         if self.custom_memo_type.is_some() {
             return Err(MemoBuilderError::StateChange(format!(
@@ -252,7 +202,7 @@ impl RTHMemoBuilder {
                 self.custom_memo_type
             )));
         }
-        self.custom_memo_type = Some(CustomMemoType::FlexibleMemoGenerator(generator));
+        self.custom_memo_type = Some(CustomMemoType::FlexibleMemos(memos));
         Ok(())
     }
 
@@ -264,19 +214,6 @@ impl RTHMemoBuilder {
     /// Disable destination memos
     pub fn disable_destination_memo(&mut self) {
         self.destination_memo_enabled = false;
-    }
-
-    /// Generates a flexible memo builder context from fields set on the rth
-    /// memo builder to be used with the flexible memo generator function
-    pub fn get_flexible_memo_builder_context(&self) -> FlexibleMemoBuilderContext {
-        FlexibleMemoBuilderContext {
-            sender_cred: self.sender_cred.clone(),
-            last_recipient: self.last_recipient.clone(),
-            total_outlay: self.total_outlay,
-            outlay_token_id: self.outlay_token_id,
-            num_recipients: self.num_recipients,
-            fee: self.fee,
-        }
     }
 }
 
@@ -322,16 +259,9 @@ impl MemoBuilder for RTHMemoBuilder {
         let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
             if let Some(custom_memo_type) = &self.custom_memo_type {
                 match custom_memo_type {
-                    CustomMemoType::FlexibleMemoGenerator(flexible_memo_generator) => {
+                    CustomMemoType::FlexibleMemos(flexible_memos) => {
                         let tx_public_key = memo_context.tx_public_key;
-                        let flexible_memo_context = FlexibleMemoOutputContext {
-                            memo_context,
-                            amount,
-                            recipient,
-                            builder_context: self.get_flexible_memo_builder_context(),
-                        };
-                        let flexible_memo_payload =
-                            flexible_memo_generator.create_output_memo(flexible_memo_context)?;
+                        let flexible_memo_payload = &flexible_memos.output_memo_payload;
                         let memo_data = compute_authenticated_sender_memo(
                             flexible_memo_payload.memo_type_bytes,
                             cred,
@@ -340,7 +270,7 @@ impl MemoBuilder for RTHMemoBuilder {
                             &flexible_memo_payload.memo_data,
                         );
                         if flexible_memo_payload.memo_type_bytes[0] != 0x01 {
-                            return Err(NewMemoError::FlexibleMemoGenerator(format!("The flexible output memo generator created a memo of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
+                            return Err(NewMemoError::FlexibleMemo(format!("The flexible output memo has a memopayload of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
                         }
                         MemoPayload::new(flexible_memo_payload.memo_type_bytes, memo_data)
                     }
@@ -417,17 +347,10 @@ impl MemoBuilder for RTHMemoBuilder {
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         if let Some(custom_memo_type) = &self.custom_memo_type {
             match custom_memo_type {
-                CustomMemoType::FlexibleMemoGenerator(flexible_memo_generator) => {
-                    let flexible_memo_context = FlexibleMemoChangeContext {
-                        memo_context: _memo_context,
-                        amount,
-                        change_destination: _change_destination,
-                        builder_context: self.get_flexible_memo_builder_context(),
-                    };
-                    let flexible_memo_payload =
-                        flexible_memo_generator.create_change_memo(flexible_memo_context)?;
+                CustomMemoType::FlexibleMemos(flexible_memos) => {
+                    let flexible_memo_payload = &flexible_memos.change_memo_payload;
                     if flexible_memo_payload.memo_type_bytes[0] != 0x02 {
-                        return Err(NewMemoError::FlexibleMemoGenerator(format!("The flexible change memo generator created a memo of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
+                        return Err(NewMemoError::FlexibleMemo(format!("The flexible change memo has a memopayload of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
                     }
                     let memo_data = compute_destination_memo(
                         self.last_recipient.clone(),
@@ -521,100 +444,42 @@ mod tests {
         output_memo: Result<MemoPayload, NewMemoError>,
         change_memo: Result<MemoPayload, NewMemoError>,
     }
-    /// A function that returns a flexible memopayload for outputs
-    pub type FlexibleOutputMemoGenerator = Box<
-        dyn Fn(FlexibleMemoOutputContext) -> Result<FlexibleMemoPayload, NewMemoError>
-            + Sync
-            + Send,
-    >;
-    /// A function that returns a flexible memopayload for change
-    pub type FlexibleChangeMemoGenerator = Box<
-        dyn Fn(FlexibleMemoChangeContext) -> Result<FlexibleMemoPayload, NewMemoError>
-            + Sync
-            + Send,
-    >;
 
-    // Test memo generator that allows the use of closures
-    struct FlexibleMemoGeneratorClosure {
-        output_memo_generator: FlexibleOutputMemoGenerator,
-        change_memo_generator: FlexibleChangeMemoGenerator,
-    }
-
-    impl Debug for FlexibleMemoGeneratorClosure {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            f.debug_struct("FlexibleMemoGeneratorClosure").finish()
-        }
-    }
-
-    impl FlexibleMemoGenerator for FlexibleMemoGeneratorClosure {
-        fn create_output_memo(
-            &self,
-            context: FlexibleMemoOutputContext,
-        ) -> Result<FlexibleMemoPayload, NewMemoError> {
-            (self.output_memo_generator)(context)
-        }
-
-        fn create_change_memo(
-            &self,
-            context: FlexibleMemoChangeContext,
-        ) -> Result<FlexibleMemoPayload, NewMemoError> {
-            (self.change_memo_generator)(context)
-        }
-    }
-
-    fn get_valid_flexible_memo_generator() -> FlexibleMemoGeneratorReference {
-        let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
-            Box::new(|_context: FlexibleMemoOutputContext| {
-                let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
-                let memo_data = [0x01; 32];
-                Ok(FlexibleMemoPayload {
-                    memo_type_bytes,
-                    memo_data,
-                })
-            });
-        let flexible_change_memo_generator_closure: FlexibleChangeMemoGenerator =
-            Box::new(|_context: FlexibleMemoChangeContext| {
-                let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
-                let memo_data = [0x01; 32];
-                Ok(FlexibleMemoPayload {
-                    memo_type_bytes,
-                    memo_data,
-                })
-            });
-
-        let generator_closure = FlexibleMemoGeneratorClosure {
-            output_memo_generator: flexible_output_memo_generator_closure,
-            change_memo_generator: flexible_change_memo_generator_closure,
+    fn get_valid_flexible_memos() -> FlexibleMemoPayloads {
+        let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_data = [0x01; 32];
+        let output_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
         };
-
-        Arc::new(Box::new(generator_closure))
-    }
-    fn get_flexible_memo_generator_returning_invalid_types() -> FlexibleMemoGenerator {
-        let flexible_output_memo_generator_closure: FlexibleOutputMemoGenerator =
-            Box::new(|_context: FlexibleMemoOutputContext| {
-                let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
-                let memo_data = [0x01; 32];
-                Ok(FlexibleMemoPayload {
-                    memo_type_bytes,
-                    memo_data,
-                })
-            });
-        let flexible_change_memo_generator_closure: FlexibleChangeMemoGenerator =
-            Box::new(|_context: FlexibleMemoChangeContext| {
-                let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
-                let memo_data = [0x01; 32];
-                Ok(FlexibleMemoPayload {
-                    memo_type_bytes,
-                    memo_data,
-                })
-            });
-
-        let generator_closure = FlexibleMemoGeneratorClosure {
-            output_memo_generator: flexible_output_memo_generator_closure,
-            change_memo_generator: flexible_change_memo_generator_closure,
+        let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_data = [0x01; 32];
+        let change_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
         };
-
-        Arc::new(Box::new(generator_closure))
+        FlexibleMemoPayloads {
+            output_memo_payload,
+            change_memo_payload,
+        }
+    }
+    fn get_invalid_flexible_memos() -> FlexibleMemoPayloads {
+        let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_data = [0x01; 32];
+        let output_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
+        };
+        let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_data = [0x01; 32];
+        let change_memo_payload = FlexibleMemoPayload {
+            memo_type_bytes,
+            memo_data,
+        };
+        FlexibleMemoPayloads {
+            output_memo_payload,
+            change_memo_payload,
+        }
     }
 
     fn build_rth_memos(
@@ -743,9 +608,9 @@ mod tests {
 
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let (sender, mut builder) = build_test_memo_builder(&mut rng);
-        // Add a flexible memo generator
+        // Add a flexible memo
         builder
-            .set_flexible_memo_generator(get_valid_flexible_memo_generator())
+            .set_flexible_memos(get_valid_flexible_memos())
             .expect("No other custom memo type should be set");
         // Build the memo payload
         let memo_test_context =
@@ -801,19 +666,31 @@ mod tests {
 
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let (sender, mut builder) = build_test_memo_builder(&mut rng);
-        // Add a flexible memo generator
+        // Add a flexible memo
         builder
-            .set_flexible_memo_generator(get_flexible_memo_generator_returning_invalid_types())
+            .set_flexible_memos(get_invalid_flexible_memos())
             .expect("No other custom memo types should be set");
         // Build the memo payload
         let memo_test_context =
             build_rth_memos(sender, builder, funding_amount, change_amount, fee);
 
-        assert_eq!(memo_test_context
-            .output_memo
-            .expect_err("Should have an invalid output memo type"), NewMemoError::FlexibleMemoGenerator("The flexible output memo generator created a memo of the incorrect memo type: [2, 8]".to_owned()));
-        assert_eq!(memo_test_context
-            .change_memo
-            .expect_err("Should have an invalid destination memo type"), NewMemoError::FlexibleMemoGenerator("The flexible change memo generator created a memo of the incorrect memo type: [1, 8]".to_owned()));
+        assert_eq!(
+            memo_test_context
+                .output_memo
+                .expect_err("Should have an invalid output memo type"),
+            NewMemoError::FlexibleMemo(
+                "The flexible output memo has a memopayload of the incorrect memo type: [2, 8]"
+                    .to_owned()
+            )
+        );
+        assert_eq!(
+            memo_test_context
+                .change_memo
+                .expect_err("Should have an invalid destination memo type"),
+            NewMemoError::FlexibleMemo(
+                "The flexible change memo has a memopayload of the incorrect memo type: [1, 8]"
+                    .to_owned()
+            )
+        );
     }
 }
