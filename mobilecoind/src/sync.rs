@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Manages ledger block scanning for mobilecoind monitors.
 //!
@@ -39,6 +39,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::TxOut,
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -345,69 +346,77 @@ fn match_tx_outs_into_utxos(
     logger: &Logger,
 ) -> Result<Vec<UnspentTxOut>, Error> {
     let account_key = &monitor_data.account_key;
-    let mut results = Vec::new();
+    // Iterate over each output and filter the results using a parallel iterator.
+    let results: Result<Vec<UnspentTxOut>, Error> = outputs
+        .into_par_iter()
+        .filter_map(|tx_out| {
+            // Convert target and public keys to RistrettoPublic type.
+            let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).ok()?;
+            let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).ok()?;
 
-    for tx_out in outputs {
-        // Calculate the subaddress spend public key for tx_out.
-        let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
-        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
+            // Generate subaddress spend public key for tx_out.
+            let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
+                account_key.view_private_key(),
+                &tx_out_target_key,
+                &tx_public_key,
+            ));
 
-        let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-            account_key.view_private_key(),
-            &tx_out_target_key,
-            &tx_public_key,
-        ));
+            // Search the database for the subaddress ID that matches the generated key.
+            let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
+                Ok(data) => {
+                    // Log the index and monitor ID of the matched subaddress.
+                    log::trace!(
+                        logger,
+                        "matched subaddress index {} for monitor_id {}",
+                        data.index,
+                        data.monitor_id,
+                    );
 
-        // See if it matches any of our monitors.
-        let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
-            Ok(data) => {
-                log::trace!(
-                    logger,
-                    "matched subaddress index {} for monitor_id {}",
-                    data.index,
-                    data.monitor_id,
-                );
+                    data
+                }
+                Err(Error::SubaddressSPKNotFound) => return None,
+                Err(e) => return Some(Err(e)),
+            };
 
-                data
-            }
-            Err(Error::SubaddressSPKNotFound) => continue,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+            // Check that the matched subaddress belongs to the current monitor.
+            assert_eq!(monitor_id, &subaddress_id.monitor_id);
 
-        // Sanity - we should only get a match for our own monitor id.
-        assert_eq!(monitor_id, &subaddress_id.monitor_id);
+            // Generate the shared secret between the subaddress and output public key.
+            let shared_secret =
+                get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-        let shared_secret =
-            get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
+            // Get the amount and blinding factor for the output.
+            let (amount, _blinding) = tx_out
+                .get_masked_amount()
+                .expect("missing masked amount")
+                .get_value(&shared_secret)
+                .expect("Malformed amount"); // TODO
 
-        let (amount, _blinding) = tx_out
-            .get_masked_amount()
-            .expect("missing masked amount")
-            .get_value(&shared_secret)
-            .expect("Malformed amount"); // TODO
+            // Recover the onetime private key using the account and subaddress spend
+            // private keys.
+            let onetime_private_key = recover_onetime_private_key(
+                &tx_public_key,
+                account_key.view_private_key(),
+                &account_key.subaddress_spend_private(subaddress_id.index),
+            );
 
-        let onetime_private_key = recover_onetime_private_key(
-            &tx_public_key,
-            account_key.view_private_key(),
-            &account_key.subaddress_spend_private(subaddress_id.index),
-        );
+            // Generate the key image from the onetime private key.
+            let key_image = KeyImage::from(&onetime_private_key);
 
-        let key_image = KeyImage::from(&onetime_private_key);
+            // Construct a new unspent transaction output.
+            Some(Ok(UnspentTxOut {
+                tx_out: tx_out.clone(),
+                subaddress_index: subaddress_id.index,
+                key_image,
+                value: amount.value,
+                attempted_spend_height: 0,
+                attempted_spend_tombstone: 0,
+                token_id: *amount.token_id,
+            }))
+        })
+        .collect();
 
-        results.push(UnspentTxOut {
-            tx_out: tx_out.clone(),
-            subaddress_index: subaddress_id.index,
-            key_image,
-            value: amount.value,
-            attempted_spend_height: 0,
-            attempted_spend_tombstone: 0,
-            token_id: *amount.token_id,
-        });
-    }
-
-    Ok(results)
+    results
 }
 
 #[cfg(test)]
@@ -416,14 +425,17 @@ mod test {
     use crate::{
         monitor_store::MonitorData,
         test_utils::{
-            self, add_block_to_ledger, get_test_databases, BlockVersion,
+            self, add_block_to_ledger, add_txos_to_ledger, get_test_databases, BlockVersion,
             DEFAULT_PER_RECIPIENT_AMOUNT,
         },
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_fog_report_validation_test_utils::MockFogResolver;
+    use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
+    use std::time::Instant;
 
     #[test_with_logger]
     fn test_sync_monitor(logger: Logger) {
@@ -601,6 +613,197 @@ mod test {
         assert_eq!(utxos.len(), num_blocks - 1);
 
         assert!(!utxos.contains(&first_utxo));
+    }
+
+    // TODO: make this a bench instead of a unit test.
+    #[test_with_logger]
+    fn test_sync_monitor_with_random_recipients(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([98u8; 32]);
+
+        let account_keys: Vec<_> = (0..5).map(|_i| AccountKey::random(&mut rng)).collect();
+
+        let first_subaddress = DEFAULT_SUBADDRESS_INDEX;
+        let subaddress_count = 5;
+        let first_block_index = 0;
+        let name = "";
+        let data = MonitorData::new(
+            account_keys[0].clone(),
+            first_subaddress,
+            subaddress_count,
+            first_block_index,
+            name,
+        )
+        .unwrap();
+
+        let monitor_id = MonitorId::from(&data);
+
+        let recipients: Vec<PublicAddress> = account_keys
+            .iter()
+            .map(AccountKey::default_subaddress)
+            .collect();
+
+        // Generate a test database with a number blocks that does not divide evenly by
+        // MAX_BLOCKS_PROCESSING_CHUNK_SIZE.
+        let num_blocks = (MAX_BLOCKS_PROCESSING_CHUNK_SIZE * 2) + 1;
+        let (mut ledger_db, mobilecoind_db) = get_test_databases(
+            BlockVersion::MAX,
+            0,
+            &recipients,
+            num_blocks,
+            logger.clone(),
+            &mut rng,
+        );
+
+        // Our recipient (controlled by the monitor id) is the first account
+        // (account_keys[0]). Each block generated by test_utils has a TxOut per
+        // recipient, so building on that knowledge the following code gets us
+        // the TxOuts relevant to our particular recipient.
+        let account0_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                block_contents.outputs[0].clone()
+            })
+            .collect();
+
+        // Before doing anything, we should not have any utxos for our test monitor.
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), 0);
+
+        // Add monitor, should still have 0 outputs.
+        assert_eq!(mobilecoind_db.add_monitor(&data).unwrap(), monitor_id);
+
+        // Haven't synced yet, so still no outputs expected.
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), 0);
+
+        let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+        assert_eq!(monitor_data.next_block, 0);
+
+        // Process the first MAX_BLOCKS_PROCESSING_CHUNK_SIZE blocks.
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::MoreBlocksPotentiallyAvailable);
+
+        // We should now discover some outputs. Each block has 1 output per recipient,
+        // and we synced the max chunk size.
+        let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+        assert_eq!(
+            monitor_data.next_block,
+            MAX_BLOCKS_PROCESSING_CHUNK_SIZE as u64
+        );
+
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), MAX_BLOCKS_PROCESSING_CHUNK_SIZE);
+
+        // Sanity test the utxos.
+        for utxo in utxos {
+            assert!(account0_tx_outs.contains(&utxo.tx_out));
+            assert_eq!(utxo.subaddress_index, 0);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.attempted_spend_height, 0);
+        }
+
+        // Process the second MAX_BLOCKS_PROCESSING_CHUNK_SIZE blocks.
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::MoreBlocksPotentiallyAvailable);
+
+        let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+        assert_eq!(
+            monitor_data.next_block,
+            (MAX_BLOCKS_PROCESSING_CHUNK_SIZE * 2) as u64
+        );
+
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), MAX_BLOCKS_PROCESSING_CHUNK_SIZE * 2);
+
+        // Sanity test the utxos.
+        for utxo in utxos {
+            assert!(account0_tx_outs.contains(&utxo.tx_out));
+            assert_eq!(utxo.subaddress_index, 0);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.attempted_spend_height, 0);
+        }
+
+        // Process the last remaining block.
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
+
+        let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+        assert_eq!(monitor_data.next_block, num_blocks as u64);
+
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), num_blocks);
+
+        // Sanity test the utxos.
+        for utxo in utxos {
+            assert!(account0_tx_outs.contains(&utxo.tx_out));
+            assert_eq!(utxo.subaddress_index, 0);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.attempted_spend_height, 0);
+        }
+
+        // Calling sync_monitor again should not change the results.
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
+
+        let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+        assert_eq!(monitor_data.next_block, num_blocks as u64);
+
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+        assert_eq!(utxos.len(), num_blocks);
+
+        // Sanity test the utxos.
+        for utxo in utxos.iter() {
+            assert!(account0_tx_outs.contains(&utxo.tx_out));
+            assert_eq!(utxo.subaddress_index, 0);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.attempted_spend_height, 0);
+        }
+
+        // All our utxos should be unique.
+        assert_eq!(HashSet::from_iter(utxos).len(), num_blocks);
+        let receiver = AccountKey::random(&mut rng);
+
+        // Add a block that has a bunch of irrelevant txos.
+        let mut transaction_builder = TransactionBuilder::new(
+            BlockVersion::MAX,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+            MockFogResolver::default(),
+            EmptyMemoBuilder::default(),
+        )
+        .unwrap();
+        let mut tx_outs = Vec::new();
+        for i in 0..1000 {
+            let TxOutContext { tx_out, .. } = transaction_builder
+                .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(i), &mut rng)
+                .unwrap();
+            tx_outs.push(tx_out);
+        }
+        let start = Instant::now();
+
+        add_txos_to_ledger(&mut ledger_db, BlockVersion::MAX, &tx_outs, &mut rng).unwrap();
+
+        let add_txos_time = start.elapsed();
+        log::info!(logger, "add_txos_to_ledger took {add_txos_time:?}");
+
+        let start = Instant::now();
+
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+
+        let sync_monitor_time = start.elapsed();
+        log::info!(logger, "sync_monitor took {sync_monitor_time:?}");
+        assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
     }
 
     #[test_with_logger]
