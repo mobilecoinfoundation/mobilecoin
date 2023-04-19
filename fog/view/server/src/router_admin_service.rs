@@ -61,7 +61,9 @@ impl FogViewRouterAdminService {
             ChannelBuilder::default_channel_builder(grpc_env)
                 .connect_to_uri(&view_store_uri, logger),
         );
-        let block_range = EpochShardingStrategy::default().get_block_range();
+        let epoch_sharding_strategy = EpochShardingStrategy::try_from(view_store_uri.clone())
+            .unwrap_or_else(|_| panic!("Could not get sharding strategy for uri: {shard_uri:?}"));
+        let block_range = epoch_sharding_strategy.get_block_range();
         let shard = Shard::new(view_store_uri, Arc::new(view_store_client), block_range);
         shards.push(shard);
 

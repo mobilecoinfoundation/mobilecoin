@@ -1,9 +1,9 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use alloc::{boxed::Box, vec::Vec};
 
 use mc_common::HashMap;
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_types::sgx_status_t;
 use rand_core::RngCore;

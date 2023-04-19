@@ -1,15 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use diesel::{
-    backend::Backend,
     deserialize::{self, FromSql},
-    pg::Pg,
+    pg::{Pg, PgValue},
     serialize::{self, Output, ToSql},
 };
 use diesel_derive_enum::DbEnum;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_util_repr_bytes::ReprBytes;
-use std::{fmt, io::Write, ops::Deref};
+use std::{fmt, ops::Deref};
 
 #[derive(Debug, PartialEq, DbEnum)]
 #[DieselType = "User_event_type"]
@@ -20,7 +18,7 @@ pub enum UserEventType {
 }
 
 #[derive(AsExpression, FromSqlRow, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[sql_type = "diesel::sql_types::Binary"]
+#[diesel(sql_type = diesel::sql_types::Binary)]
 pub struct SqlCompressedRistrettoPublic(CompressedRistrettoPublic);
 
 impl Deref for SqlCompressedRistrettoPublic {
@@ -49,26 +47,30 @@ impl fmt::Display for SqlCompressedRistrettoPublic {
     }
 }
 
-impl<DB: Backend<RawValue = [u8]>> FromSql<diesel::sql_types::Binary, DB>
-    for SqlCompressedRistrettoPublic
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let vec = <Vec<u8> as FromSql<diesel::sql_types::Binary, Pg>>::from_sql(bytes)?;
+impl FromSql<diesel::sql_types::Binary, Pg> for SqlCompressedRistrettoPublic {
+    fn from_sql(value: PgValue) -> deserialize::Result<Self> {
+        let vec = <Vec<u8>>::from_sql(value)?;
         if vec.len() != 32 {
-            return Err("SqlCompressedRistrettoPublic: Invalid array length".into());
+            return Err("SqlCompressedRistrettoPublic: Invalid array
+        length"
+                .into());
         }
 
         let mut key = [0; 32];
         key.copy_from_slice(&vec);
 
-        Ok(SqlCompressedRistrettoPublic(
-            CompressedRistrettoPublic::from(&key),
-        ))
+        match CompressedRistrettoPublic::try_from(&key) {
+            Ok(key) => Ok(SqlCompressedRistrettoPublic(key)),
+            Err(e) => Err(format!("Key error: {e:?}").into()),
+        }
     }
 }
 
 impl ToSql<diesel::sql_types::Binary, Pg> for SqlCompressedRistrettoPublic {
-    fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
-        <Vec<u8> as ToSql<diesel::sql_types::Binary, Pg>>::to_sql(&self.0.to_bytes().to_vec(), out)
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+        <Vec<u8> as ToSql<diesel::sql_types::Binary, Pg>>::to_sql(
+            &self.0.as_bytes().to_vec(),
+            &mut out.reborrow(),
+        )
     }
 }

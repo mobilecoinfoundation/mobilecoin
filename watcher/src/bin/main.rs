@@ -173,7 +173,7 @@ impl WatcherSyncThread {
             // Decide next step before continuing based on sync result
             match sync_result {
                 SyncResult::AllBlocksSynced => {
-                    log::info!(logger, "sync_blocks indicates we're done");
+                    log::info!(logger, "Block synchronization done");
                     break;
                 }
                 SyncResult::BlockSyncError => {

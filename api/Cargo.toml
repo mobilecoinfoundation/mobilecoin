@@ -14,12 +14,12 @@ mc-account-keys = { path = "../account-keys" }
 mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", default-features = false }
-mc-crypto-dalek = { path = "../crypto/dalek" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-extra = { path = "../transaction/extra" }
+mc-transaction-summary = { path = "../transaction/summary" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
@@ -30,7 +30,7 @@ crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.27.1"
 
-curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }

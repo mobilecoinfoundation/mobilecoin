@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Integration tests at the level of the fog ledger connection / fog ledger
 //! grpc API
@@ -819,7 +819,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
 
         // Try to get tx out records
         let queries: Vec<CompressedRistrettoPublic> =
-            vec![(&[0u8; 32]).into(), real_tx_out0.public_key];
+            vec![(&[0u8; 32]).try_into().unwrap(), real_tx_out0.public_key];
         let result = client.get_tx_outs(queries).unwrap();
         // Check that we got expected num_blocks value
         assert_eq!(result.num_blocks, 4);

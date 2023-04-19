@@ -72,6 +72,7 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
+        chain_id: String,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -112,6 +113,7 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
+            chain_id,
             logger.clone(),
         );
 
@@ -170,6 +172,7 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+    chain_id: String,
     logger: Logger,
 }
 
@@ -184,6 +187,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
+            chain_id: self.chain_id.clone(),
             logger: self.logger.clone(),
         }
     }
@@ -199,6 +203,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+        chain_id: String,
         logger: Logger,
     ) -> Self {
         Self {
@@ -208,6 +213,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
+            chain_id,
             logger,
         }
     }
@@ -2158,6 +2164,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 RpcStatus::with_message(RpcStatusCode::INTERNAL, "no peers reachable".to_owned())
             })?;
 
+        let mut mcd_last_block_info = api::LastBlockInfo::new();
+        mcd_last_block_info.set_index(last_block_info.block_index);
+        mcd_last_block_info.set_mob_minimum_fee(
+            last_block_info
+                .minimum_fees
+                .get(&TokenId::from(0))
+                .cloned()
+                .unwrap_or(0),
+        );
+        mcd_last_block_info.set_minimum_fees(
+            last_block_info
+                .minimum_fees
+                .into_iter()
+                .map(|(token_id, fee)| (*token_id, fee))
+                .collect(),
+        );
+        mcd_last_block_info.set_network_block_version(last_block_info.network_block_version);
+
         let mut response = api::GetNetworkStatusResponse::new();
 
         response.set_network_highest_block_index(
@@ -2172,7 +2196,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
-        response.set_last_block_info(last_block_info.into());
+        response.set_last_block_info(mcd_last_block_info);
+        response.set_chain_id(self.chain_id.clone());
 
         Ok(response)
     }
@@ -2327,10 +2352,10 @@ mod test {
     use mc_blockchain_types::{Block, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_crypto_rand::RngCore;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
+    use mc_rand::RngCore;
     use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
@@ -3883,6 +3908,14 @@ mod test {
                 .unwrap();
             assert_eq!(amount.value, 123);
             assert_eq!(amount.token_id, TokenId::from(1));
+
+            // Validate ring vs. indices, as deqs does
+            let indices = &sci.tx_out_global_indices;
+            let ring = &sci.tx_in.ring;
+            for (index, tx_out) in indices.iter().zip(ring.iter()) {
+                let real_tx_out = ledger_db.get_tx_out_by_index(*index).unwrap();
+                assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
+            }
         }
 
         // Test the happy flow for eUSD -> MOB, non partial fill swap
@@ -3933,6 +3966,14 @@ mod test {
             let unmasked_amount = sci.required_output_amounts[0].clone();
             assert_eq!(unmasked_amount.value, 999_999);
             assert_eq!(unmasked_amount.token_id, *Mob::ID);
+
+            // Validate ring vs. indices, as deqs does
+            let indices = &sci.tx_out_global_indices;
+            let ring = &sci.tx_in.ring;
+            for (index, tx_out) in indices.iter().zip(ring.iter()) {
+                let real_tx_out = ledger_db.get_tx_out_by_index(*index).unwrap();
+                assert_eq!(&real_tx_out, tx_out, "Mismatch at index {index}");
+            }
         }
 
         // Invalid input scenarios should result in an error.

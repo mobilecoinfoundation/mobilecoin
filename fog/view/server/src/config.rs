@@ -80,7 +80,7 @@ pub struct MobileAcctViewConfig {
 
     /// Determines which group of TxOuts the Fog View Store instance will
     /// process.
-    #[clap(long, default_value = "default", env = "MC_SHARDING_STRATEGY")]
+    #[clap(long, default_value = "default")]
     pub sharding_strategy: ShardingStrategy,
 }
 

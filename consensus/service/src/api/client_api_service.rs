@@ -27,7 +27,11 @@ use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.
@@ -35,7 +39,42 @@ const PENDING_LIMIT: i64 = 500;
 
 /// Data retained on a session with a client.
 #[derive(Clone, Debug)]
-pub struct ClientSessionTracking {/* stub - todo: track failed TX proposals */}
+pub struct ClientSessionTracking {
+    // This needs to be a VecDeque because popping elements oldest-first (i.e.
+    // in a FIFO fashion) needs to be efficient, since we'll be culling the
+    // oldest tx failure timestamps constantly - if the server is configured to
+    // drop clients with over 100 failed tx proposals in the last 30 seconds,
+    // we don't care about timestamps from over 30 seconds ago, for example.
+    tx_proposal_failures: VecDeque<Instant>,
+}
+
+impl ClientSessionTracking {
+    pub fn new() -> Self {
+        Self {
+            tx_proposal_failures: VecDeque::default(),
+        }
+    }
+
+    /// Push a new failed tx proposal record, clear out samples older than
+    /// our tracking window, and return the number of tx failures remaining
+    /// on the list - as-in, tells you "there have been x number of failures
+    /// within the past `tracking_window` seconds".
+    ///
+    /// # Arguments
+    ///
+    /// * `now` - Used as both the instant to record as a new tx proposal
+    /// failure, and as the "present" time to check for stale records.
+    /// * `tracking_window` - How long of a period of time should we keep track
+    /// of an individual tx proposal failure incident for? Any records which
+    /// have existed for longer than this value will be dropped when this
+    /// method is called.
+    pub fn fail_tx_proposal(&mut self, now: Instant, tracking_window: Duration) -> usize {
+        self.tx_proposal_failures
+            .retain(|past_failure| now.saturating_duration_since(*past_failure) <= tracking_window);
+        self.tx_proposal_failures.push_back(now);
+        self.tx_proposal_failures.len()
+    }
+}
 
 #[derive(Clone)]
 pub struct ClientApiService {
@@ -92,12 +131,29 @@ impl ClientApiService {
         msg: Message,
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
+        let session_id = ClientSession::from(msg.channel_id.clone());
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         // Cache the transaction. This performs the well-formedness checks.
         let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
+
+                // This will become a proper config option, already implemented
+                // in pull request #3296 "Failure limit on tx proposals"
+                let tracking_window = Duration::from_secs(60);
+                let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
+                if !tracker.contains(&session_id) {
+                    tracker.put(session_id.clone(), ClientSessionTracking::new());
+                }
+                let record = tracker
+                    .get_mut(&session_id)
+                    .expect("Session id {session_id} should be tracked.");
+
+                let _recent_failure_count =
+                    record.fail_tx_proposal(Instant::now(), tracking_window);
+                // Dropping the client after a limit has been reached will be
+                // implemented in a future pull request.
             }
             err
         })?;
@@ -221,13 +277,13 @@ impl ConsensusClientApi for ClientApiService {
         {
             let session = ClientSession::from(msg.channel_id.clone());
             let mut tracker = self.tracked_sessions.lock().expect("Mutex poisoned");
-            if let Some(_session_info) = tracker.get(&session) {
-                // TODO: Update fields
-            } else {
-                // TODO: Populate new session metadata
-                tracker.put(session, ClientSessionTracking {});
+            // Calling get() on the LRU bumps the entry to show up as more
+            // recently-used.
+            if tracker.get(&session).is_none() {
+                tracker.put(session, ClientSessionTracking::new());
             }
         }
+
         if let Err(err) = check_request_chain_id(&self.config.chain_id, &ctx) {
             return send_result(ctx, sink, Err(err), &self.logger);
         }

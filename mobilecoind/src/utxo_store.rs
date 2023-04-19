@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -429,8 +429,8 @@ mod test {
         logger::{test_with_logger, Logger},
         HashSet,
     };
-    use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_rand::{CryptoRng, RngCore};
     use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;

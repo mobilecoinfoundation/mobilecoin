@@ -1,4 +1,4 @@
-// Copyright (c) 2023 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use aes_gcm::Aes256Gcm;
 use futures::{executor::block_on, SinkExt, TryStreamExt};
@@ -11,7 +11,6 @@ use mc_attest_verifier::Verifier;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
-use mc_crypto_rand::McRng;
 use mc_fog_api::{
     attest::{AuthMessage, Message},
     ledger::{LedgerRequest, LedgerResponse},
@@ -19,6 +18,7 @@ use mc_fog_api::{
 };
 use mc_fog_types::ledger::{CheckKeyImagesRequest, CheckKeyImagesResponse, KeyImageQuery};
 use mc_fog_uri::FogLedgerUri;
+use mc_rand::McRng;
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;

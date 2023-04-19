@@ -20,9 +20,9 @@ use std::{
 };
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
+    mc_common::setup_panic_handler();
     let config = FogViewRouterConfig::parse();
 
     let enclave_path = env::current_exe()

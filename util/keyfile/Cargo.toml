@@ -30,7 +30,7 @@ path = "src/bin/read_pubfile.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-core = { path = "../../core" }
-mc-crypto-rand = { path = "../../crypto/rand" }
+mc-rand = "1.0"
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }

@@ -167,7 +167,7 @@ impl SyncThread {
                             }
 
                             // This monitor has blocks to process, put it in the queue.
-                            log::info!(
+                            log::debug!(
                                 logger,
                                 "sync thread noticed monitor {} needs syncing",
                                 monitor_id,

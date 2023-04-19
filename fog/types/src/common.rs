@@ -152,7 +152,7 @@ mod tests {
     fn from_string_well_formatted_with_whitespace_creates_block_range() {
         let start_block = 0;
         let end_block = 10;
-        let block_range_str = format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}");
+        let block_range_str = format!(" {start_block} {BLOCK_RANGE_DELIMITER} {end_block} ");
 
         let result = BlockRange::from_str(&block_range_str);
 

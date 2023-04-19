@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! MobileCoin Ingest Enclave Implementation
 //!
@@ -30,7 +30,6 @@ use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, X25519Public};
-use mc_crypto_rand::McRng;
 use mc_fog_ingest_enclave_api::{
     Error, IngestEnclave, IngestEnclaveInitParams, Result, SealedIngestKey,
     SetIngressPrivateKeyResult,
@@ -42,6 +41,7 @@ use mc_fog_types::{
     view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
 };
 use mc_oblivious_traits::{subtle::ConstantTimeEq, ORAMStorageCreator};
+use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{fog_hint::FogHint, tx::TxOut};

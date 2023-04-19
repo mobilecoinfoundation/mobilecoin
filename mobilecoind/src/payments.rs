@@ -13,10 +13,10 @@ use mc_connection::{
     BlockInfo, BlockchainConnection, ConnectionManager, RetryableUserTxConnection, UserTxConnection,
 };
 use mc_crypto_keys::RistrettoPublic;
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
+use mc_rand::{CryptoRng, RngCore};
 use mc_transaction_builder::{
     InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
     TransactionBuilder, TxOutContext,
@@ -36,12 +36,12 @@ use rand::Rng;
 use std::{
     cmp::{max, Reverse},
     collections::BTreeMap,
-    iter::empty,
     str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -826,12 +826,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_id = &responder_ids[idx % responder_ids.len()];
 
+        // The rationale for these retries is:
+        // * Quite often, the attested connetion was closed and we need to retry once to
+        //   re-attest, and this attestation is successful. So that takes 50 ms.
+        // * After that, we back off to 500 ms, because there are rate limits of about
+        //   100 / min in place in production.
+        let retry_iterator = [50, 500, 500, 750, 1000]
+            .iter()
+            .cloned()
+            .map(Duration::from_millis);
+
         // Try and submit.
         let block_height = self
             .peer_manager
             .conn(responder_id)
             .ok_or(Error::NodeNotFound)?
-            .propose_tx(&tx_proposal.tx, empty())
+            .propose_tx(&tx_proposal.tx, retry_iterator)
             .map_err(Error::from)?;
 
         log::info!(
@@ -1465,7 +1475,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             }
         };
 
-        let membership_proofs: Vec<TxOutMembershipProof> = vec![Default::default(); ring.len()];
+        let membership_proofs: Vec<TxOutMembershipProof> = global_indices
+            .into_iter()
+            .map(|index| TxOutMembershipProof {
+                index,
+                ..Default::default()
+            })
+            .collect();
 
         // Create input credentials
         let input_credentials = {
@@ -1570,11 +1586,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Build sci.
-        let mut result = sci_builder
+        let result = sci_builder
             .build(&NoKeysRingSigner {}, rng)
             .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
 
-        result.tx_out_global_indices = global_indices;
         Ok(result)
     }
 }

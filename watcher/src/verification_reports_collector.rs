@@ -308,7 +308,16 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
         verification_report: &VerificationReport,
     ) {
         let verification_report_block_signer = match NC::get_block_signer(verification_report) {
-            Ok(key) => key,
+            Ok(key) => {
+                // TODO: Add encode to key's Display impl
+                log::info!(
+                    self.logger,
+                    "Verification report from {} has block signer {}",
+                    node_url,
+                    hex::encode(key.to_bytes())
+                );
+                key
+            }
             Err(err) => {
                 log::error!(
                     self.logger,
@@ -319,13 +328,6 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 return;
             }
         };
-
-        log::info!(
-            self.logger,
-            "Verification report from {} has block signer {}",
-            node_url,
-            hex::encode(verification_report_block_signer.to_bytes())
-        );
 
         // Store the VerificationReport in the database, and also remove
         // verification_report_block_signer and potential_signers from the polling

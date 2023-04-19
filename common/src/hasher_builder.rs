@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! This file provides [HasherBuilder], used in `mc_common::HashMap`
 //! in and out of the enclave.
 
 use core::hash::BuildHasher;
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use rand_core::RngCore;
 use siphasher::sip::SipHasher13;
 

@@ -9,5 +9,5 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-displaydoc = "0.2"
+displaydoc = { version = "0.2", default-features = false }
 heapless = { version = "0.7.16", default-features = false }

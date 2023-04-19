@@ -14,13 +14,13 @@ use mc_attest_verifier::Verifier;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
-use mc_crypto_rand::McRng;
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
     view_grpc::FogViewRouterApiClient,
 };
 use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::{ConnectionUri, FogViewRouterUri};
+use mc_rand::McRng;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;
 use mc_util_uri::UriConversionError;
@@ -102,7 +102,7 @@ impl FogViewRouterGrpcClient {
         let mut request = FogViewRouterRequest::new();
         request.set_auth(attested_message);
         self.request_sender
-            .send((request.clone(), grpcio::WriteFlags::default()))
+            .send((request, grpcio::WriteFlags::default()))
             .await?;
 
         let mut response = self
@@ -174,7 +174,7 @@ impl FogViewRouterGrpcClient {
         request.set_query(msg);
 
         self.request_sender
-            .send((request.clone(), grpcio::WriteFlags::default()))
+            .send((request, grpcio::WriteFlags::default()))
             .await?;
 
         let message = self

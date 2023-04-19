@@ -16,7 +16,7 @@ extern crate alloc;
 use alloc::{vec, vec::Vec};
 use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
+use mc_crypto_keys::{PublicKey, SignatureEncoding, SignatureError, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -38,7 +38,8 @@ pub struct MultiSig<
         + PartialEq
         + PartialOrd
         + Serialize
-        + Signature,
+        + SignatureEncoding
+        + AsRef<[u8]>,
 > {
     #[prost(message, repeated, tag = "1")]
     signatures: Vec<S>,
@@ -55,7 +56,8 @@ impl<
             + PartialEq
             + PartialOrd
             + Serialize
-            + Signature,
+            + SignatureEncoding
+            + AsRef<[u8]>,
     > MultiSig<S>
 {
     /// Construct a new multi-signature from a collection of signatures.
@@ -167,7 +169,8 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
             + PartialEq
             + PartialOrd
             + Serialize
-            + Signature,
+            + SignatureEncoding
+            + AsRef<[u8]>,
     >(
         &self,
         message: &[u8],
@@ -265,7 +268,16 @@ mod test {
     /// Helper for constructing a multi signature from a list of signers.
     fn make_multi_sig<S>(message: &[u8], signers: &[&impl Signer<S>]) -> MultiSig<S>
     where
-        S: Clone + Default + Digestible + Eq + Hash + Message + Ord + Serialize + Signature,
+        S: Clone
+            + Default
+            + Digestible
+            + Eq
+            + Hash
+            + Message
+            + Ord
+            + Serialize
+            + SignatureEncoding
+            + AsRef<[u8]>,
     {
         MultiSig::new(signers.iter().map(|s| s.sign(message)).collect())
     }

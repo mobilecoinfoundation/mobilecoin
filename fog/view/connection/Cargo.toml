@@ -17,7 +17,7 @@ mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-noise = { path = "../../../crypto/noise" }
-mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-rand = "1.0"
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-telemetry = { path = "../../../util/telemetry" }
@@ -36,4 +36,3 @@ futures = "0.3"
 grpcio = "0.12.1"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }
-tokio = "1.16.1"

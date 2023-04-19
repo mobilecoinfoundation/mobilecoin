@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Database storage for data obtained by processing blocks.
 //! * Stores a map of (monitor id, block number) -> list of transactions that
@@ -255,8 +255,8 @@ mod test {
         HashSet,
     };
     use mc_crypto_keys::RistrettoPublic;
-    use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_rand::{CryptoRng, RngCore};
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
     };

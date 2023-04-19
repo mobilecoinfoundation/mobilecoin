@@ -8,7 +8,6 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
-import "consensus_common.proto";
 
 package mobilecoind_api;
 
@@ -961,9 +960,33 @@ message GetNetworkStatusResponse {
     // Whether we are behind.
     bool is_behind = 4;
 
-    // The latest block info reported by a consensus node
-    consensus_common.LastBlockInfoResponse last_block_info = 5;
+    // The latest block info data reported by a consensus node
+    LastBlockInfo last_block_info = 5;
+
+    // The chain id of the network we are connected to
+    string chain_id = 6;
 }
+
+// Data about the network state and last block processed by the consensus network
+message LastBlockInfo {
+    // Block index
+    uint64 index = 1;
+
+    // Current MOB minimum fee (kept for backwards compatibility)
+    uint64 mob_minimum_fee = 2 [deprecated = true];
+
+    // A map of token id -> minimum fee
+    map<uint64, uint64> minimum_fees = 3;
+
+    // Current network_block version, appropriate for new transactions.
+    //
+    // Note that if the server was just reconfigured, this may be HIGHER than
+    // the highest block version in the ledger, so for clients this is a better
+    // source of truth than the local ledger, if the client might possibly be
+    // creating the first transaction after a reconfigure / redeploy.
+    uint32 network_block_version = 4;
+}
+
 
 //
 // Database encryption

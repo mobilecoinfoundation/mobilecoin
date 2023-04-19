@@ -434,36 +434,23 @@ mod tests {
     }
 
     #[test]
-    fn should_overwrite_tx_out_search_result_client_has_retryable_error_shard_has_not_found_returns_true(
+    fn should_overwrite_tx_out_search_result_client_has_retryable_error_shard_has_not_found_returns_false(
     ) {
         let search_key = vec![0u8; 10];
         let client_tx_out_search_result = create_test_tx_out_search_result(
             search_key.clone(),
             0,
             FIXED_CIPHERTEXT_LENGTH - 1,
-            TxOutSearchResultCode::BadSearchKey,
-        );
-
-        let mut shard_tx_out_search_result = create_test_tx_out_search_result(
-            search_key.clone(),
-            0,
-            FIXED_CIPHERTEXT_LENGTH - 1,
             TxOutSearchResultCode::InternalError,
         );
-        let mut result: bool = should_overwrite_tx_out_search_result(
-            &client_tx_out_search_result,
-            &shard_tx_out_search_result,
-        )
-        .into();
-        assert!(!result);
 
-        shard_tx_out_search_result = create_test_tx_out_search_result(
+        let shard_tx_out_search_result = create_test_tx_out_search_result(
             search_key,
             0,
             FIXED_CIPHERTEXT_LENGTH - 1,
-            TxOutSearchResultCode::RateLimited,
+            TxOutSearchResultCode::NotFound,
         );
-        result = should_overwrite_tx_out_search_result(
+        let result: bool = should_overwrite_tx_out_search_result(
             &client_tx_out_search_result,
             &shard_tx_out_search_result,
         )
