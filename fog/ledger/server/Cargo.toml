@@ -77,9 +77,7 @@ mc-attest-ake = { path = "../../../attest/ake" }
 mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
 mc-rand = "1.0"
-mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
@@ -88,12 +86,9 @@ mc-fog-ledger-connection = { path = "../connection" }
 mc-fog-ledger-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
-pem = "2.0"
 portpicker = "0.1.1"
 sha2 = "0.10"
-tempdir = "0.3"
 
 # third-party
 tempfile = "3.4"
 tokio = { version = "1.0", features = ["full"] }
-x509-signature = "0.5"

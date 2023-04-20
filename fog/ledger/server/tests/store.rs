@@ -39,7 +39,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use aes_gcm::Aes256Gcm;
 use portpicker::pick_unused_port;
 use sha2::Sha512;
-use tempdir::TempDir;
+use tempfile::TempDir;
 use url::Url;
 
 fn uri_for_test(port: u16) -> KeyImageStoreUri {
@@ -77,8 +77,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         rng: R,
     ) -> Self {
         // Set up our directories.
-        let test_dir_name = format!("fog_ledger_test_{}", test_name.as_ref());
-        let tempdir = TempDir::new(&test_dir_name).expect("Could not produce test_ledger tempdir");
+        let tempdir = TempDir::new().expect("Could not produce test_ledger tempdir");
         let test_path = PathBuf::from(tempdir.path());
         let user_keys_path = test_path.join("keys");
         std::fs::create_dir_all(user_keys_path).expect("Failed creating user keys directory");
@@ -108,7 +107,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         let test_url_name = format!("http://{}.wallet.test.test", test_name.as_ref());
         let url = Url::parse(&test_url_name).expect("Failed to parse test url as a Url struct.");
 
-        let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path()).expect("Could not create WatcherDB.");
         let watcher = WatcherDB::open_rw(db_tmp.path(), &[url.clone()], logger)
             .expect("Failed to open WatcherDB.");

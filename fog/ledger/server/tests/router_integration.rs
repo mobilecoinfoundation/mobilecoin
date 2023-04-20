@@ -35,7 +35,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use tempdir::TempDir;
+use tempfile::TempDir;
 use url::Url;
 
 const TEST_URL: &str = "http://www.my_url1.com";
@@ -272,9 +272,9 @@ fn create_env(
     for shard in config.shards.iter() {
         for store in shard.stores.iter() {
             let watcher_db_dir =
-                TempDir::new("watcher_db").expect("Couldn't create temporary path for watcher DB");
+                TempDir::new().expect("Couldn't create temporary path for watcher DB");
             let ledger_db_dir =
-                TempDir::new("ledger_db").expect("Couldn't create temporary path for ledger DB");
+                TempDir::new().expect("Couldn't create temporary path for ledger DB");
             stores.push(create_store(
                 store,
                 &blocks_config,
@@ -290,10 +290,8 @@ fn create_env(
         shards.push(create_shard(shard, logger.clone()));
     }
 
-    let watcher_db_dir =
-        TempDir::new("watcher_db").expect("Couldn't create temporary path for watcher DB");
-    let ledger_db_dir =
-        TempDir::new("ledger_db").expect("Couldn't create temporary path for ledger DB");
+    let watcher_db_dir = TempDir::new().expect("Couldn't create temporary path for watcher DB");
+    let ledger_db_dir = TempDir::new().expect("Couldn't create temporary path for ledger DB");
     let router = create_router(
         &config,
         &blocks_config,

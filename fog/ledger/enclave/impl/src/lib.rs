@@ -257,14 +257,6 @@ where
             })
             .collect::<Result<Vec<CheckKeyImagesResponse>>>()?;
 
-        // NOTES:
-        // num_blocks = min(responses.num_blocks)
-        // global_txo_count = min(global_txo_count)
-        // results = cat(responses.results)
-        // latest_block_version = max(responses.latest_block_version)
-        // max_block_version = max(latest_block_version,
-        // mc_transaction_core::MAX_BLOCK_VERSION)
-
         let num_blocks = shard_query_responses
             .iter()
             .map(|query_response| query_response.num_blocks)
