@@ -20,5 +20,5 @@ pub use server::LedgerServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
 
 lazy_static::lazy_static! {
-    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger_service");
 }
