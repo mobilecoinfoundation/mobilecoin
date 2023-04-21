@@ -11,18 +11,13 @@ use std::{
 
 /// An enumeration of TCS policy options.
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum TcsPolicy {
     /// Thread control structures are bound to untrusted threads
     Bound = 0,
     /// Thread control structures are not bound to untrusted threads
+    #[default]
     Unbound = 1,
-}
-
-impl Default for TcsPolicy {
-    fn default() -> Self {
-        TcsPolicy::Unbound
-    }
 }
 
 /// This builder creates the Enclave.config.xml config file used by sgx_sign.
