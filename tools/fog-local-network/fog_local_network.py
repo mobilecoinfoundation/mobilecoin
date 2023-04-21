@@ -91,15 +91,29 @@ class FogNetwork(Network):
         )
         self.fog_ingest.start()
 
-        self.fog_view_store = FogViewStore(
+        fog_view_store_1 = FogViewStore(
             name = 'view1',
-            client_port = BASE_VIEW_STORE_PORT,
-            admin_port = BASE_VIEW_STORE_ADMIN_PORT,
-            admin_http_gateway_port = BASE_VIEW_STORE_ADMIN_HTTP_GATEWAY_PORT,
+            client_port = BASE_VIEW_STORE_1_PORT,
+            admin_port = BASE_VIEW_STORE_1_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_1_ADMIN_HTTP_GATEWAY_PORT,
             release = True,
-            sharding_strategy= 'default'
+            # Todo: see if we need to reconfigure this...
+            sharding_strategy= '0-6'
         )
-        self.fog_view_store.start()
+        fog_view_store_2 = FogViewStore(
+            name = 'view2',
+            client_port = BASE_VIEW_STORE_2_PORT,
+            admin_port = BASE_VIEW_STORE_2_ADMIN_PORT,
+            admin_http_gateway_port = BASE_VIEW_STORE_2_ADMIN_HTTP_GATEWAY_PORT,
+            release = True,
+            # Todo: see if we need to reconfigure this...
+            sharding_strategy= '5-12'
+        )
+
+        self.fog_view_stores = [fog_view_store_1, fog_view_store_2]
+        for store in self.fog_view_stores:
+            store.start()
+        client_listen_uris = list(map(lambda x: x.get_client_listen_uri(), self.fog_view_stores))
 
         self.fog_view_router = FogViewRouter(
             name = 'router1',
@@ -108,7 +122,7 @@ class FogNetwork(Network):
             admin_port = BASE_VIEW_ADMIN_PORT,
             admin_http_gateway_port = BASE_VIEW_ADMIN_HTTP_GATEWAY_PORT,
             release = True,
-            shard_uris = [self.fog_view_store.get_client_listen_uri()],
+            shard_uris = client_listen_uris
         )
         self.fog_view_router.start()
 
@@ -153,7 +167,8 @@ class FogNetwork(Network):
 
         stop_server("fog_ledger")
         stop_server("fog_report")
-        stop_server("fog_view_store")
+        stop_server("fog_view_store_1")
+        stop_server("fog_view_store_2")
         stop_server("fog_view_router")
         stop_server("fog_ingest")
 
