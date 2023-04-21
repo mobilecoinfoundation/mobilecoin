@@ -77,7 +77,7 @@ jobs:
         image:
           org: ${{ inputs.docker_image_org }}
         global:
-          certManagerClusterIssuer: zerossl-prod-http
+          certManagerClusterIssuer: google-public-ca
         node:
           resources:
             limits:
@@ -140,7 +140,7 @@ jobs:
         image:
           org: ${{ inputs.docker_image_org }}
         global:
-          certManagerClusterIssuer: zerossl-prod-http
+          certManagerClusterIssuer: google-public-ca
         fogLedger:
           replicaCount: 2
           resources:
