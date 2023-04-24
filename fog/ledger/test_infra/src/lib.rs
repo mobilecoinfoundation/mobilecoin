@@ -319,8 +319,7 @@ impl ShardProxyServer {
         parts.uri = Uri::from_parts(uri_parts).unwrap();
 
         let request = Request::from_parts(parts, body);
-        let response = client.request(request).await;
-        response
+        client.request(request).await
     }
 
     async fn shutdown(channel: oneshot::Receiver<()>) {
