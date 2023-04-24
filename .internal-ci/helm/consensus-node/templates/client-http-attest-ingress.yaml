@@ -5,7 +5,7 @@ kind: Ingress
 metadata:
   name: {{ include "consensusNode.fullname" . }}-client-http-attest
   annotations:
-    {{- if eq .Values.node.ingress.clientAttest.rateLimits.enabled true }}
+    {{- if .Values.node.ingress.clientAttest.rateLimits.enabled }}
     {{- toYaml .Values.node.ingress.clientAttest.rateLimits.annotations | nindent 4 }}
     haproxy.org/rate-limit-period: {{ include "consensusNode.rateLimitPeriod" . | quote }}
     {{- end }}
