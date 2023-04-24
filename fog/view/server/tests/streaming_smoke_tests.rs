@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use futures::executor::block_on;
-use mc_common::logger::{create_app_logger, o};
+use mc_common::logger;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
@@ -18,7 +18,7 @@ large_omap_one_store = { 1048576, 1, 6 },
 large_omap_multiple_stores = { 1048576, 6, 1 },
 )]
 fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per_store: u64) {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = logger::create_test_logger("overlapping_stores".to_string());
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =

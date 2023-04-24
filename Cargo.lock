@@ -3718,22 +3718,30 @@ dependencies = [
 name = "mc-fog-ledger-connection"
 version = "4.1.0-pre0"
 dependencies = [
+ "aes-gcm",
  "displaydoc",
+ "futures",
  "grpcio",
  "mc-api",
+ "mc-attest-ake",
+ "mc-attest-core",
  "mc-attest-verifier",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-noise",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-types",
  "mc-fog-uri",
+ "mc-rand",
  "mc-transaction-core",
  "mc-util-grpc",
+ "mc-util-serial",
  "mc-util-uri",
  "protobuf",
  "retry",
+ "sha2 0.10.6",
 ]
 
 [[package]]
@@ -3798,6 +3806,7 @@ dependencies = [
  "aligned-cmov",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-ake-enclave",
  "mc-crypto-keys",
@@ -3812,6 +3821,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-serial",
  "mc-watcher-api",
+ "yare",
 ]
 
 [[package]]
@@ -3831,13 +3841,16 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "4.1.0-pre0"
 dependencies = [
+ "aes-gcm",
  "clap 4.1.11",
  "displaydoc",
  "futures",
  "grpcio",
+ "itertools",
  "lazy_static",
  "mc-account-keys",
  "mc-api",
+ "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3858,6 +3871,7 @@ dependencies = [
  "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
+ "mc-rand",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-util-build-script",
@@ -3874,11 +3888,14 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "mc-watcher-api",
+ "portpicker",
  "rand",
  "retry",
  "serde",
  "serde_json",
+ "sha2 0.10.6",
  "tempfile",
+ "tokio",
  "url",
 ]
 
@@ -3886,6 +3903,8 @@ dependencies = [
 name = "mc-fog-ledger-test-infra"
 version = "4.1.0-pre0"
 dependencies = [
+ "http",
+ "hyper",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-blockchain-types",
@@ -3897,6 +3916,8 @@ dependencies = [
  "mc-ledger-db",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
+ "rand",
+ "tokio",
 ]
 
 [[package]]
@@ -8087,6 +8108,7 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
+ "parking_lot 0.12.0",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",

@@ -13,3 +13,8 @@ message BlockRange {
     /// One-past-the-end of the range
     uint64 end_block = 2;
 }
+
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
+}

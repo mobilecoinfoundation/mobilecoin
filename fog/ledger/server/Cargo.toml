@@ -12,8 +12,12 @@ name = "mc_fog_ledger_server"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ledger_server"
-path = "src/bin/main.rs"
+name = "ledger_router"
+path = "src/bin/router.rs"
+
+[[bin]]
+name = "key_image_store"
+path = "src/bin/key_image_store.rs"
 
 [dependencies]
 mc-attest-api = { path = "../../../attest/api" }
@@ -52,6 +56,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"
+itertools = "0.10"
 lazy_static = "1.4"
 rand = "0.8"
 retry = "2.0"
@@ -64,12 +69,15 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 [dev-dependencies]
+aes-gcm = "0.10.1"
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-attest-ake = { path = "../../../attest/ake" }
 mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-rand = "1.0"
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
@@ -78,6 +86,9 @@ mc-fog-ledger-connection = { path = "../connection" }
 mc-fog-ledger-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
+portpicker = "0.1.1"
+sha2 = "0.10"
 
 # third-party
 tempfile = "3.4"
+tokio = { version = "1.0", features = ["full"] }

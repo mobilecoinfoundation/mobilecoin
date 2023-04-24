@@ -25,6 +25,9 @@ BASE_REPORT_ADMIN_HTTP_GATEWAY_PORT = 6500
 BASE_LEDGER_CLIENT_PORT = 7200
 BASE_LEDGER_ADMIN_PORT = 7400
 BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT = 7500
+BASE_KEY_IMAGE_STORE_PORT = 7600
+BASE_KEY_IMAGE_STORE_ADMIN_PORT = 7700
+BASE_KEY_IMAGE_STORE_ADMIN_HTTP_GATEWAY_PORT = 7800
 
 BASE_NGINX_CLIENT_PORT = 8200
 
@@ -329,8 +332,8 @@ class FogReport:
             self.admin_http_gateway_process = None
 
 
-class FogLedger:
-    def __init__(self, name, ledger_db_path, client_responder_id, client_port, admin_port, admin_http_gateway_port, watcher_db_path, release):
+class FogLedgerRouter:
+    def __init__(self, name, ledger_db_path, client_responder_id, client_port, admin_port, admin_http_gateway_port, watcher_db_path, shard_uris, release):
         self.name = name
         self.ledger_db_path = ledger_db_path
         self.watcher_db_path = watcher_db_path
@@ -341,11 +344,13 @@ class FogLedger:
 
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
+        
+        self.shard_uris = shard_uris
 
         self.release = release
         self.target_dir = os.path.join(PROJECT_DIR, target_dir(self.release))
 
-        self.ledger_server_process = None
+        self.ledger_router_process = None
         self.admin_http_gateway_process = None
 
     def __repr__(self):
@@ -356,26 +361,85 @@ class FogLedger:
         assert os.path.exists(os.path.join(self.watcher_db_path, 'data.mdb')), self.watcher_db_path
         self.stop()
 
-        print(f'Starting fog ledger {self.name}')
+        print(f'Starting fog ledger router {self.name}')
         cmd = ' '.join([
-            f'exec {self.target_dir}/ledger_server',
+            f'exec {self.target_dir}/ledger_router',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
+            f'--shard-uris={",".join(self.shard_uris)}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
             f'--watcher-db {self.watcher_db_path}',
         ])
-        self.ledger_server_process = log_and_popen_shell(cmd)
+        self.ledger_router_process = log_and_popen_shell(cmd)
 
-        print(f'Starting admin http gateway for fog ledger')
+        print(f'Starting admin http gateway for fog ledger router')
         self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
 
     def stop(self):
-        if self.ledger_server_process and self.ledger_server_process.poll() is None:
-            self.ledger_server_process.terminate()
-            self.ledger_server_process = None
+        if self.ledger_router_process and self.ledger_router_process.poll() is None:
+            self.ledger_router_process.terminate()
+            self.ledger_router_process = None
+
+        if self.admin_http_gateway_process and self.admin_http_gateway_process.poll() is None:
+            self.admin_http_gateway_process.terminate()
+            self.admin_http_gateway_process = None
+
+
+class FogKeyImageStore:
+    def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release, sharding_strategy, ledger_db_path, watcher_db_path):
+        self.name = name
+        
+        self.client_port = client_port
+        self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
+        self.sharding_strategy = sharding_strategy
+        self.client_listen_url = f'insecure-key-image-store://{LISTEN_HOST}:{self.client_port}/?sharding_strategy={self.sharding_strategy}'
+        self.sharding_strategy = sharding_strategy
+        self.ledger_db_path = ledger_db_path
+        self.watcher_db_path = watcher_db_path
+        
+        self.admin_port = admin_port
+        self.admin_http_gateway_port = admin_http_gateway_port
+        
+        self.release = release
+        self.target_dir = os.path.join(PROJECT_DIR, target_dir(self.release))
+
+        self.key_image_store_process = None
+        self.admin_http_gateway_process = None
+
+    def __repr__(self):
+        return self.name
+
+    def get_client_listen_uri(self):
+        return self.client_listen_url
+
+    def start(self):
+        self.stop()
+
+        print(f'Starting key image store {self.name}')
+        cmd = ' '.join([
+            DATABASE_URL_ENV,
+            f'exec {self.target_dir}/key_image_store',
+            f'--client-listen-uri={self.client_listen_url}',
+            f'--client-responder-id={self.client_responder_id}',
+            f'--sharding-strategy={self.sharding_strategy}',
+            f'--ledger-db={self.ledger_db_path}',
+            f'--watcher-db={self.watcher_db_path}',
+            f'--ias-api-key={IAS_API_KEY}',
+            f'--ias-spid={IAS_SPID}',
+            f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
+        ])
+        self.key_image_store_process = log_and_popen_shell(cmd)
+
+        print(f'Starting admin http gateway for key image store')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
+
+    def stop(self):
+        if self.key_image_store_process and self.key_image_store_process.poll() is None:
+            self.key_image_store_process.terminate()
+            self.key_image_store_process = None
 
         if self.admin_http_gateway_process and self.admin_http_gateway_process.poll() is None:
             self.admin_http_gateway_process.terminate()
