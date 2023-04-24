@@ -14,7 +14,7 @@ use chrono::NaiveDateTime;
 use core::fmt::{Debug, Display};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
-use mc_fog_types::view::TxOutSearchResult;
+use mc_fog_types::view::FixedTxOutSearchResult;
 
 pub use mc_blockchain_types::Block;
 pub use mc_fog_types::{common::BlockRange, ETxOutRecord};
@@ -226,13 +226,13 @@ pub trait RecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Self::Error>;
+    ) -> Result<Vec<FixedTxOutSearchResult>, Self::Error>;
 
     /// Mark a given ingest invocation as still being alive.
     fn update_last_active_at(
@@ -264,8 +264,7 @@ pub trait RecoveryDb {
     ///
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
-    /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many consecutive blocks to also request data for.
+    /// * block_range: The range of blocks to get ETxOutRecords from.
     ///
     /// Returns:
     /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
@@ -273,8 +272,7 @@ pub trait RecoveryDb {
     fn get_tx_outs_by_block_range_and_key(
         &self,
         ingress_key: CompressedRistrettoPublic,
-        block_index: u64,
-        block_count: usize,
+        block_range: &BlockRange,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error>;
 
     /// Get the invocation id that published this block with this key.

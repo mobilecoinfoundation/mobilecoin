@@ -6,7 +6,7 @@
 
 use crate::{
     block_tracker::BlockTracker, config::MobileAcctViewConfig, counters, db_fetcher::DbFetcher,
-    fog_view_service::FogViewService,
+    fog_view_service::FogViewService, sharding_strategy::ShardingStrategy,
 };
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
@@ -19,7 +19,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::view_grpc;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ETxOutRecord;
-use mc_fog_uri::ConnectionUri;
+use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
@@ -38,26 +38,28 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub struct ViewServer<E, RC, DB>
+pub struct ViewServer<E, RC, DB, SS>
 where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     config: MobileAcctViewConfig,
     server: grpcio::Server,
     enclave: E,
     ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
-    db_poll_thread: DbPollThread<E, DB>,
+    db_poll_thread: DbPollThread<E, DB, SS>,
     logger: Logger,
 }
 
-impl<E, RC, DB> ViewServer<E, RC, DB>
+impl<E, RC, DB, SS> ViewServer<E, RC, DB, SS>
 where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     /// Make a new view server instance
     pub fn new(
@@ -66,8 +68,9 @@ where
         recovery_db: DB,
         ra_client: RC,
         time_provider: impl TimeProvider + 'static,
+        sharding_strategy: SS,
         logger: Logger,
-    ) -> ViewServer<E, RC, DB> {
+    ) -> ViewServer<E, RC, DB, SS> {
         let readiness_indicator = ReadinessIndicator::default();
 
         let db_poll_thread = DbPollThread::new(
@@ -75,12 +78,13 @@ where
             enclave.clone(),
             recovery_db.clone(),
             readiness_indicator.clone(),
+            sharding_strategy.clone(),
             logger.clone(),
         );
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("Main-RPC".to_string())
+                .name_prefix("Fog-view-server".to_string())
                 .build(),
         );
 
@@ -95,26 +99,35 @@ where
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        let fog_view_service = view_grpc::create_fog_view_api(FogViewService::new(
-            config.clone(),
-            enclave.clone(),
-            Arc::new(recovery_db),
-            db_poll_thread.get_shared_state(),
-            client_authenticator,
-            logger.clone(),
-        ));
-        log::debug!(logger, "Constructed View GRPC Service");
-
         // Health check service
         let health_service =
             mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
                 .into_service();
 
+        log::debug!(logger, "Starting View Store GRPC Service");
+        let use_tls = config.client_listen_uri.use_tls();
+        let responder_id = config
+            .client_listen_uri
+            .responder_id()
+            .expect("Could not get store responder id");
+        let uri = FogViewStoreUri::try_from_responder_id(responder_id, use_tls)
+            .expect("Could not create uri from responder id");
+
+        let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+            enclave.clone(),
+            Arc::new(recovery_db),
+            db_poll_thread.get_shared_state(),
+            uri,
+            client_authenticator,
+            sharding_strategy,
+            logger.clone(),
+        ));
+
         // Package service into grpc server
         log::info!(
             logger,
-            "Starting View server on {}",
-            config.client_listen_uri.addr(),
+            "Starting View Store server on {}",
+            config.client_listen_uri,
         );
         let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(fog_view_service)
@@ -180,11 +193,12 @@ where
     }
 }
 
-impl<E, RC, DB> Drop for ViewServer<E, RC, DB>
+impl<E, RC, DB, SS> Drop for ViewServer<E, RC, DB, SS>
 where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();
@@ -206,13 +220,17 @@ pub struct DbPollSharedState {
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// The number of blocks that have been processed.
+    pub processed_block_count: u64,
 }
 
 /// A thread that periodically pushes new tx data from db to enclave
-struct DbPollThread<E, DB>
+struct DbPollThread<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     /// Config
     config: MobileAcctViewConfig,
@@ -235,6 +253,9 @@ where
     /// Readiness indicator.
     readiness_indicator: ReadinessIndicator,
 
+    /// Sharding strategy,
+    sharding_strategy: SS,
+
     /// Logger.
     logger: Logger,
 }
@@ -242,10 +263,11 @@ where
 /// How long to wait between polling db
 const DB_POLL_INTERNAL: Duration = Duration::from_millis(100);
 
-impl<E, DB> DbPollThread<E, DB>
+impl<E, DB, SS> DbPollThread<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     /// Get the shared state.
     pub fn get_shared_state(&self) -> Arc<Mutex<DbPollSharedState>> {
@@ -258,6 +280,7 @@ where
         enclave: E,
         db: DB,
         readiness_indicator: ReadinessIndicator,
+        sharding_strategy: SS,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -271,6 +294,7 @@ where
             stop_requested,
             shared_state,
             readiness_indicator,
+            sharding_strategy,
             logger,
         }
     }
@@ -290,6 +314,7 @@ where
         let thread_stop_requested = self.stop_requested.clone();
         let thread_shared_state = self.shared_state.clone();
         let thread_readiness_indicator = self.readiness_indicator.clone();
+        let thread_sharding_strategy = self.sharding_strategy.clone();
         let thread_logger = self.logger.clone();
 
         self.join_handle = Some(
@@ -303,6 +328,7 @@ where
                         thread_stop_requested,
                         thread_shared_state,
                         thread_readiness_indicator,
+                        thread_sharding_strategy,
                         thread_logger,
                     )
                 })
@@ -327,6 +353,7 @@ where
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
+        sharding_strategy: SS,
         logger: Logger,
     ) {
         log::debug!(logger, "Db poll thread started");
@@ -338,6 +365,7 @@ where
             db,
             shared_state,
             readiness_indicator,
+            sharding_strategy,
             logger.clone(),
         );
         loop {
@@ -357,20 +385,22 @@ where
     }
 }
 
-impl<E, DB> Drop for DbPollThread<E, DB>
+impl<E, DB, SS> Drop for DbPollThread<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         let _ = self.stop();
     }
 }
 
-struct DbPollThreadWorker<E, DB>
+struct DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy,
 {
     /// Stop request trigger, used to signal the thread to stop.
     stop_requested: Arc<AtomicBool>,
@@ -389,7 +419,7 @@ where
     db_fetcher: DbFetcher,
 
     /// Keeps track of which blocks we have fed into the enclave.
-    enclave_block_tracker: BlockTracker,
+    enclave_block_tracker: BlockTracker<SS>,
 
     /// Flag which the db fetcher sets to indicate when it has exhausted it's
     /// initial work.
@@ -416,10 +446,11 @@ pub enum WorkerTickResult {
 /// Telemetry: block indes currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
-impl<E, DB> DbPollThreadWorker<E, DB>
+impl<E, DB, SS> DbPollThreadWorker<E, DB, SS>
 where
     E: ViewEnclaveProxy,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
+    SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     pub fn new(
         config: MobileAcctViewConfig,
@@ -428,6 +459,7 @@ where
         db: DB,
         shared_state: Arc<Mutex<DbPollSharedState>>,
         server_readiness_indicator: ReadinessIndicator,
+        sharding_strategy: SS,
         logger: Logger,
     ) -> Self {
         let db_fetcher_readiness_indicator = ReadinessIndicator::default();
@@ -435,6 +467,7 @@ where
         let db_fetcher = DbFetcher::new(
             db.clone(),
             db_fetcher_readiness_indicator.clone(),
+            sharding_strategy.clone(),
             config.block_query_batch_size,
             logger.clone(),
         );
@@ -445,7 +478,7 @@ where
             db,
             shared_state,
             db_fetcher,
-            enclave_block_tracker: BlockTracker::new(logger.clone()),
+            enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
             db_fetcher_readiness_indicator,
             server_readiness_indicator,
             last_unblocked_at: Instant::now(),
@@ -631,12 +664,17 @@ where
                 );
 
                 // Track that this block was processed.
-                self.enclave_block_tracker
-                    .block_processed(ingress_key, block_index);
+                if self
+                    .enclave_block_tracker
+                    .block_processed(ingress_key, block_index)
+                {
+                    let mut shared_state = self.shared_state.lock().expect("mutex poisoned");
+                    shared_state.processed_block_count += 1;
 
-                // Update metrics
-                counters::BLOCKS_ADDED_COUNT.inc();
-                counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                    // Update metrics
+                    counters::BLOCKS_ADDED_COUNT.inc();
+                    counters::TXOS_ADDED_COUNT.inc_by(num_records as u64);
+                }
             }
         }
     }

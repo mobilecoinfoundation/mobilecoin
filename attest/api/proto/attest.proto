@@ -48,3 +48,20 @@ message Message {
         /// for use in the enclave.
         bytes data = 3;
 }
+
+/// An AEAD message with an explicit nonce.
+///
+/// This message is technically compatible with [`Message`], but exists to
+// ensure generated code doesn't use Message.
+message NonceMessage {
+        /// A byte array containing plaintext authenticated data.
+        bytes aad = 1;
+        /// An byte array containing the channel ID this message is
+        /// associated with. A zero-length channel ID is not valid.
+        bytes channel_id = 2;
+        /// A potentially encrypted bytestream containing opaque data intended
+        /// for use in the enclave.
+        bytes data = 3;
+        /// The explicit nonce.
+        fixed64 nonce = 4;
+}

@@ -5,6 +5,8 @@
 
 #![deny(missing_docs)]
 
+pub mod fog_view_router_client;
+
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_verifier::Verifier;
 use mc_common::{

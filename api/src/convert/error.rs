@@ -3,6 +3,7 @@
 use mc_blockchain_types::{BlockVersionError, ConvertError};
 use mc_crypto_keys::{KeyError, SignatureError};
 use mc_transaction_core::ring_signature::Error as RingSigError;
+use mc_util_uri::{UriConversionError, UriParseError};
 use std::{
     array::TryFromSliceError,
     convert::Infallible,
@@ -22,6 +23,8 @@ pub enum ConversionError {
     KeyCastError,
     MissingField(String),
     NarrowingCastError,
+    UriParse(UriParseError),
+    UriConversion(UriConversionError),
     ObjectMissing,
     Other,
 }
@@ -78,5 +81,17 @@ impl Error for ConversionError {}
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "ConversionError")
+    }
+}
+
+impl From<UriParseError> for ConversionError {
+    fn from(error: UriParseError) -> Self {
+        Self::UriParse(error)
+    }
+}
+
+impl From<UriConversionError> for ConversionError {
+    fn from(error: UriConversionError) -> Self {
+        Self::UriConversion(error)
     }
 }

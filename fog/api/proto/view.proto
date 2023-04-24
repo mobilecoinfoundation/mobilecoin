@@ -10,11 +10,98 @@ import "external.proto";
 import "kex_rng.proto";
 import "fog_common.proto";
 
+import "google/protobuf/empty.proto";
+
+/// A single Duplex streaming API that allows clients to authorize with Fog View and
+/// query it for TxOuts.
+service FogViewRouterAPI {
+    rpc request(stream FogViewRouterRequest) returns (stream FogViewRouterResponse) {}
+}
+
+service FogViewRouterAdminAPI {
+    // Adds a shard to the Fog View Router's list of shards to query.
+    rpc addShard(AddShardRequest) returns (google.protobuf.Empty) {}
+}
+
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
+}
+
+message FogViewRouterRequest {
+    oneof request_data {
+        /// This is called to perform IX key exchange
+        /// with the enclave before making a query call.
+        attest.AuthMessage auth = 1;
+        /// Input should be an encrypted QueryRequest
+        attest.Message query = 2;
+    }
+}
+
+message FogViewRouterResponse {
+    oneof response_data {
+        /// Returned for an auth request.
+        attest.AuthMessage auth = 1;
+        /// Returned for a query request.
+        /// The data is an encrypted QueryResponse.
+        attest.Message query = 2;
+    }
+}
+
+message MultiViewStoreQueryRequest {
+    /// A list of queries encrypted for Fog View Stores.
+    repeated attest.NonceMessage queries = 1;
+}
+
+/// The status associated with a MultiViewStoreQueryResponse
+enum MultiViewStoreQueryResponseStatus {
+    /// Default status. Shouldn't be set explicitly.
+    UNKNOWN = 0;
+    /// The Fog View Store successfully fulfilled the request.
+    SUCCESS = 1;
+    /// The Fog View Store is unable to decrypt a query within the MultiViewStoreQuery. It needs to be authenticated
+    /// by the router.
+    AUTHENTICATION_ERROR = 2;
+    /// The Fog View Store is not ready to service a MultiViewStoreQueryRequest. This might be because the store has
+    /// not loaded enough blocks yet.
+    NOT_READY = 3;
+}
+
+message MultiViewStoreQueryResponse {
+    /// Optional field that gets set when the Fog View Store is able to decrypt a query
+    /// included in the MultiViewStoreQueryRequest and create a query response for that
+    //  query.
+    attest.NonceMessage query_response = 1;
+
+    /// The FogViewStoreUri for the specific Fog View Store that
+    /// tried to decrypt the MultiViewStoreQueryRequest and failed.
+    /// The client should subsequently authenticate with the machine
+    /// described by this URI.
+    string store_uri = 2;
+
+    /// Status that gets returned when the Fog View Store services a MultiViewStoreQueryRequest.
+    MultiViewStoreQueryResponseStatus status = 3;
+
+    /// The block range that this view store is responsible for based on the store's sharding strategy. Note that this
+    /// doesn't mean the block ranges that this store has processed. Rather, this is the range of blocks that this
+    /// store is configured to serve once they become available.
+    fog_common.BlockRange block_range = 4;
+}
+
+/// Fulfills requests sent directly by a Fog client, e.g. a mobile phone using the SDK.
 service FogViewAPI {
     /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
     rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
     /// Input should be an encrypted QueryRequest, result is an encrypted QueryResponse
     rpc Query(attest.Message) returns (attest.Message) {}
+}
+
+/// Fulfills requests sent by the Fog View Router. This is not meant to fulfill requests sent directly by the client.
+service FogViewStoreAPI {
+    /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
+    /// Input should be an encrypted MultiViewStoreQueryRequest, result is an encrypted QueryResponse.
+    rpc MultiViewStoreQuery(MultiViewStoreQueryRequest) returns (MultiViewStoreQueryResponse) {}
 }
 
 /// There are several kinds of records returned by the fog view API
@@ -134,6 +221,8 @@ message QueryResponse {
     repeated DecommissionedIngestInvocation decommissioned_ingest_invocations = 6;
 
     /// Any TxOutSearchResults from the get_txos in the request.
+    /// TODO: Deprecate this field once clients have been given enough time to upgrade to the new
+    /// fixed_tx_out_search_result field.
     repeated TxOutSearchResult tx_out_search_results = 7;
 
     /// Extra data: The index of the last known block.
@@ -145,6 +234,10 @@ message QueryResponse {
     /// This can be used by the client as a hint when choosing cryptonote mixin indices.
     /// This field doesn't have the same "cursor" semantics as the other fields.
     uint64 last_known_block_cumulative_txo_count = 9;
+
+    /// Any FixedTxOutSearchResults from the get_txos in the request. Will be filled alongside the tx_out_search_result
+    /// field and contains the same payload data, but in a different format.
+    repeated FixedTxOutSearchResult fixed_tx_out_search_results = 10;
 }
 
 /// A record of an Rng created by a fog ingest enclave.
@@ -186,6 +279,32 @@ message TxOutSearchResult {
     /// It is be zero-padding in the other cases.
     /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
     bytes ciphertext = 3;
+
+    /// Unused padding that needs to be returned to maintain internal obliviousness.
+    bytes padding = 4;
+
+}
+
+/// Contains the same payload data as a TxOutSearchResult, but the payload is contained within a ciphertext of fixed
+// length.
+message FixedTxOutSearchResult {
+    /// The search key associated to this result
+    bytes search_key = 1;
+    /// The result code for the query.
+    /// This is logically an enum, but should not be an enum because protobuf
+    /// requires that enums are encoded using the "varint" encoding which is not fixed size.
+    /// We want that e.g. "Found" and "NotFound" have the same length on the wire to avoid leaking that.
+    /// So it is a fixed32 in protobuf, and the 0 (default) value is intentionally unused.
+    fixed32 result_code = 2;
+
+    /// A ciphertext, which is a view-key encrypted TxOutRecord in case result_code == 1.
+    /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
+    bytes ciphertext = 3;
+
+    /// The length of the payload that is encrypted in the ciphertext. Ciphertexts will always be of fixed length, but
+    /// the contained payload may be less than this length, so the rest of the ciphertext is zeroed out. These
+    /// zeroed bytes should not be interpreted by the client, and this value tells the client which bytes to interpret.
+    fixed32 payload_length = 4;
 }
 
 /// Corresponds to and documents values of TxOutSearchResult.result_code

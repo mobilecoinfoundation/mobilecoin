@@ -47,6 +47,10 @@ use std::{path::Path, str};
 /// from GRPC context.
 /// e.g., calc_service.req{method = "add"} = +1
 /// e.g., calc_service.duration_sum{method="add"} = 6
+
+/// Corresponds to which gRPC method is being called.
+pub type GrpcMethodName = String;
+
 #[derive(Clone)]
 pub struct ServiceMetrics {
     /// Count of requests made by each gRPC method tracked
@@ -141,11 +145,13 @@ impl ServiceMetrics {
     /// name and increments counters tracking the number of calls to and
     /// returns a counter to track the duration of the method
     pub fn req(&self, ctx: &RpcContext) -> Option<HistogramTimer> {
-        let mut method_name = "unknown_method".to_string();
-        if let Some(name) = path_from_ctx(ctx) {
-            method_name = name;
-        }
+        let method_name = Self::get_method_name(ctx);
+        self.req_impl(&method_name)
+    }
 
+    /// Increments counters tracking the number of calls to and
+    /// returns a counter to track the duration of the method
+    pub fn req_impl(&self, method_name: &GrpcMethodName) -> Option<HistogramTimer> {
         self.num_req
             .with_label_values(&[method_name.as_str()])
             .inc();
@@ -156,26 +162,40 @@ impl ServiceMetrics {
         )
     }
 
+    /// Gets the method name from a gRPC RpcContext.
+    pub fn get_method_name(ctx: &RpcContext) -> GrpcMethodName {
+        match path_from_ctx(ctx) {
+            Some(method_name) => method_name,
+            None => "unknown_method".to_string(),
+        }
+    }
+
     /// Takes the RpcContext used during a gRPC method call to get the method
     /// name and increments an error counter if the method resulted in an
     /// error
     pub fn resp(&self, ctx: &RpcContext, success: bool) {
-        if let Some(name) = path_from_ctx(ctx) {
-            self.num_error
-                .with_label_values(&[name.as_str()])
-                .inc_by(if success { 0 } else { 1 });
-        }
+        let method_name = Self::get_method_name(ctx);
+        self.resp_impl(&method_name, success);
+    }
+
+    pub fn resp_impl(&self, method_name: &GrpcMethodName, success: bool) {
+        self.num_error
+            .with_label_values(&[method_name.as_str()])
+            .inc_by(if success { 0 } else { 1 });
     }
 
     /// Takes the RpcContext used during a gRPC method call to get the method
     /// name as well as the gRPC status code that method returned and
     /// increments a counter for the status code reported
     pub fn status_code(&self, ctx: &RpcContext, response_code: RpcStatusCode) {
-        if let Some(name) = path_from_ctx(ctx) {
-            self.num_status_code
-                .with_label_values(&[name.as_str(), response_code.to_string().as_str()])
-                .inc();
-        }
+        let method_name = Self::get_method_name(ctx);
+        self.status_code_impl(&method_name, response_code);
+    }
+
+    pub fn status_code_impl(&self, method_name: &GrpcMethodName, response_code: RpcStatusCode) {
+        self.num_status_code
+            .with_label_values(&[method_name.as_str(), response_code.to_string().as_str()])
+            .inc();
     }
 
     /// Tracks gRPC message name and size for aggregation into a Prometheus

@@ -22,6 +22,7 @@ mc-transaction-extra = { path = "../transaction/extra" }
 mc-transaction-summary = { path = "../transaction/summary" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
+mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.4.0"

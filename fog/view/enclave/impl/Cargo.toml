@@ -7,7 +7,8 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-# mobilecoin
+static_assertions = "1.1.0"
+
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
 mc-common = { path = "../../../../common", default-features = false }
@@ -30,4 +31,5 @@ mc-fog-types = { path = "../../../types" }
 mc-fog-view-enclave-api = { path = "../api" }
 
 [dev-dependencies]
+itertools = "0.10.3"
 mc-common = { path = "../../../../common", features = ["loggers"] }

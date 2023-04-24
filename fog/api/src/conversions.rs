@@ -2,10 +2,33 @@
 //
 // Contains helper methods that enable conversions for Fog Api types.
 
-use crate::{fog_common, ingest_common};
+use crate::{fog_common, ingest_common, view::MultiViewStoreQueryRequest};
 use mc_api::ConversionError;
+use mc_attest_api::attest;
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_types::common;
+use mc_fog_types::{common, common::BlockRange, view::MultiViewStoreQueryResponseStatus};
+use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
+use std::str::FromStr;
+
+impl From<Vec<EnclaveMessage<NonceSession>>> for MultiViewStoreQueryRequest {
+    fn from(enclave_messages: Vec<EnclaveMessage<NonceSession>>) -> MultiViewStoreQueryRequest {
+        enclave_messages
+            .into_iter()
+            .map(|enclave_message| enclave_message.into())
+            .collect::<Vec<attest::NonceMessage>>()
+            .into()
+    }
+}
+
+impl From<Vec<attest::NonceMessage>> for MultiViewStoreQueryRequest {
+    fn from(attested_query_messages: Vec<attest::NonceMessage>) -> MultiViewStoreQueryRequest {
+        let mut multi_view_store_query_request = MultiViewStoreQueryRequest::new();
+        multi_view_store_query_request.set_queries(attested_query_messages.into());
+
+        multi_view_store_query_request
+    }
+}
 
 impl From<&common::BlockRange> for fog_common::BlockRange {
     fn from(common_block_range: &common::BlockRange) -> fog_common::BlockRange {
@@ -14,6 +37,12 @@ impl From<&common::BlockRange> for fog_common::BlockRange {
         proto_block_range.end_block = common_block_range.end_block;
 
         proto_block_range
+    }
+}
+
+impl From<fog_common::BlockRange> for common::BlockRange {
+    fn from(proto_block_range: fog_common::BlockRange) -> common::BlockRange {
+        common::BlockRange::new(proto_block_range.start_block, proto_block_range.end_block)
     }
 }
 
@@ -43,5 +72,44 @@ impl TryFrom<&ingest_common::IngestSummary> for mc_fog_types::ingest_common::Ing
         };
 
         Ok(result)
+    }
+}
+
+impl TryFrom<crate::view::MultiViewStoreQueryResponse>
+    for mc_fog_types::view::MultiViewStoreQueryResponse
+{
+    type Error = ConversionError;
+    fn try_from(
+        mut proto_response: crate::view::MultiViewStoreQueryResponse,
+    ) -> Result<Self, Self::Error> {
+        let store_responder_id =
+            FogViewStoreUri::from_str(proto_response.get_store_uri())?.responder_id()?;
+        let result = mc_fog_types::view::MultiViewStoreQueryResponse {
+            encrypted_query_response: proto_response.take_query_response().into(),
+            store_responder_id,
+            store_uri: proto_response.get_store_uri().to_string(),
+            status: proto_response.get_status().into(),
+            block_range: BlockRange::from(proto_response.take_block_range()),
+        };
+        Ok(result)
+    }
+}
+
+impl From<crate::view::MultiViewStoreQueryResponseStatus> for MultiViewStoreQueryResponseStatus {
+    fn from(proto_status: crate::view::MultiViewStoreQueryResponseStatus) -> Self {
+        match proto_status {
+            crate::view::MultiViewStoreQueryResponseStatus::UNKNOWN => {
+                MultiViewStoreQueryResponseStatus::Unknown
+            }
+            crate::view::MultiViewStoreQueryResponseStatus::SUCCESS => {
+                MultiViewStoreQueryResponseStatus::Success
+            }
+            crate::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR => {
+                MultiViewStoreQueryResponseStatus::AuthenticationError
+            }
+            crate::view::MultiViewStoreQueryResponseStatus::NOT_READY => {
+                MultiViewStoreQueryResponseStatus::NotReady
+            }
+        }
     }
 }
