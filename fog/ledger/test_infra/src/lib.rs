@@ -2,8 +2,17 @@
 
 //! Functionality for mocking and testing components in the ledger server
 
+use http::Uri;
+use hyper::{
+    client::HttpConnector,
+    service::{make_service_fn, service_fn},
+    Body, Client, Request, Response, Server,
+};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_enclave_api::{
+    ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
+    NonceAuthResponse, NonceSession,
+};
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -21,6 +30,9 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     TokenId,
 };
+use rand::seq::SliceRandom;
+use std::{net::SocketAddr, sync::Arc};
+use tokio::{sync::oneshot, task::JoinHandle};
 
 #[derive(Default, Clone)]
 pub struct MockEnclave {}
@@ -73,7 +85,7 @@ impl LedgerEnclave for MockEnclave {
     fn check_key_images(
         &self,
         _msg: EnclaveMessage<ClientSession>,
-        _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        _response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
@@ -82,6 +94,58 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _records: Vec<KeyImageData>,
     ) -> Result<(), mc_fog_ledger_enclave::Error> {
+        unimplemented!()
+    }
+
+    fn ledger_store_init(&self, _ledger_store_id: ResponderId) -> EnclaveResult<NonceAuthRequest> {
+        unimplemented!()
+    }
+
+    fn ledger_store_connect(
+        &self,
+        _ledger_store_id: ResponderId,
+        _ledger_store_auth_response: NonceAuthResponse,
+    ) -> EnclaveResult<()> {
+        unimplemented!()
+    }
+
+    fn decrypt_and_seal_query(
+        &self,
+        _client_query: EnclaveMessage<ClientSession>,
+    ) -> EnclaveResult<mc_attest_enclave_api::SealedClientMessage> {
+        unimplemented!()
+    }
+
+    fn create_multi_key_image_store_query_data(
+        &self,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
+    ) -> EnclaveResult<Vec<EnclaveMessage<NonceSession>>> {
+        unimplemented!()
+    }
+
+    fn collate_shard_query_responses(
+        &self,
+        _sealed_query: mc_attest_enclave_api::SealedClientMessage,
+        _shard_query_responses: std::collections::BTreeMap<
+            ResponderId,
+            EnclaveMessage<NonceSession>,
+        >,
+    ) -> Result<EnclaveMessage<ClientSession>, mc_fog_ledger_enclave::Error> {
+        unimplemented!()
+    }
+
+    fn check_key_image_store(
+        &self,
+        _msg: EnclaveMessage<NonceSession>,
+        _response: UntrustedKeyImageQueryResponse,
+    ) -> EnclaveResult<EnclaveMessage<NonceSession>> {
+        unimplemented!()
+    }
+
+    fn frontend_accept(
+        &self,
+        _auth_message: NonceAuthRequest,
+    ) -> EnclaveResult<(NonceAuthResponse, NonceSession)> {
         unimplemented!()
     }
 }
@@ -229,5 +293,73 @@ impl Ledger for MockLedger {
         _mint_tx: &MintTx,
     ) -> Result<ActiveMintConfig, Error> {
         unimplemented!()
+    }
+}
+
+pub struct ShardProxyServer {
+    server_handle: Option<JoinHandle<Result<(), hyper::Error>>>,
+    stop_channel: Option<oneshot::Sender<()>>,
+}
+
+impl ShardProxyServer {
+    async fn route(
+        request: Request<Body>,
+        client: Arc<Client<HttpConnector>>,
+        endpoints: Arc<Vec<String>>,
+    ) -> Result<Response<Body>, hyper::Error> {
+        let endpoint = {
+            let mut rng = rand::thread_rng();
+            endpoints.choose(&mut rng).unwrap()
+        };
+        let (mut parts, body) = request.into_parts();
+
+        let mut uri_parts = parts.uri.clone().into_parts();
+        uri_parts.authority = Some(endpoint.parse().unwrap());
+        uri_parts.scheme = Some("http".parse().unwrap());
+        parts.uri = Uri::from_parts(uri_parts).unwrap();
+
+        let request = Request::from_parts(parts, body);
+        let response = client.request(request).await;
+        response
+    }
+
+    async fn shutdown(channel: oneshot::Receiver<()>) {
+        channel.await.unwrap_or(());
+    }
+
+    pub fn new(address: &SocketAddr, endpoints: Vec<String>) -> Self {
+        let client = Arc::new(Client::builder().http2_only(true).build_http());
+        let endpoints = Arc::new(endpoints);
+        let (tx, rx) = oneshot::channel::<()>();
+
+        let make_service = make_service_fn(move |_| {
+            let client = client.clone();
+            let endpoints = endpoints.clone();
+
+            async move {
+                Ok::<_, hyper::Error>(service_fn(move |req| {
+                    Self::route(req, client.clone(), endpoints.clone())
+                }))
+            }
+        });
+
+        let server = Server::bind(address).serve(make_service);
+        let graceful = server.with_graceful_shutdown(Self::shutdown(rx));
+
+        let server_handle = tokio::spawn(async move { graceful.await });
+
+        Self {
+            server_handle: Some(server_handle),
+            stop_channel: Some(tx),
+        }
+    }
+
+    pub async fn stop(&mut self) {
+        if let Some(stop_channel) = self.stop_channel.take() {
+            let _ = stop_channel.send(());
+        }
+        if let Some(server_handle) = self.server_handle.take() {
+            let _ = server_handle.await;
+        }
     }
 }
