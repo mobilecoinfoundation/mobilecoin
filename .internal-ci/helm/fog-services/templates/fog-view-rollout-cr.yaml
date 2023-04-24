@@ -21,15 +21,15 @@ spec:
         replicas: {{ .Values.fogViewRouter.replicaCount }}
         selector:
           matchLabels:
-            app: fog-view
+            app: fog-view-router
             {{- include "fogServices.selectorLabels" . | nindent 12 }}
-        serviceName: {{ include "fogServices.fullname" . }}-fog-view
+        serviceName: {{ include "fogServices.fullname" . }}-fog-view-router
         template:
           metadata:
             annotations:
               {{- toYaml .Values.fogViewRouter.podAnnotations | nindent 14 }}
             labels:
-              app: fog-view
+              app: fog-view-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
             volumes:

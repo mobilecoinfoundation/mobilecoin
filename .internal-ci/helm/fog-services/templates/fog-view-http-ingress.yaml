@@ -25,6 +25,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fogServices.fullname" . }}-fog-view
+            name: {{ include "fogServices.fullname" . }}-fog-view-router
             port:
               name: view-http
