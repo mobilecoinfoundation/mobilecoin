@@ -19,4 +19,4 @@ pub use prometheus::{
     register, register_histogram, Histogram, HistogramOpts, HistogramVec, IntCounter,
     IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
-pub use service_metrics::ServiceMetrics;
+pub use service_metrics::{GrpcMethodName, ServiceMetrics};

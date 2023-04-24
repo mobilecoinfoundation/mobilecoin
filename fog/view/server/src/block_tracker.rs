@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use crate::sharding_strategy::ShardingStrategy;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::IngressPublicKeyRecord;
@@ -12,17 +13,25 @@ use std::collections::HashMap;
 /// - Finding out what is the highest block index we have encountered so far.
 /// - Finding out for which block index have we processed data for all ingress
 ///   keys, while taking into account ingress keys reported lost
-pub struct BlockTracker {
+pub struct BlockTracker<SS>
+where
+    SS: ShardingStrategy,
+{
     processed_block_per_ingress_key: HashMap<CompressedRistrettoPublic, u64>,
     last_highest_processed_block_count: u64,
+    sharding_strategy: SS,
     logger: Logger,
 }
 
-impl BlockTracker {
-    pub fn new(logger: Logger) -> Self {
+impl<SS> BlockTracker<SS>
+where
+    SS: ShardingStrategy,
+{
+    pub fn new(logger: Logger, sharding_strategy: SS) -> Self {
         Self {
             processed_block_per_ingress_key: HashMap::default(),
             last_highest_processed_block_count: 0,
+            sharding_strategy,
             logger,
         }
     }
@@ -58,9 +67,19 @@ impl BlockTracker {
         next_blocks
     }
 
-    /// Notify the tracker that a block has been processed (loaded into enclave
-    /// and is now available)
-    pub fn block_processed(&mut self, ingress_key: CompressedRistrettoPublic, block_index: u64) {
+    /// Notify the tracker that a block has been processed.
+    ///
+    /// The meaning of the term "processed" is context dependent. In some cases,
+    /// it might mean that the block has been added to the enclave, in
+    /// others it might mean that a block was fetched from the DB.
+    ///
+    /// returns `true` if this BlockTracker instance is responsible for the
+    /// block based on the sharding strategy.
+    pub fn block_processed(
+        &mut self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+    ) -> bool {
         if let Some(previous_block_index) = self
             .processed_block_per_ingress_key
             .insert(ingress_key, block_index)
@@ -68,6 +87,7 @@ impl BlockTracker {
             // Sanity check that we are only moving forward and not skipping any blocks.
             assert!(block_index == previous_block_index + 1);
         }
+        self.sharding_strategy.should_process_block(block_index)
     }
 
     /// Given a list of ingress keys, missing blocks and current state,
@@ -128,20 +148,21 @@ impl BlockTracker {
             // Go over all known ingress keys and check if
             // any of them need to provide this block and have not provided it
             for rec in ingress_keys {
-                // If this ingress key isn't responsible to provide this block index, we can
-                // move on
-                if !rec.covers_block_index(next_block_index) {
+                let epoch = self.sharding_strategy.get_block_range();
+                let is_key_responsible = rec.get_block_range().overlaps(&epoch)
+                    && rec.covers_block_index(next_block_index);
+                if !is_key_responsible {
                     continue;
                 }
 
                 // Check if the last block we actually loaded with this key is less than
                 // next_block_index, if so then this is what we are stuck on
-                if let Some(last_processed_block) =
+                if let Some(last_processed_block_index) =
                     self.processed_block_per_ingress_key.get(&rec.key)
                 {
-                    if next_block_index > *last_processed_block {
+                    if next_block_index > *last_processed_block_index {
                         // This ingress key needs to provide this block, but we haven't got it yet
-                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block);
+                        log::trace!(self.logger, "cannot advance highest_processed_block_count to {}, because ingress_key {:?} only processed block {}", next_block_count, rec.key, last_processed_block_index);
                         reason_we_stopped = Some(rec.clone());
                         break 'outer;
                     }
@@ -187,6 +208,7 @@ impl BlockTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sharding_strategy::EpochShardingStrategy;
     use mc_common::logger::test_with_logger;
     use mc_fog_recovery_db_iface::IngressPublicKeyStatus;
     use mc_util_from_random::FromRandom;
@@ -195,7 +217,7 @@ mod tests {
 
     #[test_with_logger]
     fn next_blocks_empty(logger: Logger) {
-        let block_tracker = BlockTracker::new(logger);
+        let block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         assert_eq!(block_tracker.next_blocks(&[]).len(), 0);
     }
 
@@ -203,7 +225,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_key_hasnt_scanned(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
             status: IngressPublicKeyStatus {
@@ -244,7 +266,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_range_commissioned_scanned_some(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
             status: IngressPublicKeyStatus {
@@ -280,7 +302,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_key_retired_hasnt_scanned(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         let key = CompressedRistrettoPublic::from_random(&mut rng);
         let rec = IngressPublicKeyRecord {
@@ -331,7 +353,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_range_retired_scanned_some(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let last_ingested_block = 126;
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -374,7 +396,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_key_lost_hasnt_scanned(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let block_tracker = BlockTracker::new(logger);
+        let block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         let key = CompressedRistrettoPublic::from_random(&mut rng);
         let rec = IngressPublicKeyRecord {
@@ -400,7 +422,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_single_key_lost_scanned_some(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         let key = CompressedRistrettoPublic::from_random(&mut rng);
         let rec = IngressPublicKeyRecord {
@@ -448,7 +470,7 @@ mod tests {
     #[test_with_logger]
     fn next_blocks_multiple_keys(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
             status: IngressPublicKeyStatus {
@@ -505,7 +527,7 @@ mod tests {
     // highest_fully_processed_block_count behaves as expected
     #[test_with_logger]
     fn highest_fully_processed_block_count_all_empty(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         assert_eq!(
             block_tracker.highest_fully_processed_block_count(&[]),
@@ -516,7 +538,7 @@ mod tests {
     // Check with a key that hasn't yet processed anything.
     #[test_with_logger]
     fn highest_fully_processed_block_missing_blocks_nothing_processed1(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -539,7 +561,7 @@ mod tests {
     // are processed when the start block is 0.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed1(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
@@ -574,8 +596,7 @@ mod tests {
     // when the start block is greater than zero
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed2(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -610,8 +631,7 @@ mod tests {
     // then the key is reported lost
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_block_processed3(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -657,8 +677,7 @@ mod tests {
     // When the slow one is marked lost, that unblocks progress.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -754,8 +773,7 @@ mod tests {
     // key is loaded
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_multiple_recs_some_lost2(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -868,8 +886,7 @@ mod tests {
     /// key, makes progress
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_followed_by_gap(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -963,8 +980,7 @@ mod tests {
     /// when everything works.
     #[test_with_logger]
     fn highest_fully_processed_block_tracks_retired_key_concurrent_with_active(logger: Logger) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -1103,8 +1119,7 @@ mod tests {
     fn highest_fully_processed_block_tracks_retired_key_concurrent_with_active_both_lost(
         logger: Logger,
     ) {
-        let mut block_tracker = BlockTracker::new(logger);
-
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let mut rec1 = IngressPublicKeyRecord {
             key: CompressedRistrettoPublic::from_random(&mut rng),
@@ -1270,7 +1285,7 @@ mod tests {
     // Highest known block count is 0 when there are no inputs.
     #[test_with_logger]
     fn highest_known_block_count_when_empty(logger: Logger) {
-        let block_tracker = BlockTracker::new(logger);
+        let block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         assert_eq!(block_tracker.highest_known_block_count(), 0);
     }
@@ -1280,7 +1295,7 @@ mod tests {
     #[test_with_logger]
     fn highest_known_block_count_tracks_processed(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let mut block_tracker = BlockTracker::new(logger);
+        let mut block_tracker = BlockTracker::new(logger, EpochShardingStrategy::default());
 
         block_tracker.block_processed(CompressedRistrettoPublic::from_random(&mut rng), 100);
         assert_eq!(block_tracker.highest_known_block_count(), 101);

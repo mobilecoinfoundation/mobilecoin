@@ -1,9 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::common::BlockRange;
-use alloc::vec::Vec;
+use alloc::{string::String, vec, vec::Vec};
 use crc::Crc;
 use displaydoc::Display;
+use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
+use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
@@ -14,6 +16,9 @@ use prost::{Message, Oneof};
 use serde::{Deserialize, Serialize};
 
 pub use mc_fog_kex_rng::KexRngPubkey;
+
+/// The length of the ciphertext in the FixedTxOutSearchResult.
+pub const FIXED_CIPHERTEXT_LENGTH: usize = 255;
 
 // User <-> enclave proto schema types
 // These are synced with types in fog_api view.proto, and tests enforce that
@@ -93,6 +98,45 @@ pub struct QueryResponse {
     /// clients sample for mixins.
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// The results of each tx out search query
+    #[prost(message, repeated, tag = "10")]
+    pub fixed_tx_out_search_results: Vec<FixedTxOutSearchResult>,
+}
+
+/// Internal representation of the `MultiViewStoreQueryResponseStance` proto
+/// enum.
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum MultiViewStoreQueryResponseStatus {
+    /// Default status. This shouldn't be set explicitly.
+    Unknown,
+    /// The Fog View Store successfully fulfilled the request.
+    Success,
+    /// The Fog View Store is unable to decrypt a query within the
+    /// MultiViewStoreQuery. It needs to be authenticated by the router.
+    AuthenticationError,
+    /// The Fog View Store is not ready to service a MultiViewStoreQueryRequest.
+    /// This might be because the store has not loaded enough blocks yet.
+    NotReady,
+}
+
+/// Internal representation of the `MultiViewStoreQueryResponse` proto struct.
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct MultiViewStoreQueryResponse {
+    /// The encrypted QueryResponse.
+    pub encrypted_query_response: EnclaveMessage<NonceSession>,
+
+    /// The `ResponderId` for the store that fulfilled the request.
+    pub store_responder_id: ResponderId,
+
+    /// The `FogViewStoreUri` for the store that fulfilled the request.
+    pub store_uri: String,
+
+    /// The block ranges that the shard is responsible for.
+    pub block_range: BlockRange,
+
+    /// The response status set by the store.
+    pub status: MultiViewStoreQueryResponseStatus,
 }
 
 /// A record that can be used by the user to produce an Rng shared with fog
@@ -180,6 +224,49 @@ pub struct TxOutSearchResult {
     /// The ciphertext payload
     #[prost(bytes, tag = "3")]
     pub ciphertext: Vec<u8>,
+    /// The payload length
+    #[prost(bytes, tag = "4")]
+    pub padding: Vec<u8>,
+}
+
+/// A struct representing the result of a fog view Txo query with a fixed
+/// ciphertext length. This View Stores return this to the router.
+#[derive(Clone, Eq, Hash, PartialEq, Message, Serialize, Deserialize)]
+pub struct FixedTxOutSearchResult {
+    /// The search key that yielded this result
+    #[prost(bytes, tag = "1")]
+    pub search_key: Vec<u8>,
+    /// This is a TxOutSearchResultCode
+    #[prost(fixed32, tag = "2")]
+    pub result_code: u32,
+    /// The ciphertext payload
+    #[prost(bytes, tag = "3")]
+    pub ciphertext: Vec<u8>,
+    /// The payload length
+    #[prost(fixed32, tag = "4")]
+    pub payload_length: u32,
+}
+
+impl FixedTxOutSearchResult {
+    /// Creates a new [FixedTxOutSearchResult]
+    pub fn new(search_key: Vec<u8>, payload: &[u8], result_code: TxOutSearchResultCode) -> Self {
+        let mut ciphertext = vec![0u8; FIXED_CIPHERTEXT_LENGTH];
+        let payload_length = payload.len();
+        ciphertext[0..payload_length].clone_from_slice(payload);
+
+        FixedTxOutSearchResult {
+            search_key,
+            result_code: result_code as u32,
+            ciphertext,
+            payload_length: payload_length as u32,
+        }
+    }
+
+    /// Creates a new [FixedTxOutSearchResult] with
+    /// [TxOutSearchResult::NotFound]
+    pub fn new_not_found(search_key: Vec<u8>) -> Self {
+        Self::new(search_key, &[], TxOutSearchResultCode::NotFound)
+    }
 }
 
 /// An enum capturing the Oneof in the proto file around masked token id bytes
@@ -221,6 +308,27 @@ impl From<&MaskedAmount> for TxOutAmountMaskedTokenId {
                     masked_amount.masked_token_id.clone(),
                 )
             }
+        }
+    }
+}
+
+/// This conversion must be constant time.
+impl From<FixedTxOutSearchResult> for TxOutSearchResult {
+    fn from(src: FixedTxOutSearchResult) -> Self {
+        // The ciphertext field's length will always be FIXED_CIPHERTEXT_LENGTH, so this
+        // is constant time.
+        let mut ciphertext = src.ciphertext.clone();
+        let mut padding = vec![0; FIXED_CIPHERTEXT_LENGTH];
+
+        ciphertext.truncate(src.payload_length as usize);
+        let padding_length = FIXED_CIPHERTEXT_LENGTH - (src.payload_length as usize);
+        padding.truncate(padding_length);
+
+        TxOutSearchResult {
+            search_key: src.search_key,
+            result_code: src.result_code,
+            ciphertext,
+            padding,
         }
     }
 }
@@ -568,5 +676,52 @@ mod view_tests {
         let result = fog_tx_out.try_recover_tx_out(&view_private_key);
 
         assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::view::{
+        FixedTxOutSearchResult, TxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH,
+    };
+    use alloc::{vec, vec::Vec};
+    use yare::parameterized;
+
+    #[parameterized(
+    payload_length_is_0 = { 0 },
+    payload_length_is_1 = { 1 },
+    payload_length_smaller_than_ciphertext = { 232 },
+    payload_length_is_254 = { 254 },
+    payload_length_equals_ciphertext = { 255 },
+    )]
+    fn tx_out_search_result_conversion(payload_length: usize) {
+        let fixed_tx_out_search_results = (0..10)
+            .map(|i| {
+                let payload = vec![i; payload_length];
+                FixedTxOutSearchResult::new(vec![i], &payload, TxOutSearchResultCode::Found)
+            })
+            .collect::<Vec<_>>();
+
+        let tx_out_search_results = fixed_tx_out_search_results
+            .iter()
+            .map(|result| result.clone().into())
+            .collect::<Vec<TxOutSearchResult>>();
+
+        for (i, result) in tx_out_search_results.iter().enumerate() {
+            assert_eq!(result.search_key, fixed_tx_out_search_results[i].search_key);
+            assert_eq!(
+                result.result_code,
+                fixed_tx_out_search_results[i].result_code
+            );
+            let fixed_result_payload_length =
+                fixed_tx_out_search_results[i].payload_length as usize;
+            assert_eq!(
+                result.ciphertext,
+                fixed_tx_out_search_results[i].ciphertext[0..fixed_result_payload_length]
+            );
+            let padding_length =
+                FIXED_CIPHERTEXT_LENGTH - (fixed_tx_out_search_results[i].payload_length as usize);
+            assert_eq!(result.padding, vec![0; padding_length])
+        }
     }
 }

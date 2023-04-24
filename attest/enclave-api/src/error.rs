@@ -2,10 +2,11 @@
 
 //! Enclave API Errors
 
+use alloc::string::{String, ToString};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{NonceError, QuoteError, SgxError};
+use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, QuoteError, SgxError};
 use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
@@ -50,6 +51,12 @@ pub enum Error {
     /// Another thread crashed while holding a lock
     Poison,
 
+    /// An error occurred during a sealing operation
+    Seal(IntelSealingError),
+
+    /// An error occurred during an unsealing operation
+    Unseal(ParseSealedError),
+
     /**
      * Invalid state for call
      *
@@ -63,6 +70,12 @@ pub enum Error {
 
     /// Too many IAS reports are already in-flight
     TooManyPendingReports,
+
+    /// Encoding error
+    Encode(String),
+
+    /// Decoding error
+    Decode(String),
 
     /// Connection not found by node ID or session
     NotFound,
@@ -107,5 +120,29 @@ impl From<QuoteError> for Error {
 impl From<VerifierError> for Error {
     fn from(src: VerifierError) -> Error {
         Error::Verify(src)
+    }
+}
+
+impl From<IntelSealingError> for Error {
+    fn from(src: IntelSealingError) -> Error {
+        Error::Seal(src)
+    }
+}
+
+impl From<ParseSealedError> for Error {
+    fn from(src: ParseSealedError) -> Error {
+        Error::Unseal(src)
+    }
+}
+
+impl From<mc_util_serial::encode::Error> for Error {
+    fn from(src: mc_util_serial::encode::Error) -> Self {
+        Error::Encode(src.to_string())
+    }
+}
+
+impl From<mc_util_serial::decode::Error> for Error {
+    fn from(src: mc_util_serial::decode::Error) -> Self {
+        Error::Decode(src.to_string())
     }
 }

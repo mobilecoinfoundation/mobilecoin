@@ -772,6 +772,7 @@ dependencies = [
  "mc-attest-verifier",
  "mc-crypto-noise",
  "mc-sgx-compat",
+ "mc-util-serial",
  "serde",
 ]
 
@@ -888,6 +889,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
+ "mc-util-serial",
  "sha2",
 ]
 
@@ -1189,6 +1191,8 @@ version = "4.1.0-pre0"
 dependencies = [
  "crc",
  "displaydoc",
+ "mc-attest-enclave-api",
+ "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
  "mc-transaction-core",

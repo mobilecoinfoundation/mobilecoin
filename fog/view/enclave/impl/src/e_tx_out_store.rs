@@ -13,7 +13,7 @@ use aligned_cmov::{
 };
 use alloc::boxed::Box;
 use mc_common::logger::Logger;
-use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
+use mc_fog_types::view::{FixedTxOutSearchResult, TxOutSearchResultCode, FIXED_CIPHERTEXT_LENGTH};
 use mc_fog_view_enclave_api::AddRecordsError;
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
@@ -134,11 +134,13 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
         Ok(())
     }
 
-    pub fn find_record(&mut self, search_key: &[u8]) -> TxOutSearchResult {
-        let mut result = TxOutSearchResult {
+    pub fn find_record(&mut self, search_key: &[u8]) -> FixedTxOutSearchResult {
+        let mut result = FixedTxOutSearchResult {
             search_key: search_key.to_vec(),
             result_code: TxOutSearchResultCode::InternalError as u32,
-            ciphertext: vec![0u8; ValueSize::USIZE - 1 - self.last_ciphertext_size_byte as usize],
+            ciphertext: vec![0u8; FIXED_CIPHERTEXT_LENGTH],
+            // Use zero as the default. This value will be updated in every scenario.
+            payload_length: 0,
         };
 
         // Early return for bad search key
@@ -181,12 +183,15 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ETxOutStore<OSC>
             );
         }
 
-        // Copy the data in value[1..] to result.ciphertext, resizing if needed
-        result
-            .ciphertext
-            .resize(ValueSize::USIZE - 1 - value[0] as usize, 0u8);
-        let data_end = ValueSize::USIZE - value[0] as usize;
-        result.ciphertext.copy_from_slice(&value[1..data_end]);
+        // To preserve constant time execution, we always copy `ValueSize::USIZE - 1`
+        // bytes. To ensure the copy doesn't panic, assert that the length to
+        // copy is less than the maximum length that ciphertext can be, which is
+        // `FIXED_CIPHERTEXT_LENGTH`.
+        const LENGTH_TO_COPY: usize = ValueSize::USIZE - 1;
+        static_assertions::const_assert!(LENGTH_TO_COPY < FIXED_CIPHERTEXT_LENGTH);
+
+        result.ciphertext[..LENGTH_TO_COPY].copy_from_slice(&value[1..(LENGTH_TO_COPY + 1)]);
+        result.payload_length = (ValueSize::USIZE - 1 - (value[0] as usize)) as u32;
 
         result
     }

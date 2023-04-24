@@ -117,11 +117,30 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         }
         ViewEnclaveRequest::GetIasReport => serialize(&ENCLAVE.get_ias_report()),
         ViewEnclaveRequest::ClientAccept(msg) => serialize(&ENCLAVE.client_accept(msg)),
+        ViewEnclaveRequest::ViewStoreInit(view_store_id) => {
+            serialize(&ENCLAVE.view_store_init(view_store_id))
+        }
+        ViewEnclaveRequest::ViewStoreConnect(view_store_id, msg) => {
+            serialize(&ENCLAVE.view_store_connect(view_store_id, msg))
+        }
+        ViewEnclaveRequest::FrontendAccept(msg) => serialize(&ENCLAVE.frontend_accept(msg)),
         ViewEnclaveRequest::ClientClose(session) => serialize(&ENCLAVE.client_close(session)),
         ViewEnclaveRequest::Query(req, untrusted_query_response) => {
             serialize(&ENCLAVE.query(req, untrusted_query_response))
         }
+        ViewEnclaveRequest::QueryStore(req, untrusted_query_response) => {
+            serialize(&ENCLAVE.query_store(req, untrusted_query_response))
+        }
         ViewEnclaveRequest::AddRecords(records) => serialize(&ENCLAVE.add_records(records)),
+        ViewEnclaveRequest::DecryptAndSealQuery(client_query) => {
+            serialize(&ENCLAVE.decrypt_and_seal_query(client_query))
+        }
+        ViewEnclaveRequest::CreateMultiViewStoreQuery(sealed_query) => {
+            serialize(&ENCLAVE.create_multi_view_store_query_data(sealed_query))
+        }
+        ViewEnclaveRequest::CollateQueryResponses(sealed_query, shard_query_responses) => {
+            serialize(&ENCLAVE.collate_shard_query_responses(sealed_query, shard_query_responses))
+        }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }

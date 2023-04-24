@@ -2,11 +2,11 @@
 
 //! Conversions from gRPC message types into consensus_enclave_api types.
 
-use crate::attest::{AuthMessage, Message};
+use crate::attest::{AuthMessage, Message, NonceMessage};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
 use mc_attest_enclave_api::{
-    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
-    Session,
+    ClientAuthRequest, ClientAuthResponse, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
+    NonceSession, PeerAuthRequest, PeerAuthResponse, Session,
 };
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
@@ -61,6 +61,34 @@ impl From<ClientAuthRequest> for AuthMessage {
     }
 }
 
+impl From<AuthMessage> for NonceAuthRequest {
+    fn from(src: AuthMessage) -> NonceAuthRequest {
+        src.data.into()
+    }
+}
+
+impl From<NonceAuthRequest> for AuthMessage {
+    fn from(src: NonceAuthRequest) -> AuthMessage {
+        let mut retval = AuthMessage::default();
+        retval.set_data(src.into());
+        retval
+    }
+}
+
+impl From<AuthMessage> for NonceAuthResponse {
+    fn from(src: AuthMessage) -> NonceAuthResponse {
+        src.data.into()
+    }
+}
+
+impl From<NonceAuthResponse> for AuthMessage {
+    fn from(src: NonceAuthResponse) -> AuthMessage {
+        let mut retval = AuthMessage::default();
+        retval.set_data(src.into());
+        retval
+    }
+}
+
 impl From<AuthMessage> for PeerAuthResponse {
     fn from(src: AuthMessage) -> PeerAuthResponse {
         src.data.into()
@@ -103,7 +131,31 @@ impl<S: Session> From<EnclaveMessage<S>> for Message {
     fn from(src: EnclaveMessage<S>) -> Message {
         let mut retval = Message::default();
         retval.set_aad(src.aad);
-        retval.set_channel_id(src.channel_id.clone().into());
+        retval.set_channel_id(src.channel_id.into());
+        retval.set_data(src.data);
+        retval
+    }
+}
+
+impl From<NonceMessage> for EnclaveMessage<NonceSession> {
+    fn from(src: NonceMessage) -> Self {
+        let channel_id = NonceSession::new(src.channel_id, src.nonce);
+        Self {
+            aad: src.aad,
+            channel_id,
+            data: src.data,
+        }
+    }
+}
+
+impl From<EnclaveMessage<NonceSession>> for NonceMessage {
+    fn from(src: EnclaveMessage<NonceSession>) -> NonceMessage {
+        let mut retval = NonceMessage::default();
+        retval.set_aad(src.aad);
+        // it doesn't matter if we don't bump the nonce when retrieving it,
+        // src.channel_id will be discarded anyways.
+        retval.set_nonce(src.channel_id.nonce());
+        retval.set_channel_id(src.channel_id.into());
         retval.set_data(src.data);
         retval
     }

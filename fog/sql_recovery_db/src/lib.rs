@@ -40,7 +40,7 @@ use mc_fog_recovery_db_iface::{
 };
 use mc_fog_types::{
     common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
+    view::{FixedTxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
 use mc_util_parse::parse_duration_in_seconds;
@@ -884,13 +884,13 @@ impl SqlRecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs_retriable(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Error> {
+    ) -> Result<Vec<FixedTxOutSearchResult>, Error> {
         let conn = &mut self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -908,17 +908,12 @@ impl SqlRecoveryDb {
         let mut results = Vec::new();
         for search_key in search_keys {
             results.push(match search_key_to_payload.get(search_key) {
-                Some(payload) => TxOutSearchResult {
-                    search_key: search_key.clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: payload.clone(),
-                },
-
-                None => TxOutSearchResult {
-                    search_key: search_key.clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: Default::default(),
-                },
+                Some(payload) => FixedTxOutSearchResult::new(
+                    search_key.clone(),
+                    payload,
+                    TxOutSearchResultCode::Found,
+                ),
+                None => FixedTxOutSearchResult::new_not_found(search_key.clone()),
             });
         }
 
@@ -978,8 +973,7 @@ impl SqlRecoveryDb {
     ///
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
-    /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many consecutive blocks to also request data for.
+    /// * block_range: The range of blocks to get ETxOutRecords from.
     ///
     /// Returns:
     /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
@@ -987,8 +981,7 @@ impl SqlRecoveryDb {
     fn get_tx_outs_by_block_range_and_key_retriable(
         &self,
         ingress_key: CompressedRistrettoPublic,
-        block_index: u64,
-        block_count: usize,
+        block_range: &BlockRange,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Error> {
         let conn = &mut self.pool.get()?;
 
@@ -1004,8 +997,8 @@ impl SqlRecoveryDb {
             use schema::ingested_blocks::dsl;
             dsl::ingested_blocks
                 .filter(dsl::ingress_public_key.eq(key_bytes))
-                .filter(dsl::block_number.ge(block_index as i64))
-                .limit(block_count as i64)
+                .filter(dsl::block_number.ge(block_range.start_block as i64))
+                .limit(block_range.len() as i64)
                 .select((dsl::block_number, dsl::proto_ingested_block_data))
                 .order(dsl::block_number.asc())
         };
@@ -1013,12 +1006,12 @@ impl SqlRecoveryDb {
         // We will get one row for each hit in the table we found
         let rows: Vec<(i64, Vec<u8>)> = query.load(conn)?;
 
-        if rows.len() > block_count {
+        if (rows.len() as u64) > block_range.len() {
             log::warn!(
                 self.logger,
                 "When querying, more responses than expected: {} > {}",
                 rows.len(),
-                block_count
+                block_range.len(),
             );
         }
 
@@ -1032,11 +1025,11 @@ impl SqlRecoveryDb {
 
         let mut result = Vec::new();
         for (idx, (block_number, proto)) in rows.into_iter().enumerate() {
-            if block_index + idx as u64 == block_number as u64 {
+            if block_range.start_block + (idx as u64) == block_number as u64 {
                 let proto = ProtoIngestedBlockData::decode(&*proto)?;
                 result.push(proto.e_tx_out_records);
             } else {
-                log::warn!(self.logger, "When querying for block index {} and up to {} blocks on, the {}'th response has block_number {} which is not expected. Gaps in the data?", block_index, block_count, idx, block_number);
+                log::warn!(self.logger, "When querying for block index {} and up to {} blocks on, the {}'th response has block_number {} which is not expected. Gaps in the data?", block_range.start_block, block_range.len(), idx, block_number);
                 break;
             }
         }
@@ -1422,13 +1415,13 @@ impl RecoveryDb for SqlRecoveryDb {
     /// * search_keys: A list of fog tx_out search keys to search for.
     ///
     /// Returns:
-    /// * Exactly one TxOutSearchResult object for every search key, or an
+    /// * Exactly one FixedTxOutSearchResult object for every search key, or an
     ///   internal database error description.
     fn get_tx_outs(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Self::Error> {
+    ) -> Result<Vec<FixedTxOutSearchResult>, Self::Error> {
         our_retry(self.get_retries(), || {
             self.get_tx_outs_retriable(start_block, search_keys)
         })
@@ -1471,8 +1464,7 @@ impl RecoveryDb for SqlRecoveryDb {
     ///
     /// Arguments:
     /// * ingress_key: The ingress key we need ETxOutRecords from
-    /// * block_index: The first block we need ETxOutRecords from
-    /// * block_count: How many consecutive blocks to also request data for.
+    /// * block_range: The range of blocks to get ETxOutRecords from.
     ///
     /// Returns:
     /// * The sequence of ETxOutRecord's, from consecutive blocks starting from
@@ -1480,11 +1472,10 @@ impl RecoveryDb for SqlRecoveryDb {
     fn get_tx_outs_by_block_range_and_key(
         &self,
         ingress_key: CompressedRistrettoPublic,
-        block_index: u64,
-        block_count: usize,
+        block_range: &BlockRange,
     ) -> Result<Vec<Vec<ETxOutRecord>>, Self::Error> {
         our_retry(self.get_retries(), || {
-            self.get_tx_outs_by_block_range_and_key_retriable(ingress_key, block_index, block_count)
+            self.get_tx_outs_by_block_range_and_key_retriable(ingress_key, block_range)
         })
     }
 
@@ -1632,6 +1623,7 @@ mod tests {
     };
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
+    use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
     use pem::Pem;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
@@ -2240,11 +2232,7 @@ mod tests {
                 results,
                 test_case
                     .iter()
-                    .map(|search_key| TxOutSearchResult {
-                        search_key: search_key.clone(),
-                        result_code: TxOutSearchResultCode::NotFound as u32,
-                        ciphertext: vec![]
-                    })
+                    .map(|search_key| FixedTxOutSearchResult::new_not_found(search_key.clone()))
                     .collect::<Vec<_>>()
             );
         }
@@ -2261,31 +2249,23 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[0].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[5].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[1].clone(),
+                    &records1[0].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[2].clone(),
+                    &records1[5].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2293,31 +2273,23 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[0].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records1[5].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[1].clone(),
+                    &records1[0].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[2].clone(),
+                    &records1[5].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2327,31 +2299,11 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[1].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[2].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[3].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
 
@@ -2359,31 +2311,15 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                TxOutSearchResult {
-                    search_key: test_case[0].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[1].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[2].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
-                TxOutSearchResult {
-                    search_key: test_case[3].clone(),
-                    result_code: TxOutSearchResultCode::Found as u32,
-                    ciphertext: records2[3].payload.clone(),
-                },
-                TxOutSearchResult {
-                    search_key: test_case[4].clone(),
-                    result_code: TxOutSearchResultCode::NotFound as u32,
-                    ciphertext: vec![]
-                },
+                FixedTxOutSearchResult::new_not_found(test_case[0].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[1].clone()),
+                FixedTxOutSearchResult::new_not_found(test_case[2].clone()),
+                FixedTxOutSearchResult::new(
+                    test_case[3].clone(),
+                    &records2[3].payload,
+                    TxOutSearchResultCode::Found
+                ),
+                FixedTxOutSearchResult::new_not_found(test_case[4].clone()),
             ]
         );
     }
@@ -2465,69 +2401,78 @@ mod tests {
 
         // Get tx outs for a key we're not aware of or a block id we're not aware of
         // should return empty vec
+        let block_range = BlockRange::new_from_length(124, 2);
         let batch_result = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, 124, 2)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_result.len(), 0);
 
+        let block_range = BlockRange::new_from_length(123, 2);
         let batch_result = db
             .get_tx_outs_by_block_range_and_key(
                 CompressedRistrettoPublic::from_random(&mut rng),
-                123,
-                2,
+                &block_range,
             )
             .unwrap();
         assert_eq!(batch_result.len(), 0);
 
         // Getting tx outs in a batch should work as expected when requesting things
         // that exist
+        let block_range = BlockRange::new_from_length(block1.index, 1);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 1)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 1);
         assert_eq!(batch_results[0], records1);
 
+        let block_range = BlockRange::new_from_length(block2.index, 1);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 1)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 1);
         assert_eq!(batch_results[0], records2);
 
+        let block_range = BlockRange::new_from_length(block1.index, 2);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 2)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 2);
         assert_eq!(batch_results[0], records1);
         assert_eq!(batch_results[1], records2);
 
+        let block_range = BlockRange::new_from_length(block2.index, 2);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 2)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 1);
         assert_eq!(batch_results[0], records2);
 
+        let block_range = BlockRange::new_from_length(block1.index, 3);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index, 3)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 2);
         assert_eq!(batch_results[0], records1);
         assert_eq!(batch_results[1], records2);
 
+        let block_range = BlockRange::new_from_length(block2.index, 3);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block2.index, 3)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 1);
         assert_eq!(batch_results[0], records2);
 
         // When there is a gap in the data, the gap should suppress any further results
         // even if there are hits later in the range.
+        let block_range = BlockRange::new_from_length(block1.index - 1, 2);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 1, 2)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 0);
 
+        let block_range = BlockRange::new_from_length(block1.index - 2, 3);
         let batch_results = db
-            .get_tx_outs_by_block_range_and_key(ingress_key, block1.index - 2, 3)
+            .get_tx_outs_by_block_range_and_key(ingress_key, &block_range)
             .unwrap();
         assert_eq!(batch_results.len(), 0);
     }
