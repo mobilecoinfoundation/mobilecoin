@@ -132,8 +132,8 @@ impl Default for RTHMemoBuilder {
 /// other error code.
 #[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum MemoBuilderError {
-    /// Invalid state change
-    StateChange(String),
+    /// Unable to set custom memo type
+    CustomMemoType(String),
     /// Other
     Other(String),
 }
@@ -165,7 +165,7 @@ impl RTHMemoBuilder {
     /// Set the payment request id.
     pub fn set_payment_request_id(&mut self, id: u64) -> Result<(), MemoBuilderError> {
         if self.custom_memo_type.is_some() {
-            return Err(MemoBuilderError::StateChange(format!(
+            return Err(MemoBuilderError::CustomMemoType(format!(
                 "Custom Memo Type already set to {:?}",
                 self.custom_memo_type
             )));
@@ -182,7 +182,7 @@ impl RTHMemoBuilder {
     /// Set the payment intent id.
     pub fn set_payment_intent_id(&mut self, id: u64) -> Result<(), MemoBuilderError> {
         if self.custom_memo_type.is_some() {
-            return Err(MemoBuilderError::StateChange(format!(
+            return Err(MemoBuilderError::CustomMemoType(format!(
                 "Custom Memo Type already set to {:?}",
                 self.custom_memo_type
             )));
@@ -197,7 +197,7 @@ impl RTHMemoBuilder {
         memos: FlexibleMemoPayloads,
     ) -> Result<(), MemoBuilderError> {
         if self.custom_memo_type.is_some() {
-            return Err(MemoBuilderError::StateChange(format!(
+            return Err(MemoBuilderError::CustomMemoType(format!(
                 "Custom Memo Type already set to {:?}",
                 self.custom_memo_type
             )));
@@ -463,7 +463,7 @@ mod tests {
             change_memo_payload,
         }
     }
-    
+
     fn get_invalid_flexible_memos() -> FlexibleMemoPayloads {
         let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
         let memo_data = [0x01; 32];
