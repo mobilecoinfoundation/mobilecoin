@@ -187,6 +187,7 @@ mod tests {
         assert_eq!(
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
+        );
         let uri = FogViewRouterUri::from_str(
             "insecure-fog-view-router://node1.test.mobilecoin.com:3225/",
         )
