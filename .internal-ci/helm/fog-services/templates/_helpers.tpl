@@ -44,6 +44,17 @@ app.kubernetes.io/name: {{ include "fogServices.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/* Block height retrieval URL */}}
+{{/* E.x. https://readonly-fs-{mainn|test}net.mobilecoin.com/wallet/v2 */}}
+{{- define "fogServices.blockHeightURL" -}}
+{{- if .Values.blockHeighRetrieval.url }}
+{{- .Values.blockHeighRetrieval.url }}
+{{- else if .Values.blockHeighRetrieval.urlNetworkTemplate }}
+{{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
+{{- tpl .Values.blockHeighRetrieval.urlNetworkTemplate (dict "Network" $networkName "Template" .Template) }}
+{{- end }}
+{{- end }}
+
 {{/* Fog Public FQDN */}}
 {{- define "fogServices.fogPublicFQDN" -}}
 {{- $domainname := "" }}
