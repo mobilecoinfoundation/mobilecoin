@@ -23,6 +23,11 @@ service FogViewRouterAdminAPI {
     rpc addShard(fog_common.AddShardRequest) returns (google.protobuf.Empty) {}
 }
 
+message AddShardRequest {
+    // The shard's URI in string format.
+    string shard_uri = 1;
+}
+
 message FogViewRouterRequest {
     oneof request_data {
         /// This is called to perform IX key exchange
