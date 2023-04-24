@@ -197,7 +197,7 @@ impl Watcher {
             for (src_url, (block_index, block_data_result)) in url_to_block_data_result {
                 match block_data_result {
                     Ok(block_data) => {
-                        log::info!(
+                        log::debug!(
                             self.logger,
                             "Archive block retrieved for {} {}",
                             src_url,
