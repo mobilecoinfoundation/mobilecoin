@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 data:
-  acct_view.conf: |
+  fog_ledger_router.conf: |
     [program:fog-ledger-router]
     priority=100
     environment=MC_SENTRY_DSN="%(ENV_FOG_LEDGER_SENTRY_DSN)s"
