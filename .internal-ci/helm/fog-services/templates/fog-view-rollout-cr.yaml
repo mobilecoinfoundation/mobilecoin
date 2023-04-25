@@ -21,15 +21,15 @@ spec:
         replicas: {{ .Values.fogViewRouter.replicaCount }}
         selector:
           matchLabels:
-            app: fog-view
+            app: fog-view-router
             {{- include "fogServices.selectorLabels" . | nindent 12 }}
-        serviceName: {{ include "fogServices.fullname" . }}-fog-view
+        serviceName: {{ include "fogServices.fullname" . }}-fog-view-router
         template:
           metadata:
             annotations:
               {{- toYaml .Values.fogViewRouter.podAnnotations | nindent 14 }}
             labels:
-              app: fog-view
+              app: fog-view-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
             volumes:
@@ -40,7 +40,7 @@ spec:
                 defaultMode: 420
                 sources:
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
+                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-router
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-sgx
                 - configMap:
@@ -82,6 +82,7 @@ spec:
                 containerPort: 8000
               envFrom:
               - configMapRef:
+                  # This is pre-installed from the fog-services-config chart or Terraform
                   name: fog-view
               - secretRef:
                   name: ias
@@ -174,9 +175,9 @@ spec:
             {{- end }}
         
   store:
-    containerName: fog-view
+    containerName: fog-view-store
     servicePort: 80
-    targetPort: view
+    targetPort: view-grpc
     spec:
       replicas: {{ .Values.fogView.replicaCount }}
       selector:
@@ -192,13 +193,14 @@ spec:
             app: fog-view-store
             {{- include "fogServices.labels" . | nindent 12 }}
         spec:
+          # TODO: constraints, affinity used fog-view; but selector used fog-view-store?
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
             whenUnsatisfiable: DoNotSchedule
             labelSelector:
               matchLabels:
-                app: fog-view
+                app: fog-view-store
                 helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 16 }}
           affinity:
@@ -206,7 +208,7 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
               - topologyKey: kubernetes.io/hostname
                 labelSelector:
-                  app: fog-view
+                  app: fog-view-store
                   helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 18 }}
           imagePullSecrets:
@@ -224,14 +226,14 @@ spec:
               runAsUser: 0
               runAsNonRoot: False
           containers:
-          - name: fog-view
+          - name: fog-view-store
             image: "{{ .Values.fogView.image.org | default .Values.image.org }}/{{ .Values.fogView.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.fogView.image.pullPolicy }}
             command: [ "/usr/bin/supervisord" ]
             ports:
-            - name: view
+            - name: view-grpc
               containerPort: 3225
-            - name: mgmt
+            - name: mgmt-http
               containerPort: 8000
             envFrom:
             - configMapRef:
@@ -377,6 +379,6 @@ spec:
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-daemon
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view
+                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-store
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-admin

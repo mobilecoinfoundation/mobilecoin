@@ -158,7 +158,7 @@ jobs:
             requests:
               intel.com/sgx: 2000
         blockHeighRetrieval:
-          url: 'https://node1.alpha.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
+          url: 'https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
           responseJQ: '.index'
           requestBody: ' '
           queryInterval: 5m

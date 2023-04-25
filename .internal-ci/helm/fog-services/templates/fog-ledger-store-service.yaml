@@ -1,0 +1,24 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fogServices.fullname" . }}-fog-ledger-store
+  labels:
+    app: fog-ledger-store
+    {{- include "fogServices.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: fog-ledger-store
+    {{- include "fogServices.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: ledger-grpc
+      port: 3228
+      targetPort: ledger-grpc
+    - name: mgmt-http
+      port: 8000
+      targetPort: mgmt-http
+    - name: ledger-http
+      port: 8228
+      targetPort: ledger-http

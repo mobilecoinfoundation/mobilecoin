@@ -17,13 +17,13 @@ spec:
     shardingScheme: insecure-key-image-store
     shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
     template:
-      containerName: fog-ledger
+      containerName: fog-ledger-router
       spec:
         podManagementPolicy: {{ .Values.fogLedgerRouter.podManagementPolicy }}
         replicas: {{ .Values.fogLedgerRouter.replicaCount }}
         selector:
           matchLabels:
-            app: fog-ledger
+            app: fog-ledger-router
             {{- include "fogServices.selectorLabels" . | nindent 12 }}
         serviceName: {{ include "fogServices.fullname" . }}-fog-ledger
         template:
@@ -31,7 +31,7 @@ spec:
             annotations:
               {{- toYaml .Values.fogLedgerRouter.podAnnotations | nindent 14 }}
             labels:
-              app: fog-ledger
+              app: fog-ledger-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
             # Try to balance pods across zones
@@ -41,7 +41,7 @@ spec:
               whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
-                  app: fog-ledger
+                  app: fog-ledger-router
                   helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 16 }}
             affinity:
@@ -49,7 +49,7 @@ spec:
                 requiredDuringSchedulingIgnoredDuringExecution:
                 - topologyKey: kubernetes.io/hostname
                   labelSelector:
-                    app: fog-ledger
+                    app: fog-ledger-router
                     helm.sh/chart: {{ include "fogServices.chart" . }}
                     {{- include "fogServices.selectorLabels" . | nindent 18 }}
             imagePullSecrets:
@@ -60,7 +60,7 @@ spec:
               - name: ndots
                 value: "1"
             containers:
-            - name: fog-ledger
+            - name: fog-ledger-router
               image: "{{ .Values.fogLedgerRouter.image.org | default .Values.image.org }}/{{ .Values.fogLedgerRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
               command: [ "/usr/bin/supervisord" ]
@@ -73,6 +73,7 @@ spec:
               - secretRef:
                   name: ias
               - configMapRef:
+                  # This is installed from the fog-services-config chart or Terraform
                   name: fog-ledger
               - secretRef:
                   name: ipinfo
@@ -198,9 +199,9 @@ spec:
                     name: {{ include "fogServices.fullname" . }}-supervisord-admin
 
   store:
-    containerName: fog-ledger
+    containerName: fog-ledger-store
     servicePort: 80
-    targetPort: ledger
+    targetPort: ledger-grpc
     spec:
       podManagementPolicy: {{ .Values.fogLedger.podManagementPolicy }}
       replicas: {{ .Values.fogLedger.replicaCount }}
@@ -244,19 +245,20 @@ spec:
           initContainers:
           {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 10 }}
           containers:
-          - name: fog-ledger
+          - name: fog-ledger-store
             image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
             command: [ "/usr/bin/supervisord" ]
             ports:
-            - name: ledger
+            - name: ledger-grpc
               containerPort: 3228
-            - name: mgmt
+            - name: mgmt-http
               containerPort: 8000
             envFrom:
             - secretRef:
                 name: ias
             - configMapRef:
+                # Configmap is created by fog-services chart, or Terraform
                 name: fog-ledger
             - secretRef:
                 name: ipinfo
@@ -376,7 +378,7 @@ spec:
               - configMap:
                   name: fog-supervisord-mobilecoind
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger
+                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-store
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-admin
       {{- if .Values.fogLedger.persistence.enabled }}
