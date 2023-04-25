@@ -10,15 +10,15 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Added
 
-- Average slam rate to json slam report ([#3080])
-- Provide build time error messages for invalid SGX_MODE and IAS_MODE environment variables ([#3164])
-- `mc-attest-verifier-config` crate to handle multiple enclave measurements and hardening advisories ([#3148])
-- Logic in consensus to track and drop clients that exceed a number of failed tx proposals ([#3208], [#3155], [#3156])
-- Passing extra GRPC services to `AdminServer` ([#3242])
-- [MCIP 61]: Defragmentation Memos ([#3170])
-- Capability of b58-decoder to print public address hashes ([#3283])
-- Fog view router to support sharding the fog storage. Provides a streaming and unary GRPC api. ([#3297])
-- Fog ledger router to support sharding the key image storage. Provides a streaming and unary GRPC api. ([#3312], ([#3331])
+- The json slam report now contains the average slam rate ([#3080])
+- Build time error messages will now be output for invalid `SGX_MODE` and `IAS_MODE` environment variables ([#3164])
+- Added a new crate `mc-attest-verifier-config` crate which can be used to handle multiple enclave measurements and hardening advisories ([#3148])
+- Add logic in consensus to drop clients that exceed a configurable number of failed tx proposals ([#3208], [#3155], [#3156])
+- The `AdminServer` now allows passing of extra gRPC services ([#3242])
+- [MCIP 61]: Add Defragmentation Memos ([#3170])
+- The b58-decoder can now print public address hashes ([#3283])
+- Fog view router supports sharding the fog storage. Provides a streaming and unary GRPC api. ([#3297])
+- Fog ledger router supports sharding the key image storage. Provides a streaming and unary GRPC api. ([#3312], ([#3331])
 
 ### Fixed
 
@@ -28,8 +28,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Removed
 
-- Prometheus push in local network development/testing script ([#3124])
-- `mc-crypto-dalek` ([#3282])
+- Removed the prometheus push setting in local network development/testing script ([#3124])
+- Removed the `mc-crypto-dalek` crate ([#3282])
 
 ### Security
 
@@ -39,7 +39,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - `mobilecoind` now has its own version of the `LastBlockInfo` proto message. ([#3307])
 - `mobilecoind` now exposes the chain-id of the chain it is connected to via rpc ([#3313])
-- Prefix metrics with the service names ([#2908], [#3322])
+- Metrics are now prefixed with the service names ([#2908], [#3322])
 - Use "unknown" for `GIT_COMMIT` failures in logging output ([#3117])
 - Update MSRV to 1.68.0 ([#3122])
 - Unfork opentelmetry, use reqwest backend. Also removes use of openssl-sys ([#3154])
@@ -61,7 +61,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 #### Rust Dependencies
 
-- Updated `rust-toolchain` version to newer nightly "2023-01-22" ([#2999], [#3323])
+- Update `rust-toolchain` version to newer nightly "2023-01-22" ([#2999], [#3323])
 - Bump `aes-gcm` from 0.9.4 to 0.10.1 ([#2806])
 - Bump `anyhow` from 1.0.66 to 1.0.69 ([#3002], [#3108])
 - Bump `assert_cmd` from 2.0.7 to 2.0.10 ([#3065], [#3277])
