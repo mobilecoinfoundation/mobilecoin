@@ -28,7 +28,7 @@ mod untrusted_tx_out_service;
 use mc_util_metrics::ServiceMetrics;
 
 lazy_static::lazy_static! {
-    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger");
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ledger_service");
 }
 
 /// State that we want to expose from the db poll thread

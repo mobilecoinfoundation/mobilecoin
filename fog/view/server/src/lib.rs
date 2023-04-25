@@ -20,5 +20,5 @@ mod router_request_handler;
 mod shard_responses_processor;
 
 lazy_static::lazy_static! {
-    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_view");
+    pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_view_service");
 }
