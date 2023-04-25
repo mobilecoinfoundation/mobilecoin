@@ -448,15 +448,15 @@ mod tests {
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
     use mc_transaction_extra::{
         get_data_from_authenticated_sender_memo, get_data_from_destination_memo,
-        validate_authenticated_sender,
+        validate_authenticated_sender, RegisteredMemoType,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
     const AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
     const DESTINATION_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
-    const AUTHENTICATED_SENDER_MEMO_TYPE_BYTE: u8 = 0x00;
-    const DESTINATION_MEMO_TYPE_BYTE: u8 = 0x00;
+    const AUTHENTICATED_SENDER_MEMO_TYPE_BYTE: u8 = AuthenticatedSenderMemo::MEMO_TYPE_BYTES[1];
+    const DESTINATION_MEMO_TYPE_BYTE: u8 = DestinationMemo::MEMO_TYPE_BYTES[1];
 
     pub struct RTHMemoTestContext {
         sender: AccountKey,
