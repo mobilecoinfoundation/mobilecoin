@@ -49,7 +49,7 @@ spec:
                 requiredDuringSchedulingIgnoredDuringExecution:
                 - topologyKey: kubernetes.io/hostname
                   labelSelector:
-                    app: fog-ledger
+                    app: fog-ledger-router
                     helm.sh/chart: {{ include "fogServices.chart" . }}
                     {{- include "fogServices.selectorLabels" . | nindent 18 }}
             imagePullSecrets:
