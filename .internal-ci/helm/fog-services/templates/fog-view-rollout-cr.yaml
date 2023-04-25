@@ -40,7 +40,7 @@ spec:
                 defaultMode: 420
                 sources:
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
+                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-router
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-sgx
                 - configMap:
@@ -379,6 +379,6 @@ spec:
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-daemon
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-router
+                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-store
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-admin
