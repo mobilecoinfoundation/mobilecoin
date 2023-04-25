@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-digestible-derive"
-version = "4.1.0-pre0"
+version = "5.0.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"

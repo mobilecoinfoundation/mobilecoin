@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-script"
-version = "4.1.0-pre0"
+version = "5.0.0-pre0"
 authors = ["MobileCoin"]
 description = "Cargo build-script assistance, from MobileCoin."
 edition = "2021"
