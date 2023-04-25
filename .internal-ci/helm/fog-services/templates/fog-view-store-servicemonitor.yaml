@@ -5,7 +5,7 @@ metadata:
   name: {{ include "fogServices.fullname" . }}-fog-view-store
   labels:
     publish: grafana-cloud
-    app: fog-view
+    app: fog-view-store
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   selector:
