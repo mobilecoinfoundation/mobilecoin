@@ -377,7 +377,7 @@ spec:
               - configMap:
                   name: fog-supervisord-mobilecoind
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger
+                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-store
               - configMap:
                   name: {{ include "fogServices.fullname" . }}-supervisord-admin
       {{- if .Values.fogLedger.persistence.enabled }}

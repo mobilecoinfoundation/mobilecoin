@@ -10,7 +10,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: fog-view
+      app: fog-view-store
       {{- include "fogServices.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt-http
