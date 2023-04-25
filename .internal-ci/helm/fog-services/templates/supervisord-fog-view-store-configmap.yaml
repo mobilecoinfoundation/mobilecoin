@@ -7,7 +7,7 @@ metadata:
     {{- include "fogServices.labels" . | nindent 4 }}
 data:
   fog_view_store.conf: |
-    [program:fogview]
+    [program:fog-view-store]
     priority=100
     environment=MC_SENTRY_DSN="%(ENV_FOG_VIEW_SENTRY_DSN)s"
     command=/usr/bin/fog_view_server
