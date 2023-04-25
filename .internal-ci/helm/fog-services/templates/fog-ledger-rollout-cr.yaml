@@ -60,7 +60,7 @@ spec:
               - name: ndots
                 value: "1"
             containers:
-            - name: fog-ledger
+            - name: fog-ledger-router
               image: "{{ .Values.fogLedgerRouter.image.org | default .Values.image.org }}/{{ .Values.fogLedgerRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
               command: [ "/usr/bin/supervisord" ]
@@ -245,7 +245,7 @@ spec:
           initContainers:
           {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 10 }}
           containers:
-          - name: fog-ledger
+          - name: fog-ledger-store
             image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
             command: [ "/usr/bin/supervisord" ]
