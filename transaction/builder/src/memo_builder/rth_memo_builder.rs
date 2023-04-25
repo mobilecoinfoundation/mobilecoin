@@ -84,7 +84,7 @@ pub enum CustomMemoType {
 
 /// This contains both the output memo payload and the change memo payload which
 /// will be used when generating custom output memos and change memos
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct FlexibleMemoPayloads {
     /// This is used when generating output memos.
     /// It is used to generate a memo type with the first byte being 0x01
@@ -111,16 +111,7 @@ pub struct FlexibleMemoPayload {
     pub memo_data: [u8; 32],
 }
 
-/// This defaults to a Authenticated Sender and Destination memo
-impl Default for FlexibleMemoPayloads {
-    fn default() -> Self {
-        Self {
-            output_memo_payload: Default::default(),
-            change_memo_payload: Default::default(),
-        }
-    }
-}
-
+/// This defaults to a Authenticated Sender and Destination memo respectively
 impl Default for FlexibleMemoPayload {
     fn default() -> Self {
         Self {
