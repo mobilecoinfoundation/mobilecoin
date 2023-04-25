@@ -9,7 +9,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: fog-ledger
+    app: fog-ledger-router
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
   - name: ledger-grpc
