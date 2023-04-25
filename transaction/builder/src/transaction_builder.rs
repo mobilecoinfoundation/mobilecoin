@@ -944,10 +944,7 @@ pub mod transaction_builder_tests {
         validation::{validate_signature, validate_tx_out},
         NewTxError, TokenId,
     };
-    use mc_transaction_extra::{
-        AuthenticatedSenderWithPaymentRequestIdMemo, DestinationWithPaymentRequestIdMemo, MemoType,
-        RegisteredMemoType, SenderMemoCredential, TxOutGiftCode,
-    };
+    use mc_transaction_extra::{MemoType, SenderMemoCredential, TxOutGiftCode};
     use rand::{rngs::StdRng, SeedableRng};
 
     // Helper which produces a list of block_version, TokenId pairs to iterate over
@@ -965,19 +962,21 @@ pub mod transaction_builder_tests {
     // request.
     fn get_valid_flexible_memo() -> FlexibleMemoPayloads {
         let payment_request_id = 42u64;
-        let memo_type_bytes = AuthenticatedSenderWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
+        let authenticated_sender_with_payment_request_id_memo_byte = 0x01;
+        let memo_type_byte = authenticated_sender_with_payment_request_id_memo_byte;
         let mut memo_data = [0x00; 32];
         memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
         let output_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
+            memo_type_byte,
             memo_data,
         };
         let payment_request_id = 42u64;
-        let memo_type_bytes = DestinationWithPaymentRequestIdMemo::MEMO_TYPE_BYTES;
+        let destination_with_payment_request_id_memo_byte = 0x03;
+        let memo_type_byte = destination_with_payment_request_id_memo_byte;
         let mut memo_data = [0u8; 32];
         memo_data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
         let change_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
+            memo_type_byte,
             memo_data,
         };
         FlexibleMemoPayloads {

@@ -87,25 +87,47 @@ pub enum CustomMemoType {
 #[derive(Clone, Debug)]
 pub struct FlexibleMemoPayloads {
     /// This is used when generating output memos.
-    /// It must contain a memo type with the first byte being 0x01
+    /// It is used to generate a memo type with the first byte being 0x01
     pub output_memo_payload: FlexibleMemoPayload,
     /// This is used when generating change memos.
-    /// It must contain a memo type with the first byte being 0x02
+    /// It is used to generate a memo type with the first byte being 0x02
     pub change_memo_payload: FlexibleMemoPayload,
 }
+
+const OUTPUT_MEMO_TYPE: u8 = 0x01;
+const CHANGE_MEMO_TYPE: u8 = 0x02;
 
 /// This is the payload data used for creating custom MemoPayloads with types
 /// which are defined in MCIPs.
 #[derive(Clone, Debug)]
 pub struct FlexibleMemoPayload {
-    /// Corresponds to the returned memo type. This should be
+    /// Corresponds to the returned memo sub type. This should be
     /// listed in an MCIP.
-    pub memo_type_bytes: [u8; 2],
+    pub memo_type_byte: u8,
     /// Corresponds to some 32 byte encoding of data used for
     /// the returned memo type, and does not include fields used for the
     /// authenticated sender or destination super types like the
     /// SenderMemoCredential
     pub memo_data: [u8; 32],
+}
+
+/// This defaults to a Authenticated Sender and Destination memo
+impl Default for FlexibleMemoPayloads {
+    fn default() -> Self {
+        Self {
+            output_memo_payload: Default::default(),
+            change_memo_payload: Default::default(),
+        }
+    }
+}
+
+impl Default for FlexibleMemoPayload {
+    fn default() -> Self {
+        Self {
+            memo_type_byte: 0,
+            memo_data: [0; 32],
+        }
+    }
 }
 
 impl Default for RTHMemoBuilder {
@@ -132,7 +154,7 @@ impl Default for RTHMemoBuilder {
 /// other error code.
 #[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum MemoBuilderError {
-    /// Unable to set custom memo type
+    /// Unable to set custom memo typeK
     CustomMemoType(String),
     /// Other
     Other(String),
@@ -262,17 +284,17 @@ impl MemoBuilder for RTHMemoBuilder {
                     CustomMemoType::FlexibleMemos(flexible_memos) => {
                         let tx_public_key = memo_context.tx_public_key;
                         let flexible_memo_payload = &flexible_memos.output_memo_payload;
+                        let memo_type_bytes =
+                            [OUTPUT_MEMO_TYPE, flexible_memo_payload.memo_type_byte];
                         let memo_data = compute_authenticated_sender_memo(
-                            flexible_memo_payload.memo_type_bytes,
+                            memo_type_bytes,
                             cred,
                             recipient.view_public_key(),
                             &tx_public_key.into(),
                             &flexible_memo_payload.memo_data,
                         );
-                        if flexible_memo_payload.memo_type_bytes[0] != 0x01 {
-                            return Err(NewMemoError::FlexibleMemo(format!("The flexible output memo has a memopayload of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
-                        }
-                        MemoPayload::new(flexible_memo_payload.memo_type_bytes, memo_data)
+
+                        MemoPayload::new(memo_type_bytes, memo_data)
                     }
                     CustomMemoType::PaymentRequestId(payment_request_id) => {
                         AuthenticatedSenderWithPaymentRequestIdMemo::new(
@@ -349,9 +371,7 @@ impl MemoBuilder for RTHMemoBuilder {
             match custom_memo_type {
                 CustomMemoType::FlexibleMemos(flexible_memos) => {
                     let flexible_memo_payload = &flexible_memos.change_memo_payload;
-                    if flexible_memo_payload.memo_type_bytes[0] != 0x02 {
-                        return Err(NewMemoError::FlexibleMemo(format!("The flexible change memo has a memopayload of the incorrect memo type: {:?}", flexible_memo_payload.memo_type_bytes)));
-                    }
+                    let memo_type_bytes = [CHANGE_MEMO_TYPE, flexible_memo_payload.memo_type_byte];
                     let memo_data = compute_destination_memo(
                         self.last_recipient.clone(),
                         self.fee.value,
@@ -359,8 +379,7 @@ impl MemoBuilder for RTHMemoBuilder {
                         self.total_outlay,
                         flexible_memo_payload.memo_data,
                     );
-                    let payload: MemoPayload =
-                        MemoPayload::new(flexible_memo_payload.memo_type_bytes, memo_data);
+                    let payload: MemoPayload = MemoPayload::new(memo_type_bytes, memo_data);
                     self.wrote_destination_memo = true;
                     Ok(payload)
                 }
@@ -371,10 +390,10 @@ impl MemoBuilder for RTHMemoBuilder {
                         self.fee.value,
                         *payment_request_id,
                     ) {
-                        Ok(mut d_memo) => {
+                        Ok(mut destination_memo) => {
                             self.wrote_destination_memo = true;
-                            d_memo.set_num_recipients(self.num_recipients);
-                            Ok(d_memo.into())
+                            destination_memo.set_num_recipients(self.num_recipients);
+                            Ok(destination_memo.into())
                         }
                         Err(err) => match err {
                             DestinationMemoError::FeeTooLarge => {
@@ -429,13 +448,15 @@ mod tests {
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
     use mc_transaction_extra::{
         get_data_from_authenticated_sender_memo, get_data_from_destination_memo,
-        validate_authenticated_sender, RegisteredMemoType,
+        validate_authenticated_sender,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
-    const AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES: [u8; 2] = [0x01, 0x08];
-    const DESTINATION_CUSTOM_MEMO_TYPE_BYTES: [u8; 2] = [0x02, 0x08];
+    const AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
+    const DESTINATION_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
+    const AUTHENTICATED_SENDER_MEMO_TYPE_BYTE: u8 = 0x00;
+    const DESTINATION_MEMO_TYPE_BYTE: u8 = 0x00;
 
     pub struct RTHMemoTestContext {
         sender: AccountKey,
@@ -446,35 +467,16 @@ mod tests {
     }
 
     fn get_valid_flexible_memos() -> FlexibleMemoPayloads {
-        let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_type_byte = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE;
         let memo_data = [0x01; 32];
         let output_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
+            memo_type_byte,
             memo_data,
         };
-        let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
+        let memo_type_byte = DESTINATION_CUSTOM_MEMO_TYPE_BYTE;
         let memo_data = [0x01; 32];
         let change_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
-            memo_data,
-        };
-        FlexibleMemoPayloads {
-            output_memo_payload,
-            change_memo_payload,
-        }
-    }
-
-    fn get_invalid_flexible_memos() -> FlexibleMemoPayloads {
-        let memo_type_bytes = DESTINATION_CUSTOM_MEMO_TYPE_BYTES;
-        let memo_data = [0x01; 32];
-        let output_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
-            memo_data,
-        };
-        let memo_type_bytes = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES;
-        let memo_data = [0x01; 32];
-        let change_memo_payload = FlexibleMemoPayload {
-            memo_type_bytes,
+            memo_type_byte,
             memo_data,
         };
         FlexibleMemoPayloads {
@@ -557,14 +559,14 @@ mod tests {
             .expect("Expected valid change memo");
 
         // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+        // Verify memo sub type
         assert_eq!(
-            AuthenticatedSenderMemo::MEMO_TYPE_BYTES,
-            output_memo.get_memo_type().clone()
+            AUTHENTICATED_SENDER_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
         );
-        assert_eq!(
-            DestinationMemo::MEMO_TYPE_BYTES,
-            change_memo.get_memo_type().clone()
-        );
+        assert_eq!(DESTINATION_MEMO_TYPE_BYTE, change_memo.get_memo_type()[1]);
 
         // Verify memo data
         let authenticated_memo = AuthenticatedSenderMemo::from(output_memo.get_memo_data());
@@ -625,13 +627,17 @@ mod tests {
             .expect("Expected valid change memo");
 
         // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+
+        // Verify memo sub type
         assert_eq!(
-            AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTES,
-            output_memo.get_memo_type().clone()
+            AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
         );
         assert_eq!(
-            DESTINATION_CUSTOM_MEMO_TYPE_BYTES,
-            change_memo.get_memo_type().clone()
+            DESTINATION_CUSTOM_MEMO_TYPE_BYTE,
+            change_memo.get_memo_type()[1]
         );
 
         // Verify memo data
@@ -657,9 +663,8 @@ mod tests {
             [1u8; 32]
         );
     }
-
     #[test]
-    fn test_flexible_funding_output_memo_rejects_invalid_types() {
+    fn test_flexible_funding_output_memo_built_successfully_using_defaults() {
         // Create Memo Builder with data
         let fee = Amount::new(1, 0.into());
         let change_amount = Amount::new(1, 0.into());
@@ -669,29 +674,42 @@ mod tests {
         let (sender, mut builder) = build_test_memo_builder(&mut rng);
         // Add a flexible memo
         builder
-            .set_flexible_memos(get_invalid_flexible_memos())
-            .expect("No other custom memo types should be set");
+            .set_flexible_memos(FlexibleMemoPayloads::default())
+            .expect("No other custom memo type should be set");
         // Build the memo payload
         let memo_test_context =
             build_rth_memos(sender, builder, funding_amount, change_amount, fee);
 
+        let output_memo = memo_test_context
+            .output_memo
+            .expect("Expected valid output memo");
+        let change_memo = memo_test_context
+            .change_memo
+            .expect("Expected valid change memo");
+
+        // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+
+        // Verify memo sub type
         assert_eq!(
-            memo_test_context
-                .output_memo
-                .expect_err("Should have an invalid output memo type"),
-            NewMemoError::FlexibleMemo(
-                "The flexible output memo has a memopayload of the incorrect memo type: [2, 8]"
-                    .to_owned()
-            )
+            AUTHENTICATED_SENDER_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
         );
-        assert_eq!(
-            memo_test_context
-                .change_memo
-                .expect_err("Should have an invalid destination memo type"),
-            NewMemoError::FlexibleMemo(
-                "The flexible change memo has a memopayload of the incorrect memo type: [1, 8]"
-                    .to_owned()
-            )
+        assert_eq!(DESTINATION_MEMO_TYPE_BYTE, change_memo.get_memo_type()[1]);
+
+        // Verify memo data
+        let destination_memo = DestinationMemo::from(change_memo.get_memo_data());
+
+        validate_authenticated_sender(
+            &memo_test_context.sender.default_subaddress(),
+            memo_test_context.receiver.view_private_key(),
+            &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
+            *output_memo.get_memo_type(),
+            output_memo.get_memo_data(),
         );
+
+        let derived_fee = destination_memo.get_fee();
+        assert_eq!(fee.value, derived_fee);
     }
 }
