@@ -82,6 +82,7 @@ spec:
                 containerPort: 8000
               envFrom:
               - configMapRef:
+                  # This is pre-installed from the fog-services-config chart or Terraform
                   name: fog-view
               - secretRef:
                   name: ias

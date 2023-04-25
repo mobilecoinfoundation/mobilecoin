@@ -73,6 +73,7 @@ spec:
               - secretRef:
                   name: ias
               - configMapRef:
+                  # This is installed from the fog-services-config chart or Terraform
                   name: fog-ledger
               - secretRef:
                   name: ipinfo
