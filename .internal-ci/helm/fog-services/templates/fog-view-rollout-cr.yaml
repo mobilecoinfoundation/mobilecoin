@@ -2,7 +2,7 @@
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view-router
+  name: {{ include "fogServices.fullname" . }}-fog-view
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
