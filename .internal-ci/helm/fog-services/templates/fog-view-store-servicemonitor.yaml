@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view
+  name: {{ include "fogServices.fullname" . }}-fog-view-store
   labels:
     publish: grafana-cloud
     app: fog-view

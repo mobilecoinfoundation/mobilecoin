@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-ledger
+  name: {{ include "fogServices.fullname" . }}-fog-ledger-store
   labels:
     publish: grafana-cloud
     app: fog-ledger
@@ -10,7 +10,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: fog-ledger
+      app: fog-ledger-store
       {{- include "fogServices.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt-http
