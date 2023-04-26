@@ -37,7 +37,7 @@ clap = { version = "4.1.11", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
 rand_core = { version = "0.6.3", default-features = false }
-serde = { version = "1.0.159", features = [ "derive" ] }
+serde = { version = "1.0.160", features = [ "derive" ] }
 serde_json = { version = "1.0.94" }
 
 mc-test-vectors-definitions = { path = "../test-vectors/definitions" }
