@@ -1,0 +1,17 @@
+[package]
+name = "mc-light-client-verifier"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "Apache-2.0"
+rust-version = { workspace = true }
+
+[dependencies]
+displaydoc = "0.2"
+
+mc-api = { path = "../../api" }
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common" }
+mc-consensus-scp-types = { path = "../../consensus/scp/types" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
