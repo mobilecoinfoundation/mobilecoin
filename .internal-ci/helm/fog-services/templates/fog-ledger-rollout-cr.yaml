@@ -118,6 +118,8 @@ spec:
                 failureThreshold: 2
                 periodSeconds: 10
               volumeMounts:
+              - name: fog-data
+                mountPath: /fog-data
               - name: aesm-socket-dir
                 mountPath: /var/run/aesmd
               - name: supervisor-conf
@@ -182,6 +184,10 @@ spec:
             affinity:
               {{- toYaml .Values.fogLedgerRouter.affinity | nindent 14 }}
             volumes:
+            {{- if eq .Values.fogLedger.persistence.enabled false }}
+            - name: fog-data
+              emptyDir: {}
+            {{- end }}
             - name: aesm-socket-dir
               emptyDir: {}
             - name: supervisor-conf
@@ -197,6 +203,13 @@ spec:
                     name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-router
                 - configMap:
                     name: {{ include "fogServices.fullname" . }}-supervisord-admin
+        {{- if .Values.fogLedger.persistence.enabled }}
+        volumeClaimTemplates:
+        - metadata:
+            name: fog-data
+          spec:
+            {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
+        {{- end }}
 
   store:
     containerName: fog-ledger-store

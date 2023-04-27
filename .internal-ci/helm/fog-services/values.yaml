@@ -52,14 +52,14 @@ blockHeighRetrieval:
   responseJQ: .result.network_status.network_block_height
 
 fogViewStores:
-  shardSize: 200_000
+  shardSize: 400_000
   exceedBlockHeightBy: 200_000
-  shardOverlap: 100_000
+  shardOverlap: 200_000
 
 fogLedgerStores:
-  shardSize: 200_000
+  shardSize: 400_000
   exceedBlockHeightBy: 200_000
-  shardOverlap: 100_000
+  shardOverlap: 200_000
 
 imagePullSecrets:
 - name: docker-credentials
@@ -187,7 +187,7 @@ fogView:
     effect: NoSchedule
 
 fogLedgerRouter:
-  replicaCount: 3
+  replicaCount: 2
   podManagementPolicy: Parallel
 
   podAnnotations:
