@@ -13,7 +13,7 @@
 # The tool attempts to avoid rebootstrapping if it doesn't appear necessary,
 # which means:
 # - target/sample_data already exists (and conf.json exists)
-# - conf.json has the same parameters as the user requrests
+# - conf.json has the same parameters as the user requests
 #
 # The tool reruns bootstrap and records a new conf.json file
 # jq must be installed to use the tool

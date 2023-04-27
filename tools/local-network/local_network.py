@@ -23,7 +23,7 @@ BASE_ADMIN_HTTP_GATEWAY_PORT = 3500
 MOBILECOIND_PORT = 4444
 
 # TODO make these command line arguments
-LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
+LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE', default="target/sample_data/ledger"))
 IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -466,6 +466,10 @@ class Network:
             pass
         os.makedirs(WORK_DIR)
 
+    def bootstrap_ledger(self):
+        print('Bootstrapping ledger...')
+        subprocess.run(f'cd {PROJECT_DIR} && tools/local-network/bootstrap.sh', shell=True, check=True)
+
     def build_binaries(self):
         print('Building binaries...')
         enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
@@ -572,7 +576,8 @@ class Network:
                 raise
 
 
-    def default_entry_point(self, network_type, skip_build=False, block_version=None):
+    def default_entry_point(self, network_type, build=False, block_version=None,
+            bootstrap_ledger=False):
         self.block_version = block_version
 
         if network_type == 'dense5':
@@ -621,7 +626,10 @@ class Network:
         else:
             raise Exception('Invalid network type')
 
-        if not skip_build:
+        if bootstrap_ledger:
+            self.bootstrap_ledger()
+
+        if build:
             self.build_binaries()
 
         self.start()
@@ -630,9 +638,21 @@ class Network:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
-    parser.add_argument('--network-type', help='Type of network to create', required=True)
-    parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
+    parser.add_argument('--network-type', help='Type of network to create',
+            choices=['ring5b', 'ring5', 'dense3', 'dense5', 'a-b-c'],
+            default='dense5')
+    # `--skip-build` is kept for backwards compatibility
+    parser.add_argument('--no-build', '--skip-build', dest='build', help="Don't build binaries",
+            action='store_false')
+    parser.add_argument('--build', dest='build', help="Build binaries",
+            action='store_true')
     parser.add_argument('--block-version', help='Set the block version argument', type=int)
+    parser.add_argument('--no-bootstrap-ledger',
+    dest='bootstrap_ledger', help="Don't bootstrap the ledger",
+    action='store_false')
+    parser.add_argument('--bootstrap-ledger', help='Bootstrap the ledger',
+            action='store_true')
     args = parser.parse_args()
 
-    Network().default_entry_point(args.network_type, args.skip_build, args.block_version)
+    Network().default_entry_point(args.network_type, args.build,
+            args.block_version, args.bootstrap_ledger)
