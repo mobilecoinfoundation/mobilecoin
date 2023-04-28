@@ -142,7 +142,6 @@ jobs:
         global:
           certManagerClusterIssuer: google-public-ca
         fogLedger:
-          replicaCount: 2
           resources:
             limits:
               intel.com/sgx: 2000
@@ -151,7 +150,6 @@ jobs:
           persistence:
             enabled: false
         fogView:
-          replicaCount: 2
           resources:
             limits:
               intel.com/sgx: 2000
