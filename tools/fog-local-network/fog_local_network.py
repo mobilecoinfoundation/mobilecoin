@@ -134,7 +134,7 @@ class FogNetwork(Network):
             watcher_db_path = self.mobilecoind.watcher_db,
         )
         self.key_image_store.start()
-        
+
         self.fog_ledger_router = FogLedgerRouter(
             name = 'ledger1',
             ledger_db_path = self.nodes[0].ledger_dir,
@@ -173,9 +173,21 @@ class FogNetwork(Network):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
-    parser.add_argument('--network-type', help='Type of network to create', required=True)
-    parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
+    parser.add_argument('--network-type', help='Type of network to create',
+            choices=['ring5b', 'ring5', 'dense3', 'dense5', 'a-b-c'],
+            default='dense5')
+    # `--skip-build` is kept for backwards compatibility
+    parser.add_argument('--no-build', '--skip-build', dest='build', help="Don't build binaries",
+            action='store_false')
+    parser.add_argument('--build', dest='build', help="Build binaries",
+            action='store_true')
     parser.add_argument('--block-version', help='Set the block version argument', type=int)
+    parser.add_argument('--no-bootstrap-ledger',
+    dest='bootstrap_ledger', help="Don't bootstrap the ledger",
+    action='store_false')
+    parser.add_argument('--bootstrap-ledger', help='Bootstrap the ledger',
+            action='store_true')
     args = parser.parse_args()
 
-    FogNetwork().default_entry_point(args.network_type, args.skip_build, args.block_version)
+    FogNetwork().default_entry_point(args.network_type, args.build,
+            args.block_version, args.bootstrap_ledger)
