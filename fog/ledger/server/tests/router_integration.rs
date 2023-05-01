@@ -716,9 +716,6 @@ async fn rate_limit() {
     // Reconnect to clear rate limit condition
     test_environment.router_client.reconnect();
 
-    // Wait 3s for the rate limit to recover
-    tokio::time::sleep(Duration::from_secs(3)).await;
-
     // Confirm that we can still get all the key images from the shard
     let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
     let response = test_environment

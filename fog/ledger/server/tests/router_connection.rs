@@ -49,6 +49,9 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
     grpc_retry_millis: 20,
 };
 
+const RATE_LIMIT_PERIOD: u64 = 10;
+const RATE_LIMIT_MAX_BURST: u32 = 80;
+
 fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
     let url = Url::parse(TEST_URL).unwrap();
 
@@ -135,8 +138,8 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
-                rate_limit_burst_period: Duration::from_secs(10),
-                rate_limit_max_burst: NonZeroU32::new(80).unwrap(),
+                rate_limit_burst_period: Duration::from_secs(RATE_LIMIT_PERIOD),
+                rate_limit_max_burst: NonZeroU32::new(RATE_LIMIT_MAX_BURST).unwrap(),
                 query_retries: 3,
                 omap_capacity: OMAP_CAPACITY,
             };
@@ -417,8 +420,8 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
-                rate_limit_burst_period: Duration::from_secs(10),
-                rate_limit_max_burst: NonZeroU32::new(80).unwrap(),
+                rate_limit_burst_period: Duration::from_secs(RATE_LIMIT_PERIOD),
+                rate_limit_max_burst: NonZeroU32::new(RATE_LIMIT_MAX_BURST).unwrap(),
                 query_retries: 3,
                 omap_capacity: OMAP_CAPACITY,
             };
@@ -619,8 +622,8 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
-            rate_limit_burst_period: Duration::from_secs(10),
-            rate_limit_max_burst: NonZeroU32::new(80).unwrap(),
+            rate_limit_burst_period: Duration::from_secs(RATE_LIMIT_PERIOD),
+            rate_limit_max_burst: NonZeroU32::new(RATE_LIMIT_MAX_BURST).unwrap(),
             query_retries: 3,
             omap_capacity: OMAP_CAPACITY,
         };
@@ -786,8 +789,8 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
-            rate_limit_burst_period: Duration::from_secs(10),
-            rate_limit_max_burst: NonZeroU32::new(80).unwrap(),
+            rate_limit_burst_period: Duration::from_secs(RATE_LIMIT_PERIOD),
+            rate_limit_max_burst: NonZeroU32::new(RATE_LIMIT_MAX_BURST).unwrap(),
             query_retries: 3,
             omap_capacity: OMAP_CAPACITY,
         };
@@ -1003,8 +1006,8 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
-                rate_limit_burst_period: Duration::from_secs(10),
-                rate_limit_max_burst: NonZeroU32::new(80).unwrap(),
+                rate_limit_burst_period: Duration::from_secs(RATE_LIMIT_PERIOD),
+                rate_limit_max_burst: NonZeroU32::new(RATE_LIMIT_MAX_BURST).unwrap(),
                 query_retries: 3,
                 omap_capacity: OMAP_CAPACITY,
             };

@@ -51,7 +51,7 @@ impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     ) -> Self {
         let rate_limiter = RateLimiter::keyed(
             Quota::with_period(burst_period / max_burst.get())
-                .unwrap()
+                .expect("invalid burst period or max burst")
                 .allow_burst(max_burst),
         );
         Self {

@@ -74,7 +74,6 @@ pub struct LedgerRouterConfig {
     pub rate_limit_max_burst: NonZeroU32,
 
     /// Path to ledger db (lmdb)
-    /// Path to ledger db (lmdb)
     #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
