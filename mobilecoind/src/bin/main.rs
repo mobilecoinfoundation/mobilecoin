@@ -1,23 +1,37 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 #![deny(missing_docs)]
+#![allow(unused)]
 
 //! mobilecoind daemon entry point
 
 use clap::Parser;
+use displaydoc::Display;
+use mc_account_keys::burn_address_view_private;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_crypto_keys::RistrettoPublic;
+use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_transaction_core::tx::TxOut;
 use mc_util_telemetry::setup_default_tracer;
-use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
+use mc_watcher::{
+    error::WatcherError,
+    watcher::WatcherSyncThread,
+    watcher_db::{create_or_open_rw_watcher_db, WatcherDB},
+};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     path::Path,
-    sync::{Arc, RwLock},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, RwLock,
+    },
+    thread,
+    time::Duration,
 };
-
 fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -61,7 +75,7 @@ fn main() {
     let ledger_db = create_or_open_ledger_db(&config, &logger, &transactions_fetcher);
 
     // Start ledger sync thread unless running in offline mode.
-    let _ledger_sync_service_thread = if config.offline {
+    let ledger_sync_service_thread = if config.offline {
         None
     } else {
         Some(LedgerSyncServiceThread::new(
@@ -75,7 +89,7 @@ fn main() {
     };
 
     // Optionally instantiate the watcher sync thread and get the watcher_db handle.
-    let (watcher_db, _watcher_sync_thread) = match &config.watcher_db {
+    let (watcher_db, watcher_sync_thread) = match &config.watcher_db {
         Some(watcher_db_path) => {
             log::info!(logger, "Launching watcher.");
 
@@ -107,6 +121,20 @@ fn main() {
         }
         None => (None, None),
     };
+
+    // Start the relayer thread if both the watcher_sync_thread and
+    // ledger_sync_thread are not None
+    let _relayer_service_thread =
+        if ledger_sync_service_thread.is_some() && watcher_sync_thread.is_some() {
+            Some(RelayerThread::new(
+                watcher_db.clone().unwrap(),
+                ledger_db.clone(),
+                config.poll_interval,
+                logger.clone(),
+            ))
+        } else {
+            None
+        };
 
     // Potentially launch API server
     match (&config.mobilecoind_db, &config.listen_uri) {
@@ -267,4 +295,278 @@ fn create_or_open_ledger_db(
     );
 
     ledger_db
+}
+
+/// Maximal number of blocks to attempt to sync at each loop iteration.
+const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
+
+/// Syncs new ledger materials from the watcher when the local ledger
+/// appends new interesting burns, and relays the BlockData and relevant burns.
+pub struct RelayerThread {
+    join_handle: Option<thread::JoinHandle<()>>,
+    currently_behind: Arc<AtomicBool>,
+    stop_requested: Arc<AtomicBool>,
+    next_block_to_sync: Arc<AtomicU64>,
+}
+
+impl RelayerThread {
+    /// Create a new Relayer thread.
+    pub fn new(
+        watcher_db: WatcherDB,
+        ledger: impl Ledger + 'static + Clone,
+        poll_interval: Duration,
+        logger: Logger,
+    ) -> Result<Self, WatcherError> {
+        log::debug!(logger, "Creating relayer thread.");
+
+        let currently_behind = Arc::new(AtomicBool::new(false));
+        let stop_requested = Arc::new(AtomicBool::new(false));
+        //TODO: Figure out what to do with this.
+        let ledger_num_blocks = ledger.num_blocks().unwrap();
+        let next_block_to_sync = Arc::new(AtomicU64::new(ledger_num_blocks));
+        let thread_next_block_to_sync = next_block_to_sync.clone();
+        let thread_currently_behind = currently_behind.clone();
+        let thread_stop_requested = stop_requested.clone();
+        let join_handle = Some(
+            thread::Builder::new()
+                .name("Relayer".into())
+                .spawn(move || {
+                    Self::thread_entrypoint(
+                        ledger,
+                        watcher_db,
+                        poll_interval,
+                        thread_currently_behind,
+                        thread_stop_requested,
+                        thread_next_block_to_sync,
+                        logger,
+                    );
+                })
+                .expect("Failed spawning Relayer thread"),
+        );
+
+        Ok(Self {
+            join_handle,
+            currently_behind,
+            stop_requested,
+            next_block_to_sync,
+        })
+    }
+
+    /// Stop the relayer thread.
+    pub fn stop(&mut self) {
+        self.stop_requested.store(true, Ordering::SeqCst);
+        if let Some(thread) = self.join_handle.take() {
+            thread.join().expect("Relayer thread join failed");
+        }
+    }
+
+    /// Check whether the relayer is behind the ledger DB.
+    pub fn is_behind(&self) -> bool {
+        self.currently_behind.load(Ordering::SeqCst)
+    }
+
+    /// The entrypoint for the relayer thread.
+    fn thread_entrypoint(
+        ledger: impl Ledger + Clone,
+        watcher_db: WatcherDB,
+        poll_interval: Duration,
+        currently_behind: Arc<AtomicBool>,
+        stop_requested: Arc<AtomicBool>,
+        next_block_to_sync: Arc<AtomicU64>,
+        logger: Logger,
+    ) {
+        log::debug!(logger, "RelayerThread has started.");
+
+        loop {
+            if stop_requested.load(Ordering::SeqCst) {
+                log::debug!(logger, "RelayerThread stop requested.");
+                break;
+            }
+
+            let next_block = next_block_to_sync.load(Ordering::SeqCst);
+            let ledger_num_blocks = ledger.num_blocks().unwrap();
+            // See if we're currently behind.
+            let is_behind = { next_block < ledger_num_blocks };
+            log::debug!(
+                logger,
+                "next block to sync: {}, Ledger block height {}, is_behind {}",
+                next_block,
+                ledger_num_blocks,
+                is_behind
+            );
+
+            // Store current state and log.
+            currently_behind.store(is_behind, Ordering::SeqCst);
+            if is_behind {
+                log::debug!(
+                    logger,
+                    "Relayer is_behind: {:?} next block to sync: {:?} vs ledger: {:?}",
+                    is_behind,
+                    next_block,
+                    ledger_num_blocks,
+                );
+            }
+
+            // Maybe sync, maybe wait and check again.
+            if is_behind {
+                // TODO: get the block contents and check to see if there's a burn in it.
+                // Advance to the next block to sync.
+                let sync_result = Self::process_block(ledger.clone(), next_block, &logger);
+                match sync_result {
+                    Ok(()) => {
+                        next_block_to_sync
+                            .compare_exchange(
+                                next_block,
+                                next_block + 1,
+                                Ordering::SeqCst,
+                                Ordering::SeqCst,
+                            )
+                            .expect("Threading error, attempted to process blocks out of order");
+                    }
+                    Err(e) => {
+                        //TODO: Figure out what kind of errors are acceptable
+                        // here. Which ones should cause the thread to fail?
+                    }
+                }
+            } else if !stop_requested.load(Ordering::SeqCst) {
+                log::trace!(
+                    logger,
+                    "Sleeping, relayer last block synced = {}...",
+                    next_block
+                );
+                std::thread::sleep(poll_interval);
+            }
+        }
+    }
+
+    /// TODO: Function to match TXOs from a block into interesting vector of
+    /// unspent UTXOs. If the vector is non empty then the blockdata should be
+    /// forwarded. Helper function for matching a list of TxOuts to a given
+    /// monitor.
+    fn check_block_for_burns(
+        ledger: impl Ledger,
+        block_number: u64,
+        logger: &Logger,
+    ) -> Result<Vec<TxOut>, RelayerError> {
+        let block_contents = ledger.get_block_contents(block_number)?;
+        let outputs = block_contents.outputs;
+        // Iterate over each output and filter the results using a parallel iterator.
+        let results: Result<Vec<TxOut>, RelayerError> = outputs
+            .into_par_iter()
+            .filter_map(|tx_out| {
+                // View key match against the burn address. If it returns ok, then it's a burn.
+                match tx_out
+                    .view_key_match(&burn_address_view_private())
+                    .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                    .ok()
+                {
+                    Some((tx_out, amount)) => Some(Ok(tx_out)),
+                    None => None,
+                }
+
+                // TODO: Check to see if the burn has a relevant memo.
+
+                // // Convert target and public keys to RistrettoPublic type.
+                // let tx_out_target_key =
+                // RistrettoPublic::try_from(&tx_out.target_key).ok()?;
+                // let tx_public_key =
+                // RistrettoPublic::try_from(&tx_out.public_key).ok()?;
+
+                // // Generate subaddress spend public key for tx_out.
+                // let subaddress_spk =
+                // SubaddressSPKId::from(&recover_public_subaddress_spend_key(
+                //     account_key.view_private_key(),
+                //     &tx_out_target_key,
+                //     &tx_public_key,
+                // ));
+
+                // // Generate the shared secret between the subaddress and
+                // output public key. let shared_secret =
+                //     get_tx_out_shared_secret(account_key.view_private_key(),
+                // &tx_public_key);
+
+                // // Get the amount and blinding factor for the output.
+                // let (amount, _blinding) = tx_out
+                //     .get_masked_amount()
+                //     .expect("missing masked amount")
+                //     .get_value(&shared_secret)
+                //     .expect("Malformed amount"); // TODO
+            })
+            .collect();
+
+        results
+    }
+
+    fn process_block(
+        ledger: impl Ledger,
+        next_block: u64,
+        logger: &Logger,
+    ) -> Result<(), RelayerError> {
+        let txos = Self::check_block_for_burns(ledger, next_block, logger);
+        match txos {
+            Ok(txos) => {
+                if (txos.is_empty()) {
+                    return Ok(());
+                }
+                Self::check_burns_for_relevant_memo(txos, logger);
+            }
+            Err(e) => {
+                return Ok(());
+            }
+        }
+        return Ok(());
+    }
+    /// TODO: A function that processes a block, which is to say, checks the
+    /// blocks for burns. Checks those burns for interesting burns. Extracts the
+    /// relevant data for interesting burns. Then sends all of that along. Then
+    /// marks the block as processed. TODO: Function to check whether the
+    /// memo is interesting for a burn txo. TODO: Function to extract
+    /// relevant block data for an interesting block. TODO: Function to send
+    /// interesting block data to a relevant endpoint.
+    fn check_burns_for_relevant_memo(
+        txos: Vec<TxOut>,
+        logger: &Logger,
+    ) -> Result<Vec<TxOut>, RelayerError> {
+        log::info!(
+            logger,
+            "Relayer: Checking this txo for a burn memo: {:?}",
+            txos
+        );
+        txos.iter().filter(|&txo| {
+            // Reconstruct compressed commitment based on our view key.
+            // The first step is reconstructing the TxOut shared secret
+            ///TODO: Fix this uwrap
+            let public_key = RistrettoPublic::try_from(&txo.public_key).unwrap();
+            let tx_out_shared_secret = mc_transaction_core::get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &public_key,
+            );
+            let memo = txo.decrypt_memo(&tx_out_shared_secret);
+            let memo_data = memo.get_memo_data();
+            log::info!(logger, "Relayer: the burn memo was: {:?}", memo_data);
+            true
+        });
+        Ok(txos)
+    }
+}
+
+impl Drop for RelayerThread {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+/// Watcher Errors
+#[derive(Debug, Display)]
+pub enum RelayerError {
+    /// Failure with LedgerDB: {0}
+    LedgerDB(LedgerDbError),
+    /// Not sure what this is for yet.
+    UnknownError(),
+}
+
+impl From<LedgerDbError> for RelayerError {
+    fn from(e: LedgerDbError) -> Self {
+        Self::LedgerDB(e)
+    }
 }
