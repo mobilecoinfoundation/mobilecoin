@@ -112,11 +112,15 @@ spec:
                   port: 3228
                 failureThreshold: 4
                 periodSeconds: 30
+                successThreshold: 1
+                timeoutSeconds: 1
               readinessProbe:
                 grpc:
                   port: 3228
                 failureThreshold: 2
                 periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
               volumeMounts:
               - name: fog-data
                 mountPath: /fog-data
