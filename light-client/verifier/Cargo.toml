@@ -1,0 +1,13 @@
+[package]
+name = "verifier"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+mc-api = { path = "../../api" }
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common" }
+mc-ledger-sync = { path = "../../ledger/sync" }
+mc-watcher = { path = "../../watcher" }
