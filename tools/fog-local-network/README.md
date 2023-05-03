@@ -55,7 +55,7 @@ In order to use it, the following steps are necessary.
     LEDGER_BASE=$(pwd)/ledger \
     IAS_SPID="..." \
     IAS_API_KEY="..." \
-    python3 ../tools/fog-local-network/fog_local_network.py --network-type dense5
+    python3 ../tools/fog-local-network/fog_local_network.py
     ```
     Note that all of the above arguments are identical to the mobilecoin local_network.py script.
     The script is known to work with python 3.6 or later

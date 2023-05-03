@@ -55,9 +55,7 @@ To run the integration tests, which live in `mint-auditor/tests/`, there are fou
 ```
 $ cargo build --release
 $ export MC_LOG=info
-$ export LEDGER_BASE=$PWD/target/sample_data/ledger
-$ ./tools/local-network/bootstrap.sh
-$ ./tools/local-network/local_network.py --network-type dense5 --skip-build &
+$ ./tools/local-network/local_network.py --no-build &
 ```
 
 2. Generate and authorize minters.

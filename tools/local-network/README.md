@@ -12,14 +12,12 @@ The following sequence is a basic way to start a network locally.
 
 ```
 $ export MC_LOG=info
-$ export LEDGER_BASE=$PWD/target/sample_data/ledger
-$ ./tools/local-network/bootstrap.sh
-$ ./tools/local-network/local_network.py --network-type dense5 &
+$ ./tools/local-network/local_network.py &
 ```
 
-Both `bootstrap.sh` and `local_network.py` will use cargo to build the required binaries.
-You only have to bootstrap once. To take down the network and start up a fresh one,
-kill the `local_network.py` and restart it.
+`local_network.py` will use cargo to build the required binaries. To take down
+the network and start up a fresh one, kill the `local_network.py` and restart
+it.
 
 Stopping the network does not generally wipe out the ledger it generated.
 If you want to also start from a clean ledger, the script's "work directory" is (typically) `target/release/mc-local-network`,
@@ -36,13 +34,13 @@ This is a simple script to bootstrap a test ledger and keys to play with. The sc
 
 This script starts a local mobilecoin consensus network by launching a separate process for each consensus validator and configuring them to communicate via a default set of ports. It takes the following parameters:
 
-- (required) `--network-type` - describes the network topology, one of `dense5`, `dense3`, `a-b-c`, `ring5` or `ring5b`
-- (optional) `--skip-build` - does not rebuild consensus node binaries
+- (optional) `--network-type` - describes the network topology, one of `dense5`, `dense3`, `a-b-c`, `ring5` or `ring5b` (default: dense5)
+- (optional) `--no-build` - does not rebuild consensus node binaries
 - (optional) `--block-version` - specifies local network block version (defaults to highest available if not specified)
 
 It relies on environment variables for configuration:
 
-- (required) `LEDGER_BASE` - Points at the ledger directory to initialize the nodes with (e.g. `./target/sample_data/ledger`).
+- (optional) `LEDGER_BASE` - Points at the ledger directory to initialize the nodes with (default: `./target/sample_data/ledger`).
 - (optional) `IAS_API_KEY` - IAS Api key. (Only needed for IAS prod builds)
 - (optional) `IAS_SPID` - IAS Service Provider ID. (Only needed for IAS prod builds)
 - (optional) `MC_LOG` - Log level configuration.
