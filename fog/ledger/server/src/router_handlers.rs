@@ -164,6 +164,14 @@ pub fn process_shard_responses(
             }
             // This call will be retried as part of the larger retry logic
             MultiKeyImageStoreResponseStatus::NOT_READY => (),
+            // This is a Protobuf decode error - we should never see this
+            MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => {
+                log::error!(
+                    logger,
+                    "Received a response with status 'INVALID_ARGUMENT' from store {}",
+                    KeyImageStoreUri::from_str(&response.store_uri)?
+                );
+            }
             // This is an unexpected error - we should never see this
             MultiKeyImageStoreResponseStatus::UNKNOWN => {
                 log::error!(
