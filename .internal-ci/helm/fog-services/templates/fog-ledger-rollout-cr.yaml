@@ -63,7 +63,7 @@ spec:
             - name: fog-ledger-router
               image: "{{ .Values.fogLedgerRouter.image.org | default .Values.image.org }}/{{ .Values.fogLedgerRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
-              command: [ "/usr/bin/supervisord" ]
+              args: [ "/usr/bin/supervisord" ]
               ports:
               - name: ledger-grpc
                 containerPort: 3228
@@ -265,7 +265,7 @@ spec:
           - name: fog-ledger-store
             image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
-            command: [ "/usr/bin/supervisord" ]
+            args: [ "/usr/bin/supervisord" ]
             ports:
             - name: ledger-grpc
               containerPort: 3228
@@ -405,4 +405,4 @@ spec:
         spec:
           {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
       {{- end }}
-    
+

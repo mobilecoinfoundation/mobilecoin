@@ -56,7 +56,7 @@ spec:
       - name: fog-ingest
         image: "{{ .Values.fogIngest.image.org | default .Values.image.org }}/{{ .Values.fogIngest.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.fogIngest.image.pullPolicy }}
-        command: [ "/usr/bin/supervisord" ]
+        args: [ "/usr/bin/supervisord" ]
         ports:
         - name: ingest
           containerPort: 3226
