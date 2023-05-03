@@ -105,6 +105,12 @@ spec:
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
               - name: RUST_LOG
                 value: {{ .Values.fogViewRouter.rust.log | quote }}
+              - name: CLIENT_AUTH_TOKEN_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: client-auth-token
+                    key: token
+                    optional: true
               - name: MC_CLIENT_RESPONDER_ID
                 value: {{ include "fogServices.fogPublicFQDN" . }}:443
               - name: MC_CLIENT_LISTEN_URI
@@ -298,12 +304,6 @@ spec:
                   key: postgresql-ssl-options
             - name: DATABASE_URL
               value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
-            - name: CLIENT_AUTH_TOKEN_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: client-auth-token
-                  key: token
-                  optional: true
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
