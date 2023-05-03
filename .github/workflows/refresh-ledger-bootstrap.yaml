@@ -7,9 +7,6 @@ name: Refresh ledger bootstrap
 on:
   schedule:
   - cron: '0 0 * * *'
-  push:
-    branches:
-    - mcd-ledger-sync-job
 
 # Start mobilecoind
 # Monitor mobilecoind until ledger has finished syncing
