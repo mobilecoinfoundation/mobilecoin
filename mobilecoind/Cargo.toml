@@ -60,6 +60,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
 grpcio = "0.12.1"
+hex = "0.4"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
 num_cpus = "1.15"
@@ -80,7 +81,6 @@ mc-fog-report-validation = { path = "../fog/report/validation", features = ["aut
 mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 
-hex = "0.4"
 more-asserts = "0.3"
 pem = "2.0"
 portpicker = "0.1.1"

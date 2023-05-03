@@ -6,24 +6,32 @@
 
 use clap::Parser;
 use displaydoc::Display;
+use hex;
 use mc_account_keys::burn_address_view_private;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_common::logger::{create_app_logger, log, o, Logger};
+use mc_blockchain_types::{BlockData, BlockIndex};
+use mc_common::{
+    logger::{create_app_logger, log, o, Logger},
+    HashMap, ResponderId,
+};
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_mobilecoind_api::blockchain::ArchiveBlock;
 use mc_transaction_core::tx::TxOut;
 use mc_util_telemetry::setup_default_tracer;
 use mc_watcher::{
-    error::WatcherError,
+    error::{WatcherDBError, WatcherError},
     watcher::WatcherSyncThread,
     watcher_db::{create_or_open_rw_watcher_db, WatcherDB},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use reqwest::Url;
 use std::{
+    fmt::Write,
     path::Path,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -409,11 +417,13 @@ impl RelayerThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                // TODO: get the block contents and check to see if there's a burn in it.
-                // Advance to the next block to sync.
-                let sync_result = Self::process_block(ledger.clone(), next_block, &logger);
+                // Get the block contents and check to see if there's a burn in it.
+                let sync_result =
+                    Self::process_block(ledger.clone(), watcher_db.clone(), next_block, &logger);
                 match sync_result {
                     Ok(()) => {
+                        // Advance to the next block to sync if this block was successfully
+                        // processed
                         next_block_to_sync
                             .compare_exchange(
                                 next_block,
@@ -439,13 +449,11 @@ impl RelayerThread {
         }
     }
 
-    /// TODO: Function to match TXOs from a block into interesting vector of
-    /// unspent UTXOs. If the vector is non empty then the blockdata should be
-    /// forwarded. Helper function for matching a list of TxOuts to a given
-    /// monitor.
+    /// Function to match TXOs from a block into interesting vector of
+    /// unspent UTXOs.
     fn check_block_for_burns(
         ledger: impl Ledger,
-        block_number: u64,
+        block_number: BlockIndex,
         logger: &Logger,
     ) -> Result<Vec<TxOut>, RelayerError> {
         let block_contents = ledger.get_block_contents(block_number)?;
@@ -463,79 +471,52 @@ impl RelayerThread {
                     Some((tx_out, amount)) => Some(Ok(tx_out)),
                     None => None,
                 }
-
-                // TODO: Check to see if the burn has a relevant memo.
-
-                // // Convert target and public keys to RistrettoPublic type.
-                // let tx_out_target_key =
-                // RistrettoPublic::try_from(&tx_out.target_key).ok()?;
-                // let tx_public_key =
-                // RistrettoPublic::try_from(&tx_out.public_key).ok()?;
-
-                // // Generate subaddress spend public key for tx_out.
-                // let subaddress_spk =
-                // SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-                //     account_key.view_private_key(),
-                //     &tx_out_target_key,
-                //     &tx_public_key,
-                // ));
-
-                // // Generate the shared secret between the subaddress and
-                // output public key. let shared_secret =
-                //     get_tx_out_shared_secret(account_key.view_private_key(),
-                // &tx_public_key);
-
-                // // Get the amount and blinding factor for the output.
-                // let (amount, _blinding) = tx_out
-                //     .get_masked_amount()
-                //     .expect("missing masked amount")
-                //     .get_value(&shared_secret)
-                //     .expect("Malformed amount"); // TODO
             })
             .collect();
 
         results
     }
-
+    /// A function that processes a block by:
+    ///     1. checks the blocks for burns.
+    ///     2. Checks those burns for burns with the correct memo types to
+    /// relay.     3. Extracts a map of responder_id to block_data for the
+    /// block if there are relevant burns.     4. Calls the relevant api to
+    /// send it the list of txos and the map of responder_ids to block_data.
     fn process_block(
         ledger: impl Ledger,
-        next_block: u64,
+        watcher_db: WatcherDB,
+        next_block: BlockIndex,
         logger: &Logger,
     ) -> Result<(), RelayerError> {
-        let txos = Self::check_block_for_burns(ledger, next_block, logger);
-        match txos {
-            Ok(txos) => {
-                if (txos.is_empty()) {
-                    return Ok(());
-                }
-                Self::check_burns_for_relevant_memo(txos, logger);
-            }
-            Err(e) => {
-                return Ok(());
-            }
+        let txos = Self::check_block_for_burns(ledger, next_block, logger)?;
+        // There are no burns in this block so this block is finished processing.
+        if (txos.is_empty()) {
+            return Ok(());
         }
-        return Ok(());
+        let burns_with_relevant_memos = Self::check_burns_for_relevant_memo(txos, logger)?;
+        // There are no burns with relevant memos in this block so this block is
+        // finished processing.
+        if (burns_with_relevant_memos.is_empty()) {
+            return Ok(());
+        }
+        let block_data_map = watcher_db.get_block_data_map(next_block)?;
+        Self::forward_data_to_verifier(burns_with_relevant_memos, block_data_map, logger)
     }
-    /// TODO: A function that processes a block, which is to say, checks the
-    /// blocks for burns. Checks those burns for interesting burns. Extracts the
-    /// relevant data for interesting burns. Then sends all of that along. Then
-    /// marks the block as processed. TODO: Function to check whether the
-    /// memo is interesting for a burn txo. TODO: Function to extract
-    /// relevant block data for an interesting block. TODO: Function to send
-    /// interesting block data to a relevant endpoint.
+    /// Function to check whether a burn_txo has a relevant memo for the
+    /// relayer.
     fn check_burns_for_relevant_memo(
         txos: Vec<TxOut>,
         logger: &Logger,
     ) -> Result<Vec<TxOut>, RelayerError> {
         log::info!(
             logger,
-            "Relayer: Checking this txo for a burn memo: {:?}",
+            "Relayer: Checking these txos for a burn memo: {:?}",
             txos
         );
-        txos.iter().filter(|&txo| {
+        for txo in &txos {
             // Reconstruct compressed commitment based on our view key.
             // The first step is reconstructing the TxOut shared secret
-            ///TODO: Fix this uwrap
+            //TODO: Fix this uwrap
             let public_key = RistrettoPublic::try_from(&txo.public_key).unwrap();
             let tx_out_shared_secret = mc_transaction_core::get_tx_out_shared_secret(
                 &burn_address_view_private(),
@@ -543,10 +524,20 @@ impl RelayerThread {
             );
             let memo = txo.decrypt_memo(&tx_out_shared_secret);
             let memo_data = memo.get_memo_data();
-            log::info!(logger, "Relayer: the burn memo was: {:?}", memo_data);
-            true
-        });
+            let hex_string = hex::encode(&memo_data);
+            // TODO: Actually filter this based on the memo somehow.
+            log::info!(logger, "Relayer: the burn memo was: {:?}", hex_string);
+        }
         Ok(txos)
+    }
+
+    ///  Function to send block data and txos to the verifier.
+    fn forward_data_to_verifier(
+        txos: Vec<TxOut>,
+        block_data_map: HashMap<Url, BlockData>,
+        logger: &Logger,
+    ) -> Result<(), RelayerError> {
+        todo!("Trying to forward block_data to verifier");
     }
 }
 
@@ -561,6 +552,8 @@ impl Drop for RelayerThread {
 pub enum RelayerError {
     /// Failure with LedgerDB: {0}
     LedgerDB(LedgerDbError),
+    /// Failure with WatcherDB: {0}
+    WatcherDB(WatcherDBError),
     /// Not sure what this is for yet.
     UnknownError(),
 }
@@ -568,5 +561,11 @@ pub enum RelayerError {
 impl From<LedgerDbError> for RelayerError {
     fn from(e: LedgerDbError) -> Self {
         Self::LedgerDB(e)
+    }
+}
+
+impl From<WatcherDBError> for RelayerError {
+    fn from(e: WatcherDBError) -> Self {
+        Self::WatcherDB(e)
     }
 }
