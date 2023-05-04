@@ -14,10 +14,7 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{
-    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
-    Authenticator,
-};
+use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
 use mc_watcher::watcher_db::WatcherDB;
 use std::sync::{Arc, Mutex};
 
@@ -96,35 +93,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         }
     }
 
-    pub fn auth_service(
-        &mut self,
-        mut req: AuthMessage,
-        logger: &Logger,
-    ) -> Result<attest::AuthMessage, RpcStatus> {
-        // TODO: Use the prost message directly, once available
-        match self.enclave.client_accept(req.take_data().into()) {
-            Ok((response, _)) => {
-                let mut result = attest::AuthMessage::new();
-                result.set_data(response.into());
-                Ok(result)
-            }
-            Err(client_error) => {
-                // There's no requirement on the remote party to trigger this, so it's debug.
-                log::debug!(
-                    logger,
-                    "KeyImageStoreApi::client_accept failed: {}",
-                    client_error
-                );
-                let rpc_permissions_error = rpc_permissions_error(
-                    "client_auth",
-                    format!("Permission denied: {client_error}"),
-                    logger,
-                );
-                Err(rpc_permissions_error)
-            }
-        }
-    }
-
     /// Generate an UntrustedKeyImageQueryResponse
     /// for use in [KeyImageService::check_key_images_auth()]
     /// and [KeyImageService::check_key_image_store_auth()]
@@ -159,31 +127,16 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     fn check_key_image_store_auth(
         &mut self,
         request: attest::NonceMessage,
-    ) -> Result<attest::NonceMessage, RpcStatus> {
+    ) -> Result<attest::NonceMessage, EnclaveError> {
         log::trace!(self.logger, "Getting encrypted request");
 
         let untrusted_query_response = self.prepare_untrusted_query();
 
         let response = self
             .enclave
-            .check_key_image_store(request.into(), untrusted_query_response)
-            .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
+            .check_key_image_store(request.into(), untrusted_query_response)?;
 
         Ok(response.into())
-    }
-
-    // Helper function that is common
-    fn enclave_err_to_rpc_status(&self, context: &str, src: EnclaveError) -> RpcStatus {
-        // Treat prost-decode error as an invalid arg,
-        // treat attest error as permission denied,
-        // everything else is an internal error
-        match src {
-            EnclaveError::ProstDecode => {
-                rpc_invalid_arg_error(context, "Prost decode failed", &self.logger)
-            }
-            EnclaveError::Attest(err) => rpc_permissions_error(context, err, &self.logger),
-            other => rpc_internal_error(context, format!("{}", &other), &self.logger),
-        }
     }
 
     /// Handle MultiKeyImageStoreRequest contents sent by a router to this
@@ -196,25 +149,37 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         let mut response = MultiKeyImageStoreResponse::new();
         // The router needs our own URI, in case auth fails / hasn't been started yet.
         response.set_store_uri(fog_ledger_store_uri.url().to_string());
+        // Default status of AUTHENTICATION_ERROR in case of empty queries
+        response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
 
         for query in queries.into_iter() {
             // Only one of the query messages in the multi-store query is intended for this
             // store. It's a bit of a broadcast model - all queries are sent to
             // all stores, and then the stores evaluate which message is meant
             // for them.
-            if let Ok(attested_message) = self.check_key_image_store_auth(query) {
-                response.set_query_response(attested_message);
-                response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
-                //Note that set_fog_ledger_store_uri has been taken care of above.
-
-                return response;
+            match self.check_key_image_store_auth(query) {
+                Ok(attested_message) => {
+                    response.set_query_response(attested_message);
+                    response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
+                }
+                Err(EnclaveError::ProstDecode) => {
+                    response.set_status(MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT);
+                }
+                Err(EnclaveError::Attest(_)) => {
+                    response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+                    // All other conditions are early exit but we expect several of these
+                    continue;
+                }
+                Err(_) => {
+                    response.set_status(MultiKeyImageStoreResponseStatus::UNKNOWN);
+                }
             }
+
+            // Early-exit for success or failure
+            return response;
         }
 
-        // TODO: different response code for "none found matching" from "authentication
-        // error," potentially?
-
-        response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+        // Late exit for authentication errors
         response
     }
 }

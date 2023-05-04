@@ -80,6 +80,8 @@ enum MultiKeyImageStoreResponseStatus {
     /// The Fog Ledger Store is not ready to service a MultiLedgerStoreQueryRequest. This might be because the store has
     /// not loaded enough blocks yet.
     NOT_READY = 3;
+	/// The Fog Ledger Store could not decode the protobuf message.
+    INVALID_ARGUMENT = 4;
 }
 
 message MultiKeyImageStoreResponse {
