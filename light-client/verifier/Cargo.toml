@@ -1,0 +1,24 @@
+[package]
+name = "light-client-verifier"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[lib]
+name = "light_client_verifier"
+path = "src/lib.rs"
+
+[[bin]]
+name = "light-client-verifier"
+path = "src/bin/main.rs"
+
+[dependencies]
+light-client-api = { path = "../api" }
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-uri = { path = "../../util/uri" }
+
+clap = { version = "4.0", features = ["derive", "env"] }
+displaydoc = { version = "0.2", default-features = false }
+futures = "0.3"
+grpcio = "0.12.0"

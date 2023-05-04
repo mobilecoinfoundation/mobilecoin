@@ -114,6 +114,7 @@ members = [
     "ledger/sync",
     "light-client/api",
     "light-client/relayer",
+    "light-client/verifier",
     "mobilecoind",
     "mobilecoind-dev-faucet",
     "mobilecoind-json",
