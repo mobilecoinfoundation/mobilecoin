@@ -20,7 +20,7 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 
 clap = { version = "4.1", features = ["derive", "env"] }
-dirs = "4.0"
+dirs = "5.0"
 displaydoc = "0.2"
 protobuf = "2.27.1"
 retry = "2.0"
