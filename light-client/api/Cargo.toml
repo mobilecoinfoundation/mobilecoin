@@ -1,0 +1,22 @@
+[package]
+name = "light-client-api"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+build = "build.rs"
+edition = "2021"
+links = "light-client-api"
+
+[dependencies]
+mc-api = { path = "../../api" }
+mc-util-uri = { path = "../../util/uri" }
+
+futures = "0.3"
+grpcio = "0.12.0"
+protobuf = "2.27.1"
+rand = "0.8" # TODO something needs to enable the default features on rand, and since we don't have any dependency of mc-api doing that we need to do it here for now
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
+
+cargo-emit = "0.2.1"

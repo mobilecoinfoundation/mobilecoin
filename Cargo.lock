@@ -2118,6 +2118,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "light-client-api"
+version = "1.3.0-pre0"
+dependencies = [
+ "cargo-emit",
+ "futures",
+ "grpcio",
+ "mc-api",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-uri",
+ "protobuf",
+ "rand",
+]
+
+[[package]]
 name = "light-client-relayer"
 version = "1.3.0-pre0"
 dependencies = [

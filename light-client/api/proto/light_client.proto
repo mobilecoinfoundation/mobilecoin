@@ -1,0 +1,30 @@
+// Copyright (c) 2018-2023 The MobileCoin Foundation
+
+// API for light-client
+
+syntax = "proto3";
+
+package light_client;
+
+option java_package = "com.mobilecoin.api";
+option go_package = "mobilecoin/api";
+
+import "blockchain.proto";
+import "external.proto";
+
+service LightClientVerifier {
+    /// This is called to verify a txo
+    rpc Verify(VerifyTxORequest) returns (VerifyTxOResponse) {}
+}
+
+message VerifyTxORequest {
+    // An archive block for each node. Used to prove that there was a quorum on this block.
+    repeated blockchain.ArchiveBlockV1 proofs = 1;
+
+    // A list of txos which should be verified as being in the block
+    repeated external.TxOut txos = 2;
+
+}
+message VerifyTxOResponse {
+    bool is_valid = 1;
+}
