@@ -119,7 +119,7 @@ fn main() {
                         watcher_db.clone(),
                         ledger_db.clone(),
                         config.poll_interval,
-                        false,
+                        true,
                         logger.clone(),
                     )
                     .expect("Failed starting watcher thread"),
@@ -418,8 +418,13 @@ impl RelayerThread {
             // Maybe sync, maybe wait and check again.
             if is_behind {
                 // Get the block contents and check to see if there's a burn in it.
-                let sync_result =
-                    Self::process_block(ledger.clone(), watcher_db.clone(), next_block, &logger);
+                let sync_result = Self::process_block(
+                    ledger.clone(),
+                    watcher_db.clone(),
+                    next_block,
+                    poll_interval,
+                    &logger,
+                );
                 match sync_result {
                     Ok(()) => {
                         // Advance to the next block to sync if this block was successfully
@@ -486,6 +491,7 @@ impl RelayerThread {
         ledger: impl Ledger,
         watcher_db: WatcherDB,
         next_block: BlockIndex,
+        poll_interval: Duration,
         logger: &Logger,
     ) -> Result<(), RelayerError> {
         let txos = Self::check_block_for_burns(ledger, next_block, logger)?;
@@ -499,7 +505,11 @@ impl RelayerThread {
         if (burns_with_relevant_memos.is_empty()) {
             return Ok(());
         }
-        let block_data_map = watcher_db.get_block_data_map(next_block)?;
+        let mut block_data_map = watcher_db.get_block_data_map(next_block)?;
+        while block_data_map.is_empty() {
+            std::thread::sleep(poll_interval);
+            block_data_map = watcher_db.get_block_data_map(next_block)?;
+        }
         Self::forward_data_to_verifier(burns_with_relevant_memos, block_data_map, logger)
     }
     /// Function to check whether a burn_txo has a relevant memo for the
@@ -537,7 +547,20 @@ impl RelayerThread {
         block_data_map: HashMap<Url, BlockData>,
         logger: &Logger,
     ) -> Result<(), RelayerError> {
-        todo!("Trying to forward block_data to verifier");
+        log::info!(logger, "Relayer: The relevant burns were: {:?}", txos);
+        for (url, blockdata) in block_data_map {
+            let meta = blockdata.metadata().ok_or(RelayerError::BlockMetaData(
+                "Found a burn on a block with no metadata".to_owned(),
+            ))?;
+            let responder_id = meta.contents().responder_id();
+            log::info!(
+                logger,
+                "Relayer: The responder_id for {:?} was: {:?}",
+                url,
+                responder_id
+            );
+        }
+        Ok(())
     }
 }
 
@@ -554,6 +577,8 @@ pub enum RelayerError {
     LedgerDB(LedgerDbError),
     /// Failure with WatcherDB: {0}
     WatcherDB(WatcherDBError),
+    /// Invalid Block Metadata: {0}
+    BlockMetaData(String),
     /// Not sure what this is for yet.
     UnknownError(),
 }
