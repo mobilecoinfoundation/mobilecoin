@@ -149,6 +149,8 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         let mut response = MultiKeyImageStoreResponse::new();
         // The router needs our own URI, in case auth fails / hasn't been started yet.
         response.set_store_uri(fog_ledger_store_uri.url().to_string());
+        // Default status of AUTHENTICATION_ERROR in case of empty queries
+        response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
 
         for query in queries.into_iter() {
             // Only one of the query messages in the multi-store query is intended for this
