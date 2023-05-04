@@ -70,6 +70,9 @@ spec:
         - secretRef:
             name: sample-keys-seeds
             optional: true
+        - configMapRef:
+            name: mobilecoind
+            optional: true
         env:
         - name: "RUST_BACKTRACE"
           value: "full"

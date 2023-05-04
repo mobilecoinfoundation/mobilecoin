@@ -16,7 +16,7 @@ image:
   org: mobilecoin
   tag: '' # Overrides the image tag whose default is the chart appVersion.
 
-imagePullSecrets: 
+imagePullSecrets:
   - name: docker-credentials
 
 mobilecoind:
@@ -48,6 +48,11 @@ mobilecoind:
   #     resources:
   #       requests:
   #         storage: 128Gi
+
+  configMap: {}
+    # Bootstrap ledger/watcher db from public bucket
+    # MC_LEDGER_DB_URL: ''
+    # MC_WATCHER_DB_URL: ''
 
   initContainers:
   - name: migrate-ledger
