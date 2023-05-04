@@ -1,0 +1,15 @@
+[package]
+name = "light-client-relayer"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+
+[[bin]]
+name = "light-client-relayer"
+path = "src/bin/main.rs"
+
+[dependencies]
+
+mc-common = { path = "../../common", features = ["loggers"] }
+
+clap = { version = "4.0", features = ["derive", "env"] }
