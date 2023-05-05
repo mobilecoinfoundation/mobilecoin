@@ -90,5 +90,5 @@ portpicker = "0.1.1"
 sha2 = "0.10"
 
 # third-party
-tempfile = "3.4"
+tempfile = "3.5"
 tokio = { version = "1.0", features = ["full"] }

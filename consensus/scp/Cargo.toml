@@ -36,7 +36,7 @@ mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
 serial_test = "1.0"
-tempfile = "3.4"
+tempfile = "3.5"
 
 [[test]]
 name = "test_cyclic_networks"
