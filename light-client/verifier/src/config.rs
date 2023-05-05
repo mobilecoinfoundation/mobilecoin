@@ -1,4 +1,5 @@
 use clap::Parser;
+use mc_common::ResponderId;
 use mc_consensus_scp::QuorumSet;
 
 #[derive(Debug, Parser)]
@@ -8,7 +9,7 @@ use mc_consensus_scp::QuorumSet;
 )]
 pub struct LightClientVerifierConfig {
     #[clap(long, value_parser = parse_quorum_set_from_json, env = "MC_QUORUM_SET")]
-    quorum_set: QuorumSet,
+    pub quorum_set: QuorumSet<ResponderId>,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
