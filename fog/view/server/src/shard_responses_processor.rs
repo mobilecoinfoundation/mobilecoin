@@ -157,7 +157,9 @@ mod tests {
         );
 
         let grpc_client = FogViewStoreApiClient::new(
-            ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger),
+            ChannelBuilder::default_channel_builder(grpc_env)
+                .keepalive_permit_without_calls(false)
+                .connect_to_uri(&uri, &logger),
         );
 
         Shard::new(uri, Arc::new(grpc_client), block_range)

@@ -289,7 +289,9 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
             .build(),
     );
     let view_store_client = FogViewStoreApiClient::new(
-        ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_store_url, &logger),
+        ChannelBuilder::default_channel_builder(grpc_env)
+            .keepalive_permit_without_calls(false)
+            .connect_to_uri(&view_store_url, &logger),
     );
 
     let auth_unary_receiver = view_store_client.auth_async(&nonce_auth_request.into())?;
