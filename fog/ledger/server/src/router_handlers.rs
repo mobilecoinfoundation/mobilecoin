@@ -388,6 +388,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     );
     let ledger_store_client = KeyImageStoreApiClient::new(
         ChannelBuilder::default_channel_builder(grpc_env)
+            .keepalive_permit_without_calls(false)
             .connect_to_uri(&ledger_store_url, &logger),
     );
 
