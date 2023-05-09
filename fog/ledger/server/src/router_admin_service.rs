@@ -61,6 +61,7 @@ impl LedgerRouterAdminService {
         );
         let key_image_store_client = KeyImageStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env)
+                .keepalive_permit_without_calls(false)
                 .connect_to_uri(&key_image_store_uri, logger),
         );
         shard_clients.insert(key_image_store_uri, Arc::new(key_image_store_client));

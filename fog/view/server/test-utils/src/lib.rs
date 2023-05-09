@@ -287,6 +287,7 @@ impl RouterTestEnvironment {
             );
             let store_client = FogViewStoreApiClient::new(
                 ChannelBuilder::default_channel_builder(grpc_env)
+                    .keepalive_permit_without_calls(false)
                     .connect_to_uri(&store_uri, &logger),
             );
             let shard = Shard::new(store_uri, Arc::new(store_client), store_block_range);

@@ -50,6 +50,7 @@ fn main() {
     for shard_uri in config.shard_uris.clone() {
         let fog_view_store_grpc_client = FogViewStoreApiClient::new(
             ChannelBuilder::default_channel_builder(grpc_env.clone())
+                .keepalive_permit_without_calls(false)
                 .connect_to_uri(&shard_uri, &logger),
         );
 
