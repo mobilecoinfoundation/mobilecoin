@@ -10,16 +10,9 @@ env:
   RELEASE_3X_TAG: v3.0.0-dev
 
 on:
-  pull_request:
-    branches:
-    - 'release/**'
-    paths-ignore:
-    - '**.md'
   push:
     branches:
-    - 'feature/**'
-    tags:
-    - 'v[0-9]+*'
+    - 'release/**'
     paths-ignore:
     - '**.md'
 
