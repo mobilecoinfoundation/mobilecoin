@@ -99,6 +99,8 @@ where
             enclave.clone(),
             ledger_store_grpc_clients.clone(),
             config.query_retries,
+            config.rate_limit_burst_period,
+            config.rate_limit_max_burst,
             logger.clone(),
         );
 

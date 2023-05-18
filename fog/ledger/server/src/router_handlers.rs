@@ -5,6 +5,11 @@ use crate::{
     SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
+use governor::{
+    clock::{Clock, DefaultClock},
+    state::keyed::DefaultKeyedStateStore,
+    RateLimiter,
+};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
@@ -21,7 +26,9 @@ use mc_fog_api::{
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
+use mc_util_grpc::{
+    rpc_invalid_arg_error, rpc_resource_exhausted_error, ConnectionUriGrpcioChannel, ResponseStatus,
+};
 use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
@@ -35,6 +42,7 @@ pub async fn handle_requests<E>(
     mut requests: RequestStream<LedgerRequest>,
     mut responses: DuplexSink<LedgerResponse>,
     query_retries: usize,
+    rate_limit_context: Arc<RateLimiter<Vec<u8>, DefaultKeyedStateStore<Vec<u8>>, DefaultClock>>,
     logger: Logger,
 ) -> Result<(), grpcio::Error>
 where
@@ -52,6 +60,7 @@ where
             shard_clients.clone(),
             enclave.clone(),
             query_retries,
+            rate_limit_context.clone(),
             logger.clone(),
         )
         .await;
@@ -76,6 +85,7 @@ pub async fn handle_request<E>(
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
     enclave: E,
     query_retries: usize,
+    rate_limit_context: Arc<RateLimiter<Vec<u8>, DefaultKeyedStateStore<Vec<u8>>, DefaultClock>>,
     logger: Logger,
 ) -> Result<LedgerResponse, RpcStatus>
 where
@@ -87,16 +97,33 @@ where
             tracer.in_span("auth", |_cx| handle_auth_request(enclave, request, logger))
         }
         Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
-            handle_query_request(
-                request,
-                enclave,
-                shard_clients,
-                query_retries,
-                logger,
-                &tracer,
-            )
-            .with_context(create_context(&tracer, "check_key_images"))
-            .await
+            match rate_limit_context.check_key(&request.channel_id) {
+                Ok(()) => {
+                    handle_query_request(
+                        request,
+                        enclave,
+                        shard_clients,
+                        query_retries,
+                        logger,
+                        &tracer,
+                    )
+                    .with_context(create_context(&tracer, "check_key_images"))
+                    .await
+                }
+                Err(not_until) => {
+                    let rpc_status = rpc_resource_exhausted_error(
+                        "Key image rate limit exceeded",
+                        format!(
+                            "Try again in {} milliseconds",
+                            not_until
+                                .wait_time_from(DefaultClock::default().now())
+                                .as_millis()
+                        ),
+                        &logger,
+                    );
+                    Err(rpc_status)
+                }
+            }
         }
         None => {
             let rpc_status = rpc_invalid_arg_error(

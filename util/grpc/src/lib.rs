@@ -266,6 +266,22 @@ pub fn rpc_unavailable_error<S: Display, E: Display>(
     )
 }
 
+/// Resource exhausted error may be returned if a rate limit is exceeded.
+#[inline]
+pub fn rpc_resource_exhausted_error<S: Display, E: Display>(
+    context: S,
+    err: E,
+    logger: &Logger,
+) -> RpcStatus {
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::RESOURCE_EXHAUSTED,
+        logger,
+        Level::Debug
+    )
+}
+
 /// Converts a serialization Error to an RpcStatus error.
 pub fn ser_to_rpc_err(error: mc_util_serial::encode::Error, logger: &Logger) -> RpcStatus {
     rpc_internal_error("Serialization", error, logger)

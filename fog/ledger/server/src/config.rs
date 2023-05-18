@@ -9,10 +9,10 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
-use mc_util_parse::parse_duration_in_seconds;
+use mc_util_parse::{parse_duration_in_milliseconds, parse_duration_in_seconds};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{num::NonZeroU32, path::PathBuf, str::FromStr, time::Duration};
 
 /// Configuration parameters for the Fog Ledger Router service.
 #[derive(Clone, Parser, Serialize)]
@@ -64,6 +64,14 @@ pub struct LedgerRouterConfig {
     /// hours).
     #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
+
+    /// Rate limiting burst period, in milliseconds. Defaults to 10000 (10 sec)
+    #[clap(long, default_value = "10000", value_parser = parse_duration_in_milliseconds, env = "MC_RATE_LIMIT_BURST_PERIOD")]
+    pub rate_limit_burst_period: Duration,
+
+    /// Rate limiting maximum burst. Defaults to 80 requests.
+    #[clap(long, default_value = "80", env = "MC_RATE_LIMIT_MAX_BURST")]
+    pub rate_limit_max_burst: NonZeroU32,
 
     /// Path to ledger db (lmdb)
     #[clap(long, env = "MC_LEDGER_DB")]

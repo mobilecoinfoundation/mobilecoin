@@ -20,4 +20,4 @@ mod untrusted;
 pub use untrusted::FogUntrustedLedgerGrpcClient;
 
 mod router_client;
-pub use router_client::LedgerGrpcClient;
+pub use router_client::{Error as RouterClientError, LedgerGrpcClient};

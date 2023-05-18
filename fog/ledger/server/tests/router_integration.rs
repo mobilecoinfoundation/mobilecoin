@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
+use grpcio::Error::RpcFailure;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
@@ -10,7 +11,9 @@ use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
-use mc_fog_ledger_connection::{KeyImageResultExtension, LedgerGrpcClient};
+use mc_fog_ledger_connection::{
+    KeyImageResultExtension, LedgerGrpcClient, RouterClientError::Grpc,
+};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
     sharding_strategy::EpochShardingStrategy, KeyImageStoreServer, LedgerRouterConfig,
@@ -31,9 +34,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    num::NonZeroU32,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
+    time::{Duration, Instant},
 };
 use tempfile::TempDir;
 use url::Url;
@@ -224,6 +229,12 @@ fn create_router(
         ias_api_key: Default::default(),
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
+        rate_limit_burst_period: test_config
+            .rate_limit_period
+            .unwrap_or(Duration::from_secs(10)),
+        rate_limit_max_burst: test_config
+            .rate_limit_max
+            .unwrap_or(NonZeroU32::new(80).unwrap()),
         query_retries: 3,
         omap_capacity: test_config.omap_capacity,
     };
@@ -341,6 +352,8 @@ struct TestEnvironmentConfig {
     router_address: SocketAddr,
     router_admin_address: SocketAddr,
     shards: Vec<ShardConfig>,
+    rate_limit_period: Option<Duration>,
+    rate_limit_max: Option<NonZeroU32>,
     omap_capacity: u64,
 }
 
@@ -398,6 +411,8 @@ async fn smoke_test() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
+        rate_limit_period: None,
+        rate_limit_max: None,
         omap_capacity: 1000,
     };
 
@@ -485,7 +500,6 @@ async fn smoke_test() {
 #[tokio::test(flavor = "multi_thread")]
 async fn overlapping_stores() {
     let logger = logger::create_test_logger("overlapping_stores".to_string());
-    log::info!(logger, "test");
     // Three shards, three stores each, correct config, each stores three blocks,
     // each has three users with three keys each - but the blocks overlap (so
     // total of 5 blocks)
@@ -515,6 +529,8 @@ async fn overlapping_stores() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
+        rate_limit_period: None,
+        rate_limit_max: None,
         omap_capacity: 1000,
     };
 
@@ -597,4 +613,127 @@ async fn overlapping_stores() {
         response.results[0].timestamp_result_code,
         TimestampResultCode::TimestampFound as u32
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rate_limit() {
+    let logger = logger::create_test_logger("rate_limit".to_string());
+    let rate_limit_period_secs = 1;
+    let rate_limit_max = 2;
+    // One shard with one store that owns all blocks. Three blocks.
+    let num_shards = 1;
+    let stores_per_shard = 1;
+    let blocks_per_shard = 3;
+    let mut rng = RngType::from_seed([0u8; 32]);
+    let mut shards_config = vec![];
+    for i in 0..num_shards {
+        let mut stores_config = vec![];
+        for _ in 0..stores_per_shard {
+            let store = StoreConfig {
+                address: free_sockaddr(),
+                block_range: None,
+                omap_capacity: 1000,
+            };
+            stores_config.push(store);
+        }
+        let shard = ShardConfig {
+            address: free_sockaddr(),
+            block_range: BlockRange::new_from_length(i + 1, blocks_per_shard),
+            stores: stores_config,
+        };
+        shards_config.push(shard);
+    }
+    let config = TestEnvironmentConfig {
+        router_address: free_sockaddr(),
+        router_admin_address: free_sockaddr(),
+        shards: shards_config,
+        rate_limit_period: Some(Duration::from_secs(rate_limit_period_secs)),
+        rate_limit_max: Some(NonZeroU32::new(rate_limit_max).unwrap()),
+        omap_capacity: 1000,
+    };
+
+    let mut blocks_config = vec![];
+    let mut key_index = 0;
+    let num_blocks = 3;
+    let users_per_block = 3;
+    let keys_per_user = 3;
+    for _ in 0..num_blocks {
+        let mut block = HashMap::new();
+        for _ in 0..users_per_block {
+            let account = AccountKey::random_with_fog(&mut rng);
+            let mut keys = vec![];
+            for _ in 0..keys_per_user {
+                keys.push(KeyImage::from(key_index));
+                key_index += 1;
+            }
+            block.insert(account.default_subaddress(), keys);
+        }
+        blocks_config.push(block);
+    }
+
+    let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+
+    let mut test_environment = create_env(config, blocks_config, grpc_env, logger.clone());
+
+    // Check that we can get all the key images from the shard
+    let keys_per_block = users_per_block * keys_per_user;
+    let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
+    let response = test_environment
+        .router_client
+        .check_key_images(&keys)
+        .await
+        .expect("check_key_images failed");
+    assert_eq!(response.results.len(), key_index as usize);
+    for i in 0..key_index {
+        let key = KeyImage::from(i);
+        assert_eq!(response.results[i as usize].key_image, key);
+        assert_eq!(
+            response.results[i as usize].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
+        assert_eq!(
+            response.results[i as usize].timestamp_result_code,
+            TimestampResultCode::TimestampFound as u32
+        );
+    }
+
+    // Trigger the rate limit (hammer as hard as possible for 3 seconds)
+    let start = Instant::now();
+    let mut limited = false;
+    while Instant::now().duration_since(start) < Duration::from_secs(rate_limit_period_secs * 3) {
+        if let Err(Grpc(RpcFailure(e))) =
+            test_environment.router_client.check_key_images(&keys).await
+        {
+            if e.code() == grpcio::RpcStatusCode::RESOURCE_EXHAUSTED {
+                limited = true;
+                break;
+            }
+        }
+    }
+
+    assert!(limited, "failed to trigger the rate limit");
+
+    // Reconnect to clear rate limit condition
+    test_environment.router_client.reconnect();
+
+    // Confirm that we can still get all the key images from the shard
+    let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
+    let response = test_environment
+        .router_client
+        .check_key_images(&keys)
+        .await
+        .expect("check_key_images failed");
+    assert_eq!(response.results.len(), key_index as usize);
+    for i in 0..key_index {
+        let key = KeyImage::from(i);
+        assert_eq!(response.results[i as usize].key_image, key);
+        assert_eq!(
+            response.results[i as usize].status(),
+            Ok(Some((i / keys_per_block) + 1))
+        );
+        assert_eq!(
+            response.results[i as usize].timestamp_result_code,
+            TimestampResultCode::TimestampFound as u32
+        );
+    }
 }

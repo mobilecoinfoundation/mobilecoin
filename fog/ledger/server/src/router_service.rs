@@ -5,6 +5,7 @@ use crate::{
     SVC_COUNTERS,
 };
 use futures::{FutureExt, TryFutureExt};
+use governor::{clock::DefaultClock, state::keyed::DefaultKeyedStateStore, Quota, RateLimiter};
 use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_common::logger::{log, Logger};
@@ -20,7 +21,9 @@ use mc_util_telemetry::tracer;
 
 use std::{
     collections::HashMap,
+    num::NonZeroU32,
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 #[derive(Clone)]
@@ -31,6 +34,7 @@ where
     enclave: E,
     shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
     query_retries: usize,
+    rate_limit_context: Arc<RateLimiter<Vec<u8>, DefaultKeyedStateStore<Vec<u8>>, DefaultClock>>,
     logger: Logger,
 }
 
@@ -41,12 +45,20 @@ impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
         enclave: E,
         shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
         query_retries: usize,
+        burst_period: Duration,
+        max_burst: NonZeroU32,
         logger: Logger,
     ) -> Self {
+        let rate_limiter = RateLimiter::keyed(
+            Quota::with_period(burst_period / max_burst.get())
+                .expect("invalid burst period or max burst")
+                .allow_burst(max_burst),
+        );
         Self {
             enclave,
             shards,
             query_retries,
+            rate_limit_context: Arc::new(rate_limiter),
             logger,
         }
     }
@@ -80,6 +92,7 @@ where
                 requests,
                 responses,
                 self.query_retries,
+                self.rate_limit_context.clone(),
                 logger.clone(),
             )
             .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))
