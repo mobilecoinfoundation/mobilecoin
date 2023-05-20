@@ -45,7 +45,7 @@ struct Config {
 
     /// Max number of requests before the test ends (without ctrl-c)
     #[clap(long, default_value = "0", env = "MC_MAX_REQUESTS")]
-    pub max_requests: usize,
+    pub max_requests: u64,
 }
 
 /// Metrics that we aggregate for the load test
@@ -184,7 +184,7 @@ fn main() {
                 diff.avg_latency()
             );
             last_display = now;
-            last_counters = current_counters;
+            last_counters = current_counters.clone();
         }
 
         // terminate test if we have exceeded maximum number of requests to perform, and
