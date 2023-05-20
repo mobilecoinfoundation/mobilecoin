@@ -117,7 +117,7 @@ fn worker_thread(
     while !stop_requested.load(Ordering::SeqCst) {
         let start = Instant::now();
         let result = fog_view_client.request(0, 0, search_keys.clone());
-        let duration = Instant::now().duration_since(start);
+        let duration = start.elapsed();
 
         let mut counters = counters.lock().unwrap();
         counters.num_requests += 1;
