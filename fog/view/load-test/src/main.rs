@@ -35,7 +35,7 @@ struct Config {
     #[clap(long, default_value = "1", env = "MC_NUM_WORKERS")]
     pub num_workers: usize,
 
-    /// Number of search keys to include in request
+    /// Number of search keys to include in each request
     #[clap(long, default_value = "1", env = "MC_NUM_SEARCH_KEYS")]
     pub num_search_keys: usize,
 
@@ -191,7 +191,7 @@ fn main() {
         total_duration.as_secs_f64()
     );
     println!("{}", counters.lock().unwrap());
-    println!("Config: {:?}", config);
+    println!("Config: {config:?}");
 }
 
 fn build_fog_view_conn(
