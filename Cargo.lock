@@ -972,6 +972,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbcf33c2a618cbe41ee43ae6e9f2e48368cd9f9db2896f10167d8d762679f639"
+dependencies = [
+ "nix",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "4.0.0-rc.1"
 source = "git+https://github.com/dalek-cryptography/curve25519-dalek?rev=99c0520aa79401b69fb51d38172cd58c6a256cfb#99c0520aa79401b69fb51d38172cd58c6a256cfb"
@@ -4595,8 +4605,8 @@ name = "mc-fog-view-load-test"
 version = "4.1.0-pre0"
 dependencies = [
  "clap 4.1.14",
+ "ctrlc",
  "grpcio",
- "mc-account-keys",
  "mc-attest-verifier",
  "mc-common",
  "mc-fog-kex-rng",
@@ -4605,8 +4615,9 @@ dependencies = [
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
  "mc-util-cli",
+ "mc-util-from-random",
  "mc-util-grpc",
- "mc-util-keyfile",
+ "rand",
 ]
 
 [[package]]
@@ -6073,6 +6084,18 @@ dependencies = [
  "tokio",
  "tokio-util",
  "version_check",
+]
+
+[[package]]
+name = "nix"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdda3d196821d6af13126e40375cdf7da646a96114af134d5f417a9a1dc8e1a"
+dependencies = [
+ "bitflags 1.3.2",
+ "cfg-if 1.0.0",
+ "libc",
+ "static_assertions",
 ]
 
 [[package]]

@@ -1,10 +1,9 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 #![deny(missing_docs)]
 
 //! A utility to load-test a fog-view server.
 
 use grpcio::EnvBuilder;
-use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
@@ -12,27 +11,22 @@ use mc_fog_uri::FogViewUri;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_cli::ParserWithBuildInfo;
+use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use std::{
-    path::PathBuf,
+    fmt::Display,
     str::FromStr,
     sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 #[derive(Debug, clap::Parser)]
 #[clap(version)]
 struct Config {
-    /// Path to root identity file to use
-    /// Note: This contains the fog-url which is the same as the report-server
-    /// uri
-    #[clap(long, short, env = "MC_KEYFILE")]
-    pub keyfile: PathBuf,
-
     /// View server URI
     #[clap(long, short, env = "MC_VIEW_URI")]
     pub view_uri: String,
@@ -42,7 +36,7 @@ struct Config {
     pub num_workers: usize,
 
     /// Number of search keys to include in request
-    #[clap(long, default_value = "100", env = "MC_NUM_SEARCH_KEYS")]
+    #[clap(long, default_value = "1", env = "MC_NUM_SEARCH_KEYS")]
     pub num_search_keys: usize,
 
     /// Grpc retry config
@@ -50,32 +44,83 @@ struct Config {
     pub grpc_retry_config: GrpcRetryConfig,
 }
 
+/// Metrics that we aggregate for the load test
+#[derive(Clone, Debug, Default)]
+pub struct Counters {
+    /// Number of requests made to fog view
+    pub num_requests: u64,
+    /// Number of errors resulting from those requests
+    pub num_errors: u64,
+    /// Total latency of these requests, in milliseconds
+    pub total_millis_latency: u64,
+}
+
+impl Counters {
+    fn avg_latency(&self) -> f64 {
+        if self.num_requests == 0 {
+            0f64
+        } else {
+            (self.total_millis_latency / self.num_requests) as f64 / 1000f64
+        }
+    }
+}
+
+impl Display for Counters {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "{{ {} requests, {} errors, {} avg latency (seconds) }}",
+            self.num_requests,
+            self.num_errors,
+            self.avg_latency()
+        )
+    }
+}
+
+impl core::ops::Sub for Counters {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Self {
+            num_requests: self.num_requests - other.num_requests,
+            num_errors: self.num_errors - other.num_errors,
+            total_millis_latency: self.total_millis_latency - other.total_millis_latency,
+        }
+    }
+}
+
 fn worker_thread(
     uri: String,
     grpc_retry_config: GrpcRetryConfig,
-    account_key: AccountKey,
     num_search_keys: usize,
-    num_reqs: Arc<AtomicU64>,
+    counters: Arc<Mutex<Counters>>,
+    stop_requested: Arc<AtomicBool>,
     logger: Logger,
 ) {
     let mut fog_view_client = build_fog_view_conn(&uri, grpc_retry_config, &logger);
 
     let resp = fog_view_client
         .request(0, 0, Default::default())
+        .map_err(|err| {
+            stop_requested.store(true, Ordering::SeqCst);
+            err
+        })
         .expect("request");
     let rng_record = &(resp.rng_records[0]);
-    let rng = VersionedKexRng::try_from_kex_pubkey(
-        &rng_record.pubkey,
-        &account_key.default_subaddress_view_private(),
-    )
-    .expect("kex");
+    let private_key = FromRandom::from_random(&mut rand::thread_rng());
+    let rng = VersionedKexRng::try_from_kex_pubkey(&rng_record.pubkey, &private_key).expect("kex");
     let search_keys = rng.take(num_search_keys).collect::<Vec<Vec<u8>>>();
 
-    loop {
-        let _resp = fog_view_client
-            .request(0, 0, search_keys.clone())
-            .expect("request");
-        num_reqs.fetch_add(1, Ordering::SeqCst);
+    while !stop_requested.load(Ordering::SeqCst) {
+        let start = Instant::now();
+        let result = fog_view_client.request(0, 0, search_keys.clone());
+        let duration = Instant::now().duration_since(start);
+
+        let mut counters = counters.lock().unwrap();
+        counters.num_requests += 1;
+        counters.total_millis_latency += u64::try_from(duration.as_millis()).unwrap();
+        if result.is_err() {
+            counters.num_errors += 1;
+        }
     }
 }
 
@@ -83,15 +128,20 @@ fn main() {
     let config = Config::parse();
     let logger = create_root_logger();
 
-    let account_key =
-        mc_util_keyfile::read_keyfile(config.keyfile).expect("Could not read private key file");
+    let stop_requested = Arc::new(AtomicBool::default());
+    let r = stop_requested.clone();
 
-    let num_reqs = Arc::new(AtomicU64::new(0));
+    ctrlc::set_handler(move || {
+        r.store(true, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let counters = Arc::new(Mutex::new(Counters::default()));
     for _ in 0..config.num_workers {
         let logger = logger.clone();
-        let account_key = account_key.clone();
         let num_search_keys = config.num_search_keys;
-        let num_reqs = num_reqs.clone();
+        let counters = counters.clone();
+        let stop_requested = stop_requested.clone();
         let uri = config.view_uri.clone();
         let retry_config = config.grpc_retry_config;
 
@@ -99,21 +149,49 @@ fn main() {
             worker_thread(
                 uri,
                 retry_config,
-                account_key,
                 num_search_keys,
-                num_reqs,
+                counters,
+                stop_requested,
                 logger,
             )
         });
     }
 
-    loop {
-        let num_reqs_before = num_reqs.load(Ordering::SeqCst);
-        thread::sleep(Duration::from_secs(1));
-        let num_reqs_after = num_reqs.load(Ordering::SeqCst);
+    let start_test = Instant::now();
 
-        println!("requests per second: {}", num_reqs_after - num_reqs_before);
+    let mut last_counters = Counters::default();
+    let mut last_display = Instant::now();
+    while !stop_requested.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_secs(1));
+
+        let current_counters = counters.lock().unwrap().clone();
+        if current_counters.num_requests > last_counters.num_requests {
+            let now = Instant::now();
+            let duration = now.duration_since(last_display);
+
+            let diff = current_counters.clone() - last_counters.clone();
+            let requests_per_second = diff.num_requests as f64 / duration.as_secs_f64();
+            let errors_per_second = diff.num_errors as f64 / duration.as_secs_f64();
+
+            println!(
+                "{{ requests per second: {}, errors per second: {}, avg latency (seconds) {} }}",
+                requests_per_second,
+                errors_per_second,
+                diff.avg_latency()
+            );
+            last_display = now;
+            last_counters = current_counters;
+        }
     }
+
+    let total_duration = Instant::now().duration_since(start_test);
+
+    println!(
+        "Total test time (seconds): {}",
+        total_duration.as_secs_f64()
+    );
+    println!("{}", counters.lock().unwrap());
+    println!("Config: {:?}", config);
 }
 
 fn build_fog_view_conn(
