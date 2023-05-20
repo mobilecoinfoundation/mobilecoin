@@ -42,6 +42,10 @@ struct Config {
     /// Grpc retry config
     #[clap(flatten)]
     pub grpc_retry_config: GrpcRetryConfig,
+
+    /// Max number of requests before the test ends (without ctrl-c)
+    #[clap(long, default_value = "0", env = "MC_MAX_REQUESTS")]
+    pub max_requests: usize,
 }
 
 /// Metrics that we aggregate for the load test
@@ -181,6 +185,12 @@ fn main() {
             );
             last_display = now;
             last_counters = current_counters;
+        }
+
+        // terminate test if we have exceeded maximum number of requests to perform, and
+        // this max is not zero.
+        if config.max_requests != 0 && current_counters.num_requests >= config.max_requests {
+            stop_requested.store(true, Ordering::SeqCst);
         }
     }
 
