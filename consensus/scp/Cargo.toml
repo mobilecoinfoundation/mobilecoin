@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp"
-version = "5.0.0-pre0"
+version = "5.0.0"
 authors = ["MobileCoin"]
 description = "Stellar Consensus Protocol"
 edition = "2021"

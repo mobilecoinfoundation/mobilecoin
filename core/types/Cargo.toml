@@ -1,6 +1,6 @@
 [package]
 name = "mc-core-types"
-version = "5.0.0-pre0"
+version = "5.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Types"
